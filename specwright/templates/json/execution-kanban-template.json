@@ -1,0 +1,53 @@
+{
+  "$schema": "../../templates/schemas/execution-kanban-schema.json",
+  "version": "1.0",
+
+  "execution": {
+    "id": "kanban-{{DATE}}",
+    "date": "{{DATE}}",
+    "startedAt": "{{STARTED_AT}}",
+    "completedAt": null,
+    "status": "executing"
+  },
+
+  "resumeContext": {
+    "currentPhase": "1-kanban-setup",
+    "currentItem": null,
+    "currentStoryPhase": null,
+    "worktreePath": null,
+    "gitBranch": null,
+    "lastAction": "Execution kanban created",
+    "nextAction": "Setup worktree and begin execution",
+    "progressIndex": 0,
+    "totalItems": {{TOTAL_ITEMS}}
+  },
+
+  "sourceBacklog": {
+    "path": "../backlog.json",
+    "snapshotAt": "{{STARTED_AT}}"
+  },
+
+  "items": [],
+
+  "boardStatus": {
+    "total": {{TOTAL_ITEMS}},
+    "queued": {{TOTAL_ITEMS}},
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 0,
+    "skipped": 0
+  },
+
+  "executionOrder": [],
+
+  "changeLog": [
+    {
+      "timestamp": "{{STARTED_AT}}",
+      "action": "kanban_created",
+      "itemId": null,
+      "details": "Execution kanban created with {{TOTAL_ITEMS}} items"
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+# CLAUDE.md
+
+> [PROJECT_NAME] Development Guide
+> Last Updated: [CURRENT_DATE]
+
+## Purpose
+Essential guidance for Claude Code development in the [PROJECT_NAME] repository. All detailed standards and product information are maintained in Specwright structure.
+
+## Specwright References (Lazy Loading - Context Efficient)
+
+**IMPORTANT:** Documents are loaded on-demand to preserve context window. Use context-fetcher subagent when needed.
+
+### Product Information (load via context-fetcher when needed)
+- **Product Vision**: specwright/product/product-brief.md
+- **Technical Architecture**: specwright/product/tech-stack.md
+- **Development Roadmap**: specwright/product/roadmap.md
+- **Architecture Decision**: specwright/product/architecture-decision.md
+
+### Development Standards (load via context-fetcher when needed)
+- **Tech Stack Defaults**: specwright/standards/tech-stack.md
+- **Code Style Preferences**: specwright/standards/code-style.md
+- **Best Practices Philosophy**: specwright/standards/best-practices.md
+
+### Specwright Workflows (loaded automatically via slash commands)
+Available commands - workflow context loads only when invoked:
+- `/plan-product` - Single-product planning
+- `/plan-platform` - Multi-module platform planning
+- `/build-development-team` - Create DevTeam agents
+- `/create-spec` - Feature specifications
+- `/execute-tasks` - Task execution
+- `/retroactive-doc` - Document existing features
+
+
+## Critical Rules
+- **FOLLOW ALL INSTRUCTIONS** - These are mandatory, not optional
+- **ASK FOR CLARIFICATION** - If uncertain about any requirement
+- **MINIMIZE CHANGES** - Edit only what's necessary
+- **PRODUCTION SAFETY** - [CUSTOMIZE: Add your production safety context]
+
+## Sub-Agents
+**MANDATORY DELEGATION** - Sub-agents have separate context windows. You are the strategic brain that makes high-level decisions.
+
+**Delegation Strategy:**
+- **Strategic Planning** → You decide WHAT needs to be done
+- **Implementation Planning** → Delegate to Core Development specialists
+- **Execution Tasks** → Delegate to Utility & Support agents
+- **Context Optimization** → Use sub-agents to keep routine tasks out of your main context
+
+**Rule:** Never do what a specialist can do better. Always delegate when sub-agents are available.
+
+### Core Development
+<!-- CUSTOMIZE: Add your project-specific development agents -->
+- **[ROLE-NAME]** - [TECHNOLOGY_DESCRIPTION]
+- **[ROLE-NAME]** - [TECHNOLOGY_DESCRIPTION]
+
+### Quality & Infrastructure
+<!-- CUSTOMIZE: Add your project-specific quality agents -->
+- **testing-specialist** - [YOUR_TESTING_STACK]
+- **security-specialist** - [YOUR_SECURITY_SETUP]
+- **devops-specialist** - [YOUR_DEPLOYMENT_PLATFORM]
+
+### Utility & Support
+- **context-fetcher** - Retrieve and extract relevant information from Specwright documentation
+- **date-checker** - Determine today's date including current year, month and day
+- **file-creator** - Create files, directories, and apply templates for Specwright workflows
+- **git-workflow** - Handle git operations, branch management, commits, and PR creation
+- **debugger** - Immediate bug fixes and runtime errors
+- **analyzer** - Strategic problem analysis (5-Why methodology)
+
+
+## Essential Commands
+
+```bash
+# Product Planning
+/plan-product            # Single-product planning (brief, tech-stack, roadmap)
+/plan-platform           # Multi-module platform planning (modules, dependencies, architecture)
+
+# Team Setup
+/build-development-team  # Create DevTeam agents and skills
+
+# Feature Development
+/create-spec             # Create detailed specifications for new features
+/execute-tasks           # Execute planned implementation tasks
+/retroactive-doc         # Document existing features without specs
+
+# Bug Management
+/create-bug              # Create bug specification
+/add-bug                 # Add bug to existing spec
+
+# CUSTOMIZE: Add your project-specific commands
+# Development
+[COMMAND]                # [DESCRIPTION]
+[COMMAND]                # [DESCRIPTION]
+
+# Testing
+[COMMAND]                # [DESCRIPTION]
+[COMMAND]                # [DESCRIPTION]
+```
+
+## MCP Server Integration
+
+<!-- CUSTOMIZE: Add your MCP server integrations -->
+- **[MCP_NAME]** - [DESCRIPTION]
+- **[MCP_NAME]** - [DESCRIPTION]
+
+## File Organization Rules
+
+**CRITICAL - No Files in Project Root:**
+- NEVER create markdown reports, checklists, or documentation in project root
+- NEVER create implementation reports like `STORY-001-IMPLEMENTATION.md` in root
+- NEVER create temporary files in root
+
+**Correct Locations:**
+- Implementation reports: `specwright/specs/[spec-name]/implementation-reports/`
+- Testing checklists: `specwright/specs/[spec-name]/implementation-reports/`
+- Handover docs: `specwright/specs/[spec-name]/handover-docs/`
+- Architecture docs: `specwright/product/`
+- Team docs: `specwright/team/`
+- Temporary files: `/tmp/` or `node_modules/.cache/`
+
+**When delegating to DevTeam agents:**
+Explicitly instruct them on correct file placement for any reports or documentation.
+
+## Quality Requirements
+
+**Mandatory Checks:**
+- Run linting after ALL code changes
+- ALL lint errors must be fixed before task completion
+- Follow TypeScript strict mode (no `any` types)
+<!-- CUSTOMIZE: Add your project-specific quality requirements -->
+
+## Production Safety Rules
+
+**CRITICAL RESTRICTIONS:**
+<!-- CUSTOMIZE: Add your production safety rules -->
+- Never modify [CRITICAL_SYSTEM] without approval
+- Never deploy [SENSITIVE_COMPONENT] without approval
+- Never create automatic Git commits
+- Always ask before infrastructure changes
+
+## Feature Development Workflow
+
+**Complete Lifecycle Management:**
+
+1. **Product/Platform Planning:**
+   - `/plan-product` → Single cohesive products
+   - `/plan-platform` → Multi-module platforms
+   - Creates: product-brief.md, tech-stack.md, roadmap.md, architecture-decision.md
+
+2. **Team Setup:**
+   - `/build-development-team` → Creates DevTeam agents & skills
+   - Generates role-specific agents based on tech-stack
+
+3. **Feature Development:**
+   - `/create-spec` → Creates detailed specification
+   - `/execute-tasks` → Executes planned tasks with DevTeam
+   - Creates spec in `specwright/specs/YYYY-MM-DD-feature-name/`
+
+4. **Bug Management:**
+   - `/create-bug` → Creates bug specification
+   - `/add-bug` → Adds bug to existing spec
+
+5. **Retroactive Documentation:**
+   - `/retroactive-doc` → Documents existing features without specs
+   - Analyzes code to create comprehensive documentation
+   - Perfect for legacy features
+
+**Directory Structure:**
+- `specwright/product/` - Product vision, tech-stack, roadmap
+- `specwright/specs/` - Feature specifications (development-oriented)
+- `specwright/team/` - DevTeam agents and skills
+
+## Development Notes
+
+<!-- CUSTOMIZE: Add your project-specific development context -->
+- **Platform:** [YOUR_PLATFORM_DESCRIPTION]
+- **Current Focus:** [CURRENT_DEVELOPMENT_PRIORITIES]
+- **Architecture Notes:** [IMPORTANT_ARCHITECTURAL_DECISIONS]
+
+---
+
+**Remember:** This is a [PRODUCTION/DEVELOPMENT] system serving [TARGET_AUDIENCE]. Quality, [KEY_REQUIREMENTS], and reliability are paramount. Always refer to Specwright documentation for detailed guidance.

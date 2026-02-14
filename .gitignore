@@ -1,0 +1,13 @@
+.DS_Store
+test-project
+.mcp.json
+.specwright.backup-*
+.claude/plans/
+
+# Kanban file locks
+**/*.lock
+**/kanban.json.lock
+
+# Specwright Secrets
+.specwright/product/secrets.md
+specwright/product/secrets.md

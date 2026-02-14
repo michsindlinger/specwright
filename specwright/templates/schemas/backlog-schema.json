@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "backlog-schema.json",
+  "title": "Backlog JSON Schema",
+  "description": "Schema for specwright/backlog/backlog.json - tracks bugs and todos",
+  "type": "object",
+  "required": ["$schema", "version", "metadata", "resumeContext", "items", "statistics", "changeLog"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this schema file"
+    },
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "resumeContext": {
+      "$ref": "#/$defs/backlogResumeContext"
+    },
+    "items": {
+      "type": "array",
+      "description": "All backlog items (bugs and todos)",
+      "items": {
+        "$ref": "#/$defs/backlogItem"
+      }
+    },
+    "executions": {
+      "type": "array",
+      "description": "History of execution kanbans",
+      "items": {
+        "$ref": "#/$defs/executionRecord"
+      }
+    },
+    "statistics": {
+      "$ref": "#/$defs/backlogStatistics"
+    },
+    "changeLog": {
+      "type": "array",
+      "description": "Audit trail of all changes",
+      "items": {
+        "$ref": "#/$defs/changeLogEntry"
+      }
+    }
+  },
+  "$defs": {
+    "metadata": {
+      "type": "object",
+      "required": ["created", "lastUpdated"],
+      "properties": {
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "backlogResumeContext": {
+      "type": "object",
+      "required": ["activeKanban", "currentPhase", "lastAction", "nextAction"],
+      "properties": {
+        "activeKanban": {
+          "type": ["string", "null"],
+          "description": "ID of active execution kanban, null if idle"
+        },
+        "currentPhase": {
+          "type": "string",
+          "enum": ["idle", "executing", "paused", "completed"]
+        },
+        "lastExecution": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "lastAction": {
+          "type": "string"
+        },
+        "nextAction": {
+          "type": "string"
+        }
+      }
+    },
+    "backlogItem": {
+      "type": "object",
+      "required": ["id", "type", "title", "slug", "priority", "effort", "status", "category", "storyFile", "createdAt", "updatedAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Format: YYYY-MM-DD-NNN",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}-\\d{3}$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["bug", "todo"]
+        },
+        "title": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "priority": {
+          "$ref": "#/$defs/priority"
+        },
+        "severity": {
+          "type": ["string", "null"],
+          "enum": ["critical", "high", "medium", "low", null],
+          "description": "Only for bugs"
+        },
+        "effort": {
+          "$ref": "#/$defs/effortPoints"
+        },
+        "status": {
+          "$ref": "#/$defs/itemStatus"
+        },
+        "category": {
+          "$ref": "#/$defs/itemCategory"
+        },
+        "storyFile": {
+          "type": "string",
+          "description": "Relative path to story MD file"
+        },
+        "rootCause": {
+          "type": ["string", "null"],
+          "description": "Only for bugs - from RCA"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "executedIn": {
+          "type": ["string", "null"],
+          "description": "Kanban ID if executed"
+        },
+        "completedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    },
+    "executionRecord": {
+      "type": "object",
+      "required": ["id", "date", "kanbanFile", "itemsExecuted", "itemsCompleted", "startedAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^kanban-\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "kanbanFile": {
+          "type": "string"
+        },
+        "itemsExecuted": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "itemsCompleted": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    },
+    "backlogStatistics": {
+      "type": "object",
+      "required": ["total", "byStatus", "byType", "byCategory", "totalEffort", "completedEffort"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "byStatus": {
+          "type": "object",
+          "properties": {
+            "ready": { "type": "integer", "minimum": 0 },
+            "inProgress": { "type": "integer", "minimum": 0 },
+            "inReview": { "type": "integer", "minimum": 0 },
+            "testing": { "type": "integer", "minimum": 0 },
+            "done": { "type": "integer", "minimum": 0 },
+            "blocked": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "byType": {
+          "type": "object",
+          "properties": {
+            "bug": { "type": "integer", "minimum": 0 },
+            "todo": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "byCategory": {
+          "type": "object",
+          "properties": {
+            "frontend": { "type": "integer", "minimum": 0 },
+            "backend": { "type": "integer", "minimum": 0 },
+            "devops": { "type": "integer", "minimum": 0 },
+            "test": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "totalEffort": { "type": "integer", "minimum": 0 },
+        "completedEffort": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "changeLogEntry": {
+      "type": "object",
+      "required": ["timestamp", "action", "details"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["item_added", "item_refined", "status_changed", "execution_started", "execution_completed", "item_deleted"]
+        },
+        "itemId": {
+          "type": ["string", "null"]
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        }
+      }
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low"]
+    },
+    "effortPoints": {
+      "type": "integer",
+      "enum": [1, 2, 3, 5, 8]
+    },
+    "itemStatus": {
+      "type": "string",
+      "enum": ["ready", "in_progress", "in_review", "testing", "done", "blocked"]
+    },
+    "itemCategory": {
+      "type": "string",
+      "enum": ["frontend", "backend", "devops", "test", "docs", "integration"]
+    }
+  }
+}

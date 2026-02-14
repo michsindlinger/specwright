@@ -1,0 +1,54 @@
+{
+  "$schema": "../schemas/backlog-schema.json",
+  "version": "1.0",
+
+  "metadata": {
+    "created": "{{CREATED_AT}}",
+    "lastUpdated": "{{CREATED_AT}}"
+  },
+
+  "resumeContext": {
+    "activeKanban": null,
+    "currentPhase": "idle",
+    "lastExecution": null,
+    "lastAction": "Backlog initialized",
+    "nextAction": "Add items via /add-bug or /add-todo"
+  },
+
+  "items": [],
+
+  "executions": [],
+
+  "statistics": {
+    "total": 0,
+    "byStatus": {
+      "ready": 0,
+      "inProgress": 0,
+      "inReview": 0,
+      "testing": 0,
+      "done": 0,
+      "blocked": 0
+    },
+    "byType": {
+      "bug": 0,
+      "todo": 0
+    },
+    "byCategory": {
+      "frontend": 0,
+      "backend": 0,
+      "devops": 0,
+      "test": 0
+    },
+    "totalEffort": 0,
+    "completedEffort": 0
+  },
+
+  "changeLog": [
+    {
+      "timestamp": "{{CREATED_AT}}",
+      "action": "item_added",
+      "itemId": null,
+      "details": "Backlog initialized"
+    }
+  ]
+}

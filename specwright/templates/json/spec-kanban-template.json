@@ -1,0 +1,80 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+
+  "spec": {
+    "id": "{{SPEC_ID}}",
+    "name": "{{SPEC_NAME}}",
+    "prefix": "{{SPEC_PREFIX}}",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "{{CREATED_AT}}"
+  },
+
+  "resumeContext": {
+    "currentPhase": "1-kanban-setup",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Kanban board created",
+    "nextAction": "Run /execute-tasks {{SPEC_ID}}",
+    "progressIndex": 0,
+    "totalStories": {{TOTAL_STORIES}}
+  },
+
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+
+  "stories": [],
+
+  "boardStatus": {
+    "total": {{TOTAL_STORIES}},
+    "ready": {{TOTAL_STORIES}},
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 0
+  },
+
+  "statistics": {
+    "totalEffort": {{TOTAL_EFFORT}},
+    "completedEffort": 0,
+    "remainingEffort": {{TOTAL_EFFORT}},
+    "progressPercent": 0,
+    "byType": {
+      "frontend": 0,
+      "backend": 0,
+      "devops": 0,
+      "test": 0,
+      "docs": 0,
+      "integration": 0
+    },
+    "byPriority": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    }
+  },
+
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": []
+  },
+
+  "changeLog": [
+    {
+      "timestamp": "{{CREATED_AT}}",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with {{TOTAL_STORIES}} stories from /create-spec"
+    }
+  ]
+}

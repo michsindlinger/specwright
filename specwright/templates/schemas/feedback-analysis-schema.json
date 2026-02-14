@@ -1,0 +1,189 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "feedback-analysis-schema.json",
+  "title": "Feedback Analysis Result",
+  "description": "Structured output from /process-feedback workflow",
+  "type": "object",
+
+  "required": ["version", "metadata", "summary", "items"],
+
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this schema"
+    },
+
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version"
+    },
+
+    "metadata": {
+      "type": "object",
+      "required": ["analyzedAt", "project"],
+      "properties": {
+        "analyzedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp when analysis was performed"
+        },
+        "project": {
+          "type": "string",
+          "description": "Project name this feedback relates to"
+        },
+        "feedbackSource": {
+          "type": "string",
+          "enum": ["email", "chat", "meeting", "ticket", "call", "other"],
+          "description": "Source of the feedback"
+        },
+        "feedbackFrom": {
+          "type": "string",
+          "description": "Customer or stakeholder name (optional)"
+        },
+        "rawFeedbackLength": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Character count of original feedback"
+        }
+      }
+    },
+
+    "summary": {
+      "type": "object",
+      "required": ["totalItems", "byCategory", "byPriority"],
+      "properties": {
+        "totalItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byCategory": {
+          "type": "object",
+          "properties": {
+            "spec": { "type": "integer", "minimum": 0 },
+            "bug": { "type": "integer", "minimum": 0 },
+            "todo": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["spec", "bug", "todo"]
+        },
+        "byPriority": {
+          "type": "object",
+          "properties": {
+            "critical": { "type": "integer", "minimum": 0 },
+            "high": { "type": "integer", "minimum": 0 },
+            "medium": { "type": "integer", "minimum": 0 },
+            "low": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["critical", "high", "medium", "low"]
+        },
+        "clarificationsNeeded": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of items requiring clarification"
+        }
+      }
+    },
+
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "priority", "title", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^fb-[0-9]{3}$",
+            "description": "Unique identifier for this feedback item"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["spec", "bug", "todo"],
+            "description": "Categorization of the item"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"],
+            "description": "Priority level"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "Confidence in the categorization"
+          },
+          "original": {
+            "type": "string",
+            "description": "Original text from feedback (quote)"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Short title for the item"
+          },
+          "description": {
+            "type": "string",
+            "description": "Summary in 1-2 sentences"
+          },
+          "area": {
+            "type": "string",
+            "enum": ["UI", "Backend", "API", "Database", "Workflow", "Integration", "Performance", "Security", "Documentation", "Other"],
+            "description": "Affected area of the system"
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "Why this category was chosen"
+          },
+          "clarificationNeeded": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether clarification from customer is needed"
+          },
+          "clarificationQuestion": {
+            "type": ["string", "null"],
+            "description": "Question to ask customer for clarification"
+          },
+          "suggestedAction": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "enum": ["/create-spec", "/add-bug", "/add-todo"],
+                "description": "Suggested Specwright command"
+              },
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "priority": { "type": "string" },
+                  "category": { "type": "string" }
+                }
+              }
+            }
+          },
+          "relatedItems": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "IDs of related feedback items"
+          }
+        }
+      }
+    },
+
+    "clarifications": {
+      "type": "array",
+      "description": "Consolidated list of questions to ask customer",
+      "items": {
+        "type": "object",
+        "properties": {
+          "itemId": { "type": "string" },
+          "question": { "type": "string" }
+        }
+      }
+    },
+
+    "rawFeedback": {
+      "type": "string",
+      "description": "Original unprocessed feedback for reference"
+    }
+  }
+}

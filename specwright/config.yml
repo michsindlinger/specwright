@@ -1,0 +1,49 @@
+# Specwright - Project Configuration
+# Version 3.0.0
+
+# Active profile for this project
+# Options: base, java-spring-boot, react-frontend, angular-frontend
+# You can also create custom profiles in specwright/profiles/
+active_profile: base
+
+# Profile settings
+profiles:
+  # Enable profile inheritance
+  inheritance: true
+
+  # Automatically load skills defined in active profile
+  auto_load_skills: true
+
+# Skills configuration
+skills:
+  # Enable Claude Code Skills integration
+  enabled: true
+
+  # Path to skills directory
+  path: specwright/skills
+
+  # Symlink skills to .claude/skills for Claude Code
+  symlink_to_claude: true
+
+# Standards injection
+standards:
+  # Inject standards based on task context
+  context_aware: true
+
+  # Inject standards based on file type
+  file_type_aware: true
+
+# Project metadata
+project:
+  name: "Specwright"
+  version: "3.0.0"
+  description: "Spec-driven development framework for AI-assisted software projects"
+
+# Feature flags
+features:
+  profile_system: true
+  skills_system: true
+  enhanced_research: false
+  verification_system: false
+  market_validation: false  # Enable via setup-market-validation scripts
+  team_system: false        # Not included in core

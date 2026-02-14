@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "execution-kanban-schema.json",
+  "title": "Execution Kanban JSON Schema",
+  "description": "Schema for specwright/backlog/executions/kanban-*.json - tracks active execution sessions",
+  "type": "object",
+  "required": ["$schema", "version", "execution", "resumeContext", "sourceBacklog", "items", "boardStatus", "executionOrder", "changeLog"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "execution": {
+      "$ref": "#/$defs/executionInfo"
+    },
+    "resumeContext": {
+      "$ref": "#/$defs/executionResumeContext"
+    },
+    "sourceBacklog": {
+      "$ref": "#/$defs/sourceReference"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/executionItem"
+      }
+    },
+    "boardStatus": {
+      "$ref": "#/$defs/executionBoardStatus"
+    },
+    "executionOrder": {
+      "type": "array",
+      "description": "Ordered list of item IDs for execution",
+      "items": { "type": "string" }
+    },
+    "changeLog": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/executionChangeLogEntry"
+      }
+    }
+  },
+  "$defs": {
+    "executionInfo": {
+      "type": "object",
+      "required": ["id", "date", "startedAt", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^kanban-\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["preparing", "executing", "paused", "completed", "aborted"]
+        }
+      }
+    },
+    "executionResumeContext": {
+      "type": "object",
+      "required": ["currentPhase", "lastAction", "nextAction", "progressIndex", "totalItems"],
+      "properties": {
+        "currentPhase": {
+          "type": "string",
+          "enum": ["1-kanban-setup", "2-worktree-setup", "3-story-execution", "4-review-testing", "5-completion", "6-cleanup"]
+        },
+        "currentItem": {
+          "type": ["string", "null"]
+        },
+        "currentStoryPhase": {
+          "type": ["string", "null"],
+          "enum": ["loading", "implementing", "reviewing", "testing", "verifying", "committing", "completed", null]
+        },
+        "worktreePath": {
+          "type": ["string", "null"]
+        },
+        "gitBranch": {
+          "type": ["string", "null"]
+        },
+        "lastAction": {
+          "type": "string"
+        },
+        "nextAction": {
+          "type": "string"
+        },
+        "progressIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalItems": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "sourceReference": {
+      "type": "object",
+      "required": ["path", "snapshotAt"],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "snapshotAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "executionItem": {
+      "type": "object",
+      "required": ["id", "backlogItemId", "title", "type", "category", "effort", "priority", "executionStatus", "storyFile", "timing", "implementation", "verification"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "backlogItemId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["bug", "todo"]
+        },
+        "category": {
+          "type": "string",
+          "enum": ["frontend", "backend", "devops", "test", "docs", "integration"]
+        },
+        "effort": {
+          "type": "integer",
+          "enum": [1, 2, 3, 5, 8]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low"]
+        },
+        "executionStatus": {
+          "type": "string",
+          "enum": ["queued", "in_progress", "in_review", "testing", "done", "blocked", "skipped"]
+        },
+        "executionPhase": {
+          "type": ["string", "null"],
+          "enum": ["loading", "implementing", "reviewing", "testing", "verifying", "committing", "completed", null]
+        },
+        "storyFile": {
+          "type": "string"
+        },
+        "timing": {
+          "$ref": "#/$defs/executionTiming"
+        },
+        "implementation": {
+          "$ref": "#/$defs/implementationDetails"
+        },
+        "verification": {
+          "$ref": "#/$defs/verificationStatus"
+        },
+        "notes": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "executionTiming": {
+      "type": "object",
+      "required": ["queuedAt"],
+      "properties": {
+        "queuedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "implementedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "reviewedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "testedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    },
+    "implementationDetails": {
+      "type": "object",
+      "required": ["filesModified", "testsAdded", "commits"],
+      "properties": {
+        "filesModified": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "testsAdded": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "commits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/commitInfo"
+          }
+        }
+      }
+    },
+    "commitInfo": {
+      "type": "object",
+      "required": ["hash", "message", "timestamp"],
+      "properties": {
+        "hash": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "verificationStatus": {
+      "type": "object",
+      "required": ["dorChecked", "dodChecked"],
+      "properties": {
+        "dorChecked": { "type": "boolean" },
+        "dodChecked": { "type": "boolean" },
+        "testsPass": { "type": ["boolean", "null"] },
+        "lintPass": { "type": ["boolean", "null"] },
+        "manualVerification": { "type": ["string", "null"] }
+      }
+    },
+    "executionBoardStatus": {
+      "type": "object",
+      "required": ["total", "queued", "inProgress", "inReview", "testing", "done", "blocked", "skipped"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "queued": { "type": "integer", "minimum": 0 },
+        "inProgress": { "type": "integer", "minimum": 0 },
+        "inReview": { "type": "integer", "minimum": 0 },
+        "testing": { "type": "integer", "minimum": 0 },
+        "done": { "type": "integer", "minimum": 0 },
+        "blocked": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "executionChangeLogEntry": {
+      "type": "object",
+      "required": ["timestamp", "action", "details"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["kanban_created", "kanban_resumed", "status_changed", "phase_changed", "commit_created", "verification_passed", "verification_failed", "item_skipped", "kanban_completed", "kanban_aborted"]
+        },
+        "itemId": {
+          "type": ["string", "null"]
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

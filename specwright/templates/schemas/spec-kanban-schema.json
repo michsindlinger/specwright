@@ -1,0 +1,379 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec-kanban-schema.json",
+  "title": "Spec Kanban JSON Schema",
+  "description": "Schema for specwright/specs/[spec-name]/kanban.json - tracks stories for a specification",
+  "type": "object",
+  "required": ["$schema", "version", "spec", "resumeContext", "execution", "stories", "boardStatus", "statistics", "changeLog"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "spec": {
+      "$ref": "#/$defs/specInfo"
+    },
+    "resumeContext": {
+      "$ref": "#/$defs/specResumeContext"
+    },
+    "execution": {
+      "$ref": "#/$defs/specExecutionInfo"
+    },
+    "stories": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/specStory"
+      }
+    },
+    "boardStatus": {
+      "$ref": "#/$defs/boardStatus"
+    },
+    "statistics": {
+      "$ref": "#/$defs/specStatistics"
+    },
+    "executionPlan": {
+      "$ref": "#/$defs/executionPlan"
+    },
+    "changeLog": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/specChangeLogEntry"
+      }
+    }
+  },
+  "$defs": {
+    "specInfo": {
+      "type": "object",
+      "required": ["id", "name", "prefix", "specFile", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Spec folder name, e.g. 2026-01-30-workflow-specific-documents"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable spec name"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Story ID prefix, e.g. WSD",
+          "pattern": "^[A-Z]{2,5}$"
+        },
+        "specFile": {
+          "type": "string",
+          "default": "spec.md"
+        },
+        "specLiteFile": {
+          "type": "string",
+          "default": "spec-lite.md"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "specResumeContext": {
+      "type": "object",
+      "required": ["currentPhase", "nextPhase", "lastAction", "nextAction", "progressIndex", "totalStories"],
+      "properties": {
+        "currentPhase": {
+          "type": "string",
+          "enum": ["1-kanban-setup", "2-worktree-setup", "3-story-execution", "4-review-testing", "5-integration", "6-completion", "7-cleanup"]
+        },
+        "nextPhase": {
+          "type": "string"
+        },
+        "worktreePath": {
+          "type": ["string", "null"]
+        },
+        "gitBranch": {
+          "type": ["string", "null"]
+        },
+        "currentStory": {
+          "type": ["string", "null"]
+        },
+        "currentStoryPhase": {
+          "type": ["string", "null"],
+          "enum": ["loading", "implementing", "reviewing", "testing", "verifying", "committing", "completed", null]
+        },
+        "lastAction": {
+          "type": "string"
+        },
+        "nextAction": {
+          "type": "string"
+        },
+        "progressIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalStories": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "specExecutionInfo": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["not_started", "executing", "paused", "completed", "aborted"]
+        },
+        "startedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "model": {
+          "type": ["string", "null"],
+          "description": "Model used for execution, e.g. opus, sonnet"
+        }
+      }
+    },
+    "specStory": {
+      "type": "object",
+      "required": ["id", "title", "slug", "classification", "dependencies", "status", "dorStatus", "storyFile", "timing", "implementation", "verification"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Story ID with prefix, e.g. WSD-001",
+          "pattern": "^[A-Z]{2,5}-\\d{3}$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "classification": {
+          "$ref": "#/$defs/storyClassification"
+        },
+        "dependencies": {
+          "type": "array",
+          "description": "Story IDs this depends on",
+          "items": { "type": "string" }
+        },
+        "blockedBy": {
+          "type": "array",
+          "description": "Dependencies that are not done yet",
+          "items": { "type": "string" }
+        },
+        "blocks": {
+          "type": "array",
+          "description": "Stories waiting on this one",
+          "items": { "type": "string" }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ready", "in_progress", "in_review", "testing", "done", "blocked"]
+        },
+        "phase": {
+          "type": ["string", "null"],
+          "enum": ["loading", "implementing", "reviewing", "testing", "verifying", "committing", "completed", null]
+        },
+        "dorStatus": {
+          "type": "string",
+          "enum": ["ready", "blocked", "incomplete"]
+        },
+        "storyFile": {
+          "type": "string"
+        },
+        "timing": {
+          "$ref": "#/$defs/storyTiming"
+        },
+        "implementation": {
+          "$ref": "#/$defs/storyImplementation"
+        },
+        "verification": {
+          "$ref": "#/$defs/storyVerification"
+        }
+      }
+    },
+    "storyClassification": {
+      "type": "object",
+      "required": ["type", "priority", "effort"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["frontend", "backend", "devops", "test", "docs", "integration"]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low"]
+        },
+        "effort": {
+          "type": "integer",
+          "enum": [1, 2, 3, 5, 8]
+        },
+        "complexity": {
+          "type": "string",
+          "enum": ["XS", "S", "M", "L", "XL"]
+        }
+      }
+    },
+    "storyTiming": {
+      "type": "object",
+      "required": ["createdAt", "updatedAt"],
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    },
+    "storyImplementation": {
+      "type": "object",
+      "required": ["filesModified", "testsAdded", "commits"],
+      "properties": {
+        "model": {
+          "type": ["string", "null"]
+        },
+        "filesModified": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "testsAdded": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "commits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/commitInfo"
+          }
+        }
+      }
+    },
+    "commitInfo": {
+      "type": "object",
+      "required": ["hash", "message", "timestamp"],
+      "properties": {
+        "hash": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "storyVerification": {
+      "type": "object",
+      "required": ["dorChecked", "dodChecked"],
+      "properties": {
+        "dorChecked": { "type": "boolean" },
+        "dodChecked": { "type": "boolean" },
+        "testsPass": { "type": ["boolean", "null"] },
+        "lintPass": { "type": ["boolean", "null"] },
+        "buildPass": { "type": ["boolean", "null"] }
+      }
+    },
+    "boardStatus": {
+      "type": "object",
+      "required": ["total", "ready", "inProgress", "inReview", "testing", "done", "blocked"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "ready": { "type": "integer", "minimum": 0 },
+        "inProgress": { "type": "integer", "minimum": 0 },
+        "inReview": { "type": "integer", "minimum": 0 },
+        "testing": { "type": "integer", "minimum": 0 },
+        "done": { "type": "integer", "minimum": 0 },
+        "blocked": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "specStatistics": {
+      "type": "object",
+      "required": ["totalEffort", "completedEffort", "remainingEffort", "progressPercent"],
+      "properties": {
+        "totalEffort": { "type": "integer", "minimum": 0 },
+        "completedEffort": { "type": "integer", "minimum": 0 },
+        "remainingEffort": { "type": "integer", "minimum": 0 },
+        "progressPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "byType": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "byPriority": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        }
+      }
+    },
+    "executionPlan": {
+      "type": "object",
+      "required": ["strategy", "phases"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["sequential", "dependency-aware", "parallel"]
+        },
+        "phases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/executionPhaseInfo"
+          }
+        }
+      }
+    },
+    "executionPhaseInfo": {
+      "type": "object",
+      "required": ["phase", "name", "stories", "status"],
+      "properties": {
+        "phase": { "type": "integer", "minimum": 1 },
+        "name": { "type": "string" },
+        "stories": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "done"]
+        },
+        "parallel": { "type": "boolean" }
+      }
+    },
+    "specChangeLogEntry": {
+      "type": "object",
+      "required": ["timestamp", "action", "details"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["kanban_created", "execution_started", "execution_paused", "execution_resumed", "execution_completed", "status_changed", "phase_changed", "dependency_resolved", "story_added", "story_modified", "model_changed", "commit_created"]
+        },
+        "storyId": {
+          "type": ["string", "null"]
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
