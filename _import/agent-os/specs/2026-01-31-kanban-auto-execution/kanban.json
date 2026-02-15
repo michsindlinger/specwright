@@ -1,0 +1,216 @@
+{
+  "$schema": "../../../schemas/kanban.schema.json",
+  "version": "2.0",
+  "spec": {
+    "id": "2026-01-31-kanban-auto-execution",
+    "name": "Kanban Auto-Execution",
+    "prefix": "KAE",
+    "specFile": "user-stories.md",
+    "specLiteFile": null,
+    "createdAt": "2026-01-31"
+  },
+  "resumeContext": {
+    "currentPhase": "5-completion",
+    "nextPhase": null,
+    "worktreePath": "/Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/kanban-auto-execution",
+    "gitBranch": "feature/kanban-auto-execution",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed KAE-005 - self-review passed",
+    "nextAction": "Run integration validation",
+    "progressIndex": 5,
+    "totalStories": 5
+  },
+  "boardStatus": {
+    "total": 5,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 5,
+    "blocked": 0
+  },
+  "stories": [
+    {
+      "id": "KAE-001",
+      "title": "Auto-Mode Toggle Component",
+      "type": "Frontend",
+      "effort": "S",
+      "priority": "High",
+      "dependencies": [],
+      "status": "done",
+      "definitionOfReady": {
+        " fachlicheRequirementsKlar": true,
+        "technischerAnsatzDefiniert": true,
+        "abhaengigkeitenIdentifiziert": true,
+        "betroffeneKomponentenBekannt": true,
+        "storyAngemessenGeschaetzt": true
+      },
+      "definitionOfDone": {
+        "codeImplementiert": true,
+        "architekturVorgabenEingehalten": true,
+        "akzeptanzkriterienErfuellt": true,
+        "unitTestsBestanden": true,
+        "integrationTestsBestanden": true,
+        "codeReviewGenehmigt": true,
+        "dokumentationAktualisiert": true,
+        "keineLintingErrors": true
+      },
+      "storyFile": "stories/story-001-auto-mode-toggle-component.md",
+      "completedAt": "2026-01-31",
+      "completedIn": null
+    },
+    {
+      "id": "KAE-002",
+      "title": "Auto-Execution Engine",
+      "type": "Full-Stack",
+      "effort": "M",
+      "priority": "High",
+      "dependencies": ["KAE-001"],
+      "status": "done",
+      "definitionOfReady": {
+        "fachlicheRequirementsKlar": true,
+        "technischerAnsatzDefiniert": true,
+        "abhaengigkeitenIdentifiziert": true,
+        "betroffeneKomponentenBekannt": true,
+        "storyAngemessenGeschaetzt": true
+      },
+      "definitionOfDone": {
+        "codeImplementiert": true,
+        "architekturVorgabenEingehalten": true,
+        "akzeptanzkriterienErfuellt": true,
+        "unitTestsBestanden": true,
+        "integrationTestsBestanden": true,
+        "codeReviewGenehmigt": true,
+        "dokumentationAktualisiert": true,
+        "keineLintingErrors": true
+      },
+      "storyFile": "stories/story-002-auto-execution-engine.md",
+      "completedAt": "2026-01-31",
+      "completedIn": null
+    },
+    {
+      "id": "KAE-003",
+      "title": "Progress Summary Display",
+      "type": "Frontend",
+      "effort": "S",
+      "priority": "Medium",
+      "dependencies": ["KAE-001", "KAE-002"],
+      "status": "done",
+      "definitionOfReady": {
+        "fachlicheRequirementsKlar": true,
+        "technischerAnsatzDefiniert": true,
+        "abhaengigkeitenIdentifiziert": true,
+        "betroffeneKomponentenBekannt": true,
+        "storyAngemessenGeschaetzt": true
+      },
+      "definitionOfDone": {
+        "codeImplementiert": true,
+        "architekturVorgabenEingehalten": true,
+        "akzeptanzkriterienErfuellt": true,
+        "unitTestsBestanden": true,
+        "integrationTestsBestanden": true,
+        "codeReviewGenehmigt": true,
+        "dokumentationAktualisiert": true,
+        "keineLintingErrors": true
+      },
+      "storyFile": "stories/story-003-progress-summary-display.md",
+      "completedAt": "2026-01-31",
+      "completedIn": null
+    },
+    {
+      "id": "KAE-004",
+      "title": "Error Handling Modal",
+      "type": "Frontend",
+      "effort": "S",
+      "priority": "Medium",
+      "dependencies": ["KAE-001", "KAE-002"],
+      "status": "done",
+      "definitionOfReady": {
+        "fachlicheRequirementsKlar": true,
+        "technischerAnsatzDefiniert": true,
+        "abhaengigkeitenIdentifiziert": true,
+        "betroffeneKomponentenBekannt": true,
+        "storyAngemessenGeschaetzt": true
+      },
+      "definitionOfDone": {
+        "codeImplementiert": true,
+        "architekturVorgabenEingehalten": true,
+        "akzeptanzkriterienErfuellt": true,
+        "unitTestsBestanden": true,
+        "integrationTestsBestanden": true,
+        "codeReviewGenehmigt": true,
+        "dokumentationAktualisiert": true,
+        "keineLintingErrors": true
+      },
+      "storyFile": "stories/story-004-error-handling-modal.md",
+      "completedAt": "2026-02-01",
+      "completedIn": null
+    },
+    {
+      "id": "KAE-005",
+      "title": "Git Strategy Integration",
+      "type": "Frontend",
+      "effort": "S",
+      "priority": "High",
+      "dependencies": ["KAE-001", "KAE-002"],
+      "status": "done",
+      "definitionOfReady": {
+        "fachlicheRequirementsKlar": true,
+        "technischerAnsatzDefiniert": true,
+        "abhaengigkeitenIdentifiziert": true,
+        "betroffeneKomponentenBekannt": true,
+        "storyAngemessenGeschaetzt": true
+      },
+      "definitionOfDone": {
+        "codeImplementiert": true,
+        "architekturVorgabenEingehalten": true,
+        "akzeptanzkriterienErfuellt": true,
+        "unitTestsBestanden": true,
+        "integrationTestsBestanden": true,
+        "codeReviewGenehmigt": true,
+        "dokumentationAktualisiert": true,
+        "keineLintingErrors": true
+      },
+      "storyFile": "stories/story-005-git-strategy-integration.md",
+      "completedAt": "2026-02-01",
+      "completedIn": null
+    }
+  ],
+  "changeLog": [
+    {
+      "timestamp": "2026-02-03T14:57:00+0100",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Migrated from kanban-board.md"
+    }
+  ],
+  "statistics": {
+    "totalStories": 5,
+    "completedStories": 5,
+    "completionPercentage": 100,
+    "byStatus": {
+      "ready": 0,
+      "inProgress": 0,
+      "inReview": 0,
+      "testing": 0,
+      "done": 5,
+      "blocked": 0
+    },
+    "byType": {
+      "Frontend": 4,
+      "Full-Stack": 1
+    },
+    "byPriority": {
+      "High": 3,
+      "Medium": 2
+    },
+    "totalEffort": "4S + 1M",
+    "estimatedHours": 22
+  },
+  "metadata": {
+    "created": "2026-01-31",
+    "lastUpdated": "2026-02-03T14:57:00+0100",
+    "version": "2.0"
+  }
+}

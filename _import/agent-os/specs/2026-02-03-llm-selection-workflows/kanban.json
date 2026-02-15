@@ -1,0 +1,587 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-03-llm-selection-workflows",
+    "name": "LLM Model Selection for Workflows",
+    "prefix": "LLM",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-03"
+  },
+  "resumeContext": {
+    "currentPhase": "3-execute-story",
+    "nextPhase": "5-finalize",
+    "worktreePath": "/Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/llm-selection-workflows",
+    "gitBranch": "feature/llm-selection-workflows",
+    "currentStory": "LLM-999",
+    "currentStoryPhase": "implementing",
+    "lastAction": "LLM-998 completed - Test report created with all tests passing",
+    "nextAction": "Execute LLM-999 (Spec Completion & Cleanup)",
+    "progressIndex": 6,
+    "totalStories": 7,
+    "gitStrategy": "worktree"
+  },
+  "execution": {
+    "status": "stories-complete",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "LLM-001",
+      "title": "Backend Integration",
+      "slug": "backend-integration",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "complete",
+      "storyFile": "stories/story-001-backend-integration.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-04",
+        "startedAt": "2026-02-03T20:34:56.778Z",
+        "completedAt": "2026-02-04T05:10:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/workflow-executor.ts",
+          "agent-os-ui/src/server/websocket.ts",
+          "agent-os-ui/src/server/model-config.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          "a606c7b"
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5",
+      "phase": "completed"
+    },
+    {
+      "id": "LLM-002",
+      "title": "Workflow Card Model Selection",
+      "slug": "workflow-card-model-selection",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "M",
+        "complexity": "M"
+      },
+      "dependencies": [
+        "LLM-001"
+      ],
+      "status": "done",
+      "dorStatus": "complete",
+      "storyFile": "stories/story-002-workflow-card-model-selection.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-04",
+        "startedAt": "2026-02-04T05:10:10.604Z",
+        "completedAt": "2026-02-04T06:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/workflow-card.ts",
+          "agent-os-ui/ui/src/views/workflow-view.ts"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5",
+      "phase": "completed"
+    },
+    {
+      "id": "LLM-003",
+      "title": "Create Spec Modal Model Selection",
+      "slug": "create-spec-modal-model-selection",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "M",
+        "complexity": "M"
+      },
+      "dependencies": [
+        "LLM-001"
+      ],
+      "status": "done",
+      "dorStatus": "complete",
+      "storyFile": "stories/story-003-create-spec-modal-model-selection.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-04",
+        "startedAt": "2026-02-04T05:14:01.666Z",
+        "completedAt": "2026-02-04T07:15:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/aos-create-spec-modal.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5",
+      "phase": "completed"
+    },
+    {
+      "id": "LLM-004",
+      "title": "Context Menu Model Selection",
+      "slug": "context-menu-model-selection",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "XS",
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "LLM-001",
+        "LLM-003"
+      ],
+      "status": "done",
+      "dorStatus": "complete",
+      "storyFile": "stories/story-004-context-menu-model-selection.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-04",
+        "startedAt": "2026-02-04T05:20:57.197Z",
+        "completedAt": "2026-02-04T08:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/app.ts"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5",
+      "phase": "completed"
+    },
+    {
+      "id": "LLM-997",
+      "title": "Documentation & Handover",
+      "slug": "documentation-handover",
+      "classification": {
+        "type": "system",
+        "priority": "medium",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [
+        "LLM-001",
+        "LLM-002",
+        "LLM-003",
+        "LLM-004"
+      ],
+      "status": "done",
+      "dorStatus": "complete",
+      "storyFile": "stories/story-997-documentation.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-04",
+        "startedAt": "2026-02-04T05:26:08.123Z",
+        "completedAt": "2026-02-04T09:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-03-llm-selection-workflows/implementation-reports/architecture-decision-llm-selection.md",
+          "agent-os/specs/2026-02-03-llm-selection-workflows/implementation-reports/implementation-report-llm-selection.md",
+          "agent-os/specs/2026-02-03-llm-selection-workflows/handover-docs/handover-llm-selection.md",
+          "agent-os/product/architecture-decision.md"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5",
+      "phase": "completed"
+    },
+    {
+      "id": "LLM-998",
+      "title": "Testing & Quality Assurance",
+      "slug": "testing-quality-assurance",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "M",
+        "complexity": "M"
+      },
+      "dependencies": [
+        "LLM-001",
+        "LLM-002",
+        "LLM-003",
+        "LLM-004"
+      ],
+      "status": "done",
+      "dorStatus": "complete",
+      "storyFile": "stories/story-998-testing.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-04",
+        "startedAt": "2026-02-04T05:31:43.332Z",
+        "completedAt": "2026-02-04T06:35:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-03-llm-selection-workflows/implementation-reports/test-report-llm-selection.md"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5",
+      "phase": "completed"
+    },
+    {
+      "id": "LLM-999",
+      "title": "Spec Completion & Cleanup",
+      "slug": "spec-completion-cleanup",
+      "classification": {
+        "type": "system",
+        "priority": "medium",
+        "effort": "XS",
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "LLM-997",
+        "LLM-998"
+      ],
+      "status": "done",
+      "dorStatus": "complete",
+      "storyFile": "stories/story-999-spec-completion.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-04",
+        "startedAt": "2026-02-04T10:00:00.000Z",
+        "completedAt": "2026-02-04T05:40:46.351Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "model": "glm-5",
+      "phase": "done"
+    }
+  ],
+  "boardStatus": {
+    "total": 7,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 7,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 7,
+    "completedEffort": 6,
+    "remainingEffort": 1,
+    "progressPercent": 86,
+    "byType": {
+      "frontend": 3,
+      "backend": 1,
+      "devops": 0,
+      "test": 0,
+      "docs": 0,
+      "integration": 0,
+      "system": 3
+    },
+    "byPriority": {
+      "critical": 0,
+      "high": 4,
+      "medium": 3,
+      "low": 0
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Backend Foundation",
+        "stories": [
+          "LLM-001"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 2,
+        "name": "Workflow Dashboard",
+        "stories": [
+          "LLM-002"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 3,
+        "name": "Create Spec Modal",
+        "stories": [
+          "LLM-003"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 4,
+        "name": "Context Menu",
+        "stories": [
+          "LLM-004"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 5,
+        "name": "Quality & Completion",
+        "stories": [
+          "LLM-997",
+          "LLM-998",
+          "LLM-999"
+        ],
+        "parallel": true
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-03",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 7 stories from /create-spec workflow"
+    },
+    {
+      "timestamp": "2026-02-03T20:34:29.487Z",
+      "action": "model_changed",
+      "storyId": "LLM-001",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T20:34:30.980Z",
+      "action": "model_changed",
+      "storyId": "LLM-002",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T20:34:32.701Z",
+      "action": "model_changed",
+      "storyId": "LLM-003",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T20:34:35.653Z",
+      "action": "model_changed",
+      "storyId": "LLM-004",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T20:34:38.745Z",
+      "action": "model_changed",
+      "storyId": "LLM-997",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T20:34:41.211Z",
+      "action": "model_changed",
+      "storyId": "LLM-998",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T20:34:44.536Z",
+      "action": "model_changed",
+      "storyId": "LLM-999",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T20:34:56.778Z",
+      "action": "status_changed",
+      "storyId": "LLM-001",
+      "details": "Moved from backlog to in_progress"
+    },
+    {
+      "timestamp": "2026-02-03T20:34:57.061Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/llm-selection-workflows (worktree: /Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/llm-selection-workflows)"
+    },
+    {
+      "timestamp": "2026-02-04T05:04:30.022Z",
+      "action": "status_changed",
+      "storyId": "LLM-001",
+      "details": "Moved from in_progress to ready"
+    },
+    {
+      "timestamp": "2026-02-04T05:06:01.332Z",
+      "action": "status_changed",
+      "storyId": "LLM-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-04T05:06:01.337Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/llm-selection-workflows (worktree: /Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/llm-selection-workflows)"
+    },
+    {
+      "timestamp": "2026-02-04T05:30:00.000Z",
+      "action": "phase_completed",
+      "storyId": null,
+      "details": "Phase 1 complete - Kanban validated, integration context created"
+    },
+    {
+      "timestamp": "2026-02-04T05:10:00.000Z",
+      "action": "status_changed",
+      "storyId": "LLM-001",
+      "details": "Story completed - DoD verified. Backend now supports model parameter for workflows."
+    },
+    {
+      "timestamp": "2026-02-04T05:10:10.604Z",
+      "action": "status_changed",
+      "storyId": "LLM-002",
+      "details": "Moved from backlog to in_progress"
+    },
+    {
+      "timestamp": "2026-02-04T05:10:10.609Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/llm-selection-workflows (worktree: /Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/llm-selection-workflows)"
+    },
+    {
+      "timestamp": "2026-02-04T06:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "LLM-002",
+      "details": "Story completed - DoD verified. Workflow card now has model dropdown with provider grouping."
+    },
+    {
+      "timestamp": "2026-02-04T05:14:01.666Z",
+      "action": "status_changed",
+      "storyId": "LLM-003",
+      "details": "Moved from backlog to in_progress"
+    },
+    {
+      "timestamp": "2026-02-04T05:14:01.668Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/llm-selection-workflows (worktree: /Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/llm-selection-workflows)"
+    },
+    {
+      "timestamp": "2026-02-04T07:15:00.000Z",
+      "action": "status_changed",
+      "storyId": "LLM-003",
+      "details": "Story completed - DoD verified. Create Spec Modal now has model dropdown with provider grouping."
+    },
+    {
+      "timestamp": "2026-02-04T05:20:57.197Z",
+      "action": "status_changed",
+      "storyId": "LLM-004",
+      "details": "Moved from backlog to in_progress"
+    },
+    {
+      "timestamp": "2026-02-04T05:20:57.199Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/llm-selection-workflows (worktree: /Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/llm-selection-workflows)"
+    },
+    {
+      "timestamp": "2026-02-04T08:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "LLM-004",
+      "details": "Story completed - DoD verified. Model selection works for all 4 context menu actions."
+    },
+    {
+      "timestamp": "2026-02-04T08:00:01.000Z",
+      "action": "all_stories_completed",
+      "storyId": null,
+      "details": "All 4 implementation stories completed. System stories (LLM-997, LLM-998, LLM-999) now ready."
+    },
+    {
+      "timestamp": "2026-02-04T05:26:08.123Z",
+      "action": "status_changed",
+      "storyId": "LLM-997",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-04T05:26:08.125Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/llm-selection-workflows (worktree: /Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/llm-selection-workflows)"
+    },
+    {
+      "timestamp": "2026-02-04T09:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "LLM-997",
+      "details": "Story completed - DoD verified. Created ADR, Handover Doc, and Implementation Report."
+    },
+    {
+      "timestamp": "2026-02-04T05:31:43.332Z",
+      "action": "status_changed",
+      "storyId": "LLM-998",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-04T05:31:43.338Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/llm-selection-workflows (worktree: /Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/llm-selection-workflows)"
+    },
+    {
+      "timestamp": "2026-02-04T06:35:00.000Z",
+      "action": "status_changed",
+      "storyId": "LLM-998",
+      "details": "Story completed - DoD verified. Created test report with 14/14 unit tests passing, full code review verification."
+    },
+    {
+      "timestamp": "2026-02-04T10:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "LLM-999",
+      "details": "Moved from backlog to in_progress - Final system story for spec completion"
+    },
+    {
+      "timestamp": "2026-02-04T10:00:01.000Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/llm-selection-workflows (worktree: /Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/llm-selection-workflows)"
+    },
+    {
+      "timestamp": "2026-02-04T05:36:16.478Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/llm-selection-workflows (worktree: /Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/llm-selection-workflows)"
+    },
+    {
+      "timestamp": "2026-02-04T05:40:46.351Z",
+      "action": "status_changed",
+      "storyId": "LLM-999",
+      "details": "Moved from in_progress to done"
+    }
+  ]
+}

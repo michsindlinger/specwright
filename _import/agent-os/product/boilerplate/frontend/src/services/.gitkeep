@@ -1,0 +1,3 @@
+# Frontend Service Layer
+# API client, WebSocket client, state stores
+# Examples: api.client.ts, websocket.client.ts, app.store.ts

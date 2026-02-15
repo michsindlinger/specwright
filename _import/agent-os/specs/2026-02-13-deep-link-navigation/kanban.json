@@ -1,0 +1,848 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-13-deep-link-navigation",
+    "name": "Deep Link Navigation",
+    "prefix": "DLN",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-13T05:42:39.429Z"
+  },
+  "resumeContext": {
+<<<<<<< HEAD
+    "currentPhase": "1-complete",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "gitStrategy": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Kanban board created via MCP",
+    "nextAction": "Setup git worktree or branch",
+    "progressIndex": 0,
+    "totalStories": 9
+  },
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+=======
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "feature/deep-link-navigation",
+    "gitStrategy": "branch",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "PR created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/23",
+    "nextAction": "Spec execution complete",
+    "progressIndex": 9,
+    "totalStories": 9
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-02-13T05:59:16.713Z",
+    "completedAt": "2026-02-13T06:35:46.589Z",
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "DLN-001",
+      "title": "Router Service Foundation",
+      "file": "stories/story-001-router-service-foundation.md",
+      "type": "frontend",
+      "priority": "critical",
+      "effort": 3,
+<<<<<<< HEAD
+      "status": "ready",
+      "phase": "pending",
+=======
+      "status": "done",
+      "phase": "done",
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+      "dependencies": [],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+<<<<<<< HEAD
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+=======
+        "startedAt": "2026-02-13T05:52:01.251Z",
+        "completedAt": "2026-02-13T05:58:31.422Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/services/router.service.ts",
+          "agent-os-ui/ui/src/types/route.types.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/views/dashboard-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "ab9a1770f1507b0243b3c90efacd34703fdd6958",
+            "message": "feat: DLN-001 Router Service Foundation",
+            "timestamp": "2026-02-13T06:58:07+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "DLN-002",
+      "title": "Dashboard Deep Links",
+      "file": "stories/story-002-dashboard-deep-links.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 3,
+<<<<<<< HEAD
+      "status": "ready",
+      "phase": "pending",
+=======
+      "status": "done",
+      "phase": "done",
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+      "dependencies": [
+        "DLN-001"
+      ],
+      "blockedBy": [],
+<<<<<<< HEAD
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+=======
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": "2026-02-13T05:59:16.713Z",
+        "completedAt": "2026-02-13T06:03:35.536Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/dashboard-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "633b945",
+            "message": "feat: DLN-002 Dashboard Deep Links",
+            "timestamp": "2026-02-13T07:15:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "DLN-003",
+      "title": "Chat Deep Links",
+      "file": "stories/story-003-chat-deep-links.md",
+      "type": "frontend",
+      "priority": "medium",
+      "effort": 1,
+<<<<<<< HEAD
+      "status": "ready",
+      "phase": "pending",
+=======
+      "status": "done",
+      "phase": "done",
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+      "dependencies": [
+        "DLN-001"
+      ],
+      "blockedBy": [],
+<<<<<<< HEAD
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+=======
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": "2026-02-13T06:04:57.174Z",
+        "completedAt": "2026-02-13T06:06:48.844Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/chat-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "51a7490",
+            "message": "feat: DLN-003 Chat Deep Links",
+            "timestamp": "2026-02-13T07:30:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "DLN-004",
+      "title": "Workflow Deep Links",
+      "file": "stories/story-004-workflow-deep-links.md",
+      "type": "frontend",
+      "priority": "medium",
+      "effort": 1,
+<<<<<<< HEAD
+      "status": "ready",
+      "phase": "pending",
+=======
+      "status": "done",
+      "phase": "done",
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+      "dependencies": [
+        "DLN-001"
+      ],
+      "blockedBy": [],
+<<<<<<< HEAD
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+=======
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": "2026-02-13T06:08:03.803Z",
+        "completedAt": "2026-02-13T06:11:05.269Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/workflow-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "b8c4c07",
+            "message": "feat: DLN-004 Workflow Deep Links",
+            "timestamp": "2026-02-13T07:45:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "DLN-005",
+      "title": "Settings Deep Links",
+      "file": "stories/story-005-settings-deep-links.md",
+      "type": "frontend",
+      "priority": "medium",
+      "effort": 1,
+<<<<<<< HEAD
+      "status": "ready",
+      "phase": "pending",
+=======
+      "status": "done",
+      "phase": "done",
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+      "dependencies": [
+        "DLN-001"
+      ],
+      "blockedBy": [],
+<<<<<<< HEAD
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+=======
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": "2026-02-13T06:12:05.289Z",
+        "completedAt": "2026-02-13T06:14:42.966Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/settings-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "7b5c9b9",
+            "message": "feat: DLN-005 Settings Deep Links",
+            "timestamp": "2026-02-13T08:00:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "DLN-006",
+      "title": "Edge Case Handling & Error Feedback",
+      "file": "stories/story-006-edge-case-handling.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 3,
+<<<<<<< HEAD
+      "status": "ready",
+      "phase": "pending",
+=======
+      "status": "done",
+      "phase": "done",
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+      "dependencies": [
+        "DLN-001",
+        "DLN-002",
+        "DLN-003",
+        "DLN-004",
+        "DLN-005"
+      ],
+      "blockedBy": [],
+<<<<<<< HEAD
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+=======
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": "2026-02-13T06:15:44.987Z",
+        "completedAt": "2026-02-13T06:19:56.909Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/dashboard-view.ts",
+          "agent-os-ui/ui/src/views/workflow-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "3672ce7",
+            "message": "feat: DLN-006 Edge Case Handling & Error Feedback",
+            "timestamp": "2026-02-13T08:30:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "DLN-997",
+      "title": "Code Review",
+      "file": "stories/story-997-code-review.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 0,
+<<<<<<< HEAD
+      "status": "ready",
+      "phase": "pending",
+=======
+      "status": "done",
+      "phase": "done",
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+      "dependencies": [
+        "DLN-001",
+        "DLN-002",
+        "DLN-003",
+        "DLN-004",
+        "DLN-005",
+        "DLN-006"
+      ],
+      "blockedBy": [],
+<<<<<<< HEAD
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+=======
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": "2026-02-13T06:23:27.375Z",
+        "completedAt": "2026-02-13T06:25:02.624Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-deep-link-navigation/review-report.md",
+          "agent-os/specs/2026-02-13-deep-link-navigation/stories/story-997-code-review.md"
+        ],
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+<<<<<<< HEAD
+        "dodChecked": false,
+=======
+        "dodChecked": true,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "DLN-998",
+      "title": "Integration Validation",
+      "file": "stories/story-998-integration-validation.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 0,
+<<<<<<< HEAD
+      "status": "ready",
+      "phase": "pending",
+=======
+      "status": "done",
+      "phase": "done",
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+      "dependencies": [
+        "DLN-997"
+      ],
+      "blockedBy": [],
+<<<<<<< HEAD
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+=======
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": "2026-02-13T06:26:14.097Z",
+        "completedAt": "2026-02-13T06:30:27.885Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-deep-link-navigation/stories/story-998-integration-validation.md",
+          "agent-os/specs/2026-02-13-deep-link-navigation/integration-context.md"
+        ],
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+<<<<<<< HEAD
+        "dodChecked": false,
+=======
+        "dodChecked": true,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "DLN-999",
+      "title": "Finalize PR",
+      "file": "stories/story-999-finalize-pr.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 0,
+<<<<<<< HEAD
+      "status": "ready",
+      "phase": "pending",
+=======
+      "status": "done",
+      "phase": "done",
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+      "dependencies": [
+        "DLN-998"
+      ],
+      "blockedBy": [],
+<<<<<<< HEAD
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+=======
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T05:42:39.429Z",
+        "startedAt": "2026-02-13T06:31:54.032Z",
+        "completedAt": "2026-02-13T06:35:46.589Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-deep-link-navigation/test-scenarios.md",
+          "agent-os/specs/2026-02-13-deep-link-navigation/user-todos.md",
+          "agent-os/knowledge/knowledge-index.md",
+          "agent-os/knowledge/shared-services.md"
+        ],
+        "commits": [
+          {
+            "hash": "4dc428f",
+            "message": "feat: DLN-999 Finalize PR - test scenarios, user todos, knowledge update",
+            "timestamp": "2026-02-13T07:45:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+        "integrationVerified": false
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 9,
+<<<<<<< HEAD
+    "ready": 9,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+=======
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 9,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 12,
+<<<<<<< HEAD
+    "completedEffort": 0,
+    "remainingEffort": 12,
+    "progressPercent": 0,
+=======
+    "completedEffort": 12,
+    "remainingEffort": 0,
+    "progressPercent": 100,
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+    "byType": {
+      "frontend": 6,
+      "system": 3
+    },
+    "byPriority": {
+      "critical": 1,
+      "high": 5,
+      "medium": 3
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": []
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-13T05:42:39.429Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 9 stories via MCP tool"
+<<<<<<< HEAD
+=======
+    },
+    {
+      "timestamp": "2026-02-13T05:52:01.251Z",
+      "action": "status_changed",
+      "storyId": "DLN-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T05:52:01.395Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/deep-link-navigation"
+    },
+    {
+      "timestamp": "2026-02-13T05:58:28.059Z",
+      "action": "status_changed",
+      "storyId": "DLN-001",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T05:58:31.422Z",
+      "action": "status_changed",
+      "storyId": "DLN-001",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T05:58:45.179Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/deep-link-navigation"
+    },
+    {
+      "timestamp": "2026-02-13T05:59:16.716Z",
+      "action": "status_changed",
+      "storyId": "DLN-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T06:03:32.447Z",
+      "action": "status_changed",
+      "storyId": "DLN-002",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T06:03:35.536Z",
+      "action": "status_changed",
+      "storyId": "DLN-002",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T06:04:14.747Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/deep-link-navigation"
+    },
+    {
+      "timestamp": "2026-02-13T06:04:57.177Z",
+      "action": "status_changed",
+      "storyId": "DLN-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T06:06:45.861Z",
+      "action": "status_changed",
+      "storyId": "DLN-003",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T06:06:48.844Z",
+      "action": "status_changed",
+      "storyId": "DLN-003",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T06:07:31.989Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/deep-link-navigation"
+    },
+    {
+      "timestamp": "2026-02-13T06:08:03.807Z",
+      "action": "status_changed",
+      "storyId": "DLN-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T06:11:01.601Z",
+      "action": "status_changed",
+      "storyId": "DLN-004",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T06:11:05.269Z",
+      "action": "status_changed",
+      "storyId": "DLN-004",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T06:11:31.780Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/deep-link-navigation"
+    },
+    {
+      "timestamp": "2026-02-13T06:12:05.291Z",
+      "action": "status_changed",
+      "storyId": "DLN-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T06:14:39.917Z",
+      "action": "status_changed",
+      "storyId": "DLN-005",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T06:14:42.966Z",
+      "action": "status_changed",
+      "storyId": "DLN-005",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T06:15:17.946Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/deep-link-navigation"
+    },
+    {
+      "timestamp": "2026-02-13T06:15:44.991Z",
+      "action": "status_changed",
+      "storyId": "DLN-006",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T06:19:53.577Z",
+      "action": "status_changed",
+      "storyId": "DLN-006",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T06:19:56.909Z",
+      "action": "status_changed",
+      "storyId": "DLN-006",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T06:20:43.331Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/deep-link-navigation"
+    },
+    {
+      "timestamp": "2026-02-13T06:23:27.376Z",
+      "action": "status_changed",
+      "storyId": "DLN-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T06:24:59.401Z",
+      "action": "status_changed",
+      "storyId": "DLN-997",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T06:25:02.624Z",
+      "action": "status_changed",
+      "storyId": "DLN-997",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T06:25:40.260Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/deep-link-navigation"
+    },
+    {
+      "timestamp": "2026-02-13T06:26:14.102Z",
+      "action": "status_changed",
+      "storyId": "DLN-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T06:30:21.885Z",
+      "action": "status_changed",
+      "storyId": "DLN-998",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T06:30:27.885Z",
+      "action": "status_changed",
+      "storyId": "DLN-998",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T06:31:26.326Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/deep-link-navigation"
+    },
+    {
+      "timestamp": "2026-02-13T06:31:54.034Z",
+      "action": "status_changed",
+      "storyId": "DLN-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T06:35:42.758Z",
+      "action": "status_changed",
+      "storyId": "DLN-999",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T06:35:46.589Z",
+      "action": "status_changed",
+      "storyId": "DLN-999",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T06:35:50.894Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+>>>>>>> 40e0947e98a8772e353d077cd90b75981a13b604
+    }
+  ]
+}

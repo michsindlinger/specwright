@@ -1,0 +1,526 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-02-chat-image-attachments",
+    "name": "Chat Image Attachments",
+    "prefix": "CIMG",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-02T00:00:00Z"
+  },
+  "resumeContext": {
+    "currentPhase": "story-complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": "/Users/michaelsindlinger/Entwicklung/agent-os-web-ui-worktrees/chat-image-attachments",
+    "gitBranch": "feature/chat-image-attachments",
+    "gitStrategy": "worktree",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed CIMG-005 - Chat Message Image Display",
+    "nextAction": "Execute next story",
+    "progressIndex": 5,
+    "totalStories": 10
+  },
+  "execution": {
+    "status": "in_progress",
+    "startedAt": "2026-02-02T00:00:00Z",
+    "completedAt": null,
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "CIMG-001",
+      "title": "Image Upload UI",
+      "file": "stories/story-001-image-upload-ui.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-02T00:00:00Z",
+        "startedAt": "2026-02-02T00:00:00Z",
+        "completedAt": "2026-02-03T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/chat-view.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "commits": [],
+        "notes": "Drag & Drop, File Input, Clipboard Paste implemented"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "CIMG-002",
+      "title": "Image Staging Area Component",
+      "file": "stories/story-002-image-staging-area.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CIMG-001"
+      ],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-02T00:00:00Z",
+        "startedAt": "2026-02-02T00:00:00Z",
+        "completedAt": "2026-02-02T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/aos-image-staging-area.ts",
+          "agent-os-ui/ui/src/views/chat-view.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "CIMG-003",
+      "title": "Backend Image Storage Service",
+      "file": "stories/story-003-backend-image-storage.md",
+      "type": "backend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-02T00:00:00Z",
+        "startedAt": "2026-02-02T00:00:00Z",
+        "completedAt": "2026-02-03T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/image-storage.ts",
+          "agent-os-ui/src/server/routes/image-upload.routes.ts",
+          "agent-os-ui/src/server/index.ts"
+        ],
+        "commits": [],
+        "notes": "ImageStorageService, HTTP routes, path traversal protection"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "CIMG-004",
+      "title": "WebSocket Image Protocol",
+      "file": "stories/story-004-websocket-image-protocol.md",
+      "type": "fullstack",
+      "priority": "high",
+      "effort": 5,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CIMG-001",
+        "CIMG-003"
+      ],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-02T00:00:00Z",
+        "startedAt": "2026-02-02T00:00:00Z",
+        "completedAt": "2026-02-03T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/gateway.ts",
+          "agent-os-ui/ui/src/views/chat-view.ts",
+          "agent-os-ui/src/server/websocket.ts",
+          "agent-os-ui/src/server/claude-handler.ts"
+        ],
+        "commits": [],
+        "notes": "sendChatWithImages, chat.send.with-images handler, Claude vision integration"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "CIMG-005",
+      "title": "Chat Message Image Display",
+      "file": "stories/story-005-chat-message-image-display.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CIMG-004"
+      ],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-02T00:00:00Z",
+        "startedAt": "2026-02-03T00:00:00Z",
+        "completedAt": "2026-02-03T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/chat-message.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "commits": [],
+        "notes": "MessageImage interface, renderMessageImages, thumbnails, PDF icons, error states"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "CIMG-006",
+      "title": "Image Lightbox Component",
+      "file": "stories/story-006-image-lightbox.md",
+      "type": "frontend",
+      "priority": "medium",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CIMG-005"
+      ],
+      "blockedBy": [],
+      "model": "glm-5",
+      "timing": {
+        "createdAt": "2026-02-02T00:00:00Z",
+        "startedAt": null,
+        "completedAt": "2026-02-03T12:09:17.181Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "CIMG-007",
+      "title": "Claude Vision Integration",
+      "file": "stories/story-007-claude-vision-integration.md",
+      "type": "backend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CIMG-003",
+        "CIMG-004"
+      ],
+      "blockedBy": [],
+      "model": "opus",
+      "timing": {
+        "createdAt": "2026-02-02T00:00:00Z",
+        "startedAt": null,
+        "completedAt": "2026-02-03T12:09:39.721Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "CIMG-997",
+      "title": "Code Review",
+      "file": "stories/story-997-code-review.md",
+      "type": "quality",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CIMG-001",
+        "CIMG-002",
+        "CIMG-003",
+        "CIMG-004",
+        "CIMG-005",
+        "CIMG-006",
+        "CIMG-007"
+      ],
+      "blockedBy": [
+        "CIMG-006",
+        "CIMG-007"
+      ],
+      "model": "opus",
+      "timing": {
+        "createdAt": "2026-02-02T00:00:00Z",
+        "startedAt": null,
+        "completedAt": "2026-02-03T12:32:15.735Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "CIMG-998",
+      "title": "Integration Validation",
+      "file": "stories/story-998-integration-validation.md",
+      "type": "quality",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CIMG-997"
+      ],
+      "blockedBy": [
+        "CIMG-997"
+      ],
+      "model": "opus",
+      "timing": {
+        "createdAt": "2026-02-02T00:00:00Z",
+        "startedAt": null,
+        "completedAt": "2026-02-03T12:32:44.749Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "CIMG-999",
+      "title": "Finalize Pull Request",
+      "file": "stories/story-999-finalize-pr.md",
+      "type": "devops",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CIMG-998"
+      ],
+      "blockedBy": [
+        "CIMG-998"
+      ],
+      "model": "glm-5",
+      "timing": {
+        "createdAt": "2026-02-02T00:00:00Z",
+        "startedAt": null,
+        "completedAt": "2026-02-03T12:34:14.894Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 10,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 10,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 27,
+    "completedEffort": 17,
+    "remainingEffort": 10,
+    "progressPercent": 63,
+    "byType": {
+      "frontend": 5,
+      "backend": 2,
+      "fullstack": 1,
+      "quality": 2,
+      "devops": 1
+    },
+    "byPriority": {
+      "high": 9,
+      "medium": 1
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Foundation",
+        "stories": [
+          "CIMG-001",
+          "CIMG-003"
+        ],
+        "description": "Independent stories - upload UI and backend storage"
+      },
+      {
+        "phase": 2,
+        "name": "Integration",
+        "stories": [
+          "CIMG-002",
+          "CIMG-004"
+        ],
+        "description": "Staging area and WebSocket protocol"
+      },
+      {
+        "phase": 3,
+        "name": "Display & Vision",
+        "stories": [
+          "CIMG-005",
+          "CIMG-006",
+          "CIMG-007"
+        ],
+        "description": "Message display, lightbox, and Claude integration"
+      },
+      {
+        "phase": 4,
+        "name": "Quality Gates",
+        "stories": [
+          "CIMG-997",
+          "CIMG-998",
+          "CIMG-999"
+        ],
+        "description": "Sequential quality validation and PR finalization"
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Board initialized with 10 stories"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "worktree_setup",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/chat-image-attachments"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "status_changed",
+      "storyId": "CIMG-001",
+      "details": "Moved from backlog to in_progress"
+    },
+    {
+      "timestamp": "2026-02-03T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "CIMG-001",
+      "details": "Completed - Drag & Drop, File Input, Clipboard Paste implemented"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "status_changed",
+      "storyId": "CIMG-002",
+      "details": "Moved from backlog to in_progress"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "CIMG-002",
+      "details": "Completed - Image staging area component"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "status_changed",
+      "storyId": "CIMG-003",
+      "details": "Moved from backlog to in_progress"
+    },
+    {
+      "timestamp": "2026-02-03T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "CIMG-003",
+      "details": "Completed - Backend Image Storage Service"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "status_changed",
+      "storyId": "CIMG-004",
+      "details": "Moved from backlog to in_progress"
+    },
+    {
+      "timestamp": "2026-02-03T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "CIMG-004",
+      "details": "Completed - WebSocket Image Protocol"
+    },
+    {
+      "timestamp": "2026-02-03T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "CIMG-005",
+      "details": "Completed - Chat Message Image Display"
+    },
+    {
+      "timestamp": "2026-02-03T00:00:00Z",
+      "action": "format_migrated",
+      "storyId": null,
+      "details": "Migrated from kanban-board.md to kanban.json (v1.0 format)"
+    },
+    {
+      "timestamp": "2026-02-03T12:09:17.182Z",
+      "action": "status_changed",
+      "storyId": "CIMG-006",
+      "details": "Moved from ready to done"
+    },
+    {
+      "timestamp": "2026-02-03T12:09:39.721Z",
+      "action": "status_changed",
+      "storyId": "CIMG-007",
+      "details": "Moved from ready to done"
+    },
+    {
+      "timestamp": "2026-02-03T12:32:15.735Z",
+      "action": "status_changed",
+      "storyId": "CIMG-997",
+      "details": "Moved from ready to done"
+    },
+    {
+      "timestamp": "2026-02-03T12:32:44.749Z",
+      "action": "status_changed",
+      "storyId": "CIMG-998",
+      "details": "Moved from ready to done"
+    },
+    {
+      "timestamp": "2026-02-03T12:34:14.894Z",
+      "action": "status_changed",
+      "storyId": "CIMG-999",
+      "details": "Moved from ready to done"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "../agent-os/specs/**",
+    "../agent-os/workflows/**",
+    "../.claude/**",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "exec": "tsx src/server/index.ts"
+}

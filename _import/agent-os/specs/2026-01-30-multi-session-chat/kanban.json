@@ -1,0 +1,371 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+
+  "spec": {
+    "id": "2026-01-30-multi-session-chat",
+    "name": "Multi-Session Chat",
+    "prefix": "MSC",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-01-30T00:00:00Z"
+  },
+
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": null,
+    "worktreePath": null,
+    "gitBranch": null,
+    "gitStrategy": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "All stories completed - spec finished",
+    "nextAction": null,
+    "progressIndex": 7,
+    "totalStories": 7
+  },
+
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-01-30T00:00:00Z",
+    "completedAt": "2026-02-02T00:00:00Z",
+    "model": null
+  },
+
+  "stories": [
+    {
+      "id": "MSC-001",
+      "title": "Session Tab Bar Component",
+      "file": "stories/story-001-session-tab-bar-component.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": ["MSC-002"],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-01-30T00:00:00Z",
+        "startedAt": "2026-01-30T00:00:00Z",
+        "completedAt": "2026-02-02T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/session-tabs.ts",
+          "agent-os-ui/ui/src/components/session-tab.ts",
+          "agent-os-ui/ui/src/views/chat-view.ts"
+        ],
+        "commits": [],
+        "notes": "Tab bar with session management, rename, close, activity indicators"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "MSC-002",
+      "title": "Session Types & Contracts",
+      "file": "stories/story-002-session-types-contracts.md",
+      "type": "shared",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-01-30T00:00:00Z",
+        "startedAt": "2026-01-30T00:00:00Z",
+        "completedAt": "2026-02-02T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/types/session.types.ts",
+          "agent-os-ui/ui/src/types/index.ts"
+        ],
+        "commits": [],
+        "notes": "ISession, ISessionMessage, ISessionAgentState, ISessionState interfaces"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "MSC-003",
+      "title": "Session Persistence Service",
+      "file": "stories/story-003-session-persistence-service.md",
+      "type": "backend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": ["MSC-002"],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-01-30T00:00:00Z",
+        "startedAt": "2026-01-30T00:00:00Z",
+        "completedAt": "2026-02-02T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/session.service.ts"
+        ],
+        "commits": [],
+        "notes": "SessionService with CRUD operations, archiving, restore functionality"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "MSC-004",
+      "title": "Session State Management",
+      "file": "stories/story-004-session-state-management.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": ["MSC-002", "MSC-003"],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-01-30T00:00:00Z",
+        "startedAt": "2026-01-30T00:00:00Z",
+        "completedAt": "2026-02-02T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/stores/session.store.ts",
+          "agent-os-ui/ui/src/gateway.ts",
+          "agent-os-ui/ui/src/views/chat-view.ts"
+        ],
+        "commits": [],
+        "notes": "SessionStore singleton with reactive state, gateway integration"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "MSC-005",
+      "title": "WebSocket Multi-Session Routing",
+      "file": "stories/story-005-websocket-multi-session-routing.md",
+      "type": "fullstack",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": ["MSC-002", "MSC-003", "MSC-004"],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-01-30T00:00:00Z",
+        "startedAt": "2026-01-30T00:00:00Z",
+        "completedAt": "2026-02-02T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/websocket.ts",
+          "agent-os-ui/src/server/claude-handler.ts",
+          "agent-os-ui/ui/src/gateway.ts"
+        ],
+        "commits": [],
+        "notes": "Session-aware message routing, parallel agent support"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "MSC-006",
+      "title": "Session Archive Feature",
+      "file": "stories/story-006-session-archive-feature.md",
+      "type": "fullstack",
+      "priority": "medium",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": ["MSC-001", "MSC-003", "MSC-004"],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-01-30T00:00:00Z",
+        "startedAt": "2026-01-30T00:00:00Z",
+        "completedAt": "2026-02-02T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/session-archive.ts",
+          "agent-os-ui/ui/src/components/session-tabs.ts",
+          "agent-os-ui/ui/src/stores/session.store.ts",
+          "agent-os-ui/src/server/websocket.ts"
+        ],
+        "commits": [],
+        "notes": "Archive list, restore, permanent delete functionality"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    },
+    {
+      "id": "MSC-999",
+      "title": "Integration & End-to-End Validation",
+      "file": "stories/story-999-integration-validation.md",
+      "type": "quality",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": ["MSC-001", "MSC-002", "MSC-003", "MSC-004", "MSC-005", "MSC-006"],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-01-30T00:00:00Z",
+        "startedAt": "2026-02-02T00:00:00Z",
+        "completedAt": "2026-02-02T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/tests/integration/multi-session.test.ts"
+        ],
+        "commits": [],
+        "notes": "Integration tests for full session lifecycle"
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      }
+    }
+  ],
+
+  "boardStatus": {
+    "total": 7,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 7,
+    "blocked": 0
+  },
+
+  "statistics": {
+    "totalEffort": 19,
+    "completedEffort": 19,
+    "remainingEffort": 0,
+    "progressPercent": 100,
+    "byType": {
+      "frontend": 2,
+      "backend": 1,
+      "fullstack": 2,
+      "shared": 1,
+      "quality": 1
+    },
+    "byPriority": {
+      "high": 6,
+      "medium": 1
+    }
+  },
+
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Foundation",
+        "stories": ["MSC-002"],
+        "description": "Session types and contracts - basis for all components"
+      },
+      {
+        "phase": 2,
+        "name": "Backend Services",
+        "stories": ["MSC-003"],
+        "description": "Session persistence service"
+      },
+      {
+        "phase": 3,
+        "name": "Frontend Core",
+        "stories": ["MSC-001", "MSC-004"],
+        "description": "Tab bar component and session state management"
+      },
+      {
+        "phase": 4,
+        "name": "Integration",
+        "stories": ["MSC-005", "MSC-006"],
+        "description": "WebSocket routing and archive feature"
+      },
+      {
+        "phase": 5,
+        "name": "Quality Gates",
+        "stories": ["MSC-999"],
+        "description": "Integration validation"
+      }
+    ]
+  },
+
+  "changeLog": [
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Initial kanban-board.md created with 7 stories"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "MSC-002",
+      "details": "Session Types & Contracts completed"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "MSC-003",
+      "details": "Session Persistence Service completed"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "MSC-001",
+      "details": "Session Tab Bar Component completed"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "MSC-004",
+      "details": "Session State Management completed"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "MSC-005",
+      "details": "WebSocket Multi-Session Routing completed"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "MSC-006",
+      "details": "Session Archive Feature completed"
+    },
+    {
+      "timestamp": "2026-02-02T00:00:00Z",
+      "action": "story_completed",
+      "storyId": "MSC-999",
+      "details": "Integration & End-to-End Validation completed"
+    },
+    {
+      "timestamp": "2026-02-03T00:00:00Z",
+      "action": "format_migrated",
+      "storyId": null,
+      "details": "Migrated from kanban-board.md to kanban.json (v1.0 format)"
+    }
+  ]
+}

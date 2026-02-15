@@ -1,0 +1,3 @@
+# Presentation Layer - Routes
+# Express route handlers for HTTP endpoints
+# Examples: api.routes.ts, health.routes.ts

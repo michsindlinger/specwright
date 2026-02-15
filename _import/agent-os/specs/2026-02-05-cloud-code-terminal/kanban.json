@@ -1,0 +1,814 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-05-cloud-code-terminal",
+    "name": "Cloud Code Terminal",
+    "prefix": "CCT",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-05"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": null,
+    "worktreePath": null,
+    "gitBranch": "feature/cloud-code-terminal",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "PR created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/17",
+    "nextAction": null,
+    "progressIndex": 9,
+    "totalStories": 9,
+    "gitStrategy": "branch"
+  },
+  "execution": {
+    "status": "complete",
+    "startedAt": "2026-02-05T19:30:00.000Z",
+    "completedAt": "2026-02-05T19:45:00.000Z",
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "CCT-001",
+      "title": "Backend Cloud Terminal Infrastructure",
+      "slug": "backend-cloud-terminal-infrastructure",
+      "classification": {
+        "type": "backend",
+        "priority": "critical",
+        "effort": 3,
+        "complexity": "M"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-backend-cloud-terminal-infrastructure.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": "2026-02-05T14:19:23.726Z",
+        "completedAt": "2026-02-05T14:35:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/services/cloud-terminal-manager.ts",
+          "agent-os-ui/src/shared/types/cloud-terminal.protocol.ts",
+          "agent-os-ui/src/server/websocket.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "2c0200d",
+            "message": "feat: CCT-001 Backend Cloud Terminal Infrastructure",
+            "timestamp": "2026-02-05T14:35:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "kimi-k2.5",
+      "phase": "completed"
+    },
+    {
+      "id": "CCT-002",
+      "title": "Frontend Sidebar Container",
+      "slug": "frontend-sidebar-container",
+      "classification": {
+        "type": "frontend",
+        "priority": "critical",
+        "effort": 3,
+        "complexity": "M"
+      },
+      "dependencies": [
+        "CCT-001"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-frontend-sidebar-container.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": "2026-02-05T14:53:13.196Z",
+        "completedAt": "2026-02-05T15:45:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/terminal/aos-cloud-terminal-sidebar.ts",
+          "agent-os-ui/ui/src/components/terminal/aos-terminal-tabs.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "65cd637",
+            "message": "feat: CCT-002 Frontend Sidebar Container",
+            "timestamp": "2026-02-05T15:45:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "kimi-k2.5",
+      "phase": "completed"
+    },
+    {
+      "id": "CCT-003",
+      "title": "Terminal Session Component",
+      "slug": "terminal-session-component",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "M"
+      },
+      "dependencies": [
+        "CCT-002"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-terminal-session-component.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": "2026-02-05T16:00:00.000Z",
+        "completedAt": "2026-02-05T16:30:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "phase": "completed",
+      "model": "kimi-k2.5"
+    },
+    {
+      "id": "CCT-004",
+      "title": "Session Persistence",
+      "slug": "session-persistence",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "M"
+      },
+      "dependencies": [
+        "CCT-003"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-004-session-persistence.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": "2026-02-05T17:00:00.000Z",
+        "completedAt": "2026-02-05T17:19:14.000Z"
+      },
+      "phase": "completed",
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/services/cloud-terminal.service.ts",
+          "agent-os-ui/ui/src/gateway.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "30a3292",
+            "message": "feat: CCT-004 Session Persistence",
+            "timestamp": "2026-02-05T16:19:14+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "kimi-k2.5"
+    },
+    {
+      "id": "CCT-005",
+      "title": "Model Selection Integration",
+      "slug": "model-selection-integration",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CCT-002"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-005-model-selection-integration.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": "2026-02-05T15:35:26.538Z",
+        "completedAt": "2026-02-05T16:45:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/services/cloud-terminal.service.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "f93bfc0",
+            "message": "feat: CCT-005 Model Selection Integration",
+            "timestamp": "2026-02-05T16:45:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "kimi-k2.5",
+      "phase": "completed"
+    },
+    {
+      "id": "CCT-006",
+      "title": "Polish & Edge Cases",
+      "slug": "polish-edge-cases",
+      "classification": {
+        "type": "integration",
+        "priority": "medium",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CCT-004",
+        "CCT-005"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-006-polish-edge-cases.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": "2026-02-05T18:00:00.000Z",
+        "completedAt": "2026-02-05T18:15:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/services/cloud-terminal.service.ts",
+          "agent-os-ui/ui/src/components/terminal/aos-cloud-terminal-sidebar.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "af7d839",
+            "message": "feat: CCT-006 Polish & Edge Cases",
+            "timestamp": "2026-02-05T18:15:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "kimi-k2.5",
+      "phase": "completed"
+    },
+    {
+      "id": "CCT-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "test",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CCT-006"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": "2026-02-05T18:20:00.000Z",
+        "completedAt": "2026-02-05T18:30:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-05-cloud-code-terminal/implementation-reports/code-review-report.md",
+          "agent-os/specs/2026-02-05-cloud-code-terminal/stories/story-997-code-review.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "TBD",
+            "message": "feat: CCT-997 Code Review completed",
+            "timestamp": "2026-02-05T18:30:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "kimi-k2.5",
+      "phase": "completed"
+    },
+    {
+      "id": "CCT-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "test",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CCT-997"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": "2026-02-05T19:00:00.000Z",
+        "completedAt": "2026-02-05T19:15:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-05-cloud-code-terminal/implementation-reports/integration-test-report.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "TBD",
+            "message": "feat: CCT-998 Integration Validation completed",
+            "timestamp": "2026-02-05T19:15:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "kimi-k2.5",
+      "phase": "completed"
+    },
+    {
+      "id": "CCT-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "docs",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CCT-998"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": "2026-02-05T19:30:00.000Z",
+        "completedAt": "2026-02-05T19:45:00.000Z"
+      },
+      "phase": "completed",
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-05-cloud-code-terminal/implementation-reports/test-scenarios.md",
+          "agent-os/specs/2026-02-05-cloud-code-terminal/handover-docs/user-todos.md",
+          "agent-os/knowledge/knowledge-index.md",
+          "agent-os/knowledge/ui-components.md",
+          "agent-os/knowledge/shared-services.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "6ffab82",
+            "message": "feat: CCT-999 Finalize PR - test-scenarios, user-todos, knowledge update",
+            "timestamp": "2026-02-05T19:45:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 9,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 9,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 22,
+    "completedEffort": 22,
+    "remainingEffort": 0,
+    "progressPercent": 100,
+    "byType": {
+      "frontend": 3,
+      "backend": 1,
+      "integration": 1,
+      "test": 2,
+      "docs": 1
+    },
+    "byPriority": {
+      "critical": 4,
+      "high": 2,
+      "medium": 3,
+      "low": 0
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Backend Foundation",
+        "stories": [
+          "CCT-001"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 2,
+        "name": "Frontend Core",
+        "stories": [
+          "CCT-002",
+          "CCT-003"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 3,
+        "name": "Features",
+        "stories": [
+          "CCT-004",
+          "CCT-005"
+        ],
+        "parallel": true
+      },
+      {
+        "phase": 4,
+        "name": "Polish",
+        "stories": [
+          "CCT-006"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 5,
+        "name": "System Stories",
+        "stories": [
+          "CCT-997",
+          "CCT-998",
+          "CCT-999"
+        ],
+        "parallel": false
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-05",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 9 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-05T14:17:23.486Z",
+      "action": "model_changed",
+      "storyId": "CCT-001",
+      "details": "Model changed from null to kimi-k2.5"
+    },
+    {
+      "timestamp": "2026-02-05T14:17:25.800Z",
+      "action": "model_changed",
+      "storyId": "CCT-002",
+      "details": "Model changed from null to kimi-k2.5"
+    },
+    {
+      "timestamp": "2026-02-05T14:17:29.508Z",
+      "action": "model_changed",
+      "storyId": "CCT-003",
+      "details": "Model changed from null to kimi-k2.5"
+    },
+    {
+      "timestamp": "2026-02-05T14:17:32.385Z",
+      "action": "model_changed",
+      "storyId": "CCT-004",
+      "details": "Model changed from null to kimi-k2.5"
+    },
+    {
+      "timestamp": "2026-02-05T14:17:35.049Z",
+      "action": "model_changed",
+      "storyId": "CCT-005",
+      "details": "Model changed from null to kimi-k2.5"
+    },
+    {
+      "timestamp": "2026-02-05T14:17:38.078Z",
+      "action": "model_changed",
+      "storyId": "CCT-006",
+      "details": "Model changed from null to kimi-k2.5"
+    },
+    {
+      "timestamp": "2026-02-05T14:17:41.578Z",
+      "action": "model_changed",
+      "storyId": "CCT-997",
+      "details": "Model changed from null to kimi-k2.5"
+    },
+    {
+      "timestamp": "2026-02-05T14:17:43.825Z",
+      "action": "model_changed",
+      "storyId": "CCT-998",
+      "details": "Model changed from null to kimi-k2.5"
+    },
+    {
+      "timestamp": "2026-02-05T14:19:23.726Z",
+      "action": "status_changed",
+      "storyId": "CCT-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-05T14:19:23.787Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T14:24:44.033Z",
+      "action": "status_changed",
+      "storyId": "CCT-001",
+      "details": "Moved from in_progress to ready"
+    },
+    {
+      "timestamp": "2026-02-05T14:24:50.698Z",
+      "action": "status_changed",
+      "storyId": "CCT-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-05T14:24:50.747Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T14:35:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-001",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-05T14:35:00.000Z",
+      "action": "story_completed",
+      "storyId": "CCT-001",
+      "details": "Progress: 1/9 stories (13.6%)"
+    },
+    {
+      "timestamp": "2026-02-05T14:53:13.196Z",
+      "action": "status_changed",
+      "storyId": "CCT-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-05T14:53:13.251Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T15:45:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-002",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-05T15:45:00.000Z",
+      "action": "story_completed",
+      "storyId": "CCT-002",
+      "details": "Progress: 2/9 stories (27.3%)"
+    },
+    {
+      "timestamp": "2026-02-05T15:04:46.368Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T16:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-003",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-05T16:30:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-003",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-05T16:30:00.000Z",
+      "action": "story_completed",
+      "storyId": "CCT-003",
+      "details": "Progress: 3/9 stories (40.0%)"
+    },
+    {
+      "timestamp": "2026-02-05T15:13:21.923Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T17:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-004",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-05T17:19:14.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-004",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-05T17:19:14.000Z",
+      "action": "story_completed",
+      "storyId": "CCT-004",
+      "details": "Progress: 4/9 stories (54.5%)"
+    },
+    {
+      "timestamp": "2026-02-05T15:34:43.758Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T15:35:26.538Z",
+      "action": "status_changed",
+      "storyId": "CCT-005",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-05T15:35:26.587Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T16:45:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-005",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-05T16:45:00.000Z",
+      "action": "story_completed",
+      "storyId": "CCT-005",
+      "details": "Progress: 5/9 stories (63.6%)"
+    },
+    {
+      "timestamp": "2026-02-05T15:48:59.283Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T18:15:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-006",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-05T18:15:00.000Z",
+      "action": "story_completed",
+      "storyId": "CCT-006",
+      "details": "Progress: 6/9 stories (72.7%)"
+    },
+    {
+      "timestamp": "2026-02-05T16:02:29.298Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T18:20:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-997",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-05T18:30:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-997",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-05T18:30:00.000Z",
+      "action": "story_completed",
+      "storyId": "CCT-997",
+      "details": "Progress: 7/9 stories (81.8%)"
+    },
+    {
+      "timestamp": "2026-02-05T16:09:32.517Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T19:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-998",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution - Integration Validation"
+    },
+    {
+      "timestamp": "2026-02-05T19:15:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-998",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-05T19:15:00.000Z",
+      "action": "story_completed",
+      "storyId": "CCT-998",
+      "details": "Progress: 8/9 stories (90.9%)"
+    },
+    {
+      "timestamp": "2026-02-05T16:16:28.236Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-code-terminal"
+    },
+    {
+      "timestamp": "2026-02-05T19:30:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-999",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution - Finalize PR"
+    },
+    {
+      "timestamp": "2026-02-05T19:45:00.000Z",
+      "action": "status_changed",
+      "storyId": "CCT-999",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-05T19:45:00.000Z",
+      "action": "story_completed",
+      "storyId": "CCT-999",
+      "details": "Progress: 9/9 stories (100%)"
+    },
+    {
+      "timestamp": "2026-02-05T19:45:00.000Z",
+      "action": "all_stories_completed",
+      "storyId": null,
+      "details": "All 9 stories completed. PR: https://github.com/michsindlinger/agent-os-extended-web-ui/pull/17"
+    }
+  ]
+}

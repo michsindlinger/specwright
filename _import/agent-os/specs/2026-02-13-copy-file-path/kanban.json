@@ -1,0 +1,567 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-13-copy-file-path",
+    "name": "Copy File Path",
+    "prefix": "CFP",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-13T16:38:15.938Z"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "feature/copy-file-path",
+    "gitStrategy": "branch",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "PR created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/27",
+    "nextAction": "Spec execution complete",
+    "progressIndex": 7,
+    "totalStories": 7
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-02-13T19:10:47.388Z",
+    "completedAt": "2026-02-13T19:31:14.029Z",
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "CFP-001",
+      "title": "Copy-Path Utility & Backend StoryInfo Erweiterung",
+      "file": "stories/story-001-utility-and-backend.md",
+      "type": "backend",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T16:38:15.938Z",
+        "startedAt": "2026-02-13T19:06:24.087Z",
+        "completedAt": "2026-02-13T19:09:29.871Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/utils/copy-path.ts",
+          "agent-os-ui/src/server/specs-reader.ts"
+        ],
+        "commits": [
+          {
+            "hash": "2a05e18",
+            "message": "feat: CFP-001 Copy-Path Utility & Backend StoryInfo Erweiterung",
+            "timestamp": "2026-02-13T20:06:00.000Z"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "CFP-002",
+      "title": "Copy-Button auf Story-Karten",
+      "file": "stories/story-002-story-card-copy.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CFP-001"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T16:38:15.938Z",
+        "startedAt": "2026-02-13T19:10:47.388Z",
+        "completedAt": "2026-02-13T19:13:48.216Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/story-card.ts",
+          "agent-os-ui/ui/src/components/kanban-board.ts"
+        ],
+        "commits": [
+          {
+            "hash": "b6e2f58",
+            "message": "feat: CFP-002 Copy-Button auf Story-Karten",
+            "timestamp": "2026-02-13T20:30:00.000Z"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "CFP-003",
+      "title": "Copy-Button im Spec-Viewer-Header",
+      "file": "stories/story-003-viewer-header-copy.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CFP-001"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T16:38:15.938Z",
+        "startedAt": "2026-02-13T19:15:35.747Z",
+        "completedAt": "2026-02-13T19:17:50.437Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/kanban-board.ts"
+        ],
+        "commits": [
+          {
+            "hash": "f482c73",
+            "message": "feat: CFP-003 Copy-Button im Spec-Viewer-Header",
+            "timestamp": "2026-02-13T20:45:00.000Z"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "CFP-004",
+      "title": "Copy-Button auf Spec-Doc-Tabs",
+      "file": "stories/story-004-spec-tabs-copy.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CFP-001"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T16:38:15.938Z",
+        "startedAt": "2026-02-13T19:18:41.777Z",
+        "completedAt": "2026-02-13T19:21:13.657Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/specs/aos-spec-file-tabs.ts",
+          "agent-os-ui/ui/src/components/kanban-board.ts"
+        ],
+        "commits": [
+          {
+            "hash": "ee41ed9",
+            "message": "feat: CFP-004 Copy-Button auf Spec-Doc-Tabs",
+            "timestamp": "2026-02-13T21:00:00.000Z"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "CFP-997",
+      "title": "Code Review",
+      "file": "stories/story-997-code-review.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CFP-001",
+        "CFP-002",
+        "CFP-003",
+        "CFP-004"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T16:38:15.938Z",
+        "startedAt": "2026-02-13T19:21:59.964Z",
+        "completedAt": "2026-02-13T19:23:43.725Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-copy-file-path/review-report.md"
+        ],
+        "commits": [
+          {
+            "hash": "01b5d2a",
+            "message": "chore: CFP-997 Code Review completed",
+            "timestamp": "2026-02-13T20:23:31+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "CFP-998",
+      "title": "Integration Validation",
+      "file": "stories/story-998-integration-validation.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CFP-997"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T16:38:15.938Z",
+        "startedAt": "2026-02-13T19:24:43.158Z",
+        "completedAt": "2026-02-13T19:27:22.545Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-copy-file-path/stories/story-998-integration-validation.md"
+        ],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "CFP-999",
+      "title": "Finalize PR",
+      "file": "stories/story-999-finalize-pr.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "CFP-998"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T16:38:15.938Z",
+        "startedAt": "2026-02-13T19:28:21.238Z",
+        "completedAt": "2026-02-13T19:31:14.029Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-copy-file-path/test-scenarios.md",
+          "agent-os/knowledge/knowledge-index.md",
+          "agent-os/knowledge/shared-services.md"
+        ],
+        "commits": [
+          {
+            "hash": "d9ccf75",
+            "message": "chore: CFP-999 test-scenarios and knowledge update",
+            "timestamp": "2026-02-13T21:30:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 7,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 7,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 10,
+    "completedEffort": 10,
+    "remainingEffort": 0,
+    "progressPercent": 100,
+    "byType": {
+      "backend": 1,
+      "frontend": 3,
+      "system": 3
+    },
+    "byPriority": {
+      "high": 7
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": []
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-13T16:38:15.938Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 7 stories via MCP tool"
+    },
+    {
+      "timestamp": "2026-02-13T19:06:24.087Z",
+      "action": "status_changed",
+      "storyId": "CFP-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T19:06:24.214Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/copy-file-path"
+    },
+    {
+      "timestamp": "2026-02-13T19:09:26.644Z",
+      "action": "status_changed",
+      "storyId": "CFP-001",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T19:09:29.871Z",
+      "action": "status_changed",
+      "storyId": "CFP-001",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T19:09:51.341Z",
+      "action": "dependency_resolved",
+      "storyId": "CFP-002",
+      "details": "Unblocked: all dependencies done/in_review (CFP-001)"
+    },
+    {
+      "timestamp": "2026-02-13T19:09:51.342Z",
+      "action": "dependency_resolved",
+      "storyId": "CFP-003",
+      "details": "Unblocked: all dependencies done/in_review (CFP-001)"
+    },
+    {
+      "timestamp": "2026-02-13T19:09:51.342Z",
+      "action": "dependency_resolved",
+      "storyId": "CFP-004",
+      "details": "Unblocked: all dependencies done/in_review (CFP-001)"
+    },
+    {
+      "timestamp": "2026-02-13T19:09:56.262Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T19:10:10.736Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/copy-file-path"
+    },
+    {
+      "timestamp": "2026-02-13T19:10:47.389Z",
+      "action": "status_changed",
+      "storyId": "CFP-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T19:13:45.388Z",
+      "action": "status_changed",
+      "storyId": "CFP-002",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T19:13:48.216Z",
+      "action": "status_changed",
+      "storyId": "CFP-002",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T19:14:42.191Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T19:15:04.289Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/copy-file-path"
+    },
+    {
+      "timestamp": "2026-02-13T19:15:35.749Z",
+      "action": "status_changed",
+      "storyId": "CFP-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T19:17:46.960Z",
+      "action": "status_changed",
+      "storyId": "CFP-003",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T19:17:50.437Z",
+      "action": "status_changed",
+      "storyId": "CFP-003",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T19:18:09.334Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/copy-file-path"
+    },
+    {
+      "timestamp": "2026-02-13T19:18:41.779Z",
+      "action": "status_changed",
+      "storyId": "CFP-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T19:21:10.379Z",
+      "action": "status_changed",
+      "storyId": "CFP-004",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T19:21:13.657Z",
+      "action": "status_changed",
+      "storyId": "CFP-004",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T19:21:23.620Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T19:21:37.078Z",
+      "action": "dependency_resolved",
+      "storyId": "CFP-997",
+      "details": "Unblocked: all dependencies done/in_review (CFP-001, CFP-002, CFP-003, CFP-004)"
+    },
+    {
+      "timestamp": "2026-02-13T19:21:38.144Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/copy-file-path"
+    },
+    {
+      "timestamp": "2026-02-13T19:21:59.966Z",
+      "action": "status_changed",
+      "storyId": "CFP-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T19:23:40.454Z",
+      "action": "status_changed",
+      "storyId": "CFP-997",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T19:23:43.725Z",
+      "action": "status_changed",
+      "storyId": "CFP-997",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T19:23:48.881Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T19:24:05.695Z",
+      "action": "dependency_resolved",
+      "storyId": "CFP-998",
+      "details": "Unblocked: all dependencies done/in_review (CFP-997)"
+    },
+    {
+      "timestamp": "2026-02-13T19:24:06.734Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/copy-file-path"
+    },
+    {
+      "timestamp": "2026-02-13T19:24:43.160Z",
+      "action": "status_changed",
+      "storyId": "CFP-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T19:27:18.964Z",
+      "action": "status_changed",
+      "storyId": "CFP-998",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T19:27:22.545Z",
+      "action": "status_changed",
+      "storyId": "CFP-998",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T19:27:36.404Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T19:27:51.639Z",
+      "action": "dependency_resolved",
+      "storyId": "CFP-999",
+      "details": "Unblocked: all dependencies done/in_review (CFP-998)"
+    },
+    {
+      "timestamp": "2026-02-13T19:27:52.672Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/copy-file-path"
+    },
+    {
+      "timestamp": "2026-02-13T19:28:21.239Z",
+      "action": "status_changed",
+      "storyId": "CFP-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T19:31:10.716Z",
+      "action": "status_changed",
+      "storyId": "CFP-999",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T19:31:14.029Z",
+      "action": "status_changed",
+      "storyId": "CFP-999",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T19:31:18.585Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+    }
+  ]
+}

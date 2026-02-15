@@ -1,0 +1,420 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+
+  "spec": {
+    "id": "2026-02-11-open-source-ready",
+    "name": "Open Source Ready",
+    "prefix": "OSR",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-11T00:00:00Z"
+  },
+
+  "resumeContext": {
+    "currentPhase": "1-kanban-setup",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Kanban board created",
+    "nextAction": "Run /execute-tasks 2026-02-11-open-source-ready",
+    "progressIndex": 0,
+    "totalStories": 11
+  },
+
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+
+  "stories": [
+    {
+      "id": "OSR-001",
+      "title": "Security Cleanup",
+      "slug": "security-cleanup",
+      "classification": {
+        "type": "devops",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-001-security-cleanup.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "OSR-002",
+      "title": "License & Legal Files",
+      "slug": "license-legal-files",
+      "classification": {
+        "type": "devops",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-002-license-legal-files.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "OSR-003",
+      "title": "Root README & Documentation",
+      "slug": "root-readme-documentation",
+      "classification": {
+        "type": "docs",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": ["OSR-002"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-003-root-readme-documentation.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "OSR-004",
+      "title": "Community Files",
+      "slug": "community-files",
+      "classification": {
+        "type": "docs",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-004-community-files.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "OSR-005",
+      "title": "Setup Script",
+      "slug": "setup-script",
+      "classification": {
+        "type": "devops",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": ["OSR-001"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-005-setup-script.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "OSR-006",
+      "title": ".gitignore & Repo Cleanup",
+      "slug": "gitignore-repo-cleanup",
+      "classification": {
+        "type": "devops",
+        "priority": "medium",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": ["OSR-001"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-006-gitignore-repo-cleanup.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "OSR-007",
+      "title": "GitHub Templates & CI/CD",
+      "slug": "github-templates-cicd",
+      "classification": {
+        "type": "devops",
+        "priority": "medium",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": ["OSR-002", "OSR-006"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-007-github-templates-cicd.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "OSR-008",
+      "title": "Fresh Repository Preparation",
+      "slug": "fresh-repository-preparation",
+      "classification": {
+        "type": "devops",
+        "priority": "medium",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": ["OSR-001", "OSR-002", "OSR-003", "OSR-004", "OSR-005", "OSR-006", "OSR-007"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-008-fresh-repository-preparation.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "OSR-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "S"
+      },
+      "dependencies": ["OSR-001", "OSR-002", "OSR-003", "OSR-004", "OSR-005", "OSR-006", "OSR-007", "OSR-008"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "OSR-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "S"
+      },
+      "dependencies": ["OSR-997"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "OSR-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "S"
+      },
+      "dependencies": ["OSR-998"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-11T00:00:00Z",
+        "updatedAt": "2026-02-11T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    }
+  ],
+
+  "boardStatus": {
+    "total": 11,
+    "ready": 11,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 0
+  },
+
+  "statistics": {
+    "totalEffort": 15,
+    "completedEffort": 0,
+    "remainingEffort": 15,
+    "progressPercent": 0,
+    "byType": {
+      "frontend": 0,
+      "backend": 0,
+      "devops": 10,
+      "test": 0,
+      "docs": 5,
+      "integration": 0
+    },
+    "byPriority": {
+      "critical": 2,
+      "high": 8,
+      "medium": 5,
+      "low": 0
+    }
+  },
+
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Security & Legal",
+        "stories": ["OSR-001", "OSR-002", "OSR-004"],
+        "parallel": true
+      },
+      {
+        "phase": 2,
+        "name": "Documentation & Cleanup",
+        "stories": ["OSR-003", "OSR-005", "OSR-006"],
+        "parallel": true
+      },
+      {
+        "phase": 3,
+        "name": "GitHub & CI/CD",
+        "stories": ["OSR-007"],
+        "parallel": false
+      },
+      {
+        "phase": 4,
+        "name": "Final Preparation",
+        "stories": ["OSR-008"],
+        "parallel": false
+      },
+      {
+        "phase": 5,
+        "name": "System Stories",
+        "stories": ["OSR-997", "OSR-998", "OSR-999"],
+        "parallel": false
+      }
+    ]
+  },
+
+  "changeLog": [
+    {
+      "timestamp": "2026-02-11T00:00:00Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 11 stories (8 regular + 3 system) from /create-spec"
+    }
+  ]
+}

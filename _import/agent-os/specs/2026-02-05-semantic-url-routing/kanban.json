@@ -1,0 +1,243 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-05-semantic-url-routing",
+    "name": "Semantic URL Routing",
+    "prefix": "SUR",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-05"
+  },
+  "resumeContext": {
+    "currentPhase": "ready",
+    "nextPhase": "implementation",
+    "worktreePath": null,
+    "gitBranch": "feature/semantic-url-routing",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Spec created with 7 implementation stories + 3 system stories",
+    "nextAction": "/execute-tasks to start implementation",
+    "progressIndex": 0,
+    "totalStories": 10,
+    "gitStrategy": "branch"
+  },
+  "execution": {
+    "status": "planned",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "SUR-001",
+      "title": "Router Module erstellen",
+      "slug": "router-module",
+      "classification": {
+        "type": "infrastructure",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "todo",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-router-module.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "SUR-002",
+      "title": "App Shell auf Router migrieren",
+      "slug": "app-shell-migration",
+      "classification": {
+        "type": "frontend",
+        "priority": "critical",
+        "effort": 3,
+        "complexity": "M"
+      },
+      "dependencies": ["SUR-001"],
+      "status": "todo",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-app-shell-migration.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "SUR-003",
+      "title": "Dashboard Deep-Linking (Specs, Kanban, Story)",
+      "slug": "dashboard-deep-linking",
+      "classification": {
+        "type": "frontend",
+        "priority": "critical",
+        "effort": 5,
+        "complexity": "L"
+      },
+      "dependencies": ["SUR-001", "SUR-002"],
+      "status": "todo",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-dashboard-deep-linking.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "SUR-004",
+      "title": "Backlog & Docs als eigenständige Routes",
+      "slug": "backlog-docs-routes",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": ["SUR-003"],
+      "status": "todo",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-004-backlog-docs-routes.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "SUR-005",
+      "title": "Settings Sub-Routes",
+      "slug": "settings-subroutes",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": ["SUR-002"],
+      "status": "todo",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-005-settings-subroutes.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "SUR-006",
+      "title": "Workflow Deep-Linking & Query-Parameter Migration",
+      "slug": "workflow-deep-linking",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": 3,
+        "complexity": "M"
+      },
+      "dependencies": ["SUR-002"],
+      "status": "todo",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-006-workflow-deep-linking.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "SUR-007",
+      "title": "Vite SPA Fallback & Production Server Config",
+      "slug": "vite-spa-fallback",
+      "classification": {
+        "type": "infrastructure",
+        "priority": "critical",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "todo",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-007-vite-spa-fallback.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "SUR-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "critical",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": ["SUR-001", "SUR-002", "SUR-003", "SUR-004", "SUR-005", "SUR-006", "SUR-007"],
+      "status": "todo",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "SUR-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": ["SUR-997"],
+      "status": "todo",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "SUR-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "critical",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": ["SUR-998"],
+      "status": "todo",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-05",
+        "updatedAt": "2026-02-05",
+        "startedAt": null,
+        "completedAt": null
+      }
+    }
+  ]
+}
