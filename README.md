@@ -4,6 +4,8 @@
 
 Specwright is an open-source framework that brings structured, specification-driven workflows to AI coding assistants. It provides a complete lifecycle from product planning through execution, using specs and user stories as the foundation for development.
 
+Now with an optional **Web UI** featuring a Kanban board, chat interface, and workflow execution dashboard.
+
 ## What is Specwright?
 
 Specwright turns your AI coding assistant into a structured development partner:
@@ -12,10 +14,13 @@ Specwright turns your AI coding assistant into a structured development partner:
 - **Specify** features with user stories following PO + Architect refinement patterns
 - **Execute** stories with phase-based task execution, quality gates, and self-review
 - **Learn** from each implementation cycle with self-updating skills and domain knowledge
+- **Visualize** your project with an optional Web UI: Kanban board, chat, and workflow monitoring
 
 ## Quick Start
 
-### 1. Install globally (recommended, one-time)
+### Framework Only (CLI)
+
+#### 1. Install globally (recommended, one-time)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-devteam-global.sh | bash
@@ -23,26 +28,42 @@ curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup
 
 This installs templates and standards to `~/.specwright/` as fallback for all projects.
 
-### 2. Install in your project
+#### 2. Install in your project
 
 ```bash
 cd your-project/
 curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup.sh | bash
 ```
 
-### 3. Install Claude Code commands
+#### 3. Install Claude Code commands
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-claude-code.sh | bash
 ```
 
-### 4. Start building
+#### 4. Start building
 
 ```bash
 /plan-product              # Create product brief, tech stack, roadmap
 /build-development-team    # Set up skills and quality gates
 /create-spec               # Create feature spec with user stories
 /execute-tasks             # Execute stories with self-review
+```
+
+### Framework + Web UI
+
+Follow steps 1-3 above, then add the UI:
+
+```bash
+# Install Claude Code commands with UI skills
+curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-claude-code.sh | bash -s -- --with-ui
+
+# Install UI dependencies (requires Node.js 20+)
+./setup-ui.sh
+
+# Start the UI
+cd ui && npm run dev:backend    # Backend on http://localhost:3001
+cd ui/frontend && npm run dev   # Frontend on http://localhost:5173
 ```
 
 ## Core Commands
@@ -101,6 +122,8 @@ After each story, the system:
 
 ## Architecture
 
+### Target Project Structure (when installed in your project)
+
 ```
 your-project/
 ├── CLAUDE.md                        # Project instructions
@@ -118,6 +141,16 @@ your-project/
     ├── specs/                       # Feature specifications
     └── team/                        # Team config (DoD, DoR)
 ```
+
+### Web UI
+
+The optional Web UI provides three main views:
+
+- **Dashboard** - Kanban board showing specs and stories across status columns
+- **Chat** - Interactive chat interface for Claude Code communication
+- **Workflows** - Execute and monitor Specwright workflows with live progress
+
+The UI connects to your project via the Claude Code SDK and supports switching between multiple projects.
 
 ### Hybrid Lookup System
 
@@ -154,7 +187,7 @@ bash setup-mcp.sh
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
 - `curl` for installation
-- `node` 22+ (optional, for MCP server)
+- `node` 20+ (required for Web UI, optional for MCP server)
 
 ## Update
 

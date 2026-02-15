@@ -1,39 +1,68 @@
 # CLAUDE.md - Specwright
 
 > Specwright Development Guide
-> Last Updated: 2026-02-14
-> Type: Framework Repository
+> Last Updated: 2026-02-15
+> Type: Framework Repository (Monorepo: Framework + Web UI)
 
 ## Purpose
-Essential guidance for Claude Code development in the Specwright repository. This is the **framework repository** that provides workflows, templates, agents, and skills for spec-driven development.
+Essential guidance for Claude Code development in the Specwright repository. This is the **framework repository** that provides workflows, templates, agents, and skills for spec-driven development, plus an optional **Web UI** for visual project management.
 
 ## Repository Structure
 
 **This is NOT a product project - it's the Specwright framework itself.**
 
 ```
-specwright/              # Repository root
-├── specwright/
+specwright/                          # Repository root
+├── specwright/                      # Framework
 │   ├── workflows/
-│   │   ├── core/            # Core workflows (plan-product, create-spec, etc.)
-│   │   ├── team/            # Team workflows (create-project-agents, assign-skills)
-│   │   ├── skill/           # Skill creation workflows
-│   │   ├── validation/      # Market validation workflows
-│   │   └── meta/            # Meta workflows (pre-flight)
-│   ├── templates/           # All templates (product, platform, docs, skills)
-│   ├── standards/           # Global coding standards
-│   ├── docs/                # Documentation and guides
-│   ├── profiles/            # Tech-stack profiles
-│   ├── scripts/mcp/         # MCP server files
-│   └── config.yml           # Configuration
+│   │   ├── core/                    # Core workflows (plan-product, create-spec, etc.)
+│   │   ├── team/                    # Team workflows (create-project-agents, assign-skills)
+│   │   ├── skill/                   # Skill creation workflows
+│   │   ├── validation/              # Market validation workflows
+│   │   └── meta/                    # Meta workflows (pre-flight)
+│   ├── templates/                   # All templates (product, platform, docs, skills)
+│   ├── standards/                   # Global coding standards
+│   ├── docs/                        # Documentation and guides
+│   ├── profiles/                    # Tech-stack profiles
+│   ├── scripts/mcp/                 # MCP server files
+│   └── config.yml                   # Configuration
+│
+├── ui/                              # Web UI (Express + Lit)
+│   ├── package.json                 # Backend dependencies
+│   ├── tsconfig.json
+│   ├── vitest.config.ts
+│   ├── nodemon.json
+│   ├── config.json                  # UI project configuration
+│   ├── src/
+│   │   ├── server/                  # Express + WebSocket + Claude SDK
+│   │   └── shared/                  # Shared types
+│   ├── tests/                       # Vitest tests
+│   └── frontend/                    # Lit frontend
+│       ├── package.json
+│       ├── vite.config.ts
+│       ├── index.html
+│       └── src/                     # 70+ Lit components (aos-*)
+│
 ├── .claude/
-│   ├── commands/specwright/  # 21 slash command definitions
-│   ├── agents/              # 19 agent definitions
-│   └── skills/              # User-invocable skills
-├── setup.sh                 # Project installation script
-├── setup-claude-code.sh     # Claude Code installation script
-├── setup-devteam-global.sh  # Global templates installation script
-└── setup-mcp.sh             # MCP server installation
+│   ├── commands/specwright/         # 34 slash command definitions
+│   ├── agents/                      # 13 utility agents
+│   └── skills/                      # User-invocable + UI skills
+│       ├── review-implementation-plan/
+│       ├── architect-refinement/    # UI: Architecture refinement
+│       ├── backend-express/         # UI: Express backend patterns
+│       ├── frontend-lit/            # UI: Lit component patterns
+│       ├── domain-specwright-ui/    # UI: Business domain knowledge
+│       ├── po-requirements/         # UI: PO requirements
+│       └── quality-gates/           # UI: Quality standards
+│
+├── docs/
+│   └── ui-specs/                    # UI feature specifications
+│
+├── setup.sh                         # Framework installation
+├── setup-claude-code.sh             # Claude Code commands (--with-ui for UI skills)
+├── setup-devteam-global.sh          # Global templates installation
+├── setup-mcp.sh                     # MCP server installation
+└── setup-ui.sh                      # UI dependency installation
 ```
 
 ## Development Standards (load via context-fetcher when needed)
@@ -63,6 +92,33 @@ specwright/              # Repository root
 **When adding commands:**
 - Create in `.claude/commands/specwright/`
 - Reference corresponding workflow in `specwright/workflows/`
+
+## UI Development Guidelines
+
+**Tech Stack:**
+- Backend: Express.js + TypeScript, WebSocket (ws), Claude Code SDK
+- Frontend: Lit Web Components, Vite, TypeScript strict mode
+- Testing: Vitest
+- All components use `aos-` prefix (e.g., `aos-kanban-board`, `aos-chat-view`)
+
+**Directory naming (backward compatibility):**
+- Server code supports both `specwright/` and `agent-os/` project directories
+- Use `ui/src/server/utils/project-dirs.ts` for path resolution
+- Never hardcode `agent-os` or `specwright` directory names in server code
+
+**When modifying UI backend:**
+- Run `cd ui && npm test` after changes
+- Run `cd ui && npm run lint` to check for errors
+- Use `projectDir()` / `projectDotDir()` from `project-dirs.ts` for project paths
+
+**When modifying UI frontend:**
+- Follow Lit component patterns from `.claude/skills/frontend-lit/`
+- Use `aos-` prefix for all new components
+- Run `cd ui/frontend && npm run build` to verify
+
+**Starting the UI locally:**
+- `cd ui && npm run dev:backend` (Port 3001)
+- `cd ui/frontend && npm run dev` (Port 5173)
 
 ## Sub-Agents
 
@@ -132,11 +188,18 @@ specwright/              # Repository root
 
 ## Quality Requirements
 
-**Mandatory Checks:**
+**Framework Checks:**
 - Ensure all workflow steps are numbered correctly
 - Verify template paths use hybrid lookup
 - Check that setup scripts include all new files
 - Test slash commands work correctly
+
+**UI Checks (when modifying ui/):**
+- `cd ui && npm test` - all tests pass
+- `cd ui && npm run lint` - no errors
+- `cd ui && npm run build:backend` - backend compiles
+- `cd ui/frontend && npm run build` - frontend compiles
+- Follow TypeScript strict mode (no `any` types)
 
 ## Production Safety Rules
 
@@ -158,4 +221,4 @@ specwright/              # Repository root
 
 ---
 
-**Remember:** This repository is used by many projects. Changes here affect all Specwright users. Quality, backward compatibility, and documentation are paramount.
+**Remember:** This repository is used by many projects. Changes here affect all Specwright users. Quality, backward compatibility, and documentation are paramount. The Web UI is an optional component - framework changes must never depend on the UI being installed.
