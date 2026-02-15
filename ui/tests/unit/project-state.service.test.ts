@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 // Mock the gateway before importing the service
 const mockGatewaySend = vi.fn();
-vi.mock('../../ui/src/gateway.js', () => ({
+vi.mock('../../frontend/src/gateway.js', () => ({
   gateway: {
     send: mockGatewaySend,
   },
@@ -10,9 +10,9 @@ vi.mock('../../ui/src/gateway.js', () => ({
 
 // Import after mocking
 const { projectStateService } = await import(
-  '../../ui/src/services/project-state.service.js'
+  '../../frontend/src/services/project-state.service.js'
 );
-import type { Project } from '../../ui/src/context/project-context.js';
+import type { Project } from '../../frontend/src/context/project-context.js';
 
 describe('ProjectStateService', () => {
   let mockStorage: Record<string, string>;
@@ -61,7 +61,7 @@ describe('ProjectStateService', () => {
         openProjects: [{ id: 'p1', name: 'Project 1', path: '/path/1' }],
         activeProjectId: 'p1',
       };
-      mockStorage['agent-os-open-projects'] = JSON.stringify(storedState);
+      mockStorage['specwright-open-projects'] = JSON.stringify(storedState);
 
       const state = projectStateService.loadPersistedState();
 
@@ -69,7 +69,7 @@ describe('ProjectStateService', () => {
     });
 
     it('should return null for invalid JSON', () => {
-      mockStorage['agent-os-open-projects'] = 'invalid-json';
+      mockStorage['specwright-open-projects'] = 'invalid-json';
 
       const state = projectStateService.loadPersistedState();
 
@@ -78,7 +78,7 @@ describe('ProjectStateService', () => {
 
     it('should return null for invalid state structure', () => {
       // Missing openProjects array
-      mockStorage['agent-os-open-projects'] = JSON.stringify({
+      mockStorage['specwright-open-projects'] = JSON.stringify({
         activeProjectId: 'p1',
       });
 
@@ -92,7 +92,7 @@ describe('ProjectStateService', () => {
         openProjects: [{ id: 'p1', name: 'Project 1' }], // missing path
         activeProjectId: 'p1',
       };
-      mockStorage['agent-os-open-projects'] = JSON.stringify(storedState);
+      mockStorage['specwright-open-projects'] = JSON.stringify(storedState);
 
       const state = projectStateService.loadPersistedState();
 
@@ -109,7 +109,7 @@ describe('ProjectStateService', () => {
 
       projectStateService.persistState(projects, 'p1');
 
-      const stored = JSON.parse(mockStorage['agent-os-open-projects']);
+      const stored = JSON.parse(mockStorage['specwright-open-projects']);
       expect(stored.openProjects).toEqual(projects);
       expect(stored.activeProjectId).toBe('p1');
     });
@@ -119,7 +119,7 @@ describe('ProjectStateService', () => {
 
       projectStateService.persistState(projects, null);
 
-      const stored = JSON.parse(mockStorage['agent-os-open-projects']);
+      const stored = JSON.parse(mockStorage['specwright-open-projects']);
       expect(stored.activeProjectId).toBeNull();
     });
 
@@ -142,16 +142,16 @@ describe('ProjectStateService', () => {
 
   describe('clearPersistedState', () => {
     it('should remove stored state', () => {
-      mockStorage['agent-os-open-projects'] = JSON.stringify({
+      mockStorage['specwright-open-projects'] = JSON.stringify({
         openProjects: [],
         activeProjectId: null,
       });
-      mockStorage['agent-os-active-project'] = 'some-id';
+      mockStorage['specwright-active-project'] = 'some-id';
 
       projectStateService.clearPersistedState();
 
-      expect(mockStorage['agent-os-open-projects']).toBeUndefined();
-      expect(mockStorage['agent-os-active-project']).toBeUndefined();
+      expect(mockStorage['specwright-open-projects']).toBeUndefined();
+      expect(mockStorage['specwright-active-project']).toBeUndefined();
     });
   });
 
@@ -366,7 +366,7 @@ describe('ProjectStateService', () => {
           ],
           activeProjectId: 'pb', // And "project-b" ist der aktive Tab
         };
-        mockStorage['agent-os-open-projects'] = JSON.stringify(storedState);
+        mockStorage['specwright-open-projects'] = JSON.stringify(storedState);
 
         // When ich die Seite neu lade (simulated by loading persisted state)
         const state = projectStateService.loadPersistedState();

@@ -52,10 +52,11 @@ describe('ProjectContextService', () => {
       expect(result.error).toBe('Project path is not a directory');
     });
 
-    it('should return error when agent-os/ directory is missing', () => {
+    it('should return error when specwright/ and agent-os/ directories are missing', () => {
       mockExistsSync.mockImplementation((path: PathLike) => {
-        // Project path exists, but agent-os doesn't
-        if (path.toString().endsWith('agent-os')) {
+        // Project path exists, but neither specwright/ nor agent-os/ exist
+        const pathStr = path.toString();
+        if (pathStr.endsWith('specwright') || pathStr.endsWith('agent-os')) {
           return false;
         }
         return true;
@@ -67,7 +68,7 @@ describe('ProjectContextService', () => {
       const result = service.validateProject('/Users/dev/my-project');
 
       expect(result.valid).toBe(false);
-      expect(result.error).toBe('Invalid project: missing agent-os/ directory');
+      expect(result.error).toBe('Invalid project: missing specwright/ directory');
     });
 
     it('should return valid when project path and agent-os/ exist', () => {
@@ -284,11 +285,12 @@ describe('ProjectContextService', () => {
     });
 
     describe('Szenario 4: Projekt-Validierung', () => {
-      it('should reject project without agent-os/ directory', () => {
+      it('should reject project without specwright/ or agent-os/ directory', () => {
         // Given der Server läuft
-        // Setup: path exists but agent-os doesn't
+        // Setup: path exists but neither specwright/ nor agent-os/ exist
         mockExistsSync.mockImplementation((path: PathLike) => {
-          if (path.toString().endsWith('agent-os')) {
+          const pathStr = path.toString();
+          if (pathStr.endsWith('specwright') || pathStr.endsWith('agent-os')) {
             return false;
           }
           return true;
@@ -297,14 +299,14 @@ describe('ProjectContextService', () => {
           isDirectory: () => true
         } as ReturnType<typeof statSync>);
 
-        // When ich validiere einen Pfad ohne agent-os/ Unterordner
+        // When ich validiere einen Pfad ohne specwright/ oder agent-os/ Unterordner
         const result = service.validateProject('/Users/dev/invalid-folder');
 
         // Then ist die Validierung fehlgeschlagen
         expect(result.valid).toBe(false);
 
-        // And die Response enthält "Invalid project: missing agent-os/ directory"
-        expect(result.error).toBe('Invalid project: missing agent-os/ directory');
+        // And die Response enthält "Invalid project: missing specwright/ directory"
+        expect(result.error).toBe('Invalid project: missing specwright/ directory');
       });
     });
 

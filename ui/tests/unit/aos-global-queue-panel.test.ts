@@ -11,7 +11,7 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 
 // Mock gateway to avoid window.location access in Node.js test environment
-vi.mock('../../ui/src/gateway.js', () => ({
+vi.mock('../../frontend/src/gateway.js', () => ({
   gateway: {
     send: vi.fn(),
     on: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock('../../ui/src/gateway.js', () => ({
 
 describe('AosGlobalQueuePanel Component', () => {
   it('should export AosGlobalQueuePanel class', async () => {
-    const module = await import('../../ui/src/components/queue/aos-global-queue-panel');
+    const module = await import('../../frontend/src/components/queue/aos-global-queue-panel');
     expect(module).toBeDefined();
     expect(module.AosGlobalQueuePanel).toBeDefined();
   });
@@ -34,13 +34,13 @@ describe('AosGlobalQueuePanel Component', () => {
 
   describe('default property values', () => {
     it('should default isOpen to false', async () => {
-      const module = await import('../../ui/src/components/queue/aos-global-queue-panel');
+      const module = await import('../../frontend/src/components/queue/aos-global-queue-panel');
       const instance = new module.AosGlobalQueuePanel();
       expect(instance.isOpen).toBe(false);
     });
 
     it('should default activeTab to queue-specs', async () => {
-      const module = await import('../../ui/src/components/queue/aos-global-queue-panel');
+      const module = await import('../../frontend/src/components/queue/aos-global-queue-panel');
       const instance = new module.AosGlobalQueuePanel();
       expect(instance.activeTab).toBe('queue-specs');
     });
@@ -48,7 +48,7 @@ describe('AosGlobalQueuePanel Component', () => {
 
   describe('property types', () => {
     it('should accept isOpen as boolean', async () => {
-      const module = await import('../../ui/src/components/queue/aos-global-queue-panel');
+      const module = await import('../../frontend/src/components/queue/aos-global-queue-panel');
       const instance = new module.AosGlobalQueuePanel();
       instance.isOpen = true;
       expect(instance.isOpen).toBe(true);
@@ -57,7 +57,7 @@ describe('AosGlobalQueuePanel Component', () => {
     });
 
     it('should accept activeTab as queue-specs or log', async () => {
-      const module = await import('../../ui/src/components/queue/aos-global-queue-panel');
+      const module = await import('../../frontend/src/components/queue/aos-global-queue-panel');
       const instance = new module.AosGlobalQueuePanel();
       instance.activeTab = 'queue-specs';
       expect(instance.activeTab).toBe('queue-specs');
@@ -80,7 +80,7 @@ describe('AosGlobalQueuePanel Component', () => {
 
   describe('Light DOM pattern', () => {
     it('should use createRenderRoot returning this for Light DOM', async () => {
-      const module = await import('../../ui/src/components/queue/aos-global-queue-panel');
+      const module = await import('../../frontend/src/components/queue/aos-global-queue-panel');
       const instance = new module.AosGlobalQueuePanel();
       const renderRoot = instance.createRenderRoot();
       expect(renderRoot).toBe(instance);

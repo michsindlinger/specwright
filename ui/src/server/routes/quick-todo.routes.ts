@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { promises as fs } from 'fs';
-import { join, resolve, relative, extname } from 'path';
+import { resolve, relative, extname } from 'path';
 import { BacklogItemStorageService, CreateQuickTodoRequest } from '../backlog-item-storage.js';
 import { projectDir } from '../utils/project-dirs.js';
 

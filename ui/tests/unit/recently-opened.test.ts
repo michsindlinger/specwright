@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   RecentlyOpenedService,
   RecentlyOpenedEntry
-} from '../../ui/src/services/recently-opened.service.js';
+} from '../../frontend/src/services/recently-opened.service.js';
 
 describe('RecentlyOpenedService', () => {
   let service: RecentlyOpenedService;
@@ -46,7 +46,7 @@ describe('RecentlyOpenedService', () => {
         { path: '/project-c', name: 'Project C', lastOpened: 3000 },
         { path: '/project-b', name: 'Project B', lastOpened: 2000 }
       ];
-      mockStorage['agent-os-recently-opened'] = JSON.stringify(storedEntries);
+      mockStorage['specwright-recently-opened'] = JSON.stringify(storedEntries);
 
       const entries = service.getRecentlyOpened();
 
@@ -56,7 +56,7 @@ describe('RecentlyOpenedService', () => {
     });
 
     it('should handle invalid JSON gracefully', () => {
-      mockStorage['agent-os-recently-opened'] = 'invalid-json';
+      mockStorage['specwright-recently-opened'] = 'invalid-json';
 
       const entries = service.getRecentlyOpened();
 
@@ -69,7 +69,7 @@ describe('RecentlyOpenedService', () => {
         { path: null, name: 'Invalid', lastOpened: 2000 },
         { path: '/valid2', name: 'Valid2', lastOpened: 3000 }
       ];
-      mockStorage['agent-os-recently-opened'] = JSON.stringify(storedData);
+      mockStorage['specwright-recently-opened'] = JSON.stringify(storedData);
 
       const entries = service.getRecentlyOpened();
 

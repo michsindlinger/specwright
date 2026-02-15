@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest';
 describe('AosTerminal Component', () => {
   it('should export AosTerminal class', async () => {
     // Dynamic import to avoid gateway initialization in node environment
-    const module = await import('../../ui/src/components/aos-terminal');
+    const module = await import('../../frontend/src/components/aos-terminal');
     expect(module).toBeDefined();
     expect(module.AosTerminal).toBeDefined();
   });

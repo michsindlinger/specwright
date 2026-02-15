@@ -180,14 +180,13 @@ describe('MPRO-007: Multi-Project Integration Tests', () => {
       expect(result.error).toBe('Project path does not exist');
     });
 
-    it('should reject paths without agent-os/ directory', () => {
-      // Use a path that exists but doesn't have agent-os/
-      // We need to mock this case since our fixtures have agent-os/
+    it('should reject paths without specwright/ or agent-os/ directory', () => {
+      // Use a path that exists but doesn't have specwright/ or agent-os/
       const sessionId = 'test-session';
       const result = projectContextService.switchProject(sessionId, '/tmp');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Invalid project: missing agent-os/ directory');
+      expect(result.error).toBe('Invalid project: missing specwright/ directory');
     });
 
     it('should maintain stable state after validation failure', () => {

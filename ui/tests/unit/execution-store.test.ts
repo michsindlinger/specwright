@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ExecutionStore, ExecutionStoreHandler } from '../../ui/src/stores/execution-store.js';
+import { ExecutionStore, ExecutionStoreHandler } from '../../frontend/src/stores/execution-store.js';
 
 describe('ExecutionStore', () => {
   let store: ExecutionStore;

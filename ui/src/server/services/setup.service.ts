@@ -8,7 +8,6 @@
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import { access, readdir } from 'fs/promises';
-import { homedir } from 'os';
 import { join } from 'path';
 import { resolveDotDir, resolveProjectDir, resolveGlobalDir, projectDir } from '../utils/project-dirs.js';
 

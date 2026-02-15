@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { ProjectSelectedDetail } from '../../ui/src/components/aos-project-add-modal.js';
+import type { ProjectSelectedDetail } from '../../frontend/src/components/aos-project-add-modal.js';
 
 // Mock the recently opened service
 const mockEntries = [
@@ -8,7 +8,7 @@ const mockEntries = [
   { path: '/Users/dev/project-c', name: 'project-c', lastOpened: Date.now() - 172800000 }
 ];
 
-vi.mock('../../ui/src/services/recently-opened.service.js', () => ({
+vi.mock('../../frontend/src/services/recently-opened.service.js', () => ({
   recentlyOpenedService: {
     getRecentlyOpened: vi.fn(() => mockEntries),
     addRecentlyOpened: vi.fn(),
@@ -19,20 +19,20 @@ vi.mock('../../ui/src/services/recently-opened.service.js', () => ({
 describe('AosProjectAddModal', () => {
   describe('Component structure', () => {
     it('should export ProjectSelectedDetail interface', async () => {
-      const module = await import('../../ui/src/components/aos-project-add-modal.js');
+      const module = await import('../../frontend/src/components/aos-project-add-modal.js');
       expect(module).toHaveProperty('AosProjectAddModal');
     });
   });
 
   describe('Modal functionality', () => {
     it('should have open property defaulting to false', async () => {
-      const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
       const instance = new AosProjectAddModal();
       expect(instance.open).toBe(false);
     });
 
     it('should have openProjectPaths property defaulting to empty array', async () => {
-      const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
       const instance = new AosProjectAddModal();
       expect(instance.openProjectPaths).toEqual([]);
     });
@@ -40,7 +40,7 @@ describe('AosProjectAddModal', () => {
 
   describe('Date formatting', () => {
     it('formatDate should return "Heute" for today', async () => {
-      const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
       const instance = new AosProjectAddModal();
       // Access private method through prototype
       const formatDate = (instance as unknown as { formatDate: (ts: number) => string }).formatDate.bind(instance);
@@ -50,7 +50,7 @@ describe('AosProjectAddModal', () => {
     });
 
     it('formatDate should return "Gestern" for yesterday', async () => {
-      const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
       const instance = new AosProjectAddModal();
       const formatDate = (instance as unknown as { formatDate: (ts: number) => string }).formatDate.bind(instance);
 
@@ -59,7 +59,7 @@ describe('AosProjectAddModal', () => {
     });
 
     it('formatDate should return "vor X Tagen" for recent days', async () => {
-      const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
       const instance = new AosProjectAddModal();
       const formatDate = (instance as unknown as { formatDate: (ts: number) => string }).formatDate.bind(instance);
 
@@ -70,7 +70,7 @@ describe('AosProjectAddModal', () => {
 
   describe('Project already open check', () => {
     it('isProjectAlreadyOpen should return true for open projects', async () => {
-      const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
       const instance = new AosProjectAddModal();
       instance.openProjectPaths = ['/Users/dev/project-a'];
 
@@ -82,10 +82,10 @@ describe('AosProjectAddModal', () => {
   });
 
   describe('Event handling', () => {
-    let instance: InstanceType<typeof import('../../ui/src/components/aos-project-add-modal.js').AosProjectAddModal>;
+    let instance: InstanceType<typeof import('../../frontend/src/components/aos-project-add-modal.js').AosProjectAddModal>;
 
     beforeEach(async () => {
-      const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
       instance = new AosProjectAddModal();
     });
 
@@ -135,7 +135,7 @@ describe('AosProjectAddModal', () => {
   describe('Gherkin scenarios', () => {
     describe('Szenario 2: Projekt aus Recently Opened auswählen', () => {
       it('should fire project-selected event with correct details', async () => {
-        const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+        const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
         const instance = new AosProjectAddModal();
         instance.open = true;
 
@@ -155,7 +155,7 @@ describe('AosProjectAddModal', () => {
 
     describe('Szenario 5: Duplikat-Prüfung', () => {
       it('should detect already opened projects', async () => {
-        const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+        const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
         const instance = new AosProjectAddModal();
         instance.openProjectPaths = ['/Users/dev/project-a'];
 
@@ -168,7 +168,7 @@ describe('AosProjectAddModal', () => {
 
     describe('Edge Case: Modal schließen ohne Auswahl', () => {
       it('should dispatch modal-close event when closing', async () => {
-        const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+        const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
         const instance = new AosProjectAddModal();
         instance.open = true;
 
@@ -186,7 +186,7 @@ describe('AosProjectAddModal', () => {
 
   describe('Directory validation', () => {
     it('validateAgentOsFolder should check for agent-os directory', async () => {
-      const { AosProjectAddModal } = await import('../../ui/src/components/aos-project-add-modal.js');
+      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
       const instance = new AosProjectAddModal();
 
       const validateAgentOsFolder = (instance as unknown as {

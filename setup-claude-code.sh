@@ -8,8 +8,19 @@ set -e
 
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
+# Parse flags
+WITH_UI=false
+for arg in "$@"; do
+    case "$arg" in
+        --with-ui) WITH_UI=true ;;
+    esac
+done
+
 echo "Specwright - Claude Code Setup"
 echo "Installing Claude Code configuration in current project..."
+if [ "$WITH_UI" = true ]; then
+    echo "(with UI skills and commands)"
+fi
 echo ""
 
 # Check if base Specwright is installed in project
@@ -230,6 +241,40 @@ echo ""
 echo "  Plan Review:"
 echo "    /review-implementation-plan -> Review implementation plans"
 echo ""
+# ===============================================================
+# UI SKILLS (optional, with --with-ui flag)
+# ===============================================================
+
+if [ "$WITH_UI" = true ]; then
+    echo ""
+    echo "Installing UI development skills..."
+    mkdir -p .claude/skills/architect-refinement
+    mkdir -p .claude/skills/backend-express
+    mkdir -p .claude/skills/frontend-lit
+    mkdir -p .claude/skills/po-requirements
+    mkdir -p .claude/skills/quality-gates
+    mkdir -p .claude/skills/domain-specwright-ui
+
+    download_file "$REPO_URL/.claude/skills/architect-refinement/SKILL.md" ".claude/skills/architect-refinement/SKILL.md"
+    download_file "$REPO_URL/.claude/skills/backend-express/SKILL.md" ".claude/skills/backend-express/SKILL.md"
+    download_file "$REPO_URL/.claude/skills/backend-express/api-design.md" ".claude/skills/backend-express/api-design.md"
+    download_file "$REPO_URL/.claude/skills/backend-express/dos-and-donts.md" ".claude/skills/backend-express/dos-and-donts.md"
+    download_file "$REPO_URL/.claude/skills/backend-express/services.md" ".claude/skills/backend-express/services.md"
+    download_file "$REPO_URL/.claude/skills/backend-express/testing.md" ".claude/skills/backend-express/testing.md"
+    download_file "$REPO_URL/.claude/skills/backend-express/websocket.md" ".claude/skills/backend-express/websocket.md"
+    download_file "$REPO_URL/.claude/skills/frontend-lit/SKILL.md" ".claude/skills/frontend-lit/SKILL.md"
+    download_file "$REPO_URL/.claude/skills/frontend-lit/api-integration.md" ".claude/skills/frontend-lit/api-integration.md"
+    download_file "$REPO_URL/.claude/skills/frontend-lit/components.md" ".claude/skills/frontend-lit/components.md"
+    download_file "$REPO_URL/.claude/skills/frontend-lit/dos-and-donts.md" ".claude/skills/frontend-lit/dos-and-donts.md"
+    download_file "$REPO_URL/.claude/skills/frontend-lit/forms-validation.md" ".claude/skills/frontend-lit/forms-validation.md"
+    download_file "$REPO_URL/.claude/skills/frontend-lit/state-management.md" ".claude/skills/frontend-lit/state-management.md"
+    download_file "$REPO_URL/.claude/skills/po-requirements/SKILL.md" ".claude/skills/po-requirements/SKILL.md"
+    download_file "$REPO_URL/.claude/skills/quality-gates/SKILL.md" ".claude/skills/quality-gates/SKILL.md"
+    download_file "$REPO_URL/.claude/skills/domain-specwright-ui/SKILL.md" ".claude/skills/domain-specwright-ui/SKILL.md"
+
+    echo "UI skills installed!"
+fi
+
 echo "Recommended Workflow:"
 echo ""
 echo "1. /plan-product -> Product vision, tech stack, roadmap"

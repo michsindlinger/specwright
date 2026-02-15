@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { executionStore } from '../../ui/src/stores/execution-store.js';
+import { executionStore } from '../../frontend/src/stores/execution-store.js';
 
 describe('Workflow View - Terminal Integration (PTY-004)', () => {
   beforeEach(() => {
