@@ -1,7 +1,7 @@
 {
-  "name": "agent-os-ui-frontend",
+  "name": "specwright-ui-frontend",
   "version": "0.1.0",
-  "description": "Agent OS Web UI - Lit Frontend",
+  "description": "Specwright Web UI - Lit Frontend",
   "type": "module",
   "scripts": {
     "dev": "vite",
