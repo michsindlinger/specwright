@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import { join, basename } from 'path';
+import { resolveProjectDir } from './utils/project-dirs.js';
 
 /**
  * backlog-index.json structure
@@ -43,10 +44,18 @@ export interface CreateItemResult {
   error?: string;
 }
 
-const BACKLOG_DIR = 'agent-os/backlog';
-const ITEMS_DIR = 'agent-os/backlog/items';
-const ATTACHMENTS_DIR = 'agent-os/backlog/items/attachments';
-const INDEX_FILE = 'agent-os/backlog/backlog-index.json';
+function backlogDir(projectPath: string): string {
+  return `${resolveProjectDir(projectPath)}/backlog`;
+}
+function itemsDir(projectPath: string): string {
+  return `${resolveProjectDir(projectPath)}/backlog/items`;
+}
+function attachmentsDir(projectPath: string): string {
+  return `${resolveProjectDir(projectPath)}/backlog/items/attachments`;
+}
+function indexFile(projectPath: string): string {
+  return `${resolveProjectDir(projectPath)}/backlog/backlog-index.json`;
+}
 
 const ALLOWED_IMAGE_TYPES = new Set([
   'image/png',
@@ -95,7 +104,7 @@ export class BacklogItemStorageService {
       // Save images if provided
       const savedImages: Array<{ filename: string; path: string }> = [];
       if (request.images && request.images.length > 0) {
-        const attachmentDir = join(projectPath, ATTACHMENTS_DIR, itemId);
+        const attachmentDir = join(projectPath, attachmentsDir(projectPath), itemId);
         await fs.mkdir(attachmentDir, { recursive: true });
 
         for (const image of request.images) {
@@ -126,7 +135,7 @@ export class BacklogItemStorageService {
 
       // Write Markdown file
       const mdFilename = `${itemId.toLowerCase()}.md`;
-      const mdPath = join(projectPath, ITEMS_DIR, mdFilename);
+      const mdPath = join(projectPath, itemsDir(projectPath), mdFilename);
       await fs.writeFile(mdPath, markdown, 'utf-8');
 
       // Update index
@@ -142,7 +151,7 @@ export class BacklogItemStorageService {
       index.nextId += 1;
 
       // Write index atomically (write to temp then rename)
-      const indexPath = join(projectPath, INDEX_FILE);
+      const indexPath = join(projectPath, indexFile(projectPath));
       const tmpPath = `${indexPath}.tmp`;
       await fs.writeFile(tmpPath, JSON.stringify(index, null, 2), 'utf-8');
       await fs.rename(tmpPath, indexPath);
@@ -165,15 +174,15 @@ export class BacklogItemStorageService {
    * Ensures the backlog directory structure exists.
    */
   private async ensureDirectories(projectPath: string): Promise<void> {
-    await fs.mkdir(join(projectPath, BACKLOG_DIR), { recursive: true });
-    await fs.mkdir(join(projectPath, ITEMS_DIR), { recursive: true });
+    await fs.mkdir(join(projectPath, backlogDir(projectPath)), { recursive: true });
+    await fs.mkdir(join(projectPath, itemsDir(projectPath)), { recursive: true });
   }
 
   /**
    * Reads backlog-index.json or creates an empty one if it doesn't exist.
    */
   private async readOrCreateIndex(projectPath: string): Promise<BacklogIndex> {
-    const indexPath = join(projectPath, INDEX_FILE);
+    const indexPath = join(projectPath, indexFile(projectPath));
 
     try {
       const content = await fs.readFile(indexPath, 'utf-8');

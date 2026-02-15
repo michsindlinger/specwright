@@ -1,5 +1,6 @@
 import { existsSync, statSync } from 'fs';
 import { basename, resolve, normalize } from 'path';
+import { resolveProjectDir } from './utils/project-dirs.js';
 
 export interface ProjectContext {
   path: string;
@@ -34,7 +35,7 @@ export class ProjectContextService {
 
   /**
    * Switches the project context for a given session.
-   * Validates that the path exists and contains an agent-os/ subdirectory.
+   * Validates that the path exists and contains a specwright/ (or agent-os/) subdirectory.
    *
    * @param sessionId - The client session identifier
    * @param projectPath - The absolute path to the project
@@ -69,7 +70,7 @@ export class ProjectContextService {
 
   /**
    * Validates a project path without switching context.
-   * Checks that the path exists, is a directory, and contains agent-os/ subdirectory.
+   * Checks that the path exists, is a directory, and contains specwright/ (or agent-os/) subdirectory.
    *
    * @param projectPath - The path to validate
    * @returns Validation result with project name if valid
@@ -108,36 +109,37 @@ export class ProjectContextService {
       };
     }
 
-    // Check for agent-os/ subdirectory (path traversal prevention included)
-    const agentOsPath = resolve(normalizedPath, 'agent-os');
+    // Check for specwright/ or agent-os/ subdirectory (path traversal prevention included)
+    const projectDirName = resolveProjectDir(normalizedPath);
+    const projectSubPath = resolve(normalizedPath, projectDirName);
 
     // Prevent path traversal: ensure the resolved path is still within the project
-    if (!agentOsPath.startsWith(normalizedPath)) {
+    if (!projectSubPath.startsWith(normalizedPath)) {
       return {
         valid: false,
         error: 'Invalid project: path traversal detected'
       };
     }
 
-    if (!existsSync(agentOsPath)) {
+    if (!existsSync(projectSubPath)) {
       return {
         valid: false,
-        error: 'Invalid project: missing agent-os/ directory'
+        error: `Invalid project: missing ${projectDirName}/ directory`
       };
     }
 
     try {
-      const agentOsStats = statSync(agentOsPath);
-      if (!agentOsStats.isDirectory()) {
+      const projectSubStats = statSync(projectSubPath);
+      if (!projectSubStats.isDirectory()) {
         return {
           valid: false,
-          error: 'Invalid project: agent-os is not a directory'
+          error: `Invalid project: ${projectDirName} is not a directory`
         };
       }
     } catch {
       return {
         valid: false,
-        error: 'Invalid project: cannot access agent-os/ directory'
+        error: `Invalid project: cannot access ${projectDirName}/ directory`
       };
     }
 

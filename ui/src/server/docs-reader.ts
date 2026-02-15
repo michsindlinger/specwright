@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import { join, basename, resolve, relative } from 'path';
+import { resolveProjectDir } from './utils/project-dirs.js';
 
 export interface DocFile {
   filename: string;
@@ -23,7 +24,9 @@ export interface DocListResult {
 }
 
 export class DocsReader {
-  private readonly DOCS_SUBPATH = 'agent-os/product';
+  private docsSubpath(projectPath: string): string {
+    return `${resolveProjectDir(projectPath)}/product`;
+  }
   private readonly ALLOWED_EXTENSION = '.md';
   private readonly FILENAME_PATTERN = /^[a-zA-Z0-9_-]+\.md$/;
 
@@ -53,7 +56,7 @@ export class DocsReader {
       return null;
     }
 
-    const docsDir = join(projectPath, this.DOCS_SUBPATH);
+    const docsDir = join(projectPath, this.docsSubpath(projectPath));
     const resolvedPath = resolve(docsDir, filename);
 
     // Verify the resolved path is within the docs directory
@@ -66,10 +69,10 @@ export class DocsReader {
   }
 
   /**
-   * Lists all markdown documents in the project's agent-os/product/ folder.
+   * Lists all markdown documents in the project's specwright/product/ (or agent-os/product/) folder.
    */
   async listDocs(projectPath: string): Promise<DocListResult> {
-    const docsPath = join(projectPath, this.DOCS_SUBPATH);
+    const docsPath = join(projectPath, this.docsSubpath(projectPath));
 
     try {
       await fs.access(docsPath);
@@ -145,7 +148,7 @@ export class DocsReader {
 
     try {
       // Ensure the directory exists
-      const docsPath = join(projectPath, this.DOCS_SUBPATH);
+      const docsPath = join(projectPath, this.docsSubpath(projectPath));
       await fs.mkdir(docsPath, { recursive: true });
 
       await fs.writeFile(validPath, content, 'utf-8');

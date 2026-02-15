@@ -3,6 +3,7 @@ import { Server } from 'http';
 import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { projectDir, resolveCommandDir } from './utils/project-dirs.js';
 import { ProjectManager } from './projects.js';
 import { ClaudeHandler } from './claude-handler.js';
 import { WorkflowExecutor } from './workflow-executor.js';
@@ -1597,7 +1598,7 @@ export class WebSocketHandler {
 
     try {
       // Find the story file
-      const storiesPath = join(projectPath, 'agent-os', 'specs', specId, 'stories');
+      const storiesPath = projectDir(projectPath, 'specs', specId, 'stories');
       const files = await fs.readdir(storiesPath);
       const storyFile = files.find(f => {
         const idMatch = f.match(/story-(\d+)/);
@@ -2115,7 +2116,7 @@ export class WebSocketHandler {
     }
 
     // Read story details from backlog-index.json
-    const backlogPath = join(projectPath, 'agent-os', 'backlog', 'backlog-index.json');
+    const backlogPath = projectDir(projectPath, 'backlog', 'backlog-index.json');
     try {
       const backlogContent = await fs.readFile(backlogPath, 'utf-8');
       const backlogJson = JSON.parse(backlogContent) as { items: Array<{ id: string; title: string; type: string; priority: string; effort?: number; status: string; rootCause?: string; file?: string; storyFile?: string }> };
@@ -2133,7 +2134,7 @@ export class WebSocketHandler {
 
       // Read the story file content (support both 'file' and legacy 'storyFile' field)
       const fileRef = item.file || item.storyFile;
-      const storyFilePath = join(projectPath, 'agent-os', 'backlog', fileRef || '');
+      const storyFilePath = projectDir(projectPath, 'backlog', fileRef || '');
       let storyContent = await fs.readFile(storyFilePath, 'utf-8');
 
       // Transform relative attachment paths to API URLs (images and file links)
@@ -2194,7 +2195,7 @@ export class WebSocketHandler {
     }
 
     // Update status in backlog-index.json
-    const backlogPath = join(projectPath, 'agent-os', 'backlog', 'backlog-index.json');
+    const backlogPath = projectDir(projectPath, 'backlog', 'backlog-index.json');
     try {
       const backlogContent = await fs.readFile(backlogPath, 'utf-8');
       const backlogJson = JSON.parse(backlogContent) as {
@@ -2293,7 +2294,7 @@ export class WebSocketHandler {
     }
 
     // Update model in backlog-index.json
-    const backlogPath = join(projectPath, 'agent-os', 'backlog', 'backlog-index.json');
+    const backlogPath = projectDir(projectPath, 'backlog', 'backlog-index.json');
     try {
       const backlogContent = await fs.readFile(backlogPath, 'utf-8');
       const backlogJson = JSON.parse(backlogContent) as {
@@ -2443,7 +2444,7 @@ export class WebSocketHandler {
 
     try {
       // Read story details from backlog-index.json to get the file path
-      const backlogPath = join(projectPath, 'agent-os', 'backlog', 'backlog-index.json');
+      const backlogPath = projectDir(projectPath, 'backlog', 'backlog-index.json');
       const backlogContent = await fs.readFile(backlogPath, 'utf-8');
       const backlogJson = JSON.parse(backlogContent) as { items: Array<{ id: string; file?: string; storyFile?: string }> };
       const item = backlogJson.items.find((i: typeof backlogJson.items[0]) => i.id === storyId);
@@ -2460,7 +2461,7 @@ export class WebSocketHandler {
 
       // Write the story file (support both 'file' and legacy 'storyFile' field)
       const fileRef = item.file || item.storyFile;
-      const storyFilePath = join(projectPath, 'agent-os', 'backlog', fileRef || '');
+      const storyFilePath = projectDir(projectPath, 'backlog', fileRef || '');
       await fs.writeFile(storyFilePath, content, 'utf-8');
 
       const response: WebSocketMessage = {
@@ -3428,7 +3429,8 @@ export class WebSocketHandler {
 
       // Send initial command to start DevTeam build
       setTimeout(() => {
-        this.cloudTerminalManager.sendInput(session.sessionId, '/agent-os:build-development-team\n');
+        const commandPrefix = resolveCommandDir(projectPath);
+        this.cloudTerminalManager.sendInput(session.sessionId, `/${commandPrefix}:build-development-team\n`);
       }, 1000);
 
       // Send cloud-terminal:created for the terminal UI

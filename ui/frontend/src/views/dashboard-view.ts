@@ -1391,7 +1391,7 @@ export class AosDashboardView extends LitElement {
             <div class="empty-state">
               <span class="empty-icon">📋</span>
               <h3>No Specs Found</h3>
-              <p>This project doesn't have any specs in agent-os/specs/</p>
+              <p>This project doesn't have any specs in specwright/specs/</p>
               <button class="primary-btn" @click=${this.handleOpenCreateSpecModal}>
                 Create First Spec
               </button>
@@ -1686,7 +1686,7 @@ export class AosDashboardView extends LitElement {
           <div class="empty-state">
             <span class="empty-icon">📋</span>
             <h3>No backlog entries</h3>
-            <p>No tasks found in agent-os/backlog/</p>
+            <p>No tasks found in specwright/backlog/</p>
             <p class="empty-hint">Use <code>/add-todo</code> or <code>/add-bug</code> to create new tasks</p>
           </div>
         </div>

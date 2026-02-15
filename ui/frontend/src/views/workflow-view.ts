@@ -1058,7 +1058,7 @@ export class AosWorkflowView extends LitElement {
           <h3>No workflows found</h3>
           <p>
             Add workflow commands to your project's
-            <code>.claude/commands/agent-os/</code> directory.
+            <code>.claude/commands/specwright/</code> directory.
           </p>
         </div>
       `;

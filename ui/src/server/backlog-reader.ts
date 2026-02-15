@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import { join, basename } from 'path';
+import { projectDir } from './utils/project-dirs.js';
 
 export type ModelSelection = 'opus' | 'sonnet' | 'haiku' | 'glm-5' | 'google/gemini-3-flash-preview' | 'google/gemini-3-pro-preview';
 
@@ -67,7 +68,7 @@ interface BacklogJson {
 
 export class BacklogReader {
   async listBacklogItems(projectPath: string): Promise<BacklogItem[]> {
-    const backlogPath = join(projectPath, 'agent-os', 'backlog');
+    const backlogPath = projectDir(projectPath, 'backlog');
     const donePath = join(backlogPath, 'done');
 
     const items: BacklogItem[] = [];
@@ -145,7 +146,7 @@ export class BacklogReader {
    * Reads backlog items from backlog-index.json (new) or markdown files (legacy).
    */
   async getKanbanBoard(projectPath: string): Promise<BacklogKanbanBoard> {
-    const backlogPath = join(projectPath, 'agent-os', 'backlog');
+    const backlogPath = projectDir(projectPath, 'backlog');
     const backlogJsonPath = join(backlogPath, 'backlog-index.json');
     const donePath = join(backlogPath, 'done');
 
@@ -316,7 +317,7 @@ export class BacklogReader {
    * Get the path to the latest kanban file (kanban-YYYY-MM-DD.md)
    */
   private async getLatestKanbanPath(projectPath: string): Promise<string | null> {
-    const backlogPath = join(projectPath, 'agent-os', 'backlog');
+    const backlogPath = projectDir(projectPath, 'backlog');
     try {
       const files = await fs.readdir(backlogPath);
       const kanbanFiles = files

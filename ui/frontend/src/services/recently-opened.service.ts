@@ -2,12 +2,12 @@
  * RecentlyOpenedService - Manages recently opened projects list
  *
  * Features:
- * - localStorage persistence with key 'agent-os-recently-opened'
+ * - localStorage persistence with key 'specwright-recently-opened'
  * - Maximum 20 entries, sorted by lastOpened (newest first)
  * - Graceful handling when localStorage is unavailable (Private Browsing)
  */
 
-const STORAGE_KEY = 'agent-os-recently-opened';
+const STORAGE_KEY = 'specwright-recently-opened';
 const MAX_ENTRIES = 20;
 
 /**

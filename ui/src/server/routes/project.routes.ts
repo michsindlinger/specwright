@@ -33,7 +33,7 @@ interface ValidateResponse {
  * POST /api/project/switch
  *
  * Switches the project context for the current session.
- * Validates that the path exists and contains an agent-os/ subdirectory.
+ * Validates that the path exists and contains a specwright/ (or agent-os/) subdirectory.
  *
  * Request body: { path: string }
  * Response: { success: boolean, path?: string, name?: string, error?: string }
@@ -98,7 +98,7 @@ router.get('/current', (req: Request, res: Response) => {
  * POST /api/project/validate
  *
  * Validates a project path without switching context.
- * Checks that the path exists and contains an agent-os/ subdirectory.
+ * Checks that the path exists and contains a specwright/ (or agent-os/) subdirectory.
  *
  * Request body: { path: string }
  * Response: { valid: boolean, name?: string, error?: string }

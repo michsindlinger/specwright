@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import { join, basename, extname } from 'path';
 import { randomUUID } from 'crypto';
+import { resolveDotDir } from './utils/project-dirs.js';
 
 /**
  * Image information returned by storage operations
@@ -61,11 +62,13 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 /**
  * Directory name for storing chat images within a project
  */
-const CHAT_IMAGES_DIR = '.agent-os/chat-images';
+function chatImagesDir(projectPath: string): string {
+  return `${resolveDotDir(projectPath)}/chat-images`;
+}
 
 /**
  * ImageStorageService provides persistent image storage for chat images.
- * Images are stored in the project's .agent-os/chat-images directory.
+ * Images are stored in the project's .specwright/chat-images (or .agent-os/chat-images) directory.
  */
 export class ImageStorageService {
   /**
@@ -111,7 +114,7 @@ export class ImageStorageService {
       }
 
       // Ensure the chat-images directory exists
-      const imagesDir = join(projectPath, CHAT_IMAGES_DIR);
+      const imagesDir = join(projectPath, chatImagesDir(projectPath));
       await fs.mkdir(imagesDir, { recursive: true });
 
       // Sanitize the original filename
@@ -130,7 +133,7 @@ export class ImageStorageService {
 
       // Create ImageInfo
       const imageInfo: ImageInfo = {
-        path: join(CHAT_IMAGES_DIR, filename),
+        path: join(chatImagesDir(projectPath), filename),
         filename,
         mimeType,
         size: buffer.length,
@@ -161,7 +164,7 @@ export class ImageStorageService {
     try {
       // Prevent path traversal attacks
       const normalizedPath = this.normalizePath(imagePath);
-      if (!normalizedPath.startsWith(CHAT_IMAGES_DIR)) {
+      if (!normalizedPath.startsWith('.specwright/chat-images') && !normalizedPath.startsWith('.agent-os/chat-images')) {
         console.error('Path traversal attempt detected:', imagePath);
         return null;
       }
@@ -189,7 +192,7 @@ export class ImageStorageService {
     try {
       // Prevent path traversal attacks
       const normalizedPath = this.normalizePath(imagePath);
-      if (!normalizedPath.startsWith(CHAT_IMAGES_DIR)) {
+      if (!normalizedPath.startsWith('.specwright/chat-images') && !normalizedPath.startsWith('.agent-os/chat-images')) {
         console.error('Path traversal attempt detected:', imagePath);
         return null;
       }
@@ -228,7 +231,7 @@ export class ImageStorageService {
     try {
       // Prevent path traversal attacks
       const normalizedPath = this.normalizePath(imagePath);
-      if (!normalizedPath.startsWith(CHAT_IMAGES_DIR)) {
+      if (!normalizedPath.startsWith('.specwright/chat-images') && !normalizedPath.startsWith('.agent-os/chat-images')) {
         console.error('Path traversal attempt detected:', imagePath);
         return false;
       }
@@ -253,7 +256,7 @@ export class ImageStorageService {
    */
   async listImages(projectPath: string): Promise<ImageInfo[]> {
     try {
-      const imagesDir = join(projectPath, CHAT_IMAGES_DIR);
+      const imagesDir = join(projectPath, chatImagesDir(projectPath));
       const files = await fs.readdir(imagesDir, { withFileTypes: true });
 
       const images: ImageInfo[] = [];
@@ -267,7 +270,7 @@ export class ImageStorageService {
             const mimeType = this.getExtensionMimeType(ext);
 
             images.push({
-              path: join(CHAT_IMAGES_DIR, file.name),
+              path: join(chatImagesDir(projectPath), file.name),
               filename: file.name,
               mimeType,
               size: stats.size,
@@ -389,6 +392,6 @@ export class ImageStorageService {
    * Gets the chat-images storage directory path.
    */
   static getStorageDir(): string {
-    return CHAT_IMAGES_DIR;
+    return '.specwright/chat-images';
   }
 }

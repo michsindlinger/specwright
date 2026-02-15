@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { promises as fs } from 'fs';
 import { join, resolve, relative, extname } from 'path';
 import { BacklogItemStorageService, CreateQuickTodoRequest } from '../backlog-item-storage.js';
+import { projectDir } from '../utils/project-dirs.js';
 
 const router = Router();
 const backlogStorage = new BacklogItemStorageService();
@@ -102,7 +103,7 @@ const MIME_TYPES: Record<string, string> = {
 /**
  * GET /api/backlog/:projectPath/attachments/*
  *
- * Serves backlog attachment images from agent-os/backlog/items/attachments/.
+ * Serves backlog attachment images from specwright/backlog/items/attachments/ (or agent-os/backlog/items/attachments/).
  */
 router.get('/:projectPath/attachments/*', async (req: Request, res: Response) => {
   try {
@@ -114,7 +115,7 @@ router.get('/:projectPath/attachments/*', async (req: Request, res: Response) =>
     }
 
     const projectFullPath = decodeURIComponent(projectPath);
-    const baseDir = join(projectFullPath, 'agent-os', 'backlog', 'items', 'attachments');
+    const baseDir = projectDir(projectFullPath, 'backlog', 'items', 'attachments');
     const filePath = resolve(baseDir, attachmentPath);
 
     // Prevent path traversal

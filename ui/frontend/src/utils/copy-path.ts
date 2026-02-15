@@ -8,10 +8,10 @@
  *
  * @param specId - The spec identifier (e.g., "2026-02-13-feature")
  * @param relativePath - The path relative to the spec folder (e.g., "stories/story-001.md")
- * @returns The full relative path (e.g., "agent-os/specs/2026-02-13-feature/stories/story-001.md")
+ * @returns The full relative path (e.g., "specwright/specs/2026-02-13-feature/stories/story-001.md")
  */
 export function buildSpecFilePath(specId: string, relativePath: string): string {
-  return `agent-os/specs/${specId}/${relativePath}`;
+  return `specwright/specs/${specId}/${relativePath}`;
 }
 
 /**

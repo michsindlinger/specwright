@@ -1,18 +1,18 @@
 ---
-description: Business domain knowledge for Agent OS Web UI
+description: Business domain knowledge for Specwright Web UI
 globs: []
 alwaysApply: false
 ---
 
-# Domain Knowledge: Agent OS Web UI
+# Domain Knowledge: Specwright Web UI
 
-> Project: Agent OS Web UI
+> Project: Specwright Web UI
 > Generated: 2026-01-30
 > Purpose: Document business processes and domain logic
 
 ## Overview
 
-Agent OS Web UI is a local web interface for controlling Claude Code through three main views: Dashboard (Kanban), Chat Interface, and Workflow Execution.
+Specwright Web UI is a local web interface for controlling Claude Code through three main views: Dashboard (Kanban), Chat Interface, and Workflow Execution.
 
 ## Domain Areas
 
@@ -26,7 +26,7 @@ Agent OS Web UI is a local web interface for controlling Claude Code through thr
 ## Key Concepts
 
 ### Project
-A folder containing Agent OS configuration (`agent-os/` directory). Projects are discovered from a central config file and can be switched at any time.
+A folder containing Specwright configuration (`specwright/` or `agent-os/` directory). Projects are discovered from a central config file and can be switched at any time.
 
 ### Session
 An active connection to Claude Code for a specific project. Sessions are ephemeral (not persisted across restarts) and allow streaming communication.

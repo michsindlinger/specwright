@@ -1,8 +1,8 @@
 import type { Project } from '../context/project-context.js';
 import { gateway } from '../gateway.js';
 
-const STORAGE_KEY = 'agent-os-open-projects';
-const ACTIVE_PROJECT_KEY = 'agent-os-active-project';
+const STORAGE_KEY = 'specwright-open-projects';
+const ACTIVE_PROJECT_KEY = 'specwright-active-project';
 
 interface StoredProjectState {
   openProjects: Project[];
@@ -206,10 +206,10 @@ class ProjectStateService {
    */
   private getSessionId(): string {
     try {
-      let sessionId = sessionStorage.getItem('agent-os-session-id');
+      let sessionId = sessionStorage.getItem('specwright-session-id');
       if (!sessionId) {
         sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-        sessionStorage.setItem('agent-os-session-id', sessionId);
+        sessionStorage.setItem('specwright-session-id', sessionId);
       }
       return sessionId;
     } catch {

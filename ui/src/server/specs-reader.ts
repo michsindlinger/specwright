@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import { join, basename, resolve, relative } from 'path';
 import { withKanbanLock } from './utils/kanban-lock.js';
+import { projectDir } from './utils/project-dirs.js';
 
 // MSK-003-FIX: Changed from 'opus' | 'sonnet' | 'haiku' to string
 // to support all models from model-config.json (Anthropic + GLM)
@@ -290,7 +291,7 @@ export class SpecsReader {
    * @returns Array of story IDs that were unblocked
    */
   public async resolveDependencies(projectPath: string, specId: string): Promise<string[]> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
 
     return await withKanbanLock(specPath, async () => {
       const jsonKanban = await this.readKanbanJsonUnlocked(specPath);
@@ -446,7 +447,7 @@ export class SpecsReader {
    * story-001: Aggregates spec.md, spec-lite.md and kanban.json for chat context.
    */
   async getSpecContext(projectPath: string, specId: string): Promise<string> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
     let context = '';
 
     const filesToRead = [
@@ -511,7 +512,7 @@ export class SpecsReader {
    * Files within each group are sorted alphabetically.
    */
   async listSpecFiles(projectPath: string, specId: string): Promise<SpecFileGroup[]> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
 
     try {
       await fs.access(specPath);
@@ -578,7 +579,7 @@ export class SpecsReader {
    * Validates path to prevent traversal attacks.
    */
   async readSpecFile(projectPath: string, specId: string, relativePath: string): Promise<{ filename: string; content: string } | null> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
     const validPath = this.getValidatedSpecFilePath(specPath, relativePath);
 
     if (!validPath) {
@@ -601,7 +602,7 @@ export class SpecsReader {
    * Validates path to prevent traversal attacks.
    */
   async saveSpecFile(projectPath: string, specId: string, relativePath: string, content: string): Promise<{ success: boolean; error?: string }> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
     const validPath = this.getValidatedSpecFilePath(specPath, relativePath);
 
     if (!validPath) {
@@ -624,7 +625,7 @@ export class SpecsReader {
   // ============================================================================
 
   async listSpecs(projectPath: string): Promise<SpecInfo[]> {
-    const specsPath = join(projectPath, 'agent-os', 'specs');
+    const specsPath = projectDir(projectPath, 'specs');
 
     try {
       const entries = await fs.readdir(specsPath, { withFileTypes: true });
@@ -678,7 +679,7 @@ export class SpecsReader {
    * Deletes a spec folder and all its contents.
    */
   async deleteSpec(projectPath: string, specId: string): Promise<boolean> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
     try {
       await fs.rm(specPath, { recursive: true, force: true });
       return true;
@@ -689,7 +690,7 @@ export class SpecsReader {
   }
 
   private async getSpecInfo(projectPath: string, specId: string): Promise<SpecInfo | null> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
 
     try {
       // Extract name from spec ID (format: YYYY-MM-DD-spec-name)
@@ -781,7 +782,7 @@ export class SpecsReader {
   }
 
   async getKanbanBoard(projectPath: string, specId: string): Promise<KanbanBoard> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
     const kanbanPath = join(specPath, 'kanban-board.md');
     const storiesPath = join(specPath, 'stories');
 
@@ -1099,7 +1100,7 @@ export class SpecsReader {
   }
 
   private async _initializeKanbanBoard(projectPath: string, specId: string): Promise<KanbanInitResult> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
     const kanbanPath = join(specPath, 'kanban-board.md');
     const integrationContextPath = join(specPath, 'integration-context.md');
     const storiesPath = join(specPath, 'stories');
@@ -1405,7 +1406,7 @@ _None yet_
    * @returns Result with synced story count and IDs
    */
   async syncNewStories(projectPath: string, specId: string): Promise<SyncNewStoriesResult> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
     const kanbanPath = join(specPath, 'kanban-board.md');
     const storiesPath = join(specPath, 'stories');
 
@@ -1593,7 +1594,7 @@ _None yet_
     storyId: string,
     newStatus: 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked'
   ): Promise<void> {
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
 
     // PRIORITY 1: Try JSON kanban
     const jsonKanban = await this.readKanbanJson(specPath);
@@ -1903,7 +1904,7 @@ _None yet_
 
     console.log(`[SpecsReader] updateStoryModel called: specId=${specId}, storyId=${storyId}, model=${model}`);
 
-    const specPath = join(projectPath, 'agent-os', 'specs', specId);
+    const specPath = projectDir(projectPath, 'specs', specId);
 
     // PRIORITY 1: Try JSON kanban
     const jsonKanban = await this.readKanbanJson(specPath);

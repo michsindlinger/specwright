@@ -434,7 +434,7 @@ export class AosApp extends LitElement {
         // Open workflow modal in add-story mode (with spec selector)
         this.workflowModalMode = 'add-story';
         this.workflowModalCommand = {
-          id: 'agent-os:add-story',
+          id: 'specwright:add-story',
           name: 'Story hinzufügen',
           description: 'Eine neue Story zu einer bestehenden Spec hinzufügen'
         };
@@ -445,7 +445,7 @@ export class AosApp extends LitElement {
         // Open workflow modal for create-spec
         this.workflowModalMode = 'direct';
         this.workflowModalCommand = {
-          id: 'agent-os:create-spec',
+          id: 'specwright:create-spec',
           name: 'Neue Spec erstellen',
           description: 'Eine neue Feature-Spezifikation erstellen'
         };
@@ -456,7 +456,7 @@ export class AosApp extends LitElement {
         // Open workflow modal for add-bug
         this.workflowModalMode = 'direct';
         this.workflowModalCommand = {
-          id: 'agent-os:add-bug',
+          id: 'specwright:add-bug',
           name: 'Bug erstellen',
           description: 'Einen neuen Bug zur Bearbeitung erfassen'
         };
@@ -467,7 +467,7 @@ export class AosApp extends LitElement {
         // Open workflow modal for add-todo
         this.workflowModalMode = 'direct';
         this.workflowModalCommand = {
-          id: 'agent-os:add-todo',
+          id: 'specwright:add-todo',
           name: 'TODO erstellen',
           description: 'Eine neue Aufgabe zum Backlog hinzufügen'
         };

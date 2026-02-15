@@ -11,7 +11,7 @@
 
 import { gateway } from '../gateway.js';
 
-const DB_NAME = 'agent-os-cloud-terminal';
+const DB_NAME = 'specwright-cloud-terminal';
 const DB_VERSION = 1;
 const STORE_NAME = 'sessions';
 

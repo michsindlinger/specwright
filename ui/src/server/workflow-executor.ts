@@ -9,6 +9,7 @@ import { SpecsReader, KanbanJsonCorruptedError, type ModelSelection } from './sp
 import { withKanbanLock } from './utils/kanban-lock.js';
 import { getCliCommandForModel } from './model-config.js';
 import { queueHandler } from './handlers/queue.handler.js';
+import { resolveCommandDir, projectDir } from './utils/project-dirs.js';
 
 export interface WorkflowCommand {
   id: string;
@@ -200,7 +201,8 @@ export class WorkflowExecutor {
     }
 
     const commands: WorkflowCommand[] = [];
-    const commandsDir = join(projectPath, '.claude', 'commands', 'agent-os');
+    const cmdDirName = resolveCommandDir(projectPath);
+    const commandsDir = join(projectPath, '.claude', 'commands', cmdDirName);
 
     if (!existsSync(commandsDir)) {
       return commands;
@@ -217,8 +219,8 @@ export class WorkflowExecutor {
 
         // Extract name from filename (remove .md extension)
         const baseName = file.replace('.md', '');
-        // Commands in agent-os folder need the prefix
-        const name = `agent-os:${baseName}`;
+        // Commands in specwright/agent-os folder need the prefix
+        const name = `${cmdDirName}:${baseName}`;
 
         // Extract description from first line after frontmatter or first # heading
         const description = this.extractDescription(content);
@@ -332,11 +334,12 @@ export class WorkflowExecutor {
     const abortController = new AbortController();
 
     // Create execute-tasks command
+    const cmdDir = resolveCommandDir(projectPath);
     const command: WorkflowCommand = {
-      id: 'agent-os:execute-tasks',
-      name: '/agent-os:execute-tasks',
+      id: `${cmdDir}:execute-tasks`,
+      name: `/${cmdDir}:execute-tasks`,
       description: 'Execute backlog story',
-      filePath: join(projectPath, '.claude', 'commands', 'agent-os', 'execute-tasks.md')
+      filePath: join(projectPath, '.claude', 'commands', cmdDir, 'execute-tasks.md')
     };
 
     // BKE-001: Argument format "backlog story-id" for single-story mode
@@ -344,7 +347,7 @@ export class WorkflowExecutor {
 
     const execution: WorkflowExecution = {
       id: executionId,
-      commandId: 'agent-os:execute-tasks',
+      commandId: `${cmdDir}:execute-tasks`,
       commandName: command.name,
       projectPath,
       argument,
@@ -550,16 +553,17 @@ export class WorkflowExecutor {
     console.log(`[Workflow] Using model from parameter: ${model}`);
 
     // Create execute-tasks command
+    const cmdDir2 = resolveCommandDir(projectPath);
     const command: WorkflowCommand = {
-      id: 'agent-os:execute-tasks',
-      name: '/agent-os:execute-tasks',
+      id: `${cmdDir2}:execute-tasks`,
+      name: `/${cmdDir2}:execute-tasks`,
       description: 'Execute story tasks',
-      filePath: join(projectPath, '.claude', 'commands', 'agent-os', 'execute-tasks.md')
+      filePath: join(projectPath, '.claude', 'commands', cmdDir2, 'execute-tasks.md')
     };
 
     const execution: WorkflowExecution = {
       id: executionId,
-      commandId: 'agent-os:execute-tasks',
+      commandId: `${cmdDir2}:execute-tasks`,
       commandName: command.name,
       projectPath,
       argument: `${specId} ${storyId}`,
@@ -608,7 +612,7 @@ export class WorkflowExecutor {
 
       // BKE-001 / KSE-005: Use direct spawn (runClaudeCommand) for story execution
       // This is more reliable for automation than PTY/xterm
-      if (command.id === 'agent-os:execute-tasks') {
+      if (command.id.endsWith(':execute-tasks')) {
         console.log(`[Workflow] Using direct spawn for story execution: ${execution.storyId}`);
         return this.runClaudeCommand(client, execution, command, abortController);
       }
@@ -1810,8 +1814,8 @@ export class WorkflowExecutor {
     worktreePath: string,
     specId: string
   ): Promise<void> {
-    const mainSpecPath = join(projectPath, 'agent-os', 'specs', specId);
-    const worktreeSpecPath = join(worktreePath, 'agent-os', 'specs', specId);
+    const mainSpecPath = projectDir(projectPath, 'specs', specId);
+    const worktreeSpecPath = projectDir(worktreePath, 'specs', specId);
 
     // Check if main spec folder exists
     if (!existsSync(mainSpecPath)) {
@@ -1836,7 +1840,8 @@ export class WorkflowExecutor {
 
       // Create symlink from worktree to main project
       // Use relative path for portability
-      const relativePath = join('..', '..', '..', '..', basename(projectPath), 'agent-os', 'specs', specId);
+      const projDirName = resolveCommandDir(projectPath) === 'specwright' ? 'specwright' : 'agent-os';
+      const relativePath = join('..', '..', '..', '..', basename(projectPath), projDirName, 'specs', specId);
       console.log(`[Workflow] Creating symlink: ${worktreeSpecPath} -> ${relativePath}`);
       await symlink(relativePath, worktreeSpecPath, 'dir');
 
@@ -1873,7 +1878,7 @@ export class WorkflowExecutor {
     branchName: string,
     worktreePath: string | undefined
   ): Promise<void> {
-    const specDir = join(projectPath, 'agent-os', 'specs', specId);
+    const specDir = projectDir(projectPath, 'specs', specId);
     const kanbanMdPath = join(specDir, 'kanban-board.md');
     const kanbanJsonPath = join(specDir, 'kanban.json');
 

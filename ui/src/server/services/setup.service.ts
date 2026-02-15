@@ -10,6 +10,7 @@ import { EventEmitter } from 'events';
 import { access, readdir } from 'fs/promises';
 import { homedir } from 'os';
 import { join } from 'path';
+import { resolveDotDir, resolveProjectDir, resolveGlobalDir, projectDir } from '../utils/project-dirs.js';
 
 export interface SetupStepStatus {
   step: 1 | 2 | 3 | 4;
@@ -33,18 +34,18 @@ export interface StepComplete {
 const SETUP_STEPS: Array<{ step: 1 | 2 | 3; name: string; command: string }> = [
   {
     step: 1,
-    name: 'AgentOS Base Installation',
-    command: 'curl -fsSL https://raw.githubusercontent.com/Micro-Thinks/agent-os/main/setup.sh | bash',
+    name: 'Specwright Base Installation',
+    command: 'curl -fsSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup.sh | bash',
   },
   {
     step: 2,
     name: 'Claude Code Setup',
-    command: 'curl -fsSL https://raw.githubusercontent.com/Micro-Thinks/agent-os/main/setup-claude-code.sh | bash',
+    command: 'curl -fsSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-claude-code.sh | bash',
   },
   {
     step: 3,
     name: 'DevTeam Global',
-    command: 'curl -fsSL https://raw.githubusercontent.com/Micro-Thinks/agent-os/main/setup-devteam.sh | bash',
+    command: 'curl -fsSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-devteam-global.sh | bash',
   },
 ];
 
@@ -103,21 +104,22 @@ export class SetupService extends EventEmitter {
   }
 
   /**
-   * Step 1: Check if AgentOS base installation exists.
-   * Requires .agent-os/ directory with workflows/ or standards/ subfolder.
+   * Step 1: Check if Specwright base installation exists.
+   * Requires .specwright/ (or .agent-os/) directory with workflows/ or standards/ subfolder.
    */
   private async checkBaseInstallation(projectPath: string): Promise<SetupStepStatus> {
     const base: SetupStepStatus = {
       step: 1,
-      name: 'AgentOS Base Installation',
+      name: 'Specwright Base Installation',
       status: 'not_installed',
     };
 
     try {
-      const agentOsPath = join(projectPath, '.agent-os');
-      await access(agentOsPath);
+      const dotDirName = resolveDotDir(projectPath);
+      const dotDirPath = join(projectPath, dotDirName);
+      await access(dotDirPath);
 
-      const entries = await readdir(agentOsPath);
+      const entries = await readdir(dotDirPath);
       const hasWorkflows = entries.includes('workflows');
       const hasStandards = entries.includes('standards');
 
@@ -126,10 +128,10 @@ export class SetupService extends EventEmitter {
         const found = [hasWorkflows && 'workflows', hasStandards && 'standards'].filter(Boolean);
         base.details = `Found: ${found.join(', ')}`;
       } else {
-        base.details = '.agent-os/ exists but missing workflows/ and standards/';
+        base.details = `${dotDirName}/ exists but missing workflows/ and standards/`;
       }
     } catch {
-      base.details = '.agent-os/ directory not found';
+      base.details = '.specwright/ (or .agent-os/) directory not found';
     }
 
     return base;
@@ -171,7 +173,7 @@ export class SetupService extends EventEmitter {
 
   /**
    * Step 3: Check if global DevTeam templates exist.
-   * Requires ~/.agent-os/templates/ directory.
+   * Requires ~/.specwright/templates/ (or ~/.agent-os/templates/) directory.
    */
   private async checkDevTeamGlobal(): Promise<SetupStepStatus> {
     const base: SetupStepStatus = {
@@ -181,12 +183,14 @@ export class SetupService extends EventEmitter {
     };
 
     try {
-      const templatesPath = join(homedir(), '.agent-os', 'templates');
+      const globalDir = resolveGlobalDir();
+      const templatesPath = join(globalDir, 'templates');
       await access(templatesPath);
       base.status = 'installed';
-      base.details = '~/.agent-os/templates/ found';
+      const dirName = globalDir.includes('.specwright') ? '~/.specwright' : '~/.agent-os';
+      base.details = `${dirName}/templates/ found`;
     } catch {
-      base.details = '~/.agent-os/templates/ not found';
+      base.details = '~/.specwright/templates/ (or ~/.agent-os/templates/) not found';
     }
 
     return base;
@@ -194,7 +198,7 @@ export class SetupService extends EventEmitter {
 
   /**
    * Step 4: Check if project DevTeam exists.
-   * Requires agent-os/team/ directory with at least one entry.
+   * Requires specwright/team/ (or agent-os/team/) directory with at least one entry.
    */
   private async checkDevTeam(projectPath: string): Promise<SetupStepStatus> {
     const base: SetupStepStatus = {
@@ -204,18 +208,19 @@ export class SetupService extends EventEmitter {
     };
 
     try {
-      const teamPath = join(projectPath, 'agent-os', 'team');
+      const projectDirName = resolveProjectDir(projectPath);
+      const teamPath = projectDir(projectPath, 'team');
       await access(teamPath);
 
       const entries = await readdir(teamPath);
       if (entries.length > 0) {
         base.status = 'installed';
-        base.details = `${entries.length} entries in agent-os/team/`;
+        base.details = `${entries.length} entries in ${projectDirName}/team/`;
       } else {
-        base.details = 'agent-os/team/ exists but is empty';
+        base.details = `${projectDirName}/team/ exists but is empty`;
       }
     } catch {
-      base.details = 'agent-os/team/ not found';
+      base.details = 'specwright/team/ (or agent-os/team/) not found';
     }
 
     return base;

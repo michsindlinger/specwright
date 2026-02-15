@@ -77,7 +77,7 @@ router.get('/:projectPath', async (req: Request, res: Response) => {
  * Serves a single image file by path.
  *
  * @param projectPath - URL-encoded project path
- * @param * - Wildcard catches the remaining image path (e.g., ".agent-os/chat-images/20260202-143000-abc-screenshot.png")
+ * @param * - Wildcard catches the remaining image path (e.g., ".specwright/chat-images/20260202-143000-abc-screenshot.png" or ".agent-os/chat-images/...")
  * @returns Image file with appropriate Content-Type header
  */
 router.get('/:projectPath/*', async (req: Request, res: Response) => {

@@ -179,7 +179,7 @@ export class AosProjectAddModal extends LitElement {
       const isValid = await projectStateService.validateProject(path);
 
       if (!isValid) {
-        this.errorMessage = 'Ungültiger Pfad: Ordner existiert nicht oder enthält kein agent-os/ Verzeichnis';
+        this.errorMessage = 'Ungültiger Pfad: Ordner existiert nicht oder enthält kein specwright/ (oder agent-os/) Verzeichnis';
         return;
       }
 

@@ -230,7 +230,7 @@ export class AosCreateSpecModal extends LitElement {
 
   private handleStart(): void {
     const cmd = this.command || {
-      id: 'agent-os:create-spec',
+      id: 'specwright:create-spec',
       description: 'Create a detailed specification with user stories through DevTeam collaboration (PO + Architect).'
     };
 
@@ -254,7 +254,7 @@ export class AosCreateSpecModal extends LitElement {
   }
 
   private getCommandName(): string {
-    return this.command?.id ? `/${this.command.id}` : '/agent-os:create-spec';
+    return this.command?.id ? `/${this.command.id}` : '/specwright:create-spec';
   }
 
   private getCommandDescription(): string {
