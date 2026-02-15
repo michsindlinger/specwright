@@ -1,0 +1,401 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-14-storycard-attachments",
+    "name": "Storycard Attachments",
+    "prefix": "SCA",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-14T00:00:00.000Z"
+  },
+  "resumeContext": {
+    "currentPhase": "1-kanban-setup",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Kanban board created",
+    "nextAction": "Run /execute-tasks 2026-02-14-storycard-attachments",
+    "progressIndex": 0,
+    "totalStories": 8
+  },
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "SCA-001",
+      "title": "Attachment Protocol & Backend Service",
+      "slug": "attachment-protocol-backend-service",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "M"
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-attachment-protocol-backend-service.md",
+      "timing": {
+        "createdAt": "2026-02-14T00:00:00.000Z",
+        "updatedAt": "2026-02-14T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "model": "MiniMax-M2.5"
+    },
+    {
+      "id": "SCA-002",
+      "title": "Frontend Attachment Gateway & Utils",
+      "slug": "frontend-gateway-utils",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "SCA-001"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-frontend-gateway-utils.md",
+      "timing": {
+        "createdAt": "2026-02-14T00:00:00.000Z",
+        "updatedAt": "2026-02-14T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "model": "MiniMax-M2.5"
+    },
+    {
+      "id": "SCA-003",
+      "title": "Attachment Panel Component",
+      "slug": "attachment-panel-component",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "M"
+      },
+      "dependencies": [
+        "SCA-002"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-attachment-panel-component.md",
+      "timing": {
+        "createdAt": "2026-02-14T00:00:00.000Z",
+        "updatedAt": "2026-02-14T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "model": "MiniMax-M2.5"
+    },
+    {
+      "id": "SCA-004",
+      "title": "Storycard & Kanban Integration",
+      "slug": "storycard-kanban-integration",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "M"
+      },
+      "dependencies": [
+        "SCA-003"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-004-storycard-kanban-integration.md",
+      "timing": {
+        "createdAt": "2026-02-14T00:00:00.000Z",
+        "updatedAt": "2026-02-14T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "model": "MiniMax-M2.5"
+    },
+    {
+      "id": "SCA-005",
+      "title": "Attachment Preview & File Type Support",
+      "slug": "attachment-preview-ux",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": 2,
+        "complexity": "M"
+      },
+      "dependencies": [
+        "SCA-003"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-005-attachment-preview-ux.md",
+      "timing": {
+        "createdAt": "2026-02-14T00:00:00.000Z",
+        "updatedAt": "2026-02-14T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "model": "MiniMax-M2.5"
+    },
+    {
+      "id": "SCA-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "SCA-001",
+        "SCA-002",
+        "SCA-003",
+        "SCA-004",
+        "SCA-005"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-14T00:00:00.000Z",
+        "updatedAt": "2026-02-14T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "SCA-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "SCA-997"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-14T00:00:00.000Z",
+        "updatedAt": "2026-02-14T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "SCA-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "SCA-998"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-14T00:00:00.000Z",
+        "updatedAt": "2026-02-14T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "model": "MiniMax-M2.5"
+    }
+  ],
+  "boardStatus": {
+    "total": 8,
+    "ready": 8,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 16,
+    "completedEffort": 0,
+    "remainingEffort": 16,
+    "progressPercent": 0,
+    "byType": {
+      "frontend": 10,
+      "backend": 3,
+      "devops": 0,
+      "test": 0,
+      "docs": 0,
+      "system": 3
+    },
+    "byPriority": {
+      "critical": 0,
+      "high": 14,
+      "medium": 2,
+      "low": 0
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Foundation",
+        "stories": [
+          "SCA-001"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 2,
+        "name": "Frontend Infrastructure",
+        "stories": [
+          "SCA-002"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 3,
+        "name": "UI Components",
+        "stories": [
+          "SCA-003"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 4,
+        "name": "Integration & Preview",
+        "stories": [
+          "SCA-004",
+          "SCA-005"
+        ],
+        "parallel": true
+      },
+      {
+        "phase": 5,
+        "name": "System Stories",
+        "stories": [
+          "SCA-997",
+          "SCA-998",
+          "SCA-999"
+        ],
+        "parallel": false
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-14T00:00:00.000Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 8 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-14T16:20:51.081Z",
+      "action": "model_changed",
+      "storyId": "SCA-001",
+      "details": "Model changed from null to MiniMax-M2.5"
+    },
+    {
+      "timestamp": "2026-02-14T16:20:53.839Z",
+      "action": "model_changed",
+      "storyId": "SCA-002",
+      "details": "Model changed from null to MiniMax-M2.5"
+    },
+    {
+      "timestamp": "2026-02-14T16:20:57.093Z",
+      "action": "model_changed",
+      "storyId": "SCA-003",
+      "details": "Model changed from null to MiniMax-M2.5"
+    },
+    {
+      "timestamp": "2026-02-14T16:20:59.486Z",
+      "action": "model_changed",
+      "storyId": "SCA-004",
+      "details": "Model changed from null to MiniMax-M2.5"
+    },
+    {
+      "timestamp": "2026-02-14T16:21:02.748Z",
+      "action": "model_changed",
+      "storyId": "SCA-005",
+      "details": "Model changed from null to MiniMax-M2.5"
+    },
+    {
+      "timestamp": "2026-02-14T16:21:07.656Z",
+      "action": "model_changed",
+      "storyId": "SCA-999",
+      "details": "Model changed from null to MiniMax-M2.5"
+    }
+  ]
+}

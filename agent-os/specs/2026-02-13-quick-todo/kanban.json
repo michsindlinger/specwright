@@ -1,0 +1,691 @@
+{
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-13-quick-todo",
+    "name": "Quick-To-Do",
+    "prefix": "QTD",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-13T00:00:00Z"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "feature/quick-todo",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "PR created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/26",
+    "nextAction": "Spec execution complete",
+    "progressIndex": 7,
+    "totalStories": 7,
+    "gitStrategy": "branch"
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-02-13T17:19:12.379Z",
+    "completedAt": "2026-02-13T17:47:45.882Z",
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "QTD-001",
+      "title": "Kontextmenü-Integration + Modal-Shell",
+      "slug": "kontextmenu-integration-modal-shell",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-kontextmenu-integration-modal-shell.md",
+      "timing": {
+        "createdAt": "2026-02-13T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-13T16:21:11.470Z",
+        "completedAt": "2026-02-13T17:16:14.657Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/aos-quick-todo-modal.ts",
+          "agent-os-ui/ui/src/components/aos-context-menu.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/styles/theme.css",
+          "agent-os/specs/2026-02-13-quick-todo/stories/story-001-kontextmenu-integration-modal-shell.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "d4f5a6524a9342697614667b6ac8c102a1146d0f",
+            "message": "feat(QTD-001): Kontextmenü-Integration + Modal-Shell",
+            "timestamp": "2026-02-13T18:15:47+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5",
+      "phase": "done"
+    },
+    {
+      "id": "QTD-002",
+      "title": "Bild-Upload im Quick-To-Do Modal",
+      "slug": "bild-upload-im-quick-todo",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "QTD-001"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-bild-upload-im-quick-todo.md",
+      "timing": {
+        "createdAt": "2026-02-13T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-13T17:19:12.379Z",
+        "completedAt": "2026-02-13T17:23:30.994Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/utils/image-upload.utils.ts",
+          "agent-os-ui/ui/src/components/aos-quick-todo-modal.ts",
+          "agent-os-ui/ui/src/styles/theme.css",
+          "agent-os/specs/2026-02-13-quick-todo/integration-context.md",
+          "agent-os/specs/2026-02-13-quick-todo/stories/story-002-bild-upload-im-quick-todo.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "ac1c0450718d14d596f959e460455cf391c46ce0",
+            "message": "feat(QTD-002): Bild-Upload im Quick-To-Do Modal",
+            "timestamp": "2026-02-13T18:23:17+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "claude-opus-4-6",
+      "phase": "done"
+    },
+    {
+      "id": "QTD-003",
+      "title": "Backend REST-API + Storage Service",
+      "slug": "backend-rest-api-storage-service",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-backend-rest-api-storage-service.md",
+      "timing": {
+        "createdAt": "2026-02-13T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-13T17:24:28.031Z",
+        "completedAt": "2026-02-13T17:28:35.806Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/backlog-item-storage.ts",
+          "agent-os-ui/src/server/routes/quick-todo.routes.ts",
+          "agent-os-ui/src/server/index.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "60c65b5d7edefc83a35badc08e44c853fa007341",
+            "message": "feat(QTD-003): Backend REST-API + Storage Service",
+            "timestamp": "2026-02-13T18:28:14+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "claude-opus-4-6",
+      "phase": "done"
+    },
+    {
+      "id": "QTD-004",
+      "title": "End-to-End Integration + UX-Polish",
+      "slug": "end-to-end-integration-ux-polish",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "QTD-001",
+        "QTD-002",
+        "QTD-003"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-004-end-to-end-integration-ux-polish.md",
+      "timing": {
+        "createdAt": "2026-02-13T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-13T17:29:32.113Z",
+        "completedAt": "2026-02-13T17:33:32.948Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/aos-quick-todo-modal.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/styles/theme.css",
+          "agent-os/specs/2026-02-13-quick-todo/stories/story-004-end-to-end-integration-ux-polish.md",
+          "agent-os/specs/2026-02-13-quick-todo/integration-context.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "c86f91b",
+            "message": "feat(QTD-004): End-to-End Integration + UX-Polish",
+            "timestamp": "2026-02-13T18:35:00+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "claude-opus-4-6",
+      "phase": "done"
+    },
+    {
+      "id": "QTD-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "QTD-001",
+        "QTD-002",
+        "QTD-003",
+        "QTD-004"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-13T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-13T17:34:09.118Z",
+        "completedAt": "2026-02-13T17:37:21.641Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-quick-todo/review-report.md",
+          "agent-os/specs/2026-02-13-quick-todo/stories/story-997-code-review.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "bc050a9",
+            "message": "feat(QTD-997): Code Review completed",
+            "timestamp": "2026-02-13T18:50:00+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "QTD-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "QTD-997"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-13T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-13T17:38:16.032Z",
+        "completedAt": "2026-02-13T17:41:08.907Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-quick-todo/stories/story-998-integration-validation.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "37109bf",
+            "message": "feat(QTD-998): Integration Validation completed",
+            "timestamp": "2026-02-13T18:40:56+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "QTD-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "QTD-998"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-13T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-13T17:41:56.827Z",
+        "completedAt": "2026-02-13T17:47:45.882Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-quick-todo/test-scenarios.md",
+          "agent-os/knowledge/knowledge-index.md",
+          "agent-os/knowledge/ui-components.md",
+          "agent-os/knowledge/shared-services.md",
+          "agent-os/specs/2026-02-13-quick-todo/kanban.json"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "1a0846c",
+            "message": "feat(QTD-999): Finalize PR - test-scenarios + knowledge update",
+            "timestamp": "2026-02-13T18:46:29+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "claude-opus-4-6",
+      "phase": "done"
+    }
+  ],
+  "boardStatus": {
+    "total": 7,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 7,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
+    "progressPercent": 0,
+    "byType": {
+      "undefined": 7
+    },
+    "byPriority": {
+      "undefined": 7
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Parallel Foundation",
+        "stories": [
+          "QTD-001",
+          "QTD-003"
+        ],
+        "parallel": true
+      },
+      {
+        "phase": 2,
+        "name": "Image Upload",
+        "stories": [
+          "QTD-002"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 3,
+        "name": "Integration",
+        "stories": [
+          "QTD-004"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 4,
+        "name": "System Stories",
+        "stories": [
+          "QTD-997",
+          "QTD-998",
+          "QTD-999"
+        ],
+        "parallel": false
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-13T00:00:00Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 7 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-13T16:20:41.502Z",
+      "action": "model_changed",
+      "storyId": "QTD-001",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T16:20:43.425Z",
+      "action": "model_changed",
+      "storyId": "QTD-002",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T16:20:46.020Z",
+      "action": "model_changed",
+      "storyId": "QTD-003",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T16:20:48.789Z",
+      "action": "model_changed",
+      "storyId": "QTD-004",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T16:20:53.647Z",
+      "action": "model_changed",
+      "storyId": "QTD-999",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T16:21:11.471Z",
+      "action": "status_changed",
+      "storyId": "QTD-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T17:00:01.851Z",
+      "action": "status_changed",
+      "storyId": "QTD-001",
+      "details": "Moved from in_progress to ready"
+    },
+    {
+      "timestamp": "2026-02-13T17:00:05.442Z",
+      "action": "status_changed",
+      "storyId": "QTD-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T17:00:05.594Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/quick-todo"
+    },
+    {
+      "timestamp": "2026-02-13T17:09:53.693Z",
+      "action": "model_changed",
+      "storyId": "QTD-002",
+      "details": "Model changed from glm-5 to opus"
+    },
+    {
+      "timestamp": "2026-02-13T17:09:57.503Z",
+      "action": "model_changed",
+      "storyId": "QTD-003",
+      "details": "Model changed from glm-5 to opus"
+    },
+    {
+      "timestamp": "2026-02-13T17:09:59.861Z",
+      "action": "model_changed",
+      "storyId": "QTD-004",
+      "details": "Model changed from glm-5 to opus"
+    },
+    {
+      "timestamp": "2026-02-13T17:10:05.234Z",
+      "action": "model_changed",
+      "storyId": "QTD-999",
+      "details": "Model changed from glm-5 to opus"
+    },
+    {
+      "timestamp": "2026-02-13T17:16:06.784Z",
+      "action": "status_changed",
+      "storyId": "QTD-001",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T17:16:14.657Z",
+      "action": "status_changed",
+      "storyId": "QTD-001",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T17:16:33.608Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T17:17:52.497Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/quick-todo"
+    },
+    {
+      "timestamp": "2026-02-13T17:19:12.383Z",
+      "action": "status_changed",
+      "storyId": "QTD-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T17:23:27.742Z",
+      "action": "status_changed",
+      "storyId": "QTD-002",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T17:23:30.994Z",
+      "action": "status_changed",
+      "storyId": "QTD-002",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T17:23:36.450Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T17:23:57.485Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/quick-todo"
+    },
+    {
+      "timestamp": "2026-02-13T17:24:28.032Z",
+      "action": "status_changed",
+      "storyId": "QTD-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T17:28:32.675Z",
+      "action": "status_changed",
+      "storyId": "QTD-003",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T17:28:35.806Z",
+      "action": "status_changed",
+      "storyId": "QTD-003",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T17:28:40.260Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T17:28:56.457Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/quick-todo"
+    },
+    {
+      "timestamp": "2026-02-13T17:29:32.115Z",
+      "action": "status_changed",
+      "storyId": "QTD-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T17:33:29.849Z",
+      "action": "status_changed",
+      "storyId": "QTD-004",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T17:33:32.948Z",
+      "action": "status_changed",
+      "storyId": "QTD-004",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T17:33:37.620Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T17:33:47.863Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/quick-todo"
+    },
+    {
+      "timestamp": "2026-02-13T17:34:09.122Z",
+      "action": "status_changed",
+      "storyId": "QTD-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T17:37:18.723Z",
+      "action": "status_changed",
+      "storyId": "QTD-997",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T17:37:21.641Z",
+      "action": "status_changed",
+      "storyId": "QTD-997",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T17:37:26.687Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T17:37:41.099Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/quick-todo"
+    },
+    {
+      "timestamp": "2026-02-13T17:38:16.037Z",
+      "action": "status_changed",
+      "storyId": "QTD-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T17:41:05.900Z",
+      "action": "status_changed",
+      "storyId": "QTD-998",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T17:41:08.907Z",
+      "action": "status_changed",
+      "storyId": "QTD-998",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T17:41:13.633Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T17:41:29.879Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/quick-todo"
+    },
+    {
+      "timestamp": "2026-02-13T17:41:56.830Z",
+      "action": "status_changed",
+      "storyId": "QTD-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T17:47:42.689Z",
+      "action": "status_changed",
+      "storyId": "QTD-999",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T17:47:45.882Z",
+      "action": "status_changed",
+      "storyId": "QTD-999",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T17:47:50.341Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+    }
+  ]
+}

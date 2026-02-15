@@ -1,0 +1,642 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-13-agent-os-setup-wizard",
+    "name": "AgentOS Extended Setup Wizard",
+    "prefix": "SETUP",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-13T08:03:52.729Z"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "feature/agent-os-setup-wizard",
+    "gitStrategy": "branch",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "PR created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/24",
+    "nextAction": "Spec execution complete",
+    "progressIndex": 9,
+    "totalStories": 8
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-02-13T09:48:38.469Z",
+    "completedAt": "2026-02-13T10:01:22.050Z",
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "SETUP-001",
+      "title": "Backend Setup Service: Status Check",
+      "file": "stories/story-001-backend-setup-service-status-check.md",
+      "type": "backend",
+      "priority": "critical",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T08:03:52.729Z",
+        "startedAt": "2026-02-13T08:46:55.804Z",
+        "completedAt": "2026-02-13T08:49:02.663Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/services/setup.service.ts"
+        ],
+        "commits": [
+          {
+            "hash": "67f22c4",
+            "message": "feat: SETUP-001 Backend Setup Service with status check",
+            "timestamp": "2026-02-13T09:00:00Z"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "SETUP-002",
+      "title": "Backend Setup Service: Shell Execution",
+      "file": "stories/story-002-backend-setup-service-shell-execution.md",
+      "type": "backend",
+      "priority": "critical",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T08:03:52.729Z",
+        "startedAt": "2026-02-13T08:49:20.889Z",
+        "completedAt": "2026-02-13T08:51:48.971Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/services/setup.service.ts"
+        ],
+        "commits": [
+          {
+            "hash": "09d2eb1",
+            "message": "feat: SETUP-002 Backend Setup Service Shell Execution",
+            "timestamp": "2026-02-13T09:51:38+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "SETUP-003",
+      "title": "Backend WebSocket Handler: Setup Messages",
+      "file": "stories/story-003-backend-websocket-handler.md",
+      "type": "backend",
+      "priority": "critical",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "SETUP-001",
+        "SETUP-002"
+      ],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T08:03:52.729Z",
+        "startedAt": "2026-02-13T09:20:55.465Z",
+        "completedAt": "2026-02-13T09:24:59.435Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/websocket.ts"
+        ],
+        "commits": [
+          {
+            "hash": "pending",
+            "message": "feat: SETUP-003 Backend WebSocket Handler for Setup Messages",
+            "timestamp": "2026-02-13T10:30:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "SETUP-004",
+      "title": "Frontend Setup Wizard Komponente",
+      "file": "stories/story-004-frontend-setup-wizard-component.md",
+      "type": "frontend",
+      "priority": "critical",
+      "effort": 5,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "SETUP-003"
+      ],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T08:03:52.729Z",
+        "startedAt": "2026-02-13T09:42:51.868Z",
+        "completedAt": "2026-02-13T09:47:48.700Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/setup/aos-setup-wizard.ts"
+        ],
+        "commits": [
+          {
+            "hash": "ded1687",
+            "message": "feat: SETUP-004 Frontend Setup Wizard Component",
+            "timestamp": "2026-02-13T10:50:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "SETUP-005",
+      "title": "Settings View: Setup Tab Integration",
+      "file": "stories/story-005-settings-view-integration.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "SETUP-004"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T08:03:52.729Z",
+        "startedAt": "2026-02-13T09:48:38.469Z",
+        "completedAt": "2026-02-13T09:50:41.011Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/settings-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "9776cf5",
+            "message": "feat: SETUP-005 Settings View Setup Tab Integration",
+            "timestamp": "2026-02-13T11:00:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "SETUP-997",
+      "title": "Code Review",
+      "file": "stories/story-997-code-review.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "SETUP-005"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T08:03:52.729Z",
+        "startedAt": "2026-02-13T09:51:36.832Z",
+        "completedAt": "2026-02-13T09:53:41.510Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-agent-os-setup-wizard/review-report.md",
+          "agent-os/specs/2026-02-13-agent-os-setup-wizard/stories/story-997-code-review.md"
+        ],
+        "commits": [
+          {
+            "hash": "pending",
+            "message": "feat: SETUP-997 Code Review completed",
+            "timestamp": "2026-02-13T12:00:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "SETUP-998",
+      "title": "Integration Validation",
+      "file": "stories/story-998-integration-validation.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "SETUP-997"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T08:03:52.729Z",
+        "startedAt": "2026-02-13T09:54:29.242Z",
+        "completedAt": "2026-02-13T09:56:25.061Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-agent-os-setup-wizard/stories/story-998-integration-validation.md"
+        ],
+        "commits": [
+          {
+            "hash": "pending",
+            "message": "feat: SETUP-998 Integration Validation completed",
+            "timestamp": "2026-02-13T12:00:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "SETUP-999",
+      "title": "Finalize PR",
+      "file": "stories/story-999-finalize-pr.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "SETUP-998"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T08:03:52.729Z",
+        "startedAt": "2026-02-13T09:57:09.538Z",
+        "completedAt": "2026-02-13T10:01:22.050Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-agent-os-setup-wizard/test-scenarios.md",
+          "agent-os/knowledge/knowledge-index.md",
+          "agent-os/knowledge/ui-components.md",
+          "agent-os/knowledge/shared-services.md"
+        ],
+        "commits": [
+          {
+            "hash": "9f34c5b",
+            "message": "feat: SETUP-999 Finalize PR - test scenarios, project knowledge update",
+            "timestamp": "2026-02-13T11:00:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 8,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 8,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 17,
+    "completedEffort": 17,
+    "remainingEffort": 0,
+    "progressPercent": 100,
+    "byType": {
+      "backend": 3,
+      "frontend": 2,
+      "system": 3
+    },
+    "byPriority": {
+      "critical": 4,
+      "high": 4
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": []
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-13T08:03:52.729Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 8 stories via MCP tool"
+    },
+    {
+      "timestamp": "2026-02-13T08:46:55.804Z",
+      "action": "status_changed",
+      "storyId": "SETUP-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T08:46:55.951Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/agent-os-setup-wizard"
+    },
+    {
+      "timestamp": "2026-02-13T08:48:59.317Z",
+      "action": "status_changed",
+      "storyId": "SETUP-001",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T08:49:02.663Z",
+      "action": "status_changed",
+      "storyId": "SETUP-001",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T08:49:18.886Z",
+      "action": "status_changed",
+      "storyId": "SETUP-001",
+      "details": "Moved from done to in_review"
+    },
+    {
+      "timestamp": "2026-02-13T08:49:19.923Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/agent-os-setup-wizard"
+    },
+    {
+      "timestamp": "2026-02-13T08:49:20.889Z",
+      "action": "status_changed",
+      "storyId": "SETUP-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T08:49:21.024Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/agent-os-setup-wizard"
+    },
+    {
+      "timestamp": "2026-02-13T08:51:35.283Z",
+      "action": "status_changed",
+      "storyId": "SETUP-002",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T08:51:38.254Z",
+      "action": "status_changed",
+      "storyId": "SETUP-002",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T08:51:46.050Z",
+      "action": "status_changed",
+      "storyId": "SETUP-002",
+      "details": "Story completed: done → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T08:51:48.971Z",
+      "action": "status_changed",
+      "storyId": "SETUP-002",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T08:51:58.405Z",
+      "action": "status_changed",
+      "storyId": "SETUP-002",
+      "details": "Moved from done to in_review"
+    },
+    {
+      "timestamp": "2026-02-13T09:15:00.000Z",
+      "action": "manual_fix",
+      "storyId": "SETUP-001",
+      "details": "Corrected status: in_review → done (was reverted by client bug)"
+    },
+    {
+      "timestamp": "2026-02-13T09:15:00.000Z",
+      "action": "manual_fix",
+      "storyId": "SETUP-002",
+      "details": "Corrected status: in_review → done (was reverted by client bug)"
+    },
+    {
+      "timestamp": "2026-02-13T09:15:00.000Z",
+      "action": "dependency_resolved",
+      "storyId": "SETUP-003",
+      "details": "Unblocked: all dependencies done (SETUP-001, SETUP-002)"
+    },
+    {
+      "timestamp": "2026-02-13T09:20:55.465Z",
+      "action": "status_changed",
+      "storyId": "SETUP-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T09:20:55.628Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/agent-os-setup-wizard"
+    },
+    {
+      "timestamp": "2026-02-13T09:24:56.552Z",
+      "action": "status_changed",
+      "storyId": "SETUP-003",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T09:24:59.436Z",
+      "action": "status_changed",
+      "storyId": "SETUP-003",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T09:42:51.868Z",
+      "action": "status_changed",
+      "storyId": "SETUP-004",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T09:42:52.014Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/agent-os-setup-wizard"
+    },
+    {
+      "timestamp": "2026-02-13T09:47:45.464Z",
+      "action": "status_changed",
+      "storyId": "SETUP-004",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T09:47:48.701Z",
+      "action": "status_changed",
+      "storyId": "SETUP-004",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T09:48:03.635Z",
+      "action": "dependency_resolved",
+      "storyId": "SETUP-005",
+      "details": "Unblocked: all dependencies done (SETUP-004)"
+    },
+    {
+      "timestamp": "2026-02-13T09:48:04.712Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/agent-os-setup-wizard"
+    },
+    {
+      "timestamp": "2026-02-13T09:48:38.472Z",
+      "action": "status_changed",
+      "storyId": "SETUP-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T09:50:37.284Z",
+      "action": "status_changed",
+      "storyId": "SETUP-005",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T09:50:41.012Z",
+      "action": "status_changed",
+      "storyId": "SETUP-005",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T09:50:59.907Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: all-stories-done"
+    },
+    {
+      "timestamp": "2026-02-13T09:51:08.538Z",
+      "action": "dependency_resolved",
+      "storyId": "SETUP-997",
+      "details": "Unblocked: all dependencies done (SETUP-005)"
+    },
+    {
+      "timestamp": "2026-02-13T09:51:09.584Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/agent-os-setup-wizard"
+    },
+    {
+      "timestamp": "2026-02-13T09:51:36.833Z",
+      "action": "status_changed",
+      "storyId": "SETUP-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T09:53:38.574Z",
+      "action": "status_changed",
+      "storyId": "SETUP-997",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T09:53:41.511Z",
+      "action": "status_changed",
+      "storyId": "SETUP-997",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T09:54:02.370Z",
+      "action": "dependency_resolved",
+      "storyId": "SETUP-998",
+      "details": "Unblocked: all dependencies done (SETUP-997)"
+    },
+    {
+      "timestamp": "2026-02-13T09:54:03.406Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/agent-os-setup-wizard"
+    },
+    {
+      "timestamp": "2026-02-13T09:54:29.242Z",
+      "action": "status_changed",
+      "storyId": "SETUP-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T09:56:22.163Z",
+      "action": "status_changed",
+      "storyId": "SETUP-998",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T09:56:25.061Z",
+      "action": "status_changed",
+      "storyId": "SETUP-998",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T09:56:45.402Z",
+      "action": "dependency_resolved",
+      "storyId": "SETUP-999",
+      "details": "Unblocked: all dependencies done (SETUP-998)"
+    },
+    {
+      "timestamp": "2026-02-13T09:56:46.487Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/agent-os-setup-wizard"
+    },
+    {
+      "timestamp": "2026-02-13T09:57:09.540Z",
+      "action": "status_changed",
+      "storyId": "SETUP-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T10:01:18.794Z",
+      "action": "status_changed",
+      "storyId": "SETUP-999",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T10:01:22.050Z",
+      "action": "status_changed",
+      "storyId": "SETUP-999",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T10:01:26.840Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+    }
+  ]
+}

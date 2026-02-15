@@ -1,0 +1,46 @@
+{
+  "name": "agent-os-ui",
+  "version": "0.1.0",
+  "description": "Web UI for Agent OS - Claude Code integration",
+  "type": "module",
+  "scripts": {
+    "start:backend": "tsx src/server/index.ts",
+    "build:backend": "tsc -p tsconfig.json",
+    "dev:backend": "nodemon",
+    "dev:ui": "npm run dev --prefix ui",
+    "build:ui": "npm run build --prefix ui",
+    "lint": "eslint src && npm run lint --prefix ui",
+    "lint:backend": "eslint src",
+    "lint:ui": "npm run lint --prefix ui",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run --grep 'workflow.*integration'"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "express": "^4.21.0",
+    "lit": "^3.3.2",
+    "node-pty": "^1.1.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.12",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "happy-dom": "^20.4.0",
+    "nodemon": "^3.1.11",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.54.0",
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

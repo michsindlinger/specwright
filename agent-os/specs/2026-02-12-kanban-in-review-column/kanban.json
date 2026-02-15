@@ -1,0 +1,705 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-12-kanban-in-review-column",
+    "name": "Kanban In Review Column",
+    "prefix": "KIRC",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-12T00:00:00Z"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "feature/kanban-in-review-column",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed KIRC-999",
+    "nextAction": "All stories complete",
+    "progressIndex": 16,
+    "totalStories": 7,
+    "gitStrategy": "branch"
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-02-12T23:24:55.701Z",
+    "completedAt": "2026-02-12T23:37:26.947Z",
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "KIRC-001",
+      "title": "Backend Schema: In Review Status Mapping",
+      "slug": "backend-schema-in-review-status",
+      "classification": {
+        "type": "backend",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "done",
+      "phase": "done",
+      "dorStatus": "refined",
+      "storyFile": "stories/story-001-backend-schema-in-review-status.md",
+      "timing": {
+        "createdAt": "2026-02-12T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-12T23:15:36.933Z",
+        "completedAt": "2026-02-12T23:19:57.753Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/specs-reader.ts",
+          "agent-os-ui/src/server/websocket.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "9b0d02a",
+            "message": "feat: KIRC-001 Backend Schema: In Review Status Mapping",
+            "timestamp": "2026-02-13T00:00:00Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      }
+    },
+    {
+      "id": "KIRC-002",
+      "title": "MCP Kanban Tool Anpassung",
+      "slug": "mcp-kanban-tool-anpassung",
+      "classification": {
+        "type": "backend",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "KIRC-001"
+      ],
+      "status": "done",
+      "phase": "done",
+      "dorStatus": "refined",
+      "storyFile": "stories/story-002-mcp-kanban-tool-anpassung.md",
+      "timing": {
+        "createdAt": "2026-02-12T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-12T23:20:28.901Z",
+        "completedAt": "2026-02-12T23:23:47.856Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "~/.agent-os/scripts/mcp/kanban-mcp-server.ts"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      }
+    },
+    {
+      "id": "KIRC-003",
+      "title": "Frontend Kanban-Board: In Review Spalte",
+      "slug": "frontend-in-review-spalte",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "KIRC-001"
+      ],
+      "status": "done",
+      "phase": "done",
+      "dorStatus": "refined",
+      "storyFile": "stories/story-003-frontend-in-review-spalte.md",
+      "timing": {
+        "createdAt": "2026-02-12T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-12T23:24:01.374Z",
+        "completedAt": "2026-02-12T23:29:23.528Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/kanban-board.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "11b2055",
+            "message": "feat: KIRC-003 Frontend Kanban-Board: In Review Spalte",
+            "timestamp": "2026-02-13T00:00:00Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      }
+    },
+    {
+      "id": "KIRC-004",
+      "title": "Story-Status-Transitionen für In Review",
+      "slug": "story-status-transitionen",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "KIRC-003"
+      ],
+      "status": "done",
+      "phase": "done",
+      "dorStatus": "refined",
+      "storyFile": "stories/story-004-story-status-transitionen.md",
+      "timing": {
+        "createdAt": "2026-02-12T00:00:00Z",
+        "updatedAt": "2026-02-13T00:00:00Z",
+        "startedAt": "2026-02-12T23:24:55.701Z",
+        "completedAt": "2026-02-12T23:33:41.377Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/kanban-board.ts",
+          "agent-os-ui/ui/src/views/dashboard-view.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "a772dde",
+            "message": "feat: KIRC-004 Story-Status-Transitionen für In Review",
+            "timestamp": "2026-02-13T00:29:14+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "KIRC-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "KIRC-001",
+        "KIRC-002",
+        "KIRC-003",
+        "KIRC-004"
+      ],
+      "status": "done",
+      "phase": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-12T00:00:00Z",
+        "updatedAt": "2026-02-12T00:00:00Z",
+        "startedAt": "2026-02-12T23:29:32.105Z",
+        "completedAt": "2026-02-12T23:31:51.695Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-12-kanban-in-review-column/review-report.md"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "KIRC-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "KIRC-997"
+      ],
+      "status": "done",
+      "phase": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-12T00:00:00Z",
+        "updatedAt": "2026-02-12T00:00:00Z",
+        "startedAt": "2026-02-12T23:32:04.166Z",
+        "completedAt": "2026-02-12T23:35:21.064Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-12-kanban-in-review-column/stories/story-998-integration-validation.md",
+          "agent-os/specs/2026-02-12-kanban-in-review-column/spec.md"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "KIRC-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "KIRC-998"
+      ],
+      "status": "done",
+      "phase": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-12T00:00:00Z",
+        "updatedAt": "2026-02-12T00:00:00Z",
+        "startedAt": "2026-02-12T23:33:31.375Z",
+        "completedAt": "2026-02-12T23:37:26.947Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-12-kanban-in-review-column/test-scenarios.md",
+          "agent-os/knowledge/knowledge-index.md",
+          "agent-os/knowledge/shared-services.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "628c321",
+            "message": "feat: KIRC-999 Finalize PR - test-scenarios, knowledge update",
+            "timestamp": "2026-02-13T00:00:00Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "model": "claude-opus-4-6"
+    }
+  ],
+  "boardStatus": {
+    "total": 7,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 7,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
+    "progressPercent": 0,
+    "byType": {
+      "undefined": 7
+    },
+    "byPriority": {
+      "undefined": 7
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Backend Foundation",
+        "stories": [
+          "KIRC-001"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 2,
+        "name": "MCP + Frontend (parallel)",
+        "stories": [
+          "KIRC-002",
+          "KIRC-003"
+        ],
+        "parallel": true
+      },
+      {
+        "phase": 3,
+        "name": "Frontend Transitionen",
+        "stories": [
+          "KIRC-004"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 4,
+        "name": "System Stories",
+        "stories": [
+          "KIRC-997",
+          "KIRC-998",
+          "KIRC-999"
+        ],
+        "parallel": false
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-12T00:00:00Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 7 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-13T00:00:00Z",
+      "action": "architect_refinement",
+      "storyId": null,
+      "details": "Architect refinement completed for KIRC-001, KIRC-002, KIRC-003, KIRC-004. All DoR checkboxes marked as complete. Technical details, skills, and completion checks added."
+    },
+    {
+      "timestamp": "2026-02-12T23:15:36.933Z",
+      "action": "status_changed",
+      "storyId": "KIRC-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T23:15:37.078Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:15:51.922Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-02-12T23:19:57.753Z",
+      "action": "status_changed",
+      "storyId": "KIRC-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:20:27.943Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:20:28.901Z",
+      "action": "status_changed",
+      "storyId": "KIRC-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T23:20:29.036Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:23:30.830Z",
+      "action": "status_changed",
+      "storyId": "KIRC-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:23:47.858Z",
+      "action": "status_changed",
+      "storyId": "KIRC-002",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:24:00.418Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:24:01.374Z",
+      "action": "status_changed",
+      "storyId": "KIRC-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T23:24:01.510Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:24:20.792Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:24:48.444Z",
+      "action": "status_changed",
+      "storyId": "KIRC-003",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:24:55.701Z",
+      "action": "status_changed",
+      "storyId": "KIRC-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T23:27:10.261Z",
+      "action": "status_changed",
+      "storyId": "KIRC-003",
+      "details": "Story completed: in_review → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:27:39.354Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-12T23:27:56.309Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:27:57.875Z",
+      "action": "status_changed",
+      "storyId": "KIRC-003",
+      "details": "Story completed: in_review → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:28:17.408Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:29:06.561Z",
+      "action": "status_changed",
+      "storyId": "KIRC-004",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:29:10.567Z",
+      "action": "status_changed",
+      "storyId": "KIRC-004",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:29:18.565Z",
+      "action": "status_changed",
+      "storyId": "KIRC-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T23:29:19.363Z",
+      "action": "status_changed",
+      "storyId": "KIRC-004",
+      "details": "Story completed: done → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:29:23.528Z",
+      "action": "status_changed",
+      "storyId": "KIRC-003",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:29:24.072Z",
+      "action": "status_changed",
+      "storyId": "KIRC-004",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:29:32.105Z",
+      "action": "status_changed",
+      "storyId": "KIRC-997",
+      "details": "Story started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T23:29:39.194Z",
+      "action": "status_changed",
+      "storyId": "KIRC-004",
+      "details": "Story completed: done → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:29:53.691Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:30:47.993Z",
+      "action": "status_changed",
+      "storyId": "KIRC-997",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:30:51.451Z",
+      "action": "status_changed",
+      "storyId": "KIRC-997",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:31:00.244Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-12T23:31:21.131Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:31:43.067Z",
+      "action": "status_changed",
+      "storyId": "KIRC-997",
+      "details": "Story completed: done → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:31:46.429Z",
+      "action": "status_changed",
+      "storyId": "KIRC-997",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:31:47.392Z",
+      "action": "status_changed",
+      "storyId": "KIRC-997",
+      "details": "Story completed: done → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:31:47.713Z",
+      "action": "status_changed",
+      "storyId": "KIRC-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T23:31:51.695Z",
+      "action": "status_changed",
+      "storyId": "KIRC-997",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:31:54.808Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-12T23:32:03.283Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/kanban-in-review-column"
+    },
+    {
+      "timestamp": "2026-02-12T23:32:04.166Z",
+      "action": "status_changed",
+      "storyId": "KIRC-998",
+      "details": "Story started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T23:33:19.447Z",
+      "action": "status_changed",
+      "storyId": "KIRC-998",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:33:22.416Z",
+      "action": "status_changed",
+      "storyId": "KIRC-998",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:33:31.375Z",
+      "action": "status_changed",
+      "storyId": "KIRC-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T23:33:32.173Z",
+      "action": "status_changed",
+      "storyId": "KIRC-998",
+      "details": "Story completed: done → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:33:37.327Z",
+      "action": "status_changed",
+      "storyId": "KIRC-998",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:33:41.377Z",
+      "action": "status_changed",
+      "storyId": "KIRC-004",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:33:55.959Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-12T23:35:17.436Z",
+      "action": "status_changed",
+      "storyId": "KIRC-998",
+      "details": "Story completed: done → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:35:21.064Z",
+      "action": "status_changed",
+      "storyId": "KIRC-998",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-12T23:35:31.913Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-12T23:37:23.809Z",
+      "action": "status_changed",
+      "storyId": "KIRC-999",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-12T23:37:26.947Z",
+      "action": "status_changed",
+      "storyId": "KIRC-999",
+      "details": "Story approved: in_review → done"
+    }
+  ]
+}

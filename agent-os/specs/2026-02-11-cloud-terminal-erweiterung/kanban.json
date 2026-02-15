@@ -1,0 +1,673 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-11-cloud-terminal-erweiterung",
+    "name": "Cloud Terminal Erweiterung",
+    "prefix": "CTE",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-11"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "feature/cloud-terminal-erweiterung",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "PR created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/18",
+    "nextAction": "All stories complete",
+    "progressIndex": 14,
+    "totalStories": 7,
+    "gitStrategy": "branch"
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-02-11T09:44:21.506Z",
+    "completedAt": "2026-02-11T09:57:21.149Z",
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "CTE-001",
+      "title": "Terminal-Typ im Datenmodell & Protokoll",
+      "slug": "terminal-typ-datenmodell",
+      "classification": {
+        "type": "shared-types",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-terminal-typ-datenmodell.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T09:27:58.569Z",
+        "completedAt": "2026-02-11T09:35:13.867Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/shared/types/cloud-terminal.protocol.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "5d78f1c",
+            "message": "feat: CTE-001 Terminal-Typ im Datenmodell & Protokoll",
+            "timestamp": "2026-02-11T09:40:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "phase": "done"
+    },
+    {
+      "id": "CTE-002",
+      "title": "Backend Plain Terminal Support",
+      "slug": "backend-plain-terminal",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CTE-001"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-backend-plain-terminal.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T09:35:28.253Z",
+        "completedAt": "2026-02-11T09:41:20.487Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/services/cloud-terminal-manager.ts",
+          "agent-os-ui/src/server/websocket.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "6a4ba90",
+            "message": "feat: CTE-002 Backend Plain Terminal Support",
+            "timestamp": "2026-02-11T10:40:36+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "phase": "done"
+    },
+    {
+      "id": "CTE-003",
+      "title": "Frontend Session-Erstellungs-UI",
+      "slug": "frontend-session-ui",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CTE-001",
+        "CTE-002"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-frontend-session-ui.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T09:41:44.571Z",
+        "completedAt": "2026-02-11T09:46:41.046Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/terminal/aos-model-dropdown.ts",
+          "agent-os-ui/ui/src/components/terminal/aos-terminal-session.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "acfe171",
+            "message": "feat: CTE-003 Frontend Session-Erstellungs-UI",
+            "timestamp": "2026-02-11T10:44:12+01:00"
+          },
+          {
+            "hash": "1ee11f0",
+            "message": "feat: CTE-003 Frontend Session-Erstellungs-UI",
+            "timestamp": "2026-02-11T10:46:13+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "phase": "done"
+    },
+    {
+      "id": "CTE-004",
+      "title": "Integration & Tab-Management",
+      "slug": "integration-tab-management",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CTE-001",
+        "CTE-002",
+        "CTE-003"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-004-integration-tab-management.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T09:44:21.506Z",
+        "completedAt": "2026-02-11T09:48:39.862Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/services/cloud-terminal.service.ts",
+          "agent-os-ui/ui/src/components/terminal/aos-cloud-terminal-sidebar.ts",
+          "agent-os-ui/ui/src/components/terminal/aos-terminal-session.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "193ded7",
+            "message": "feat: CTE-004 Integration & Tab-Management",
+            "timestamp": "2026-02-11T11:30:00+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "CTE-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CTE-001",
+        "CTE-002",
+        "CTE-003",
+        "CTE-004"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T09:48:44.815Z",
+        "completedAt": "2026-02-11T09:53:26.787Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/services/cloud-terminal.service.ts",
+          "agent-os/specs/2026-02-11-cloud-terminal-erweiterung/implementation-reports/code-review-report.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "c322734",
+            "message": "feat: CTE-997 Code Review completed",
+            "timestamp": "2026-02-11T11:00:00+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "CTE-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CTE-997"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T09:51:33.956Z",
+        "completedAt": "2026-02-11T09:54:30.831Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-11-cloud-terminal-erweiterung/implementation-reports/integration-test-report.md",
+          "agent-os/specs/2026-02-11-cloud-terminal-erweiterung/stories/story-998-integration-validation.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "467e22c",
+            "message": "feat: CTE-998 Integration Validation",
+            "timestamp": "2026-02-11T10:54:21+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "CTE-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CTE-998"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T09:53:35.840Z",
+        "completedAt": "2026-02-11T09:57:21.149Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-11-cloud-terminal-erweiterung/implementation-reports/test-scenarios.md",
+          "agent-os/specs/2026-02-11-cloud-terminal-erweiterung/handover-docs/user-todos.md",
+          "agent-os/knowledge/knowledge-index.md",
+          "agent-os/knowledge/data-models.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "026165c",
+            "message": "feat: CTE-999 Finalize PR - test scenarios, user-todos, knowledge update",
+            "timestamp": "2026-02-11T13:00:00+01:00"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    }
+  ],
+  "boardStatus": {
+    "total": 7,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 7,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
+    "progressPercent": 0,
+    "byType": {
+      "undefined": 7
+    },
+    "byPriority": {
+      "undefined": 7
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Datenmodell & Protokoll",
+        "stories": [
+          "CTE-001"
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "Backend Plain Terminal Support",
+        "stories": [
+          "CTE-002"
+        ]
+      },
+      {
+        "phase": 3,
+        "name": "Frontend Session-Erstellungs-UI",
+        "stories": [
+          "CTE-003"
+        ]
+      },
+      {
+        "phase": 4,
+        "name": "Integration & Tab-Management",
+        "stories": [
+          "CTE-004"
+        ]
+      },
+      {
+        "phase": 5,
+        "name": "System Stories",
+        "stories": [
+          "CTE-997",
+          "CTE-998",
+          "CTE-999"
+        ]
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-11",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 7 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-11",
+      "action": "technical_refinement",
+      "storyId": null,
+      "details": "Technical refinement completed for CTE-001, CTE-002, CTE-003, CTE-004. All DoR checkboxes marked complete. dorStatus set to ready."
+    },
+    {
+      "timestamp": "2026-02-11T09:27:58.570Z",
+      "action": "status_changed",
+      "storyId": "CTE-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T09:27:58.717Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:28:14.516Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-02-11T09:31:53.540Z",
+      "action": "status_changed",
+      "storyId": "CTE-001",
+      "details": "Moved from in_progress to ready"
+    },
+    {
+      "timestamp": "2026-02-11T09:32:12.828Z",
+      "action": "status_changed",
+      "storyId": "CTE-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T09:32:12.991Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:35:13.870Z",
+      "action": "status_changed",
+      "storyId": "CTE-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:35:27.303Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:35:28.253Z",
+      "action": "status_changed",
+      "storyId": "CTE-002",
+      "details": "Moved from blocked to in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T09:35:28.391Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:41:04.212Z",
+      "action": "status_changed",
+      "storyId": "CTE-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:41:20.491Z",
+      "action": "status_changed",
+      "storyId": "CTE-002",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:41:43.233Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:41:44.571Z",
+      "action": "status_changed",
+      "storyId": "CTE-003",
+      "details": "Moved from blocked to in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T09:41:44.702Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:42:10.823Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:44:17.302Z",
+      "action": "status_changed",
+      "storyId": "CTE-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:44:21.506Z",
+      "action": "status_changed",
+      "storyId": "CTE-004",
+      "details": "Story started: blocked → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T09:46:21.080Z",
+      "action": "status_changed",
+      "storyId": "CTE-003",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:46:41.048Z",
+      "action": "status_changed",
+      "storyId": "CTE-003",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:46:59.197Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-11T09:47:10.395Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:47:34.840Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:48:25.984Z",
+      "action": "status_changed",
+      "storyId": "CTE-997",
+      "details": "Story started: blocked → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T09:48:29.925Z",
+      "action": "status_changed",
+      "storyId": "CTE-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:48:39.862Z",
+      "action": "status_changed",
+      "storyId": "CTE-004",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:48:44.815Z",
+      "action": "status_changed",
+      "storyId": "CTE-997",
+      "details": "Story started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T09:49:02.557Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:50:46.584Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:51:19.853Z",
+      "action": "status_changed",
+      "storyId": "CTE-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:51:27.588Z",
+      "action": "status_changed",
+      "storyId": "CTE-997",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:51:30.503Z",
+      "action": "status_changed",
+      "storyId": "CTE-998",
+      "details": "Story started: blocked → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T09:51:33.956Z",
+      "action": "status_changed",
+      "storyId": "CTE-998",
+      "details": "Story started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T09:52:47.797Z",
+      "action": "status_changed",
+      "storyId": "CTE-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:52:52.631Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-11T09:53:08.454Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/cloud-terminal-erweiterung"
+    },
+    {
+      "timestamp": "2026-02-11T09:53:26.787Z",
+      "action": "status_changed",
+      "storyId": "CTE-997",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:53:35.843Z",
+      "action": "status_changed",
+      "storyId": "CTE-999",
+      "details": "Story started: blocked → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T09:54:30.831Z",
+      "action": "status_changed",
+      "storyId": "CTE-998",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:54:35.689Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-11T09:57:21.149Z",
+      "action": "status_changed",
+      "storyId": "CTE-999",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T09:57:24.970Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+    }
+  ]
+}

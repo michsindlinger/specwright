@@ -1,0 +1,884 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-13-global-spec-queue",
+    "name": "Global Spec Queue",
+    "prefix": "GSQ",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-13T15:14:04.701Z"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "feature/global-spec-queue",
+    "gitStrategy": "branch",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "PR created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/28",
+    "nextAction": "All stories complete",
+    "progressIndex": 12,
+    "totalStories": 12
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-02-13T19:44:57.971Z",
+    "completedAt": "2026-02-13T20:52:05.758Z",
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "GSQ-001",
+      "title": "Backend Queue-Service auf Global umstellen",
+      "file": "stories/GSQ-001.md",
+      "type": "backend",
+      "priority": "critical",
+      "effort": 5,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": null,
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T19:33:29.255Z",
+        "completedAt": "2026-02-13T19:44:05.924Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/services/queue.service.ts",
+          "agent-os-ui/src/server/handlers/queue.handler.ts",
+          "agent-os-ui/src/server/websocket.ts",
+          "agent-os-ui/src/server/workflow-executor.ts",
+          "agent-os-ui/ui/src/components/queue/aos-queue-item.ts",
+          "agent-os-ui/ui/src/gateway.ts",
+          "agent-os-ui/ui/src/views/dashboard-view.ts",
+          "agent-os-ui/tests/unit/queue.service.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "4e614376210acb39aae9ba9df80d781638cac9f6",
+            "message": "feat: GSQ-001 Backend Queue-Service auf Global umstellen",
+            "timestamp": "2026-02-13T20:43:52+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-002",
+      "title": "Multi-Project Spec-Loading",
+      "file": "stories/GSQ-002.md",
+      "type": "backend",
+      "priority": "critical",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T19:44:57.971Z",
+        "completedAt": "2026-02-13T19:48:17.281Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/specs-reader.ts",
+          "agent-os-ui/src/server/websocket.ts",
+          "agent-os-ui/tests/unit/specs-reader.listAllSpecs.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "a41c273",
+            "message": "feat: GSQ-002 Multi-Project Spec-Loading",
+            "timestamp": "2026-02-13T20:47:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-003",
+      "title": "Execution Log Service",
+      "file": "stories/GSQ-003.md",
+      "type": "backend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T19:49:35.294Z",
+        "completedAt": "2026-02-13T19:54:22.813Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/services/execution-log.service.ts",
+          "agent-os-ui/src/server/handlers/queue.handler.ts",
+          "agent-os-ui/src/server/websocket.ts",
+          "agent-os-ui/tests/unit/execution-log.service.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "9361b33",
+            "message": "feat: GSQ-003 Execution Log Service",
+            "timestamp": "2026-02-13T20:53:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-004",
+      "title": "Bottom Panel Grundstruktur",
+      "file": "stories/GSQ-004.md",
+      "type": "frontend",
+      "priority": "critical",
+      "effort": 5,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "GSQ-001",
+        "GSQ-002",
+        "GSQ-003"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T19:57:03.358Z",
+        "completedAt": "2026-02-13T20:02:16.394Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/queue/aos-global-queue-panel.ts",
+          "agent-os-ui/tests/unit/aos-global-queue-panel.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "8d9d939",
+            "message": "feat: GSQ-004 Bottom Panel Grundstruktur",
+            "timestamp": "2026-02-13T21:02:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-005",
+      "title": "App Shell Integration",
+      "file": "stories/GSQ-005.md",
+      "type": "frontend",
+      "priority": "critical",
+      "effort": 5,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "GSQ-004"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T20:03:06.970Z",
+        "completedAt": "2026-02-13T20:07:47.083Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "commits": [
+          {
+            "hash": "20fcf93",
+            "message": "feat: GSQ-005 App Shell Integration",
+            "timestamp": "2026-02-13T21:10:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-006",
+      "title": "Queue Section (Split-View links)",
+      "file": "stories/GSQ-006.md",
+      "type": "frontend",
+      "priority": "critical",
+      "effort": 5,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "GSQ-005"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T20:09:11.037Z",
+        "completedAt": "2026-02-13T20:14:42.616Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/queue/aos-queue-section.ts",
+          "agent-os-ui/ui/src/components/queue/aos-global-queue-panel.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "commits": [
+          {
+            "hash": "99ddd61",
+            "message": "feat: GSQ-006 Queue Section (Split-View links)",
+            "timestamp": "2026-02-13T21:14:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-007",
+      "title": "Specs Section (Split-View rechts)",
+      "file": "stories/GSQ-007.md",
+      "type": "frontend",
+      "priority": "critical",
+      "effort": 5,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "GSQ-005"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T20:15:27.926Z",
+        "completedAt": "2026-02-13T20:21:05.888Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/queue/aos-specs-section.ts",
+          "agent-os-ui/ui/src/components/queue/aos-global-queue-panel.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "commits": [
+          {
+            "hash": "d982f28",
+            "message": "feat: GSQ-007 Specs Section (Split-View rechts)",
+            "timestamp": "2026-02-13T22:30:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-008",
+      "title": "Execution Log Tab",
+      "file": "stories/GSQ-008.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "GSQ-005"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T20:21:58.806Z",
+        "completedAt": "2026-02-13T20:24:50.802Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/queue/aos-execution-log-tab.ts",
+          "agent-os-ui/ui/src/components/queue/aos-global-queue-panel.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "commits": [
+          {
+            "hash": "f2915ca",
+            "message": "feat: GSQ-008 Execution Log Tab",
+            "timestamp": "2026-02-13T22:45:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-009",
+      "title": "Dashboard Queue-Sidebar entfernen",
+      "file": "stories/GSQ-009.md",
+      "type": "full-stack",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "GSQ-006",
+        "GSQ-007"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T20:25:43.767Z",
+        "completedAt": "2026-02-13T20:32:03.686Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/dashboard-view.ts",
+          "agent-os-ui/ui/src/components/spec-card.ts",
+          "agent-os-ui/ui/src/components/queue/aos-queue-item.ts",
+          "agent-os-ui/ui/src/components/queue/aos-queue-sidebar.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "commits": [
+          {
+            "hash": "5b9fc46",
+            "message": "feat: GSQ-009 Dashboard Queue-Sidebar entfernen",
+            "timestamp": "2026-02-13T21:31:51+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-997",
+      "title": "Fix-Story",
+      "file": "stories/GSQ-997.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "GSQ-009"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T20:33:18.007Z",
+        "completedAt": "2026-02-13T20:39:03.191Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/queue/aos-global-queue-panel.ts",
+          "agent-os/specs/2026-02-13-global-spec-queue/review-report.md",
+          "agent-os/specs/2026-02-13-global-spec-queue/stories/GSQ-997.md"
+        ],
+        "commits": [
+          {
+            "hash": "71fb174",
+            "message": "fix: GSQ-997 Fix-Story - CSS variable naming + review report",
+            "timestamp": "2026-02-13T22:00:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-998",
+      "title": "Code Review",
+      "file": "stories/GSQ-998.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "GSQ-997"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T20:39:48.329Z",
+        "completedAt": "2026-02-13T20:46:28.109Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/queue/aos-global-queue-panel.ts",
+          "agent-os-ui/tests/unit/aos-global-queue-panel.test.ts",
+          "agent-os/specs/2026-02-13-global-spec-queue/review-report.md"
+        ],
+        "commits": [
+          {
+            "hash": "4bd0845",
+            "message": "feat: GSQ-998 Integration Validation",
+            "timestamp": "2026-02-13T21:47:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "GSQ-999",
+      "title": "Finale Integration",
+      "file": "stories/GSQ-999.md",
+      "type": "system",
+      "priority": "critical",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "GSQ-998"
+      ],
+      "blockedBy": [],
+      "model": "claude-opus-4-6",
+      "timing": {
+        "createdAt": "2026-02-13T15:14:04.701Z",
+        "startedAt": "2026-02-13T20:47:16.997Z",
+        "completedAt": "2026-02-13T20:52:05.758Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-global-spec-queue/test-scenarios.md",
+          "agent-os/specs/2026-02-13-global-spec-queue/kanban.json"
+        ],
+        "commits": [
+          {
+            "hash": "7a73903",
+            "message": "docs: GSQ-999 Finalize - test-scenarios.md + kanban update",
+            "timestamp": "2026-02-13T21:50:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 12,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 12,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 43,
+    "completedEffort": 43,
+    "remainingEffort": 0,
+    "progressPercent": 100,
+    "byType": {
+      "backend": 3,
+      "frontend": 5,
+      "full-stack": 1,
+      "system": 3
+    },
+    "byPriority": {
+      "critical": 7,
+      "high": 5
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": []
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-13T15:14:04.701Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 12 stories via MCP tool"
+    },
+    {
+      "timestamp": "2026-02-13T19:33:29.255Z",
+      "action": "status_changed",
+      "storyId": "GSQ-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T19:33:29.383Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T19:44:02.299Z",
+      "action": "status_changed",
+      "storyId": "GSQ-001",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T19:44:05.924Z",
+      "action": "status_changed",
+      "storyId": "GSQ-001",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T19:44:31.262Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T19:44:57.973Z",
+      "action": "status_changed",
+      "storyId": "GSQ-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T19:48:13.793Z",
+      "action": "status_changed",
+      "storyId": "GSQ-002",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T19:48:17.281Z",
+      "action": "status_changed",
+      "storyId": "GSQ-002",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T19:49:06.204Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T19:49:35.295Z",
+      "action": "status_changed",
+      "storyId": "GSQ-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T19:54:19.207Z",
+      "action": "status_changed",
+      "storyId": "GSQ-003",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T19:54:22.813Z",
+      "action": "status_changed",
+      "storyId": "GSQ-003",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T19:55:32.425Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T19:57:03.360Z",
+      "action": "status_changed",
+      "storyId": "GSQ-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T20:02:09.019Z",
+      "action": "status_changed",
+      "storyId": "GSQ-004",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T20:02:16.394Z",
+      "action": "status_changed",
+      "storyId": "GSQ-004",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T20:02:31.099Z",
+      "action": "dependency_resolved",
+      "storyId": "GSQ-005",
+      "details": "Unblocked: all dependencies done/in_review (GSQ-004)"
+    },
+    {
+      "timestamp": "2026-02-13T20:02:32.148Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T20:03:06.971Z",
+      "action": "status_changed",
+      "storyId": "GSQ-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T20:07:44.021Z",
+      "action": "status_changed",
+      "storyId": "GSQ-005",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T20:07:47.083Z",
+      "action": "status_changed",
+      "storyId": "GSQ-005",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T20:07:57.797Z",
+      "action": "dependency_resolved",
+      "storyId": "GSQ-006",
+      "details": "Unblocked: all dependencies done/in_review (GSQ-005)"
+    },
+    {
+      "timestamp": "2026-02-13T20:07:57.797Z",
+      "action": "dependency_resolved",
+      "storyId": "GSQ-007",
+      "details": "Unblocked: all dependencies done/in_review (GSQ-005)"
+    },
+    {
+      "timestamp": "2026-02-13T20:07:57.797Z",
+      "action": "dependency_resolved",
+      "storyId": "GSQ-008",
+      "details": "Unblocked: all dependencies done/in_review (GSQ-005)"
+    },
+    {
+      "timestamp": "2026-02-13T20:07:58.847Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T20:09:11.038Z",
+      "action": "status_changed",
+      "storyId": "GSQ-006",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T20:14:39.336Z",
+      "action": "status_changed",
+      "storyId": "GSQ-006",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T20:14:42.616Z",
+      "action": "status_changed",
+      "storyId": "GSQ-006",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T20:14:58.208Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T20:15:27.927Z",
+      "action": "status_changed",
+      "storyId": "GSQ-007",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T20:21:02.316Z",
+      "action": "status_changed",
+      "storyId": "GSQ-007",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T20:21:05.888Z",
+      "action": "status_changed",
+      "storyId": "GSQ-007",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T20:21:29.374Z",
+      "action": "dependency_resolved",
+      "storyId": "GSQ-009",
+      "details": "Unblocked: all dependencies done/in_review (GSQ-006, GSQ-007)"
+    },
+    {
+      "timestamp": "2026-02-13T20:21:30.431Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T20:21:58.809Z",
+      "action": "status_changed",
+      "storyId": "GSQ-008",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T20:24:48.060Z",
+      "action": "status_changed",
+      "storyId": "GSQ-008",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T20:24:50.802Z",
+      "action": "status_changed",
+      "storyId": "GSQ-008",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T20:25:10.770Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T20:25:43.771Z",
+      "action": "status_changed",
+      "storyId": "GSQ-009",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T20:32:00.046Z",
+      "action": "status_changed",
+      "storyId": "GSQ-009",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T20:32:03.686Z",
+      "action": "status_changed",
+      "storyId": "GSQ-009",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T20:32:52.341Z",
+      "action": "dependency_resolved",
+      "storyId": "GSQ-997",
+      "details": "Unblocked: all dependencies done/in_review (GSQ-009)"
+    },
+    {
+      "timestamp": "2026-02-13T20:32:53.485Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T20:33:18.008Z",
+      "action": "status_changed",
+      "storyId": "GSQ-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T20:39:00.373Z",
+      "action": "status_changed",
+      "storyId": "GSQ-997",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T20:39:03.191Z",
+      "action": "status_changed",
+      "storyId": "GSQ-997",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T20:39:21.418Z",
+      "action": "dependency_resolved",
+      "storyId": "GSQ-998",
+      "details": "Unblocked: all dependencies done/in_review (GSQ-997)"
+    },
+    {
+      "timestamp": "2026-02-13T20:39:22.476Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T20:39:48.331Z",
+      "action": "status_changed",
+      "storyId": "GSQ-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T20:46:24.973Z",
+      "action": "status_changed",
+      "storyId": "GSQ-998",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T20:46:28.109Z",
+      "action": "status_changed",
+      "storyId": "GSQ-998",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T20:46:47.528Z",
+      "action": "dependency_resolved",
+      "storyId": "GSQ-999",
+      "details": "Unblocked: all dependencies done/in_review (GSQ-998)"
+    },
+    {
+      "timestamp": "2026-02-13T20:46:48.576Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/global-spec-queue"
+    },
+    {
+      "timestamp": "2026-02-13T20:47:16.998Z",
+      "action": "status_changed",
+      "storyId": "GSQ-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T20:52:02.192Z",
+      "action": "status_changed",
+      "storyId": "GSQ-999",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T20:52:05.759Z",
+      "action": "status_changed",
+      "storyId": "GSQ-999",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T20:52:09.829Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+    }
+  ]
+}

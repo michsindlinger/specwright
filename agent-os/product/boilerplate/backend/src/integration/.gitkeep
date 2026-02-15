@@ -1,0 +1,3 @@
+# Integration Layer
+# External system wrappers: Agent SDK, WebSocket, Config
+# Examples: agent-sdk.wrapper.ts, websocket.handler.ts, config.reader.ts

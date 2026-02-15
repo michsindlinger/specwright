@@ -1,0 +1,101 @@
+{
+  "defaultProvider": "anthropic",
+  "defaultModel": "opus",
+  "providers": [
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "cliCommand": "claude",
+      "cliFlags": [
+        "--dangerously-skip-permissions",
+        "--model",
+        "{modelId}"
+      ],
+      "models": [
+        {
+          "id": "opus",
+          "name": "Opus 4.5",
+          "description": "Most capable model for complex tasks"
+        },
+        {
+          "id": "sonnet",
+          "name": "Sonnet 4",
+          "description": "Balanced performance and speed"
+        },
+        {
+          "id": "haiku",
+          "name": "Haiku 4.5"
+        }
+      ]
+    },
+    {
+      "id": "glm",
+      "name": "GLM",
+      "cliCommand": "claude-glm",
+      "cliFlags": [
+        "--model",
+        "{modelId}"
+      ],
+      "models": [
+        {
+          "id": "glm-5",
+          "name": "GLM 5",
+          "description": "Latest GLM model"
+        }
+      ]
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini",
+      "cliCommand": "claude-gem",
+      "cliFlags": [
+        "--model",
+        "{modelId}"
+      ],
+      "models": [
+        {
+          "id": "google/gemini-3-flash-preview",
+          "name": "Gemini 3 Flash",
+          "description": "Fast and efficient"
+        },
+        {
+          "id": "google/gemini-3-pro-preview",
+          "name": "Gemini 3 Pro",
+          "description": "Most capable Model"
+        }
+      ]
+    },
+    {
+      "id": "kimi-kw",
+      "name": "KIMI K2",
+      "cliCommand": "claude-kimi-api",
+      "cliFlags": [
+        "--model",
+        "{modelId}"
+      ],
+      "models": [
+        {
+          "id": "kimi-k2.5",
+          "name": "Kimi K2.5",
+          "description": ""
+        }
+      ]
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax",
+      "cliCommand": "claude-minimax",
+      "cliFlags": [
+        "--model",
+        "{modelId}"
+      ],
+      "models": [
+        {
+          "id": "MiniMax-M2.5",
+          "name": "MiniMax M2.5",
+          "description": "204K context, ~60 tokens/sec"
+        }
+      ]
+    }
+  ]
+}

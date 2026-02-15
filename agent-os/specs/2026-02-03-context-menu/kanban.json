@@ -1,0 +1,835 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-03-context-menu",
+    "name": "Context Menu",
+    "prefix": "CTX",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-03"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": null,
+    "worktreePath": null,
+    "gitBranch": "feature/context-menu",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "CTX-999 Finalize PR completed - PR #14 created",
+    "nextAction": "Spec complete - awaiting merge",
+    "progressIndex": 9,
+    "totalStories": 9,
+    "gitStrategy": "branch"
+  },
+  "execution": {
+    "status": "complete",
+    "startedAt": "2026-02-03T15:45:00.000Z",
+    "completedAt": "2026-02-03T17:08:00.000Z",
+    "model": "claude-opus-4-5-20251101"
+  },
+  "stories": [
+    {
+      "id": "CTX-001",
+      "title": "Context Menu Component",
+      "slug": "context-menu-component",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-context-menu-component.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-03",
+        "completedAt": "2026-02-03T15:50:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/aos-context-menu.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "CTX-002",
+      "title": "Global Event Handler",
+      "slug": "global-event-handler",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "XS",
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "CTX-001"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-global-event-handler.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-03",
+        "startedAt": "2026-02-03T16:00:00.000Z",
+        "completedAt": "2026-02-03T16:10:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/app.ts"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "CTX-003",
+      "title": "Generic Workflow Modal",
+      "slug": "generic-workflow-modal",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-generic-workflow-modal.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-03",
+        "startedAt": "2026-02-03T17:00:00.000Z",
+        "completedAt": "2026-02-03T17:30:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/aos-workflow-modal.ts",
+          "agent-os-ui/ui/src/components/aos-confirm-dialog.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "CTX-004",
+      "title": "Spec Selector Component",
+      "slug": "spec-selector-component",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-004-spec-selector-component.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-03",
+        "startedAt": "2026-02-03T18:00:00.000Z",
+        "completedAt": "2026-02-03T19:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/aos-spec-selector.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "CTX-005",
+      "title": "Add Story Flow Integration",
+      "slug": "add-story-flow-integration",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CTX-003",
+        "CTX-004"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-005-add-story-flow-integration.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-03",
+        "startedAt": "2026-02-03T19:05:00.000Z",
+        "completedAt": "2026-02-03T20:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/aos-workflow-modal.ts",
+          "agent-os-ui/ui/src/components/workflow-card.ts",
+          "agent-os-ui/ui/src/styles/theme.css",
+          "agent-os-ui/ui/src/app.ts"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "CTX-006",
+      "title": "Integration & Styling",
+      "slug": "integration-styling",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CTX-001",
+        "CTX-002",
+        "CTX-003",
+        "CTX-004",
+        "CTX-005"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-006-integration-styling.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-03",
+        "startedAt": "2026-02-03T17:00:00.000Z",
+        "completedAt": "2026-02-03T17:01:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "CTX-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CTX-001",
+        "CTX-002",
+        "CTX-003",
+        "CTX-004",
+        "CTX-005",
+        "CTX-006"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-03",
+        "startedAt": "2026-02-03T21:00:00.000Z",
+        "completedAt": "2026-02-03T21:15:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "CTX-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [
+        "CTX-997"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-03",
+        "startedAt": "2026-02-03T22:00:00.000Z",
+        "completedAt": "2026-02-03T17:05:30.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/app.ts"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "CTX-999",
+      "title": "Finalize Pull Request",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "XS",
+        "complexity": "XS"
+      },
+      "dependencies": [
+        "CTX-998"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-03",
+        "updatedAt": "2026-02-03",
+        "startedAt": "2026-02-03T22:30:00.000Z",
+        "completedAt": "2026-02-03T17:08:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": ["4d91aea"],
+        "prUrl": "https://github.com/michsindlinger/agent-os-extended-web-ui/pull/14"
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "claude-opus-4-5-20251101"
+    }
+  ],
+  "boardStatus": {
+    "total": 9,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 9,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 9,
+    "completedEffort": 9,
+    "remainingEffort": 0,
+    "progressPercent": 100,
+    "byType": {
+      "frontend": 6,
+      "backend": 0,
+      "devops": 0,
+      "test": 0,
+      "docs": 0,
+      "integration": 0,
+      "system": 3
+    },
+    "byPriority": {
+      "critical": 0,
+      "high": 8,
+      "medium": 1,
+      "low": 0
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Foundation",
+        "stories": [
+          "CTX-001",
+          "CTX-003",
+          "CTX-004"
+        ],
+        "parallel": true
+      },
+      {
+        "phase": 2,
+        "name": "Event Handler",
+        "stories": [
+          "CTX-002"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 3,
+        "name": "Integration",
+        "stories": [
+          "CTX-005"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 4,
+        "name": "Polish",
+        "stories": [
+          "CTX-006"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 5,
+        "name": "Quality Assurance",
+        "stories": [
+          "CTX-997",
+          "CTX-998"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 6,
+        "name": "Finalization",
+        "stories": [
+          "CTX-999"
+        ],
+        "parallel": false
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-03",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 6 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-03",
+      "action": "technical_refinement",
+      "storyId": null,
+      "details": "Architect technical refinement completed. System stories added."
+    },
+    {
+      "timestamp": "2026-02-03T15:38:11.711Z",
+      "action": "model_changed",
+      "storyId": "CTX-001",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T15:38:13.727Z",
+      "action": "model_changed",
+      "storyId": "CTX-002",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T15:38:16.661Z",
+      "action": "model_changed",
+      "storyId": "CTX-003",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T15:38:19.202Z",
+      "action": "model_changed",
+      "storyId": "CTX-004",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T15:38:22.028Z",
+      "action": "model_changed",
+      "storyId": "CTX-005",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T15:38:29.707Z",
+      "action": "model_changed",
+      "storyId": "CTX-006",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T15:38:31.868Z",
+      "action": "model_changed",
+      "storyId": "CTX-997",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T15:38:34.155Z",
+      "action": "model_changed",
+      "storyId": "CTX-998",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T15:38:36.858Z",
+      "action": "model_changed",
+      "storyId": "CTX-999",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T15:38:52.625Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T15:45:00.000Z",
+      "action": "phase_completed",
+      "storyId": null,
+      "details": "Phase 2 complete - Branch strategy: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T15:45:01.000Z",
+      "action": "story_started",
+      "storyId": "CTX-001",
+      "details": "Started implementation of Context Menu Component"
+    },
+    {
+      "timestamp": "2026-02-03T15:50:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-001",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-03T15:50:01.000Z",
+      "action": "story_completed",
+      "storyId": "CTX-001",
+      "details": "Progress: 1/9"
+    },
+    {
+      "timestamp": "2026-02-03T15:43:19.266Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T15:43:20.297Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T16:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-002",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-03T16:10:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-002",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-03T16:10:01.000Z",
+      "action": "story_completed",
+      "storyId": "CTX-002",
+      "details": "Progress: 2/9"
+    },
+    {
+      "timestamp": "2026-02-03T15:48:51.069Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T15:48:55.972Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T17:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-003",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-03T17:30:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-003",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-03T17:30:01.000Z",
+      "action": "story_completed",
+      "storyId": "CTX-003",
+      "details": "Progress: 3/9"
+    },
+    {
+      "timestamp": "2026-02-03T15:53:12.150Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T18:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-004",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-03T19:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-004",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-03T19:00:01.000Z",
+      "action": "story_completed",
+      "storyId": "CTX-004",
+      "details": "Progress: 4/9"
+    },
+    {
+      "timestamp": "2026-02-03T15:54:45.954Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T19:05:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-005",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-03T20:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-005",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-03T20:00:01.000Z",
+      "action": "story_completed",
+      "storyId": "CTX-005",
+      "details": "Progress: 5/9"
+    },
+    {
+      "timestamp": "2026-02-03T16:47:36.366Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T16:51:36.868Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T16:52:11.641Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T16:56:02.441Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T16:58:27.440Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T17:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-006",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-03T17:01:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-006",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified (all styles already present from CTX-001, CTX-003, CTX-004)"
+    },
+    {
+      "timestamp": "2026-02-03T17:01:01.000Z",
+      "action": "story_completed",
+      "storyId": "CTX-006",
+      "details": "Progress: 6/9 - All frontend stories complete. Ready for System Stories."
+    },
+    {
+      "timestamp": "2026-02-03T17:01:15.088Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T17:01:16.116Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T21:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-997",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-03T21:15:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-997",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Code Review completed - All checks passed: LINT_PASS, BUILD_PASS, NO_ANY, Light DOM pattern, Event patterns, z-index hierarchy, CSS theme variables"
+    },
+    {
+      "timestamp": "2026-02-03T21:15:01.000Z",
+      "action": "story_completed",
+      "storyId": "CTX-997",
+      "details": "Progress: 7/9 - Code Review complete"
+    },
+    {
+      "timestamp": "2026-02-03T17:03:57.292Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T17:03:58.295Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T17:05:09.111Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T17:05:10.143Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T17:05:30.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-998",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Integration Validation completed - BUILD_PASS, LINT_PASS, TSC_PASS, All component integrations verified"
+    },
+    {
+      "timestamp": "2026-02-03T17:05:31.000Z",
+      "action": "story_completed",
+      "storyId": "CTX-998",
+      "details": "Progress: 8/9 - Integration Validation complete"
+    },
+    {
+      "timestamp": "2026-02-03T17:07:07.757Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T17:07:26.296Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/context-menu"
+    },
+    {
+      "timestamp": "2026-02-03T17:08:00.000Z",
+      "action": "code_fix",
+      "storyId": "CTX-998",
+      "details": "Fixed handleMenuItemSelect in app.ts - all 4 context menu actions now properly open workflow modal (create-spec, add-bug, add-todo, add-story)"
+    },
+    {
+      "timestamp": "2026-02-03T22:30:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-999",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-03T17:08:00.000Z",
+      "action": "status_changed",
+      "storyId": "CTX-999",
+      "from": "in_progress",
+      "to": "done",
+      "details": "PR #14 created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/14"
+    },
+    {
+      "timestamp": "2026-02-03T17:08:01.000Z",
+      "action": "story_completed",
+      "storyId": "CTX-999",
+      "details": "Progress: 9/9 - All stories complete. Spec execution finished."
+    },
+    {
+      "timestamp": "2026-02-03T17:08:02.000Z",
+      "action": "spec_completed",
+      "storyId": null,
+      "details": "Spec 2026-02-03-context-menu complete. PR #14 ready for review."
+    }
+  ]
+}

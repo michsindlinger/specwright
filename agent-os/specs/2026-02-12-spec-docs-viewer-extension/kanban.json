@@ -1,0 +1,569 @@
+{
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-12-spec-docs-viewer-extension",
+    "name": "Spec Docs Viewer Extension",
+    "prefix": "SDVE",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-12"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "feature/spec-docs-viewer-extension",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "PR created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/21",
+    "nextAction": "All stories complete",
+    "progressIndex": 10,
+    "totalStories": 7,
+    "gitStrategy": "branch"
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-02-12T20:15:11.867Z",
+    "completedAt": "2026-02-12T20:36:00.586Z",
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "SDVE-001",
+      "title": "Backend - Spec-Dateien auflisten und generisch lesen/speichern",
+      "slug": "backend-file-discovery-and-generalized-read-save",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-001-backend-file-discovery-and-generalized-read-save.md",
+      "timing": {
+        "createdAt": "2026-02-12",
+        "updatedAt": "2026-02-12",
+        "startedAt": "2026-02-12T20:03:18.994Z",
+        "completedAt": "2026-02-12T20:08:11.760Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/specs-reader.ts",
+          "agent-os-ui/src/server/websocket.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "1e2e5d8",
+            "message": "feat: SDVE-001 Backend file discovery and generalized read/save",
+            "timestamp": "2026-02-12T20:15:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done"
+    },
+    {
+      "id": "SDVE-002",
+      "title": "Frontend - Dynamische Tab-Bar Komponente",
+      "slug": "dynamic-tab-bar-component",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "SDVE-001"
+      ],
+      "status": "done",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-002-dynamic-tab-bar-component.md",
+      "timing": {
+        "createdAt": "2026-02-12",
+        "updatedAt": "2026-02-12",
+        "startedAt": "2026-02-12T20:08:38.642Z",
+        "completedAt": "2026-02-12T20:12:54.347Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/specs/aos-spec-file-tabs.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "3d7295f",
+            "message": "feat: SDVE-002 Dynamic tab-bar component for spec file navigation",
+            "timestamp": "2026-02-12T20:30:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done"
+    },
+    {
+      "id": "SDVE-003",
+      "title": "Frontend - Kanban Board Integration",
+      "slug": "kanban-board-integration",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "SDVE-001",
+        "SDVE-002"
+      ],
+      "status": "done",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-003-kanban-board-integration.md",
+      "timing": {
+        "createdAt": "2026-02-12",
+        "updatedAt": "2026-02-12",
+        "startedAt": "2026-02-12T20:12:19.340Z",
+        "completedAt": "2026-02-12T20:17:43.838Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/kanban-board.ts",
+          "agent-os-ui/ui/src/gateway.ts"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "88fe421",
+            "message": "feat: SDVE-003 Kanban board integration with dynamic spec file tabs",
+            "timestamp": "2026-02-12T21:30:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done"
+    },
+    {
+      "id": "SDVE-004",
+      "title": "Frontend - Interaktive Checkboxen mit Persistierung",
+      "slug": "interactive-checkboxes",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "SDVE-003"
+      ],
+      "status": "done",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-004-interactive-checkboxes.md",
+      "timing": {
+        "createdAt": "2026-02-12",
+        "updatedAt": "2026-02-12",
+        "startedAt": "2026-02-12T20:15:11.867Z",
+        "completedAt": "2026-02-12T20:16:49.770Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/docs/aos-docs-viewer.ts",
+          "agent-os-ui/ui/src/components/kanban-board.ts"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "SDVE-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "SDVE-001",
+        "SDVE-002",
+        "SDVE-003",
+        "SDVE-004"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-12",
+        "updatedAt": "2026-02-12",
+        "startedAt": "2026-02-12T20:20:03.968Z",
+        "completedAt": "2026-02-12T20:22:56.804Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-12-spec-docs-viewer-extension/review-report.md",
+          "agent-os/specs/2026-02-12-spec-docs-viewer-extension/stories/story-997-code-review.md"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done"
+    },
+    {
+      "id": "SDVE-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "SDVE-997"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-12",
+        "updatedAt": "2026-02-12",
+        "startedAt": "2026-02-12T20:24:15.350Z",
+        "completedAt": "2026-02-12T20:30:24.981Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-12-spec-docs-viewer-extension/stories/story-998-integration-validation.md",
+          "agent-os/specs/2026-02-12-spec-docs-viewer-extension/spec.md"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done"
+    },
+    {
+      "id": "SDVE-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "SDVE-998"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-12",
+        "updatedAt": "2026-02-12",
+        "startedAt": "2026-02-12T20:31:13.223Z",
+        "completedAt": "2026-02-12T20:36:00.586Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-12-spec-docs-viewer-extension/test-scenarios.md",
+          "agent-os/knowledge/knowledge-index.md",
+          "agent-os/knowledge/ui-components.md",
+          "agent-os/knowledge/shared-services.md",
+          "agent-os/specs/2026-02-12-spec-docs-viewer-extension/kanban.json"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "365bcd7",
+            "message": "feat: SDVE-999 Finalize PR - test scenarios, knowledge update, spec docs",
+            "timestamp": "2026-02-12T21:45:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done"
+    }
+  ],
+  "boardStatus": {
+    "total": 7,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 7,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
+    "progressPercent": 0,
+    "byType": {
+      "undefined": 7
+    },
+    "byPriority": {
+      "undefined": 7
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Backend Foundation",
+        "stories": [
+          "SDVE-001"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 2,
+        "name": "Frontend Components",
+        "stories": [
+          "SDVE-002"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 3,
+        "name": "Integration",
+        "stories": [
+          "SDVE-003"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 4,
+        "name": "Checkbox Feature",
+        "stories": [
+          "SDVE-004"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 5,
+        "name": "System Stories",
+        "stories": [
+          "SDVE-997",
+          "SDVE-998",
+          "SDVE-999"
+        ],
+        "parallel": false
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-12",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 7 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-12T20:03:18.994Z",
+      "action": "status_changed",
+      "storyId": "SDVE-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T20:03:19.137Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-docs-viewer-extension"
+    },
+    {
+      "timestamp": "2026-02-12T20:03:42.356Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-02-12T20:08:11.760Z",
+      "action": "status_changed",
+      "storyId": "SDVE-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-12T20:08:37.690Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-docs-viewer-extension"
+    },
+    {
+      "timestamp": "2026-02-12T20:08:38.642Z",
+      "action": "status_changed",
+      "storyId": "SDVE-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T20:08:38.776Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-docs-viewer-extension"
+    },
+    {
+      "timestamp": "2026-02-12T20:12:03.927Z",
+      "action": "status_changed",
+      "storyId": "SDVE-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-12T20:12:18.384Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-docs-viewer-extension"
+    },
+    {
+      "timestamp": "2026-02-12T20:12:19.340Z",
+      "action": "status_changed",
+      "storyId": "SDVE-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T20:12:19.473Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-docs-viewer-extension"
+    },
+    {
+      "timestamp": "2026-02-12T20:12:54.351Z",
+      "action": "status_changed",
+      "storyId": "SDVE-002",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-12T20:13:09.720Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-docs-viewer-extension"
+    },
+    {
+      "timestamp": "2026-02-12T20:15:07.935Z",
+      "action": "status_changed",
+      "storyId": "SDVE-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-12T20:15:11.867Z",
+      "action": "status_changed",
+      "storyId": "SDVE-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T20:16:49.771Z",
+      "action": "status_changed",
+      "storyId": "SDVE-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-12T20:16:55.945Z",
+      "action": "status_changed",
+      "storyId": "SDVE-003",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-12T20:17:43.842Z",
+      "action": "status_changed",
+      "storyId": "SDVE-003",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-12T20:17:44.152Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-12T20:20:03.968Z",
+      "action": "status_changed",
+      "storyId": "SDVE-997",
+      "details": "Moved from blocked to in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T20:22:56.806Z",
+      "action": "status_changed",
+      "storyId": "SDVE-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-12T20:23:15.778Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-12T20:24:15.350Z",
+      "action": "status_changed",
+      "storyId": "SDVE-998",
+      "details": "Moved from blocked to in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T20:24:15.497Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-docs-viewer-extension"
+    },
+    {
+      "timestamp": "2026-02-12T20:30:24.982Z",
+      "action": "status_changed",
+      "storyId": "SDVE-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-12T20:30:31.496Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-12T20:31:13.223Z",
+      "action": "status_changed",
+      "storyId": "SDVE-999",
+      "details": "Moved from blocked to in_progress"
+    },
+    {
+      "timestamp": "2026-02-12T20:31:13.377Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-docs-viewer-extension"
+    },
+    {
+      "timestamp": "2026-02-12T20:36:00.588Z",
+      "action": "status_changed",
+      "storyId": "SDVE-999",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-12T20:36:05.000Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+    }
+  ]
+}

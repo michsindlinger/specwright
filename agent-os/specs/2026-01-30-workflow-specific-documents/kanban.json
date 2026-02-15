@@ -1,0 +1,556 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-01-30-workflow-specific-documents",
+    "name": "Workflow-Specific Documents",
+    "prefix": "WSD",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-01-30T23:33:00Z"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": null,
+    "worktreePath": null,
+    "gitBranch": "feature/workflow-specific-documents",
+    "gitStrategy": "branch",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed WSD-999 Finalize PR - PR #13 created",
+    "nextAction": "Merge PR when ready",
+    "progressIndex": 7,
+    "totalStories": 7
+  },
+  "execution": {
+    "status": "complete",
+    "startedAt": "2026-02-03T13:00:00Z",
+    "completedAt": "2026-02-03T19:30:00Z",
+    "model": "opus"
+  },
+  "stories": [
+    {
+      "id": "WSD-001",
+      "title": "Document State per Execution",
+      "file": "stories/story-001-document-state-per-execution.md",
+      "type": "frontend",
+      "priority": "medium",
+      "effort": 2,
+      "status": "done",
+      "phase": "completed",
+      "dependencies": [],
+      "blockedBy": [],
+      "timing": {
+        "createdAt": "2026-01-30T23:33:00Z",
+        "startedAt": "2026-02-03T14:00:00Z",
+        "completedAt": "2026-02-03T14:30:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/types/execution.ts",
+          "agent-os-ui/ui/src/stores/execution-store.ts",
+          "agent-os-ui/ui/src/views/workflow-view.ts"
+        ],
+        "commits": []
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "WSD-002",
+      "title": "Tab-Wechsel synchronisiert Dokumente",
+      "file": "stories/story-002-tab-switch-sync.md",
+      "type": "frontend",
+      "priority": "medium",
+      "effort": 1,
+      "status": "done",
+      "phase": "completed",
+      "dependencies": [
+        "WSD-001"
+      ],
+      "blockedBy": [],
+      "timing": {
+        "createdAt": "2026-01-30T23:33:00Z",
+        "startedAt": "2026-02-03T16:00:00Z",
+        "completedAt": "2026-02-03T16:15:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "WSD-003",
+      "title": "Resizable Dokument-Container",
+      "file": "stories/story-003-resizable-container.md",
+      "type": "frontend",
+      "priority": "medium",
+      "effort": 2,
+      "status": "done",
+      "phase": "completed",
+      "dependencies": [],
+      "blockedBy": [],
+      "timing": {
+        "createdAt": "2026-01-30T23:33:00Z",
+        "startedAt": "2026-02-03T15:00:00Z",
+        "completedAt": "2026-02-03T15:15:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/workflow-view.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "commits": []
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "WSD-004",
+      "title": "Persistente Container-Größe pro Workflow",
+      "file": "stories/story-004-persistent-width.md",
+      "type": "frontend",
+      "priority": "medium",
+      "effort": 2,
+      "status": "done",
+      "phase": "completed",
+      "dependencies": [
+        "WSD-001",
+        "WSD-003"
+      ],
+      "blockedBy": [],
+      "timing": {
+        "createdAt": "2026-01-30T23:33:00Z",
+        "startedAt": "2026-02-03T17:00:00Z",
+        "completedAt": "2026-02-03T18:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/stores/execution-store.ts",
+          "agent-os-ui/ui/src/views/workflow-view.ts"
+        ],
+        "commits": []
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "WSD-997",
+      "title": "Code Review",
+      "file": "stories/story-997-code-review.md",
+      "type": "quality",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "completed",
+      "dependencies": [
+        "WSD-001",
+        "WSD-002",
+        "WSD-003",
+        "WSD-004"
+      ],
+      "blockedBy": [],
+      "timing": {
+        "createdAt": "2026-01-30T23:33:00Z",
+        "startedAt": "2026-02-03T13:15:00Z",
+        "completedAt": "2026-02-03T13:20:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-01-30-workflow-specific-documents/implementation-reports/code-review-report.md"
+        ],
+        "commits": []
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      },
+      "model": "opus"
+    },
+    {
+      "id": "WSD-998",
+      "title": "Integration Validation",
+      "file": "stories/story-998-integration-validation.md",
+      "type": "quality",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "completed",
+      "dependencies": [
+        "WSD-997"
+      ],
+      "blockedBy": [],
+      "timing": {
+        "createdAt": "2026-01-30T23:33:00Z",
+        "startedAt": "2026-02-03T13:25:00Z",
+        "completedAt": "2026-02-03T13:35:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-01-30-workflow-specific-documents/implementation-reports/integration-validation-report.md"
+        ],
+        "commits": []
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      },
+      "model": "opus"
+    },
+    {
+      "id": "WSD-999",
+      "title": "Finalize PR",
+      "file": "stories/story-999-finalize-pr.md",
+      "type": "devops",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "completed",
+      "dependencies": [
+        "WSD-998"
+      ],
+      "blockedBy": [],
+      "timing": {
+        "createdAt": "2026-01-30T23:33:00Z",
+        "startedAt": "2026-02-03T19:00:00Z",
+        "completedAt": "2026-02-03T19:30:00Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-01-30-workflow-specific-documents/implementation-reports/finalization-report.md"
+        ],
+        "commits": ["f9a8859"]
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": true
+      },
+      "model": "opus"
+    }
+  ],
+  "boardStatus": {
+    "total": 7,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 7,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 12,
+    "completedEffort": 12,
+    "remainingEffort": 0,
+    "progressPercent": 100,
+    "byType": {
+      "frontend": 4,
+      "quality": 2,
+      "devops": 1
+    },
+    "byPriority": {
+      "high": 3,
+      "medium": 4
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Foundation",
+        "stories": [
+          "WSD-001",
+          "WSD-003"
+        ],
+        "description": "Independent stories - can run in parallel"
+      },
+      {
+        "phase": 2,
+        "name": "Integration",
+        "stories": [
+          "WSD-002",
+          "WSD-004"
+        ],
+        "description": "Depends on WSD-001 and WSD-003"
+      },
+      {
+        "phase": 3,
+        "name": "Quality Gates",
+        "stories": [
+          "WSD-997",
+          "WSD-998",
+          "WSD-999"
+        ],
+        "description": "Sequential quality validation"
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-01-30T23:33:00Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Board initialized with 4 stories"
+    },
+    {
+      "timestamp": "2026-02-03T00:00:00Z",
+      "action": "stories_added",
+      "storyId": null,
+      "details": "Added WSD-997, WSD-998, WSD-999 quality gate stories"
+    },
+    {
+      "timestamp": "2026-02-03T00:00:00Z",
+      "action": "format_migrated",
+      "storyId": null,
+      "details": "Migrated from kanban-board.md to kanban.json (v4.0 format)"
+    },
+    {
+      "timestamp": "2026-02-03T11:33:22.821Z",
+      "action": "model_changed",
+      "storyId": "WSD-001",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T11:33:24.712Z",
+      "action": "model_changed",
+      "storyId": "WSD-002",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T11:33:31.102Z",
+      "action": "model_changed",
+      "storyId": "WSD-003",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T11:33:34.593Z",
+      "action": "model_changed",
+      "storyId": "WSD-004",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T11:33:38.886Z",
+      "action": "model_changed",
+      "storyId": "WSD-999",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-03T12:50:49.709Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-specific-documents"
+    },
+    {
+      "timestamp": "2026-02-03T14:30:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-001",
+      "from": "ready",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-03T14:30:00Z",
+      "action": "story_completed",
+      "storyId": "WSD-001",
+      "details": "Progress: 1/7"
+    },
+    {
+      "timestamp": "2026-02-03T15:00:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-003",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-03T15:15:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-003",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified"
+    },
+    {
+      "timestamp": "2026-02-03T15:15:00Z",
+      "action": "story_completed",
+      "storyId": "WSD-003",
+      "details": "Progress: 2/7"
+    },
+    {
+      "timestamp": "2026-02-03T13:08:27.393Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-specific-documents"
+    },
+    {
+      "timestamp": "2026-02-03T16:00:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-002",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-03T16:15:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-002",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - Implementation already existed from WSD-001, all Gherkin scenarios verified"
+    },
+    {
+      "timestamp": "2026-02-03T16:15:00Z",
+      "action": "story_completed",
+      "storyId": "WSD-002",
+      "details": "Progress: 3/7"
+    },
+    {
+      "timestamp": "2026-02-03T13:10:48.304Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-specific-documents"
+    },
+    {
+      "timestamp": "2026-02-03T13:10:49.303Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-specific-documents"
+    },
+    {
+      "timestamp": "2026-02-03T17:00:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-004",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started story execution"
+    },
+    {
+      "timestamp": "2026-02-03T18:00:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-004",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Story completed - DoD verified, localStorage persistence implemented"
+    },
+    {
+      "timestamp": "2026-02-03T18:00:00Z",
+      "action": "story_completed",
+      "storyId": "WSD-004",
+      "details": "Progress: 4/7 - All regular frontend stories completed"
+    },
+    {
+      "timestamp": "2026-02-03T13:13:38.457Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-specific-documents"
+    },
+    {
+      "timestamp": "2026-02-03T13:13:46.838Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-specific-documents"
+    },
+    {
+      "timestamp": "2026-02-03T13:15:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-997",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started Code Review execution"
+    },
+    {
+      "timestamp": "2026-02-03T13:20:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-997",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Code Review completed - APPROVED, no critical issues found"
+    },
+    {
+      "timestamp": "2026-02-03T13:20:00Z",
+      "action": "story_completed",
+      "storyId": "WSD-997",
+      "details": "Progress: 5/7 - Code Review passed with green light for Integration Validation"
+    },
+    {
+      "timestamp": "2026-02-03T13:16:39.522Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-specific-documents"
+    },
+    {
+      "timestamp": "2026-02-03T13:16:43.217Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-specific-documents"
+    },
+    {
+      "timestamp": "2026-02-03T13:35:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-998",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Integration Validation completed - All checks passed (Lint, Build, Store, Resize, Persistence)"
+    },
+    {
+      "timestamp": "2026-02-03T13:35:00Z",
+      "action": "story_completed",
+      "storyId": "WSD-998",
+      "details": "Progress: 6/7 - Integration Validation passed, ready for WSD-999 Finalize PR"
+    },
+    {
+      "timestamp": "2026-02-03T13:18:50.762Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-specific-documents"
+    },
+    {
+      "timestamp": "2026-02-03T13:19:23.070Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-specific-documents"
+    },
+    {
+      "timestamp": "2026-02-03T19:00:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-999",
+      "from": "ready",
+      "to": "in_progress",
+      "details": "Started Finalize PR execution"
+    },
+    {
+      "timestamp": "2026-02-03T19:30:00Z",
+      "action": "status_changed",
+      "storyId": "WSD-999",
+      "from": "in_progress",
+      "to": "done",
+      "details": "PR #13 created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/13"
+    },
+    {
+      "timestamp": "2026-02-03T19:30:00Z",
+      "action": "story_completed",
+      "storyId": "WSD-999",
+      "details": "Progress: 7/7 - Finalize PR completed"
+    },
+    {
+      "timestamp": "2026-02-03T19:30:00Z",
+      "action": "spec_completed",
+      "storyId": null,
+      "details": "All stories completed - Workflow-Specific Documents spec is ready for merge"
+    }
+  ]
+}

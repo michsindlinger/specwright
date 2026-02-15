@@ -1,0 +1,737 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-13-unified-kanban-board",
+    "name": "Unified Kanban Board",
+    "prefix": "UKB",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-13T13:27:53.026Z"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": "complete",
+    "worktreePath": null,
+    "gitBranch": "feature/unified-kanban-board",
+    "gitStrategy": "branch",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "PR created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/25",
+    "nextAction": "Spec execution complete",
+    "progressIndex": 9,
+    "totalStories": 9
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-02-13T14:41:43.060Z",
+    "completedAt": null,
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "UKB-001",
+      "title": "StoryInfo Interface vereinheitlichen",
+      "file": "stories/story-001-storyinfo-interface-vereinheitlichen.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": "glm-5",
+      "timing": {
+        "createdAt": "2026-02-13T13:27:53.026Z",
+        "startedAt": "2026-02-13T13:47:18.121Z",
+        "completedAt": "2026-02-13T15:40:37.617Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/kanban-board.ts",
+          "agent-os-ui/ui/src/components/story-card.ts",
+          "agent-os-ui/ui/src/components/story-status-badge.ts",
+          "agent-os/specs/2026-02-13-unified-kanban-board/stories/story-001-storyinfo-interface-vereinheitlichen.md"
+        ],
+        "commits": [
+          {
+            "hash": "22be0ebe47bf4609b55aed641d09f2e159c958ca",
+            "message": "Gehen, GLM 4.7 zu GLM 5.",
+            "timestamp": "2026-02-13T14:47:09+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "UKB-002",
+      "title": "Kanban Board Properties und Conditional Rendering",
+      "file": "stories/story-002-kanban-board-properties.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "UKB-001"
+      ],
+      "blockedBy": [],
+      "model": "glm-5",
+      "timing": {
+        "createdAt": "2026-02-13T13:27:53.026Z",
+        "startedAt": "2026-02-13T14:16:50.427Z",
+        "completedAt": "2026-02-13T15:40:38.741Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/kanban-board.ts",
+          "agent-os/specs/2026-02-13-unified-kanban-board/stories/story-002-kanban-board-properties.md"
+        ],
+        "commits": [
+          {
+            "hash": "76c7c13a45d98c53469ce9dc3797b51246f8ab60",
+            "message": "feat(UKB-002): Kanban Board Properties und Conditional Rendering",
+            "timestamp": "2026-02-13T15:35:22+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "UKB-003",
+      "title": "Backend Backlog-Datenmodell erweitern",
+      "file": "stories/story-003-backend-backlog-datenmodell.md",
+      "type": "backend",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "blockedBy": [],
+      "model": "glm-5",
+      "timing": {
+        "createdAt": "2026-02-13T13:27:53.026Z",
+        "startedAt": "2026-02-13T14:01:50.284Z",
+        "completedAt": "2026-02-13T15:40:39.653Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/backlog-reader.ts",
+          "agent-os-ui/src/server/websocket.ts",
+          "agent-os/specs/2026-02-13-unified-kanban-board/stories/story-003-backend-backlog-datenmodell.md"
+        ],
+        "commits": [
+          {
+            "hash": "4a8b39b99cf9ce128f4a1d0ff001799d69cf3414",
+            "message": "feat(UKB-003): Backend Backlog-Datenmodell erweitern",
+            "timestamp": "2026-02-13T15:08:50+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "UKB-004",
+      "title": "Dashboard Backlog-Rendering durch aos-kanban-board ersetzen",
+      "file": "stories/story-004-dashboard-backlog-ersetzen.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 3,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "UKB-002",
+        "UKB-003"
+      ],
+      "blockedBy": [],
+      "model": "glm-5",
+      "timing": {
+        "createdAt": "2026-02-13T13:27:53.026Z",
+        "startedAt": "2026-02-13T14:41:43.060Z",
+        "completedAt": "2026-02-13T15:40:40.584Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/dashboard-view.ts",
+          "agent-os/specs/2026-02-13-unified-kanban-board/stories/story-004-dashboard-backlog-ersetzen.md"
+        ],
+        "commits": [
+          {
+            "hash": "9499a6a",
+            "message": "feat(UKB-004): Dashboard Backlog-Rendering durch aos-kanban-board ersetzen",
+            "timestamp": "2026-02-13T16:30:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "UKB-005",
+      "title": "Event-Routing und Auto-Mode Integration",
+      "file": "stories/story-005-event-routing-auto-mode.md",
+      "type": "frontend",
+      "priority": "high",
+      "effort": 2,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "UKB-002",
+        "UKB-004"
+      ],
+      "blockedBy": [],
+      "model": "glm-5",
+      "timing": {
+        "createdAt": "2026-02-13T13:27:53.026Z",
+        "startedAt": "2026-02-13T15:01:57.117Z",
+        "completedAt": "2026-02-13T15:40:41.529Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/views/dashboard-view.ts",
+          "agent-os/specs/2026-02-13-unified-kanban-board/stories/story-005-event-routing-auto-mode.md"
+        ],
+        "commits": [
+          {
+            "hash": "e8db86b957e209a1a5738bb8434e93d0e1cd3c0d",
+            "message": "feat(UKB-005): Event-Routing und Auto-Mode Integration",
+            "timestamp": "2026-02-13T16:11:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "UKB-006",
+      "title": "CSS Cleanup",
+      "file": "stories/story-006-css-cleanup.md",
+      "type": "frontend",
+      "priority": "medium",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "UKB-004"
+      ],
+      "blockedBy": [],
+      "model": "glm-5",
+      "timing": {
+        "createdAt": "2026-02-13T13:27:53.026Z",
+        "startedAt": "2026-02-13T15:12:59.965Z",
+        "completedAt": "2026-02-13T15:40:42.635Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-unified-kanban-board/stories/story-006-css-cleanup.md"
+        ],
+        "commits": [
+          {
+            "hash": "593bc44",
+            "message": "feat(UKB-006): CSS Cleanup - Verification Complete",
+            "timestamp": "2026-02-13T16:45:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "UKB-997",
+      "title": "Code Review",
+      "file": "stories/story-997-code-review.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "UKB-006"
+      ],
+      "blockedBy": [],
+      "model": "opus",
+      "timing": {
+        "createdAt": "2026-02-13T13:27:53.026Z",
+        "startedAt": "2026-02-13T15:17:49.565Z",
+        "completedAt": "2026-02-13T15:40:43.632Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-unified-kanban-board/review-report.md",
+          "agent-os/specs/2026-02-13-unified-kanban-board/kanban.json"
+        ],
+        "commits": [
+          {
+            "hash": "075aaca33446f3682114d28288fafd5a3185195a",
+            "message": "feat(UKB-997): Code Review completed",
+            "timestamp": "2026-02-13T16:20:06+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "UKB-998",
+      "title": "Integration Validation",
+      "file": "stories/story-998-integration-validation.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "UKB-997"
+      ],
+      "blockedBy": [],
+      "model": "opus",
+      "timing": {
+        "createdAt": "2026-02-13T13:27:53.026Z",
+        "startedAt": "2026-02-13T15:21:01.123Z",
+        "completedAt": "2026-02-13T15:40:44.608Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-unified-kanban-board/kanban.json"
+        ],
+        "commits": [],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": false,
+        "integrationVerified": false
+      }
+    },
+    {
+      "id": "UKB-999",
+      "title": "Finalize PR",
+      "file": "stories/story-999-finalize-pr.md",
+      "type": "system",
+      "priority": "high",
+      "effort": 1,
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "UKB-998"
+      ],
+      "blockedBy": [],
+      "model": "glm-5",
+      "timing": {
+        "createdAt": "2026-02-13T13:27:53.026Z",
+        "startedAt": "2026-02-13T15:26:12.688Z",
+        "completedAt": "2026-02-13T15:37:56.240Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-13-unified-kanban-board/test-scenarios.md",
+          "agent-os/knowledge/ui-components.md",
+          "agent-os/knowledge/knowledge-index.md",
+          "agent-os-ui/src/server/specs-reader.ts",
+          "agent-os-ui/src/server/workflow-executor.ts"
+        ],
+        "commits": [
+          {
+            "hash": "7613bdb",
+            "message": "feat(UKB-999): Finalize PR - Project Knowledge Updated",
+            "timestamp": "2026-02-13T17:30:00+01:00"
+          }
+        ],
+        "notes": null
+      },
+      "verification": {
+        "dodChecked": true,
+        "integrationVerified": false
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 9,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 9,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 16,
+    "completedEffort": 1,
+    "remainingEffort": 15,
+    "progressPercent": 6.25,
+    "byType": {
+      "frontend": 5,
+      "backend": 1,
+      "system": 3
+    },
+    "byPriority": {
+      "high": 8,
+      "medium": 1
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": []
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-13T13:27:53.026Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 9 stories via MCP tool"
+    },
+    {
+      "timestamp": "2026-02-13T13:46:43.305Z",
+      "action": "model_changed",
+      "storyId": "UKB-001",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T13:47:18.121Z",
+      "action": "status_changed",
+      "storyId": "UKB-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T13:47:18.288Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/unified-kanban-board"
+    },
+    {
+      "timestamp": "2026-02-13T13:58:50.384Z",
+      "action": "status_changed",
+      "storyId": "UKB-001",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T14:01:20.034Z",
+      "action": "model_changed",
+      "storyId": "UKB-003",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T14:01:21.852Z",
+      "action": "model_changed",
+      "storyId": "UKB-002",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T14:01:26.492Z",
+      "action": "model_changed",
+      "storyId": "UKB-004",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T14:01:29.281Z",
+      "action": "model_changed",
+      "storyId": "UKB-005",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T14:01:30.948Z",
+      "action": "model_changed",
+      "storyId": "UKB-006",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T14:01:33.725Z",
+      "action": "model_changed",
+      "storyId": "UKB-997",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T14:01:36.544Z",
+      "action": "model_changed",
+      "storyId": "UKB-997",
+      "details": "Model changed from glm-5 to opus"
+    },
+    {
+      "timestamp": "2026-02-13T14:01:40.647Z",
+      "action": "model_changed",
+      "storyId": "UKB-999",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-13T14:01:50.284Z",
+      "action": "status_changed",
+      "storyId": "UKB-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T14:01:50.438Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/unified-kanban-board"
+    },
+    {
+      "timestamp": "2026-02-13T14:09:10.515Z",
+      "action": "status_changed",
+      "storyId": "UKB-003",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T14:16:50.427Z",
+      "action": "status_changed",
+      "storyId": "UKB-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T14:16:50.580Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/unified-kanban-board"
+    },
+    {
+      "timestamp": "2026-02-13T14:35:47.751Z",
+      "action": "status_changed",
+      "storyId": "UKB-002",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T14:36:49.246Z",
+      "action": "dependency_resolved",
+      "storyId": "UKB-004",
+      "details": "Unblocked: all dependencies done/in_review (UKB-002, UKB-003)"
+    },
+    {
+      "timestamp": "2026-02-13T14:36:50.293Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/unified-kanban-board"
+    },
+    {
+      "timestamp": "2026-02-13T14:41:43.062Z",
+      "action": "status_changed",
+      "storyId": "UKB-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T14:59:54.162Z",
+      "action": "status_changed",
+      "storyId": "UKB-004",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T15:00:54.471Z",
+      "action": "dependency_resolved",
+      "storyId": "UKB-005",
+      "details": "Unblocked: all dependencies done/in_review (UKB-002, UKB-004)"
+    },
+    {
+      "timestamp": "2026-02-13T15:00:54.471Z",
+      "action": "dependency_resolved",
+      "storyId": "UKB-006",
+      "details": "Unblocked: all dependencies done/in_review (UKB-004)"
+    },
+    {
+      "timestamp": "2026-02-13T15:00:55.524Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/unified-kanban-board"
+    },
+    {
+      "timestamp": "2026-02-13T15:01:57.118Z",
+      "action": "status_changed",
+      "storyId": "UKB-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T15:11:31.430Z",
+      "action": "status_changed",
+      "storyId": "UKB-005",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T15:11:55.416Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/unified-kanban-board"
+    },
+    {
+      "timestamp": "2026-02-13T15:12:59.967Z",
+      "action": "status_changed",
+      "storyId": "UKB-006",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T15:17:02.747Z",
+      "action": "status_changed",
+      "storyId": "UKB-006",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T15:17:11.984Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T15:17:26.072Z",
+      "action": "dependency_resolved",
+      "storyId": "UKB-997",
+      "details": "Unblocked: all dependencies done/in_review (UKB-006)"
+    },
+    {
+      "timestamp": "2026-02-13T15:17:27.120Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/unified-kanban-board"
+    },
+    {
+      "timestamp": "2026-02-13T15:17:49.568Z",
+      "action": "status_changed",
+      "storyId": "UKB-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T15:20:15.261Z",
+      "action": "status_changed",
+      "storyId": "UKB-997",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T15:20:20.946Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T15:20:33.384Z",
+      "action": "dependency_resolved",
+      "storyId": "UKB-998",
+      "details": "Unblocked: all dependencies done/in_review (UKB-997)"
+    },
+    {
+      "timestamp": "2026-02-13T15:20:34.436Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/unified-kanban-board"
+    },
+    {
+      "timestamp": "2026-02-13T15:21:01.126Z",
+      "action": "status_changed",
+      "storyId": "UKB-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T15:24:09.699Z",
+      "action": "status_changed",
+      "storyId": "UKB-998",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T15:24:22.164Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-13T15:24:47.526Z",
+      "action": "dependency_resolved",
+      "storyId": "UKB-999",
+      "details": "Unblocked: all dependencies done/in_review (UKB-998)"
+    },
+    {
+      "timestamp": "2026-02-13T15:24:48.599Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/unified-kanban-board"
+    },
+    {
+      "timestamp": "2026-02-13T15:26:12.690Z",
+      "action": "status_changed",
+      "storyId": "UKB-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-13T15:37:01.701Z",
+      "action": "status_changed",
+      "storyId": "UKB-999",
+      "details": "Story completed: in_progress → in_review"
+    },
+    {
+      "timestamp": "2026-02-13T15:37:39.020Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+    },
+    {
+      "timestamp": "2026-02-13T15:37:56.240Z",
+      "action": "status_changed",
+      "storyId": "UKB-999",
+      "details": "Story approved: in_review → done"
+    },
+    {
+      "timestamp": "2026-02-13T15:40:37.617Z",
+      "action": "status_changed",
+      "storyId": "UKB-001",
+      "details": "Moved from in_review to done"
+    },
+    {
+      "timestamp": "2026-02-13T15:40:38.741Z",
+      "action": "status_changed",
+      "storyId": "UKB-002",
+      "details": "Moved from in_review to done"
+    },
+    {
+      "timestamp": "2026-02-13T15:40:39.653Z",
+      "action": "status_changed",
+      "storyId": "UKB-003",
+      "details": "Moved from in_review to done"
+    },
+    {
+      "timestamp": "2026-02-13T15:40:40.584Z",
+      "action": "status_changed",
+      "storyId": "UKB-004",
+      "details": "Moved from in_review to done"
+    },
+    {
+      "timestamp": "2026-02-13T15:40:41.529Z",
+      "action": "status_changed",
+      "storyId": "UKB-005",
+      "details": "Moved from in_review to done"
+    },
+    {
+      "timestamp": "2026-02-13T15:40:42.635Z",
+      "action": "status_changed",
+      "storyId": "UKB-006",
+      "details": "Moved from in_review to done"
+    },
+    {
+      "timestamp": "2026-02-13T15:40:43.632Z",
+      "action": "status_changed",
+      "storyId": "UKB-997",
+      "details": "Moved from in_review to done"
+    },
+    {
+      "timestamp": "2026-02-13T15:40:44.608Z",
+      "action": "status_changed",
+      "storyId": "UKB-998",
+      "details": "Moved from in_review to done"
+    }
+  ]
+}

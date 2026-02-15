@@ -1,0 +1,643 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-11-git-integration-ui",
+    "name": "Git Integration UI",
+    "prefix": "GIT",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-11"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": "story-complete",
+    "worktreePath": null,
+    "gitBranch": "feature/git-integration-ui",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "PR created - https://github.com/michsindlinger/agent-os-extended-web-ui/pull/19",
+    "nextAction": "Spec execution complete",
+    "progressIndex": 13,
+    "totalStories": 8,
+    "gitStrategy": "branch"
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-02-11T10:17:19.212Z",
+    "completedAt": "2026-02-11T10:36:44.293Z",
+    "model": null
+  },
+  "stories": [
+    {
+      "id": "GIT-001",
+      "title": "Git Backend API",
+      "slug": "git-backend-api",
+      "classification": {
+        "type": "backend",
+        "priority": "critical",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-001-git-backend-api.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T10:04:36.020Z",
+        "completedAt": "2026-02-11T10:10:48.021Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/shared/types/git.protocol.ts",
+          "agent-os-ui/src/server/services/git.service.ts",
+          "agent-os-ui/src/server/handlers/git.handler.ts",
+          "agent-os-ui/src/server/websocket.ts",
+          "agent-os/specs/2026-02-11-git-integration-ui/integration-context.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "dbcba05",
+            "message": "feat: [GIT-001] Git Backend API with protocol types, service, handler and WebSocket routing",
+            "timestamp": "2026-02-11T10:10:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done"
+    },
+    {
+      "id": "GIT-002",
+      "title": "Git Status-Leiste",
+      "slug": "git-status-leiste",
+      "classification": {
+        "type": "frontend",
+        "priority": "critical",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "GIT-001"
+      ],
+      "status": "done",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-002-git-status-leiste.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T10:11:06.580Z",
+        "completedAt": "2026-02-11T10:17:10.465Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/git/aos-git-status-bar.ts",
+          "agent-os-ui/ui/src/gateway.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/styles/theme.css",
+          "agent-os/specs/2026-02-11-git-integration-ui/integration-context.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "b2081e2",
+            "message": "feat: [GIT-002] Git Status Bar component with gateway integration",
+            "timestamp": "2026-02-11T11:16:29.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done"
+    },
+    {
+      "id": "GIT-003",
+      "title": "Branch-Wechsel",
+      "slug": "branch-wechsel",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "GIT-002"
+      ],
+      "status": "done",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-003-branch-wechsel.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T10:17:19.212Z",
+        "completedAt": "2026-02-11T10:22:35.287Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/git/aos-git-status-bar.ts",
+          "agent-os-ui/ui/src/gateway.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/styles/theme.css",
+          "agent-os/specs/2026-02-11-git-integration-ui/integration-context.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "117805c",
+            "message": "feat: [GIT-003] Branch-Wechsel with dropdown and checkout integration",
+            "timestamp": "2026-02-11T10:22:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "GIT-004",
+      "title": "Commit-Dialog",
+      "slug": "commit-dialog",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "GIT-002"
+      ],
+      "status": "done",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-004-commit-dialog.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T10:18:04.235Z",
+        "completedAt": "2026-02-11T10:28:28.200Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/git/aos-git-commit-dialog.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/styles/theme.css",
+          "agent-os/specs/2026-02-11-git-integration-ui/integration-context.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "unknown",
+            "message": "feat: [GIT-004] Commit dialog component",
+            "timestamp": "2026-02-11T10:18:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "GIT-005",
+      "title": "Pull, Push und Fehlerbehandlung",
+      "slug": "pull-push-fehlerbehandlung",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "GIT-002"
+      ],
+      "status": "done",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-005-pull-push-fehlerbehandlung.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T10:23:10.373Z",
+        "completedAt": "2026-02-11T10:29:00.003Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/ui/src/components/git/aos-git-status-bar.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os-ui/ui/src/gateway.ts",
+          "agent-os-ui/src/server/websocket.ts",
+          "agent-os-ui/src/server/handlers/git.handler.ts",
+          "agent-os-ui/ui/src/styles/theme.css"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "GIT-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "GIT-005"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T10:25:54.650Z",
+        "completedAt": "2026-02-11T10:29:47.135Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os-ui/src/server/services/git.service.ts",
+          "agent-os-ui/ui/src/app.ts",
+          "agent-os/specs/2026-02-11-git-integration-ui/implementation-reports/code-review-report.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "0e450e2",
+            "message": "feat: [GIT-997] Code Review completed with fixes for pull/push count accuracy",
+            "timestamp": "2026-02-11T10:27:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "GIT-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "GIT-997"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T10:29:43.547Z",
+        "completedAt": "2026-02-11T10:32:58.743Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-11-git-integration-ui/implementation-reports/integration-test-report.md",
+          "agent-os/specs/2026-02-11-git-integration-ui/spec.md",
+          "agent-os/specs/2026-02-11-git-integration-ui/stories/story-998-integration-validation.md"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    },
+    {
+      "id": "GIT-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [
+        "GIT-998"
+      ],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-11",
+        "updatedAt": "2026-02-11",
+        "startedAt": "2026-02-11T10:31:43.702Z",
+        "completedAt": "2026-02-11T10:36:44.293Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "agent-os/specs/2026-02-11-git-integration-ui/test-scenarios.md",
+          "agent-os/specs/2026-02-11-git-integration-ui/handover-docs/user-todos.md",
+          "agent-os/knowledge/knowledge-index.md",
+          "agent-os/knowledge/ui-components.md",
+          "agent-os/knowledge/shared-services.md"
+        ],
+        "testsAdded": [],
+        "commits": [
+          {
+            "hash": "066b476",
+            "message": "feat: [GIT-999] Finalize PR - test scenarios, user todos, project knowledge update",
+            "timestamp": "2026-02-11T10:35:00.000Z"
+          }
+        ]
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
+    }
+  ],
+  "boardStatus": {
+    "total": 8,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 8,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
+    "progressPercent": 0,
+    "byType": {
+      "undefined": 8
+    },
+    "byPriority": {
+      "undefined": 8
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Foundation (Backend + Protocol)",
+        "stories": [
+          "GIT-001"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 2,
+        "name": "Status-Leiste (Frontend Core)",
+        "stories": [
+          "GIT-002"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 3,
+        "name": "Features (Branch, Commit, Pull/Push)",
+        "stories": [
+          "GIT-003",
+          "GIT-004",
+          "GIT-005"
+        ],
+        "parallel": true
+      },
+      {
+        "phase": 4,
+        "name": "System Stories",
+        "stories": [
+          "GIT-997",
+          "GIT-998",
+          "GIT-999"
+        ],
+        "parallel": false
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-11",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 8 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-11T10:04:36.020Z",
+      "action": "status_changed",
+      "storyId": "GIT-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T10:04:36.165Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/git-integration-ui"
+    },
+    {
+      "timestamp": "2026-02-11T10:04:54.973Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-02-11T10:10:48.021Z",
+      "action": "status_changed",
+      "storyId": "GIT-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:11:04.735Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/git-integration-ui"
+    },
+    {
+      "timestamp": "2026-02-11T10:11:06.580Z",
+      "action": "status_changed",
+      "storyId": "GIT-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T10:11:06.708Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/git-integration-ui"
+    },
+    {
+      "timestamp": "2026-02-11T10:16:34.371Z",
+      "action": "status_changed",
+      "storyId": "GIT-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:16:49.226Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/git-integration-ui"
+    },
+    {
+      "timestamp": "2026-02-11T10:17:10.468Z",
+      "action": "status_changed",
+      "storyId": "GIT-002",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:17:19.214Z",
+      "action": "status_changed",
+      "storyId": "GIT-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T10:17:33.130Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/git-integration-ui"
+    },
+    {
+      "timestamp": "2026-02-11T10:18:04.237Z",
+      "action": "status_changed",
+      "storyId": "GIT-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T10:22:35.287Z",
+      "action": "status_changed",
+      "storyId": "GIT-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:22:49.665Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/git-integration-ui"
+    },
+    {
+      "timestamp": "2026-02-11T10:23:10.376Z",
+      "action": "status_changed",
+      "storyId": "GIT-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T10:24:58.051Z",
+      "action": "status_changed",
+      "storyId": "GIT-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:25:14.854Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/git-integration-ui"
+    },
+    {
+      "timestamp": "2026-02-11T10:25:54.653Z",
+      "action": "status_changed",
+      "storyId": "GIT-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T10:28:23.397Z",
+      "action": "status_changed",
+      "storyId": "GIT-005",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:28:28.200Z",
+      "action": "status_changed",
+      "storyId": "GIT-004",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:28:38.800Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/git-integration-ui"
+    },
+    {
+      "timestamp": "2026-02-11T10:29:00.003Z",
+      "action": "status_changed",
+      "storyId": "GIT-005",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:29:33.134Z",
+      "action": "status_changed",
+      "storyId": "GIT-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:29:43.547Z",
+      "action": "status_changed",
+      "storyId": "GIT-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T10:29:47.135Z",
+      "action": "status_changed",
+      "storyId": "GIT-997",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:30:02.574Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/git-integration-ui"
+    },
+    {
+      "timestamp": "2026-02-11T10:31:36.385Z",
+      "action": "status_changed",
+      "storyId": "GIT-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:31:43.702Z",
+      "action": "status_changed",
+      "storyId": "GIT-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-11T10:32:58.743Z",
+      "action": "status_changed",
+      "storyId": "GIT-998",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:36:44.293Z",
+      "action": "status_changed",
+      "storyId": "GIT-999",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-11T10:36:48.465Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+    }
+  ]
+}
