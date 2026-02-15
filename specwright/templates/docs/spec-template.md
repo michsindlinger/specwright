@@ -47,8 +47,8 @@
 
 **Notes:**
 - Tests marked with "Requires MCP: yes" are optional (skip if MCP tool not available)
-- Integration validation runs in Phase 4.5 of execute-tasks
-- If integration tests fail, an integration-fix story will be created automatically
+- Integration validation runs via System Story 998 during execute-tasks
+- If integration tests fail, they will be fixed before proceeding
 
 ## Spec Documentation
 

@@ -23,10 +23,8 @@ Create detailed feature specifications: Main agent gathers fachliche requirement
 **v3.0 Changes:**
 - **NEW: System Stories** - 3 automatisch generierte Stories am Ende jeder Spec:
   - story-997: Code Review (Opus reviewt gesamten Feature-Diff)
-  - story-998: Integration Validation (ersetzt Phase 4.5)
-  - story-999: Finalize PR (ersetzt Phase 5 - Test-Szenarien, User-Todos, PR, Cleanup)
-- **ENHANCED: Backward Compatibility** - Specs ohne System Stories funktionieren weiterhin
-- **SIMPLIFIED: execute-tasks** - Phase 4.5 und 5 werden zu Legacy-Checks
+  - story-998: Integration Validation
+  - story-999: Finalize PR (User-Todos, PR, Cleanup)
 
 **v2.9 Changes:**
 - **NEW: Komponenten-Verbindungen** - Explizite Definition WIE Komponenten verbunden werden
@@ -658,7 +656,7 @@ Before generating user stories, create a summary document for user approval.
   - Include at least 1-2 integration tests that verify the complete feature works
   - Integration tests should be bash commands that exit 0 if successful
   - Mark Playwright/browser tests with "Requires MCP: yes" (they will be optional)
-  - These tests will be executed automatically in Phase 4.5 of execute-tasks
+  - These tests will be executed automatically via System Story 998 during execute-tasks
 
   4. CREATE spec-lite.md (load template with hybrid lookup):
      - 1-3 sentence summary of core goal
@@ -1113,8 +1111,7 @@ Main agent does technical refinement guided by architect-refinement skill.
 
      **ALWAYS create these 3 system stories at the END of EVERY spec:**
 
-     These stories replace Phase 4.5 and Phase 5 of execute-tasks.
-     They are executed AFTER all regular stories are done.
+     These stories are executed AFTER all regular stories are done.
 
      <system_story_generation>
 
@@ -1150,7 +1147,7 @@ Main agent does technical refinement guided by architect-refinement skill.
        - [SPEC_NAME] → Full spec name
        - [CREATED_DATE] → Current date
 
-       **Purpose:** Ersetzt Phase 4.5 - Integration Tests aus spec.md ausführen
+       **Purpose:** Integration Tests aus spec.md ausführen
        **Type:** System/Integration
        **Dependencies:** story-997
 
@@ -1169,7 +1166,7 @@ Main agent does technical refinement guided by architect-refinement skill.
        - [SPEC_NAME] → Full spec name
        - [CREATED_DATE] → Current date
 
-       **Purpose:** Ersetzt Phase 5 - Test-Szenarien, User-Todos, PR, Worktree Cleanup
+       **Purpose:** User-Todos, PR, Worktree Cleanup
        **Type:** System/Finalization
        **Dependencies:** story-998
 
@@ -1183,7 +1180,7 @@ Main agent does technical refinement guided by architect-refinement skill.
      **IMPORTANT:**
      - System stories are ALWAYS created, even for single-story specs
      - They ensure consistent quality and process for ALL specs
-     - Backward compatibility: Specs without system stories use legacy Phase 4.5/5
+     - System Stories are required for all specs
 
   Templates (hybrid lookup):
   - story-template.md (for structure reference)

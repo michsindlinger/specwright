@@ -25,19 +25,7 @@ Feature: Finalize Pull Request
 
 ## Akzeptanzkriterien (Gherkin-Szenarien)
 
-### Szenario 1: Test-Szenarien generieren
-
-```gherkin
-Scenario: Erstellung der Test-Dokumentation
-  Given alle Stories sind implementiert und validiert
-  When ich die Test-Szenarien generiere
-  Then wird test-scenarios.md erstellt
-  And enthält Happy-Path-Szenarien für jede Story
-  And enthält Edge-Cases für kritische Funktionen
-  And enthält Fehlerfälle mit erwarteten Ergebnissen
-```
-
-### Szenario 2: User-Todos finalisieren
+### Szenario 1: User-Todos finalisieren
 
 ```gherkin
 Scenario: Finalisierung der manuellen Aufgaben
@@ -48,7 +36,7 @@ Scenario: Finalisierung der manuellen Aufgaben
   And eine Zusammenfassung wurde hinzugefügt
 ```
 
-### Szenario 3: Pull Request erstellen
+### Szenario 2: Pull Request erstellen
 
 ```gherkin
 Scenario: Erstellung des Pull Requests
@@ -60,7 +48,7 @@ Scenario: Erstellung des Pull Requests
   And referenziert alle implementierten Stories
 ```
 
-### Szenario 4: Project Knowledge aktualisieren (v4.1)
+### Szenario 3: Project Knowledge aktualisieren (v4.1)
 
 ```gherkin
 Scenario: Aktualisierung des Project Knowledge
@@ -71,7 +59,7 @@ Scenario: Aktualisierung des Project Knowledge
   And der Quick Summary wird aktualisiert
 ```
 
-### Szenario 5: Worktree Cleanup
+### Szenario 4: Worktree Cleanup
 
 ```gherkin
 Scenario: Aufräumen des Git Worktrees
@@ -88,7 +76,6 @@ Scenario: Aufräumen des Git Worktrees
 
 ### Datei-Prüfungen
 
-- [ ] FILE_EXISTS: specwright/specs/[SPEC_NAME]/test-scenarios.md
 - [ ] FILE_EXISTS: specwright/specs/[SPEC_NAME]/user-todos.md (wenn manuelle Tasks vorhanden)
 
 ### PR-Prüfungen
@@ -99,38 +86,32 @@ Scenario: Aufräumen des Git Worktrees
 
 ## System Story Execution (Automatisch)
 
-> **Hinweis:** Diese Story ersetzt Phase 5 (Finalize).
-> Der Agent führt folgende Schritte durch:
+> **Hinweis:** Der Agent führt folgende Schritte automatisch durch:
 
 ### Execution Steps
 
-1. **Test-Szenarien generieren:**
-   - Alle abgeschlossenen Stories lesen
-   - Gherkin-Szenarien extrahieren
-   - test-scenarios.md mit Template erstellen
-
-2. **User-Todos finalisieren:**
+1. **User-Todos finalisieren:**
    - user-todos.md bereinigen
    - Duplikate entfernen
    - Zusammenfassung hinzufügen
 
-3. **Project Knowledge aktualisieren (v4.1):**
+2. **Project Knowledge aktualisieren (v4.1):**
    - Stories mit "Creates Reusable: yes" scannen
    - Artefakte aus "Reusable Artifacts" Tabelle extrahieren
    - knowledge-index.md aktualisieren (oder erstellen)
    - Detail-Dateien aktualisieren (ui-components.md, etc.)
    - Knowledge-Änderungen committen
 
-4. **Pull Request erstellen:**
+3. **Pull Request erstellen:**
    - Alle Änderungen committen
    - Branch pushen
    - PR mit gh cli erstellen
 
-5. **Worktree Cleanup (wenn verwendet):**
+4. **Worktree Cleanup (wenn verwendet):**
    - Worktree entfernen
    - Aufräumen
 
-6. **Abschluss:**
+5. **Abschluss:**
    - Kanban-Board finalisieren
    - Completion Sound abspielen
 
@@ -146,7 +127,6 @@ Scenario: Aufräumen des Git Worktrees
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] test-scenarios.md generiert
 - [ ] user-todos.md finalisiert (wenn vorhanden)
 - [ ] Project Knowledge aktualisiert (wenn "Creates Reusable" Stories vorhanden)
 - [ ] Alle Änderungen committed
@@ -159,17 +139,15 @@ Scenario: Aufräumen des Git Worktrees
 
 ## Technisches Refinement
 
-**WAS:** PR-Finalisierung mit Dokumentation, Knowledge Update und Cleanup
+**WAS:** PR-Finalisierung mit Knowledge Update und Cleanup
 
 **WIE:**
-- Test-Szenarien aus Stories generieren
 - User-Todos bereinigen
 - Project Knowledge aktualisieren (Stories mit "Creates Reusable: yes")
 - PR erstellen mit gh cli
 - Worktree aufräumen
 
 **WO:**
-- Output: `specwright/specs/[SPEC_NAME]/test-scenarios.md`
 - Output: `specwright/specs/[SPEC_NAME]/user-todos.md` (aktualisiert)
 - Output: `specwright/knowledge/knowledge-index.md` (wenn Artefakte vorhanden)
 - Output: `specwright/knowledge/*.md` (Detail-Dateien)
@@ -180,32 +158,6 @@ Scenario: Aufräumen des Git Worktrees
 **Abhängigkeiten:** story-998
 
 **Geschätzte Komplexität:** S
-
----
-
-## Test-Szenarien Generation
-
-### Template Lookup (Hybrid)
-
-1. Local: `specwright/templates/docs/test-scenarios-template.md`
-2. Global: `~/.specwright/templates/docs/test-scenarios-template.md`
-
-### Generierung pro Story
-
-Für jede abgeschlossene Story:
-
-1. **Happy Path:**
-   - Main-Flow aus Gherkin extrahieren
-   - Schritt-für-Schritt Anweisungen
-   - Erwartete Ergebnisse
-
-2. **Edge Cases:**
-   - Boundary Conditions
-   - Alternative Flows
-
-3. **Fehlerfälle:**
-   - Error Scenarios aus Story
-   - Trigger und erwartete Fehler
 
 ---
 
@@ -295,9 +247,6 @@ Wenn ein Artefakt-Typ nicht zu bestehenden Kategorien passt:
 - [SPEC_PREFIX]-002: [Title]
 - ...
 
-## Test Plan
-[Verweis auf test-scenarios.md]
-
 ## Manual Tasks Required
 [Verweis auf user-todos.md oder "None"]
 
@@ -315,7 +264,6 @@ gh pr create \
 [Generated Summary]
 
 ## Test plan
-- [ ] Test scenarios reviewed
 - [ ] Integration tests passed
 - [ ] Code review completed
 
@@ -353,17 +301,13 @@ git worktree list
 ## Completion Check
 
 ```bash
-# Verify test-scenarios.md exists
-test -f specwright/specs/[SPEC_NAME]/test-scenarios.md
-
 # Verify PR was created (requires gh cli)
 gh pr view --json url 2>/dev/null && echo "PR exists"
 ```
 
 **Story ist DONE wenn:**
-1. test-scenarios.md wurde generiert
-2. user-todos.md wurde finalisiert (wenn vorhanden)
-3. Project Knowledge wurde aktualisiert (wenn "Creates Reusable" Stories vorhanden)
-4. Pull Request wurde erstellt
-5. Worktree wurde aufgeräumt (wenn verwendet)
-6. Kanban-Board zeigt "complete"
+1. user-todos.md wurde finalisiert (wenn vorhanden)
+2. Project Knowledge wurde aktualisiert (wenn "Creates Reusable" Stories vorhanden)
+3. Pull Request wurde erstellt
+4. Worktree wurde aufgeräumt (wenn verwendet)
+5. Kanban-Board zeigt "complete"

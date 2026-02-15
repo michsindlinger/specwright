@@ -157,8 +157,6 @@ et_files=(
     "spec-phase-1.md"
     "spec-phase-2.md"
     "spec-phase-3.md"
-    "spec-phase-4-5.md"
-    "spec-phase-5.md"
     "backlog-phase-1.md"
     "backlog-phase-2.md"
     "backlog-phase-3.md"

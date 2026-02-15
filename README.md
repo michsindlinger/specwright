@@ -1,6 +1,10 @@
-# Specwright
+<p align="center">
+  <img src="docs/assets/specwright-logo.png" alt="Specwright Logo" width="200">
+</p>
 
-**Spec-driven development for AI-assisted software projects.**
+<h1 align="center">Specwright</h1>
+
+<p align="center"><strong>Spec-driven development for AI-assisted software projects.</strong></p>
 
 Specwright is an open-source framework that brings structured, specification-driven workflows to AI coding assistants. It provides a complete lifecycle from product planning through execution, using specs and user stories as the foundation for development.
 

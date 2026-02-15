@@ -25,8 +25,8 @@ version: 5.0
 - **System Story Detection**: Erkennt automatisch System Stories (story-997, 998, 999)
 - **System Story Execution**: Spezielle Execution Logic für jede System Story:
   - story-997: Code Review (git diff, review-report.md)
-  - story-998: Integration Validation (ersetzt Phase 4.5)
-  - story-999: Finalize PR (ersetzt Phase 5)
+  - story-998: Integration Validation
+  - story-999: Finalize PR
 - **Backward Compatibility**: Reguläre Stories werden weiterhin normal ausgeführt
 
 ## What's New in v3.3
@@ -323,7 +323,7 @@ maintaining full context throughout the story.
 <step name="execute_system_story_998">
   ### Execute System Story 998: Integration Validation (v4.0)
 
-  **Purpose:** Ersetzt Phase 4.5 - Integration Tests aus spec.md ausführen
+  **Purpose:** Integration Tests aus spec.md ausführen
 
   <integration_validation_execution>
     1. UPDATE: kanban.json
@@ -390,30 +390,14 @@ maintaining full context throughout the story.
 <step name="execute_system_story_999">
   ### Execute System Story 999: Finalize PR (v4.1)
 
-  **Purpose:** Ersetzt Phase 5 - Test-Szenarien, User-Todos, PR, Worktree Cleanup, **Project Knowledge Update**
+  **Purpose:** User-Todos, PR, Worktree Cleanup, **Project Knowledge Update**
 
   <finalize_pr_execution>
     1. UPDATE: kanban.json
        - MOVE: story-999 to "In Progress"
        - UPDATE resumeContext
 
-    2. GENERATE: test-scenarios.md
-       READ: All completed stories from specwright/specs/{SELECTED_SPEC}/stories/
-
-       **TEMPLATE LOOKUP (Hybrid):**
-       1. Local: specwright/templates/docs/test-scenarios-template.md
-       2. Global: ~/.specwright/templates/docs/test-scenarios-template.md
-
-       FOR EACH completed story:
-         EXTRACT: Gherkin scenarios
-         GENERATE:
-         - Happy Path test steps
-         - Edge Cases
-         - Fehlerfälle
-
-       CREATE: specwright/specs/{SELECTED_SPEC}/test-scenarios.md
-
-    3. FINALIZE: user-todos.md (if exists)
+    2. FINALIZE: user-todos.md (if exists)
        CHECK: Does user-todos.md exist?
        ```bash
        ls specwright/specs/{SELECTED_SPEC}/user-todos.md 2>/dev/null
@@ -425,7 +409,7 @@ maintaining full context throughout the story.
          - Remove unused sections
          - Add summary at top
 
-    4. UPDATE: Project Knowledge (v4.1 - NEW)
+    3. UPDATE: Project Knowledge (v4.1 - NEW)
        <update_project_knowledge>
 
          **Purpose:** Extrahiere wiederverwendbare Artefakte aus dieser Spec und füge sie zum Project Knowledge hinzu.
@@ -516,7 +500,7 @@ maintaining full context throughout the story.
 
        </update_project_knowledge>
 
-    5. CREATE: Pull Request
+    4. CREATE: Pull Request
        USE: git-workflow subagent
        "Create PR for spec: {SELECTED_SPEC}
 
@@ -526,15 +510,15 @@ maintaining full context throughout the story.
        - Push all commits
        - Create PR to main branch
        - Include summary of all stories
-       - Reference test-scenarios.md and user-todos.md"
+       - Reference user-todos.md if exists"
 
        CAPTURE: PR URL
 
-    6. UPDATE: Roadmap (if applicable)
+    5. UPDATE: Roadmap (if applicable)
        CHECK: Did this spec complete a roadmap item?
        IF yes: UPDATE specwright/product/roadmap.md
 
-    7. CLEANUP: Worktree (if used)
+    6. CLEANUP: Worktree (if used)
        CHECK: Resume Context for "Git Strategy" value
 
        IF "Git Strategy" = "worktree":
@@ -544,18 +528,18 @@ maintaining full context throughout the story.
          - Remove worktree
          - Verify cleanup"
 
-    8. PLAY: Completion sound
+    7. PLAY: Completion sound
        ```bash
        afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || true
        ```
 
-    9. MARK: story-999 as Done
+    8. MARK: story-999 as Done
        UPDATE: kanban.json
        - Set resumeContext.currentPhase: complete
        - Set resumeContext.lastAction: PR created - [PR URL]
        COMMIT: "feat: [story-999] PR finalized"
 
-    10. OUTPUT: Final summary to user
+    9. OUTPUT: Final summary to user
        ---
        ## Spec Execution Complete!
 
@@ -566,7 +550,6 @@ maintaining full context throughout the story.
        [PR URL]
 
        ### Handover-Dokumentation
-       - **Test-Szenarien:** specwright/specs/{SELECTED_SPEC}/test-scenarios.md
        - **User-Todos:** [IF EXISTS: specwright/specs/{SELECTED_SPEC}/user-todos.md]
 
        ---
@@ -1072,8 +1055,8 @@ maintaining full context throughout the story.
   ELSE (all stories done):
     UPDATE: kanban.json
     - resumeContext.currentPhase = "all-stories-done"
-    - resumeContext.nextPhase = "4.5-integration-validation"
-    - resumeContext.nextAction = "Run integration validation"
+    - resumeContext.nextPhase = "3-execute-story"
+    - resumeContext.nextAction = "Execute System Stories (997, 998, 999)"
     - execution.status = "stories-complete"
 
     ADD to changeLog[]:
@@ -1094,7 +1077,7 @@ maintaining full context throughout the story.
 
     **Progress:** {boardStatus.total} of {boardStatus.total} stories (100%)
 
-    **Next Phase:** Integration Validation
+    **Next:** System Stories (Code Review, Integration Validation, Finalize PR)
 
     ---
     **To continue, run:**
@@ -1104,7 +1087,7 @@ maintaining full context throughout the story.
     ```
     ---
 
-    STOP: Do not proceed to Phase 4.5
+    STOP: Do not proceed to System Stories
 </phase_complete>
 
 ---
@@ -1139,9 +1122,8 @@ maintaining full context throughout the story.
 | v3.3 | v4.0 |
 |------|------|
 | No system story detection | detect_system_story step (NEW) |
-| Phase 4.5 for integration | story-998 handles integration |
-| Phase 5 for PR/cleanup | story-999 handles finalization |
-| Legacy phase routing | System stories execute in Phase 3 |
+| Separate integration phase | story-998 handles integration in Phase 3 |
+| Separate finalization phase | story-999 handles finalization in Phase 3 |
 
 ## Quick Reference: v3.3 Changes
 
@@ -1149,7 +1131,7 @@ maintaining full context throughout the story.
 |------|------|
 | No pre-check for integrations | verify_integration_requirements (NEW) |
 | Code existence = done | Code + active connection = done |
-| Integration issues found in Phase 4.5 | Integration verified per-story |
+| Integration issues found late | Integration verified per-story |
 | "Komponenten gebaut aber nicht verbunden" | Forced connection verification |
 
 ## Quick Reference: v3.2 Changes

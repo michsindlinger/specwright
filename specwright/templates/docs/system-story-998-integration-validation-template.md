@@ -77,8 +77,7 @@ Scenario: Verifizierung der Komponenten-Verbindungen
 
 ## System Story Execution (Automatisch)
 
-> **Hinweis:** Diese Story ersetzt Phase 4.5 (Integration Validation).
-> Der Agent führt folgende Schritte durch:
+> **Hinweis:** Der Agent führt folgende Schritte automatisch durch:
 
 ### Execution Steps
 

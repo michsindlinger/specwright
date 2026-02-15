@@ -2,11 +2,20 @@
 description: Entry point for task execution - routes to appropriate phase
 globs:
 alwaysApply: false
-version: 4.0
+version: 4.1
 encoding: UTF-8
 ---
 
 # Task Execution Entry Point
+
+## What's New in v4.1
+
+**Legacy Phase Removal:**
+- Removed Phase 4.5 (Integration Validation) and Phase 5 (Finalize + PR)
+- System Stories (997, 998, 999) are now the only path - no legacy fallback
+- Removed `system_stories_check` - System Stories are always present
+- Simplified routing: `all-stories-done` always routes to Phase 3 (System Stories)
+- Deleted: `spec-phase-4-5.md`, `spec-phase-5.md`
 
 ## What's New in v4.0
 
@@ -25,20 +34,6 @@ encoding: UTF-8
 - Items stored in `backlog.json`
 - Story details in `stories/` subdirectory
 
-## What's New in v3.6
-
-**System Stories Support:**
-- Detects System Stories (story-997, 998, 999) in specs
-- Routes to Phase 3 when System Stories are pending (even if regular backlog is empty)
-- Phase 4.5 and 5 become legacy checks (skip if System Stories exist and are Done)
-- Backward compatible: Specs without System Stories work unchanged
-
-**Requires create-spec v3.0:**
-- System Stories (997, 998, 999) are automatically generated
-- story-997: Code Review
-- story-998: Integration Validation (replaces Phase 4.5)
-- story-999: Finalize PR (replaces Phase 5)
-
 ## What's New in v3.5
 
 **Integration Verification (Phase 3):**
@@ -55,13 +50,12 @@ encoding: UTF-8
 **Hybrid Template Lookup:**
 - Templates searched in order: local (`specwright/templates/`) → global (`~/.specwright/templates/`)
 - Fixes "template not found" for projects without local templates
-- Applies to: kanban-board, test-scenarios, user-todos templates
+- Applies to: kanban-board, user-todos templates
 
 **Handover Documentation (Spec only):**
 - Phase 3: Collects user-todos during implementation (tasks requiring manual action)
-- Phase 5: Generates test-scenarios.md with Happy-Path, Edge-Cases, Fehlerfälle
-- Phase 5: Finalizes user-todos.md with summary and priority classification
-- New templates: test-scenarios-template.md, user-todos-template.md
+- Phase 3 (story-999): Finalizes user-todos.md with summary and priority classification
+- New template: user-todos-template.md
 
 ## What's New in v3.3
 
@@ -427,72 +421,19 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
          CONTINUE: No CWD check needed, proceed normally
     </cwd_check>
 
-    <system_stories_check>
-      ## System Stories Detection (v4.0)
+    ## Phase Routing Table (v4.1)
 
-      **Before routing, check for System Stories:**
+    | currentPhase (JSON) | currentPhase (MD) | Load Phase File |
+    |---------------------|-------------------|-----------------|
+    | 1-kanban-setup | - | spec-phase-1.md |
+    | 1-complete | 1-complete | spec-phase-2.md |
+    | 2-complete | 2-complete | spec-phase-3.md |
+    | 3-execute-story | - | spec-phase-3.md |
+    | story-complete | story-complete | spec-phase-3.md |
+    | all-stories-done | all-stories-done | spec-phase-3.md |
+    | complete | complete | INFORM: "Spec execution complete." |
 
-      IF USING_JSON = true:
-        ## JSON-Based Check (preferred)
-        1. READ: kanban.json → stories[] array
-
-        2. FIND: System Stories by ID pattern
-           - story-997 (Code Review)
-           - story-998 (Integration Validation)
-           - story-999 (Finalize PR)
-
-        3. IF any System Story found in stories[]:
-           SET: HAS_SYSTEM_STORIES = true
-
-           CHECK: Status of each System Story
-           - stories[997].status
-           - stories[998].status
-           - stories[999].status
-
-           SET: SYSTEM_STORIES_DONE = true if ALL have status = "done"
-
-        4. IF no System Stories in stories[]:
-           SET: HAS_SYSTEM_STORIES = false
-           NOTE: Use legacy Phase 4.5 and 5 routing
-
-      ELSE (USING_JSON = false):
-        ## Legacy Check (fallback)
-        1. CHECK: Do System Stories exist in this spec?
-           ```bash
-           ls specwright/specs/${SELECTED_SPEC}/stories/story-997*.md \
-              specwright/specs/${SELECTED_SPEC}/stories/story-998*.md \
-              specwright/specs/${SELECTED_SPEC}/stories/story-999*.md 2>/dev/null
-           ```
-
-        2. IF System Stories exist:
-           EXTRACT: Status of each System Story from story files
-
-           SET: HAS_SYSTEM_STORIES = true
-           SET: SYSTEM_STORIES_DONE = true if ALL (997, 998, 999) have Status: Done
-
-        3. IF no System Stories:
-           SET: HAS_SYSTEM_STORIES = false
-           NOTE: Use legacy Phase 4.5 and 5 routing
-    </system_stories_check>
-
-    ## Phase Routing Table (v4.0)
-
-    | currentPhase (JSON) | currentPhase (MD) | Condition | Load Phase File |
-    |---------------------|-------------------|-----------|-----------------|
-    | 1-kanban-setup | - | - | spec-phase-1.md |
-    | 1-complete | 1-complete | - | spec-phase-2.md |
-    | 2-complete | 2-complete | - | spec-phase-3.md |
-    | 3-execute-story | - | - | spec-phase-3.md |
-    | story-complete | story-complete | - | spec-phase-3.md |
-    | all-stories-done | all-stories-done | HAS_SYSTEM_STORIES AND NOT SYSTEM_STORIES_DONE | spec-phase-3.md |
-    | all-stories-done | all-stories-done | NOT HAS_SYSTEM_STORIES | spec-phase-4-5.md |
-    | all-stories-done | all-stories-done | SYSTEM_STORIES_DONE | spec-phase-5.md |
-    | 4.5-integration-validation | - | - | spec-phase-4-5.md |
-    | 5-ready | 5-ready | - | spec-phase-5.md |
-    | 5-finalize | - | - | spec-phase-5.md |
-    | complete | complete | - | INFORM: "Spec execution complete." |
-
-    **Routing Logic (v4.0):**
+    **Routing Logic (v4.1):**
 
     ```
     IF USING_JSON:
@@ -502,17 +443,8 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
       EXTRACT: currentPhase from kanban-board.md → Resume Context table
 
     IF currentPhase = "all-stories-done":
-      IF HAS_SYSTEM_STORIES AND NOT SYSTEM_STORIES_DONE:
-        # System Stories pending - continue Phase 3
-        LOAD: spec-phase-3.md
-
-      ELSE IF NOT HAS_SYSTEM_STORIES:
-        # Legacy spec - use old Phase 4.5
-        LOAD: spec-phase-4-5.md
-
-      ELSE IF SYSTEM_STORIES_DONE:
-        # System Stories done - legacy check
-        LOAD: spec-phase-5.md (will skip to completion)
+      # System Stories (997, 998, 999) are pending - continue Phase 3
+      LOAD: spec-phase-3.md
     ```
 
     LOAD: Appropriate phase file
@@ -527,9 +459,7 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
 |------|-------|------|---------|
 | Spec | 1 | spec-phase-1.md | Initialize + Kanban |
 | Spec | 2 | spec-phase-2.md | Git Worktree |
-| Spec | 3 | spec-phase-3.md | Execute Story |
-| Spec | 4.5 | spec-phase-4-5.md | Integration Validation |
-| Spec | 5 | spec-phase-5.md | Finalize + PR |
+| Spec | 3 | spec-phase-3.md | Execute Story (incl. System Stories 997-999) |
 | Backlog | 1 | backlog-phase-1.md | Daily Kanban |
 | Backlog | 2 | backlog-phase-2.md | Execute Story |
 | Backlog | 3 | backlog-phase-3.md | Daily Summary |
