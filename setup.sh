@@ -52,6 +52,8 @@ mkdir -p specwright/standards
 mkdir -p specwright/workflows/core
 mkdir -p specwright/workflows/meta
 mkdir -p specwright/workflows/marketing
+mkdir -p specwright/workflows/team
+mkdir -p specwright/workflows/validation
 mkdir -p specwright/scripts
 mkdir -p specwright/templates
 mkdir -p specwright/templates/product
@@ -191,6 +193,15 @@ download_file "$REPO_URL/specwright/workflows/core/brainstorm-upselling-ideas.md
 download_file "$REPO_URL/specwright/workflows/marketing/create-instagram-account.md" "specwright/workflows/marketing/create-instagram-account.md" "workflows"
 download_file "$REPO_URL/specwright/workflows/marketing/create-content-plan.md" "specwright/workflows/marketing/create-content-plan.md" "workflows"
 
+# Team workflows
+download_file "$REPO_URL/specwright/workflows/team/create-project-agents.md" "specwright/workflows/team/create-project-agents.md" "workflows"
+download_file "$REPO_URL/specwright/workflows/team/assign-skills-to-agent.md" "specwright/workflows/team/assign-skills-to-agent.md" "workflows"
+
+# Validation workflows
+download_file "$REPO_URL/specwright/workflows/validation/validate-market.md" "specwright/workflows/validation/validate-market.md" "workflows"
+download_file "$REPO_URL/specwright/workflows/validation/validate-market-for-existing.md" "specwright/workflows/validation/validate-market-for-existing.md" "workflows"
+download_file "$REPO_URL/specwright/workflows/validation/README.md" "specwright/workflows/validation/README.md" "workflows"
+
 # Automation script
 download_file "$REPO_URL/specwright/scripts/auto-execute.sh" "specwright/scripts/auto-execute.sh" "workflows"
 chmod +x specwright/scripts/auto-execute.sh
@@ -281,6 +292,8 @@ echo "    ├── standards/              (3 core files)"
 echo "    ├── workflows/core/         (29 core workflows)"
 echo "    │   ├── execute-tasks/      (12 phase files)"
 echo "    │   └── guidelines/         (1 file)"
+echo "    ├── workflows/team/         (2 team workflows)"
+echo "    ├── workflows/validation/   (3 validation workflows)"
 echo "    ├── workflows/marketing/    (2 marketing workflows)"
 echo "    ├── workflows/meta/         (1 meta workflow)"
 echo "    ├── scripts/                (1 automation script)"
