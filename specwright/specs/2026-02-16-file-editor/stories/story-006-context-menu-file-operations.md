@@ -129,17 +129,17 @@ Scenario: Offenen Tab nach Umbenennen aktualisieren
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: ui/frontend/src/components/file-editor/aos-file-context-menu.ts
+- [x] FILE_EXISTS: ui/frontend/src/components/file-editor/aos-file-context-menu.ts
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: ui/frontend/src/components/file-editor/aos-file-context-menu.ts enthält "@customElement('aos-file-context-menu')"
-- [ ] CONTAINS: ui/frontend/src/components/file-editor/aos-file-context-menu.ts enthält "files:create"
+- [x] CONTAINS: ui/frontend/src/components/file-editor/aos-file-context-menu.ts enthält "@customElement('aos-file-context-menu')"
+- [x] CONTAINS: ui/frontend/src/components/file-editor/aos-file-context-menu.ts enthält "files:create"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0
 
 ---
 
@@ -180,24 +180,24 @@ Scenario: Offenen Tab nach Umbenennen aktualisieren
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Kontextmenü positioniert sich korrekt (Viewport-Bounds)
-- [ ] Alle 4 Operationen funktionieren (New File, New Folder, Rename, Delete)
-- [ ] Bestätigungs-Dialog für Löschen funktioniert
+- [x] Code implementiert und folgt Style Guide
+- [x] Kontextmenü positioniert sich korrekt (Viewport-Bounds)
+- [x] Alle 4 Operationen funktionieren (New File, New Folder, Rename, Delete)
+- [x] Bestätigungs-Dialog für Löschen funktioniert
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Code Review durchgeführt und genehmigt
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Code Review durchgeführt und genehmigt
 
 #### Integration
-- [ ] **Integration hergestellt: aos-file-context-menu → aos-file-tree**
-  - [ ] Kontextmenü wird durch Rechtsklick im Tree geöffnet
-  - [ ] Operationen aktualisieren den Tree nach Erfolg
-  - [ ] Gateway-Messages für CRUD werden gesendet
+- [x] **Integration hergestellt: aos-file-context-menu → aos-file-tree**
+  - [x] Kontextmenü wird durch Rechtsklick im Tree geöffnet
+  - [x] Operationen aktualisieren den Tree nach Erfolg
+  - [x] Gateway-Messages für CRUD werden gesendet
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 

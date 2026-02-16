@@ -15,6 +15,9 @@ import './components/aos-project-add-modal.js';
 import './components/aos-context-menu.js';
 import './components/aos-quick-todo-modal.js';
 import './components/terminal/aos-cloud-terminal-sidebar.js';
+import './components/file-editor/aos-file-tree-sidebar.js';
+import './components/file-editor/aos-file-editor-panel.js';
+import type { AosFileEditorPanel } from './components/file-editor/aos-file-editor-panel.js';
 import './components/git/aos-git-status-bar.js';
 import './components/git/aos-git-commit-dialog.js';
 import './components/queue/aos-global-queue-panel.js';
@@ -77,6 +80,9 @@ export class AosApp extends LitElement {
 
   @state()
   private isTerminalSidebarOpen = false;
+
+  @state()
+  private isFileTreeOpen = false;
 
   @state()
   private terminalSessions: TerminalSession[] = [];
@@ -618,6 +624,23 @@ export class AosApp extends LitElement {
     const { itemId } = e.detail;
     this.showQuickTodoModal = false;
     this.showToast(`Quick-To-Do erstellt (${itemId})`, 'success');
+  }
+
+  // --- File Tree Sidebar Event Handlers ---
+
+  private _handleFileTreeToggle(): void {
+    this.isFileTreeOpen = !this.isFileTreeOpen;
+  }
+
+  private _handleFileTreeClose(): void {
+    this.isFileTreeOpen = false;
+  }
+
+  private _handleFileTreeFileOpen(e: CustomEvent<{ path: string; filename: string }>): void {
+    const panel = this.querySelector('aos-file-editor-panel') as AosFileEditorPanel | null;
+    if (panel) {
+      panel.openFile(e.detail.path, e.detail.filename);
+    }
   }
 
   // --- Cloud Terminal Event Handlers ---
@@ -1268,6 +1291,15 @@ export class AosApp extends LitElement {
                 </span>`
               : ''}
             <button
+              class="file-tree-btn ${this.isFileTreeOpen ? 'active' : ''}"
+              @click=${this._handleFileTreeToggle}
+              title="Dateibaum"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+            </button>
+            <button
               class="terminal-btn ${this.terminalSessions.length > 0 ? 'has-sessions' : ''}"
               @click=${this._handleTerminalToggle}
               title="Cloud Terminal"
@@ -1305,6 +1337,7 @@ export class AosApp extends LitElement {
           @checkout-branch=${this._handleCheckoutBranch}
         ></aos-git-status-bar>
         <div class="view-container">${this.renderView()}</div>
+        <aos-file-editor-panel></aos-file-editor-panel>
       </main>
       <aos-global-queue-panel
         .isOpen=${this.isBottomPanelOpen}
@@ -1345,6 +1378,11 @@ export class AosApp extends LitElement {
         @modal-close=${this.handleQuickTodoModalClose}
         @quick-todo-saved=${this.handleQuickTodoSaved}
       ></aos-quick-todo-modal>
+      <aos-file-tree-sidebar
+        .isOpen=${this.isFileTreeOpen}
+        @sidebar-close=${this._handleFileTreeClose}
+        @file-open=${this._handleFileTreeFileOpen}
+      ></aos-file-tree-sidebar>
       <aos-cloud-terminal-sidebar
         .isOpen=${this.isTerminalSidebarOpen}
         .sessions=${this.projectTerminalSessions}

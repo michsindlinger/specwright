@@ -32,6 +32,9 @@ export class AosFileTree extends LitElement {
   /** Currently selected file path */
   @property({ type: String }) selectedPath: string | null = null;
 
+  /** Client-side filter text - only entries matching this string are shown */
+  @property({ type: String }) filterText = '';
+
   /** Map of directory path -> entries (lazy-loaded per folder) */
   @state() private entries: Map<string, FileEntry[]> = new Map();
 
@@ -125,6 +128,17 @@ export class AosFileTree extends LitElement {
       this.initialLoading = false;
       this.error = errorMessage;
     }
+  }
+
+  /**
+   * Refresh a directory's contents by re-fetching from the backend.
+   * Used by aos-file-context-menu after file operations (create, rename, delete).
+   */
+  refreshDirectory(dirPath: string): void {
+    const newEntries = new Map(this.entries);
+    newEntries.delete(dirPath);
+    this.entries = newEntries;
+    this.loadDirectory(dirPath);
   }
 
   private toggleDir(dirPath: string): void {
@@ -387,6 +401,30 @@ export class AosFileTree extends LitElement {
     `;
   }
 
+  /**
+   * Check if a file entry matches the current filter text.
+   * For directories, returns true if any descendant matches.
+   */
+  private matchesFilter(entry: FileEntry): boolean {
+    if (!this.filterText) return true;
+
+    const query = this.filterText.toLowerCase();
+
+    if (entry.name.toLowerCase().includes(query)) return true;
+
+    // For directories, check if any loaded child matches recursively
+    if (entry.type === 'directory') {
+      const children = this.entries.get(entry.path);
+      if (children) {
+        return children.some((child) => this.matchesFilter(child));
+      }
+      // Directory not yet loaded - keep visible so user can expand it
+      return true;
+    }
+
+    return false;
+  }
+
   private renderDirContents(dirPath: string, depth: number, isLoading: boolean): TemplateResult | TemplateResult[] {
     if (isLoading) {
       const paddingLeft = depth * 16;
@@ -408,7 +446,13 @@ export class AosFileTree extends LitElement {
       `;
     }
 
-    return children.map((child) => this.renderEntry(child, depth));
+    const filtered = this.filterText ? children.filter((child) => this.matchesFilter(child)) : children;
+
+    if (filtered.length === 0) {
+      return html``;
+    }
+
+    return filtered.map((child) => this.renderEntry(child, depth));
   }
 
   override render() {
@@ -446,9 +490,21 @@ export class AosFileTree extends LitElement {
       `;
     }
 
+    const filtered = this.filterText ? rootEntries.filter((entry) => this.matchesFilter(entry)) : rootEntries;
+
+    if (filtered.length === 0) {
+      return html`
+        <div class="file-tree">
+          <div class="file-tree-empty">
+            Keine Treffer fuer "${this.filterText}"
+          </div>
+        </div>
+      `;
+    }
+
     return html`
       <div class="file-tree" role="tree">
-        ${rootEntries.map((entry) => this.renderEntry(entry, 0))}
+        ${filtered.map((entry) => this.renderEntry(entry, 0))}
       </div>
     `;
   }

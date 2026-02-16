@@ -66,12 +66,12 @@ Scenario: Dokumentation gefundener Probleme
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: specwright/specs/2026-02-16-file-editor/review-report.md
+- [x] FILE_EXISTS: specwright/specs/2026-02-16-file-editor/review-report.md
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: review-report.md enthaelt "## Review Summary"
-- [ ] CONTAINS: review-report.md enthaelt "## Gepruefte Dateien"
+- [x] CONTAINS: review-report.md enthaelt "## Review Summary"
+- [x] CONTAINS: review-report.md enthaelt "## Gepruefte Dateien"
 
 ### Funktions-Pruefungen
 
@@ -120,11 +120,11 @@ Scenario: Dokumentation gefundener Probleme
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] Git Diff analysiert (main...HEAD)
-- [ ] Alle geaenderten Dateien reviewt
-- [ ] Probleme identifiziert und kategorisiert
-- [ ] review-report.md erstellt
-- [ ] Keine Critical Issues gefunden (oder dokumentiert)
+- [x] Git Diff analysiert (main...HEAD)
+- [x] Alle geaenderten Dateien reviewt
+- [x] Probleme identifiziert und kategorisiert
+- [x] review-report.md erstellt
+- [x] Keine Critical Issues gefunden (oder dokumentiert)
 
 ---
 
