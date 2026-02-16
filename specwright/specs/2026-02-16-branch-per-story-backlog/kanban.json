@@ -10,15 +10,15 @@
     "createdAt": "2026-02-16"
   },
   "resumeContext": {
-    "currentPhase": "story-complete",
-    "nextPhase": "3-execute-story",
+    "currentPhase": "3-execute-story",
+    "nextPhase": "story-complete",
     "worktreePath": null,
     "gitBranch": "feature/branch-per-story-backlog",
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Story BPS-002 completed",
-    "nextAction": "Execute next story (BPS-003)",
-    "progressIndex": 2,
+    "currentStory": "BPS-998",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started BPS-998 Integration Validation",
+    "nextAction": "Run integration tests from spec.md",
+    "progressIndex": 4,
     "totalStories": 6,
     "gitStrategy": "branch"
   },
@@ -113,25 +113,29 @@
       "dependencies": [
         "BPS-002"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-websocket-frontend-integration.md",
       "timing": {
         "createdAt": "2026-02-16",
         "updatedAt": "2026-02-16",
-        "startedAt": "2026-02-16T22:00:39.032Z"
+        "startedAt": "2026-02-16T22:00:39.032Z",
+        "completedAt": "2026-02-16T23:30:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/workflow-executor.ts",
+          "ui/frontend/src/views/dashboard-view.ts"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
-        "dorChecked": false,
-        "dodChecked": false
+        "dorChecked": true,
+        "dodChecked": true
       },
       "model": "glm-5",
-      "phase": "in_progress"
+      "phase": "completed"
     },
     {
       "id": "BPS-997",
@@ -148,22 +152,29 @@
         "BPS-002",
         "BPS-003"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-16",
-        "updatedAt": "2026-02-16"
+        "updatedAt": "2026-02-16",
+        "startedAt": "2026-02-16T22:35:00.000Z",
+        "completedAt": "2026-02-16T22:50:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-16-branch-per-story-backlog/review-report.md",
+          "ui/src/server/workflow-executor.ts"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
-        "dorChecked": false,
-        "dodChecked": false
-      }
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "claude-opus-4-6",
+      "phase": "completed"
     },
     {
       "id": "BPS-998",
@@ -178,12 +189,13 @@
       "dependencies": [
         "BPS-997"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-02-16",
-        "updatedAt": "2026-02-16"
+        "updatedAt": "2026-02-16",
+        "startedAt": "2026-02-16T23:00:00.000Z"
       },
       "implementation": {
         "filesModified": [],
@@ -191,9 +203,11 @@
         "commits": []
       },
       "verification": {
-        "dorChecked": false,
+        "dorChecked": true,
         "dodChecked": false
-      }
+      },
+      "model": "claude-opus-4-6",
+      "phase": "in_progress"
     },
     {
       "id": "BPS-999",
@@ -229,18 +243,18 @@
   ],
   "boardStatus": {
     "total": 6,
-    "ready": 3,
-    "inProgress": 1,
+    "ready": 1,
+    "inProgress": 2,
     "inReview": 0,
     "testing": 0,
-    "done": 2,
+    "done": 3,
     "blocked": 0
   },
   "statistics": {
     "totalEffort": 12,
-    "completedEffort": 4,
-    "remainingEffort": 8,
-    "progressPercent": 33,
+    "completedEffort": 6,
+    "remainingEffort": 6,
+    "progressPercent": 50,
     "byType": {
       "frontend": 0,
       "backend": 4,
@@ -378,6 +392,30 @@
     },
     {
       "timestamp": "2026-02-16T22:00:39.161Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/branch-per-story-backlog"
+    },
+    {
+      "timestamp": "2026-02-16T22:06:28.435Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/branch-per-story-backlog"
+    },
+    {
+      "timestamp": "2026-02-16T22:35:00.000Z",
+      "action": "status_changed",
+      "storyId": "BPS-997",
+      "details": "Moved from ready to in_progress (System Story: Code Review)"
+    },
+    {
+      "timestamp": "2026-02-16T22:50:00.000Z",
+      "action": "story_completed",
+      "storyId": "BPS-997",
+      "details": "Progress: 4/6 (50%) - Code Review passed with notes, 0 Critical, 1 Major, 1 Minor (fixed)"
+    },
+    {
+      "timestamp": "2026-02-16T22:11:00.030Z",
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/branch-per-story-backlog"

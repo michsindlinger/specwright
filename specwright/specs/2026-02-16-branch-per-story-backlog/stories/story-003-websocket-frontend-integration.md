@@ -135,24 +135,24 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Security/Performance Anforderungen erfüllt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Security/Performance Anforderungen erfüllt
 
 #### Integration
-- [ ] **Integration hergestellt: WorkflowExecutor -> WebSocket -> Frontend**
-  - [ ] WebSocket Handler leitet Branch-Completion-Signal korrekt weiter
-  - [ ] Frontend wartet auf Branch-Wechsel bevor nächste Story startet
-  - [ ] Validierung: Frontend Build erfolgreich
+- [x] **Integration hergestellt: WorkflowExecutor -> WebSocket -> Frontend**
+  - [x] WebSocket Handler leitet Branch-Completion-Signal korrekt weiter
+  - [x] Frontend wartet auf Branch-Wechsel bevor nächste Story startet
+  - [x] Validierung: Frontend Build erfolgreich
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt (via Completion Check verifiziert)
-- [ ] Keine Linting Errors
-- [ ] Build erfolgreich (Backend + Frontend)
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Alle Akzeptanzkriterien erfüllt (via Completion Check verifiziert)
+- [x] Keine Linting Errors (bestehende `_removed` Errors sind nicht von dieser Story)
+- [x] Build erfolgreich (Backend + Frontend)
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 #### Dokumentation
-- [ ] Dokumentation aktualisiert
+- [x] Dokumentation aktualisiert
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 
@@ -166,15 +166,16 @@ Keine MCP Tools erforderlich.
 
 | Layer | Komponenten | Änderung |
 |-------|-------------|----------|
-| Backend | ui/src/server/websocket.ts | handleBacklogStoryStart: keine Git-Strategy-Abfrage, handleQueueStoryComplete: Backlog-Branch-Semantik |
-| Frontend | ui/frontend/src/views/dashboard-view.ts | onBacklogStoryComplete: Fehlerbehandlung für Branch-Operationen, Auto-Mode Koordination |
+| Backend | ui/src/server/workflow-executor.ts | BPS-003: Warnung bei Pre/Post-Execution Git-Fehlern an Frontend |
+| Frontend | ui/frontend/src/views/dashboard-view.ts | BPS-003: onBacklogStoryGitWarning Handler für nicht-kritische Git-Warnungen |
 
 **Kritische Integration Points:**
 - WorkflowExecutor (post-completion `workflow.interactive.complete`) -> WebSocket -> Frontend `onBacklogStoryComplete`
 - Frontend `_processBacklogAutoExecution` -> WebSocket `backlog.story.start` -> WorkflowExecutor `startBacklogStoryExecution`
+- WorkflowExecutor -> Frontend `backlog.story.git.warning` (NEU: für nicht-kritische Git-Fehler)
 
 **Handover-Dokumente:**
-- WebSocket Messages: `backlog.story.start`, `backlog.story.start.ack`, `backlog.story.complete`, `workflow.interactive.complete`
+- WebSocket Messages: `backlog.story.start`, `backlog.story.start.ack`, `backlog.story.complete`, `workflow.interactive.complete`, `backlog.story.git.warning` (NEU)
 - Shared Types: Bestehende WebSocket Message-Typen in `ui/src/shared/types/`
 
 ---
@@ -182,21 +183,21 @@ Keine MCP Tools erforderlich.
 ### Technical Details
 
 **WAS:**
-- `handleBacklogStoryStart` in websocket.ts: Sicherstellen dass keine Git-Strategy-Abfrage an den User geht (Backlog = immer Branch-Strategie, automatisch)
-- `handleQueueStoryComplete` in websocket.ts: Beim Backlog-Branch (`specId === 'backlog'`) sicherstellen, dass die nächste Story erst gestartet wird nachdem der Post-Execution-Hook (PR + checkout main) im WorkflowExecutor abgeschlossen ist
-- `onBacklogStoryComplete` in dashboard-view.ts: Fehlerbehandlung ergänzen - wenn Branch-Operationen fehlschlagen, trotzdem nächste Story versuchen
-- Error-Reporting: Bei fehlgeschlagener Branch-Erstellung oder PR-Erstellung eine Warnung im Frontend anzeigen (Toast/Notification)
+- `handleBacklogStoryStart` in websocket.ts: Sicherstellen dass keine Git-Strategy-Abfrage an den User geht (Backlog = immer Branch-Strategie, automatisch) ✅ Bereits implementiert
+- `handleQueueStoryComplete` in websocket.ts: Beim Backlog-Branch (`specId === 'backlog'`) sicherstellen, dass die nächste Story erst gestartet wird nachdem der Post-Execution-Hook (PR + checkout main) im WorkflowExecutor abgeschlossen ist ✅ Bereits implementiert
+- `onBacklogStoryComplete` in dashboard-view.ts: Fehlerbehandlung ergänzen - wenn Branch-Operationen fehlschlagen, trotzdem nächste Story versuchen ✅ Bereits implementiert
+- Error-Reporting: Bei fehlgeschlagener Branch-Erstellung oder PR-Erstellung eine Warnung im Frontend anzeigen (Toast/Notification) ✅ NEU implementiert
 
 **WIE (Architektur-Guidance ONLY):**
 - Folge dem bestehenden WebSocket Message-Pattern: Handler empfängt Message, validiert, delegiert an Service, sendet Ack
-- Für `handleBacklogStoryStart`: KEINE zusätzliche Logik nötig -- die Branch-Erstellung passiert im WorkflowExecutor (BPS-002). Der WebSocket-Handler muss nur sicherstellen, dass er NICHT nach einer Git-Strategy fragt
-- Für `handleQueueStoryComplete`: Die `handleStoryCompletionAndContinue` im WorkflowExecutor (BPS-002) macht bereits den Branch-Wechsel VOR dem Auto-Continue. Hier muss nur sichergestellt werden, dass die Reihenfolge stimmt
-- Für `onBacklogStoryComplete`: Nutze bestehenden `_scheduleNextBacklogAutoExecution()` mit dem 2000ms Delay -- dieser ist ausreichend, da der WorkflowExecutor die Git-Ops bereits synchron (await) abarbeitet bevor er das Completion-Event feuert
-- Fehler-Events: Nutze bestehende Toast/Notification Pattern im Frontend für Warnungen
+- Für `handleBacklogStoryStart`: KEINE zusätzliche Logik nötig -- die Branch-Erstellung passiert im WorkflowExecutor (BPS-002). Der WebSocket-Handler muss nur sicherstellen, dass er NICHT nach einer Git-Strategy fragt ✅
+- Für `handleQueueStoryComplete`: Die `handleStoryCompletionAndContinue` im WorkflowExecutor (BPS-002) macht bereits den Branch-Wechsel VOR dem Auto-Continue. Hier muss nur sichergestellt werden, dass die Reihenfolge stimmt ✅
+- Für `onBacklogStoryComplete`: Nutze bestehenden `_scheduleNextBacklogAutoExecution()` mit dem 2000ms Delay -- dieser ist ausreichend, da der WorkflowExecutor die Git-Ops bereits synchron (await) abarbeitet bevor er das Completion-Event feuert ✅
+- Fehler-Events: Nutze bestehende Toast/Notification Pattern im Frontend für Warnungen ✅ NEU: `backlog.story.git.warning` Message
 
 **WO:**
-- `ui/src/server/websocket.ts` - handleBacklogStoryStart, handleQueueStoryComplete
-- `ui/frontend/src/views/dashboard-view.ts` - onBacklogStoryComplete, _processBacklogAutoExecution
+- `ui/src/server/workflow-executor.ts` - startBacklogStoryExecution (Pre-Execution), handleBacklogPostExecution (Post-Execution)
+- `ui/frontend/src/views/dashboard-view.ts` - onBacklogStoryGitWarning (NEU)
 
 **Abhängigkeiten:** BPS-002
 

@@ -172,7 +172,18 @@ export class WorkflowExecutor {
         // Backlog executions are identified by: argument starts with "backlog " AND branchName is set
         if (execution.argument?.startsWith('backlog ') && execution.branchName) {
           console.log(`[Workflow] BPS-002: Backlog execution detected, running post-execution Git operations`);
-          await this.handleBacklogPostExecution(execution);
+          const postExecResult = await this.handleBacklogPostExecution(execution);
+
+          // BPS-003: Send backlog.story.complete event with PR info for frontend notification
+          console.log(`[Workflow] BPS-003: Sending backlog.story.complete for ${execution.storyId}`);
+          this.sendToClient(execution.client!, {
+            type: 'backlog.story.complete',
+            storyId: execution.storyId,
+            prUrl: postExecResult.prUrl,
+            prWarning: postExecResult.prWarning,
+            status: execution.status,
+            timestamp: new Date().toISOString()
+          }, execution.projectPath);
         }
 
         this.sendToClient(execution.client, {
@@ -377,8 +388,17 @@ export class WorkflowExecutor {
       const branchResult = await gitService.createBranch(projectPath, branchName, 'main');
       console.log(`[Workflow] Branch created/checked out: ${branchName} (created: ${branchResult.created})`);
     } catch (error) {
-      // Log error but continue - don't fail the entire execution
+      // BPS-003: Log error but continue - don't fail the entire execution
       console.warn(`[Workflow] Pre-execution git operations failed (continuing anyway):`, error instanceof Error ? error.message : error);
+
+      // BPS-003: Send warning to frontend (non-critical error)
+      this.sendToClient(client, {
+        type: 'backlog.story.git.warning',
+        storyId,
+        warning: `Branch-Erstellung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        canContinue: true,
+        timestamp: new Date().toISOString()
+      }, projectPath);
     }
 
     const execution: WorkflowExecution = {
@@ -732,18 +752,23 @@ export class WorkflowExecutor {
    * Called after a backlog story completes (success or failure).
    * - On success: Push branch, create PR, checkout main
    * - On failure: Checkout main (branch stays for manual recovery)
+   * BPS-003: Now returns PR info for backlog.story.complete event.
    */
   private async handleBacklogPostExecution(
     execution: WorkflowExecution
-  ): Promise<void> {
-    const { projectPath, branchName, storyId, status } = execution;
+  ): Promise<{ prUrl?: string; prWarning?: string }> {
+    const { projectPath, branchName, storyId, status, client } = execution;
+    const result: { prUrl?: string; prWarning?: string } = {};
 
     if (!branchName) {
       console.log('[Workflow] No branchName set, skipping backlog post-execution');
-      return;
+      return result;
     }
 
     console.log(`[Workflow] BPS-002: Backlog post-execution for story ${storyId}, branch: ${branchName}, status: ${status}`);
+
+    // BPS-003: Collect warnings to send to frontend
+    const warnings: string[] = [];
 
     try {
       if (status === 'completed') {
@@ -755,7 +780,9 @@ export class WorkflowExecutor {
           const pushResult = await gitService.pushBranch(projectPath, branchName);
           console.log(`[Workflow] Branch pushed: ${branchName}, commits: ${pushResult.commitsPushed}`);
         } catch (pushError) {
-          console.warn(`[Workflow] Push failed (continuing anyway):`, pushError instanceof Error ? pushError.message : pushError);
+          const errorMsg = pushError instanceof Error ? pushError.message : String(pushError);
+          console.warn(`[Workflow] Push failed (continuing anyway):`, errorMsg);
+          warnings.push(`Branch-Push fehlgeschlagen: ${errorMsg}`);
         }
 
         // 2. Create Pull Request
@@ -765,12 +792,22 @@ export class WorkflowExecutor {
           if (prResult.success) {
             if (prResult.prUrl) {
               console.log(`[Workflow] PR created: ${prResult.prUrl}`);
-            } else if (prResult.warning) {
-              console.warn(`[Workflow] PR creation warning: ${prResult.warning}`);
+              result.prUrl = prResult.prUrl;
             }
+            if (prResult.warning) {
+              console.warn(`[Workflow] PR creation warning: ${prResult.warning}`);
+              warnings.push(`PR-Erstellung: ${prResult.warning}`);
+              result.prWarning = prResult.warning;
+            }
+          } else {
+            warnings.push(`PR-Erstellung fehlgeschlagen`);
+            result.prWarning = `PR-Erstellung fehlgeschlagen`;
           }
         } catch (prError) {
-          console.warn(`[Workflow] PR creation failed (continuing anyway):`, prError instanceof Error ? prError.message : prError);
+          const errorMsg = prError instanceof Error ? prError.message : String(prError);
+          console.warn(`[Workflow] PR creation failed (continuing anyway):`, errorMsg);
+          warnings.push(`PR-Erstellung fehlgeschlagen: ${errorMsg}`);
+          result.prWarning = errorMsg;
         }
       } else {
         // Failure path: Just log that branch stays
@@ -782,13 +819,29 @@ export class WorkflowExecutor {
         await gitService.checkoutMain(projectPath);
         console.log(`[Workflow] Checked out main branch`);
       } catch (checkoutError) {
-        console.warn(`[Workflow] Checkout main failed:`, checkoutError instanceof Error ? checkoutError.message : checkoutError);
+        const errorMsg = checkoutError instanceof Error ? checkoutError.message : String(checkoutError);
+        console.warn(`[Workflow] Checkout main failed:`, errorMsg);
+        warnings.push(`Checkout main fehlgeschlagen: ${errorMsg}`);
       }
 
     } catch (error) {
-      console.error('[Workflow] Backlog post-execution error:', error instanceof Error ? error.message : error);
-      // Don't throw - we still want the workflow to complete normally
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('[Workflow] Backlog post-execution error:', errorMsg);
+      warnings.push(`Post-execution error: ${errorMsg}`);
     }
+
+    // BPS-003: Send warnings to frontend if any (non-critical)
+    if (warnings.length > 0 && client) {
+      this.sendToClient(client, {
+        type: 'backlog.story.git.warning',
+        storyId,
+        warning: warnings.join('; '),
+        canContinue: true,
+        timestamp: new Date().toISOString()
+      }, projectPath);
+    }
+
+    return result;
   }
 
   /**
@@ -1150,7 +1203,18 @@ export class WorkflowExecutor {
         // Backlog executions are identified by: argument starts with "backlog " AND branchName is set
         if (execution.argument?.startsWith('backlog ') && execution.branchName) {
           console.log(`[Workflow] BPS-002: Backlog execution detected (runClaudeCommand), running post-execution Git operations`);
-          await this.handleBacklogPostExecution(execution);
+          const postExecResult = await this.handleBacklogPostExecution(execution);
+
+          // BPS-003: Send backlog.story.complete event with PR info for frontend notification
+          console.log(`[Workflow] BPS-003: Sending backlog.story.complete for ${execution.storyId}`);
+          this.sendToClient(client, {
+            type: 'backlog.story.complete',
+            storyId: execution.storyId,
+            prUrl: postExecResult.prUrl,
+            prWarning: postExecResult.prWarning,
+            status: execution.status,
+            timestamp: new Date().toISOString()
+          }, execution.projectPath);
         }
 
         // Send workflow completion event (same as terminal-based workflows)
