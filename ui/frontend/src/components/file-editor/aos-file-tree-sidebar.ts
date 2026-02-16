@@ -21,6 +21,19 @@ import type { AosFileContextMenu } from './aos-file-context-menu.js';
 @customElement('aos-file-tree-sidebar')
 export class AosFileTreeSidebar extends LitElement {
   @property({ type: Boolean }) isOpen = false;
+
+  override updated(changedProperties: Map<string, unknown>) {
+    if (changedProperties.has('isOpen')) {
+      this.updateContentOffset();
+      if (this.isOpen) {
+        // Retry loading when sidebar opens, in case initial load failed
+        const tree = this.querySelector('aos-file-tree') as AosFileTree | null;
+        if (tree) {
+          tree.reload();
+        }
+      }
+    }
+  }
   @state() private sidebarWidth = 280;
   @state() private isResizing = false;
   @state() private filterText = '';
@@ -278,6 +291,15 @@ export class AosFileTreeSidebar extends LitElement {
     }
   }
 
+  /**
+   * Set a CSS custom property on the document root so that the main content
+   * area can shift right when the file-tree sidebar is open.
+   */
+  private updateContentOffset(): void {
+    const width = this.isOpen ? this.sidebarWidth : 0;
+    document.documentElement.style.setProperty('--file-tree-open-width', `${width}px`);
+  }
+
   private _handleResizeStart(e: MouseEvent) {
     this.isResizing = true;
     const startX = e.clientX;
@@ -290,6 +312,7 @@ export class AosFileTreeSidebar extends LitElement {
         Math.min(this.maxSidebarWidth, startWidth + delta)
       );
       this.sidebarWidth = newWidth;
+      this.updateContentOffset();
     };
 
     const handleMouseUp = () => {

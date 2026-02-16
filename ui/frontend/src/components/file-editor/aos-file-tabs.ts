@@ -121,13 +121,14 @@ export class AosFileTabs extends LitElement {
         justify-content: center;
         width: 20px;
         height: 20px;
+        padding: 0;
         border: none;
         background: transparent;
-        color: var(--color-text-tertiary);
+        color: var(--color-text-secondary, #a0a0a0);
         border-radius: var(--radius-sm);
         cursor: pointer;
         flex-shrink: 0;
-        opacity: 0;
+        opacity: 0.5;
         transition: opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
       }
 
@@ -138,7 +139,7 @@ export class AosFileTabs extends LitElement {
 
       .file-tab-close:hover {
         background: var(--color-bg-hover);
-        color: var(--color-text-primary);
+        color: var(--color-text-primary, #e0e0e0);
       }
     `;
     document.head.appendChild(style);

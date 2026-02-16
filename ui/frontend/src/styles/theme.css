@@ -3537,8 +3537,9 @@ aos-app .queue-badge {
 aos-app .main-content {
   flex: 1;
   margin-left: var(--sidebar-width);
+  padding-left: max(0px, calc(var(--file-tree-open-width, 0px) - var(--sidebar-width)));
   min-height: 100vh;
-  transition: padding-bottom 0.3s ease;
+  transition: padding-bottom 0.3s ease, padding-left 0.3s ease;
 }
 
 aos-app .header {

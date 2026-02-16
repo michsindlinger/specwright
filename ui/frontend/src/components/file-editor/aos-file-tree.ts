@@ -69,6 +69,7 @@ export class AosFileTree extends LitElement {
     const handlers: [string, (msg: WebSocketMessage) => void][] = [
       ['files:list:response', (msg) => this.onFilesList(msg)],
       ['files:list:error', (msg) => this.onFilesError(msg)],
+      ['gateway.connected', () => this.onGatewayConnected()],
     ];
 
     for (const [type, handler] of handlers) {
@@ -117,8 +118,8 @@ export class AosFileTree extends LitElement {
   }
 
   private onFilesError(msg: WebSocketMessage): void {
-    const dirPath = msg.path as string;
-    const errorMessage = (msg.error as string) || 'Fehler beim Laden';
+    const dirPath = (msg.path as string | undefined) ?? this.rootPath;
+    const errorMessage = (msg.message as string) || (msg.error as string) || 'Fehler beim Laden';
 
     const newLoading = new Set(this.loadingDirs);
     newLoading.delete(dirPath);
@@ -127,6 +128,30 @@ export class AosFileTree extends LitElement {
     if (dirPath === this.rootPath) {
       this.initialLoading = false;
       this.error = errorMessage;
+    }
+  }
+
+  /**
+   * Re-trigger initial load when gateway reconnects.
+   * Handles the case where the component mounted before WebSocket was ready.
+   */
+  private onGatewayConnected(): void {
+    if (this.initialLoading || this.error) {
+      this.initialLoading = true;
+      this.error = '';
+      this.loadDirectory(this.rootPath);
+    }
+  }
+
+  /**
+   * Reload the root directory if data hasn't loaded yet.
+   * Called by the sidebar when it becomes visible.
+   */
+  reload(): void {
+    if (this.initialLoading || this.error) {
+      this.initialLoading = true;
+      this.error = '';
+      this.loadDirectory(this.rootPath);
     }
   }
 

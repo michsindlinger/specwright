@@ -40,24 +40,30 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "in_progress",
-      "dorStatus": "incomplete",
+      "status": "done",
+      "dorStatus": "ready",
       "storyFile": "stories/story-001-backend-file-api.md",
       "timing": {
         "createdAt": "2026-02-16",
         "updatedAt": "2026-02-16",
-        "startedAt": "2026-02-16T17:45:21.112Z"
+        "startedAt": "2026-02-16T17:45:21.112Z",
+        "completedAt": "2026-02-16T19:28:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/file.protocol.ts",
+          "ui/src/server/services/file.service.ts",
+          "ui/src/server/handlers/file.handler.ts",
+          "ui/src/server/websocket.ts"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
-        "dorChecked": false,
-        "dodChecked": false
+        "dorChecked": true,
+        "dodChecked": true
       },
-      "phase": "in_progress"
+      "phase": "completed"
     },
     {
       "id": "FE-002",

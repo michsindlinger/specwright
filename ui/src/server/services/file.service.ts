@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import { join, resolve, relative, extname } from 'path';
+import { join, resolve, relative, extname, posix } from 'path';
 import {
   FileEntry,
   FileListResult,
@@ -115,14 +115,16 @@ export class FileService {
       // Skip node_modules
       if (dirent.name === 'node_modules') continue;
 
+      const entryPath = dirPath === '.' ? dirent.name : posix.join(dirPath, dirent.name);
+
       if (dirent.isDirectory()) {
-        entries.push({ name: dirent.name, type: 'directory', size: 0 });
+        entries.push({ name: dirent.name, path: entryPath, type: 'directory', size: 0 });
       } else if (dirent.isFile()) {
         try {
           const stat = await fs.stat(join(resolved, dirent.name));
-          entries.push({ name: dirent.name, type: 'file', size: stat.size });
+          entries.push({ name: dirent.name, path: entryPath, type: 'file', size: stat.size });
         } catch {
-          entries.push({ name: dirent.name, type: 'file', size: 0 });
+          entries.push({ name: dirent.name, path: entryPath, type: 'file', size: 0 });
         }
       }
     }

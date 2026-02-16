@@ -16,6 +16,8 @@
 export interface FileEntry {
   /** File or folder name */
   name: string;
+  /** Full relative path from project root */
+  path: string;
   /** 'file' or 'directory' */
   type: 'file' | 'directory';
   /** File size in bytes (0 for directories) */

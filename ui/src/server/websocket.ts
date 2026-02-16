@@ -3423,7 +3423,7 @@ export class WebSocketHandler {
   private handleFileList(client: WebSocketClient, message: WebSocketMessage): void {
     const projectPath = this.getClientProjectPath(client);
     if (!projectPath) {
-      this.sendFileNoProjectError(client, 'files:list:error', 'list');
+      this.sendFileNoProjectError(client, 'files:list:error', 'list', message.path as string);
       return;
     }
     this.fileHandler.handleList(client, message, projectPath);
@@ -3432,7 +3432,7 @@ export class WebSocketHandler {
   private handleFileRead(client: WebSocketClient, message: WebSocketMessage): void {
     const projectPath = this.getClientProjectPath(client);
     if (!projectPath) {
-      this.sendFileNoProjectError(client, 'files:read:error', 'read');
+      this.sendFileNoProjectError(client, 'files:read:error', 'read', message.path as string);
       return;
     }
     this.fileHandler.handleRead(client, message, projectPath);
@@ -3441,7 +3441,7 @@ export class WebSocketHandler {
   private handleFileWrite(client: WebSocketClient, message: WebSocketMessage): void {
     const projectPath = this.getClientProjectPath(client);
     if (!projectPath) {
-      this.sendFileNoProjectError(client, 'files:write:error', 'write');
+      this.sendFileNoProjectError(client, 'files:write:error', 'write', message.path as string);
       return;
     }
     this.fileHandler.handleWrite(client, message, projectPath);
@@ -3450,7 +3450,7 @@ export class WebSocketHandler {
   private handleFileCreate(client: WebSocketClient, message: WebSocketMessage): void {
     const projectPath = this.getClientProjectPath(client);
     if (!projectPath) {
-      this.sendFileNoProjectError(client, 'files:create:error', 'create');
+      this.sendFileNoProjectError(client, 'files:create:error', 'create', message.path as string);
       return;
     }
     this.fileHandler.handleCreate(client, message, projectPath);
@@ -3459,7 +3459,7 @@ export class WebSocketHandler {
   private handleFileMkdir(client: WebSocketClient, message: WebSocketMessage): void {
     const projectPath = this.getClientProjectPath(client);
     if (!projectPath) {
-      this.sendFileNoProjectError(client, 'files:mkdir:error', 'mkdir');
+      this.sendFileNoProjectError(client, 'files:mkdir:error', 'mkdir', message.path as string);
       return;
     }
     this.fileHandler.handleMkdir(client, message, projectPath);
@@ -3468,7 +3468,7 @@ export class WebSocketHandler {
   private handleFileRename(client: WebSocketClient, message: WebSocketMessage): void {
     const projectPath = this.getClientProjectPath(client);
     if (!projectPath) {
-      this.sendFileNoProjectError(client, 'files:rename:error', 'rename');
+      this.sendFileNoProjectError(client, 'files:rename:error', 'rename', message.oldPath as string);
       return;
     }
     this.fileHandler.handleRename(client, message, projectPath);
@@ -3477,18 +3477,19 @@ export class WebSocketHandler {
   private handleFileDelete(client: WebSocketClient, message: WebSocketMessage): void {
     const projectPath = this.getClientProjectPath(client);
     if (!projectPath) {
-      this.sendFileNoProjectError(client, 'files:delete:error', 'delete');
+      this.sendFileNoProjectError(client, 'files:delete:error', 'delete', message.path as string);
       return;
     }
     this.fileHandler.handleDelete(client, message, projectPath);
   }
 
-  private sendFileNoProjectError(client: WebSocketClient, type: string, operation: string): void {
+  private sendFileNoProjectError(client: WebSocketClient, type: string, operation: string, path?: string): void {
     const errorResponse: WebSocketMessage = {
       type,
       code: 'NO_PROJECT',
       message: 'No project selected',
       operation,
+      path,
       timestamp: new Date().toISOString()
     };
     client.send(JSON.stringify(errorResponse));

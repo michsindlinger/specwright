@@ -16,6 +16,8 @@
 | FE-005 | Multi-tab file editing with unsaved indicators | `aos-file-tabs.ts` + `aos-file-editor-panel.ts` created, `app.ts` wired up |
 | FE-006 | Context menu with file CRUD operations | `aos-file-context-menu.ts` created, `aos-file-tree.ts` + `aos-file-tree-sidebar.ts` modified |
 | FE-007 | Integration, Edge Cases & Polish | `aos-file-editor-panel.ts` + `aos-file-context-menu.ts` + `aos-file-tree.ts` + `aos-file-tree-sidebar.ts` modified |
+| FE-997 | Code Review - review-report.md created | `review-report.md`, CSS variable fix in sidebar |
+| FE-998 | Integration Validation - Backend File API implemented | `file.service.ts` + `file.handler.ts` + `file.protocol.ts` created, `websocket.ts` modified |
 
 ---
 
@@ -32,7 +34,8 @@
 
 ### Services
 <!-- New service classes/modules -->
-_None yet_
+- `ui/src/server/services/file.service.ts` -> `FileService` with `list(projectPath, dirPath)`, `read(projectPath, filePath)`, `write(projectPath, filePath, content)`, `create(projectPath, filePath)`, `mkdir(projectPath, dirPath)`, `rename(projectPath, oldPath, newPath)`, `delete(projectPath, filePath)` - Path-traversal protected filesystem operations
+- `ui/src/server/handlers/file.handler.ts` -> `FileHandler` routing WebSocket `files:*` messages to FileService
 
 ### Hooks / Utilities
 <!-- New hooks, helpers, utilities -->
@@ -42,6 +45,7 @@ _None yet_
 <!-- New type definitions -->
 - `ui/frontend/src/components/file-editor/aos-file-tree.ts` -> `FileEntry { name, path, type, size }` - File/directory entry interface
 - `ui/frontend/src/components/file-editor/aos-file-tabs.ts` -> `FileTab { path, filename, isModified }` - Tab entry interface
+- `ui/src/shared/types/file.protocol.ts` -> `FileEntry`, `FileListResult`, `FileReadResult`, `FileWriteResult`, `FileCreateResult`, `FileMkdirResult`, `FileRenameResult`, `FileDeleteResult`, `FILE_ERROR_CODES`, `FILE_CONFIG` - Shared protocol types for file operations
 
 ---
 
@@ -82,3 +86,8 @@ _None yet_
 | ui/frontend/src/components/file-editor/aos-file-context-menu.ts | Modified | FE-007 |
 | ui/frontend/src/components/file-editor/aos-file-tree.ts | Modified | FE-007 |
 | ui/frontend/src/components/file-editor/aos-file-tree-sidebar.ts | Modified | FE-007 |
+| specwright/specs/2026-02-16-file-editor/review-report.md | Created | FE-997 |
+| ui/src/shared/types/file.protocol.ts | Created | FE-998 |
+| ui/src/server/services/file.service.ts | Created | FE-998 |
+| ui/src/server/handlers/file.handler.ts | Created | FE-998 |
+| ui/src/server/websocket.ts | Modified | FE-998 |
