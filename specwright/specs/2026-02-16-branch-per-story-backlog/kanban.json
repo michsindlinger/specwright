@@ -459,6 +459,24 @@
       "action": "story_completed",
       "storyId": "BPS-003",
       "details": "Progress: 3/6 (50%) - WebSocket + Frontend Integration: backlog.story.start.error handler, backlog.story.complete event, backlog.story.git.warning handler"
+    },
+    {
+      "timestamp": "2026-02-16T23:50:00.000Z",
+      "action": "status_changed",
+      "storyId": "BPS-999",
+      "details": "Moved from ready to in_progress (System Story: Finalize PR)"
+    },
+    {
+      "timestamp": "2026-02-17T00:00:00.000Z",
+      "action": "story_completed",
+      "storyId": "BPS-999",
+      "details": "Progress: 6/6 (100%) - Finalize PR: PR created, Project Knowledge updated, all DoD verified"
+    },
+    {
+      "timestamp": "2026-02-17T00:00:00.000Z",
+      "action": "spec_completed",
+      "storyId": null,
+      "details": "Spec '2026-02-16-branch-per-story-backlog' completed - PR: https://github.com/michsindlinger/specwright/pull/2"
     }
   ]
 }
