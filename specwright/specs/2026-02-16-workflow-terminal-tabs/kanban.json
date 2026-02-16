@@ -129,7 +129,9 @@
       "implementation": {
         "filesModified": [
           "ui/frontend/src/app.ts",
-          "ui/frontend/src/components/kanban-board.ts"
+          "ui/frontend/src/components/kanban-board.ts",
+          "ui/frontend/src/views/dashboard-view.ts",
+          "ui/src/server/websocket.ts"
         ],
         "testsAdded": [],
         "commits": []
@@ -515,6 +517,12 @@
       "action": "story_completed",
       "storyId": "WTT-003",
       "details": "Progress: 3/9 (55%) - UI-Trigger auf Terminal-Tabs umleiten implemented"
+    },
+    {
+      "timestamp": "2026-02-16T23:30:48.949Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
     }
   ]
 }

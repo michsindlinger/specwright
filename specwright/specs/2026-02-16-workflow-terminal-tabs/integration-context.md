@@ -12,7 +12,7 @@
 |----------|---------|---------------------|
 | WTT-001 | Backend Workflow-Session-Support - Neue WebSocket-Message für Workflow-Sessions | cloud-terminal.protocol.ts, cloud-terminal-manager.ts, websocket.ts |
 | WTT-002 | Frontend Workflow-Tab-Integration - TerminalSession erweitert, Workflow-Tab-Styling, Auto-Connect | aos-cloud-terminal-sidebar.ts, aos-terminal-tabs.ts, aos-terminal-session.ts, cloud-terminal.service.ts |
-| WTT-003 | UI-Trigger auf Terminal-Tabs umleiten - Custom Event workflow-terminal-request für Kanban/Dashboard/Queue | app.ts, kanban-board.ts |
+| WTT-003 | UI-Trigger auf Terminal-Tabs umleiten - Custom Event workflow-terminal-request für Kanban/Dashboard/Queue | app.ts, kanban-board.ts, dashboard-view.ts, websocket.ts |
 
 ---
 
@@ -59,3 +59,5 @@
 | ui/frontend/src/services/cloud-terminal.service.ts | Modified - Extended PersistedTerminalSession interface | WTT-002 |
 | ui/frontend/src/app.ts | Modified - Added _openWorkflowTerminalTab(), _parseModelConfig(), workflow-terminal-request event listener | WTT-003 |
 | ui/frontend/src/components/kanban-board.ts | Modified - triggerWorkflowStart() now dispatches workflow-terminal-request event | WTT-003 |
+| ui/frontend/src/views/dashboard-view.ts | Modified - @story-move and _processBacklogAutoExecution dispatch workflow-terminal-request | WTT-003 |
+| ui/src/server/websocket.ts | Modified - handleWorkflowStoryStart now only updates kanban status, no longer calls workflowExecutor.startStoryExecution() | WTT-003 |
