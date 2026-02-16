@@ -252,7 +252,7 @@ export class AosTerminalTabs extends LitElement {
                 }
                 <button
                   class="tab-close"
-                  @click=${(e: Event) => this._handleCloseClick(e, session.id)}
+                  @click=${(e: Event) => this._handleCloseClick(e, session)}
                   title="Session schließen"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -278,11 +278,17 @@ export class AosTerminalTabs extends LitElement {
     );
   }
 
-  private _handleCloseClick(e: Event, sessionId: string) {
+  private _handleCloseClick(e: Event, session: TerminalSession) {
     e.stopPropagation();
+
+    // WTT-005: Include session info for close confirmation check
     this.dispatchEvent(
       new CustomEvent('session-close', {
-        detail: { sessionId },
+        detail: {
+          sessionId: session.id,
+          isWorkflow: session.isWorkflow ?? false,
+          status: session.status,
+        },
         bubbles: true,
         composed: true,
       })

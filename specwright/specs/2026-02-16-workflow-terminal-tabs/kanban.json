@@ -16,9 +16,9 @@
     "gitBranch": "feature/workflow-terminal-tabs",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "WTT-004 completed - Tab-Notifications bei Input-Bedarf",
-    "nextAction": "Select next story (WTT-005 or WTT-006)",
-    "progressIndex": 4,
+    "lastAction": "WTT-005 completed - Tab-Close Confirmation",
+    "nextAction": "Execute WTT-006 (Legacy Cleanup)",
+    "progressIndex": 5,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -195,23 +195,29 @@
       "dependencies": [
         "WTT-002"
       ],
-      "status": "ready",
-      "dorStatus": "incomplete",
+      "status": "done",
+      "dorStatus": "complete",
       "storyFile": "stories/story-005-tab-close-confirmation.md",
       "timing": {
         "createdAt": "2026-02-16",
-        "updatedAt": "2026-02-16"
+        "updatedAt": "2026-02-17",
+        "startedAt": "2026-02-17T17:00:00.000Z",
+        "completedAt": "2026-02-17T17:30:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/terminal/aos-terminal-tabs.ts",
+          "ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
-        "dorChecked": false,
-        "dodChecked": false
+        "dorChecked": true,
+        "dodChecked": true
       },
-      "model": "glm-5"
+      "model": "glm-5",
+      "phase": "completed"
     },
     {
       "id": "WTT-006",
@@ -340,18 +346,18 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 3,
+    "ready": 2,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 4,
+    "done": 5,
     "blocked": 0
   },
   "statistics": {
     "totalEffort": 11,
-    "completedEffort": 8,
-    "remainingEffort": 3,
-    "progressPercent": 73,
+    "completedEffort": 9,
+    "remainingEffort": 2,
+    "progressPercent": 82,
     "byType": {
       "frontend": 7,
       "backend": 2,
@@ -543,6 +549,18 @@
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-16T23:50:24.699Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-17T17:30:00.000Z",
+      "action": "story_completed",
+      "storyId": "WTT-005",
+      "details": "Progress: 5/9 (82%) - Tab-Close Confirmation implemented"
     }
   ]
 }

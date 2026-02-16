@@ -651,10 +651,25 @@ export class AosCloudTerminalSidebar extends LitElement {
     );
   }
 
-  private _handleSessionClose(e: CustomEvent<{ sessionId: string }>) {
+  private _handleSessionClose(e: CustomEvent<{ sessionId: string; isWorkflow?: boolean; status?: string }>) {
+    // WTT-005: Tab-Close Confirmation
+    // Check if this is an active workflow that needs confirmation
+    const { sessionId, isWorkflow, status } = e.detail;
+
+    if (isWorkflow && status === 'active') {
+      // Show confirmation dialog for active workflow tabs
+      const confirmed = confirm('Workflow läuft noch - wirklich abbrechen?');
+
+      if (!confirmed) {
+        // User declined - keep tab open, workflow continues
+        return;
+      }
+    }
+
+    // Either: not a workflow, workflow not active, or user confirmed
     this.dispatchEvent(
       new CustomEvent('session-close', {
-        detail: e.detail,
+        detail: { sessionId },
         bubbles: true,
         composed: true,
       })

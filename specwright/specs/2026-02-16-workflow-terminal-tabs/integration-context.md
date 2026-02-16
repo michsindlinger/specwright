@@ -14,6 +14,7 @@
 | WTT-002 | Frontend Workflow-Tab-Integration - TerminalSession erweitert, Workflow-Tab-Styling, Auto-Connect | aos-cloud-terminal-sidebar.ts, aos-terminal-tabs.ts, aos-terminal-session.ts, cloud-terminal.service.ts |
 | WTT-003 | UI-Trigger auf Terminal-Tabs umleiten - Custom Event workflow-terminal-request für Kanban/Dashboard/Queue | app.ts, kanban-board.ts, dashboard-view.ts, websocket.ts |
 | WTT-004 | Tab-Notifications bei Input-Bedarf - Badge und Animation wenn Workflow auf Eingabe wartet | aos-terminal.ts, aos-terminal-session.ts, aos-cloud-terminal-sidebar.ts, app.ts |
+| WTT-005 | Tab-Close Confirmation - Browser confirm() Dialog beim Schliessen aktiver Workflow-Tabs | aos-cloud-terminal-sidebar.ts, aos-terminal-tabs.ts |
 
 ---
 
@@ -47,6 +48,7 @@
 - **WTT-004 Input-Detection**: `aos-terminal.ts` monitors terminal output for prompt patterns and dispatches `input-needed` event
 - **WTT-004 Event Chain**: Terminal → aos-terminal-session → aos-cloud-terminal-sidebar → app.ts → updates terminalSessions state
 - **WTT-004 Badge Clearing**: Badge automatically clears when user clicks on the tab (session-select event with clearNeedsInput flag)
+- **WTT-005 Close Confirmation**: `_handleSessionClose()` in aos-cloud-terminal-sidebar.ts checks `isWorkflow && status === 'active'` and shows browser confirm dialog before closing
 
 ---
 
@@ -70,3 +72,5 @@
 | ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts | Modified - _handleInputNeeded() forwards event to app.ts, _handleSessionSelect() includes clearNeedsInput flag | WTT-004 |
 | ui/frontend/src/app.ts | Modified - Added _handleTerminalInputNeeded() handler, updated _handleTerminalSessionSelect() to clear needsInput | WTT-004 |
 | ui/frontend/src/styles/theme.css | Modified - Added .tab.needs-input CSS class and @keyframes pulse-needs-input, .input-badge styles | WTT-004 |
+| ui/frontend/src/components/terminal/aos-terminal-tabs.ts | Modified - _handleCloseClick() now includes isWorkflow and status in event detail | WTT-005 |
+| ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts | Modified - _handleSessionClose() now checks for active workflow and shows confirm dialog | WTT-005 |
