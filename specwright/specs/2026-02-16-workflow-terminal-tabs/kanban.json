@@ -16,9 +16,9 @@
     "gitBranch": "feature/workflow-terminal-tabs",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "WTT-003 completed - UI-Trigger auf Terminal-Tabs umleiten",
-    "nextAction": "Select next story (WTT-004, WTT-005, or WTT-006)",
-    "progressIndex": 3,
+    "lastAction": "WTT-004 completed - Tab-Notifications bei Input-Bedarf",
+    "nextAction": "Select next story (WTT-005 or WTT-006)",
+    "progressIndex": 4,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -156,23 +156,31 @@
       "dependencies": [
         "WTT-002"
       ],
-      "status": "ready",
-      "dorStatus": "incomplete",
+      "status": "done",
+      "dorStatus": "complete",
       "storyFile": "stories/story-004-tab-notifications.md",
       "timing": {
         "createdAt": "2026-02-16",
-        "updatedAt": "2026-02-16"
+        "updatedAt": "2026-02-17",
+        "startedAt": "2026-02-17T15:00:00.000Z",
+        "completedAt": "2026-02-17T16:30:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/aos-terminal.ts",
+          "ui/frontend/src/components/terminal/aos-terminal-session.ts",
+          "ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts",
+          "ui/frontend/src/app.ts"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
-        "dorChecked": false,
-        "dodChecked": false
+        "dorChecked": true,
+        "dodChecked": true
       },
-      "model": "glm-5"
+      "model": "glm-5",
+      "phase": "completed"
     },
     {
       "id": "WTT-005",
@@ -332,18 +340,18 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 5,
+    "ready": 3,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 3,
+    "done": 4,
     "blocked": 0
   },
   "statistics": {
     "totalEffort": 11,
-    "completedEffort": 6,
-    "remainingEffort": 5,
-    "progressPercent": 55,
+    "completedEffort": 8,
+    "remainingEffort": 3,
+    "progressPercent": 73,
     "byType": {
       "frontend": 7,
       "backend": 2,
@@ -520,6 +528,12 @@
     },
     {
       "timestamp": "2026-02-16T23:30:48.949Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-16T23:33:00.810Z",
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/workflow-terminal-tabs"

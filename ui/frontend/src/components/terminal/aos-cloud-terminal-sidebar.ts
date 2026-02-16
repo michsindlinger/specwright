@@ -557,6 +557,7 @@ export class AosCloudTerminalSidebar extends LitElement {
               .terminalSessionId=${session.terminalSessionId || null}
               class="session-panel ${session.id === this.activeSessionId ? 'active' : 'inactive'}"
               @session-connected=${this._handleSessionConnected}
+              @input-needed=${this._handleInputNeeded}
             ></aos-terminal-session>
           `
         )}
@@ -636,10 +637,14 @@ export class AosCloudTerminalSidebar extends LitElement {
   }
 
   private _handleSessionSelect(e: CustomEvent<{ sessionId: string }>) {
-    this.activeSessionId = e.detail.sessionId;
+    const sessionId = e.detail.sessionId;
+    this.activeSessionId = sessionId;
+
+    // Emit event to parent (app.ts) to clear needsInput flag when tab becomes active
+    // WTT-004: Tab-Notifications bei Input-Bedarf
     this.dispatchEvent(
       new CustomEvent('session-select', {
-        detail: e.detail,
+        detail: { sessionId, clearNeedsInput: true },
         bubbles: true,
         composed: true,
       })
@@ -650,6 +655,28 @@ export class AosCloudTerminalSidebar extends LitElement {
     this.dispatchEvent(
       new CustomEvent('session-close', {
         detail: e.detail,
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  /**
+   * Handle input-needed event from aos-terminal-session.
+   * Forwards the event to parent (app.ts) to update the session's needsInput flag.
+   * WTT-004: Tab-Notifications bei Input-Bedarf
+   */
+  private _handleInputNeeded(e: CustomEvent<{ sessionId: string }>) {
+    const sessionId = e.detail.sessionId;
+
+    // Only set needsInput if this session is NOT currently active
+    // (active sessions clear needsInput automatically)
+    if (sessionId === this.activeSessionId) return;
+
+    // Forward event to parent (app.ts) so it can update terminalSessions state
+    this.dispatchEvent(
+      new CustomEvent('input-needed', {
+        detail: { sessionId },
         bubbles: true,
         composed: true,
       })

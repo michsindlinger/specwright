@@ -13,6 +13,7 @@
 | WTT-001 | Backend Workflow-Session-Support - Neue WebSocket-Message für Workflow-Sessions | cloud-terminal.protocol.ts, cloud-terminal-manager.ts, websocket.ts |
 | WTT-002 | Frontend Workflow-Tab-Integration - TerminalSession erweitert, Workflow-Tab-Styling, Auto-Connect | aos-cloud-terminal-sidebar.ts, aos-terminal-tabs.ts, aos-terminal-session.ts, cloud-terminal.service.ts |
 | WTT-003 | UI-Trigger auf Terminal-Tabs umleiten - Custom Event workflow-terminal-request für Kanban/Dashboard/Queue | app.ts, kanban-board.ts, dashboard-view.ts, websocket.ts |
+| WTT-004 | Tab-Notifications bei Input-Bedarf - Badge und Animation wenn Workflow auf Eingabe wartet | aos-terminal.ts, aos-terminal-session.ts, aos-cloud-terminal-sidebar.ts, app.ts |
 
 ---
 
@@ -43,6 +44,9 @@
 - **Tab Styling**: Workflow tabs show layered icon instead of status dot, with special gradient styling
 - **WTT-003 UI-Trigger**: `workflow-terminal-request` Custom Event dispatched by kanban-board.ts when story execution starts, handled by app.ts to open terminal tab
 - **Queue Integration**: `queue.start.ack` handler in app.ts also opens terminal tab when queue starts execution
+- **WTT-004 Input-Detection**: `aos-terminal.ts` monitors terminal output for prompt patterns and dispatches `input-needed` event
+- **WTT-004 Event Chain**: Terminal → aos-terminal-session → aos-cloud-terminal-sidebar → app.ts → updates terminalSessions state
+- **WTT-004 Badge Clearing**: Badge automatically clears when user clicks on the tab (session-select event with clearNeedsInput flag)
 
 ---
 
@@ -61,3 +65,7 @@
 | ui/frontend/src/components/kanban-board.ts | Modified - triggerWorkflowStart() now dispatches workflow-terminal-request event | WTT-003 |
 | ui/frontend/src/views/dashboard-view.ts | Modified - @story-move and _processBacklogAutoExecution dispatch workflow-terminal-request | WTT-003 |
 | ui/src/server/websocket.ts | Modified - handleWorkflowStoryStart now only updates kanban status, no longer calls workflowExecutor.startStoryExecution() | WTT-003 |
+| ui/frontend/src/components/aos-terminal.ts | Modified - Added _detectInputNeeded() method with prompt pattern detection | WTT-004 |
+| ui/frontend/src/components/terminal/aos-terminal-session.ts | Modified - Added _handleInputNeeded() to forward event to parent | WTT-004 |
+| ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts | Modified - _handleInputNeeded() forwards event to app.ts, _handleSessionSelect() includes clearNeedsInput flag | WTT-004 |
+| ui/frontend/src/app.ts | Modified - Added _handleTerminalInputNeeded() handler, updated _handleTerminalSessionSelect() to clear needsInput | WTT-004 |

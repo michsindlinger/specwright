@@ -727,8 +727,34 @@ export class AosApp extends LitElement {
     return this.terminalSessions.filter(s => s.projectPath === projectPath);
   }
 
-  private _handleTerminalSessionSelect(e: CustomEvent<{ sessionId: string }>): void {
+  private _handleTerminalSessionSelect(e: CustomEvent<{ sessionId: string; clearNeedsInput?: boolean }>): void {
     this.activeTerminalSessionId = e.detail.sessionId;
+
+    // WTT-004: Clear needsInput flag when tab becomes active
+    if (e.detail.clearNeedsInput) {
+      this.terminalSessions = this.terminalSessions.map(session =>
+        session.id === e.detail.sessionId
+          ? { ...session, needsInput: false }
+          : session
+      );
+    }
+  }
+
+  /**
+   * WTT-004: Handle input-needed event from terminal session.
+   * Sets needsInput flag on the session to show badge on tab.
+   */
+  private _handleTerminalInputNeeded(e: CustomEvent<{ sessionId: string }>): void {
+    const { sessionId } = e.detail;
+
+    // Only set needsInput if this session is NOT currently active
+    if (sessionId === this.activeTerminalSessionId) return;
+
+    this.terminalSessions = this.terminalSessions.map(session =>
+      session.id === sessionId
+        ? { ...session, needsInput: true }
+        : session
+    );
   }
 
   private _handleTerminalSessionClose(e: CustomEvent<{ sessionId: string }>): void {
@@ -1516,6 +1542,7 @@ export class AosApp extends LitElement {
         @session-select=${this._handleTerminalSessionSelect}
         @session-close=${this._handleTerminalSessionClose}
         @session-connected=${this._handleTerminalSessionConnected}
+        @input-needed=${this._handleTerminalInputNeeded}
       ></aos-cloud-terminal-sidebar>
       <aos-git-commit-dialog
         .open=${this.showCommitDialog}

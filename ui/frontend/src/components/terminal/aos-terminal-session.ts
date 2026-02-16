@@ -536,6 +536,24 @@ export class AosTerminalSession extends LitElement {
     }
   }
 
+  /**
+   * Handle input-needed event from aos-terminal.
+   * Forwards the event to parent to update needsInput state.
+   */
+  private _handleInputNeeded(_e: CustomEvent<{ sessionId: string }>): void {
+    // Only handle for workflow sessions
+    if (!this.session.isWorkflow) return;
+
+    // Forward event to parent (aos-cloud-terminal-sidebar)
+    this.dispatchEvent(
+      new CustomEvent('input-needed', {
+        detail: { sessionId: this.session.id },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   private getStatusText(): string {
     switch (this.connectionStatus) {
       case 'connecting':
@@ -642,6 +660,7 @@ export class AosTerminalSession extends LitElement {
         <aos-terminal
           .terminalSessionId=${this.terminalSessionId}
           .cloudMode=${true}
+          @input-needed=${this._handleInputNeeded}
         ></aos-terminal>
       `;
     }
