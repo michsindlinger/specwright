@@ -69,3 +69,4 @@
 | ui/frontend/src/components/terminal/aos-terminal-session.ts | Modified - Added _handleInputNeeded() to forward event to parent | WTT-004 |
 | ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts | Modified - _handleInputNeeded() forwards event to app.ts, _handleSessionSelect() includes clearNeedsInput flag | WTT-004 |
 | ui/frontend/src/app.ts | Modified - Added _handleTerminalInputNeeded() handler, updated _handleTerminalSessionSelect() to clear needsInput | WTT-004 |
+| ui/frontend/src/styles/theme.css | Modified - Added .tab.needs-input CSS class and @keyframes pulse-needs-input, .input-badge styles | WTT-004 |

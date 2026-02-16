@@ -1911,6 +1911,36 @@ aos-spec-card {
   justify-content: center;
 }
 
+/* WTT-004: Tab-Notifications bei Input-Bedarf */
+/* Styles for terminal tabs that need user input */
+.tab.needs-input {
+  animation: pulse-needs-input 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-needs-input {
+  0%, 100% {
+    background: linear-gradient(135deg, var(--color-bg-tertiary, #252526) 0%, rgba(245, 158, 11, 0.1) 100%);
+  }
+  50% {
+    background: linear-gradient(135deg, var(--color-bg-tertiary, #252526) 0%, rgba(245, 158, 11, 0.25) 100%);
+  }
+}
+
+.input-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background: var(--color-accent-warning, #ff9800);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
 .kanban-columns {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

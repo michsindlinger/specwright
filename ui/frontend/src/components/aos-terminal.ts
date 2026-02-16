@@ -250,7 +250,10 @@ export class AosTerminal extends LitElement {
   private setupCloudTerminalListeners(): void {
     this.terminalDataHandler = (message) => {
       if (message.sessionId === this.terminalSessionId && this.terminal) {
-        this.terminal.write(message.data as string);
+        const data = message.data as string;
+        this.terminal.write(data);
+        // Detect input-needed patterns in terminal output
+        this._detectInputNeeded(data);
       }
     };
     gateway.on('cloud-terminal:data', this.terminalDataHandler);
@@ -275,6 +278,45 @@ export class AosTerminal extends LitElement {
       }
     };
     gateway.on('cloud-terminal:buffer-response', this.terminalBufferResponseHandler);
+  }
+
+  /**
+   * Detect patterns in terminal output that indicate user input is needed.
+   * Emits 'input-needed' event when such patterns are detected.
+   *
+   * Patterns detected:
+   * - Lines ending with '?' (Claude CLI prompts)
+   * - Lines ending with ':' followed by space (various prompts)
+   * - "Press any key" patterns
+   * - ANSI cursor-show sequences (indicates interactive mode)
+   */
+  private _detectInputNeeded(data: string): void {
+    // Strip ANSI escape codes for pattern matching
+    // eslint-disable-next-line no-control-regex
+    const strippedData = data.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+
+    // Patterns that indicate input is needed
+    const inputPatterns = [
+      /\?\s*$/,                           // Lines ending with '?' (Claude prompts)
+      /:\s*$/,                            // Lines ending with ':' (various prompts)
+      /Press any key/i,                   // "Press any key" prompts
+      /Enter.*:/i,                        // "Enter X:" prompts
+      /Input required/i,                  // Explicit input required
+      /Bitte.*eingeben/i,                 // German input prompts
+      /\[Y\/n\]/i,                        // Yes/No prompts
+      /\[y\/N\]/i,                        // yes/No prompts
+    ];
+
+    // Check if any pattern matches
+    const needsInput = inputPatterns.some(pattern => pattern.test(strippedData));
+
+    if (needsInput) {
+      this.dispatchEvent(new CustomEvent('input-needed', {
+        detail: { sessionId: this.terminalSessionId },
+        bubbles: true,
+        composed: true,
+      }));
+    }
   }
 
   private setupWorkflowTerminalListeners(): void {
