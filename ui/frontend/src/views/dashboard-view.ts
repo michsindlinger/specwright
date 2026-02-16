@@ -42,6 +42,7 @@ interface BacklogStoryInfo {
   model?: 'opus' | 'sonnet' | 'haiku' | 'glm-5';
   dorComplete?: boolean;
   dependencies?: string[];
+  attachmentCount?: number;
 }
 
 interface BacklogKanbanBoard {
@@ -175,7 +176,7 @@ export class AosDashboardView extends LitElement {
       model: story.model,
       dependencies: story.dependencies || [],
       dorComplete: story.dorComplete ?? true, // Default to true for legacy items
-      // Optional fields not set: workflowStatus, workflowError
+      attachmentCount: story.attachmentCount,
     }));
 
     return {

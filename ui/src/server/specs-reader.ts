@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import { join, basename, resolve, relative } from 'path';
 import { withKanbanLock } from './utils/kanban-lock.js';
 import { projectDir } from './utils/project-dirs.js';
+import { attachmentStorageService } from './services/attachment-storage.service.js';
 
 // MSK-003-FIX: Changed from 'opus' | 'sonnet' | 'haiku' to string
 // to support all models from model-config.json (Anthropic + GLM)
@@ -44,6 +45,7 @@ export interface StoryInfo {
   dorComplete: boolean; // true = all DoR checkboxes [x] (Ready), false = any [ ] (Blocked)
   model: ModelSelection;
   file?: string; // Relative path to the story file within the spec folder (e.g., "stories/story-001.md")
+  attachmentCount?: number;
 }
 
 export interface KanbanBoard {
@@ -804,6 +806,13 @@ export class SpecsReader {
         console.log(`[SpecsReader] Using kanban.json for ${specId}`);
         const board = this.convertJsonToKanbanBoard(jsonKanban, storiesFromFiles);
 
+        // Load attachment counts for all stories
+        await Promise.all(board.stories.map(async (story) => {
+          story.attachmentCount = await attachmentStorageService.count(
+            projectPath, 'spec', specId, story.id, undefined
+          );
+        }));
+
         // Sort: in_progress first, then backlog, then blocked, then done
         board.stories.sort((a, b) => {
           const order: Record<string, number> = { in_progress: 0, backlog: 1, blocked: 2, done: 3 };
@@ -853,6 +862,13 @@ export class SpecsReader {
     }
 
     result.stories = Array.from(storiesFromFiles.values());
+
+    // Load attachment counts for all stories
+    await Promise.all(result.stories.map(async (story) => {
+      story.attachmentCount = await attachmentStorageService.count(
+        projectPath, 'spec', specId, story.id, undefined
+      );
+    }));
 
     // Sort: in_progress first, then backlog, then blocked, then done
     result.stories.sort((a, b) => {

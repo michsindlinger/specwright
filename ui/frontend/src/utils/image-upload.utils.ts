@@ -1,16 +1,19 @@
 import type { StagedImage } from '../views/chat-view.js';
 
-// Allowed file types for upload
+// Allowed file types for upload (SCA-002: extended with text types)
 export const ALLOWED_MIME_TYPES = [
   'image/png',
   'image/jpeg',
   'image/gif',
   'image/webp',
   'application/pdf',
+  'text/plain',
+  'application/json',
+  'text/markdown',
 ];
 
-// Max file size: 10MB
-export const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Max file size: 5MB (consistent with backend limit)
+export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 // Max number of images
 export const MAX_IMAGES = 5;
@@ -21,11 +24,11 @@ export const MAX_IMAGES = 5;
  */
 export function validateFile(file: File, currentCount: number): string | null {
   if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-    return 'Format nicht unterstützt. Erlaubt: PNG, JPG, GIF, WebP, PDF';
+    return 'Format nicht unterstützt. Erlaubt: PNG, JPG, GIF, WebP, PDF, TXT, JSON, MD';
   }
 
   if (file.size > MAX_FILE_SIZE) {
-    return 'Maximale Dateigröße: 10MB';
+    return 'Maximale Dateigröße: 5MB';
   }
 
   if (currentCount >= MAX_IMAGES) {

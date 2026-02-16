@@ -54,6 +54,18 @@
   --docs-panel-max-width: 60%;
   --docs-panel-default-width: 350px;
   --docs-resize-handle-width: 6px;
+
+  /* Attachment Panel */
+  --attachment-panel-bg: var(--color-bg-secondary, #1a1a1a);
+  --attachment-panel-border: var(--color-border, #333333);
+  --attachment-panel-border-hover: var(--color-border-hover, #404040);
+  --attachment-panel-border-drag: var(--color-accent-primary, #22c55e);
+  --attachment-panel-upload-bg: var(--color-bg-tertiary, #262626);
+  --attachment-panel-upload-bg-hover: var(--color-bg-elevated, #2d2d2d);
+  --attachment-upload-icon-size: 2rem;
+  --attachment-item-bg: var(--color-bg-tertiary, #262626);
+  --attachment-delete-color: var(--color-text-muted, #737373);
+  --attachment-delete-hover-bg: var(--color-accent-error, #ef4444);
 }
 
 /* Dark Theme (Navy-based, Landing Page Hero) */

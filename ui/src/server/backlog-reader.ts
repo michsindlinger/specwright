@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import { join, basename } from 'path';
 import { projectDir } from './utils/project-dirs.js';
+import { attachmentStorageService } from './services/attachment-storage.service.js';
 
 export type ModelSelection = 'opus' | 'sonnet' | 'haiku' | 'glm-5' | 'google/gemini-3-flash-preview' | 'google/gemini-3-pro-preview';
 
@@ -25,6 +26,7 @@ export interface BacklogStoryInfo {
   // UKB-003: Added for StoryInfo compatibility
   dorComplete: boolean;
   dependencies: string[];
+  attachmentCount?: number;
 }
 
 export interface BacklogKanbanBoard {
@@ -228,6 +230,13 @@ export class BacklogReader {
       result.stories = Array.from(storiesMap.values());
       result.hasKanbanFile = true; // backlog-index.json exists
 
+      // Load attachment counts for all stories
+      await Promise.all(result.stories.map(async (story) => {
+        story.attachmentCount = await attachmentStorageService.count(
+          projectPath, 'backlog', undefined, undefined, story.id
+        );
+      }));
+
       // Sort: in_progress first, then in_review, then blocked, then backlog, then done (UKB-003: extended)
       result.stories.sort((a, b) => {
         const order: Record<string, number> = { in_progress: 0, in_review: 1, blocked: 2, backlog: 3, done: 4 };
@@ -303,6 +312,13 @@ export class BacklogReader {
     }
 
     result.stories = Array.from(storiesMap.values());
+
+    // Load attachment counts for all stories
+    await Promise.all(result.stories.map(async (story) => {
+      story.attachmentCount = await attachmentStorageService.count(
+        projectPath, 'backlog', undefined, undefined, story.id
+      );
+    }));
 
     // Sort: in_progress first, then in_review, then blocked, then backlog, then done (UKB-003: extended)
     result.stories.sort((a, b) => {

@@ -8,6 +8,7 @@ import './git-strategy-dialog.js';
 import './auto-mode-error-modal.js';
 import './docs/aos-docs-viewer.js';
 import './specs/aos-spec-file-tabs.js';
+import './attachments/aos-attachment-panel.js';
 import { buildSpecFilePath, copyPathToClipboard } from '../utils/copy-path.js';
 import { markdownStyles } from '../styles/markdown-styles.js';
 import type { SpecFileGroup } from './specs/aos-spec-file-tabs.js';
@@ -150,6 +151,8 @@ export class AosKanbanBoard extends LitElement {
   // MSK: Model providers for story cards
   @state() private providers: ProviderInfo[] = DEFAULT_PROVIDERS;
   @state() private selectedModel = { providerId: 'anthropic', modelId: 'opus' };
+  // SCA-004: Attachment panel state
+  @state() private activeAttachmentStoryId: string | null = null;
   @state() private isChatOpen = false;
   @state() private chatMessages: ChatMessageData[] = [];
   @state() private isChatLoading = false;
@@ -632,6 +635,52 @@ export class AosKanbanBoard extends LitElement {
       padding: 1.5rem;
     }
 
+    /* SCA-004: Attachment Panel Overlay */
+    .attachment-panel-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 150;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .attachment-panel-container {
+      position: relative;
+      width: 400px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow: visible;
+    }
+
+    .attachment-panel-close {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg-color-tertiary, #2d2d2d);
+      border: 1px solid var(--border-color, #404040);
+      color: var(--text-color-secondary, #a3a3a3);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      z-index: 10;
+      transition: all 0.2s;
+    }
+
+    .attachment-panel-close:hover {
+      background: var(--primary-color, #3b82f6);
+      color: white;
+    }
+
   `];
 
   override connectedCallback(): void {
@@ -648,6 +697,8 @@ export class AosKanbanBoard extends LitElement {
     if (this.showSpecViewer) {
       this.setupSpecViewerHandlers();
     }
+    // SCA-004: Register attachment handlers
+    this.setupAttachmentHandlers();
     this._loadSidebarWidth();
   }
 
@@ -739,6 +790,11 @@ export class AosKanbanBoard extends LitElement {
     gateway.on('specs.read.error', this.handleSpecsReadError);
     gateway.on('specs.save', this.handleSpecsSave);
     gateway.on('specs.save.error', this.handleSpecsSaveError);
+  }
+
+  // SCA-004: Setup attachment handlers
+  private setupAttachmentHandlers(): void {
+    gateway.on('attachment:list:response', this.handleAttachmentListResponse);
   }
 
   private handleSpecsFiles = (message: WebSocketMessage): void => {
@@ -906,6 +962,8 @@ export class AosKanbanBoard extends LitElement {
       gateway.off('specs.save', this.handleSpecsSave);
       gateway.off('specs.save.error', this.handleSpecsSaveError);
     }
+    // SCA-004: Remove attachment handlers
+    gateway.off('attachment:list:response', this.handleAttachmentListResponse);
   }
 
   private handleWorkflowStarted = (message: { type: string; storyId?: string; specId?: string }): void => {
@@ -1017,6 +1075,41 @@ export class AosKanbanBoard extends LitElement {
       })
     );
   }
+
+  // SCA-004: Handle attachment-open event from story-card
+  private handleAttachmentOpen(e: CustomEvent<{ storyId: string; story: StoryInfo }>): void {
+    const { storyId } = e.detail;
+    this.activeAttachmentStoryId = storyId;
+    // Request attachment list for this story to get counts
+    if (this.mode === 'spec') {
+      gateway.requestAttachmentList('spec', this.kanban.specId, storyId, undefined);
+    } else if (this.mode === 'backlog') {
+      gateway.requestAttachmentList('backlog', undefined, undefined, storyId);
+    }
+  }
+
+  // SCA-004: Close attachment panel
+  private closeAttachmentPanel(): void {
+    this.activeAttachmentStoryId = null;
+  }
+
+  // SCA-004: Handle attachment panel count changed - update story card
+  private handleAttachmentListResponse = (message: WebSocketMessage): void => {
+    const data = (message as { data?: { attachments?: Array<{ filename: string }>; count?: number } }).data;
+    if (data?.attachments && this.activeAttachmentStoryId) {
+      const count = data.attachments.length;
+      // Update the story's attachment count in the local state
+      const storyIndex = this.kanban.stories.findIndex(s => s.id === this.activeAttachmentStoryId);
+      if (storyIndex !== -1) {
+        const updatedStories = [...this.kanban.stories];
+        updatedStories[storyIndex] = {
+          ...updatedStories[storyIndex],
+          attachmentCount: count
+        };
+        this.kanban = { ...this.kanban, stories: updatedStories };
+      }
+    }
+  };
 
   private getStoriesByStatus(status: 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked'): StoryInfo[] {
     return this.kanban.stories.filter(s => s.status === status);
@@ -1490,6 +1583,7 @@ export class AosKanbanBoard extends LitElement {
                       @story-drag-start=${this.handleDragStart}
                       @story-drag-end=${this.handleDragEnd}
                       @story-model-change=${this.handleStoryModelChange}
+                      @attachment-open=${this.handleAttachmentOpen}
                     ></aos-story-card>
                   `;
                 }
@@ -1728,6 +1822,21 @@ export class AosKanbanBoard extends LitElement {
         @auto-mode-resume=${this.handleErrorModalResume}
         @auto-mode-stop=${this.handleErrorModalStop}
       ></aos-auto-mode-error-modal>
+
+      <!-- SCA-004: Attachment Panel Overlay -->
+      ${this.activeAttachmentStoryId ? html`
+        <div class="attachment-panel-overlay" @click=${this.closeAttachmentPanel}>
+          <div class="attachment-panel-container" @click=${(e: Event) => e.stopPropagation()}>
+            <button class="attachment-panel-close" @click=${this.closeAttachmentPanel}>&times;</button>
+            <aos-attachment-panel
+              contextType=${this.mode}
+              .specId=${this.mode === 'spec' ? this.kanban.specId : ''}
+              .storyId=${this.mode === 'spec' ? this.activeAttachmentStoryId : ''}
+              .itemId=${this.mode === 'backlog' ? this.activeAttachmentStoryId : ''}
+            ></aos-attachment-panel>
+          </div>
+        </div>
+      ` : ''}
     `;
   }
 

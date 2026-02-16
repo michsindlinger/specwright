@@ -631,6 +631,124 @@ export class Gateway {
     });
   }
 
+  // ============================================================================
+  // Attachment Methods (SCA-002)
+  // Attachment operations via WebSocket
+  //
+  // Incoming Messages (received via on() handlers):
+  // - attachment:upload:response: Upload result
+  // - attachment:list:response: List of attachments
+  // - attachment:delete:response: Delete confirmation
+  // - attachment:error: Error response
+  // ============================================================================
+
+  /**
+   * Upload an attachment to a spec story or backlog item
+   * @param contextType - 'spec' or 'backlog'
+   * @param specId - Spec ID (if contextType is 'spec')
+   * @param storyId - Story ID (if contextType is 'spec')
+   * @param itemId - Item ID (if contextType is 'backlog')
+   * @param data - Base64-encoded file data
+   * @param filename - Original filename
+   * @param mimeType - MIME type of the file
+   */
+  public sendAttachmentUpload(
+    contextType: 'spec' | 'backlog',
+    specId: string | undefined,
+    storyId: string | undefined,
+    itemId: string | undefined,
+    data: string,
+    filename: string,
+    mimeType: string
+  ): void {
+    this.send({
+      type: 'attachment:upload',
+      contextType,
+      specId,
+      storyId,
+      itemId,
+      data,
+      filename,
+      mimeType,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Request list of attachments for a spec story or backlog item
+   * @param contextType - 'spec' or 'backlog'
+   * @param specId - Spec ID (if contextType is 'spec')
+   * @param storyId - Story ID (if contextType is 'spec')
+   * @param itemId - Item ID (if contextType is 'backlog')
+   */
+  public requestAttachmentList(
+    contextType: 'spec' | 'backlog',
+    specId: string | undefined,
+    storyId: string | undefined,
+    itemId: string | undefined
+  ): void {
+    this.send({
+      type: 'attachment:list',
+      contextType,
+      specId,
+      storyId,
+      itemId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Delete an attachment from a spec story or backlog item
+   * @param contextType - 'spec' or 'backlog'
+   * @param specId - Spec ID (if contextType is 'spec')
+   * @param storyId - Story ID (if contextType is 'spec')
+   * @param itemId - Item ID (if contextType is 'backlog')
+   * @param filename - Filename to delete
+   */
+  public sendAttachmentDelete(
+    contextType: 'spec' | 'backlog',
+    specId: string | undefined,
+    storyId: string | undefined,
+    itemId: string | undefined,
+    filename: string
+  ): void {
+    this.send({
+      type: 'attachment:delete',
+      contextType,
+      specId,
+      storyId,
+      itemId,
+      filename,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Read attachment content for preview
+   * @param contextType - 'spec' or 'backlog'
+   * @param specId - Spec ID (if contextType is 'spec')
+   * @param storyId - Story ID (if contextType is 'spec')
+   * @param itemId - Item ID (if contextType is 'backlog')
+   * @param filename - Filename to read
+   */
+  public requestAttachmentRead(
+    contextType: 'spec' | 'backlog',
+    specId: string | undefined,
+    storyId: string | undefined,
+    itemId: string | undefined,
+    filename: string
+  ): void {
+    this.send({
+      type: 'attachment:read',
+      contextType,
+      specId,
+      storyId,
+      itemId,
+      filename,
+      timestamp: new Date().toISOString()
+    });
+  }
+
 }
 
 export const gateway = new Gateway();

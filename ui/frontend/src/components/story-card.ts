@@ -32,6 +32,7 @@ export interface StoryInfo {
   model?: ModelSelection; // Default 'opus' if not specified
   workflowStatus?: WorkflowStatus;
   workflowError?: string;
+  attachmentCount?: number; // SCA-004: Number of attachments on this story
 }
 
 // Default fallback providers (used if none provided)
@@ -161,6 +162,40 @@ export class AosStoryCard extends LitElement {
     .copy-path-btn.copied {
       color: var(--success-color, #22c55e);
       opacity: 1;
+    }
+
+    .attachment-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      padding: 0.15rem;
+      border-radius: 3px;
+      cursor: pointer;
+      color: var(--text-color-secondary, #a3a3a3);
+      opacity: 0;
+      transition: opacity 0.2s, color 0.2s;
+      margin-left: 0.25rem;
+    }
+
+    .story-card:hover .attachment-btn {
+      opacity: 1;
+    }
+
+    .attachment-btn:hover {
+      color: var(--primary-color, #3b82f6);
+    }
+
+    .attachment-btn.has-attachments {
+      opacity: 1;
+    }
+
+    .attachment-count {
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-left: 0.15rem;
+      color: var(--primary-color, #3b82f6);
     }
 
     .story-title {
@@ -310,6 +345,20 @@ export class AosStoryCard extends LitElement {
     );
   }
 
+  private handleAttachmentClick(e: Event): void {
+    e.stopPropagation();
+    this.dispatchEvent(
+      new CustomEvent('attachment-open', {
+        detail: {
+          storyId: this.story.id,
+          story: this.story
+        },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
   private getTypeIcon(): string {
     const type = (this.story.type || '').toLowerCase();
     if (type.includes('bug') || type.includes('fix')) return '🐛';
@@ -386,6 +435,19 @@ export class AosStoryCard extends LitElement {
               }
             </button>
           ` : ''}
+          <!-- SCA-004: Attachment button -->
+          <button
+            class="attachment-btn ${(this.story.attachmentCount ?? 0) > 0 ? 'has-attachments' : ''}"
+            title="Attachments"
+            @click=${this.handleAttachmentClick}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+            </svg>
+            ${(this.story.attachmentCount ?? 0) > 0
+              ? html`<span class="attachment-count">${this.story.attachmentCount}</span>`
+              : ''}
+          </button>
           <span class="effort-badge">${this.getEffortLabel()}</span>
         </div>
 

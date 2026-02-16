@@ -5,6 +5,7 @@ import specsRouter from './routes/specs.js';
 import projectRouter from './routes/project.routes.js';
 import imageUploadRouter from './routes/image-upload.routes.js';
 import quickTodoRouter from './routes/quick-todo.routes.js';
+import attachmentFileRouter from './routes/attachment-file.routes.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
@@ -27,6 +28,7 @@ app.use('/api/project', projectRouter);
 app.use('/api/specs/:specId', specsRouter);
 app.use('/api/images', imageUploadRouter);
 app.use('/api/backlog', quickTodoRouter);
+app.use('/api/attachments', attachmentFileRouter);
 
 // Health check endpoint
 app.get('/health', (_req: Request, res: Response) => {

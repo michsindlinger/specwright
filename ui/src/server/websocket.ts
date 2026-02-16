@@ -14,6 +14,7 @@ import { BacklogReader } from './backlog-reader.js';
 import { ImageStorageService, type ImageInfo } from './image-storage.js';
 import { queueHandler } from './handlers/queue.handler.js';
 import { gitHandler } from './handlers/git.handler.js';
+import { attachmentHandler } from './handlers/attachment.handler.js';
 import {
   getAllProviders,
   getDefaultSelection,
@@ -62,6 +63,7 @@ export class WebSocketHandler {
   private docsReader: DocsReader;
   private backlogReader: BacklogReader;
   private imageStorageService: ImageStorageService;
+  private attachmentHandler;
   private cloudTerminalManager: CloudTerminalManager;
 
   constructor(server: Server) {
@@ -73,6 +75,7 @@ export class WebSocketHandler {
     this.docsReader = new DocsReader();
     this.backlogReader = new BacklogReader();
     this.imageStorageService = new ImageStorageService();
+    this.attachmentHandler = attachmentHandler;
     this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager());
     this.setupConnectionHandler();
     this.startHeartbeat();
@@ -365,6 +368,19 @@ export class WebSocketHandler {
           break;
         case 'git:pr-info':
           this.handleGitPrInfo(client);
+          break;
+        // Attachment Messages (SCA-001)
+        case 'attachment:upload':
+          this.handleAttachmentUpload(client, message);
+          break;
+        case 'attachment:list':
+          this.handleAttachmentList(client, message);
+          break;
+        case 'attachment:delete':
+          this.handleAttachmentDelete(client, message);
+          break;
+        case 'attachment:read':
+          this.handleAttachmentRead(client, message);
           break;
         // Setup Messages (SETUP-003)
         case 'setup:check-status':
@@ -1420,6 +1436,13 @@ export class WebSocketHandler {
       client.send(JSON.stringify(errorResponse));
       return;
     }
+
+    // Transform relative attachment paths to API URLs (images and file links)
+    const encodedPath = encodeURIComponent(projectPath);
+    story.content = story.content.replace(
+      /(!?)\[([^\]]*)\]\(attachments\//g,
+      `$1[$2](/api/attachments/${encodedPath}/spec/${specId}/`
+    );
 
     const response: WebSocketMessage = {
       type: 'specs.story',
@@ -3294,6 +3317,72 @@ export class WebSocketHandler {
   private sendGitNoProjectError(client: WebSocketClient, operation: string): void {
     const errorResponse: WebSocketMessage = {
       type: 'git:error',
+      code: 'NO_PROJECT',
+      message: 'No project selected',
+      operation,
+      timestamp: new Date().toISOString()
+    };
+    client.send(JSON.stringify(errorResponse));
+  }
+
+  // ============================================================================
+  // Attachment Handlers (SCA-001)
+  // ============================================================================
+
+  /**
+   * SCA-001: Handle attachment:upload message.
+   */
+  private handleAttachmentUpload(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendAttachmentNoProjectError(client, 'upload');
+      return;
+    }
+    this.attachmentHandler.handleUpload(client, message, projectPath);
+  }
+
+  /**
+   * SCA-001: Handle attachment:list message.
+   */
+  private handleAttachmentList(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendAttachmentNoProjectError(client, 'list');
+      return;
+    }
+    this.attachmentHandler.handleList(client, message, projectPath);
+  }
+
+  /**
+   * SCA-001: Handle attachment:delete message.
+   */
+  private handleAttachmentDelete(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendAttachmentNoProjectError(client, 'delete');
+      return;
+    }
+    this.attachmentHandler.handleDelete(client, message, projectPath);
+  }
+
+  /**
+   * SCA-005: Handle attachment:read message for preview.
+   */
+  private handleAttachmentRead(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendAttachmentNoProjectError(client, 'read');
+      return;
+    }
+    this.attachmentHandler.handleRead(client, message, projectPath);
+  }
+
+  /**
+   * SCA-001: Send attachment error for missing project.
+   */
+  private sendAttachmentNoProjectError(client: WebSocketClient, operation: string): void {
+    const errorResponse: WebSocketMessage = {
+      type: 'attachment:error',
       code: 'NO_PROJECT',
       message: 'No project selected',
       operation,

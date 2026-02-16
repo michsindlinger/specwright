@@ -1,0 +1,393 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+
+  "spec": {
+    "id": "2026-02-16-file-editor",
+    "name": "File Editor",
+    "prefix": "FE",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-16"
+  },
+
+  "resumeContext": {
+    "currentPhase": "1-kanban-setup",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Kanban board created",
+    "nextAction": "Run /execute-tasks 2026-02-16-file-editor",
+    "progressIndex": 0,
+    "totalStories": 10
+  },
+
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+
+  "stories": [
+    {
+      "id": "FE-001",
+      "title": "Backend File API",
+      "slug": "backend-file-api",
+      "classification": {
+        "type": "backend",
+        "priority": "critical",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-001-backend-file-api.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "FE-002",
+      "title": "File Tree Component",
+      "slug": "file-tree-component",
+      "classification": {
+        "type": "frontend",
+        "priority": "critical",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["FE-001"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-002-file-tree-component.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "FE-003",
+      "title": "File Tree Sidebar",
+      "slug": "file-tree-sidebar",
+      "classification": {
+        "type": "frontend",
+        "priority": "critical",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["FE-002"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-003-file-tree-sidebar.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "FE-004",
+      "title": "Code Editor Component",
+      "slug": "code-editor-component",
+      "classification": {
+        "type": "frontend",
+        "priority": "critical",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["FE-001"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-004-code-editor-component.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "FE-005",
+      "title": "Tab Management",
+      "slug": "tab-management",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["FE-004"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-005-tab-management.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "FE-006",
+      "title": "Context Menu & File Operations",
+      "slug": "context-menu-file-operations",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["FE-002", "FE-001"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-006-context-menu-file-operations.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "FE-007",
+      "title": "Integration, Edge Cases & Polish",
+      "slug": "integration-edge-cases-polish",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["FE-003", "FE-004", "FE-005", "FE-006"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-007-integration-edge-cases-polish.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "FE-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "XS",
+        "complexity": "XS"
+      },
+      "dependencies": ["FE-001", "FE-002", "FE-003", "FE-004", "FE-005", "FE-006", "FE-007"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "FE-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "XS",
+        "complexity": "XS"
+      },
+      "dependencies": ["FE-997"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "FE-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "XS",
+        "complexity": "XS"
+      },
+      "dependencies": ["FE-998"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    }
+  ],
+
+  "boardStatus": {
+    "total": 10,
+    "ready": 10,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 0
+  },
+
+  "statistics": {
+    "totalEffort": 0,
+    "completedEffort": 0,
+    "remainingEffort": 0,
+    "progressPercent": 0,
+    "byType": {
+      "frontend": 5,
+      "backend": 1,
+      "devops": 0,
+      "test": 0,
+      "docs": 0,
+      "integration": 1,
+      "system": 3
+    },
+    "byPriority": {
+      "critical": 4,
+      "high": 5,
+      "medium": 1,
+      "low": 0
+    }
+  },
+
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Backend Foundation",
+        "stories": ["FE-001"],
+        "parallel": false
+      },
+      {
+        "phase": 2,
+        "name": "Core UI Components",
+        "stories": ["FE-002", "FE-004"],
+        "parallel": true
+      },
+      {
+        "phase": 3,
+        "name": "Composite Components",
+        "stories": ["FE-003", "FE-005", "FE-006"],
+        "parallel": true
+      },
+      {
+        "phase": 4,
+        "name": "Integration & Polish",
+        "stories": ["FE-007"],
+        "parallel": false
+      },
+      {
+        "phase": 5,
+        "name": "System Stories",
+        "stories": ["FE-997", "FE-998", "FE-999"],
+        "parallel": false
+      }
+    ]
+  },
+
+  "changeLog": [
+    {
+      "timestamp": "2026-02-16",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 10 stories from /create-spec"
+    }
+  ]
+}
