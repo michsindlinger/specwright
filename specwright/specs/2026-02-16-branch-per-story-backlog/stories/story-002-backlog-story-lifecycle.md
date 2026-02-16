@@ -8,6 +8,7 @@
 **Priority**: High
 **Type**: Backend
 **Estimated Effort**: S
+**Status**: Done
 **Dependencies**: BPS-001
 
 ---

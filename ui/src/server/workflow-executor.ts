@@ -2145,65 +2145,6 @@ export class WorkflowExecutor {
   }
 
   /**
-   * BPS-002: Handle post-execution git operations for backlog story executions.
-   * On success: push branch, create PR, checkout main.
-   * On failure: checkout main (branch remains for manual review).
-   * @param execution - The workflow execution
-   * @param success - Whether the story execution was successful
-   */
-  private async handleBacklogPostExecution(
-    execution: WorkflowExecution,
-    success: boolean
-  ): Promise<void> {
-    const { projectPath, branchName, storyId } = execution;
-
-    if (!branchName || !projectPath) {
-      console.log(`[Workflow] Skipping backlog post-execution: no branchName or projectPath`);
-      return;
-    }
-
-    console.log(`[Workflow] BPS-002 Post-execution for backlog story ${storyId}: success=${success}, branch=${branchName}`);
-
-    try {
-      if (success) {
-        // Success path: push branch, create PR, checkout main
-        console.log(`[Workflow] Pushing branch ${branchName} to remote...`);
-        const pushResult = await gitService.pushBranch(projectPath, branchName);
-        console.log(`[Workflow] Branch pushed: ${pushResult.commitsPushed} commits`);
-
-        // Create PR
-        console.log(`[Workflow] Creating PR for ${branchName}...`);
-        const prTitle = `feat: ${storyId}`;
-        const prResult = await gitService.createPullRequest(projectPath, branchName, prTitle);
-        if (prResult.prUrl) {
-          console.log(`[Workflow] PR created: ${prResult.prUrl}`);
-        } else if (prResult.warning) {
-          console.warn(`[Workflow] PR creation warning: ${prResult.warning}`);
-        }
-      } else {
-        // Failure path: log warning, still checkout main
-        console.warn(`[Workflow] Story ${storyId} failed, keeping branch ${branchName} for manual review`);
-      }
-
-      // Always checkout main at the end
-      console.log(`[Workflow] Checking out main branch...`);
-      await gitService.checkoutMain(projectPath);
-      console.log(`[Workflow] Back on main branch`);
-
-    } catch (error) {
-      // Log error but don't fail - this is post-execution cleanup
-      console.warn(`[Workflow] Post-execution git operations failed (non-critical):`, error instanceof Error ? error.message : error);
-
-      // Try to get back to main anyway
-      try {
-        await gitService.checkoutMain(projectPath);
-      } catch {
-        // Ignore - we tried
-      }
-    }
-  }
-
-  /**
    * MPRO-005: Send message to client with optional projectId.
    * Messages include projectId when execution has a projectPath.
    */
