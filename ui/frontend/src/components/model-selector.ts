@@ -260,6 +260,13 @@ export class AosModelSelector extends LitElement {
     if (!path.includes(this)) {
       this.isOpen = false;
       document.removeEventListener('click', this.handleOutsideClick);
+      this.dispatchEvent(
+        new CustomEvent('dropdown-toggle', {
+          detail: { open: false },
+          bubbles: true,
+          composed: true,
+        })
+      );
     }
   };
 
@@ -271,12 +278,26 @@ export class AosModelSelector extends LitElement {
     } else {
       document.removeEventListener('click', this.handleOutsideClick);
     }
+    this.dispatchEvent(
+      new CustomEvent('dropdown-toggle', {
+        detail: { open: this.isOpen },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   private selectModel(model: ModelSelectorModel): void {
     this.selectedModel = model;
     this.isOpen = false;
     document.removeEventListener('click', this.handleOutsideClick);
+    this.dispatchEvent(
+      new CustomEvent('dropdown-toggle', {
+        detail: { open: false },
+        bubbles: true,
+        composed: true,
+      })
+    );
 
     // Emit custom event for parent components
     this.dispatchEvent(

@@ -79,6 +79,7 @@ export class AosStoryCard extends LitElement {
   @property({ type: Array }) providers: ProviderInfo[] = DEFAULT_PROVIDERS;
   @state() private isDragging = false;
   @state() private copied = false;
+  @state() private dropdownOpen = false;
 
   static override styles = css`
     :host {
@@ -98,6 +99,11 @@ export class AosStoryCard extends LitElement {
       gap: 0.5rem;
       margin-bottom: 0.5rem;
       margin-top: 0.5rem;
+      position: relative;
+    }
+
+    .story-card.dropdown-open {
+      z-index: 10;
     }
 
     .story-card:hover {
@@ -331,6 +337,11 @@ export class AosStoryCard extends LitElement {
     );
   }
 
+  private handleDropdownToggle(e: CustomEvent): void {
+    e.stopPropagation();
+    this.dropdownOpen = (e.detail as { open: boolean }).open;
+  }
+
   private handleModelChange(e: CustomEvent): void {
     e.stopPropagation();
     this.dispatchEvent(
@@ -415,7 +426,7 @@ export class AosStoryCard extends LitElement {
   override render() {
     return html`
       <div
-        class="story-card ${this.isDragging ? 'dragging' : ''}"
+        class="story-card ${this.isDragging ? 'dragging' : ''} ${this.dropdownOpen ? 'dropdown-open' : ''}"
         draggable="true"
         @click=${this.handleClick}
         @dragstart=${this.handleDragStart}
@@ -475,6 +486,7 @@ export class AosStoryCard extends LitElement {
             .externalSelectedModelId=${this.story.model || 'opus'}
             ?disabled=${this.story.status === 'in_progress'}
             @model-changed=${this.handleModelChange}
+            @dropdown-toggle=${this.handleDropdownToggle}
           ></aos-model-selector>
         </div>
 
