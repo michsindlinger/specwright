@@ -10,22 +10,23 @@
     "createdAt": "2026-02-16"
   },
   "resumeContext": {
-    "currentPhase": "1-kanban-setup",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "story-complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/workflow-terminal-tabs",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Kanban board created",
-    "nextAction": "Run /execute-tasks 2026-02-16-workflow-terminal-tabs",
-    "progressIndex": 0,
-    "totalStories": 9
+    "lastAction": "WTT-001 completed - Backend Workflow-Session-Support",
+    "nextAction": "Execute next story (WTT-002)",
+    "progressIndex": 1,
+    "totalStories": 9,
+    "gitStrategy": "branch"
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-02-16T22:52:23.098Z",
     "completedAt": null,
-    "model": null
+    "model": "glm-5"
   },
   "stories": [
     {
@@ -39,23 +40,30 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "ready",
-      "dorStatus": "incomplete",
+      "status": "done",
+      "dorStatus": "complete",
       "storyFile": "stories/story-001-backend-workflow-session-support.md",
       "timing": {
         "createdAt": "2026-02-16",
-        "updatedAt": "2026-02-16"
+        "updatedAt": "2026-02-17",
+        "startedAt": "2026-02-16T22:52:23.098Z",
+        "completedAt": "2026-02-17T00:00:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/cloud-terminal.protocol.ts",
+          "ui/src/server/services/cloud-terminal-manager.ts",
+          "ui/src/server/websocket.ts"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
-        "dorChecked": false,
-        "dodChecked": false
+        "dorChecked": true,
+        "dodChecked": true
       },
-      "model": "glm-5"
+      "model": "glm-5",
+      "phase": "completed"
     },
     {
       "id": "WTT-002",
@@ -308,18 +316,18 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 9,
+    "ready": 8,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 0
   },
   "statistics": {
     "totalEffort": 11,
-    "completedEffort": 0,
-    "remainingEffort": 11,
-    "progressPercent": 0,
+    "completedEffort": 2,
+    "remainingEffort": 9,
+    "progressPercent": 18,
     "byType": {
       "frontend": 7,
       "backend": 2,
@@ -433,6 +441,24 @@
       "action": "model_changed",
       "storyId": "WTT-999",
       "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-16T22:52:23.098Z",
+      "action": "status_changed",
+      "storyId": "WTT-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-16T22:52:23.245Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-17T00:00:00.000Z",
+      "action": "story_completed",
+      "storyId": "WTT-001",
+      "details": "Progress: 1/9 (18%) - Backend Workflow-Session-Support implemented"
     }
   ]
 }

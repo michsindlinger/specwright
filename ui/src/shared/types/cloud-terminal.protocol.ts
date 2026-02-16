@@ -77,11 +77,32 @@ export interface CloudTerminalSession {
 }
 
 /**
+ * Cloud Terminal Workflow metadata for workflow-triggered sessions
+ */
+export interface CloudTerminalWorkflowMetadata {
+  /** Workflow command to execute (e.g., '/execute-tasks') */
+  workflowCommand: string;
+  /** Short workflow name for display (e.g., 'execute-tasks') */
+  workflowName: string;
+  /** Context argument (e.g., spec ID, story ID) */
+  workflowContext?: string;
+  /** Associated spec ID if applicable */
+  specId?: string;
+  /** Associated story ID if applicable */
+  storyId?: string;
+  /** Git strategy (branch/worktree) */
+  gitStrategy?: string;
+  /** Model to use for this workflow */
+  model?: string;
+}
+
+/**
  * Cloud Terminal message types for WebSocket communication
  */
 export type CloudTerminalMessageType =
   // Client -> Server
   | 'cloud-terminal:create'
+  | 'cloud-terminal:create-workflow'
   | 'cloud-terminal:close'
   | 'cloud-terminal:pause'
   | 'cloud-terminal:resume'
@@ -113,6 +134,24 @@ export interface CloudTerminalCreateMessage {
   projectPath: string;
   /** Model configuration (required for 'claude-code', unused for 'shell') */
   modelConfig?: CloudTerminalModelConfig;
+  /** Initial terminal size */
+  cols?: number;
+  rows?: number;
+  timestamp: string;
+}
+
+/**
+ * Create a new Cloud Terminal session for workflow execution
+ * Automatically sends the workflow command after session initialization
+ */
+export interface CloudTerminalCreateWorkflowMessage {
+  type: 'cloud-terminal:create-workflow';
+  /** Project path for the terminal session */
+  projectPath: string;
+  /** Workflow metadata including command to execute */
+  workflowMetadata: CloudTerminalWorkflowMetadata;
+  /** Model configuration (required for 'claude-code') */
+  modelConfig: CloudTerminalModelConfig;
   /** Initial terminal size */
   cols?: number;
   rows?: number;
@@ -198,6 +237,8 @@ export interface CloudTerminalCreatedMessage {
   sessionId: CloudTerminalSessionId;
   /** Session metadata */
   session: CloudTerminalSession;
+  /** Workflow metadata if this is a workflow session */
+  workflowMetadata?: CloudTerminalWorkflowMetadata;
   timestamp: string;
 }
 
@@ -288,6 +329,7 @@ export interface CloudTerminalDataMessage {
  */
 export type CloudTerminalClientMessage =
   | CloudTerminalCreateMessage
+  | CloudTerminalCreateWorkflowMessage
   | CloudTerminalCloseMessage
   | CloudTerminalPauseMessage
   | CloudTerminalResumeMessage
