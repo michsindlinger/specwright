@@ -263,9 +263,15 @@ export class AosTerminalSession extends LitElement {
       this.syncStateFromProps();
     }
 
-    // Show model selector when becoming active without a session
-    if (changed.has('isActive') && this.isActive && !this.terminalSessionId && !this.showModelSelector) {
-      this.showModelSelector = true;
+    // Handle session initialization when becoming active
+    if (changed.has('isActive') && this.isActive && !this.terminalSessionId) {
+      // Workflow sessions auto-connect without model selector
+      if (this.session.isWorkflow) {
+        this.startWorkflowSession();
+      } else if (!this.showModelSelector) {
+        // Regular sessions show model selector
+        this.showModelSelector = true;
+      }
     }
 
     // Refresh terminal when session becomes active (tab switch, sidebar reopen)
@@ -297,9 +303,16 @@ export class AosTerminalSession extends LitElement {
       this.showModelSelector = false;
       this.errorMessage = null;
     } else if (this.isActive) {
-      // No session yet, show model selector
-      this.showModelSelector = true;
-      this.connectionStatus = 'connecting';
+      // No session yet
+      if (this.session.isWorkflow) {
+        // Workflow sessions auto-connect without model selector
+        this.showModelSelector = false;
+        this.connectionStatus = 'connecting';
+      } else {
+        // Regular sessions show model selector
+        this.showModelSelector = true;
+        this.connectionStatus = 'connecting';
+      }
     }
   }
 
@@ -438,14 +451,23 @@ export class AosTerminalSession extends LitElement {
 
   /**
    * Reset session state and show model selector for a fresh start
+   * (or auto-start for workflow sessions)
    */
   private resetToNewSession(): void {
     const oldSessionId = this.terminalSessionId;
     this.terminalSessionId = null;
     this.connectionStatus = 'connecting';
-    this.showModelSelector = true;
     this.isSessionExpired = false;
     this.errorMessage = null;
+
+    // Workflow sessions auto-start without model selector
+    if (this.session.isWorkflow) {
+      this.showModelSelector = false;
+      // Start workflow session after reset
+      this.startWorkflowSession();
+    } else {
+      this.showModelSelector = true;
+    }
 
     // Notify parent that this session needs reset
     this.dispatchEvent(
@@ -455,6 +477,28 @@ export class AosTerminalSession extends LitElement {
         composed: true,
       })
     );
+  }
+
+  /**
+   * Start a workflow session - auto-connects without model selector.
+   * Uses the backend's cloud-terminal:create-workflow endpoint.
+   */
+  private startWorkflowSession(): void {
+    if (!this.session.isWorkflow) return;
+
+    this.showModelSelector = false;
+    this.connectionStatus = 'connecting';
+    this.selectedTerminalType = 'claude-code';
+
+    // Send workflow creation request to backend
+    gateway.send({
+      type: 'cloud-terminal:create-workflow',
+      requestId: this.session.id,
+      projectPath: this.session.projectPath,
+      workflowName: this.session.workflowName || 'unknown',
+      workflowContext: this.session.workflowContext || '',
+      timestamp: new Date().toISOString(),
+    });
   }
 
   /** Handle model-selected event with discriminated union detail */

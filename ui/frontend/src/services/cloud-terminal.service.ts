@@ -38,6 +38,14 @@ export interface PersistedTerminalSession {
   status: 'active' | 'paused' | 'reconnecting' | 'closed';
   /** Terminal type: 'shell' for plain terminal, 'claude-code' for AI session (defaults to 'claude-code') */
   terminalType?: 'shell' | 'claude-code';
+  /** Workflow session flag - if true, this is a workflow execution tab */
+  isWorkflow?: boolean;
+  /** Workflow name (e.g., "execute-tasks") - used as tab title prefix */
+  workflowName?: string;
+  /** Workflow context (e.g., "FE-001") - used as tab title suffix */
+  workflowContext?: string;
+  /** Indicates workflow needs user input - used for tab notifications */
+  needsInput?: boolean;
   createdAt: number;
   updatedAt: number;
 }

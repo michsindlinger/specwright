@@ -18,6 +18,14 @@ export interface TerminalSession {
   terminalSessionId?: string;
   /** Terminal type: 'shell' for plain terminal, 'claude-code' for AI session (defaults to 'claude-code') */
   terminalType?: 'shell' | 'claude-code';
+  /** Workflow session flag - if true, this is a workflow execution tab */
+  isWorkflow?: boolean;
+  /** Workflow name (e.g., "execute-tasks") - used as tab title prefix */
+  workflowName?: string;
+  /** Workflow context (e.g., "FE-001") - used as tab title suffix */
+  workflowContext?: string;
+  /** Indicates workflow needs user input - used for tab notifications */
+  needsInput?: boolean;
 }
 
 export interface LoadingState {
@@ -674,6 +682,76 @@ export class AosCloudTerminalSidebar extends LitElement {
    */
   clearError() {
     this.errorMessage = null;
+  }
+
+  /**
+   * Open a workflow tab programmatically.
+   * Creates a new workflow session and opens the sidebar if closed.
+   *
+   * @param workflowName - Workflow name (e.g., 'execute-tasks')
+   * @param workflowContext - Context identifier (e.g., spec ID, story ID)
+   * @param projectPath - Project path for the session
+   * @param options - Optional workflow configuration
+   * @returns The created session ID
+   */
+  openWorkflowTab(
+    workflowName: string,
+    workflowContext: string,
+    projectPath: string,
+    options?: {
+      specId?: string;
+      storyId?: string;
+      modelId?: string;
+      providerId?: string;
+    }
+  ): string {
+    // Generate unique session ID
+    const sessionId = `workflow-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+    // Create session title: "workflowName: workflowContext"
+    const tabTitle = `${workflowName}: ${workflowContext}`;
+
+    // Create new workflow session
+    const newSession: TerminalSession = {
+      id: sessionId,
+      name: tabTitle,
+      status: 'active',
+      createdAt: new Date(),
+      projectPath,
+      terminalType: 'claude-code',
+      isWorkflow: true,
+      workflowName,
+      workflowContext,
+      needsInput: false,
+    };
+
+    // Add to sessions array
+    this.sessions = [...this.sessions, newSession];
+
+    // Set as active session
+    this.activeSessionId = sessionId;
+
+    // Open sidebar if closed
+    if (!this.isOpen) {
+      this.isOpen = true;
+    }
+
+    // Dispatch event for parent to handle backend session creation
+    this.dispatchEvent(
+      new CustomEvent('workflow-session-create', {
+        detail: {
+          sessionId,
+          workflowName,
+          workflowContext,
+          projectPath,
+          ...options,
+        },
+        bubbles: true,
+        composed: true,
+      })
+    );
+
+    return sessionId;
   }
 
   private _handleRetry() {

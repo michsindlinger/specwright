@@ -73,13 +73,13 @@ Scenario: Workflow-Tab bei bereits offener Sidebar
 
 ### Datei-Pruefungen
 
-- [ ] CONTAINS: ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts enthaelt "isWorkflow"
-- [ ] CONTAINS: ui/frontend/src/components/terminal/aos-terminal-tabs.ts enthaelt "isWorkflow"
-- [ ] CONTAINS: ui/frontend/src/components/terminal/aos-terminal-session.ts enthaelt "isWorkflow"
+- [x] CONTAINS: ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts enthaelt "isWorkflow"
+- [x] CONTAINS: ui/frontend/src/components/terminal/aos-terminal-tabs.ts enthaelt "isWorkflow"
+- [x] CONTAINS: ui/frontend/src/components/terminal/aos-terminal-session.ts enthaelt "isWorkflow"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: cd ui/frontend && npm run build
+- [x] BUILD_PASS: cd ui/frontend && npm run build
 
 ---
 
@@ -116,18 +116,18 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten
-- [ ] Security/Performance Anforderungen erfuellt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten
+- [x] Security/Performance Anforderungen erfuellt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt
-- [ ] Tests geschrieben und bestanden
-- [ ] Code Review durchgefuehrt
+- [x] Alle Akzeptanzkriterien erfuellt
+- [x] Tests geschrieben und bestanden
+- [x] Code Review durchgefuehrt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich
 
 ---
 
