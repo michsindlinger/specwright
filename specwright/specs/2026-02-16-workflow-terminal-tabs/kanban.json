@@ -1,0 +1,365 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+
+  "spec": {
+    "id": "2026-02-16-workflow-terminal-tabs",
+    "name": "Workflow Terminal Tabs",
+    "prefix": "WTT",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-16"
+  },
+
+  "resumeContext": {
+    "currentPhase": "1-kanban-setup",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Kanban board created",
+    "nextAction": "Run /execute-tasks 2026-02-16-workflow-terminal-tabs",
+    "progressIndex": 0,
+    "totalStories": 9
+  },
+
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+
+  "stories": [
+    {
+      "id": "WTT-001",
+      "title": "Backend Workflow-Session-Support",
+      "slug": "backend-workflow-session-support",
+      "classification": {
+        "type": "backend",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-001-backend-workflow-session-support.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WTT-002",
+      "title": "Frontend Workflow-Tab-Integration",
+      "slug": "frontend-workflow-tab-integration",
+      "classification": {
+        "type": "frontend",
+        "priority": "critical",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": ["WTT-001"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-002-frontend-workflow-tab-integration.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WTT-003",
+      "title": "UI-Trigger auf Terminal-Tabs umleiten",
+      "slug": "ui-trigger-terminal-tabs",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": ["WTT-002"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-003-ui-trigger-terminal-tabs.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WTT-004",
+      "title": "Tab-Notifications bei Input-Bedarf",
+      "slug": "tab-notifications",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": ["WTT-002"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-004-tab-notifications.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WTT-005",
+      "title": "Tab-Close Confirmation",
+      "slug": "tab-close-confirmation",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": ["WTT-002"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-005-tab-close-confirmation.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WTT-006",
+      "title": "Legacy Cleanup",
+      "slug": "legacy-cleanup",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": ["WTT-003", "WTT-004", "WTT-005"],
+      "status": "ready",
+      "dorStatus": "incomplete",
+      "storyFile": "stories/story-006-legacy-cleanup.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WTT-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "XS"
+      },
+      "dependencies": ["WTT-006"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WTT-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "XS"
+      },
+      "dependencies": ["WTT-997"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WTT-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 0,
+        "complexity": "XS"
+      },
+      "dependencies": ["WTT-998"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    }
+  ],
+
+  "boardStatus": {
+    "total": 9,
+    "ready": 9,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 0
+  },
+
+  "statistics": {
+    "totalEffort": 11,
+    "completedEffort": 0,
+    "remainingEffort": 11,
+    "progressPercent": 0,
+    "byType": {
+      "frontend": 7,
+      "backend": 2,
+      "devops": 0,
+      "test": 0,
+      "docs": 0,
+      "integration": 0,
+      "system": 0
+    },
+    "byPriority": {
+      "critical": 4,
+      "high": 4,
+      "medium": 3,
+      "low": 0
+    }
+  },
+
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Foundation",
+        "stories": ["WTT-001"],
+        "parallel": false
+      },
+      {
+        "phase": 2,
+        "name": "Frontend Integration",
+        "stories": ["WTT-002"],
+        "parallel": false
+      },
+      {
+        "phase": 3,
+        "name": "Features",
+        "stories": ["WTT-003", "WTT-004", "WTT-005"],
+        "parallel": true
+      },
+      {
+        "phase": 4,
+        "name": "Cleanup",
+        "stories": ["WTT-006"],
+        "parallel": false
+      },
+      {
+        "phase": 5,
+        "name": "System Stories",
+        "stories": ["WTT-997", "WTT-998", "WTT-999"],
+        "parallel": false
+      }
+    ]
+  },
+
+  "changeLog": [
+    {
+      "timestamp": "2026-02-16",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 9 stories from /create-spec"
+    }
+  ]
+}

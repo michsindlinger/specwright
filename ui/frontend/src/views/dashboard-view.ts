@@ -384,6 +384,8 @@ export class AosDashboardView extends LitElement {
       ['backlog.kanban', (msg) => this.onBacklogKanban(msg)],
       ['backlog.story-detail', (msg) => this.onBacklogStoryDetail(msg)],
       ['backlog.story.start.ack', (msg) => this.onBacklogStoryStartAck(msg)],
+      ['backlog.story.start.error', (msg) => this.onBacklogStoryStartError(msg)],
+      ['backlog.story.git.warning', (msg) => this.onBacklogStoryGitWarning(msg)],
       ['backlog.story.complete', (msg) => this.onBacklogStoryComplete(msg)],
       ['backlog.story.save', (msg) => this.onBacklogStorySaveSuccess(msg)],
       ['backlog.story.save.error', (msg) => this.onBacklogStorySaveError(msg)],
@@ -694,12 +696,79 @@ export class AosDashboardView extends LitElement {
   }
 
   /**
+   * BPS-003: Handle backlog story start error.
+   * Shows error toast and triggers auto-continue to skip failed story.
+   * Szenario 4: Branch-Erstellung fehlschlägt - Story wird übersprungen.
+   */
+  private onBacklogStoryStartError(msg: WebSocketMessage): void {
+    const storyId = msg.storyId as string | undefined;
+    const error = (msg.error as string) || 'Unbekannter Fehler';
+    console.error(`[Dashboard] Backlog story start error: ${storyId}`, error);
+
+    // Clear auto-mode progress
+    this._backlogAutoModeProgress = null;
+    this.updateBacklogKanbanProgress(null);
+
+    // Show error toast
+    this.dispatchEvent(
+      new CustomEvent('show-toast', {
+        detail: {
+          message: `Story ${storyId || 'Unbekannt'} konnte nicht gestartet werden: ${error}`,
+          type: 'error'
+        },
+        bubbles: true,
+        composed: true
+      })
+    );
+
+    // Szenario 4: Try next story if auto-mode is enabled
+    if (this._backlogAutoModeEnabled && !this._backlogAutoModePaused) {
+      console.log(`[Dashboard] Auto-mode enabled, trying next backlog story after error`);
+      this._scheduleNextBacklogAutoExecution();
+    }
+  }
+
+  /**
+   * BPS-003: Handle non-critical Git operation warnings during backlog story execution.
+   * Shows warning toast but does NOT interrupt auto-mode.
+   * Szenario 5: PR-Erstellung fehlschlägt - nicht-kritisch.
+   */
+  private onBacklogStoryGitWarning(msg: WebSocketMessage): void {
+    const storyId = msg.storyId as string | undefined;
+    const warning = (msg.warning as string) || 'Git-Operation fehlgeschlagen';
+    const canContinue = msg.canContinue !== false; // Default to true
+
+    console.warn(`[Dashboard] Backlog story git warning: ${storyId}`, warning);
+
+    // Show warning toast (type: 'warning' for non-critical errors)
+    this.dispatchEvent(
+      new CustomEvent('show-toast', {
+        detail: {
+          message: `⚠️ ${storyId || 'Story'}: ${warning}`,
+          type: 'warning'
+        },
+        bubbles: true,
+        composed: true
+      })
+    );
+
+    // Note: Auto-mode is NOT interrupted - the workflow continues
+    // This matches Szenario 5: "PR-Erstellung fehlschlägt - nicht-kritisch"
+    if (!canContinue) {
+      console.error(`[Dashboard] Git warning indicates cannot continue, but this should not happen in current implementation`);
+    }
+  }
+
+  /**
    * BKE-002: Handle backlog story completion event.
+   * BPS-003: Added error handling for PR creation failures (non-critical warnings).
    * When auto-mode is enabled, schedules the next story execution.
    */
   private onBacklogStoryComplete(msg: WebSocketMessage): void {
     const storyId = msg.storyId as string;
-    console.log(`[Dashboard] Backlog story completed: ${storyId}`);
+    const prWarning = msg.prWarning as string | undefined;
+    const prUrl = msg.prUrl as string | undefined;
+    console.log(`[Dashboard] Backlog story completed: ${storyId}`, { prWarning, prUrl });
 
     // UKB-005: Clear backlog auto-mode progress
     this._backlogAutoModeProgress = null;
@@ -711,6 +780,33 @@ export class AosDashboardView extends LitElement {
         story.id === storyId ? { ...story, status: 'done' as const } : story
       );
       this.backlogKanban = { ...this.backlogKanban, stories: updatedStories };
+    }
+
+    // BPS-003: Show warning if PR creation failed (non-critical)
+    if (prWarning) {
+      console.warn(`[Dashboard] PR creation warning for ${storyId}:`, prWarning);
+      this.dispatchEvent(
+        new CustomEvent('show-toast', {
+          detail: {
+            message: `PR-Erstellung für ${storyId} fehlgeschlagen: ${prWarning}`,
+            type: 'warning'
+          },
+          bubbles: true,
+          composed: true
+        })
+      );
+    } else if (prUrl) {
+      // Success: Show PR URL
+      this.dispatchEvent(
+        new CustomEvent('show-toast', {
+          detail: {
+            message: `PR erstellt: ${prUrl}`,
+            type: 'success'
+          },
+          bubbles: true,
+          composed: true
+        })
+      );
     }
 
     // UKB-005: If auto-mode is enabled, schedule next story execution

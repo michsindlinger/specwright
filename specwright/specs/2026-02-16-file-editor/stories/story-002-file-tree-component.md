@@ -88,17 +88,17 @@ Scenario: Langer Dateiname wird abgeschnitten
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: ui/frontend/src/components/file-editor/aos-file-tree.ts
+- [x] FILE_EXISTS: ui/frontend/src/components/file-editor/aos-file-tree.ts
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: ui/frontend/src/components/file-editor/aos-file-tree.ts enthält "@customElement('aos-file-tree')"
-- [ ] CONTAINS: ui/frontend/src/components/file-editor/aos-file-tree.ts enthält "files:list"
+- [x] CONTAINS: ui/frontend/src/components/file-editor/aos-file-tree.ts enthält "@customElement('aos-file-tree')"
+- [x] CONTAINS: ui/frontend/src/components/file-editor/aos-file-tree.ts enthält "files:list"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0
 
 ---
 
@@ -139,17 +139,17 @@ Scenario: Langer Dateiname wird abgeschnitten
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Lit Component mit Light DOM Pattern
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Lit Component mit Light DOM Pattern
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Code Review durchgeführt und genehmigt
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Code Review durchgeführt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 

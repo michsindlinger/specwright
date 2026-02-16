@@ -1828,6 +1828,39 @@ aos-spec-card {
   font-weight: var(--font-weight-medium);
 }
 
+/* FE-003: File Tree Sidebar Button */
+.file-tree-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--color-border, #404040);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary, #a0a0a0);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.file-tree-btn:hover {
+  background: var(--color-bg-tertiary, #262626);
+  border-color: var(--color-border-hover, #505050);
+  color: var(--color-text-primary, #ffffff);
+}
+
+.file-tree-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.file-tree-btn.active {
+  border-color: var(--color-accent-primary, #22c55e);
+  color: var(--color-accent-primary, #22c55e);
+}
+
 /* CCT-002: Cloud Terminal Button */
 .terminal-btn {
   display: flex;
@@ -3504,8 +3537,9 @@ aos-app .queue-badge {
 aos-app .main-content {
   flex: 1;
   margin-left: var(--sidebar-width);
+  padding-left: max(0px, calc(var(--file-tree-open-width, 0px) - var(--sidebar-width)));
   min-height: 100vh;
-  transition: padding-bottom 0.3s ease;
+  transition: padding-bottom 0.3s ease, padding-left 0.3s ease;
 }
 
 aos-app .header {

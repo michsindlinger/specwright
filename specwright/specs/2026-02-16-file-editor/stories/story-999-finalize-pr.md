@@ -123,13 +123,13 @@ Scenario: Aufraeumen des Git Worktrees
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] user-todos.md finalisiert (wenn vorhanden)
-- [ ] Project Knowledge aktualisiert (wenn "Creates Reusable" Stories vorhanden)
-- [ ] Alle Aenderungen committed
-- [ ] Pull Request erstellt
-- [ ] PR URL dokumentiert
-- [ ] Worktree aufgeraeumt (wenn verwendet)
-- [ ] Kanban-Board auf "complete" gesetzt
+- [x] user-todos.md finalisiert (wenn vorhanden) - keine user-todos.md vorhanden, keine manuellen Tasks
+- [x] Project Knowledge aktualisiert (wenn "Creates Reusable" Stories vorhanden) - 8 Artefakte in 4 Knowledge-Dateien
+- [x] Alle Aenderungen committed
+- [x] Pull Request erstellt - https://github.com/michsindlinger/specwright/pull/1
+- [x] PR URL dokumentiert
+- [x] Worktree aufgeraeumt (wenn verwendet) - Branch-Strategie, kein Worktree
+- [x] Kanban-Board auf "complete" gesetzt
 
 ---
 

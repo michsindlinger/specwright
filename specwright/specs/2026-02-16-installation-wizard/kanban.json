@@ -1,0 +1,370 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+
+  "spec": {
+    "id": "2026-02-16-installation-wizard",
+    "name": "Installation Wizard",
+    "prefix": "IW",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-16T00:00:00Z"
+  },
+
+  "resumeContext": {
+    "currentPhase": "spec-complete",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Spec complete - DoR validated, size validated, all stories ready",
+    "nextAction": "Run /execute-tasks 2026-02-16-installation-wizard",
+    "progressIndex": 0,
+    "totalStories": 9
+  },
+
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+
+  "stories": [
+    {
+      "id": "IW-001",
+      "title": "Specwright-Erkennung beim Projekt-Hinzufuegen",
+      "slug": "specwright-erkennung",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-specwright-erkennung.md",
+      "timing": {
+        "createdAt": "2026-02-16T00:00:00Z",
+        "updatedAt": "2026-02-16T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "IW-002",
+      "title": "Installation Wizard Modal",
+      "slug": "installation-wizard-modal",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["IW-001"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-installation-wizard-modal.md",
+      "timing": {
+        "createdAt": "2026-02-16T00:00:00Z",
+        "updatedAt": "2026-02-16T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "IW-003",
+      "title": "Terminal-Integration im Wizard",
+      "slug": "terminal-integration",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["IW-002"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-terminal-integration.md",
+      "timing": {
+        "createdAt": "2026-02-16T00:00:00Z",
+        "updatedAt": "2026-02-16T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "IW-004",
+      "title": "Wizard Abbruch-Handling",
+      "slug": "wizard-abbruch-handling",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": "XS",
+        "complexity": "XS"
+      },
+      "dependencies": ["IW-002"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-004-wizard-abbruch-handling.md",
+      "timing": {
+        "createdAt": "2026-02-16T00:00:00Z",
+        "updatedAt": "2026-02-16T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "IW-005",
+      "title": "Getting Started View",
+      "slug": "getting-started-view",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-005-getting-started-view.md",
+      "timing": {
+        "createdAt": "2026-02-16T00:00:00Z",
+        "updatedAt": "2026-02-16T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "IW-006",
+      "title": "Router & Navigation Integration",
+      "slug": "router-navigation-integration",
+      "classification": {
+        "type": "integration",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["IW-001", "IW-002", "IW-003", "IW-004", "IW-005"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-006-router-navigation-integration.md",
+      "timing": {
+        "createdAt": "2026-02-16T00:00:00Z",
+        "updatedAt": "2026-02-16T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "IW-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["IW-001", "IW-002", "IW-003", "IW-004", "IW-005", "IW-006"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-16T00:00:00Z",
+        "updatedAt": "2026-02-16T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "IW-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["IW-997"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-16T00:00:00Z",
+        "updatedAt": "2026-02-16T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "IW-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": ["IW-998"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-16T00:00:00Z",
+        "updatedAt": "2026-02-16T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    }
+  ],
+
+  "boardStatus": {
+    "total": 9,
+    "ready": 9,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 0
+  },
+
+  "statistics": {
+    "totalEffort": 27,
+    "completedEffort": 0,
+    "remainingEffort": 27,
+    "progressPercent": 0,
+    "byType": {
+      "frontend": 4,
+      "backend": 1,
+      "devops": 0,
+      "test": 0,
+      "docs": 0,
+      "integration": 1
+    },
+    "byPriority": {
+      "critical": 0,
+      "high": 8,
+      "medium": 1,
+      "low": 0
+    }
+  },
+
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Backend-Erkennung + Getting Started (Parallel)",
+        "stories": ["IW-001", "IW-005"],
+        "parallel": true
+      },
+      {
+        "phase": 2,
+        "name": "Wizard Modal",
+        "stories": ["IW-002"],
+        "parallel": false
+      },
+      {
+        "phase": 3,
+        "name": "Terminal + Abbruch (Parallel)",
+        "stories": ["IW-003", "IW-004"],
+        "parallel": true
+      },
+      {
+        "phase": 4,
+        "name": "Integration",
+        "stories": ["IW-006"],
+        "parallel": false
+      },
+      {
+        "phase": 5,
+        "name": "System Stories",
+        "stories": ["IW-997", "IW-998", "IW-999"],
+        "parallel": false
+      }
+    ]
+  },
+
+  "changeLog": [
+    {
+      "timestamp": "2026-02-16T00:00:00Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 9 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-16T00:00:00Z",
+      "action": "technical_refinement_complete",
+      "storyId": null,
+      "details": "All 6 regular stories refined with WAS/WIE/WO/DoR/DoD. DoR validated. Size validated. All stories ready."
+    }
+  ]
+}

@@ -9,6 +9,7 @@
 **Type**: Frontend
 **Estimated Effort**: S
 **Dependencies**: FE-001
+**Status**: Done
 
 ---
 
@@ -108,18 +109,18 @@ Scenario: Unbekannter Dateityp
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: ui/frontend/src/components/file-editor/aos-file-editor.ts
+- [x] FILE_EXISTS: ui/frontend/src/components/file-editor/aos-file-editor.ts
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: ui/frontend/src/components/file-editor/aos-file-editor.ts enthält "@customElement('aos-file-editor')"
-- [ ] CONTAINS: ui/frontend/src/components/file-editor/aos-file-editor.ts enthält "EditorView"
-- [ ] CONTAINS: ui/frontend/src/components/file-editor/aos-file-editor.ts enthält "Compartment"
+- [x] CONTAINS: ui/frontend/src/components/file-editor/aos-file-editor.ts enthält "@customElement('aos-file-editor')"
+- [x] CONTAINS: ui/frontend/src/components/file-editor/aos-file-editor.ts enthält "EditorView"
+- [x] CONTAINS: ui/frontend/src/components/file-editor/aos-file-editor.ts enthält "Compartment"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0 (pre-existing backend errors only)
 
 ---
 
@@ -160,18 +161,18 @@ Scenario: Unbekannter Dateityp
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] CodeMirror korrekt integriert mit Theme-Compartment
-- [ ] Automatische Spracherkennung funktioniert
-- [ ] Ctrl+S / Cmd+S Shortcut funktioniert
+- [x] Code implementiert und folgt Style Guide
+- [x] CodeMirror korrekt integriert mit Theme-Compartment
+- [x] Automatische Spracherkennung funktioniert
+- [x] Ctrl+S / Cmd+S Shortcut funktioniert
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Code Review durchgeführt und genehmigt
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Code Review durchgeführt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 

@@ -124,6 +124,44 @@ export interface GitPrInfo {
   title: string;
 }
 
+/**
+ * Branch creation result data
+ */
+export interface GitCreateBranchResult {
+  /** Whether operation was successful */
+  success: boolean;
+  /** Branch name */
+  branch: string;
+  /** Whether a new branch was created (false if branch already existed) */
+  created: boolean;
+}
+
+/**
+ * Push branch result data
+ */
+export interface GitPushBranchResult {
+  /** Whether operation was successful */
+  success: boolean;
+  /** Branch name that was pushed */
+  branch: string;
+  /** Number of commits pushed */
+  commitsPushed: number;
+}
+
+/**
+ * Pull Request creation result data
+ */
+export interface GitCreatePullRequestResult {
+  /** Whether operation was successful */
+  success: boolean;
+  /** PR URL (if created successfully) */
+  prUrl?: string;
+  /** PR number (if created successfully) */
+  prNumber?: number;
+  /** Warning message (e.g., if gh CLI not available but operation continued) */
+  warning?: string;
+}
+
 // ============================================================================
 // Message Types
 // ============================================================================

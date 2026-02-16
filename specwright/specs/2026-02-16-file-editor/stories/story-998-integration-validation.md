@@ -108,11 +108,11 @@ Scenario: Verifizierung der Komponenten-Verbindungen
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] Integration Tests aus spec.md extrahiert
-- [ ] Alle Integration Tests ausgefuehrt
-- [ ] Alle Tests bestanden (oder Fehler dokumentiert)
-- [ ] Komponenten-Verbindungen verifiziert
-- [ ] Keine isolierten Komponenten gefunden
+- [x] Integration Tests aus spec.md extrahiert
+- [x] Alle Integration Tests ausgefuehrt
+- [x] Alle Tests bestanden (oder Fehler dokumentiert)
+- [x] Komponenten-Verbindungen verifiziert
+- [x] Keine isolierten Komponenten gefunden
 
 ---
 
