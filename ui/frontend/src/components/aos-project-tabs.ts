@@ -156,7 +156,7 @@ export class AosProjectTabs extends LitElement {
           title="Projekt hinzufügen"
           aria-label="Projekt hinzufügen"
         >
-          +
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
         </button>
       </div>
     `;

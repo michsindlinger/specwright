@@ -1407,7 +1407,7 @@ export class AosDashboardView extends LitElement {
       <div class="dashboard-container">
         ${this.renderDashboardTabs()}
         <div class="dashboard-header">
-          <h2>Project Specs</h2>
+          <h2>Project Feature Specs</h2>
           <span class="spec-count">${sortedSpecs.length} spec${sortedSpecs.length !== 1 ? 's' : ''}</span>
           <label class="active-toggle">
             <input
@@ -1418,7 +1418,8 @@ export class AosDashboardView extends LitElement {
             <span>Nur aktive</span>
           </label>
           <button class="new-spec-btn" @click=${this.handleOpenCreateSpecModal}>
-            + Neues Spec
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/></svg>
+            Neues Spec
           </button>
         </div>
 
