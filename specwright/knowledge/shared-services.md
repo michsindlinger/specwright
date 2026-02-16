@@ -9,6 +9,7 @@
 |--------------|------|-----|------------------|
 | FileService | ui/src/server/services/file.service.ts | Service | File Editor (2026-02-16) |
 | FileHandler | ui/src/server/handlers/file.handler.ts | Handler | File Editor (2026-02-16) |
+| GitService | ui/src/server/services/git.service.ts | Service | Branch-per-Story Backlog (2026-02-16) |
 
 ---
 
@@ -62,6 +63,31 @@
 **Notes:**
 - Folgt dem gleichen Pattern wie `AttachmentHandler` und `DocsReader`
 - Responses folgen dem Pattern `{type}:response` / `{type}:error`
+
+---
+
+### GitService
+
+**Pfad:** `ui/src/server/services/git.service.ts`
+**Typ:** Service
+**Erstellt:** Branch-per-Story Backlog (2026-02-16)
+
+**Beschreibung:** Git-Operationen für Branch-Erstellung, PR-Erstellung und Branch-Wechsel. Wird für Branch-per-Story Backlog-Execution verwendet.
+
+**Methoden:**
+| Methode | Parameter | Return | Beschreibung |
+|---------|-----------|--------|--------------|
+| createBranch | (projectPath: string, branchName: string, fromBranch?: string) | Promise<string> | Branch erstellen und darauf wechseln |
+| checkoutMain | (projectPath: string) | Promise<string> | Auf main Branch zurückwechseln |
+| pushBranch | (projectPath: string, branchName: string) | Promise<string> | Branch zum Remote pushen mit `-u` Flag |
+| createPullRequest | (projectPath: string, branchName: string, title: string, body?: string) | Promise<string> | PR via `gh pr create` erstellen |
+| isWorkingDirectoryClean | (projectPath: string) | Promise<boolean> | Prüfen ob uncommitted changes vorliegen |
+
+**Notes:**
+- Nutzt `execFile` statt `exec` aus Sicherheitsgründen
+- `createPullRequest` nutzt gh CLI via `execFile('gh', ...)`
+- Fehlerbehandlung mit `GitError` und spezifischen Error-Codes
+- Timeout: 30 Sekunden (GIT_CONFIG.OPERATION_TIMEOUT_MS)
 
 ---
 

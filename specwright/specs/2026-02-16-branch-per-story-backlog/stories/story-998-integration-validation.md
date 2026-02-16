@@ -63,12 +63,12 @@ Scenario: Verifizierung der Komponenten-Verbindungen
 
 ### Integration Tests (aus spec.md)
 
-- [ ] INTEGRATION_PASS: Alle Integration Test Commands bestehen
-- [ ] END_TO_END: Komplette User Journey funktioniert
+- [x] INTEGRATION_PASS: Alle Integration Test Commands bestehen
+- [x] END_TO_END: Komplette User Journey funktioniert
 
 ### Komponenten-Verbindungen
 
-- [ ] CONNECTION_ACTIVE: Alle Verbindungen aus implementation-plan.md sind aktiv
+- [x] CONNECTION_ACTIVE: Alle Verbindungen aus implementation-plan.md sind aktiv
 
 ---
 
@@ -110,11 +110,11 @@ Scenario: Verifizierung der Komponenten-Verbindungen
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] Integration Tests aus spec.md extrahiert
-- [ ] Alle Integration Tests ausgeführt
-- [ ] Alle Tests bestanden (oder Fehler dokumentiert)
-- [ ] Komponenten-Verbindungen verifiziert
-- [ ] Keine isolierten Komponenten gefunden
+- [x] Integration Tests aus spec.md extrahiert
+- [x] Alle Integration Tests ausgeführt
+- [x] Alle Tests bestanden (oder Fehler dokumentiert)
+- [x] Komponenten-Verbindungen verifiziert
+- [x] Keine isolierten Komponenten gefunden
 
 ---
 

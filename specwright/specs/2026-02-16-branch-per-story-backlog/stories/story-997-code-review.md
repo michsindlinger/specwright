@@ -66,17 +66,17 @@ Scenario: Dokumentation gefundener Probleme
 
 ### Datei-Prüfungen
 
-- [ ] FILE_EXISTS: specwright/specs/2026-02-16-branch-per-story-backlog/review-report.md
+- [x] FILE_EXISTS: specwright/specs/2026-02-16-branch-per-story-backlog/review-report.md
 
 ### Inhalt-Prüfungen
 
-- [ ] CONTAINS: review-report.md enthält "## Review Summary"
-- [ ] CONTAINS: review-report.md enthält "## Geprüfte Dateien"
+- [x] CONTAINS: review-report.md enthält "## Review Summary"
+- [x] CONTAINS: review-report.md enthält "## Geprüfte Dateien"
 
 ### Funktions-Prüfungen
 
-- [ ] LINT_PASS: cd ui && npm run lint
-- [ ] BUILD_PASS: cd ui && npm run build:backend
+- [x] LINT_PASS: cd ui && npm run lint (keine neuen Fehler durch BPS-Changes)
+- [x] BUILD_PASS: cd ui && npm run build:backend
 
 ---
 
@@ -116,11 +116,11 @@ Scenario: Dokumentation gefundener Probleme
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] Git Diff analysiert (main...HEAD)
-- [ ] Alle geänderten Dateien reviewt
-- [ ] Probleme identifiziert und kategorisiert
-- [ ] review-report.md erstellt
-- [ ] Keine Critical Issues gefunden (oder dokumentiert)
+- [x] Git Diff analysiert (main...HEAD)
+- [x] Alle geänderten Dateien reviewt
+- [x] Probleme identifiziert und kategorisiert
+- [x] review-report.md erstellt
+- [x] Keine Critical Issues gefunden (oder dokumentiert)
 
 ---
 

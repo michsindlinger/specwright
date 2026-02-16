@@ -9,7 +9,7 @@
 |-----------|-------|------------------|----------|----------------------|
 | UI Components | ui-components.md | UI, Component, Button, Form, Modal, Input, Frontend, Widget | 5 | 2026-02-16 |
 | API Contracts | api-contracts.md | API, Endpoint, REST, Backend, Route, Controller | 0 | - |
-| Shared Services | shared-services.md | Service, Hook, Utility, Helper, Provider | 2 | 2026-02-16 |
+| Shared Services | shared-services.md | Service, Hook, Utility, Helper, Provider | 3 | 2026-02-16 |
 | Data Models | data-models.md | Model, Schema, Type, Interface, Entity, DTO | 1 | 2026-02-16 |
 
 > **Hinweis:** Architecture/Patterns sind in `specwright/product/` definiert (nicht hier).
@@ -19,7 +19,7 @@
 
 **UI:** aos-file-tree, aos-file-tree-sidebar, aos-file-editor, aos-file-tabs, aos-file-editor-panel
 **API:** (keine Endpunkte)
-**Services:** FileService, FileHandler
+**Services:** FileService, FileHandler, GitService
 **Models:** file.protocol.ts
 
 ---
