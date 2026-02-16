@@ -1,5 +1,6 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import './model-selector.js';
 
 export interface WorkflowCommand {
   id: string;
@@ -87,10 +88,9 @@ export class AosWorkflowCard extends LitElement {
     this.startInteractiveWorkflow(value, this.selectedModel);
   }
 
-  private handleModelChange(e: Event): void {
+  private handleModelChange(e: CustomEvent): void {
     e.stopPropagation();
-    const select = e.target as HTMLSelectElement;
-    this.selectedModel = select.value;
+    this.selectedModel = (e.detail as { modelId: string }).modelId;
   }
 
   private handleCancelArgument(e: Event): void {
@@ -143,24 +143,12 @@ export class AosWorkflowCard extends LitElement {
         <p class="command-description">${this.command.description}</p>
 
         <div class="workflow-model-select" @click=${(e: Event) => e.stopPropagation()}>
-          <select
-            class="model-dropdown"
-            .value=${this.selectedModel}
+          <aos-model-selector
+            .externalProviders=${this.providers}
+            .externalSelectedModelId=${this.selectedModel}
             ?disabled=${this.disabled || this.providers.length === 0}
-            @change=${this.handleModelChange}
-          >
-            ${this.providers.length === 0
-              ? html`<option>Loading models...</option>`
-              : this.providers.map(provider => html`
-                  <optgroup label="${provider.name}">
-                    ${provider.models.map(model => html`
-                      <option value="${model.id}" ?selected=${this.selectedModel === model.id}>
-                        ${model.name}
-                      </option>
-                    `)}
-                  </optgroup>
-                `)}
-          </select>
+            @model-changed=${this.handleModelChange}
+          ></aos-model-selector>
         </div>
 
         ${this.showArgumentInput || hasInitialArgument

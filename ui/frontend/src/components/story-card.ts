@@ -220,20 +220,8 @@ export class AosStoryCard extends LitElement {
       padding-top: 0.5rem;
     }
 
-    .model-dropdown {
+    .story-model-select aos-model-selector {
       width: 100%;
-      background: var(--bg-color-secondary, #1e1e1e);
-      border: 1px solid var(--border-color, #404040);
-      color: var(--text-color, #e5e5e5);
-      font-size: 0.8rem;
-      padding: 0.25rem;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .model-dropdown:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
     }
 
     .story-deps {
@@ -308,14 +296,13 @@ export class AosStoryCard extends LitElement {
     );
   }
 
-  private handleModelChange(e: Event): void {
+  private handleModelChange(e: CustomEvent): void {
     e.stopPropagation();
-    const select = e.target as HTMLSelectElement;
     this.dispatchEvent(
       new CustomEvent('story-model-change', {
         detail: {
           storyId: this.story.id,
-          model: select.value as ModelSelection
+          model: (e.detail as { modelId: string }).modelId as ModelSelection
         },
         bubbles: true,
         composed: true
@@ -420,24 +407,13 @@ export class AosStoryCard extends LitElement {
           ></aos-story-status-badge>
         </div>
 
-        <div class="story-model-select">
-          <select
-            class="model-dropdown"
+        <div class="story-model-select" @click=${(e: Event) => e.stopPropagation()}>
+          <aos-model-selector
+            .externalProviders=${this.providers}
+            .externalSelectedModelId=${this.story.model || 'opus'}
             ?disabled=${this.story.status === 'in_progress'}
-            title=${this.story.status === 'in_progress'
-              ? 'Model kann während Ausführung nicht geändert werden'
-              : ''}
-            @change=${this.handleModelChange}
-            @click=${(e: Event) => e.stopPropagation()}
-          >
-            ${this.providers.map(provider => html`
-              <optgroup label="${provider.name}">
-                ${provider.models.map(model => html`
-                  <option value="${model.id}" ?selected=${(this.story.model || 'opus') === model.id}>${model.name}</option>
-                `)}
-              </optgroup>
-            `)}
-          </select>
+            @model-changed=${this.handleModelChange}
+          ></aos-model-selector>
         </div>
 
         ${this.story.dependencies.length > 0

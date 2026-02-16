@@ -611,16 +611,6 @@ export class AosChatView extends LitElement {
   protected override createRenderRoot() {
     return this;
   }
-
-  static styles = `
-    .chat-header {
-      display: flex;
-      justify-content: flex-end;
-      padding: 0.5rem 1rem;
-      border-bottom: 1px solid var(--border-color);
-      background: var(--bg-color-secondary);
-    }
-  `;
 }
 
 declare global {

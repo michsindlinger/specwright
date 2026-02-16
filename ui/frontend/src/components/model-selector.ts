@@ -1,26 +1,38 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { gateway, WebSocketMessage } from '../gateway.js';
 
-interface Model {
+export interface ModelSelectorModel {
   id: string;
   name: string;
   providerId: string;
 }
 
-interface Provider {
+export interface ModelSelectorProvider {
   id: string;
   name: string;
-  models: Model[];
+  models: ModelSelectorModel[];
 }
 
 @customElement('aos-model-selector')
 export class AosModelSelector extends LitElement {
-  @state()
-  private providers: Provider[] = [];
+  /** External providers – when set, gateway fetch is skipped (embedded mode) */
+  @property({ type: Array }) externalProviders: ModelSelectorProvider[] = [];
+
+  /** Pre-select a model by ID (embedded mode) */
+  @property({ type: String }) externalSelectedModelId = '';
+
+  /** Disable the selector */
+  @property({ type: Boolean }) disabled = false;
+
+  /** When true, selecting a model also updates the global backend setting */
+  @property({ type: Boolean }) syncGlobal = false;
 
   @state()
-  private selectedModel: Model | null = null;
+  private providers: ModelSelectorProvider[] = [];
+
+  @state()
+  private selectedModel: ModelSelectorModel | null = null;
 
   @state()
   private isOpen = false;
@@ -32,6 +44,10 @@ export class AosModelSelector extends LitElement {
   private boundHandleModelSelected = this.handleModelSelected.bind(this);
   private boundHandleModelList = this.handleModelList.bind(this);
   private boundHandleGatewayConnected = this.handleGatewayConnected.bind(this);
+
+  private get isEmbedded(): boolean {
+    return this.externalProviders.length > 0;
+  }
 
   static override styles = css`
     :host {
@@ -56,7 +72,7 @@ export class AosModelSelector extends LitElement {
       transition: all 0.2s;
     }
 
-    .model-selector-button:hover {
+    .model-selector-button:hover:not(:disabled) {
       background-color: var(--bg-color-hover, #3d3d3d);
       border-color: var(--primary-color, #3b82f6);
     }
@@ -145,34 +161,61 @@ export class AosModelSelector extends LitElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
-    this.setupGatewayHandlers();
-    // Request model list when connected
-    // If gateway is already connected, request immediately
-    if (gateway.getConnectionStatus()) {
-      this.requestModelList();
+    if (!this.isEmbedded) {
+      this.setupGatewayHandlers();
+      if (gateway.getConnectionStatus()) {
+        this.requestModelList();
+      }
     }
-    // Otherwise, wait for connection and then request
+  }
+
+  override willUpdate(changedProperties: Map<string, unknown>): void {
+    super.willUpdate(changedProperties);
+
+    // Embedded mode: sync providers and selection from properties
+    if (changedProperties.has('externalProviders') || changedProperties.has('externalSelectedModelId')) {
+      if (this.isEmbedded) {
+        this.providers = this.externalProviders;
+        this.isLoading = false;
+        this.syncExternalSelection();
+      }
+    }
+  }
+
+  private syncExternalSelection(): void {
+    if (!this.externalSelectedModelId || this.providers.length === 0) return;
+    // Find the model across all providers
+    for (const provider of this.providers) {
+      const model = provider.models.find(m => m.id === this.externalSelectedModelId);
+      if (model) {
+        this.selectedModel = model;
+        return;
+      }
+    }
+    // Fallback: select first model
+    if (!this.selectedModel && this.providers[0]?.models[0]) {
+      this.selectedModel = this.providers[0].models[0];
+    }
   }
 
   private requestModelList(): void {
     this.isLoading = true;
-    // Request model list from backend
     gateway.send({ type: 'model.list' });
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     document.removeEventListener('click', this.handleOutsideClick);
-    // Cleanup gateway handlers
-    gateway.off('model.selected', this.boundHandleModelSelected);
-    gateway.off('model.list', this.boundHandleModelList);
-    gateway.off('gateway.connected', this.boundHandleGatewayConnected);
+    if (!this.isEmbedded) {
+      gateway.off('model.selected', this.boundHandleModelSelected);
+      gateway.off('model.list', this.boundHandleModelList);
+      gateway.off('gateway.connected', this.boundHandleGatewayConnected);
+    }
   }
 
   private setupGatewayHandlers(): void {
     gateway.on('model.selected', this.boundHandleModelSelected);
     gateway.on('model.list', this.boundHandleModelList);
-    // Request model list when connection is established
     gateway.on('gateway.connected', this.boundHandleGatewayConnected);
   }
 
@@ -181,7 +224,7 @@ export class AosModelSelector extends LitElement {
   }
 
   private handleModelSelected(message: WebSocketMessage): void {
-    const model = message.model as Model;
+    const model = message.model as ModelSelectorModel;
     if (model) {
       this.selectedModel = model;
       this.isOpen = false;
@@ -189,11 +232,10 @@ export class AosModelSelector extends LitElement {
   }
 
   private handleModelList(message: WebSocketMessage): void {
-    const providers = message.providers as Provider[];
+    const providers = message.providers as ModelSelectorProvider[];
     if (providers && providers.length > 0) {
       this.providers = providers;
 
-      // Set default model from backend if available
       const defaultSelection = message.defaultSelection as {
         providerId: string;
         modelId: string;
@@ -222,6 +264,7 @@ export class AosModelSelector extends LitElement {
   };
 
   private toggleDropdown(): void {
+    if (this.disabled) return;
     this.isOpen = !this.isOpen;
     if (this.isOpen) {
       document.addEventListener('click', this.handleOutsideClick);
@@ -230,7 +273,7 @@ export class AosModelSelector extends LitElement {
     }
   }
 
-  private selectModel(model: Model): void {
+  private selectModel(model: ModelSelectorModel): void {
     this.selectedModel = model;
     this.isOpen = false;
     document.removeEventListener('click', this.handleOutsideClick);
@@ -244,12 +287,19 @@ export class AosModelSelector extends LitElement {
       })
     );
 
-    // Send to gateway for backend
-    gateway.sendModelSettings(model.providerId, model.id);
+    // Only sync to backend when explicitly requested (header) or in standalone mode
+    if (this.syncGlobal || !this.isEmbedded) {
+      gateway.sendModelSettings(model.providerId, model.id);
+    }
+  }
+
+  /** Public getter so parent components can read the selected model ID */
+  get value(): string {
+    return this.selectedModel?.id || '';
   }
 
   override render() {
-    if (this.isLoading || !this.selectedModel) {
+    if (this.isLoading || (!this.selectedModel && this.providers.length === 0)) {
       return html`
         <button class="model-selector-button" disabled>
           <div class="model-info">
@@ -259,15 +309,18 @@ export class AosModelSelector extends LitElement {
       `;
     }
 
+    const displayName = this.selectedModel?.name || 'Select model...';
+
     return html`
       <button
         class="model-selector-button"
         @click=${this.toggleDropdown}
+        ?disabled=${this.disabled}
         aria-expanded=${this.isOpen}
         aria-haspopup="listbox"
       >
         <div class="model-info">
-          <span class="model-name">${this.selectedModel.name}</span>
+          <span class="model-name">${displayName}</span>
         </div>
         <span class="chevron ${this.isOpen ? 'open' : ''}">▼</span>
       </button>

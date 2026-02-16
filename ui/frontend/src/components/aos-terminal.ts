@@ -4,14 +4,60 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { gateway } from '../gateway';
 import type { MessageHandler } from '../gateway';
+import { themeService, type ResolvedTheme } from '../services/theme.service.js';
 import '@xterm/xterm/css/xterm.css';
 
-/** Dark theme colors matching the application design */
 const DARK_THEME = {
-  background: '#1e1e1e',
+  background: '#142840',
+  foreground: '#B8C9DB',
+  cursor: '#00D4FF',
+  selectionBackground: '#2D4A6F',
+  black: '#0F1F33',
+  red: '#ef4444',
+  green: '#22c55e',
+  yellow: '#f59e0b',
+  blue: '#00D4FF',
+  magenta: '#a855f7',
+  cyan: '#00B8E0',
+  white: '#ffffff',
+  brightBlack: '#7A92A9',
+  brightRed: '#f87171',
+  brightGreen: '#4ade80',
+  brightYellow: '#fbbf24',
+  brightBlue: '#60a5fa',
+  brightMagenta: '#c084fc',
+  brightCyan: '#22d3ee',
+  brightWhite: '#ffffff'
+} as const;
+
+const LIGHT_THEME = {
+  background: '#FFFFFF',
+  foreground: '#1e293b',
+  cursor: '#1E3A5F',
+  selectionBackground: '#F5EDE5',
+  black: '#1e293b',
+  red: '#dc2626',
+  green: '#16a34a',
+  yellow: '#d97706',
+  blue: '#1E3A5F',
+  magenta: '#9333ea',
+  cyan: '#0891b2',
+  white: '#FFFBF7',
+  brightBlack: '#64748b',
+  brightRed: '#ef4444',
+  brightGreen: '#22c55e',
+  brightYellow: '#f59e0b',
+  brightBlue: '#3b82f6',
+  brightMagenta: '#a855f7',
+  brightCyan: '#06b6d4',
+  brightWhite: '#ffffff'
+} as const;
+
+const BLACK_THEME = {
+  background: '#1a1a1a',
   foreground: '#e0e0e0',
-  cursor: '#007acc',
-  selectionBackground: '#264f78',
+  cursor: '#22c55e',
+  selectionBackground: '#333333',
   black: '#000000',
   red: '#ef4444',
   green: '#22c55e',
@@ -29,6 +75,12 @@ const DARK_THEME = {
   brightCyan: '#22d3ee',
   brightWhite: '#ffffff'
 } as const;
+
+function getTerminalTheme(theme: ResolvedTheme) {
+  if (theme === 'light') return LIGHT_THEME;
+  if (theme === 'black') return BLACK_THEME;
+  return DARK_THEME;
+}
 
 /**
  * Terminal component wrapping xterm.js
@@ -63,9 +115,11 @@ export class AosTerminal extends LitElement {
   private terminalDataHandler: MessageHandler | null = null;
   private terminalExitHandler: MessageHandler | null = null;
   private terminalBufferResponseHandler: MessageHandler | null = null;
+  private boundThemeChangeHandler = (theme: ResolvedTheme) => this.onThemeChanged(theme);
 
   override connectedCallback(): void {
     super.connectedCallback();
+    themeService.onChange(this.boundThemeChangeHandler);
 
     // Wait for first render before initializing terminal
     this.updateComplete.then(() => {
@@ -76,8 +130,15 @@ export class AosTerminal extends LitElement {
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
+    themeService.offChange(this.boundThemeChangeHandler);
     this.cleanupTerminal();
     this.cleanupGatewayListeners();
+  }
+
+  private onThemeChanged(theme: ResolvedTheme): void {
+    if (this.terminal) {
+      this.terminal.options.theme = getTerminalTheme(theme);
+    }
   }
 
   /**
@@ -119,7 +180,7 @@ export class AosTerminal extends LitElement {
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
       fontSize: 14,
       lineHeight: 1.5,
-      theme: DARK_THEME,
+      theme: getTerminalTheme(themeService.getResolvedTheme()),
       allowProposedApi: true // Required for some addons
     });
 

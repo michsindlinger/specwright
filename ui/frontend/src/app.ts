@@ -139,10 +139,10 @@ export class AosApp extends LitElement {
   });
 
   private navItems: NavItem[] = [
-    { route: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { route: 'chat', label: 'Chat', icon: '💬' },
-    { route: 'workflows', label: 'Workflows', icon: '⚡' },
-    { route: 'settings', label: 'Settings', icon: '⚙️' },
+    { route: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { route: 'chat', label: 'Chat', icon: 'chat' },
+    { route: 'workflows', label: 'Workflows', icon: 'workflows' },
+    { route: 'settings', label: 'Settings', icon: 'settings' },
   ];
 
   private boundRouteChangeHandler = (route: import('./types/route.types.js').ParsedRoute) => {
@@ -498,6 +498,16 @@ export class AosApp extends LitElement {
       this.toastRef = this.querySelector('aos-toast-notification');
     }
     this.toastRef?.show(message, type);
+  }
+
+  private renderNavIcon(icon: string) {
+    const icons: Record<string, unknown> = {
+      dashboard: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
+      chat: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+      workflows: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/><circle cx="12" cy="12" r="3"/><path d="m17.5 6.5-2.1 2.1m-6.8 6.8-2.1 2.1m0-11-2.1 2.1m11 6.8 2.1 2.1"/></svg>`,
+      settings: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+    };
+    return icons[icon] || icon;
   }
 
   private navigateTo(route: Route): void {
@@ -1201,7 +1211,7 @@ export class AosApp extends LitElement {
     return html`
       <aside class="sidebar">
         <div class="logo">
-          <h1>Agent <span>OS</span></h1>
+          <img src="/assets/specwright-logo-web.png" alt="Specwright" class="logo-img" />
         </div>
         <nav>
           <ul class="nav-list">
@@ -1214,8 +1224,8 @@ export class AosApp extends LitElement {
                       : ''}"
                     @click=${() => this.navigateTo(item.route)}
                   >
-                    <span class="nav-icon">${item.icon}</span>
-                    ${item.label}
+                    <span class="nav-icon">${this.renderNavIcon(item.icon)}</span>
+                    <span class="nav-label">${item.label}</span>
                   </a>
                 </li>
               `

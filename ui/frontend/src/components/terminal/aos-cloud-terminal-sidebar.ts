@@ -231,6 +231,12 @@ export class AosCloudTerminalSidebar extends LitElement {
         transition: background 0.2s;
       }
 
+      .empty-state-btn svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+
       .empty-state-btn:hover {
         background: var(--accent-color-hover, #005a9e);
       }

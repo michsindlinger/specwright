@@ -3,6 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { gateway, type WebSocketMessage } from '../gateway.js';
 import { routerService } from '../services/router.service.js';
 import type { ParsedRoute } from '../types/route.types.js';
+import { themeService, type ThemeMode } from '../services/theme.service.js';
 import '../components/setup/aos-setup-wizard.js';
 
 interface Model {
@@ -442,7 +443,6 @@ export class AosSettingsView extends LitElement {
               <button
                 class="settings-nav-item ${this.activeSection === 'appearance' ? 'active' : ''}"
                 @click=${() => this.handleSectionChange('appearance')}
-                disabled
               >
                 Appearance
               </button>
@@ -479,7 +479,7 @@ export class AosSettingsView extends LitElement {
       case 'general':
         return this.renderComingSoon('General');
       case 'appearance':
-        return this.renderComingSoon('Appearance');
+        return this.renderAppearanceSection();
       case 'setup':
         return html`<aos-setup-wizard></aos-setup-wizard>`;
       default:
@@ -505,6 +505,46 @@ export class AosSettingsView extends LitElement {
         <button class="retry-btn" @click=${() => this.loadConfig()}>Retry</button>
       </div>
     `;
+  }
+
+  private renderAppearanceSection() {
+    const currentMode = themeService.getMode();
+
+    const options: { mode: ThemeMode; label: string; description: string; icon: string }[] = [
+      { mode: 'light', label: 'Light', description: 'Warm off-white theme', icon: '\u2600' },
+      { mode: 'dark', label: 'Dark', description: 'Navy dark theme', icon: '\u263E' },
+      { mode: 'black', label: 'Black', description: 'Near-black OLED theme', icon: '\u25CF' },
+      { mode: 'system', label: 'System', description: 'Follow OS setting', icon: '\uD83D\uDCBB' },
+    ];
+
+    return html`
+      <div class="appearance-section">
+        <div class="section-header">
+          <div>
+            <h3>Appearance</h3>
+            <p class="section-description">Choose your preferred color theme.</p>
+          </div>
+        </div>
+
+        <div class="theme-options">
+          ${options.map(opt => html`
+            <button
+              class="theme-option ${currentMode === opt.mode ? 'active' : ''}"
+              @click=${() => this.handleThemeChange(opt.mode)}
+            >
+              <span class="theme-option-icon">${opt.icon}</span>
+              <span class="theme-option-label">${opt.label}</span>
+              <span class="theme-option-desc">${opt.description}</span>
+            </button>
+          `)}
+        </div>
+      </div>
+    `;
+  }
+
+  private handleThemeChange(mode: ThemeMode): void {
+    themeService.setMode(mode);
+    this.requestUpdate();
   }
 
   private renderComingSoon(section: string) {

@@ -223,9 +223,8 @@ export class AosCreateSpecModal extends LitElement {
     this.isDirty = textarea.value.trim().length > 0;
   }
 
-  private handleModelChange(e: Event): void {
-    const select = e.target as HTMLSelectElement;
-    this.selectedModel = select.value;
+  private handleModelChange(e: CustomEvent): void {
+    this.selectedModel = (e.detail as { modelId: string }).modelId;
   }
 
   private handleStart(): void {
@@ -352,22 +351,12 @@ export class AosCreateSpecModal extends LitElement {
 
             <div class="create-spec-modal__model-select">
               <label class="create-spec-modal__model-label">LLM Model</label>
-              <select
-                class="model-dropdown"
-                .value=${this.selectedModel}
+              <aos-model-selector
+                .externalProviders=${this.providers}
+                .externalSelectedModelId=${this.selectedModel}
                 ?disabled=${this.isWorkflowRunning}
-                @change=${this.handleModelChange}
-              >
-                ${this.providers.map(provider => html`
-                  <optgroup label="${provider.name}">
-                    ${provider.models.map(model => html`
-                      <option value="${model.id}" ?selected=${this.selectedModel === model.id}>
-                        ${model.name}
-                      </option>
-                    `)}
-                  </optgroup>
-                `)}
-              </select>
+                @model-changed=${this.handleModelChange}
+              ></aos-model-selector>
             </div>
           </div>
 

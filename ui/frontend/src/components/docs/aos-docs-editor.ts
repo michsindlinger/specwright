@@ -1,11 +1,43 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view';
-import { EditorState, Extension } from '@codemirror/state';
+import { EditorState, Compartment, Extension } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+import { themeService, type ResolvedTheme } from '../../services/theme.service.js';
+
+const lightTheme = EditorView.theme({
+  '&': {
+    backgroundColor: '#FFFFFF',
+    color: '#1e293b'
+  },
+  '.cm-cursor': {
+    borderLeftColor: '#1E3A5F'
+  },
+  '.cm-activeLine': {
+    backgroundColor: '#FFF8F3'
+  },
+  '.cm-activeLineGutter': {
+    backgroundColor: '#FFF8F3'
+  },
+  '.cm-selectionBackground, ::selection': {
+    backgroundColor: '#F5EDE5 !important'
+  },
+  '.cm-gutters': {
+    backgroundColor: '#FFFBF7',
+    color: '#64748b',
+    borderRight: '1px solid #E8E0D8'
+  },
+  '.cm-lineNumbers .cm-gutterElement': {
+    color: '#64748b'
+  }
+}, { dark: false });
+
+function getEditorTheme(theme: ResolvedTheme): Extension {
+  return theme === 'light' ? lightTheme : oneDark;
+}
 
 @customElement('aos-docs-editor')
 export class AosDocsEditor extends LitElement {
@@ -21,6 +53,8 @@ export class AosDocsEditor extends LitElement {
 
   private editorView: EditorView | null = null;
   private editorContainer: HTMLDivElement | null = null;
+  private themeCompartment = new Compartment();
+  private boundThemeChangeHandler = (theme: ResolvedTheme) => this.onThemeChanged(theme);
 
   private static readonly LARGE_FILE_THRESHOLD = 1024 * 1024; // 1MB
 
@@ -29,10 +63,12 @@ export class AosDocsEditor extends LitElement {
     this.originalContent = this.content;
     this.currentContent = this.content;
     this.showLargeFileWarning = this.content.length > AosDocsEditor.LARGE_FILE_THRESHOLD;
+    themeService.onChange(this.boundThemeChangeHandler);
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
+    themeService.offChange(this.boundThemeChangeHandler);
     if (this.editorView) {
       this.editorView.destroy();
       this.editorView = null;
@@ -48,6 +84,14 @@ export class AosDocsEditor extends LitElement {
 
   override firstUpdated(): void {
     this.initializeEditor();
+  }
+
+  private onThemeChanged(theme: ResolvedTheme): void {
+    if (this.editorView) {
+      this.editorView.dispatch({
+        effects: this.themeCompartment.reconfigure(getEditorTheme(theme))
+      });
+    }
   }
 
   private initializeEditor(): void {
@@ -68,7 +112,7 @@ export class AosDocsEditor extends LitElement {
       highlightActiveLineGutter(),
       history(),
       markdown(),
-      oneDark,
+      this.themeCompartment.of(getEditorTheme(themeService.getResolvedTheme())),
       syntaxHighlighting(defaultHighlightStyle),
       keymap.of([...defaultKeymap, ...historyKeymap]),
       updateListener,

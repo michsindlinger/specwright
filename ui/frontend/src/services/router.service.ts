@@ -1,5 +1,5 @@
 /**
- * Router Service - Central hash-based routing for the Agent OS Web UI.
+ * Router Service - Central hash-based routing for the Specwright Web UI.
  *
  * Singleton service that manages URL parsing, programmatic navigation,
  * and route change events. Follows the same patterns as projectStateService

@@ -1389,7 +1389,7 @@ export class AosDashboardView extends LitElement {
           ${this.renderDashboardTabs()}
           <div class="dashboard-content">
             <div class="empty-state">
-              <span class="empty-icon">📋</span>
+              <span class="empty-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
               <h3>No Specs Found</h3>
               <p>This project doesn't have any specs in specwright/specs/</p>
               <button class="primary-btn" @click=${this.handleOpenCreateSpecModal}>
@@ -1685,7 +1685,7 @@ export class AosDashboardView extends LitElement {
         <div class="dashboard-container">
           ${this.renderDashboardTabs()}
           <div class="empty-state">
-            <span class="empty-icon">📋</span>
+            <span class="empty-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14l2 2 4-4"/></svg></span>
             <h3>No backlog entries</h3>
             <p>No tasks found in specwright/backlog/</p>
             <p class="empty-hint">Use <code>/add-todo</code> or <code>/add-bug</code> to create new tasks</p>

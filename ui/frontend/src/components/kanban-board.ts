@@ -9,6 +9,7 @@ import './auto-mode-error-modal.js';
 import './docs/aos-docs-viewer.js';
 import './specs/aos-spec-file-tabs.js';
 import { buildSpecFilePath, copyPathToClipboard } from '../utils/copy-path.js';
+import { markdownStyles } from '../styles/markdown-styles.js';
 import type { SpecFileGroup } from './specs/aos-spec-file-tabs.js';
 import type { GitStrategy, GitStrategySelection } from './git-strategy-dialog.js';
 import type { AutoModeError } from './auto-mode-error-modal.js';
@@ -167,7 +168,7 @@ export class AosKanbanBoard extends LitElement {
   @state() private specViewerSaving = false;
   @state() private specViewerCopySuccess = false;
 
-  static override styles = css`
+  static override styles = [markdownStyles, css`
     :host {
       display: block;
       height: 100%;
@@ -287,9 +288,8 @@ export class AosKanbanBoard extends LitElement {
     }
 
     .kanban-column {
-      flex: 1;
-      min-width: 300px;
-      max-width: 400px;
+      flex: 1 1 0;
+      min-width: 0;
       background: var(--bg-color-secondary, #1e1e1e);
       border-radius: 6px;
       display: flex;
@@ -378,6 +378,11 @@ export class AosKanbanBoard extends LitElement {
 
     .auto-mode-toggle-container.auto-mode-active {
       background-color: rgba(59, 130, 246, 0.1); /* Primary color low opacity */
+    }
+
+    .auto-mode-toggle-container.auto-mode-disabled {
+      opacity: 0.4;
+      pointer-events: none;
     }
 
     .auto-mode-toggle {
@@ -627,7 +632,7 @@ export class AosKanbanBoard extends LitElement {
       padding: 1.5rem;
     }
 
-  `;
+  `];
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -1332,6 +1337,13 @@ export class AosKanbanBoard extends LitElement {
   }
 
   /**
+   * Check if there are any stories left to work on (not done).
+   */
+  private get hasOpenStories(): boolean {
+    return this.kanban?.stories?.some(s => s.status !== 'done') ?? false;
+  }
+
+  /**
    * KAE-001: Handle auto-mode toggle change
    * Dispatches event for parent to handle state change.
    * Parent is source of truth and will update autoModeEnabled via property binding.
@@ -1582,11 +1594,12 @@ export class AosKanbanBoard extends LitElement {
           <!-- UKB-002: Auto-Mode Toggle only rendered when showAutoMode is enabled -->
           ${this.showAutoMode ? html`
             <!-- KAE-001: Auto-Mode Toggle -->
-            <div class="auto-mode-toggle-container ${this.autoModeEnabled ? 'auto-mode-active' : ''}">
-              <label class="auto-mode-toggle">
+            <div class="auto-mode-toggle-container ${this.autoModeEnabled ? 'auto-mode-active' : ''} ${!this.hasOpenStories ? 'auto-mode-disabled' : ''}">
+              <label class="auto-mode-toggle" title="${!this.hasOpenStories ? 'Alle Stories sind erledigt' : ''}">
                 <input
                   type="checkbox"
                   .checked=${this.autoModeEnabled}
+                  .disabled=${!this.hasOpenStories}
                   @change=${this.handleAutoModeToggle}
                   aria-label="Toggle auto-execution mode"
                 />

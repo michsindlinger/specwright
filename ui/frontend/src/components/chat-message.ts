@@ -3,31 +3,82 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { renderMarkdown, renderMarkdownStreaming } from '../utils/markdown-renderer.js';
 import mermaid from 'mermaid';
+import { themeService, type ResolvedTheme } from '../services/theme.service.js';
 import './tool-call-badge.js';
 
-// Initialize mermaid with dark theme and strict security
-mermaid.initialize({
-  startOnLoad: false, // We render manually after DOM updates
-  theme: 'dark',
-  securityLevel: 'strict',
-  fontFamily: 'var(--font-family-mono)',
-  themeVariables: {
-    // Dark theme colors matching Moltbot style
-    primaryColor: '#3b82f6',
-    primaryTextColor: '#e5e5e5',
-    primaryBorderColor: '#404040',
-    lineColor: '#737373',
-    secondaryColor: '#262626',
-    tertiaryColor: '#171717',
-    background: '#1e1e1e',
-    mainBkg: '#262626',
-    nodeBorder: '#525252',
-    clusterBkg: '#1e1e1e',
-    clusterBorder: '#404040',
-    titleColor: '#e5e5e5',
-    edgeLabelBackground: '#262626',
+function initializeMermaidTheme(theme: ResolvedTheme): void {
+  if (theme === 'dark') {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      securityLevel: 'strict',
+      fontFamily: 'var(--font-family-mono)',
+      themeVariables: {
+        primaryColor: '#00D4FF',
+        primaryTextColor: '#B8C9DB',
+        primaryBorderColor: '#2A4A6A',
+        lineColor: '#7A92A9',
+        secondaryColor: '#1E3A5F',
+        tertiaryColor: '#0F1F33',
+        background: '#142840',
+        mainBkg: '#1E3A5F',
+        nodeBorder: '#2A4A6A',
+        clusterBkg: '#142840',
+        clusterBorder: '#2A4A6A',
+        titleColor: '#ffffff',
+        edgeLabelBackground: '#1E3A5F',
+      }
+    });
+  } else if (theme === 'black') {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      securityLevel: 'strict',
+      fontFamily: 'var(--font-family-mono)',
+      themeVariables: {
+        primaryColor: '#3b82f6',
+        primaryTextColor: '#e5e5e5',
+        primaryBorderColor: '#404040',
+        lineColor: '#737373',
+        secondaryColor: '#262626',
+        tertiaryColor: '#171717',
+        background: '#1a1a1a',
+        mainBkg: '#262626',
+        nodeBorder: '#525252',
+        clusterBkg: '#1a1a1a',
+        clusterBorder: '#404040',
+        titleColor: '#e5e5e5',
+        edgeLabelBackground: '#262626',
+      }
+    });
+  } else {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      securityLevel: 'strict',
+      fontFamily: 'var(--font-family-mono)',
+      themeVariables: {
+        primaryColor: '#1E3A5F',
+        primaryTextColor: '#1e293b',
+        primaryBorderColor: '#E8E0D8',
+        lineColor: '#64748b',
+        secondaryColor: '#FFF8F3',
+        tertiaryColor: '#FFFBF7',
+        background: '#FFFFFF',
+        mainBkg: '#FFF8F3',
+        nodeBorder: '#E8E0D8',
+        clusterBkg: '#FFFFFF',
+        clusterBorder: '#E8E0D8',
+        titleColor: '#1e293b',
+        edgeLabelBackground: '#FFFFFF',
+      }
+    });
   }
-});
+}
+
+// Initialize with current theme
+initializeMermaidTheme(themeService.getResolvedTheme());
+themeService.onChange((theme) => initializeMermaidTheme(theme));
 
 export interface ToolCall {
   id: string;
