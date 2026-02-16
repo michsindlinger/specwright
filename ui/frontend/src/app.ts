@@ -316,11 +316,35 @@ export class AosApp extends LitElement {
     if (isQueueRunning !== undefined) {
       this.isQueueRunning = isQueueRunning;
     }
+
+    // WTT-003: Open terminal tab for queue item execution
+    const item = msg.item as { specId: string; specName: string; projectPath?: string; storyId?: string } | undefined;
+    if (item) {
+      this._openWorkflowTerminalTab({
+        command: 'execute-tasks',
+        argument: item.storyId ? `${item.specId} ${item.storyId}` : item.specId,
+        specId: item.specId,
+        storyId: item.storyId,
+        projectPath: item.projectPath,
+      });
+    }
   };
   private boundQueueCompleteHandler: MessageHandler = () => {
     this.isQueueRunning = false;
   };
   private boundKeydownHandler = (e: KeyboardEvent) => this._handleGlobalKeydown(e);
+  // WTT-003: Handler for workflow-terminal-request custom events
+  private _handleWorkflowTerminalRequest = (e: CustomEvent<{
+    command: string;
+    argument?: string;
+    model?: string;
+    specId?: string;
+    storyId?: string;
+    gitStrategy?: string;
+    projectPath?: string;
+  }>): void => {
+    this._openWorkflowTerminalTab(e.detail);
+  };
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -350,6 +374,9 @@ export class AosApp extends LitElement {
     gateway.on('queue.complete', this.boundQueueCompleteHandler);
     // GSQ-005: Keyboard shortcut
     document.addEventListener('keydown', this.boundKeydownHandler);
+
+    // WTT-003: Listen for workflow-terminal-request events
+    document.addEventListener('workflow-terminal-request', this._handleWorkflowTerminalRequest as EventListener);
 
     // Global error handler
     window.addEventListener('error', this.handleGlobalError.bind(this));
@@ -405,6 +432,8 @@ export class AosApp extends LitElement {
     gateway.off('queue.start.ack', this.boundQueueStartAckHandler);
     gateway.off('queue.complete', this.boundQueueCompleteHandler);
     document.removeEventListener('keydown', this.boundKeydownHandler);
+    // WTT-003: Remove workflow-terminal-request listener
+    document.removeEventListener('workflow-terminal-request', this._handleWorkflowTerminalRequest as EventListener);
   }
 
   private handleGlobalError(event: ErrorEvent): void {
@@ -1154,6 +1183,101 @@ export class AosApp extends LitElement {
       e.preventDefault();
       this.isBottomPanelOpen = !this.isBottomPanelOpen;
     }
+  }
+
+  // WTT-003: Open a workflow terminal tab from UI triggers (kanban, dashboard, queue)
+  private _openWorkflowTerminalTab(detail: {
+    command: string;
+    argument?: string;
+    model?: string;
+    specId?: string;
+    storyId?: string;
+    gitStrategy?: string;
+    projectPath?: string;
+  }): void {
+    const { command, argument, model, specId, storyId, projectPath } = detail;
+
+    // Get the sidebar component reference
+    const sidebar = this.querySelector('aos-cloud-terminal-sidebar') as HTMLElement & {
+      openWorkflowTab: (
+        workflowName: string,
+        workflowContext: string,
+        projectPath: string,
+        options?: {
+          specId?: string;
+          storyId?: string;
+          modelId?: string;
+          providerId?: string;
+        }
+      ) => string;
+    } | null;
+
+    if (!sidebar) {
+      console.error('[App] Could not find aos-cloud-terminal-sidebar');
+      return;
+    }
+
+    // Resolve project path
+    const resolvedProjectPath = projectPath || this.openProjects.find(p => p.id === this.activeProjectId)?.path || '';
+
+    if (!resolvedProjectPath) {
+      this.showToast('Kein Projekt ausgewählt', 'error');
+      return;
+    }
+
+    // Build workflow context: "command argument" or just "command"
+    const workflowContext = argument ? `${command} ${argument}` : command;
+
+    // Parse model to get provider and model ID
+    const modelConfig = this._parseModelConfig(model);
+
+    // Open the workflow tab
+    const sessionId = sidebar.openWorkflowTab(
+      command,
+      workflowContext,
+      resolvedProjectPath,
+      {
+        specId,
+        storyId,
+        modelId: modelConfig.modelId,
+        providerId: modelConfig.providerId,
+      }
+    );
+
+    // Open sidebar if closed
+    if (!this.isTerminalSidebarOpen) {
+      this.isTerminalSidebarOpen = true;
+    }
+
+    // Set the new session as active
+    this.activeTerminalSessionId = sessionId;
+
+    console.log('[App] Opened workflow terminal tab:', { command, argument, specId, storyId, sessionId });
+  }
+
+  // WTT-003: Parse model string to provider and model ID
+  private _parseModelConfig(model?: string): { providerId?: string; modelId?: string } {
+    if (!model) {
+      return { providerId: undefined, modelId: undefined };
+    }
+
+    // Model format: "provider/model" or just "model"
+    if (model.includes('/')) {
+      const [providerId, modelId] = model.split('/');
+      return { providerId, modelId };
+    }
+
+    // Map known model IDs to their providers
+    const modelProviderMap: Record<string, string> = {
+      'opus': 'anthropic',
+      'sonnet': 'anthropic',
+      'haiku': 'anthropic',
+      'glm-5': 'glm',
+      'kimi-k2.5': 'kimi-kw',
+    };
+
+    const providerId = modelProviderMap[model];
+    return { providerId, modelId: model };
   }
 
   private _handleBottomPanelToggle(): void {

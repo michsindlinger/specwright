@@ -1351,7 +1351,26 @@ export class AosDashboardView extends LitElement {
     }
 
     // Start the next story via backlog.story.start
+    // WTT-003: Dispatch workflow-terminal-request to open in terminal tab
     const model = nextStory.model || 'opus';
+    const projectPath = this.projectCtx?.activeProject?.path || '';
+
+    // Dispatch workflow-terminal-request event to app.ts
+    const workflowRequestEvent = new CustomEvent('workflow-terminal-request', {
+      detail: {
+        command: 'execute-tasks',
+        argument: 'backlog',
+        model,
+        specId: 'backlog',
+        storyId: nextStory.id,
+        projectPath,
+      },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(workflowRequestEvent);
+
+    // Also send to backend for status tracking
     gateway.send({
       type: 'backlog.story.start',
       storyId: nextStory.id,
@@ -1824,9 +1843,28 @@ export class AosDashboardView extends LitElement {
             status: toStatus
           });
           // BKE-001: If moving to in_progress, start story execution
+          // WTT-003: Dispatch workflow-terminal-request to open in terminal tab
           if (toStatus === 'in_progress') {
             const story = this.backlogKanban?.stories.find(s => s.id === storyId);
             const model = story?.model || 'opus';
+            const projectPath = this.projectCtx?.activeProject?.path || '';
+
+            // Dispatch workflow-terminal-request event to app.ts
+            const workflowRequestEvent = new CustomEvent('workflow-terminal-request', {
+              detail: {
+                command: 'execute-tasks',
+                argument: 'backlog',
+                model,
+                specId: 'backlog',
+                storyId,
+                projectPath,
+              },
+              bubbles: true,
+              composed: true,
+            });
+            this.dispatchEvent(workflowRequestEvent);
+
+            // Also send to backend for status tracking
             gateway.send({
               type: 'backlog.story.start',
               storyId,

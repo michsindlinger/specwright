@@ -3,12 +3,13 @@
 > Story ID: WTT-003
 > Spec: Workflow Terminal Tabs
 > Created: 2026-02-16
-> Last Updated: 2026-02-16
+> Last Updated: 2026-02-17
 
 **Priority**: High
 **Type**: Full-stack
 **Estimated Effort**: S
 **Dependencies**: WTT-002
+**Status**: Done
 
 ---
 
@@ -72,13 +73,13 @@ Scenario: Workflow-Start bei geschlossener Sidebar
 
 ### Datei-Pruefungen
 
-- [ ] CONTAINS: ui/frontend/src/app.ts enthaelt "workflow-terminal-request"
-- [ ] CONTAINS: ui/frontend/src/components/kanban-board.ts enthaelt "workflow-terminal-request"
+- [x] CONTAINS: ui/frontend/src/app.ts enthaelt "workflow-terminal-request"
+- [x] CONTAINS: ui/frontend/src/components/kanban-board.ts enthaelt "workflow-terminal-request"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: cd ui/frontend && npm run build
-- [ ] BUILD_PASS: cd ui && npm run build:backend
+- [x] BUILD_PASS: cd ui/frontend && npm run build
+- [x] BUILD_PASS: cd ui && npm run build:backend
 
 ---
 
@@ -115,26 +116,26 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten
-- [ ] Security/Performance Anforderungen erfuellt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten
+- [x] Security/Performance Anforderungen erfuellt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt
-- [ ] Tests geschrieben und bestanden
-- [ ] Code Review durchgefuehrt
+- [x] Alle Akzeptanzkriterien erfuellt
+- [x] Tests geschrieben und bestanden
+- [x] Code Review durchgefuehrt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich
 
 **Integration DoD:**
-- [ ] **Integration hergestellt: kanban-board -> app.ts (workflow-terminal-request)**
-  - [ ] Custom Event wird dispatched und empfangen
-  - [ ] Validierung: `grep -r "workflow-terminal-request" ui/frontend/src/`
-- [ ] **Integration hergestellt: app.ts -> aos-cloud-terminal-sidebar (openWorkflowTab)**
-  - [ ] Methode wird aufgerufen und oeffnet Tab
-  - [ ] Validierung: `grep -r "openWorkflowTab" ui/frontend/src/`
+- [x] **Integration hergestellt: kanban-board -> app.ts (workflow-terminal-request)**
+  - [x] Custom Event wird dispatched und empfangen
+  - [x] Validierung: `grep -r "workflow-terminal-request" ui/frontend/src/`
+- [x] **Integration hergestellt: app.ts -> aos-cloud-terminal-sidebar (openWorkflowTab)**
+  - [x] Methode wird aufgerufen und oeffnet Tab
+  - [x] Validierung: `grep -r "openWorkflowTab" ui/frontend/src/`
 
 ---
 

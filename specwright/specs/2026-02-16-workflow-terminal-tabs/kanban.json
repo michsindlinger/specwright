@@ -10,15 +10,15 @@
     "createdAt": "2026-02-16"
   },
   "resumeContext": {
-    "currentPhase": "story-complete",
+    "currentPhase": "3-execute-story",
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/workflow-terminal-tabs",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "WTT-002 completed - Frontend Workflow-Tab-Integration",
-    "nextAction": "Execute next story (WTT-003)",
-    "progressIndex": 2,
+    "lastAction": "WTT-003 completed - UI-Trigger auf Terminal-Tabs umleiten",
+    "nextAction": "Select next story (WTT-004, WTT-005, or WTT-006)",
+    "progressIndex": 3,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -117,23 +117,29 @@
       "dependencies": [
         "WTT-002"
       ],
-      "status": "ready",
-      "dorStatus": "incomplete",
+      "status": "done",
+      "dorStatus": "complete",
       "storyFile": "stories/story-003-ui-trigger-terminal-tabs.md",
       "timing": {
         "createdAt": "2026-02-16",
-        "updatedAt": "2026-02-16"
+        "updatedAt": "2026-02-17",
+        "startedAt": "2026-02-17T12:00:00.000Z",
+        "completedAt": "2026-02-17T14:30:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/app.ts",
+          "ui/frontend/src/components/kanban-board.ts"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
-        "dorChecked": false,
-        "dodChecked": false
+        "dorChecked": true,
+        "dodChecked": true
       },
-      "model": "glm-5"
+      "model": "glm-5",
+      "phase": "completed"
     },
     {
       "id": "WTT-004",
@@ -324,18 +330,18 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 6,
+    "ready": 5,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 2,
+    "done": 3,
     "blocked": 0
   },
   "statistics": {
     "totalEffort": 11,
-    "completedEffort": 4,
-    "remainingEffort": 7,
-    "progressPercent": 36,
+    "completedEffort": 6,
+    "remainingEffort": 5,
+    "progressPercent": 55,
     "byType": {
       "frontend": 7,
       "backend": 2,
@@ -491,6 +497,24 @@
       "action": "story_completed",
       "storyId": "WTT-002",
       "details": "Progress: 2/9 (36%) - Frontend Workflow-Tab-Integration implemented"
+    },
+    {
+      "timestamp": "2026-02-16T23:14:36.369Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-16T23:14:46.569Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-17T14:30:00.000Z",
+      "action": "story_completed",
+      "storyId": "WTT-003",
+      "details": "Progress: 3/9 (55%) - UI-Trigger auf Terminal-Tabs umleiten implemented"
     }
   ]
 }

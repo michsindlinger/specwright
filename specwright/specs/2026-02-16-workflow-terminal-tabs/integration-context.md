@@ -12,6 +12,7 @@
 |----------|---------|---------------------|
 | WTT-001 | Backend Workflow-Session-Support - Neue WebSocket-Message für Workflow-Sessions | cloud-terminal.protocol.ts, cloud-terminal-manager.ts, websocket.ts |
 | WTT-002 | Frontend Workflow-Tab-Integration - TerminalSession erweitert, Workflow-Tab-Styling, Auto-Connect | aos-cloud-terminal-sidebar.ts, aos-terminal-tabs.ts, aos-terminal-session.ts, cloud-terminal.service.ts |
+| WTT-003 | UI-Trigger auf Terminal-Tabs umleiten - Custom Event workflow-terminal-request für Kanban/Dashboard/Queue | app.ts, kanban-board.ts |
 
 ---
 
@@ -40,6 +41,8 @@
 - **Frontend Workflow-Tabs**: `openWorkflowTab()` in aos-cloud-terminal-sidebar.ts creates workflow sessions programmatically and auto-opens sidebar
 - **Auto-Connect**: `aos-terminal-session.ts` detects `isWorkflow` flag and skips model selector, sending `cloud-terminal:create-workflow` directly
 - **Tab Styling**: Workflow tabs show layered icon instead of status dot, with special gradient styling
+- **WTT-003 UI-Trigger**: `workflow-terminal-request` Custom Event dispatched by kanban-board.ts when story execution starts, handled by app.ts to open terminal tab
+- **Queue Integration**: `queue.start.ack` handler in app.ts also opens terminal tab when queue starts execution
 
 ---
 
@@ -54,3 +57,5 @@
 | ui/frontend/src/components/terminal/aos-terminal-tabs.ts | Modified - Added workflow tab styling, icon, needsInput badge | WTT-002 |
 | ui/frontend/src/components/terminal/aos-terminal-session.ts | Modified - Added startWorkflowSession(), auto-connect for workflows | WTT-002 |
 | ui/frontend/src/services/cloud-terminal.service.ts | Modified - Extended PersistedTerminalSession interface | WTT-002 |
+| ui/frontend/src/app.ts | Modified - Added _openWorkflowTerminalTab(), _parseModelConfig(), workflow-terminal-request event listener | WTT-003 |
+| ui/frontend/src/components/kanban-board.ts | Modified - triggerWorkflowStart() now dispatches workflow-terminal-request event | WTT-003 |
