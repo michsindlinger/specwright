@@ -137,24 +137,24 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Security/Performance Anforderungen erfüllt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Security/Performance Anforderungen erfüllt
 
 #### Integration
-- [ ] **Integration hergestellt: GitService -> WorkflowExecutor**
-  - [ ] Import/Aufruf von gitService existiert in workflow-executor.ts
-  - [ ] Verbindung ist funktional (nicht nur Stub)
-  - [ ] Validierung: `grep -q "gitService" ui/src/server/workflow-executor.ts`
+- [x] **Integration hergestellt: GitService -> WorkflowExecutor**
+  - [x] Import/Aufruf von gitService existiert in workflow-executor.ts
+  - [x] Verbindung ist funktional (nicht nur Stub)
+  - [x] Validierung: `grep -q "gitService" ui/src/server/workflow-executor.ts`
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt (via Completion Check verifiziert)
-- [ ] Keine Linting Errors
-- [ ] Build erfolgreich
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Alle Akzeptanzkriterien erfüllt (via Completion Check verifiziert)
+- [x] Keine Linting Errors
+- [x] Build erfolgreich
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 #### Dokumentation
-- [ ] Dokumentation aktualisiert
+- [x] Dokumentation aktualisiert
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 

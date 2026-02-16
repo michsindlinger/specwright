@@ -10,6 +10,7 @@ import { withKanbanLock } from './utils/kanban-lock.js';
 import { getCliCommandForModel } from './model-config.js';
 import { queueHandler } from './handlers/queue.handler.js';
 import { resolveCommandDir, projectDir } from './utils/project-dirs.js';
+import { gitService } from './services/git.service.js';
 
 export interface WorkflowCommand {
   id: string;
@@ -60,6 +61,7 @@ export interface WorkflowExecution {
   specId?: string;  // Spec ID for auto-move to done on completion
   model?: ModelSelection;  // Model for this execution
   autoMode?: boolean;  // Whether auto-mode was enabled when this execution started
+  branchName?: string;  // BPS-002: Branch name for backlog story execution (for post-execution PR)
 }
 
 interface WebSocketClient extends WebSocket {
@@ -164,6 +166,14 @@ export class WorkflowExecutor {
 
       if (execution.client) {
         console.log(`[Workflow] Terminal exit for ${execution.storyId}: exitCode=${exitCode}, sending completion events`);
+
+        // BPS-002: Post-Execution Git Operations for Backlog executions
+        // This runs BEFORE handleStoryCompletionAndContinue to ensure PR is created
+        // Backlog executions are identified by: argument starts with "backlog " AND branchName is set
+        if (execution.argument?.startsWith('backlog ') && execution.branchName) {
+          console.log(`[Workflow] BPS-002: Backlog execution detected, running post-execution Git operations`);
+          await this.handleBacklogPostExecution(execution);
+        }
 
         this.sendToClient(execution.client, {
           type: 'terminal.exit',
@@ -316,6 +326,7 @@ export class WorkflowExecutor {
   /**
    * BKE-001: Start a backlog story execution with single-story mode.
    * Uses the new v4.1 single-story execution feature of the backlog workflow.
+   * BPS-002: Added Pre-Execution Git Operations (create branch before story execution).
    * @param client - WebSocket client
    * @param projectPath - Path to the project
    * @param storyId - Story ID to execute
@@ -345,6 +356,31 @@ export class WorkflowExecutor {
     // BKE-001: Argument format "backlog story-id" for single-story mode
     const argument = `backlog ${storyId}`;
 
+    // BPS-002: Pre-Execution Git Operations
+    // Generate branch name from story ID (format: feature/story-slug)
+    const branchName = `feature/${storyId.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
+
+    try {
+      // 1. Check if working directory is clean
+      const isClean = await gitService.isWorkingDirectoryClean(projectPath);
+      if (!isClean) {
+        console.log(`[Workflow] Working directory not clean, stashing changes...`);
+        // Stash any uncommitted changes (using execSync for stash since gitService doesn't have it)
+        execSync('git stash', { cwd: projectPath, stdio: 'pipe' });
+      }
+
+      // 2. Ensure we're on main branch before creating feature branch
+      await gitService.checkoutMain(projectPath);
+      console.log(`[Workflow] Checked out main branch`);
+
+      // 3. Create feature branch from main
+      const branchResult = await gitService.createBranch(projectPath, branchName, 'main');
+      console.log(`[Workflow] Branch created/checked out: ${branchName} (created: ${branchResult.created})`);
+    } catch (error) {
+      // Log error but continue - don't fail the entire execution
+      console.warn(`[Workflow] Pre-execution git operations failed (continuing anyway):`, error instanceof Error ? error.message : error);
+    }
+
     const execution: WorkflowExecution = {
       id: executionId,
       commandId: `${cmdDir}:execute-tasks`,
@@ -357,7 +393,8 @@ export class WorkflowExecutor {
       abortController,
       pendingQuestions: [],
       storyId,  // Store for tracking
-      model     // Store model for this execution
+      model,    // Store model for this execution
+      branchName // BPS-002: Store branch name for post-execution PR
     };
 
     // Store client reference for question events
@@ -687,6 +724,70 @@ export class WorkflowExecutor {
           timestamp: new Date().toISOString()
         }, execution.projectPath);
       }
+    }
+  }
+
+  /**
+   * BPS-002: Handle post-execution Git operations for backlog stories.
+   * Called after a backlog story completes (success or failure).
+   * - On success: Push branch, create PR, checkout main
+   * - On failure: Checkout main (branch stays for manual recovery)
+   */
+  private async handleBacklogPostExecution(
+    execution: WorkflowExecution
+  ): Promise<void> {
+    const { projectPath, branchName, storyId, status } = execution;
+
+    if (!branchName) {
+      console.log('[Workflow] No branchName set, skipping backlog post-execution');
+      return;
+    }
+
+    console.log(`[Workflow] BPS-002: Backlog post-execution for story ${storyId}, branch: ${branchName}, status: ${status}`);
+
+    try {
+      if (status === 'completed') {
+        // Success path: Push branch, create PR, checkout main
+        console.log(`[Workflow] Story ${storyId} completed successfully, creating PR...`);
+
+        // 1. Push branch to remote
+        try {
+          const pushResult = await gitService.pushBranch(projectPath, branchName);
+          console.log(`[Workflow] Branch pushed: ${branchName}, commits: ${pushResult.commitsPushed}`);
+        } catch (pushError) {
+          console.warn(`[Workflow] Push failed (continuing anyway):`, pushError instanceof Error ? pushError.message : pushError);
+        }
+
+        // 2. Create Pull Request
+        try {
+          const prTitle = `feat: ${storyId}`;
+          const prResult = await gitService.createPullRequest(projectPath, branchName, prTitle);
+          if (prResult.success) {
+            if (prResult.prUrl) {
+              console.log(`[Workflow] PR created: ${prResult.prUrl}`);
+            } else if (prResult.warning) {
+              console.warn(`[Workflow] PR creation warning: ${prResult.warning}`);
+            }
+          }
+        } catch (prError) {
+          console.warn(`[Workflow] PR creation failed (continuing anyway):`, prError instanceof Error ? prError.message : prError);
+        }
+      } else {
+        // Failure path: Just log that branch stays
+        console.log(`[Workflow] Story ${storyId} failed, branch ${branchName} stays for manual recovery`);
+      }
+
+      // 3. Always checkout main at the end (success or failure)
+      try {
+        await gitService.checkoutMain(projectPath);
+        console.log(`[Workflow] Checked out main branch`);
+      } catch (checkoutError) {
+        console.warn(`[Workflow] Checkout main failed:`, checkoutError instanceof Error ? checkoutError.message : checkoutError);
+      }
+
+    } catch (error) {
+      console.error('[Workflow] Backlog post-execution error:', error instanceof Error ? error.message : error);
+      // Don't throw - we still want the workflow to complete normally
     }
   }
 
@@ -1043,6 +1144,14 @@ export class WorkflowExecutor {
         // Update execution status
         execution.status = code === 0 ? 'completed' : 'failed';
         execution.endTime = new Date().toISOString();
+
+        // BPS-002: Post-Execution Git Operations for Backlog executions
+        // This runs BEFORE handleStoryCompletionAndContinue to ensure PR is created
+        // Backlog executions are identified by: argument starts with "backlog " AND branchName is set
+        if (execution.argument?.startsWith('backlog ') && execution.branchName) {
+          console.log(`[Workflow] BPS-002: Backlog execution detected (runClaudeCommand), running post-execution Git operations`);
+          await this.handleBacklogPostExecution(execution);
+        }
 
         // Send workflow completion event (same as terminal-based workflows)
         console.log(`[Workflow] Sending workflow.interactive.complete for ${execution.storyId} (spec: ${execution.specId}, code: ${code})`);
@@ -2033,6 +2142,65 @@ export class WorkflowExecutor {
    */
   public getTerminalManager(): TerminalManager {
     return this.terminalManager;
+  }
+
+  /**
+   * BPS-002: Handle post-execution git operations for backlog story executions.
+   * On success: push branch, create PR, checkout main.
+   * On failure: checkout main (branch remains for manual review).
+   * @param execution - The workflow execution
+   * @param success - Whether the story execution was successful
+   */
+  private async handleBacklogPostExecution(
+    execution: WorkflowExecution,
+    success: boolean
+  ): Promise<void> {
+    const { projectPath, branchName, storyId } = execution;
+
+    if (!branchName || !projectPath) {
+      console.log(`[Workflow] Skipping backlog post-execution: no branchName or projectPath`);
+      return;
+    }
+
+    console.log(`[Workflow] BPS-002 Post-execution for backlog story ${storyId}: success=${success}, branch=${branchName}`);
+
+    try {
+      if (success) {
+        // Success path: push branch, create PR, checkout main
+        console.log(`[Workflow] Pushing branch ${branchName} to remote...`);
+        const pushResult = await gitService.pushBranch(projectPath, branchName);
+        console.log(`[Workflow] Branch pushed: ${pushResult.commitsPushed} commits`);
+
+        // Create PR
+        console.log(`[Workflow] Creating PR for ${branchName}...`);
+        const prTitle = `feat: ${storyId}`;
+        const prResult = await gitService.createPullRequest(projectPath, branchName, prTitle);
+        if (prResult.prUrl) {
+          console.log(`[Workflow] PR created: ${prResult.prUrl}`);
+        } else if (prResult.warning) {
+          console.warn(`[Workflow] PR creation warning: ${prResult.warning}`);
+        }
+      } else {
+        // Failure path: log warning, still checkout main
+        console.warn(`[Workflow] Story ${storyId} failed, keeping branch ${branchName} for manual review`);
+      }
+
+      // Always checkout main at the end
+      console.log(`[Workflow] Checking out main branch...`);
+      await gitService.checkoutMain(projectPath);
+      console.log(`[Workflow] Back on main branch`);
+
+    } catch (error) {
+      // Log error but don't fail - this is post-execution cleanup
+      console.warn(`[Workflow] Post-execution git operations failed (non-critical):`, error instanceof Error ? error.message : error);
+
+      // Try to get back to main anyway
+      try {
+        await gitService.checkoutMain(projectPath);
+      } catch {
+        // Ignore - we tried
+      }
+    }
   }
 
   /**

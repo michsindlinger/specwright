@@ -16,9 +16,9 @@
     "gitBranch": "feature/branch-per-story-backlog",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Story BPS-001 completed",
-    "nextAction": "Execute next story (BPS-002)",
-    "progressIndex": 1,
+    "lastAction": "Story BPS-002 completed",
+    "nextAction": "Execute next story (BPS-003)",
+    "progressIndex": 2,
     "totalStories": 6,
     "gitStrategy": "branch"
   },
@@ -77,23 +77,28 @@
       "dependencies": [
         "BPS-001"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-backlog-story-lifecycle.md",
       "timing": {
         "createdAt": "2026-02-16",
-        "updatedAt": "2026-02-16"
+        "updatedAt": "2026-02-16",
+        "startedAt": "2026-02-16T21:52:43.195Z",
+        "completedAt": "2026-02-16T22:30:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/workflow-executor.ts"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
-        "dorChecked": false,
-        "dodChecked": false
+        "dorChecked": true,
+        "dodChecked": true
       },
-      "model": "glm-5"
+      "model": "glm-5",
+      "phase": "completed"
     },
     {
       "id": "BPS-003",
@@ -222,18 +227,18 @@
   ],
   "boardStatus": {
     "total": 6,
-    "ready": 5,
+    "ready": 3,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
+    "done": 2,
     "blocked": 0
   },
   "statistics": {
     "totalEffort": 12,
-    "completedEffort": 2,
-    "remainingEffort": 10,
-    "progressPercent": 17,
+    "completedEffort": 4,
+    "remainingEffort": 8,
+    "progressPercent": 33,
     "byType": {
       "frontend": 0,
       "backend": 4,
@@ -338,6 +343,24 @@
       "action": "story_completed",
       "storyId": "BPS-001",
       "details": "Progress: 1/6 (17%)"
+    },
+    {
+      "timestamp": "2026-02-16T21:52:37.256Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/branch-per-story-backlog"
+    },
+    {
+      "timestamp": "2026-02-16T21:52:43.195Z",
+      "action": "status_changed",
+      "storyId": "BPS-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-16T22:30:00.000Z",
+      "action": "story_completed",
+      "storyId": "BPS-002",
+      "details": "Progress: 2/6 (33%)"
     }
   ]
 }
