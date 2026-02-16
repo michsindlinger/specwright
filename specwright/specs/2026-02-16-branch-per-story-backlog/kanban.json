@@ -1,0 +1,343 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+  "spec": {
+    "id": "2026-02-16-branch-per-story-backlog",
+    "name": "Branch-per-Story Backlog",
+    "prefix": "BPS",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-16"
+  },
+  "resumeContext": {
+    "currentPhase": "story-complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "feature/branch-per-story-backlog",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Story BPS-001 completed",
+    "nextAction": "Execute next story (BPS-002)",
+    "progressIndex": 1,
+    "totalStories": 6,
+    "gitStrategy": "branch"
+  },
+  "execution": {
+    "status": "executing",
+    "startedAt": "2026-02-16T21:45:54.810Z",
+    "completedAt": null,
+    "model": "glm-5"
+  },
+  "stories": [
+    {
+      "id": "BPS-001",
+      "title": "Git-Service-Erweiterungen",
+      "slug": "git-service-erweiterungen",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "done",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-git-service-erweiterungen.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16",
+        "startedAt": "2026-02-16T21:45:54.810Z",
+        "completedAt": "2026-02-16T21:50:10.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/src/server/services/git.service.ts",
+          "ui/src/shared/types/git.protocol.ts"
+        ],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": true
+      },
+      "model": "glm-5",
+      "phase": "completed"
+    },
+    {
+      "id": "BPS-002",
+      "title": "Backlog-Story-Lifecycle im Workflow-Executor",
+      "slug": "backlog-story-lifecycle",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [
+        "BPS-001"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-backlog-story-lifecycle.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "BPS-003",
+      "title": "WebSocket + Frontend Integration und Error-Handling",
+      "slug": "websocket-frontend-integration",
+      "classification": {
+        "type": "fullstack",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [
+        "BPS-002"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-websocket-frontend-integration.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "model": "glm-5"
+    },
+    {
+      "id": "BPS-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [
+        "BPS-001",
+        "BPS-002",
+        "BPS-003"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "BPS-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [
+        "BPS-997"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "BPS-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S"
+      },
+      "dependencies": [
+        "BPS-998"
+      ],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-16",
+        "updatedAt": "2026-02-16"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      },
+      "model": "glm-5"
+    }
+  ],
+  "boardStatus": {
+    "total": 6,
+    "ready": 5,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 1,
+    "blocked": 0
+  },
+  "statistics": {
+    "totalEffort": 12,
+    "completedEffort": 2,
+    "remainingEffort": 10,
+    "progressPercent": 17,
+    "byType": {
+      "frontend": 0,
+      "backend": 4,
+      "devops": 0,
+      "test": 0,
+      "docs": 0,
+      "integration": 0,
+      "fullstack": 2,
+      "system": 6
+    },
+    "byPriority": {
+      "critical": 0,
+      "high": 12,
+      "medium": 0,
+      "low": 0
+    }
+  },
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Git-Service-Erweiterungen",
+        "stories": [
+          "BPS-001"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 2,
+        "name": "Backlog-Story-Lifecycle",
+        "stories": [
+          "BPS-002"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 3,
+        "name": "WebSocket + Frontend Integration",
+        "stories": [
+          "BPS-003"
+        ],
+        "parallel": false
+      },
+      {
+        "phase": 4,
+        "name": "System Stories",
+        "stories": [
+          "BPS-997",
+          "BPS-998",
+          "BPS-999"
+        ],
+        "parallel": false
+      }
+    ]
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-02-16",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 6 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-16T21:45:00.440Z",
+      "action": "model_changed",
+      "storyId": "BPS-001",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-16T21:45:04.465Z",
+      "action": "model_changed",
+      "storyId": "BPS-002",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-16T21:45:13.631Z",
+      "action": "model_changed",
+      "storyId": "BPS-003",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-16T21:45:27.198Z",
+      "action": "model_changed",
+      "storyId": "BPS-999",
+      "details": "Model changed from null to glm-5"
+    },
+    {
+      "timestamp": "2026-02-16T21:45:54.811Z",
+      "action": "status_changed",
+      "storyId": "BPS-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-16T21:45:54.959Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/branch-per-story-backlog"
+    },
+    {
+      "timestamp": "2026-02-16T21:50:10.000Z",
+      "action": "story_completed",
+      "storyId": "BPS-001",
+      "details": "Progress: 1/6 (17%)"
+    }
+  ]
+}

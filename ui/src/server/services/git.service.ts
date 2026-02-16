@@ -20,6 +20,9 @@ import type {
   GitCheckoutResult,
   GitRevertResult,
   GitPrInfo,
+  GitCreateBranchResult,
+  GitPushBranchResult,
+  GitCreatePullRequestResult,
 } from '../../shared/types/git.protocol.js';
 import { GIT_CONFIG, GIT_ERROR_CODES } from '../../shared/types/git.protocol.js';
 
@@ -498,6 +501,218 @@ export class GitService {
       // gh not installed, no PR, or other error - graceful degradation
       this.prCache.set(projectPath, { data: null, timestamp: Date.now() });
       return null;
+    }
+  }
+
+  // ============================================================================
+  // Branch-per-Story Methods (BPS-001)
+  // ============================================================================
+
+  /**
+   * Check if the working directory is clean (no uncommitted changes)
+   * @returns true if clean, false if there are uncommitted changes
+   */
+  async isWorkingDirectoryClean(projectPath: string): Promise<boolean> {
+    await this.ensureGitRepo(projectPath, 'isWorkingDirectoryClean');
+
+    const { stdout } = await this.execGit(['status', '--porcelain'], projectPath);
+    return stdout.trim().length === 0;
+  }
+
+  /**
+   * Create a new branch from a base branch and switch to it.
+   * If the branch already exists, simply switches to it.
+   * @param projectPath - Project directory
+   * @param branchName - Name of the new branch
+   * @param fromBranch - Base branch to create from (defaults to 'main')
+   */
+  async createBranch(
+    projectPath: string,
+    branchName: string,
+    fromBranch = 'main',
+  ): Promise<GitCreateBranchResult> {
+    await this.ensureGitRepo(projectPath, 'createBranch');
+
+    // Check if branch already exists
+    const { stdout: existingBranch } = await this.execGit(
+      ['rev-parse', '--verify', branchName],
+      projectPath,
+    ).catch(() => ({ stdout: '', stderr: '' }));
+
+    if (existingBranch.trim()) {
+      // Branch exists - switch to it
+      await this.execGit(['checkout', branchName], projectPath);
+      return { success: true, branch: branchName, created: false };
+    }
+
+    // Branch doesn't exist - create and switch
+    try {
+      await this.execGit(['checkout', '-b', branchName, fromBranch], projectPath);
+      return { success: true, branch: branchName, created: true };
+    } catch (error) {
+      const err = error as Error & { stderr?: string };
+      throw new GitError(
+        err.stderr || err.message,
+        GIT_ERROR_CODES.OPERATION_FAILED,
+        'createBranch',
+      );
+    }
+  }
+
+  /**
+   * Switch to the main branch
+   * @param projectPath - Project directory
+   */
+  async checkoutMain(projectPath: string): Promise<GitCheckoutResult> {
+    await this.ensureGitRepo(projectPath, 'checkoutMain');
+
+    try {
+      await this.execGit(['checkout', 'main'], projectPath);
+      return { success: true, branch: 'main' };
+    } catch (error) {
+      const err = error as Error & { stderr?: string };
+      throw new GitError(
+        err.stderr || err.message,
+        GIT_ERROR_CODES.OPERATION_FAILED,
+        'checkoutMain',
+      );
+    }
+  }
+
+  /**
+   * Push a branch to remote with upstream tracking
+   * @param projectPath - Project directory
+   * @param branchName - Branch to push
+   */
+  async pushBranch(projectPath: string, branchName: string): Promise<GitPushBranchResult> {
+    await this.ensureGitRepo(projectPath, 'pushBranch');
+
+    try {
+      const { stdout, stderr } = await this.execGit(
+        ['push', '-u', 'origin', branchName],
+        projectPath,
+      );
+      const combined = stdout + stderr;
+
+      // Check for "Everything up-to-date" or "new branch" pattern
+      let commitsPushed = 0;
+      if (combined.includes('Everything up-to-date')) {
+        commitsPushed = 0;
+      } else if (combined.includes('new branch') || combined.includes('set up')) {
+        // New branch pushed - count commits
+        try {
+          const { stdout: countOutput } = await this.execGit(
+            ['rev-list', '--count', `origin/${branchName}`],
+            projectPath,
+          );
+          commitsPushed = parseInt(countOutput.trim(), 10) || 1;
+        } catch {
+          commitsPushed = 1;
+        }
+      } else {
+        // Parse commit range from push output
+        const rangeMatch = combined.match(/([a-f0-9]+)\.\.([a-f0-9]+)/);
+        if (rangeMatch) {
+          try {
+            const { stdout: countOutput } = await this.execGit(
+              ['rev-list', '--count', `${rangeMatch[1]}..${rangeMatch[2]}`],
+              projectPath,
+            );
+            commitsPushed = parseInt(countOutput.trim(), 10) || 1;
+          } catch {
+            commitsPushed = 1;
+          }
+        }
+      }
+
+      return { success: true, branch: branchName, commitsPushed };
+    } catch (error) {
+      const err = error as Error & { stderr?: string };
+      const stderr = err.stderr || '';
+
+      // Network errors
+      if (stderr.includes('Could not resolve host') || stderr.includes('Connection refused')) {
+        throw new GitError(
+          'Network error during push',
+          GIT_ERROR_CODES.NETWORK_ERROR,
+          'pushBranch',
+        );
+      }
+
+      throw new GitError(
+        err.stderr || err.message,
+        GIT_ERROR_CODES.OPERATION_FAILED,
+        'pushBranch',
+      );
+    }
+  }
+
+  /**
+   * Create a Pull Request using gh CLI.
+   * Gracefully degrades if gh CLI is not available.
+   * @param projectPath - Project directory
+   * @param branchName - Branch to create PR from
+   * @param title - PR title
+   * @param body - PR body (optional)
+   */
+  async createPullRequest(
+    projectPath: string,
+    _branchName: string,
+    title: string,
+    body?: string,
+  ): Promise<GitCreatePullRequestResult> {
+    await this.ensureGitRepo(projectPath, 'createPullRequest');
+
+    try {
+      // Build gh pr create command
+      const args = ['pr', 'create', '--title', title, '--base', 'main'];
+      if (body) {
+        args.push('--body', body);
+      } else {
+        args.push('--fill'); // Auto-fill from commits
+      }
+
+      const { stdout } = await execFileAsync('gh', args, {
+        cwd: projectPath,
+        timeout: GIT_CONFIG.OPERATION_TIMEOUT_MS,
+      });
+
+      // Parse PR URL from output (e.g., "https://github.com/owner/repo/pull/123")
+      const urlMatch = stdout.match(/(https:\/\/github\.com\/[\w/-]+\/pull\/(\d+))/);
+      if (urlMatch) {
+        return {
+          success: true,
+          prUrl: urlMatch[1],
+          prNumber: parseInt(urlMatch[2], 10),
+        };
+      }
+
+      // If URL not parsed but command succeeded
+      return { success: true, warning: stdout.trim() };
+    } catch (error) {
+      const err = error as Error & { code?: string; stderr?: string };
+
+      // Check if gh is not installed
+      if (err.code === 'ENOENT') {
+        return {
+          success: true,
+          warning: 'gh CLI not installed. Create PR manually or install gh.',
+        };
+      }
+
+      // Check for authentication error
+      if (err.stderr?.includes('not authenticated') || err.stderr?.includes('authentication')) {
+        return {
+          success: true,
+          warning: 'gh CLI not authenticated. Run "gh auth login" first.',
+        };
+      }
+
+      // Other errors - still return success but with warning (per story requirements)
+      return {
+        success: true,
+        warning: err.stderr || err.message || 'PR creation failed. Create manually.',
+      };
     }
   }
 }
