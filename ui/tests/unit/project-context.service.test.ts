@@ -78,8 +78,8 @@ describe('ProjectContextService', () => {
     it('should return valid with hasSpecwright true when specwright/ exists', () => {
       mockExistsSync.mockImplementation((path: PathLike) => {
         const pathStr = path.toString();
-        // product-brief.md does not exist
-        if (pathStr.includes('product-brief.md')) {
+        // product briefs do not exist
+        if (pathStr.includes('product-brief.md') || pathStr.includes('platform-brief.md')) {
           return false;
         }
         return true;
@@ -302,6 +302,84 @@ describe('ProjectContextService', () => {
     });
   });
 
+  describe('hasIncompleteInstallation', () => {
+    it('should be false when hasSpecwright is false', () => {
+      mockExistsSync.mockImplementation((path: PathLike) => {
+        const pathStr = path.toString();
+        if (pathStr.endsWith('/specwright') || pathStr.endsWith('/agent-os')) {
+          return false;
+        }
+        return true;
+      });
+      mockStatSync.mockReturnValue({
+        isDirectory: () => true
+      } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src'] as unknown as ReturnType<typeof readdirSync>);
+
+      const result = service.validateProject('/Users/dev/plain-project');
+
+      expect(result.hasSpecwright).toBe(false);
+      expect(result.hasIncompleteInstallation).toBe(false);
+    });
+
+    it('should be true when workflow sentinel is missing', () => {
+      mockExistsSync.mockImplementation((path: PathLike) => {
+        const pathStr = path.toString();
+        // specwright/ dir exists
+        if (pathStr.endsWith('/specwright')) return true;
+        // workflow sentinel missing
+        if (pathStr.includes('workflows/core/create-spec.md')) return false;
+        // command sentinel exists
+        if (pathStr.includes('.claude/commands/specwright/create-spec.md')) return true;
+        return true;
+      });
+      mockStatSync.mockReturnValue({
+        isDirectory: () => true
+      } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
+
+      const result = service.validateProject('/Users/dev/incomplete-project');
+
+      expect(result.hasSpecwright).toBe(true);
+      expect(result.hasIncompleteInstallation).toBe(true);
+    });
+
+    it('should be true when command sentinel is missing', () => {
+      mockExistsSync.mockImplementation((path: PathLike) => {
+        const pathStr = path.toString();
+        // specwright/ dir exists
+        if (pathStr.endsWith('/specwright')) return true;
+        // workflow sentinel exists
+        if (pathStr.includes('workflows/core/create-spec.md')) return true;
+        // command sentinel missing
+        if (pathStr.includes('.claude/commands/specwright/create-spec.md')) return false;
+        return true;
+      });
+      mockStatSync.mockReturnValue({
+        isDirectory: () => true
+      } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
+
+      const result = service.validateProject('/Users/dev/no-commands-project');
+
+      expect(result.hasSpecwright).toBe(true);
+      expect(result.hasIncompleteInstallation).toBe(true);
+    });
+
+    it('should be false when both sentinels exist', () => {
+      mockExistsSync.mockReturnValue(true);
+      mockStatSync.mockReturnValue({
+        isDirectory: () => true
+      } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
+
+      const result = service.validateProject('/Users/dev/complete-project');
+
+      expect(result.hasSpecwright).toBe(true);
+      expect(result.hasIncompleteInstallation).toBe(false);
+    });
+  });
+
   describe('Gherkin scenarios', () => {
     describe('Szenario 1: Projekt-Kontext wechseln', () => {
       it('should switch to new project context', () => {
@@ -446,7 +524,8 @@ describe('ProjectContextService', () => {
       it('should detect specwright installed but no product brief', () => {
         mockExistsSync.mockImplementation((path: PathLike) => {
           const pathStr = path.toString();
-          if (pathStr.includes('product-brief.md')) {
+          // Neither product-brief.md nor platform-brief.md exist
+          if (pathStr.includes('product-brief.md') || pathStr.includes('platform-brief.md')) {
             return false;
           }
           return true;

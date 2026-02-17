@@ -7,7 +7,6 @@ import './views/chat-view.js';
 import './views/settings-view.js';
 import './views/not-found-view.js';
 import './views/aos-getting-started-view.js';
-import './components/setup/aos-installation-wizard-modal.js';
 import './components/model-selector.js';
 import './components/toast-notification.js';
 import './components/loading-spinner.js';
@@ -131,28 +130,22 @@ export class AosApp extends LitElement {
   @state()
   private showQuickTodoModal = false;
 
-  // IW-006: Installation Wizard state
+  // Project validation state (WSM-003: renamed from wizard* to project*)
   @state()
-  private showWizard = false;
+  private projectHasSpecwright = false;
 
   @state()
-  private wizardProjectPath = '';
+  private projectHasProductBrief = false;
 
   @state()
-  private wizardFileCount = 0;
+  private projectNeedsMigration = false;
 
   @state()
-  private wizardHasSpecwright = false;
-
-  @state()
-  private wizardHasProductBrief = false;
-
-  @state()
-  private wizardNeedsMigration = false;
+  private projectHasIncompleteInstallation = false;
 
   /** True while project validation is pending (prevents flash of wrong state) */
   @state()
-  private wizardValidationPending = true;
+  private projectValidationPending = true;
 
   // GSQ-005: Bottom Panel state
   @state()
@@ -394,6 +387,10 @@ export class AosApp extends LitElement {
   private boundQueueCompleteHandler: MessageHandler = () => {
     this.isQueueRunning = false;
   };
+  // WSM-002: Handler for cloud-terminal:closed (setup session re-validation)
+  private boundCloudTerminalClosedHandler: MessageHandler = (msg) => {
+    this._handleCloudTerminalClosed(msg);
+  };
   private boundKeydownHandler = (e: KeyboardEvent) => this._handleGlobalKeydown(e);
   // WTT-003: Handler for workflow-terminal-request custom events
   private _handleWorkflowTerminalRequest = (e: CustomEvent<{
@@ -420,6 +417,8 @@ export class AosApp extends LitElement {
     gateway.on('gateway.error', this.boundErrorHandler);
     gateway.on('model.providers.list', this.boundModelProvidersHandler);
     gateway.on('cloud-terminal:list-response', this.boundCloudTerminalListHandler);
+    // WSM-002: Listen for terminal close events (setup session re-validation)
+    gateway.on('cloud-terminal:closed', this.boundCloudTerminalClosedHandler);
     gateway.on('git:status:response', this.boundGitStatusHandler);
     gateway.on('git:branches:response', this.boundGitBranchesHandler);
     gateway.on('git:checkout:response', this.boundGitCheckoutHandler);
@@ -479,6 +478,8 @@ export class AosApp extends LitElement {
     gateway.off('gateway.error', this.boundErrorHandler);
     gateway.off('model.providers.list', this.boundModelProvidersHandler);
     gateway.off('cloud-terminal:list-response', this.boundCloudTerminalListHandler);
+    // WSM-002: Remove terminal close listener
+    gateway.off('cloud-terminal:closed', this.boundCloudTerminalClosedHandler);
     gateway.off('git:status:response', this.boundGitStatusHandler);
     gateway.off('git:branches:response', this.boundGitBranchesHandler);
     gateway.off('git:checkout:response', this.boundGitCheckoutHandler);
@@ -900,15 +901,15 @@ export class AosApp extends LitElement {
     // Load git status for newly opened project
     this._loadGitStatus();
 
-    // IW-006: Validate project and trigger wizard if needed
-    this._validateAndTriggerWizard(path);
+    // WSM-003: Validate project and navigate to getting-started if needed
+    this._validateAndNavigate(path);
   }
 
   /**
-   * IW-006: Validate project and trigger wizard for newly added projects.
+   * WSM-003: Validate project and navigate to getting-started for newly added projects.
    */
-  private async _validateAndTriggerWizard(path: string): Promise<void> {
-    this.wizardValidationPending = true;
+  private async _validateAndNavigate(path: string): Promise<void> {
+    this.projectValidationPending = true;
     try {
       const validateResponse = await fetch('/api/project/validate', {
         method: 'POST',
@@ -921,76 +922,141 @@ export class AosApp extends LitElement {
           hasSpecwright?: boolean;
           hasProductBrief?: boolean;
           needsMigration?: boolean;
-          fileCount?: number;
+          hasIncompleteInstallation?: boolean;
         };
         const hasSpecwright = data.hasSpecwright ?? false;
         const hasProductBrief = data.hasProductBrief ?? false;
         const needsMigration = data.needsMigration ?? false;
+        const hasIncompleteInstallation = data.hasIncompleteInstallation ?? false;
 
-        this.wizardHasSpecwright = hasSpecwright;
-        this.wizardHasProductBrief = hasProductBrief;
-        this.wizardNeedsMigration = needsMigration;
+        this.projectHasSpecwright = hasSpecwright;
+        this.projectHasProductBrief = hasProductBrief;
+        this.projectNeedsMigration = needsMigration;
+        this.projectHasIncompleteInstallation = hasIncompleteInstallation;
 
-        // Trigger wizard if specwright is not installed, needs migration, OR product brief is missing
-        if (!hasSpecwright || !hasProductBrief || needsMigration) {
-          this.wizardProjectPath = path;
-          this.wizardFileCount = data.fileCount ?? 0;
-          this.showWizard = true;
-          projectStateService.setWizardNeeded(path);
+        // Navigate to getting-started if specwright is not installed, incomplete, needs migration, OR product brief is missing
+        if (!hasSpecwright || hasIncompleteInstallation || !hasProductBrief || needsMigration) {
+          routerService.navigate('getting-started');
         }
       }
     } catch {
-      // Validation failed, skip wizard trigger
+      // Validation failed, skip navigation
     } finally {
-      this.wizardValidationPending = false;
+      this.projectValidationPending = false;
     }
   }
 
-  // IW-006: Handle wizard completion - navigate to getting-started
-  private async _handleWizardComplete(): Promise<void> {
-    this.showWizard = false;
-    this.wizardNeedsMigration = false;
-    const path = this.wizardProjectPath;
-
-    // Clear wizard-needed state
-    if (path) {
-      projectStateService.clearWizardNeeded(path);
+  // WSM-002: Handle start-setup-terminal event from Getting Started view
+  private _handleStartSetupTerminal(e: CustomEvent<{ type: 'install' | 'migrate' }>): void {
+    const { type } = e.detail;
+    const activeProject = this.openProjects.find(p => p.id === this.activeProjectId);
+    if (!activeProject) {
+      this.showToast('Kein Projekt ausgewählt', 'error');
+      return;
     }
-
-    // Re-validate to update hasSpecwright/hasProductBrief for getting-started view
-    if (path) {
-      try {
-        const response = await fetch('/api/project/validate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path }),
-        });
-        const data = await response.json() as { hasSpecwright?: boolean; hasProductBrief?: boolean; needsMigration?: boolean };
-        this.wizardHasSpecwright = data.hasSpecwright ?? true;
-        this.wizardHasProductBrief = data.hasProductBrief ?? false;
-        this.wizardNeedsMigration = data.needsMigration ?? false;
-      } catch {
-        // Fallback: assume specwright is now installed
-        this.wizardHasSpecwright = true;
-      }
-    }
-
-    // Navigate to getting-started page
-    routerService.navigate('getting-started');
+    this._openSetupTerminalTab(type, activeProject.path);
   }
 
-  // IW-006: Handle wizard cancellation
-  private _handleWizardCancel(): void {
-    this.showWizard = false;
-  }
-
-  // IW-006: Start wizard from Getting Started view button
-  private _handleStartWizardFromView(): void {
-    const activeProject = this.openProjects.find(
-      (p) => p.id === this.activeProjectId
+  // WSM-002: Open a setup terminal tab (install or migrate)
+  private _openSetupTerminalTab(setupType: 'install' | 'migrate', projectPath: string): void {
+    // Guard: Check if a setup terminal is already running
+    const existingSetup = this.terminalSessions.find(
+      s => s.isSetupSession === true && s.status !== 'disconnected' && s.projectPath === projectPath
     );
-    if (activeProject) {
-      this._validateAndTriggerWizard(activeProject.path);
+    if (existingSetup) {
+      // Focus existing setup terminal instead of creating a new one
+      this.activeTerminalSessionId = existingSetup.id;
+      if (!this.isTerminalSidebarOpen) {
+        this.isTerminalSidebarOpen = true;
+      }
+      this.showToast('Setup-Terminal läuft bereits', 'info');
+      return;
+    }
+
+    const sessionId = `setup-${setupType}-${Date.now()}`;
+    const sessionName = setupType === 'install' ? 'Installation' : 'Migration';
+    const command = setupType === 'install'
+      ? 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash -s -- --yes --all'
+      : 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/migrate-to-specwright.sh | bash -s -- --yes --no-symlinks';
+
+    // Create setup session
+    const newSession: TerminalSession = {
+      id: sessionId,
+      name: sessionName,
+      status: 'active',
+      createdAt: new Date(),
+      projectPath,
+      terminalType: 'shell',
+      isSetupSession: true,
+      setupType,
+    };
+
+    this.terminalSessions = [...this.terminalSessions, newSession];
+    this.activeTerminalSessionId = sessionId;
+
+    // Open sidebar
+    if (!this.isTerminalSidebarOpen) {
+      this.isTerminalSidebarOpen = true;
+    }
+
+    // Create shell terminal via gateway
+    gateway.send({
+      type: 'cloud-terminal:create',
+      requestId: sessionId,
+      projectPath,
+      terminalType: 'shell' as const,
+      timestamp: new Date().toISOString(),
+    });
+
+    // One-shot listener: wait for terminal creation, then send the command
+    const handleCreated: MessageHandler = (msg) => {
+      if (msg.requestId !== sessionId) return;
+      gateway.off('cloud-terminal:created', handleCreated);
+
+      const terminalSessionId = msg.sessionId as string;
+      if (terminalSessionId) {
+        // Update session with backend terminal ID
+        this.terminalSessions = this.terminalSessions.map(s =>
+          s.id === sessionId
+            ? { ...s, terminalSessionId }
+            : s
+        );
+
+        // Send the install/migrate command after terminal is ready
+        setTimeout(() => {
+          gateway.send({
+            type: 'cloud-terminal:input',
+            sessionId: terminalSessionId,
+            data: command + '\n',
+            timestamp: new Date().toISOString(),
+          });
+        }, 500); // TERMINAL_READY_DELAY
+      }
+    };
+    gateway.on('cloud-terminal:created', handleCreated);
+  }
+
+  // WSM-002: Handle cloud-terminal:closed for setup session re-validation
+  private _handleCloudTerminalClosed(msg: Record<string, unknown>): void {
+    const sessionId = msg.sessionId as string;
+    const exitCode = msg.exitCode as number | undefined;
+
+    // Find the matching setup session
+    const setupSession = this.terminalSessions.find(
+      s => s.terminalSessionId === sessionId && s.isSetupSession === true
+    );
+    if (!setupSession) return;
+
+    // Update session status
+    this.terminalSessions = this.terminalSessions.map(s =>
+      s.terminalSessionId === sessionId
+        ? { ...s, status: 'disconnected' as const }
+        : s
+    );
+
+    // Re-validate project only on success (exit code 0)
+    if (exitCode === 0) {
+      this._validateProjectState(setupSession.projectPath);
     }
   }
 
@@ -1156,22 +1222,22 @@ export class AosApp extends LitElement {
     // Load git status for active project
     this._loadGitStatus();
 
-    // IW-006: Validate active project for wizard state after restore
+    // WSM-003: Validate active project state after restore
     const activeProject = this.openProjects.find(
       (p) => p.id === this.activeProjectId
     );
     if (activeProject) {
-      this._validateProjectForWizard(activeProject.path);
+      this._validateProjectState(activeProject.path);
     }
     // Project restoration complete
   }
 
   /**
-   * IW-006: Validate a project and update wizard state.
+   * WSM-003: Validate a project and update project state properties.
    * Used both during initial project selection and after restore.
    */
-  private async _validateProjectForWizard(path: string): Promise<void> {
-    this.wizardValidationPending = true;
+  private async _validateProjectState(path: string): Promise<void> {
+    this.projectValidationPending = true;
     try {
       const validateResponse = await fetch('/api/project/validate', {
         method: 'POST',
@@ -1184,32 +1250,17 @@ export class AosApp extends LitElement {
           hasSpecwright?: boolean;
           hasProductBrief?: boolean;
           needsMigration?: boolean;
-          fileCount?: number;
+          hasIncompleteInstallation?: boolean;
         };
-        const hasSpecwright = data.hasSpecwright ?? false;
-        const hasProductBrief = data.hasProductBrief ?? false;
-        const needsMigration = data.needsMigration ?? false;
-
-        this.wizardHasSpecwright = hasSpecwright;
-        this.wizardHasProductBrief = hasProductBrief;
-        this.wizardNeedsMigration = needsMigration;
-
-        const projectNeedsSetup = !hasSpecwright || !hasProductBrief || needsMigration;
-
-        // Show wizard only if previously cancelled AND project still needs setup
-        if (projectStateService.isWizardNeeded(path) && projectNeedsSetup) {
-          this.wizardProjectPath = path;
-          this.wizardFileCount = data.fileCount ?? 0;
-          this.showWizard = true;
-        } else if (!projectNeedsSetup) {
-          // Project is fully set up - clear stale wizard-needed flag
-          projectStateService.clearWizardNeeded(path);
-        }
+        this.projectHasSpecwright = data.hasSpecwright ?? false;
+        this.projectHasProductBrief = data.hasProductBrief ?? false;
+        this.projectNeedsMigration = data.needsMigration ?? false;
+        this.projectHasIncompleteInstallation = data.hasIncompleteInstallation ?? false;
       }
     } catch {
       // Validation failed, keep defaults
     } finally {
-      this.wizardValidationPending = false;
+      this.projectValidationPending = false;
     }
   }
 
@@ -1597,12 +1648,13 @@ export class AosApp extends LitElement {
         return html`<aos-dashboard-view></aos-dashboard-view>`;
       case 'getting-started':
         return html`<aos-getting-started-view
-          .hasProductBrief=${this.wizardHasProductBrief}
-          .hasSpecwright=${this.wizardHasSpecwright}
-          .needsMigration=${this.wizardNeedsMigration}
-          .loading=${this.wizardValidationPending}
+          .hasProductBrief=${this.projectHasProductBrief}
+          .hasSpecwright=${this.projectHasSpecwright}
+          .needsMigration=${this.projectNeedsMigration}
+          .hasIncompleteInstallation=${this.projectHasIncompleteInstallation}
+          .loading=${this.projectValidationPending}
           @workflow-start-interactive=${this.handleWorkflowStart}
-          @start-wizard=${this._handleStartWizardFromView}
+          @start-setup-terminal=${this._handleStartSetupTerminal}
         ></aos-getting-started-view>`;
       case 'chat':
         return html`<aos-chat-view></aos-chat-view>`;
@@ -1748,17 +1800,6 @@ export class AosApp extends LitElement {
         @project-selected=${this.handleProjectSelected}
         @modal-close=${this.handleAddProjectModalClose}
       ></aos-project-add-modal>
-      <aos-installation-wizard-modal
-        .open=${this.showWizard}
-        .projectPath=${this.wizardProjectPath}
-        .fileCount=${this.wizardFileCount}
-        .hasSpecwright=${this.wizardHasSpecwright}
-        .hasProductBrief=${this.wizardHasProductBrief}
-        .needsMigration=${this.wizardNeedsMigration}
-        @wizard-complete=${this._handleWizardComplete}
-        @wizard-cancel=${this._handleWizardCancel}
-        @modal-close=${this._handleWizardCancel}
-      ></aos-installation-wizard-modal>
       <aos-context-menu
         @menu-item-select=${this.handleMenuItemSelect}
       ></aos-context-menu>

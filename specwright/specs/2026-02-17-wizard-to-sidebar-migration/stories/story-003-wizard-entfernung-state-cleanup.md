@@ -9,6 +9,7 @@
 **Type**: Frontend
 **Estimated Effort**: S
 **Dependencies**: WSM-002
+**Status**: Done
 
 ---
 
@@ -73,23 +74,23 @@ Scenario: Korrekte Zustandserkennung nach Browser-Refresh
 
 ### Inhalt-Pruefungen
 
-- [ ] NOT_CONTAINS: app.ts enthaelt NICHT "aos-installation-wizard-modal"
-- [ ] NOT_CONTAINS: app.ts enthaelt NICHT "showWizard"
-- [ ] NOT_CONTAINS: app.ts enthaelt NICHT "wizardProjectPath"
-- [ ] NOT_CONTAINS: app.ts enthaelt NICHT "wizardFileCount"
-- [ ] NOT_CONTAINS: app.ts enthaelt NICHT "_handleWizardComplete"
-- [ ] NOT_CONTAINS: app.ts enthaelt NICHT "_handleWizardCancel"
-- [ ] NOT_CONTAINS: app.ts enthaelt NICHT "_handleStartWizardFromView"
-- [ ] CONTAINS: app.ts enthaelt "projectHasSpecwright"
-- [ ] CONTAINS: app.ts enthaelt "projectHasProductBrief"
-- [ ] CONTAINS: app.ts enthaelt "projectNeedsMigration"
-- [ ] CONTAINS: app.ts enthaelt "projectValidationPending"
-- [ ] CONTAINS: app.ts enthaelt "routerService.navigate('getting-started')"
+- [x] NOT_CONTAINS: app.ts enthaelt NICHT "aos-installation-wizard-modal"
+- [x] NOT_CONTAINS: app.ts enthaelt NICHT "showWizard"
+- [x] NOT_CONTAINS: app.ts enthaelt NICHT "wizardProjectPath"
+- [x] NOT_CONTAINS: app.ts enthaelt NICHT "wizardFileCount"
+- [x] NOT_CONTAINS: app.ts enthaelt NICHT "_handleWizardComplete"
+- [x] NOT_CONTAINS: app.ts enthaelt NICHT "_handleWizardCancel"
+- [x] NOT_CONTAINS: app.ts enthaelt NICHT "_handleStartWizardFromView"
+- [x] CONTAINS: app.ts enthaelt "projectHasSpecwright"
+- [x] CONTAINS: app.ts enthaelt "projectHasProductBrief"
+- [x] CONTAINS: app.ts enthaelt "projectNeedsMigration"
+- [x] CONTAINS: app.ts enthaelt "projectValidationPending"
+- [x] CONTAINS: app.ts enthaelt "routerService.navigate('getting-started')"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: cd ui/frontend && npm run build exits with code 0
-- [ ] LINT_PASS: cd ui/frontend && npm run lint exits with code 0
+- [x] BUILD_PASS: cd ui/frontend && npm run build exits with code 0
+- [x] LINT_PASS: cd ui/frontend && npm run lint exits with code 0
 
 ---
 
@@ -128,18 +129,18 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Security/Performance Anforderungen erfuellt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Security/Performance Anforderungen erfuellt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Kein separater Unit-Test noetig (Refactoring/Cleanup)
-- [ ] Code Review durchgefuehrt und genehmigt
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Kein separater Unit-Test noetig (Refactoring/Cleanup)
+- [x] Code Review durchgefuehrt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 

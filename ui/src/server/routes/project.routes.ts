@@ -30,6 +30,7 @@ interface ValidateResponse {
   hasSpecwright?: boolean;
   hasProductBrief?: boolean;
   needsMigration?: boolean;
+  hasIncompleteInstallation?: boolean;
   fileCount?: number;
 }
 
@@ -128,6 +129,7 @@ router.post('/validate', (req: Request, res: Response) => {
     hasSpecwright: result.hasSpecwright,
     hasProductBrief: result.hasProductBrief,
     needsMigration: result.needsMigration,
+    hasIncompleteInstallation: result.hasIncompleteInstallation,
     fileCount: result.fileCount
   } as ValidateResponse);
 });

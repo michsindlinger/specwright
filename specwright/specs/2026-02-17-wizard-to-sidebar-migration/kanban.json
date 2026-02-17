@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-02-17-wizard-to-sidebar-migration",
     "name": "Wizard-to-Sidebar Migration",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-02-17T00:00:00Z"
   },
-
   "resumeContext": {
-    "currentPhase": "1-kanban-setup",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/wizard-to-sidebar-migration",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Kanban board created",
-    "nextAction": "Run /execute-tasks 2026-02-17-wizard-to-sidebar-migration",
-    "progressIndex": 0,
-    "totalStories": 6
+    "lastAction": "Completed WSM-999",
+    "nextAction": "All stories complete",
+    "progressIndex": 6,
+    "totalStories": 6,
+    "gitStrategy": "branch"
   },
-
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
-    "completedAt": null,
+    "status": "completed",
+    "startedAt": "2026-02-17T14:59:03.376Z",
+    "completedAt": "2026-02-17T15:34:48.495Z",
     "model": null
   },
-
   "stories": [
     {
       "id": "WSM-001",
@@ -43,22 +40,34 @@
         "complexity": "XS"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-001-getting-started-kachel-logik.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T14:54:19.593Z",
+        "completedAt": "2026-02-17T14:57:19.867Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/views/aos-getting-started-view.ts",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-001-getting-started-kachel-logik.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "e55068ebed32627f1c42a7cd7ac8972ddbbdc77e",
+            "message": "feat: [WSM-001] Getting Started Kachel-Logik",
+            "timestamp": "2026-02-17T15:57:11+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "WSM-002",
@@ -70,23 +79,40 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["WSM-001"],
-      "status": "ready",
+      "dependencies": [
+        "WSM-001"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-setup-terminal-integration.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T14:59:03.376Z",
+        "completedAt": "2026-02-17T15:03:59.142Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/app.ts",
+          "ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-002-setup-terminal-integration.md",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/integration-context.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "a77f7b0",
+            "message": "feat: [WSM-002] Setup-Terminal in Sidebar",
+            "timestamp": "2026-02-17T16:10:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "WSM-003",
@@ -98,23 +124,39 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["WSM-002"],
-      "status": "ready",
+      "dependencies": [
+        "WSM-002"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-wizard-entfernung-state-cleanup.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T15:05:16.494Z",
+        "completedAt": "2026-02-17T15:10:19.614Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/app.ts",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-003-wizard-entfernung-state-cleanup.md",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/integration-context.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "502a94b",
+            "message": "feat: [WSM-003] Wizard Entfernung & State Cleanup",
+            "timestamp": "2026-02-17T17:20:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "WSM-997",
@@ -126,23 +168,40 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["WSM-001", "WSM-002", "WSM-003"],
-      "status": "ready",
+      "dependencies": [
+        "WSM-001",
+        "WSM-002",
+        "WSM-003"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T15:11:08.982Z",
+        "completedAt": "2026-02-17T15:14:20.273Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/review-report.md",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-997-code-review.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "none",
+            "message": "feat: [WSM-997] Code Review completed",
+            "timestamp": "2026-02-17T17:30:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "WSM-998",
@@ -154,23 +213,37 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["WSM-997"],
-      "status": "ready",
+      "dependencies": [
+        "WSM-997"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T15:14:31.893Z",
+        "completedAt": "2026-02-17T15:16:03.547Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-998-integration-validation.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "none",
+            "message": "feat: [WSM-998] Integration Validation completed",
+            "timestamp": "2026-02-17T17:35:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "WSM-999",
@@ -182,94 +255,240 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["WSM-998"],
-      "status": "ready",
+      "dependencies": [
+        "WSM-998"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T15:16:45.759Z",
+        "completedAt": "2026-02-17T15:34:48.495Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/kanban.json",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-997-code-review.md",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-998-integration-validation.md",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/review-report.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "6d9fba79bae899373e6364c58898a36b804dfcef",
+            "message": "feat: [WSM-999] Finalize PR",
+            "timestamp": "2026-02-17T16:17:40+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     }
   ],
-
   "boardStatus": {
     "total": 6,
-    "ready": 6,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 6,
     "blocked": 0
   },
-
   "statistics": {
-    "totalEffort": 8,
-    "completedEffort": 0,
-    "remainingEffort": 8,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 5,
-      "backend": 0,
-      "devops": 0,
-      "test": 0,
-      "docs": 0,
-      "integration": 0,
-      "system": 3
+      "undefined": 6
     },
     "byPriority": {
-      "critical": 0,
-      "high": 8,
-      "medium": 0,
-      "low": 0
+      "undefined": 6
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "phase": 1,
         "name": "Getting Started View",
-        "stories": ["WSM-001"],
+        "stories": [
+          "WSM-001"
+        ],
         "description": "Kachel-Logik anpassen: keine Kacheln bei Install/Migrate, neues Event"
       },
       {
         "phase": 2,
         "name": "Setup Terminal Integration",
-        "stories": ["WSM-002"],
+        "stories": [
+          "WSM-002"
+        ],
         "description": "TerminalSession erweitern, _openSetupTerminalTab(), Auto-Detect"
       },
       {
         "phase": 3,
         "name": "Wizard Cleanup",
-        "stories": ["WSM-003"],
+        "stories": [
+          "WSM-003"
+        ],
         "description": "Wizard-Modal entfernen, State umbenennen, Validation-Flow anpassen"
       },
       {
         "phase": 4,
         "name": "System Stories",
-        "stories": ["WSM-997", "WSM-998", "WSM-999"],
+        "stories": [
+          "WSM-997",
+          "WSM-998",
+          "WSM-999"
+        ],
         "description": "Code Review, Integration Validation, PR Finalization"
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-02-17T00:00:00Z",
       "action": "kanban_created",
       "storyId": null,
       "details": "Kanban initialized with 6 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-17T14:54:19.593Z",
+      "action": "status_changed",
+      "storyId": "WSM-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T14:54:19.734Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T14:54:47.642Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-02-17T14:57:19.867Z",
+      "action": "status_changed",
+      "storyId": "WSM-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T14:57:51.095Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-17T14:58:00.125Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T14:59:03.378Z",
+      "action": "status_changed",
+      "storyId": "WSM-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T15:03:59.143Z",
+      "action": "status_changed",
+      "storyId": "WSM-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T15:04:05.042Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-17T15:04:23.212Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T15:05:16.496Z",
+      "action": "status_changed",
+      "storyId": "WSM-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T15:10:19.614Z",
+      "action": "status_changed",
+      "storyId": "WSM-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T15:10:25.537Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: all-stories-done"
+    },
+    {
+      "timestamp": "2026-02-17T15:10:44.379Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T15:11:08.984Z",
+      "action": "status_changed",
+      "storyId": "WSM-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T15:13:26.114Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T15:14:20.274Z",
+      "action": "status_changed",
+      "storyId": "WSM-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T15:14:31.893Z",
+      "action": "status_changed",
+      "storyId": "WSM-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T15:16:03.547Z",
+      "action": "status_changed",
+      "storyId": "WSM-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T15:16:20.214Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T15:16:45.760Z",
+      "action": "status_changed",
+      "storyId": "WSM-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T15:34:48.495Z",
+      "action": "status_changed",
+      "storyId": "WSM-999",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }

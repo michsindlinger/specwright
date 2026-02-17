@@ -80,17 +80,17 @@ Scenario: Systematisches Beheben gefundener Issues
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: specwright/specs/2026-02-17-wizard-to-sidebar-migration/review-report.md
+- [x] FILE_EXISTS: specwright/specs/2026-02-17-wizard-to-sidebar-migration/review-report.md
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: review-report.md enthaelt "## Review Summary"
-- [ ] CONTAINS: review-report.md enthaelt "## Gepruefte Dateien"
+- [x] CONTAINS: review-report.md enthaelt "## Review Summary"
+- [x] CONTAINS: review-report.md enthaelt "## Gepruefte Dateien"
 
 ### Funktions-Pruefungen
 
-- [ ] LINT_PASS: cd ui/frontend && npm run lint exits with code 0
-- [ ] BUILD_PASS: cd ui/frontend && npm run build exits with code 0
+- [x] LINT_PASS: cd ui/frontend && npm run lint exits with code 0
+- [x] BUILD_PASS: cd ui/frontend && npm run build exits with code 0
 
 ---
 
@@ -130,13 +130,13 @@ Scenario: Systematisches Beheben gefundener Issues
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] Git Diff analysiert (main...HEAD)
-- [ ] Alle geaenderten Dateien reviewt
-- [ ] Probleme identifiziert und kategorisiert
-- [ ] review-report.md erstellt
-- [ ] Alle Critical/Major Issues behoben ODER vom User explizit als "dokumentiert" akzeptiert
-- [ ] Fix Status Tabelle im review-report.md aktualisiert
-- [ ] Re-Review nach Fixes bestanden (falls Fixes durchgefuehrt)
+- [x] Git Diff analysiert (main...HEAD)
+- [x] Alle geaenderten Dateien reviewt
+- [x] Probleme identifiziert und kategorisiert
+- [x] review-report.md erstellt
+- [x] Alle Critical/Major Issues behoben ODER vom User explizit als "dokumentiert" akzeptiert
+- [x] Fix Status Tabelle im review-report.md aktualisiert
+- [x] Re-Review nach Fixes bestanden (falls Fixes durchgefuehrt)
 
 ---
 
