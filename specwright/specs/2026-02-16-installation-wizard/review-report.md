@@ -82,10 +82,10 @@ Keine gefunden.
 
 | # | Schweregrad | Issue | Status | Fix-Details |
 |---|-------------|-------|--------|-------------|
-| M-001 | Major | Fire-and-Forget Fetch in _handleWizardComplete | pending | |
+| M-001 | Major | Fire-and-Forget Fetch in _handleWizardComplete | fixed | Methode auf async/await umgestellt |
 | M-002 | ~~Major~~ | ~~showWizard State-Property Deklaration~~ | skipped | False Positive - korrekt deklariert |
-| m-001 | Minor | Magic Numbers fuer Terminal-Delays | pending | |
-| m-002 | Minor | Redundante wizard-complete Event-Emission | pending | |
+| m-001 | Minor | Magic Numbers fuer Terminal-Delays | fixed | TERMINAL_READY_DELAY und AUTO_ADVANCE_DELAY Konstanten extrahiert |
+| m-002 | Minor | Redundante wizard-complete Event-Emission | fixed | Event-Dispatch nach handleTerminalContinue verschoben (erst bei User-Klick auf Fertig) |
 | m-003 | Minor | CSS grosse Aenderungsmenge | deferred | Reformatting, kein funktionales Problem |
 
 ## Positive Highlights

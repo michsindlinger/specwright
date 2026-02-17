@@ -66,6 +66,8 @@ const PLANNING_COMMANDS: PlanningCommand[] = [
  * Threshold for file count to show the "existing project" hint.
  */
 const EXISTING_PROJECT_FILE_THRESHOLD = 10;
+const TERMINAL_READY_DELAY = 500;
+const AUTO_ADVANCE_DELAY = 1500;
 
 /**
  * Modal wizard for Specwright installation and planning command selection.
@@ -363,7 +365,7 @@ export class AosInstallationWizardModal extends LitElement {
           data: this.terminalCommand + '\n',
           timestamp: new Date().toISOString(),
         });
-      }, 500);
+      }, TERMINAL_READY_DELAY);
     }
   }
 
@@ -400,16 +402,9 @@ export class AosInstallationWizardModal extends LitElement {
           this.currentStep = 'selection';
           this.terminalSession = null;
           this.terminalSessionId = null;
-        }, 1500);
+        }, AUTO_ADVANCE_DELAY);
       } else {
-        // Planning command completed - fire event and close
-        this.dispatchEvent(
-          new CustomEvent<CommandSelectedDetail>('command-selected', {
-            detail: { command: this.terminalCommand, projectPath: this.projectPath },
-            bubbles: true,
-            composed: true,
-          })
-        );
+        // Planning command completed - user will click "Fertig" to dispatch event
       }
     } else {
       this.terminalError = exitCode !== undefined
@@ -434,7 +429,14 @@ export class AosInstallationWizardModal extends LitElement {
       this.terminalSession = null;
       this.terminalSessionId = null;
     } else {
-      // Planning command completed successfully - wizard is done
+      // Planning command completed successfully - dispatch event and close wizard
+      this.dispatchEvent(
+        new CustomEvent<CommandSelectedDetail>('command-selected', {
+          detail: { command: this.terminalCommand, projectPath: this.projectPath },
+          bubbles: true,
+          composed: true,
+        })
+      );
       if (this.projectPath) {
         projectStateService.clearWizardNeeded(this.projectPath);
       }

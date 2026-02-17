@@ -928,7 +928,7 @@ export class AosApp extends LitElement {
   }
 
   // IW-006: Handle wizard completion - navigate to getting-started
-  private _handleWizardComplete(): void {
+  private async _handleWizardComplete(): Promise<void> {
     this.showWizard = false;
     const path = this.wizardProjectPath;
 
@@ -939,21 +939,19 @@ export class AosApp extends LitElement {
 
     // Re-validate to update hasSpecwright/hasProductBrief for getting-started view
     if (path) {
-      fetch('/api/project/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path }),
-      })
-        .then(r => r.json())
-        .then((data: unknown) => {
-          const validated = data as { hasSpecwright?: boolean; hasProductBrief?: boolean };
-          this.wizardHasSpecwright = validated.hasSpecwright ?? true;
-          this.wizardHasProductBrief = validated.hasProductBrief ?? false;
-        })
-        .catch(() => {
-          // Fallback: assume specwright is now installed
-          this.wizardHasSpecwright = true;
+      try {
+        const response = await fetch('/api/project/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path }),
         });
+        const data = await response.json() as { hasSpecwright?: boolean; hasProductBrief?: boolean };
+        this.wizardHasSpecwright = data.hasSpecwright ?? true;
+        this.wizardHasProductBrief = data.hasProductBrief ?? false;
+      } catch {
+        // Fallback: assume specwright is now installed
+        this.wizardHasSpecwright = true;
+      }
     }
 
     // Navigate to getting-started page
