@@ -1,0 +1,448 @@
+import { LitElement, html, nothing } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+
+/**
+ * Wizard step type for the installation wizard.
+ * - install: Framework installation step (install.sh)
+ * - selection: Planning command selection step
+ * - terminal: Terminal execution step (handled by IW-003)
+ * - complete: Wizard complete step
+ */
+export type WizardStep = 'install' | 'selection' | 'terminal' | 'complete';
+
+/**
+ * Planning command option for the selection step.
+ */
+export interface PlanningCommand {
+  id: string;
+  title: string;
+  description: string;
+}
+
+/**
+ * Event detail for command-selected event.
+ */
+export interface CommandSelectedDetail {
+  command: string;
+  projectPath: string;
+}
+
+/**
+ * Available planning commands.
+ */
+const PLANNING_COMMANDS: PlanningCommand[] = [
+  {
+    id: 'plan-product',
+    title: 'Plan Product',
+    description: 'Fuer ein einzelnes Produkt/Projekt planen',
+  },
+  {
+    id: 'plan-platform',
+    title: 'Plan Platform',
+    description: 'Fuer eine Multi-Modul-Plattform planen',
+  },
+  {
+    id: 'analyze-product',
+    title: 'Analyze Product',
+    description: 'Bestehendes Produkt analysieren und Specwright integrieren',
+  },
+  {
+    id: 'analyze-platform',
+    title: 'Analyze Platform',
+    description: 'Bestehende Plattform analysieren und Specwright integrieren',
+  },
+];
+
+/**
+ * Threshold for file count to show the "existing project" hint.
+ */
+const EXISTING_PROJECT_FILE_THRESHOLD = 10;
+
+/**
+ * Modal wizard for Specwright installation and planning command selection.
+ *
+ * Shows a multi-step wizard:
+ * 1. Install step (if hasSpecwright is false) - prompts to run install.sh
+ * 2. Selection step - shows four planning command cards
+ *
+ * @fires command-selected - Fired when a planning command is selected. Detail: { command: string, projectPath: string }
+ * @fires wizard-cancel - Fired when the wizard is cancelled
+ * @fires modal-close - Fired when the modal is closed
+ * @fires install-requested - Fired when the user clicks the install button. Detail: { projectPath: string }
+ */
+@customElement('aos-installation-wizard-modal')
+export class AosInstallationWizardModal extends LitElement {
+  /** Whether the modal is currently open */
+  @property({ type: Boolean, reflect: true }) open = false;
+
+  /** Whether the project has specwright/ installed */
+  @property({ type: Boolean }) hasSpecwright = false;
+
+  /** Whether the project has a product brief */
+  @property({ type: Boolean }) hasProductBrief = false;
+
+  /** Number of top-level files/dirs in the project */
+  @property({ type: Number }) fileCount = 0;
+
+  /** Path to the project */
+  @property({ type: String }) projectPath = '';
+
+  /** Current wizard step */
+  @state() private currentStep: WizardStep = 'install';
+
+  /** Whether install.sh is currently running */
+  @state() private isInstalling = false;
+
+  /** Whether installation completed successfully */
+  @state() private installComplete = false;
+
+  /** Error message from installation */
+  @state() private installError: string | null = null;
+
+  private boundKeyHandler = this.handleKeyDown.bind(this);
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    document.addEventListener('keydown', this.boundKeyHandler);
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this.boundKeyHandler);
+  }
+
+  override updated(changedProperties: Map<string, unknown>): void {
+    if (changedProperties.has('open') && this.open) {
+      this.currentStep = this.hasSpecwright ? 'selection' : 'install';
+      this.isInstalling = false;
+      this.installComplete = false;
+      this.installError = null;
+    }
+  }
+
+  private handleKeyDown(e: KeyboardEvent): void {
+    if (!this.open) return;
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      this.handleCancel();
+    }
+
+    // Focus trap
+    if (e.key === 'Tab') {
+      const focusableElements = this.querySelectorAll<HTMLElement>(
+        'button, [tabindex]:not([tabindex="-1"])'
+      );
+      const focusable = Array.from(focusableElements);
+      if (focusable.length === 0) return;
+
+      const firstFocusable = focusable[0];
+      const lastFocusable = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstFocusable) {
+        e.preventDefault();
+        lastFocusable?.focus();
+      } else if (!e.shiftKey && document.activeElement === lastFocusable) {
+        e.preventDefault();
+        firstFocusable?.focus();
+      }
+    }
+  }
+
+  private closeModal(): void {
+    this.open = false;
+    this.dispatchEvent(
+      new CustomEvent('modal-close', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private handleCancel(): void {
+    this.dispatchEvent(
+      new CustomEvent('wizard-cancel', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+    this.closeModal();
+  }
+
+  private handleOverlayClick(e: MouseEvent): void {
+    if (e.target === e.currentTarget) {
+      this.handleCancel();
+    }
+  }
+
+  private handleInstallClick(): void {
+    this.isInstalling = true;
+    this.installError = null;
+    this.dispatchEvent(
+      new CustomEvent('install-requested', {
+        detail: { projectPath: this.projectPath },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  /**
+   * Called externally when install.sh completes successfully.
+   * Advances the wizard to the selection step.
+   */
+  public installSucceeded(): void {
+    this.isInstalling = false;
+    this.installComplete = true;
+    this.installError = null;
+    // Auto-advance to selection step after brief delay
+    setTimeout(() => {
+      this.currentStep = 'selection';
+    }, 800);
+  }
+
+  /**
+   * Called externally when install.sh fails.
+   */
+  public installFailed(error: string): void {
+    this.isInstalling = false;
+    this.installComplete = false;
+    this.installError = error;
+  }
+
+  private handleCommandSelect(commandId: string): void {
+    this.dispatchEvent(
+      new CustomEvent<CommandSelectedDetail>('command-selected', {
+        detail: { command: commandId, projectPath: this.projectPath },
+        bubbles: true,
+        composed: true,
+      })
+    );
+    this.closeModal();
+  }
+
+  private get isExistingProject(): boolean {
+    return this.fileCount >= EXISTING_PROJECT_FILE_THRESHOLD;
+  }
+
+  // --- Icon Renderers (Lucide-style inline SVGs) ---
+
+  private renderCommandIcon(commandId: string) {
+    switch (commandId) {
+      case 'plan-product':
+        // Book icon
+        return html`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`;
+      case 'plan-platform':
+        // Grid/Layout icon
+        return html`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>`;
+      case 'analyze-product':
+        // Search/Analyze icon
+        return html`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+      case 'analyze-platform':
+        // Activity/Chart icon
+        return html`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>`;
+      default:
+        return nothing;
+    }
+  }
+
+  // --- Render ---
+
+  private renderStepIndicator() {
+    if (this.hasSpecwright) {
+      // Single step - no indicator needed
+      return nothing;
+    }
+
+    const installDone = this.currentStep === 'selection';
+
+    return html`
+      <div class="installation-wizard__steps">
+        <div class="installation-wizard__step-indicator ${installDone ? 'installation-wizard__step-indicator--completed' : 'installation-wizard__step-indicator--active'}">
+          <span class="installation-wizard__step-number">
+            ${installDone
+              ? html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+              : '1'}
+          </span>
+          <span class="installation-wizard__step-label">Installation</span>
+        </div>
+        <div class="installation-wizard__step-divider ${installDone ? 'installation-wizard__step-divider--active' : ''}"></div>
+        <div class="installation-wizard__step-indicator ${this.currentStep === 'selection' ? 'installation-wizard__step-indicator--active' : ''}">
+          <span class="installation-wizard__step-number">2</span>
+          <span class="installation-wizard__step-label">Planning</span>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderInstallStep() {
+    return html`
+      <div class="installation-wizard__install-step">
+        <div class="installation-wizard__install-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+        </div>
+        <h3 class="installation-wizard__install-title">Specwright Framework installieren</h3>
+        <p class="installation-wizard__install-desc">
+          Dieses Projekt hat noch kein Specwright Framework. Installiere es, um mit der Projektplanung zu beginnen.
+        </p>
+
+        ${this.installError
+          ? html`
+              <div class="installation-wizard__error" role="alert">
+                ${this.installError}
+              </div>
+            `
+          : nothing}
+
+        ${this.installComplete
+          ? html`
+              <div class="installation-wizard__success" role="status">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Installation erfolgreich! Weiter zum Planning...
+              </div>
+            `
+          : nothing}
+
+        <button
+          class="installation-wizard__install-button"
+          @click=${this.handleInstallClick}
+          ?disabled=${this.isInstalling || this.installComplete}
+        >
+          ${this.isInstalling
+            ? html`<span class="installation-wizard__spinner"></span> Installiere...`
+            : this.installComplete
+              ? 'Installiert'
+              : 'Framework installieren'}
+        </button>
+
+        <p class="installation-wizard__install-hint">
+          Fuehrt <code>install.sh --yes --all</code> im Projektverzeichnis aus.
+        </p>
+      </div>
+    `;
+  }
+
+  private renderSelectionStep() {
+    return html`
+      <div class="installation-wizard__selection-step">
+        <h3 class="installation-wizard__selection-title">Wie moechtest du starten?</h3>
+        <p class="installation-wizard__selection-desc">
+          Waehle einen Planungsansatz fuer dein Projekt:
+        </p>
+
+        ${this.isExistingProject
+          ? html`
+              <div class="installation-wizard__existing-hint" role="note">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <span>
+                  Dieses Projekt hat bereits ${this.fileCount} Dateien/Ordner.
+                  Fuer Bestandsprojekte wird <strong>Analyze Product</strong> oder
+                  <strong>Analyze Platform</strong> empfohlen.
+                </span>
+              </div>
+            `
+          : nothing}
+
+        <div class="installation-wizard__commands">
+          ${PLANNING_COMMANDS.map(
+            (cmd) => html`
+              <div
+                class="installation-wizard__command-card ${this.isExistingProject && (cmd.id === 'analyze-product' || cmd.id === 'analyze-platform') ? 'installation-wizard__command-card--recommended' : ''}"
+                role="button"
+                tabindex="0"
+                aria-label="${cmd.title}: ${cmd.description}"
+                @click=${() => this.handleCommandSelect(cmd.id)}
+                @keydown=${(e: KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.handleCommandSelect(cmd.id);
+                  }
+                }}
+              >
+                <span class="installation-wizard__command-icon">${this.renderCommandIcon(cmd.id)}</span>
+                <div class="installation-wizard__command-info">
+                  <span class="installation-wizard__command-title">${cmd.title}</span>
+                  <span class="installation-wizard__command-desc">${cmd.description}</span>
+                </div>
+                ${this.isExistingProject && (cmd.id === 'analyze-product' || cmd.id === 'analyze-platform')
+                  ? html`<span class="installation-wizard__command-badge">Empfohlen</span>`
+                  : nothing}
+              </div>
+            `
+          )}
+        </div>
+      </div>
+    `;
+  }
+
+  override render() {
+    if (!this.open) {
+      return nothing;
+    }
+
+    return html`
+      <div
+        class="installation-wizard__overlay"
+        @click=${this.handleOverlayClick}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="installation-wizard-title"
+      >
+        <div class="installation-wizard">
+          <header class="installation-wizard__header">
+            <h2 id="installation-wizard-title" class="installation-wizard__title">
+              Specwright Setup
+            </h2>
+            <button
+              class="installation-wizard__close"
+              @click=${this.handleCancel}
+              aria-label="Dialog schliessen"
+            >
+              &times;
+            </button>
+          </header>
+
+          ${this.renderStepIndicator()}
+
+          <div class="installation-wizard__content">
+            ${this.currentStep === 'install' ? this.renderInstallStep() : nothing}
+            ${this.currentStep === 'selection' ? this.renderSelectionStep() : nothing}
+          </div>
+
+          <footer class="installation-wizard__footer">
+            <button
+              class="installation-wizard__cancel-button"
+              @click=${this.handleCancel}
+            >
+              Abbrechen
+            </button>
+            ${this.currentStep === 'install' && !this.isInstalling && !this.installComplete
+              ? html`
+                  <button
+                    class="installation-wizard__skip-button"
+                    @click=${() => { this.currentStep = 'selection'; }}
+                  >
+                    Ueberspringen
+                  </button>
+                `
+              : nothing}
+          </footer>
+        </div>
+      </div>
+    `;
+  }
+
+  protected override createRenderRoot() {
+    return this;
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'aos-installation-wizard-modal': AosInstallationWizardModal;
+  }
+}

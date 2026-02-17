@@ -98,20 +98,20 @@ Scenario: Wizard erscheint bei Projekt mit specwright/ aber ohne Product Brief
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: ui/frontend/src/components/setup/aos-installation-wizard-modal.ts
+- [x] FILE_EXISTS: ui/frontend/src/components/setup/aos-installation-wizard-modal.ts
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: aos-installation-wizard-modal.ts enthaelt "plan-product"
-- [ ] CONTAINS: aos-installation-wizard-modal.ts enthaelt "plan-platform"
-- [ ] CONTAINS: aos-installation-wizard-modal.ts enthaelt "analyze-product"
-- [ ] CONTAINS: aos-installation-wizard-modal.ts enthaelt "analyze-platform"
-- [ ] CONTAINS: aos-installation-wizard-modal.ts enthaelt "hasProductBrief"
-- [ ] CONTAINS: aos-installation-wizard-modal.ts enthaelt "install" (fuer install.sh Schritt)
+- [x] CONTAINS: aos-installation-wizard-modal.ts enthaelt "plan-product"
+- [x] CONTAINS: aos-installation-wizard-modal.ts enthaelt "plan-platform"
+- [x] CONTAINS: aos-installation-wizard-modal.ts enthaelt "analyze-product"
+- [x] CONTAINS: aos-installation-wizard-modal.ts enthaelt "analyze-platform"
+- [x] CONTAINS: aos-installation-wizard-modal.ts enthaelt "hasProductBrief"
+- [x] CONTAINS: aos-installation-wizard-modal.ts enthaelt "install" (fuer install.sh Schritt)
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -150,17 +150,17 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Security/Performance Anforderungen erfuellt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Security/Performance Anforderungen erfuellt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Code Review durchgefuehrt und genehmigt
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Code Review durchgefuehrt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 

@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-02-16-installation-wizard",
     "name": "Installation Wizard",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-02-16T00:00:00Z"
   },
-
   "resumeContext": {
-    "currentPhase": "spec-complete",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "3-execute-story",
+    "nextPhase": "story-complete",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/installation-wizard",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Spec complete - DoR validated, size validated, all stories ready",
-    "nextAction": "Run /execute-tasks 2026-02-16-installation-wizard",
-    "progressIndex": 0,
-    "totalStories": 9
+    "lastAction": "Completed IW-001",
+    "nextAction": "Execute next story: IW-002",
+    "progressIndex": 1,
+    "totalStories": 9,
+    "gitStrategy": "branch"
   },
-
   "execution": {
     "status": "not_started",
     "startedAt": null,
     "completedAt": null,
     "model": null
   },
-
   "stories": [
     {
       "id": "IW-001",
@@ -43,22 +40,36 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-001-specwright-erkennung.md",
       "timing": {
         "createdAt": "2026-02-16T00:00:00Z",
-        "updatedAt": "2026-02-16T00:00:00Z"
+        "updatedAt": "2026-02-16T00:00:00Z",
+        "startedAt": "2026-02-17T10:37:13.263Z",
+        "completedAt": "2026-02-17T11:18:16.642Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/project-context.service.ts",
+          "ui/src/server/routes/project.routes.ts",
+          "ui/tests/unit/project-context.service.test.ts",
+          "specwright/specs/2026-02-16-installation-wizard/stories/story-001-specwright-erkennung.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "73891e9",
+            "message": "feat: IW-001 Specwright-Erkennung beim Projekt-Hinzufuegen",
+            "timestamp": "2026-02-17T12:17:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "IW-002",
@@ -70,13 +81,16 @@
         "effort": "S",
         "complexity": "S"
       },
-      "dependencies": ["IW-001"],
-      "status": "ready",
+      "dependencies": [
+        "IW-001"
+      ],
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-installation-wizard-modal.md",
       "timing": {
         "createdAt": "2026-02-16T00:00:00Z",
-        "updatedAt": "2026-02-16T00:00:00Z"
+        "updatedAt": "2026-02-16T00:00:00Z",
+        "startedAt": "2026-02-17T11:19:02.050Z"
       },
       "implementation": {
         "filesModified": [],
@@ -86,7 +100,8 @@
       "verification": {
         "dorChecked": true,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress"
     },
     {
       "id": "IW-003",
@@ -98,7 +113,9 @@
         "effort": "S",
         "complexity": "S"
       },
-      "dependencies": ["IW-002"],
+      "dependencies": [
+        "IW-002"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-terminal-integration.md",
@@ -126,7 +143,9 @@
         "effort": "XS",
         "complexity": "XS"
       },
-      "dependencies": ["IW-002"],
+      "dependencies": [
+        "IW-002"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-004-wizard-abbruch-handling.md",
@@ -182,7 +201,13 @@
         "effort": "S",
         "complexity": "S"
       },
-      "dependencies": ["IW-001", "IW-002", "IW-003", "IW-004", "IW-005"],
+      "dependencies": [
+        "IW-001",
+        "IW-002",
+        "IW-003",
+        "IW-004",
+        "IW-005"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-006-router-navigation-integration.md",
@@ -210,7 +235,14 @@
         "effort": "S",
         "complexity": "S"
       },
-      "dependencies": ["IW-001", "IW-002", "IW-003", "IW-004", "IW-005", "IW-006"],
+      "dependencies": [
+        "IW-001",
+        "IW-002",
+        "IW-003",
+        "IW-004",
+        "IW-005",
+        "IW-006"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
@@ -238,7 +270,9 @@
         "effort": "S",
         "complexity": "S"
       },
-      "dependencies": ["IW-997"],
+      "dependencies": [
+        "IW-997"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
@@ -266,7 +300,9 @@
         "effort": "S",
         "complexity": "S"
       },
-      "dependencies": ["IW-998"],
+      "dependencies": [
+        "IW-998"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
@@ -285,74 +321,76 @@
       }
     }
   ],
-
   "boardStatus": {
     "total": 9,
-    "ready": 9,
-    "inProgress": 0,
+    "ready": 7,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 0
   },
-
   "statistics": {
-    "totalEffort": 27,
-    "completedEffort": 0,
-    "remainingEffort": 27,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 4,
-      "backend": 1,
-      "devops": 0,
-      "test": 0,
-      "docs": 0,
-      "integration": 1
+      "undefined": 9
     },
     "byPriority": {
-      "critical": 0,
-      "high": 8,
-      "medium": 1,
-      "low": 0
+      "undefined": 9
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "phase": 1,
         "name": "Backend-Erkennung + Getting Started (Parallel)",
-        "stories": ["IW-001", "IW-005"],
+        "stories": [
+          "IW-001",
+          "IW-005"
+        ],
         "parallel": true
       },
       {
         "phase": 2,
         "name": "Wizard Modal",
-        "stories": ["IW-002"],
+        "stories": [
+          "IW-002"
+        ],
         "parallel": false
       },
       {
         "phase": 3,
         "name": "Terminal + Abbruch (Parallel)",
-        "stories": ["IW-003", "IW-004"],
+        "stories": [
+          "IW-003",
+          "IW-004"
+        ],
         "parallel": true
       },
       {
         "phase": 4,
         "name": "Integration",
-        "stories": ["IW-006"],
+        "stories": [
+          "IW-006"
+        ],
         "parallel": false
       },
       {
         "phase": 5,
         "name": "System Stories",
-        "stories": ["IW-997", "IW-998", "IW-999"],
+        "stories": [
+          "IW-997",
+          "IW-998",
+          "IW-999"
+        ],
         "parallel": false
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-02-16T00:00:00Z",
@@ -365,6 +403,84 @@
       "action": "technical_refinement_complete",
       "storyId": null,
       "details": "All 6 regular stories refined with WAS/WIE/WO/DoR/DoD. DoR validated. Size validated. All stories ready."
+    },
+    {
+      "timestamp": "2026-02-17T10:37:13.263Z",
+      "action": "status_changed",
+      "storyId": "IW-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T10:40:26.681Z",
+      "action": "status_changed",
+      "storyId": "IW-001",
+      "details": "Moved from in_progress to ready"
+    },
+    {
+      "timestamp": "2026-02-17T10:53:55.021Z",
+      "action": "status_changed",
+      "storyId": "IW-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T10:57:57.429Z",
+      "action": "status_changed",
+      "storyId": "IW-001",
+      "details": "Moved from in_progress to ready"
+    },
+    {
+      "timestamp": "2026-02-17T10:58:03.694Z",
+      "action": "status_changed",
+      "storyId": "IW-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T11:10:33.889Z",
+      "action": "status_changed",
+      "storyId": "IW-001",
+      "details": "Moved from in_progress to ready"
+    },
+    {
+      "timestamp": "2026-02-17T11:10:43.656Z",
+      "action": "status_changed",
+      "storyId": "IW-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T11:10:43.808Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/installation-wizard"
+    },
+    {
+      "timestamp": "2026-02-17T11:11:03.281Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-02-17T11:18:16.643Z",
+      "action": "status_changed",
+      "storyId": "IW-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:18:56.091Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/installation-wizard"
+    },
+    {
+      "timestamp": "2026-02-17T11:19:02.050Z",
+      "action": "status_changed",
+      "storyId": "IW-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T11:19:02.201Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/installation-wizard"
     }
   ]
 }

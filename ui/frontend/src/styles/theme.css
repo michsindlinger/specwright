@@ -7480,6 +7480,433 @@ aos-collapsible-text {
 }
 
 /* ================================================================
+   Installation Wizard Modal
+   ================================================================ */
+
+.installation-wizard__overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn var(--transition-fast);
+}
+
+.installation-wizard {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  max-width: 560px;
+  width: 90%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: slideUp var(--transition-fast);
+}
+
+.installation-wizard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.installation-wizard__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.installation-wizard__close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__close:hover {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.installation-wizard__close:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+/* Step indicator */
+
+.installation-wizard__steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.installation-wizard__step-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.installation-wizard__step-indicator--active {
+  color: var(--color-accent-primary);
+}
+
+.installation-wizard__step-indicator--completed {
+  color: var(--color-accent-success);
+}
+
+.installation-wizard__step-number {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  border: 2px solid currentColor;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.installation-wizard__step-indicator--active .installation-wizard__step-number {
+  background-color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+}
+
+.installation-wizard__step-indicator--completed .installation-wizard__step-number {
+  background-color: var(--color-accent-success);
+  border-color: var(--color-accent-success);
+  color: var(--color-bg-primary);
+}
+
+.installation-wizard__step-label {
+  font-weight: var(--font-weight-medium);
+}
+
+.installation-wizard__step-divider {
+  width: 32px;
+  height: 2px;
+  background-color: var(--color-border);
+  transition: background-color var(--transition-fast);
+}
+
+.installation-wizard__step-divider--active {
+  background-color: var(--color-accent-success);
+}
+
+/* Content */
+
+.installation-wizard__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-xl);
+}
+
+/* Install step */
+
+.installation-wizard__install-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-md);
+}
+
+.installation-wizard__install-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.installation-wizard__install-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.installation-wizard__install-desc {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.installation-wizard__install-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-xl);
+  background-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__install-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.installation-wizard__install-button:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.installation-wizard__install-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.installation-wizard__install-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  margin: 0;
+}
+
+.installation-wizard__install-hint code {
+  background-color: var(--color-bg-tertiary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.installation-wizard__error {
+  background-color: rgba(var(--color-accent-error-rgb), 0.1);
+  border: 1px solid var(--color-accent-error);
+  color: var(--color-accent-error);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  width: 100%;
+  text-align: left;
+}
+
+.installation-wizard__success {
+  background-color: rgba(var(--color-accent-success-rgb), 0.1);
+  border: 1px solid var(--color-accent-success);
+  color: var(--color-accent-success);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  width: 100%;
+  text-align: center;
+}
+
+.installation-wizard__spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Selection step */
+
+.installation-wizard__selection-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.installation-wizard__selection-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.installation-wizard__selection-desc {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.installation-wizard__existing-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  background-color: rgba(var(--color-accent-warning-rgb), 0.1);
+  border: 1px solid rgba(var(--color-accent-warning-rgb), 0.3);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.installation-wizard__existing-hint-icon {
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+/* Command cards */
+
+.installation-wizard__commands {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.installation-wizard__command-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__command-card:hover {
+  background-color: rgba(var(--color-accent-primary-rgb), 0.1);
+  border-color: var(--color-accent-secondary);
+}
+
+.installation-wizard__command-card:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.installation-wizard__command-card--recommended {
+  border-color: rgba(var(--color-accent-warning-rgb), 0.3);
+}
+
+.installation-wizard__command-card--recommended:hover {
+  border-color: var(--color-accent-warning);
+}
+
+.installation-wizard__command-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+}
+
+.installation-wizard__command-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.installation-wizard__command-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.installation-wizard__command-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.installation-wizard__command-badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent-warning);
+  background-color: rgba(var(--color-accent-warning-rgb), 0.15);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+/* Footer */
+
+.installation-wizard__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-top: 1px solid var(--color-border);
+}
+
+.installation-wizard__cancel-button {
+  padding: var(--spacing-xs) var(--spacing-lg);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__cancel-button:hover {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.installation-wizard__cancel-button:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.installation-wizard__skip-button {
+  padding: var(--spacing-xs) var(--spacing-lg);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__skip-button:hover {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.installation-wizard__skip-button:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+/* ================================================================
    Settings View
    ================================================================ */
 
@@ -10256,4 +10683,437 @@ aos-model-selector .model-option.selected .model-name {
   border-radius: var(--radius-lg);
   color: var(--color-accent-primary);
   font-size: var(--font-size-sm);
+}
+
+/* ============================================
+   Installation Wizard Modal (IW-002)
+   ============================================ */
+
+.installation-wizard__overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.installation-wizard {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  width: 90%;
+  max-width: 560px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Header */
+.installation-wizard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.installation-wizard__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.installation-wizard__close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xl);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__close:hover {
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+}
+
+.installation-wizard__close:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-primary);
+}
+
+/* Step Indicator */
+.installation-wizard__steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--spacing-sm);
+}
+
+.installation-wizard__step-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.installation-wizard__step-number {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__step-indicator--active .installation-wizard__step-number {
+  background-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.installation-wizard__step-indicator--completed .installation-wizard__step-number {
+  background-color: var(--color-accent-success);
+  color: var(--color-bg-primary);
+  border-color: var(--color-accent-success);
+}
+
+.installation-wizard__step-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.installation-wizard__step-indicator--active .installation-wizard__step-label {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.installation-wizard__step-indicator--completed .installation-wizard__step-label {
+  color: var(--color-accent-success);
+}
+
+.installation-wizard__step-divider {
+  width: 40px;
+  height: 2px;
+  background-color: var(--color-border);
+  transition: background-color var(--transition-fast);
+}
+
+.installation-wizard__step-divider--active {
+  background-color: var(--color-accent-success);
+}
+
+/* Content */
+.installation-wizard__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+/* Install Step */
+.installation-wizard__install-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-md);
+}
+
+.installation-wizard__install-icon {
+  color: var(--color-accent-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.installation-wizard__install-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.installation-wizard__install-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.installation-wizard__install-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-xl);
+  background-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-base);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__install-button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.installation-wizard__install-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-primary);
+}
+
+.installation-wizard__install-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.installation-wizard__install-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.installation-wizard__install-hint code {
+  font-family: var(--font-family-mono);
+  background-color: var(--color-bg-tertiary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.installation-wizard__error {
+  width: 100%;
+  padding: var(--spacing-md);
+  background-color: rgba(var(--color-accent-error-rgb), 0.1);
+  border: 1px solid var(--color-accent-error);
+  border-radius: var(--radius-md);
+  color: var(--color-accent-error);
+  font-size: var(--font-size-sm);
+}
+
+.installation-wizard__success {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-md);
+  background-color: rgba(var(--color-accent-success-rgb), 0.1);
+  border: 1px solid var(--color-accent-success);
+  border-radius: var(--radius-md);
+  color: var(--color-accent-success);
+  font-size: var(--font-size-sm);
+}
+
+.installation-wizard__spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: installation-wizard-spin 0.6s linear infinite;
+}
+
+@keyframes installation-wizard-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Selection Step */
+.installation-wizard__selection-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.installation-wizard__selection-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.installation-wizard__selection-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.installation-wizard__existing-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: rgba(var(--color-accent-warning-rgb, 234, 179, 8), 0.1);
+  border: 1px solid rgba(var(--color-accent-warning-rgb, 234, 179, 8), 0.3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.installation-wizard__existing-hint svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-accent-warning, #eab308);
+}
+
+.installation-wizard__existing-hint strong {
+  color: var(--color-text-primary);
+}
+
+/* Command Cards */
+.installation-wizard__commands {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.installation-wizard__command-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__command-card:hover {
+  background-color: var(--color-bg-elevated);
+  border-color: var(--color-accent-primary);
+}
+
+.installation-wizard__command-card:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-primary);
+}
+
+.installation-wizard__command-card--recommended {
+  border-color: rgba(var(--color-accent-success-rgb), 0.4);
+}
+
+.installation-wizard__command-card--recommended:hover {
+  border-color: var(--color-accent-success);
+}
+
+.installation-wizard__command-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  background-color: rgba(var(--color-accent-primary-rgb), 0.1);
+  border-radius: var(--radius-md);
+  color: var(--color-accent-primary);
+}
+
+.installation-wizard__command-card--recommended .installation-wizard__command-icon {
+  background-color: rgba(var(--color-accent-success-rgb), 0.1);
+  color: var(--color-accent-success);
+}
+
+.installation-wizard__command-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.installation-wizard__command-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.installation-wizard__command-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.installation-wizard__command-badge {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent-success);
+  background-color: rgba(var(--color-accent-success-rgb), 0.15);
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+/* Footer */
+.installation-wizard__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.installation-wizard__cancel-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__cancel-button:hover {
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+}
+
+.installation-wizard__cancel-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-primary);
+}
+
+.installation-wizard__skip-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.installation-wizard__skip-button:hover {
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+}
+
+.installation-wizard__skip-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-primary);
 }
