@@ -22,30 +22,21 @@ Specwright turns your AI coding assistant into a structured development partner:
 
 ## Quick Start
 
-### Framework Only (CLI)
-
-#### 1. Install globally (recommended, one-time)
-
-```bash
-curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-devteam-global.sh | bash
-```
-
-This installs templates and standards to `~/.specwright/` as fallback for all projects.
-
-#### 2. Install in your project
+### One-Command Installation
 
 ```bash
 cd your-project/
-curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup.sh | bash
+curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash
 ```
 
-#### 3. Install Claude Code commands
+The unified installer auto-detects your environment and installs everything needed:
+- Global templates & standards (`~/.specwright/`)
+- Project workflows, standards & configuration
+- Claude Code commands (34) & agents (13)
+- Market validation workflows
+- MCP server (if Node.js is available)
 
-```bash
-curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-claude-code.sh | bash
-```
-
-#### 4. Start building
+### Start building
 
 ```bash
 /plan-product              # Create product brief, tech stack, roadmap
@@ -54,16 +45,29 @@ curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup
 /execute-tasks             # Execute stories with self-review
 ```
 
-### Framework + Web UI
-
-Follow steps 1-3 above, then add the UI:
+### Installer Options
 
 ```bash
-# Install Claude Code commands with UI skills
-curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-claude-code.sh | bash -s -- --with-ui
+# Non-interactive (e.g. for CI or scripting)
+curl -sSL .../install.sh | bash -s -- --yes --all
 
-# Install UI dependencies (requires Node.js 20+)
-./setup-ui.sh
+# Preview what would be installed
+bash install.sh --dry-run
+
+# Install only specific components
+bash install.sh --global           # Only global templates & standards
+bash install.sh --project          # Only project-level setup
+bash install.sh --claude-code      # Only commands & agents
+
+# With Web UI (framework repo only, requires Node.js 20+)
+bash install.sh --with-ui
+```
+
+### Framework + Web UI
+
+```bash
+# Install everything including UI dependencies
+curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash -s -- --with-ui
 
 # Start the UI
 cd ui && npm run dev:backend    # Backend on http://localhost:3001
@@ -166,25 +170,19 @@ This allows global defaults with per-project customization.
 
 ## Optional: Market Validation
 
-Validate product ideas before building:
+Market validation is included in the unified installer. Just use the commands:
 
 ```bash
-# Global setup (one-time)
-curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-market-validation-global.sh | bash
-
-# Project setup
-curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-market-validation-project.sh | bash
-
-# Use
 /validate-market "Your product idea"
+/validate-market-for-existing       # For existing products
 ```
 
 ## Optional: Kanban MCP Server
 
-For atomic kanban operations (prevents JSON corruption):
+The MCP server is automatically installed by `install.sh` when Node.js is available. To skip it:
 
 ```bash
-bash setup-mcp.sh
+bash install.sh --no-mcp
 ```
 
 ## Requirements
@@ -196,14 +194,17 @@ bash setup-mcp.sh
 ## Update
 
 ```bash
-# Update everything
-curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/update-all.sh | bash
+# Update everything (overwrites workflows and standards)
+curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash -s -- --update
 
-# Update workflows only
-curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/update-instructions.sh | bash
+# Update only workflows
+bash install.sh --update --overwrite-workflows
 
-# Update standards only
-curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/update-standards.sh | bash
+# Update only standards
+bash install.sh --update --overwrite-standards
+
+# Overwrite all files (full reinstall)
+bash install.sh --overwrite
 ```
 
 ## Contributing
