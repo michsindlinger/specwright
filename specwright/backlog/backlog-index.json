@@ -81,6 +81,14 @@
       "from": "open",
       "to": "done",
       "details": "Completed in kanban-2026-02-17"
+    },
+    {
+      "timestamp": "2026-02-17T08:12:53.224Z",
+      "action": "status_changed",
+      "itemId": "TODO-003",
+      "from": "open",
+      "to": "done",
+      "details": "Completed in kanban-2026-02-17"
     }
   ]
 }

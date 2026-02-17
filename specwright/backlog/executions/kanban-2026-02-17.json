@@ -14,10 +14,10 @@
     "currentStoryPhase": null,
     "worktreePath": null,
     "gitBranch": null,
-    "lastAction": "Completed BUG-002",
+    "lastAction": "Completed TODO-003",
     "nextAction": "Execute next item",
-    "progressIndex": 2,
-    "totalItems": 2
+    "progressIndex": 3,
+    "totalItems": 3
   },
   "sourceBacklog": {
     "path": "../backlog-index.json",
@@ -62,21 +62,40 @@
         "ui/src/server/services/cloud-terminal-manager.ts",
         "ui/src/shared/types/cloud-terminal.protocol.ts"
       ]
+    },
+    {
+      "id": "TODO-003",
+      "title": "Shift+Enter im Cloud Terminal aktivieren",
+      "type": "todo",
+      "priority": "medium",
+      "effort": 1,
+      "category": "todo",
+      "sourceFile": "items/todo-003-shift-enter-im-cloud-terminal-aktivieren.md",
+      "executionStatus": "done",
+      "timing": {
+        "queuedAt": "2026-02-17T08:10:23.098Z",
+        "startedAt": "2026-02-17T08:11:29.300Z",
+        "completedAt": "2026-02-17T08:12:53.224Z"
+      },
+      "filesModified": [
+        "ui/frontend/src/components/aos-terminal.ts"
+      ]
     }
   ],
   "boardStatus": {
-    "total": 2,
+    "total": 3,
     "queued": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 2,
+    "done": 3,
     "blocked": 0,
     "skipped": 0
   },
   "executionOrder": [
     "BUG-001",
-    "BUG-002"
+    "BUG-002",
+    "TODO-003"
   ],
   "changeLog": [
     {
@@ -119,6 +138,28 @@
       "timestamp": "2026-02-17T06:33:15.751Z",
       "action": "status_changed",
       "itemId": "BUG-002",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Item completed"
+    },
+    {
+      "timestamp": "2026-02-17T08:10:23.098Z",
+      "action": "kanban_synced",
+      "itemId": null,
+      "details": "Synced 1 new items: TODO-003"
+    },
+    {
+      "timestamp": "2026-02-17T08:11:29.300Z",
+      "action": "status_changed",
+      "itemId": "TODO-003",
+      "from": "queued",
+      "to": "in_progress",
+      "details": "Started execution"
+    },
+    {
+      "timestamp": "2026-02-17T08:12:53.224Z",
+      "action": "status_changed",
+      "itemId": "TODO-003",
       "from": "in_progress",
       "to": "done",
       "details": "Item completed"
