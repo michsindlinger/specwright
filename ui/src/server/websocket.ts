@@ -25,6 +25,7 @@ import {
   removeProvider,
   addModel,
   removeModel,
+  updateModel,
   setDefaults,
   type ModelConfig,
   type Model,
@@ -311,6 +312,9 @@ export class WebSocketHandler {
           break;
         case 'settings.model.remove':
           this.handleSettingsModelRemove(client, message);
+          break;
+        case 'settings.model.update':
+          this.handleSettingsModelUpdate(client, message);
           break;
         case 'settings.defaults.update':
           this.handleSettingsDefaultsUpdate(client, message);
@@ -2849,6 +2853,39 @@ export class WebSocketHandler {
     }
   }
 
+  private handleSettingsModelUpdate(client: WebSocketClient, message: WebSocketMessage): void {
+    const providerId = message.providerId as string;
+    const oldModelId = message.oldModelId as string;
+    const model = message.model as Model;
+
+    if (!providerId || !oldModelId || !model || !model.id || !model.name) {
+      const errorResponse: WebSocketMessage = {
+        type: 'settings.error',
+        error: 'Provider ID, old model ID, and model with id/name are required',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    try {
+      const config = updateModel(providerId, oldModelId, model);
+      const response: WebSocketMessage = {
+        type: 'settings.config',
+        config,
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'settings.error',
+        error: error instanceof Error ? error.message : 'Failed to update model',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
   private handleSettingsDefaultsUpdate(client: WebSocketClient, message: WebSocketMessage): void {
     const providerId = message.providerId as string;
     const modelId = message.modelId as string;
@@ -4088,8 +4125,8 @@ export class WebSocketHandler {
       return;
     }
 
-    // Join buffer lines and send as response
-    const buffer = session.buffer.join('\n');
+    // Concatenate raw buffer chunks (no separator - preserves exact PTY output)
+    const buffer = session.buffer.join('');
 
     const response: WebSocketMessage = {
       type: 'cloud-terminal:buffer-response',

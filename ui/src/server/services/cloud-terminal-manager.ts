@@ -322,8 +322,8 @@ export class CloudTerminalManager extends EventEmitter {
     session.status = 'active';
     session.pausedAt = undefined;
 
-    // Get buffered output
-    const bufferedOutput = session.pausedBuffer.join('\n');
+    // Get buffered output (raw chunks, no separator - preserves exact PTY output)
+    const bufferedOutput = session.pausedBuffer.join('');
     session.pausedBuffer = []; // Clear paused buffer
 
     console.log(`[CloudTerminalManager] Resumed session ${sessionId}`);
@@ -508,33 +508,41 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
-   * Add data to session buffer with size limits
+   * Add data to session buffer with size limits.
+   * Stores raw PTY output chunks without splitting - this preserves
+   * ANSI escape sequences and cursor positioning commands intact.
+   * Splitting on '\n' and re-joining would insert spurious newlines
+   * at chunk boundaries, breaking TUI applications like Claude Code.
    */
   private addToBuffer(session: ManagedCloudSession, data: string): void {
-    const lines = data.split('\n');
-    session.buffer.push(...lines);
+    session.buffer.push(data);
 
-    // Enforce line limit
+    // Enforce chunk count limit
     if (session.buffer.length > CLOUD_TERMINAL_CONFIG.MAX_BUFFER_LINES) {
       const overflow = session.buffer.length - CLOUD_TERMINAL_CONFIG.MAX_BUFFER_LINES;
       session.buffer.splice(0, overflow);
       if (!session.bufferOverflowWarned) {
         console.warn(
-          `[CloudTerminalManager] Buffer limit reached for ${session.sessionId}, old lines trimmed`
+          `[CloudTerminalManager] Buffer limit reached for ${session.sessionId}, old chunks trimmed`
         );
         session.bufferOverflowWarned = true;
       }
     }
 
-    // Enforce size limit
-    const bufferSize = session.buffer.join('\n').length;
-    if (bufferSize > CLOUD_TERMINAL_CONFIG.MAX_BUFFER_SIZE) {
-      while (session.buffer.join('\n').length > CLOUD_TERMINAL_CONFIG.MAX_BUFFER_SIZE) {
+    // Enforce total size limit
+    let totalSize = 0;
+    for (const chunk of session.buffer) {
+      totalSize += chunk.length;
+    }
+    if (totalSize > CLOUD_TERMINAL_CONFIG.MAX_BUFFER_SIZE) {
+      while (session.buffer.length > 0) {
+        totalSize -= session.buffer[0].length;
         session.buffer.shift();
+        if (totalSize <= CLOUD_TERMINAL_CONFIG.MAX_BUFFER_SIZE) break;
       }
       if (!session.bufferOverflowWarned) {
         console.warn(
-          `[CloudTerminalManager] Buffer size limit reached for ${session.sessionId}, trimmed to ${session.buffer.length} lines`
+          `[CloudTerminalManager] Buffer size limit reached for ${session.sessionId}, trimmed to ${session.buffer.length} chunks`
         );
         session.bufferOverflowWarned = true;
       }
@@ -542,25 +550,30 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
-   * Add data to paused buffer with size limits
+   * Add data to paused buffer with size limits.
+   * Stores raw PTY output chunks without splitting (see addToBuffer).
    */
   private addToPausedBuffer(session: ManagedCloudSession, data: string): void {
-    const lines = data.split('\n');
-    session.pausedBuffer.push(...lines);
+    session.pausedBuffer.push(data);
 
-    // Enforce line limit for paused buffer (smaller limit)
-    const maxPausedLines = Math.floor(CLOUD_TERMINAL_CONFIG.MAX_BUFFER_LINES / 2);
-    if (session.pausedBuffer.length > maxPausedLines) {
-      const overflow = session.pausedBuffer.length - maxPausedLines;
+    // Enforce chunk count limit for paused buffer (smaller limit)
+    const maxPausedChunks = Math.floor(CLOUD_TERMINAL_CONFIG.MAX_BUFFER_LINES / 2);
+    if (session.pausedBuffer.length > maxPausedChunks) {
+      const overflow = session.pausedBuffer.length - maxPausedChunks;
       session.pausedBuffer.splice(0, overflow);
     }
 
     // Enforce size limit for paused buffer
     const maxPausedSize = Math.floor(CLOUD_TERMINAL_CONFIG.MAX_BUFFER_SIZE / 2);
-    const bufferSize = session.pausedBuffer.join('\n').length;
-    if (bufferSize > maxPausedSize) {
-      while (session.pausedBuffer.join('\n').length > maxPausedSize) {
+    let totalSize = 0;
+    for (const chunk of session.pausedBuffer) {
+      totalSize += chunk.length;
+    }
+    if (totalSize > maxPausedSize) {
+      while (session.pausedBuffer.length > 0) {
+        totalSize -= session.pausedBuffer[0].length;
         session.pausedBuffer.shift();
+        if (totalSize <= maxPausedSize) break;
       }
     }
   }

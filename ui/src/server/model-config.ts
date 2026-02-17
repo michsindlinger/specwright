@@ -259,6 +259,58 @@ export function removeModel(providerId: string, modelId: string): ModelConfig {
   return updatedConfig;
 }
 
+export function updateModel(providerId: string, oldModelId: string, model: Model): ModelConfig {
+  const config = loadModelConfig();
+  const providerIndex = config.providers.findIndex(p => p.id === providerId);
+
+  if (providerIndex === -1) {
+    throw new Error(`Provider not found: ${providerId}`);
+  }
+
+  const provider = config.providers[providerIndex];
+  const modelIndex = provider.models.findIndex(m => m.id === oldModelId);
+
+  if (modelIndex === -1) {
+    throw new Error(`Model not found: ${oldModelId}`);
+  }
+
+  // If ID changed, check new ID doesn't conflict with another model
+  if (model.id !== oldModelId) {
+    const conflict = provider.models.find(m => m.id === model.id);
+    if (conflict) {
+      throw new Error(`Model already exists: ${model.id}`);
+    }
+  }
+
+  const updatedModels = [...provider.models];
+  updatedModels[modelIndex] = model;
+
+  const updatedProvider = {
+    ...provider,
+    models: updatedModels
+  };
+
+  let updatedConfig: ModelConfig = {
+    ...config,
+    providers: [
+      ...config.providers.slice(0, providerIndex),
+      updatedProvider,
+      ...config.providers.slice(providerIndex + 1)
+    ]
+  };
+
+  // If the old model was the default, update to new model ID
+  if (config.defaultProvider === providerId && config.defaultModel === oldModelId) {
+    updatedConfig = {
+      ...updatedConfig,
+      defaultModel: model.id
+    };
+  }
+
+  saveModelConfig(updatedConfig);
+  return updatedConfig;
+}
+
 export function addProvider(provider: ModelProvider): ModelConfig {
   const config = loadModelConfig();
 

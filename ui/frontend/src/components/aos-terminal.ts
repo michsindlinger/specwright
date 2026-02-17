@@ -116,6 +116,8 @@ export class AosTerminal extends LitElement {
   private terminalExitHandler: MessageHandler | null = null;
   private terminalBufferResponseHandler: MessageHandler | null = null;
   private boundThemeChangeHandler = (theme: ResolvedTheme) => this.onThemeChanged(theme);
+  /** Guard to prevent multiple concurrent refreshTerminal() calls */
+  private _refreshInProgress = false;
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -147,18 +149,28 @@ export class AosTerminal extends LitElement {
 
   /**
    * Refresh terminal rendering after becoming visible again.
-   * Uses double-rAF to ensure layout reflow is complete after
-   * display:none → display:block transitions, then refits dimensions
-   * and requests the full buffer from the server for a clean re-render.
+   *
+   * IMPORTANT: This method only calls fitAddon.fit() to recalculate
+   * dimensions and trigger a re-render. It does NOT reset the terminal
+   * or request a buffer replay from the server. The terminal's internal
+   * buffer is still intact after display:none → display:block transitions -
+   * xterm.js just needs to re-render the canvas at the correct size.
+   *
+   * Buffer replay (reset + re-fetch from server) should only be used for
+   * actual reconnection scenarios (WebSocket disconnect/reconnect), not
+   * for simple visibility toggles.
    */
   public refreshTerminal(): void {
     if (!this.fitAddon || !this.terminal) return;
+    if (this._refreshInProgress) return;
+    this._refreshInProgress = true;
 
     // Double requestAnimationFrame: first rAF schedules after current frame,
     // second rAF runs after the browser has completed layout reflow.
     // A single rAF is not enough after visibility changes (display:none → block).
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        this._refreshInProgress = false;
         if (!this.fitAddon || !this.terminal || !this.terminalContainer) return;
 
         // Skip if container still has zero dimensions (not yet visible)
@@ -166,19 +178,26 @@ export class AosTerminal extends LitElement {
           return;
         }
 
+        // Just refit - xterm.js re-renders its internal buffer at the new size.
+        // Do NOT call reset() or request buffer replay here, as that destroys
+        // the correct internal state and replaces it with a server-side buffer
+        // that may contain absolute cursor positioning escape sequences.
         this.fitAddon.fit();
 
-        // Request full buffer from server for a clean re-render.
-        // The buffer-response handler does clear() + write(buffer).
+        // Send resize to backend PTY so new output is correctly formatted.
         if (this.terminalSessionId) {
+          const cols = this.terminal.cols;
+          const rows = this.terminal.rows;
           if (this.cloudMode) {
             gateway.send({
-              type: 'cloud-terminal:buffer-request',
+              type: 'cloud-terminal:resize',
               sessionId: this.terminalSessionId,
+              cols,
+              rows,
               timestamp: new Date().toISOString(),
             });
           } else {
-            gateway.requestTerminalBuffer(this.terminalSessionId);
+            gateway.sendTerminalResize(this.terminalSessionId, cols, rows);
           }
         }
       });
@@ -322,12 +341,15 @@ export class AosTerminal extends LitElement {
     };
     gateway.on('cloud-terminal:closed', this.terminalExitHandler);
 
-    // Handle buffer response for reconnection
+    // Handle buffer response for reconnection / refresh.
+    // Uses reset() to fully clear terminal state (cursor position, scrollback,
+    // attributes) before writing the buffer. clear() only removes scrollback
+    // and leaves the cursor where it was, causing content to accumulate/shift.
     this.terminalBufferResponseHandler = (message) => {
       if (message.sessionId === this.terminalSessionId && this.terminal) {
         const buffer = message.buffer as string;
         if (buffer && buffer.length > 0) {
-          this.terminal.clear();
+          this.terminal.reset();
           this.terminal.write(buffer);
         }
       }
@@ -406,7 +428,7 @@ export class AosTerminal extends LitElement {
       if (message.executionId === this.terminalSessionId && this.terminal) {
         const buffer = message.buffer as string[];
         if (buffer && buffer.length > 0) {
-          this.terminal.clear();
+          this.terminal.reset();
           this.terminal.write(buffer.join('\n'));
         }
       }
@@ -533,6 +555,11 @@ export class AosTerminal extends LitElement {
         .aos-terminal-inner {
           flex: 1;
           overflow: hidden;
+        }
+        /* Fix: xterm.js caches explicit viewport width after visibility changes.
+           Resetting to initial forces recalculation on each reflow. */
+        .xterm .xterm-viewport {
+          width: initial !important;
         }
       </style>
       <div class="aos-terminal-outer ${this.cloudMode ? 'cloud-mode' : ''}">

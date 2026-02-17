@@ -273,7 +273,8 @@ export class AosCloudTerminalSidebar extends LitElement {
       }
 
       .session-panel.active {
-        display: block;
+        display: flex;
+        flex-direction: column;
       }
 
       .session-indicator {
@@ -447,9 +448,9 @@ export class AosCloudTerminalSidebar extends LitElement {
 
     const sidebarStyles = {
       '--sidebar-width': `${this.sidebarWidth}px`,
-      right: this.isOpen ? '0' : `-${this.sidebarWidth}px`,
     };
 
+    // Resizer is positioned relative to the sidebar's left edge via calc()
     const resizerStyles = {
       right: this.isOpen ? `${this.sidebarWidth - 3}px` : '-10px',
     };
@@ -845,13 +846,32 @@ export class AosCloudTerminalSidebar extends LitElement {
     document.addEventListener('mouseup', handleMouseUp);
   }
 
+  /** Prevent double-firing of refresh from transitionend + fallback */
+  private _refreshScheduled = false;
+
   override updated(changed: PropertyValues): void {
-    // Refresh terminal rendering after sidebar opens (wait for CSS transition)
+    // Refresh terminal rendering after sidebar opens (wait for CSS transition to finish)
     if (changed.has('isOpen') && this.isOpen) {
-      setTimeout(() => {
-        const activeSession = this.querySelector('.session-panel.active') as AosTerminalSession | null;
-        activeSession?.refreshTerminal();
-      }, 320); // slightly after the 0.3s CSS transition
+      this._refreshScheduled = false;
+      const sidebar = this.querySelector('.terminal-sidebar') as HTMLElement | null;
+      if (sidebar) {
+        const doRefresh = () => {
+          if (this._refreshScheduled) return;
+          this._refreshScheduled = true;
+          sidebar.removeEventListener('transitionend', handler);
+          const activeSession = this.querySelector('.session-panel.active') as AosTerminalSession | null;
+          activeSession?.refreshTerminal();
+        };
+
+        const handler = (e: TransitionEvent) => {
+          if (e.propertyName !== 'transform') return;
+          doRefresh();
+        };
+        sidebar.addEventListener('transitionend', handler);
+
+        // Safety fallback in case transitionend doesn't fire (e.g., no transition active)
+        setTimeout(() => doRefresh(), 400);
+      }
     }
   }
 

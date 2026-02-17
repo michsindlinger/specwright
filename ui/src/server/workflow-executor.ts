@@ -371,20 +371,57 @@ export class WorkflowExecutor {
     // Generate branch name from story ID (format: feature/story-slug)
     const branchName = `feature/${storyId.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
 
+    // BPS-004: Pre-Flight Check - hard abort if git state is broken
     try {
-      // 1. Check if working directory is clean
-      const isClean = await gitService.isWorkingDirectoryClean(projectPath);
-      if (!isClean) {
-        console.log(`[Workflow] Working directory not clean, stashing changes...`);
-        // Stash any uncommitted changes (using execSync for stash since gitService doesn't have it)
-        execSync('git stash', { cwd: projectPath, stdio: 'pipe' });
+      console.log(`[Workflow] BPS-004: Running pre-flight check...`);
+      const preFlightResult = await gitService.preFlightCheck(projectPath);
+
+      if (!preFlightResult.ok) {
+        const errorMsg = `Pre-flight check failed: ${preFlightResult.reason}`;
+        console.error(`[Workflow] BPS-004: ${errorMsg}`);
+
+        this.sendToClient(client, {
+          type: 'backlog.story.git.warning',
+          storyId,
+          warning: `Pre-Flight fehlgeschlagen: ${preFlightResult.reason}`,
+          canContinue: false,
+          timestamp: new Date().toISOString()
+        }, projectPath);
+
+        throw new Error(errorMsg);
       }
 
-      // 2. Ensure we're on main branch before creating feature branch
+      console.log(`[Workflow] BPS-004: Pre-flight check passed`);
+    } catch (preFlightError) {
+      // If pre-flight itself throws (not just returns ok=false), also abort
+      const errorMsg = preFlightError instanceof Error ? preFlightError.message : String(preFlightError);
+      if (!errorMsg.startsWith('Pre-flight check failed:')) {
+        console.error(`[Workflow] BPS-004: Pre-flight error:`, errorMsg);
+        this.sendToClient(client, {
+          type: 'backlog.story.git.warning',
+          storyId,
+          warning: `Pre-Flight Fehler: ${errorMsg}`,
+          canContinue: false,
+          timestamp: new Date().toISOString()
+        }, projectPath);
+      }
+      throw preFlightError;
+    }
+
+    try {
+      // 1. Ensure we're on main branch before creating feature branch
       await gitService.checkoutMain(projectPath);
       console.log(`[Workflow] Checked out main branch`);
 
-      // 2b. Mark story as "in_progress" on main before branching
+      // 2. Pull latest main to ensure we branch from current state
+      try {
+        await gitService.pull(projectPath);
+        console.log(`[Workflow] Pulled latest main`);
+      } catch (pullError) {
+        console.warn(`[Workflow] Pull failed (continuing with local main):`, pullError instanceof Error ? pullError.message : pullError);
+      }
+
+      // 3. Mark story as "in_progress" on main before branching
       try {
         await this.updateBacklogIndexOnMain(projectPath, storyId, 'in_progress');
         console.log(`[Workflow] Marked story ${storyId} as in_progress on main`);
@@ -392,7 +429,7 @@ export class WorkflowExecutor {
         console.warn(`[Workflow] Failed to mark story as in_progress (non-critical):`, statusError instanceof Error ? statusError.message : statusError);
       }
 
-      // 3. Create feature branch from main
+      // 4. Create feature branch from main
       const branchResult = await gitService.createBranch(projectPath, branchName, 'main');
       console.log(`[Workflow] Branch created/checked out: ${branchName} (created: ${branchResult.created})`);
     } catch (error) {

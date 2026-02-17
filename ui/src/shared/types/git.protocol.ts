@@ -162,6 +162,18 @@ export interface GitCreatePullRequestResult {
   warning?: string;
 }
 
+/**
+ * BPS-004: Pre-flight check result for backlog story execution.
+ */
+export interface GitPreFlightResult {
+  /** Whether the repository is ready for execution */
+  ok: boolean;
+  /** Human-readable reason if not ok */
+  reason?: string;
+  /** Machine-readable issue type for programmatic handling */
+  issue?: 'merge_conflict' | 'merge_in_progress' | 'rebase_in_progress' | 'cherry_pick_in_progress' | 'dirty_working_directory';
+}
+
 // ============================================================================
 // Message Types
 // ============================================================================

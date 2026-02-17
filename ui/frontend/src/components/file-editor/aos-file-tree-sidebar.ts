@@ -149,7 +149,8 @@ export class AosFileTreeSidebar extends LitElement {
 
       .file-tree-sidebar-content {
         flex: 1;
-        overflow: hidden;
+        min-height: 0;
+        overflow-y: auto;
         display: flex;
         flex-direction: column;
       }

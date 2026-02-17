@@ -23,6 +23,7 @@ import type {
   GitCreateBranchResult,
   GitPushBranchResult,
   GitCreatePullRequestResult,
+  GitPreFlightResult,
 } from '../../shared/types/git.protocol.js';
 import { GIT_CONFIG, GIT_ERROR_CODES } from '../../shared/types/git.protocol.js';
 
@@ -534,6 +535,159 @@ export class GitService {
   // ============================================================================
   // Branch-per-Story Methods (BPS-001)
   // ============================================================================
+
+  /**
+   * BPS-004: Pre-flight check before backlog story execution.
+   * Detects merge-in-progress, rebase-in-progress, unresolved conflicts,
+   * and dirty index state. Attempts auto-recovery (merge --abort, stash)
+   * before giving up with a hard error.
+   *
+   * @returns Object with ok=true if ready, or ok=false with reason
+   */
+  async preFlightCheck(projectPath: string): Promise<GitPreFlightResult> {
+    await this.ensureGitRepo(projectPath, 'preFlightCheck');
+
+    // 1. Check for merge in progress
+    const mergeInProgress = await this.isMergeInProgress(projectPath);
+    if (mergeInProgress) {
+      // Check if there are unresolved conflicts
+      const hasConflicts = await this.hasUnresolvedConflicts(projectPath);
+      if (hasConflicts) {
+        // Try to abort the merge
+        try {
+          // First reset any modified tracked files so merge --abort can work
+          await this.execGit(['checkout', '--', '.'], projectPath).catch(() => {});
+          await this.execGit(['merge', '--abort'], projectPath);
+          console.log('[GitService] Pre-flight: Aborted stale merge with conflicts');
+        } catch {
+          return {
+            ok: false,
+            reason: 'Laufender Merge mit ungelösten Konflikten konnte nicht abgebrochen werden. Bitte manuell auflösen: git merge --abort',
+            issue: 'merge_conflict',
+          };
+        }
+      } else {
+        // Merge in progress but no conflicts - try to abort cleanly
+        try {
+          await this.execGit(['merge', '--abort'], projectPath);
+          console.log('[GitService] Pre-flight: Aborted merge (no conflicts)');
+        } catch {
+          return {
+            ok: false,
+            reason: 'Laufender Merge konnte nicht abgebrochen werden. Bitte manuell auflösen.',
+            issue: 'merge_in_progress',
+          };
+        }
+      }
+    }
+
+    // 2. Check for rebase in progress
+    const rebaseInProgress = await this.isRebaseInProgress(projectPath);
+    if (rebaseInProgress) {
+      try {
+        await this.execGit(['rebase', '--abort'], projectPath);
+        console.log('[GitService] Pre-flight: Aborted stale rebase');
+      } catch {
+        return {
+          ok: false,
+          reason: 'Laufender Rebase konnte nicht abgebrochen werden. Bitte manuell auflösen: git rebase --abort',
+          issue: 'rebase_in_progress',
+        };
+      }
+    }
+
+    // 3. Check for cherry-pick in progress
+    const cherryPickInProgress = await this.isCherryPickInProgress(projectPath);
+    if (cherryPickInProgress) {
+      try {
+        await this.execGit(['cherry-pick', '--abort'], projectPath);
+        console.log('[GitService] Pre-flight: Aborted stale cherry-pick');
+      } catch {
+        return {
+          ok: false,
+          reason: 'Laufender Cherry-Pick konnte nicht abgebrochen werden. Bitte manuell auflösen.',
+          issue: 'cherry_pick_in_progress',
+        };
+      }
+    }
+
+    // 4. Stash uncommitted changes if working directory is dirty
+    const isClean = await this.isWorkingDirectoryClean(projectPath);
+    if (!isClean) {
+      try {
+        await this.execGit(['stash', '--include-untracked', '-m', 'specwright-pre-flight-auto-stash'], projectPath);
+        console.log('[GitService] Pre-flight: Stashed uncommitted changes');
+      } catch (stashError) {
+        // Stash can fail if there are still conflicts after cleanup attempts
+        return {
+          ok: false,
+          reason: `Working Directory nicht sauber und Stash fehlgeschlagen: ${stashError instanceof Error ? stashError.message : String(stashError)}`,
+          issue: 'dirty_working_directory',
+        };
+      }
+    }
+
+    // 5. Final verification - everything should be clean now
+    const finalClean = await this.isWorkingDirectoryClean(projectPath);
+    if (!finalClean) {
+      return {
+        ok: false,
+        reason: 'Working Directory nach Cleanup immer noch nicht sauber. Bitte manuell prüfen.',
+        issue: 'dirty_working_directory',
+      };
+    }
+
+    return { ok: true };
+  }
+
+  /**
+   * Check if a merge is in progress (MERGE_HEAD exists)
+   */
+  private async isMergeInProgress(projectPath: string): Promise<boolean> {
+    try {
+      await this.execGit(['rev-parse', '--verify', 'MERGE_HEAD'], projectPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if a rebase is in progress
+   */
+  private async isRebaseInProgress(projectPath: string): Promise<boolean> {
+    try {
+      // git rebase --show-current-patch fails if no rebase in progress
+      const { stdout } = await this.execGit(['status'], projectPath);
+      return stdout.includes('rebase in progress') || stdout.includes('interactive rebase in progress');
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if a cherry-pick is in progress (CHERRY_PICK_HEAD exists)
+   */
+  private async isCherryPickInProgress(projectPath: string): Promise<boolean> {
+    try {
+      await this.execGit(['rev-parse', '--verify', 'CHERRY_PICK_HEAD'], projectPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if there are unresolved merge conflicts
+   */
+  private async hasUnresolvedConflicts(projectPath: string): Promise<boolean> {
+    try {
+      const { stdout } = await this.execGit(['diff', '--name-only', '--diff-filter=U'], projectPath);
+      return stdout.trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * Check if the working directory is clean (no uncommitted changes)

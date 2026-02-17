@@ -13,18 +13,18 @@
       ],
       "models": [
         {
+          "id": "haiku",
+          "name": "Haiku 4.6"
+        },
+        {
           "id": "opus",
-          "name": "Opus 4.5",
-          "description": "Most capable model for complex tasks"
+          "name": "Opus 4.6",
+          "description": "Most capable model"
         },
         {
           "id": "sonnet",
-          "name": "Sonnet 4",
+          "name": "Sonnet 4.6",
           "description": "Balanced performance and speed"
-        },
-        {
-          "id": "haiku",
-          "name": "Haiku 4.5"
         }
       ]
     },

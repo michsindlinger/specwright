@@ -293,6 +293,7 @@ export class AosDocsPanel extends LitElement {
                   .filename=${this.selectedDoc || ''}
                   .loading=${this.loadingDoc}
                   .error=${this.docError}
+                  .editable=${true}
                   @edit-requested=${this.handleEditRequested}
                   @retry-requested=${this.handleRetryRequested}
                 ></aos-docs-viewer>

@@ -1,4 +1,4 @@
-import { existsSync, statSync, readdirSync } from 'fs';
+import { existsSync, statSync, readdirSync, readFileSync } from 'fs';
 import { basename, resolve, normalize, join } from 'path';
 import { resolveProjectDir, resolveCommandDir } from './utils/project-dirs.js';
 import { checkDefaultCliAvailability } from './model-config.js';
@@ -24,6 +24,7 @@ export interface ValidateResult {
   needsMigration?: boolean;
   hasIncompleteInstallation?: boolean;
   hasClaudeCli?: boolean;
+  hasMcpKanban?: boolean;
   fileCount?: number;
 }
 
@@ -147,6 +148,9 @@ export class ProjectContextService {
     // Check if the default CLI command is available in PATH
     const { available: hasClaudeCli } = checkDefaultCliAvailability();
 
+    // Check if .mcp.json exists and contains kanban MCP server
+    const hasMcpKanban = this.detectMcpKanban(normalizedPath);
+
     return {
       valid: true,
       name: basename(normalizedPath),
@@ -155,6 +159,7 @@ export class ProjectContextService {
       needsMigration,
       hasIncompleteInstallation,
       hasClaudeCli,
+      hasMcpKanban,
       fileCount
     };
   }
@@ -233,6 +238,31 @@ export class ProjectContextService {
     } catch {
       return 0;
     }
+  }
+
+  /**
+   * BPS-004: Detects whether .mcp.json contains a kanban MCP server.
+   * Checks the project root and its parent directory (monorepo layout).
+   */
+  private detectMcpKanban(projectPath: string): boolean {
+    const candidates = [
+      resolve(projectPath, '.mcp.json'),
+      resolve(projectPath, '..', '.mcp.json'),
+    ];
+
+    for (const mcpPath of candidates) {
+      try {
+        if (!existsSync(mcpPath)) continue;
+        const content = readFileSync(mcpPath, 'utf-8');
+        const config = JSON.parse(content);
+        const servers = config?.mcpServers ?? {};
+        if (servers['kanban']) return true;
+      } catch {
+        // Malformed JSON or read error - skip this candidate
+      }
+    }
+
+    return false;
   }
 
   /**

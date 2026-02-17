@@ -146,6 +146,9 @@ export class AosApp extends LitElement {
   @state()
   private projectHasClaudeCli = true;
 
+  @state()
+  private projectHasMcpKanban = true;
+
   /** True while project validation is pending (prevents flash of wrong state) */
   @state()
   private projectValidationPending = true;
@@ -927,21 +930,24 @@ export class AosApp extends LitElement {
           needsMigration?: boolean;
           hasIncompleteInstallation?: boolean;
           hasClaudeCli?: boolean;
+          hasMcpKanban?: boolean;
         };
         const hasSpecwright = data.hasSpecwright ?? false;
         const hasProductBrief = data.hasProductBrief ?? false;
         const needsMigration = data.needsMigration ?? false;
         const hasIncompleteInstallation = data.hasIncompleteInstallation ?? false;
         const hasClaudeCli = data.hasClaudeCli ?? true;
+        const hasMcpKanban = data.hasMcpKanban ?? true;
 
         this.projectHasSpecwright = hasSpecwright;
         this.projectHasProductBrief = hasProductBrief;
         this.projectNeedsMigration = needsMigration;
         this.projectHasIncompleteInstallation = hasIncompleteInstallation;
         this.projectHasClaudeCli = hasClaudeCli;
+        this.projectHasMcpKanban = hasMcpKanban;
 
-        // Navigate to getting-started if specwright is not installed, incomplete, needs migration, CLI missing, OR product brief is missing
-        if (!hasSpecwright || hasIncompleteInstallation || !hasProductBrief || needsMigration || !hasClaudeCli) {
+        // Navigate to getting-started if specwright is not installed, incomplete, needs migration, CLI missing, MCP kanban missing, OR product brief is missing
+        if (!hasSpecwright || hasIncompleteInstallation || !hasProductBrief || needsMigration || !hasClaudeCli || !hasMcpKanban) {
           routerService.navigate('getting-started');
         }
       }
@@ -1258,12 +1264,14 @@ export class AosApp extends LitElement {
           needsMigration?: boolean;
           hasIncompleteInstallation?: boolean;
           hasClaudeCli?: boolean;
+          hasMcpKanban?: boolean;
         };
         this.projectHasSpecwright = data.hasSpecwright ?? false;
         this.projectHasProductBrief = data.hasProductBrief ?? false;
         this.projectNeedsMigration = data.needsMigration ?? false;
         this.projectHasIncompleteInstallation = data.hasIncompleteInstallation ?? false;
         this.projectHasClaudeCli = data.hasClaudeCli ?? true;
+        this.projectHasMcpKanban = data.hasMcpKanban ?? true;
       }
     } catch {
       // Validation failed, keep defaults
@@ -1661,6 +1669,7 @@ export class AosApp extends LitElement {
           .needsMigration=${this.projectNeedsMigration}
           .hasIncompleteInstallation=${this.projectHasIncompleteInstallation}
           .hasClaudeCli=${this.projectHasClaudeCli}
+          .hasMcpKanban=${this.projectHasMcpKanban}
           .loading=${this.projectValidationPending}
           @workflow-start-interactive=${this.handleWorkflowStart}
           @start-setup-terminal=${this._handleStartSetupTerminal}

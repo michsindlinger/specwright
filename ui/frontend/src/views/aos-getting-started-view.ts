@@ -15,6 +15,7 @@ export class AosGettingStartedView extends LitElement {
   @property({ type: Boolean }) needsMigration = false;
   @property({ type: Boolean }) hasIncompleteInstallation = false;
   @property({ type: Boolean }) hasClaudeCli = true;
+  @property({ type: Boolean }) hasMcpKanban = true;
   @property({ type: Boolean }) loading = false;
 
   private get standardCards(): ActionCard[] {
@@ -109,9 +110,11 @@ export class AosGettingStartedView extends LitElement {
                   ? 'Dieses Projekt verwendet noch die alte Agent OS Struktur. Eine Migration wird empfohlen.'
                   : !this.hasClaudeCli
                     ? 'Claude Code CLI wird benoetigt, um Workflows ausfuehren zu koennen.'
-                    : this.hasProductBrief
-                      ? 'Waehle eine Aktion um mit der Entwicklung zu beginnen.'
-                      : 'Dein Projekt hat noch keinen Product/Platform Brief. Starte mit der Planung.'}
+                    : !this.hasMcpKanban
+                      ? 'Der Kanban MCP Server fehlt. Workflows koennen ohne ihn nicht korrekt ausgefuehrt werden.'
+                      : this.hasProductBrief
+                        ? 'Waehle eine Aktion um mit der Entwicklung zu beginnen.'
+                        : 'Dein Projekt hat noch keinen Product/Platform Brief. Starte mit der Planung.'}
           </p>
         </div>
 
@@ -123,9 +126,11 @@ export class AosGettingStartedView extends LitElement {
               ? this.renderMigrationHint()
               : !this.hasClaudeCli
                 ? this.renderCliNotInstalledState()
-                : this.hasProductBrief
-                  ? this.renderStandardCards()
-                  : this.renderPlanningCards()}
+                : !this.hasMcpKanban
+                  ? this.renderMcpKanbanMissingState()
+                  : this.hasProductBrief
+                    ? this.renderStandardCards()
+                    : this.renderPlanningCards()}
       </div>
     `;
   }
@@ -226,6 +231,33 @@ export class AosGettingStartedView extends LitElement {
             Weitere Informationen findest du in der
             <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener noreferrer">Anthropic Dokumentation</a>.
           </p>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderMcpKanbanMissingState() {
+    return html`
+      <div class="getting-started-hint getting-started-hint--warning">
+        <div class="getting-started-hint__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        </div>
+        <div class="getting-started-hint__content">
+          <p class="getting-started-hint__title">Kanban MCP Server nicht konfiguriert</p>
+          <p class="getting-started-hint__description">
+            Die Datei <code>.mcp.json</code> fehlt oder enthaelt keinen <code>kanban</code> MCP Server.
+            Dieser wird benoetigt, damit Workflows den Kanban-Status korrekt verwalten koennen.
+          </p>
+          <p class="getting-started-hint__description">
+            Fuehre das MCP Setup-Script aus:
+          </p>
+          <pre class="getting-started-hint__code">bash &lt;(curl -sL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-mcp.sh)</pre>
+          <p class="getting-started-hint__description">
+            Nach der Installation lade die Seite neu.
+          </p>
+          <button class="getting-started-hint__action" @click=${() => this.handleStartSetup('install')}>
+            MCP Setup starten
+          </button>
         </div>
       </div>
     `;

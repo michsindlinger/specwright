@@ -32,6 +32,7 @@ interface ValidateResponse {
   needsMigration?: boolean;
   hasIncompleteInstallation?: boolean;
   hasClaudeCli?: boolean;
+  hasMcpKanban?: boolean;
   fileCount?: number;
 }
 
@@ -132,6 +133,7 @@ router.post('/validate', (req: Request, res: Response) => {
     needsMigration: result.needsMigration,
     hasIncompleteInstallation: result.hasIncompleteInstallation,
     hasClaudeCli: result.hasClaudeCli,
+    hasMcpKanban: result.hasMcpKanban,
     fileCount: result.fileCount
   } as ValidateResponse);
 });

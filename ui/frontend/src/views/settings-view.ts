@@ -228,25 +228,17 @@ export class AosSettingsView extends LitElement {
         }
       });
     } else {
-      // For editing existing models, we need to remove and re-add
-      // since there's no update endpoint
+      // Update existing model
       gateway.send({
-        type: 'settings.model.remove',
+        type: 'settings.model.update',
         providerId: this.editingModel.providerId,
-        modelId: this.editingModel.modelId
+        oldModelId: this.editingModel.modelId,
+        model: {
+          id: this.editingModel.id,
+          name: this.editingModel.name,
+          description: this.editingModel.description || undefined
+        }
       });
-      // After removal, add the updated model
-      setTimeout(() => {
-        gateway.send({
-          type: 'settings.model.add',
-          providerId: this.editingModel!.providerId,
-          model: {
-            id: this.editingModel!.id,
-            name: this.editingModel!.name,
-            description: this.editingModel!.description || undefined
-          }
-        });
-      }, 100);
     }
   }
 
