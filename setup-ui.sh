@@ -1,4 +1,11 @@
 #!/bin/bash
+
+# =============================================================================
+# NOTE: Consider using the unified installer instead:
+#   curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash -s -- --with-ui
+# This script remains available as standalone fallback for power users.
+# =============================================================================
+
 # Specwright UI Setup - Install Web UI dependencies
 # Usage: ./setup-ui.sh
 set -e

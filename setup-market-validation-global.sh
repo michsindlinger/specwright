@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# =============================================================================
+# NOTE: Consider using the unified installer instead:
+#   curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash
+# This script remains available as standalone fallback for power users.
+# =============================================================================
+
 # Market Validation System - Global Installation
 # Installs to ~/.specwright/ and ~/.claude/ for use across all projects
 # Version: 3.0

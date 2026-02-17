@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# =============================================================================
+# NOTE: Consider using the unified installer instead:
+#   curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash
+# This script remains available as standalone fallback for power users.
+# =============================================================================
+
 # Specwright - Claude Code Setup
 # Installs Claude Code specific commands and agents
 # Version: 3.0 - Open Source Core

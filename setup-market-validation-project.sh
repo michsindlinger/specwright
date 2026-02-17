@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# =============================================================================
+# NOTE: Consider using the unified installer instead:
+#   curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash
+# This script remains available as standalone fallback for power users.
+# =============================================================================
+
 # Market Validation System - Project Setup
 # Creates project-specific directories for validation results
 # Version: 3.0
