@@ -1894,6 +1894,7 @@ export class WebSocketHandler {
     const gitStrategy = (message.gitStrategy as 'branch' | 'worktree' | 'current-branch') || 'branch';
     // MSK-003-FIX: Prefer model from message (sent by frontend before updateStatus races)
     const modelFromMessage = message.model as string | undefined;
+    const autoMode = message.autoMode === true;
 
     if (!specId || !storyId) {
       const errorResponse: WebSocketMessage = {
@@ -1934,17 +1935,30 @@ export class WebSocketHandler {
         'in_progress'
       );
 
-      // WTT-003: Do NOT start workflowExecutor here - the frontend now creates
-      // terminal tabs via workflow-terminal-request event which handles execution.
-      // This WebSocket message is only for kanban status tracking.
+      // Start the workflow executor in the backend (background execution)
+      const executionId = await this.workflowExecutor.startStoryExecution(
+        client,
+        specId,
+        storyId,
+        projectPath,
+        gitStrategy,
+        model,
+        autoMode
+      );
+
+      // MPRO-005: Mark workflow active in WebSocketManager and broadcast to project
+      webSocketManager.markWorkflowActive(projectPath);
+      this.broadcastRunningCount();
+      this.broadcastRunningCountToProject(projectPath);
 
       const response: WebSocketMessage = {
         type: 'workflow.story.start.ack',
+        executionId,
         specId,
         storyId,
         gitStrategy,
         projectId: projectPath,
-        model,  // Add model to response (MSK-003)
+        model,
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(response));

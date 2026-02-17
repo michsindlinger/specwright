@@ -6,6 +6,8 @@ import './views/dashboard-view.js';
 import './views/chat-view.js';
 import './views/settings-view.js';
 import './views/not-found-view.js';
+import './views/aos-getting-started-view.js';
+import './components/setup/aos-installation-wizard-modal.js';
 import './components/model-selector.js';
 import './components/toast-notification.js';
 import './components/loading-spinner.js';
@@ -129,6 +131,25 @@ export class AosApp extends LitElement {
   @state()
   private showQuickTodoModal = false;
 
+  // IW-006: Installation Wizard state
+  @state()
+  private showWizard = false;
+
+  @state()
+  private wizardProjectPath = '';
+
+  @state()
+  private wizardFileCount = 0;
+
+  @state()
+  private wizardHasSpecwright = false;
+
+  @state()
+  private wizardHasProductBrief = false;
+
+  @state()
+  private wizardNeedsMigration = false;
+
   // GSQ-005: Bottom Panel state
   @state()
   private isBottomPanelOpen = false;
@@ -152,6 +173,7 @@ export class AosApp extends LitElement {
 
   private navItems: NavItem[] = [
     { route: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { route: 'getting-started', label: 'Getting Started', icon: 'getting-started' },
     { route: 'chat', label: 'Chat', icon: 'chat' },
     { route: 'settings', label: 'Settings', icon: 'settings' },
   ];
@@ -575,6 +597,7 @@ export class AosApp extends LitElement {
     const icons: Record<string, unknown> = {
       dashboard: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
       chat: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+      'getting-started': html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>`,
       settings: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
     };
     return icons[icon] || icon;
@@ -587,6 +610,7 @@ export class AosApp extends LitElement {
   private getPageTitle(): string {
     const titles: Record<Route, string> = {
       dashboard: 'Dashboard',
+      'getting-started': 'Getting Started',
       chat: 'Chat',
       settings: 'Settings',
       'not-found': 'Page Not Found',
@@ -871,6 +895,96 @@ export class AosApp extends LitElement {
 
     // Load git status for newly opened project
     this._loadGitStatus();
+
+    // IW-006: Validate project and trigger wizard if needed
+    this._validateAndTriggerWizard(path);
+  }
+
+  /**
+   * IW-006: Validate project and trigger wizard for newly added projects.
+   */
+  private async _validateAndTriggerWizard(path: string): Promise<void> {
+    try {
+      const validateResponse = await fetch('/api/project/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      if (validateResponse.ok) {
+        const data = await validateResponse.json() as {
+          valid: boolean;
+          hasSpecwright?: boolean;
+          hasProductBrief?: boolean;
+          needsMigration?: boolean;
+          fileCount?: number;
+        };
+        const hasSpecwright = data.hasSpecwright ?? false;
+        const hasProductBrief = data.hasProductBrief ?? false;
+        const needsMigration = data.needsMigration ?? false;
+
+        this.wizardHasSpecwright = hasSpecwright;
+        this.wizardHasProductBrief = hasProductBrief;
+        this.wizardNeedsMigration = needsMigration;
+
+        // Trigger wizard if specwright is not installed, needs migration, OR product brief is missing
+        if (!hasSpecwright || !hasProductBrief || needsMigration) {
+          this.wizardProjectPath = path;
+          this.wizardFileCount = data.fileCount ?? 0;
+          this.showWizard = true;
+          projectStateService.setWizardNeeded(path);
+        }
+      }
+    } catch {
+      // Validation failed, skip wizard trigger
+    }
+  }
+
+  // IW-006: Handle wizard completion - navigate to getting-started
+  private async _handleWizardComplete(): Promise<void> {
+    this.showWizard = false;
+    this.wizardNeedsMigration = false;
+    const path = this.wizardProjectPath;
+
+    // Clear wizard-needed state
+    if (path) {
+      projectStateService.clearWizardNeeded(path);
+    }
+
+    // Re-validate to update hasSpecwright/hasProductBrief for getting-started view
+    if (path) {
+      try {
+        const response = await fetch('/api/project/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path }),
+        });
+        const data = await response.json() as { hasSpecwright?: boolean; hasProductBrief?: boolean; needsMigration?: boolean };
+        this.wizardHasSpecwright = data.hasSpecwright ?? true;
+        this.wizardHasProductBrief = data.hasProductBrief ?? false;
+        this.wizardNeedsMigration = data.needsMigration ?? false;
+      } catch {
+        // Fallback: assume specwright is now installed
+        this.wizardHasSpecwright = true;
+      }
+    }
+
+    // Navigate to getting-started page
+    routerService.navigate('getting-started');
+  }
+
+  // IW-006: Handle wizard cancellation
+  private _handleWizardCancel(): void {
+    this.showWizard = false;
+  }
+
+  // IW-006: Start wizard from Getting Started view button
+  private _handleStartWizardFromView(): void {
+    const activeProject = this.openProjects.find(
+      (p) => p.id === this.activeProjectId
+    );
+    if (activeProject) {
+      this._validateAndTriggerWizard(activeProject.path);
+    }
   }
 
   // --- Project Context Management ---
@@ -1034,7 +1148,54 @@ export class AosApp extends LitElement {
 
     // Load git status for active project
     this._loadGitStatus();
+
+    // IW-006: Validate active project for wizard state after restore
+    const activeProject = this.openProjects.find(
+      (p) => p.id === this.activeProjectId
+    );
+    if (activeProject) {
+      this._validateProjectForWizard(activeProject.path);
+    }
     // Project restoration complete
+  }
+
+  /**
+   * IW-006: Validate a project and update wizard state.
+   * Used both during initial project selection and after restore.
+   */
+  private async _validateProjectForWizard(path: string): Promise<void> {
+    try {
+      const validateResponse = await fetch('/api/project/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      if (validateResponse.ok) {
+        const data = await validateResponse.json() as {
+          valid: boolean;
+          hasSpecwright?: boolean;
+          hasProductBrief?: boolean;
+          needsMigration?: boolean;
+          fileCount?: number;
+        };
+        const hasSpecwright = data.hasSpecwright ?? false;
+        const hasProductBrief = data.hasProductBrief ?? false;
+        const needsMigration = data.needsMigration ?? false;
+
+        this.wizardHasSpecwright = hasSpecwright;
+        this.wizardHasProductBrief = hasProductBrief;
+        this.wizardNeedsMigration = needsMigration;
+
+        // Show wizard if previously cancelled (wizardNeeded in sessionStorage)
+        if (projectStateService.isWizardNeeded(path)) {
+          this.wizardProjectPath = path;
+          this.wizardFileCount = data.fileCount ?? 0;
+          this.showWizard = true;
+        }
+      }
+    } catch {
+      // Validation failed, keep defaults
+    }
   }
 
   /**
@@ -1419,6 +1580,14 @@ export class AosApp extends LitElement {
     switch (this.currentRoute) {
       case 'dashboard':
         return html`<aos-dashboard-view></aos-dashboard-view>`;
+      case 'getting-started':
+        return html`<aos-getting-started-view
+          .hasProductBrief=${this.wizardHasProductBrief}
+          .hasSpecwright=${this.wizardHasSpecwright}
+          .needsMigration=${this.wizardNeedsMigration}
+          @workflow-start-interactive=${this.handleWorkflowStart}
+          @start-wizard=${this._handleStartWizardFromView}
+        ></aos-getting-started-view>`;
       case 'chat':
         return html`<aos-chat-view></aos-chat-view>`;
       case 'settings':
@@ -1563,6 +1732,17 @@ export class AosApp extends LitElement {
         @project-selected=${this.handleProjectSelected}
         @modal-close=${this.handleAddProjectModalClose}
       ></aos-project-add-modal>
+      <aos-installation-wizard-modal
+        .open=${this.showWizard}
+        .projectPath=${this.wizardProjectPath}
+        .fileCount=${this.wizardFileCount}
+        .hasSpecwright=${this.wizardHasSpecwright}
+        .hasProductBrief=${this.wizardHasProductBrief}
+        .needsMigration=${this.wizardNeedsMigration}
+        @wizard-complete=${this._handleWizardComplete}
+        @wizard-cancel=${this._handleWizardCancel}
+        @modal-close=${this._handleWizardCancel}
+      ></aos-installation-wizard-modal>
       <aos-context-menu
         @menu-item-select=${this.handleMenuItemSelect}
       ></aos-context-menu>

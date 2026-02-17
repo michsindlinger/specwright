@@ -138,29 +138,29 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] **Integration hergestellt: app.ts -> aos-installation-wizard-modal**
-  - [ ] Import und Rendering in app.ts Template
-  - [ ] Property-Binding (.open, .projectPath, .fileCount, .hasSpecwright, .hasProductBrief)
-  - [ ] Event-Handler (@wizard-complete, @wizard-cancel, @modal-close)
-  - [ ] Wizard triggert bei `hasSpecwright === false` ODER `hasProductBrief === false`
-  - [ ] Validierung: `grep -q "aos-installation-wizard-modal" ui/frontend/src/app.ts`
-- [ ] **Integration hergestellt: app.ts -> routerService (getting-started navigation)**
-  - [ ] `routerService.navigate('getting-started')` bei wizard-complete
-  - [ ] Validierung: `grep -q "getting-started" ui/frontend/src/app.ts`
-- [ ] **Integration hergestellt: app.ts -> aos-getting-started-view**
-  - [ ] Import und renderView-Case
-  - [ ] navItems-Eintrag
-  - [ ] Validierung: `grep -q "aos-getting-started-view" ui/frontend/src/app.ts`
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] **Integration hergestellt: app.ts -> aos-installation-wizard-modal**
+  - [x] Import und Rendering in app.ts Template
+  - [x] Property-Binding (.open, .projectPath, .fileCount, .hasSpecwright, .hasProductBrief)
+  - [x] Event-Handler (@wizard-complete, @wizard-cancel, @modal-close)
+  - [x] Wizard triggert bei `hasSpecwright === false` ODER `hasProductBrief === false`
+  - [x] Validierung: `grep -q "aos-installation-wizard-modal" ui/frontend/src/app.ts`
+- [x] **Integration hergestellt: app.ts -> routerService (getting-started navigation)**
+  - [x] `routerService.navigate('getting-started')` bei wizard-complete
+  - [x] Validierung: `grep -q "getting-started" ui/frontend/src/app.ts`
+- [x] **Integration hergestellt: app.ts -> aos-getting-started-view**
+  - [x] Import und renderView-Case
+  - [x] navItems-Eintrag
+  - [x] Validierung: `grep -q "aos-getting-started-view" ui/frontend/src/app.ts`
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt
+- [x] Alle Akzeptanzkriterien erfuellt
 - [ ] Code Review durchgefuehrt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 

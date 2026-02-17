@@ -1111,6 +1111,17 @@ export class AosKanbanBoard extends LitElement {
     }
   };
 
+  /**
+   * Drag is disabled when auto-mode is active or any workflow is currently running.
+   */
+  private get isDragDisabled(): boolean {
+    if (this.autoModeEnabled) return true;
+    for (const [, state] of this.workflowStates) {
+      if (state.status === 'working') return true;
+    }
+    return false;
+  }
+
   private getStoriesByStatus(status: 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked'): StoryInfo[] {
     return this.kanban.stories.filter(s => s.status === status);
   }
@@ -1128,6 +1139,11 @@ export class AosKanbanBoard extends LitElement {
 
   private handleDragOver(e: DragEvent, status: KanbanStatus): void {
     e.preventDefault();
+
+    if (this.isDragDisabled) {
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
+      return;
+    }
 
     // Find the story being dragged
     const storyId = this.draggedStoryId;
@@ -1179,6 +1195,14 @@ export class AosKanbanBoard extends LitElement {
 
   private handleDrop(e: DragEvent, targetStatus: KanbanStatus): void {
     e.preventDefault();
+
+    if (this.isDragDisabled) {
+      this.dropZoneActive = null;
+      this.draggedStoryId = null;
+      this.dropValidation = { valid: true };
+      return;
+    }
+
     this.dropZoneActive = null;
 
     const storyId = e.dataTransfer?.getData('text/plain');
@@ -1313,26 +1337,8 @@ export class AosKanbanBoard extends LitElement {
       autoMode: this.autoModeEnabled
     });
 
-    // WTT-003: Dispatch workflow-terminal-request event to app.ts
-    // This will open a terminal tab and start the workflow there
-    // BUG-002-A: Only open terminal for manual starts, NOT for Auto-Mode
-    if (!this.autoModeEnabled) {
-      const workflowRequestEvent = new CustomEvent('workflow-terminal-request', {
-        detail: {
-          command: 'execute-tasks',
-          argument: `${this.kanban.specId} ${storyId}`,
-          model,
-          specId: this.kanban.specId,
-          storyId,
-          gitStrategy,
-        },
-        bubbles: true,
-        composed: true,
-      });
-      this.dispatchEvent(workflowRequestEvent);
-    }
-
-    // Still send the backend message to update kanban status and track execution
+    // Execute-tasks runs in the backend via workflowExecutor (not Cloud Terminal).
+    // The backend handles process spawning, git strategy, and auto-continuation.
     gateway.send({
       type: 'workflow.story.start',
       specId: this.kanban.specId,
@@ -1601,6 +1607,7 @@ export class AosKanbanBoard extends LitElement {
                       .workflowStatus=${workflowState?.status || 'idle'}
                       .workflowError=${workflowState?.error || ''}
                       .providers=${this.providers}
+                      .dragDisabled=${this.isDragDisabled}
                       @story-select=${this.handleStorySelect}
                       @story-drag-start=${this.handleDragStart}
                       @story-drag-end=${this.handleDragEnd}

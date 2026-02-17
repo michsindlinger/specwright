@@ -1,5 +1,5 @@
-import { existsSync, statSync } from 'fs';
-import { basename, resolve, normalize } from 'path';
+import { existsSync, statSync, readdirSync } from 'fs';
+import { basename, resolve, normalize, join } from 'path';
 import { resolveProjectDir } from './utils/project-dirs.js';
 
 export interface ProjectContext {
@@ -18,6 +18,10 @@ export interface ValidateResult {
   valid: boolean;
   name?: string;
   error?: string;
+  hasSpecwright?: boolean;
+  hasProductBrief?: boolean;
+  needsMigration?: boolean;
+  fileCount?: number;
 }
 
 export interface CurrentProjectResult {
@@ -48,6 +52,15 @@ export class ProjectContextService {
       return {
         success: false,
         error: validation.error
+      };
+    }
+
+    // switchProject requires specwright to be installed
+    if (!validation.hasSpecwright) {
+      const projectDirName = resolveProjectDir(this.normalizePath(projectPath));
+      return {
+        success: false,
+        error: `Invalid project: missing ${projectDirName}/ directory`
       };
     }
 
@@ -109,44 +122,87 @@ export class ProjectContextService {
       };
     }
 
-    // Check for specwright/ or agent-os/ subdirectory (path traversal prevention included)
-    const projectDirName = resolveProjectDir(normalizedPath);
-    const projectSubPath = resolve(normalizedPath, projectDirName);
+    // Check for specwright/ or agent-os/ subdirectory
+    const hasSpecwright = this.detectSpecwright(normalizedPath);
 
-    // Prevent path traversal: ensure the resolved path is still within the project
-    if (!projectSubPath.startsWith(normalizedPath)) {
-      return {
-        valid: false,
-        error: 'Invalid project: path traversal detected'
-      };
+    // Check if project uses agent-os/ and needs migration to specwright/
+    const needsMigration = this.detectNeedsMigration(normalizedPath);
+
+    // Check for product brief (only meaningful if specwright exists)
+    const hasProductBrief = hasSpecwright
+      ? this.detectProductBrief(normalizedPath)
+      : false;
+
+    // Count top-level entries (excluding hidden dirs like .git, node_modules)
+    const fileCount = this.countTopLevelEntries(normalizedPath);
+
+    return {
+      valid: true,
+      name: basename(normalizedPath),
+      hasSpecwright,
+      hasProductBrief,
+      needsMigration,
+      fileCount
+    };
+  }
+
+  /**
+   * Detects whether a project has specwright/ or agent-os/ installed.
+   */
+  private detectSpecwright(projectPath: string): boolean {
+    const projectDirName = resolveProjectDir(projectPath);
+    const projectSubPath = resolve(projectPath, projectDirName);
+
+    // Prevent path traversal
+    if (!projectSubPath.startsWith(projectPath)) {
+      return false;
     }
 
     if (!existsSync(projectSubPath)) {
-      return {
-        valid: false,
-        error: `Invalid project: missing ${projectDirName}/ directory`
-      };
+      return false;
     }
 
     try {
       const projectSubStats = statSync(projectSubPath);
-      if (!projectSubStats.isDirectory()) {
-        return {
-          valid: false,
-          error: `Invalid project: ${projectDirName} is not a directory`
-        };
-      }
+      return projectSubStats.isDirectory();
     } catch {
-      return {
-        valid: false,
-        error: `Invalid project: cannot access ${projectDirName}/ directory`
-      };
+      return false;
     }
+  }
 
-    return {
-      valid: true,
-      name: basename(normalizedPath)
-    };
+  /**
+   * Detects whether a project uses agent-os/ and needs migration to specwright/.
+   * Returns true if agent-os/ exists AND specwright/ does NOT exist.
+   */
+  private detectNeedsMigration(projectPath: string): boolean {
+    const hasAgentOs = existsSync(resolve(projectPath, 'agent-os'));
+    const hasSpecwrightDir = existsSync(resolve(projectPath, 'specwright'));
+    return hasAgentOs && !hasSpecwrightDir;
+  }
+
+  /**
+   * Detects whether a product brief exists in the project.
+   * Checks under the resolved project dir (specwright/ or agent-os/).
+   */
+  private detectProductBrief(projectPath: string): boolean {
+    const projectDirName = resolveProjectDir(projectPath);
+    const briefPath = join(projectPath, projectDirName, 'product', 'product-brief.md');
+    return existsSync(briefPath);
+  }
+
+  /**
+   * Counts visible top-level entries in a directory.
+   * Excludes hidden directories (starting with .) and node_modules.
+   */
+  private countTopLevelEntries(projectPath: string): number {
+    try {
+      const entries = readdirSync(projectPath);
+      return entries.filter(entry =>
+        !entry.startsWith('.') && entry !== 'node_modules'
+      ).length;
+    } catch {
+      return 0;
+    }
   }
 
   /**

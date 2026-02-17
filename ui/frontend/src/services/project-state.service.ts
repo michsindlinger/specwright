@@ -3,6 +3,7 @@ import { gateway } from '../gateway.js';
 
 const STORAGE_KEY = 'specwright-open-projects';
 const ACTIVE_PROJECT_KEY = 'specwright-active-project';
+const WIZARD_NEEDED_PREFIX = 'specwright-wizard-needed-';
 
 interface StoredProjectState {
   openProjects: Project[];
@@ -180,6 +181,42 @@ class ProjectStateService {
     }
 
     return { validProjects, removedPaths };
+  }
+
+  /**
+   * Check if the wizard is needed for a given project path.
+   * Returns true if the wizard-needed key exists in sessionStorage.
+   */
+  isWizardNeeded(projectPath: string): boolean {
+    try {
+      return sessionStorage.getItem(WIZARD_NEEDED_PREFIX + projectPath) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Mark that the wizard is needed for a given project path.
+   * Called when the wizard is shown (so it reappears after cancel).
+   */
+  setWizardNeeded(projectPath: string): void {
+    try {
+      sessionStorage.setItem(WIZARD_NEEDED_PREFIX + projectPath, 'true');
+    } catch {
+      // sessionStorage unavailable, silently fail
+    }
+  }
+
+  /**
+   * Mark that the wizard is no longer needed for a given project path.
+   * Called when the wizard completes successfully.
+   */
+  clearWizardNeeded(projectPath: string): void {
+    try {
+      sessionStorage.removeItem(WIZARD_NEEDED_PREFIX + projectPath);
+    } catch {
+      // sessionStorage unavailable, silently fail
+    }
   }
 
   /**
