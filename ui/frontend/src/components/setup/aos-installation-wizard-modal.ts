@@ -1,11 +1,15 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { gateway, type WebSocketMessage } from '../../gateway.js';
+import { projectStateService } from '../../services/project-state.service.js';
+import '../terminal/aos-terminal-session.js';
+import type { TerminalSession } from '../terminal/aos-cloud-terminal-sidebar.js';
 
 /**
  * Wizard step type for the installation wizard.
  * - install: Framework installation step (install.sh)
  * - selection: Planning command selection step
- * - terminal: Terminal execution step (handled by IW-003)
+ * - terminal: Terminal execution step (IW-003)
  * - complete: Wizard complete step
  */
 export type WizardStep = 'install' | 'selection' | 'terminal' | 'complete';
@@ -26,6 +30,11 @@ export interface CommandSelectedDetail {
   command: string;
   projectPath: string;
 }
+
+/**
+ * Terminal mode: whether terminal is running install.sh or a planning command.
+ */
+type TerminalMode = 'install' | 'planning';
 
 /**
  * Available planning commands.
@@ -99,16 +108,46 @@ export class AosInstallationWizardModal extends LitElement {
   /** Error message from installation */
   @state() private installError: string | null = null;
 
+  /** Terminal session object for aos-terminal-session */
+  @state() private terminalSession: TerminalSession | null = null;
+
+  /** Backend terminal session ID (set after cloud-terminal:created) */
+  @state() private terminalSessionId: string | null = null;
+
+  /** What the terminal is running: install.sh or a planning command */
+  @state() private terminalMode: TerminalMode = 'install';
+
+  /** The command being executed (for display) */
+  @state() private terminalCommand = '';
+
+  /** Whether the terminal command completed successfully */
+  @state() private terminalComplete = false;
+
+  /** Terminal error message */
+  @state() private terminalError: string | null = null;
+
+  /** Whether the cancel confirmation overlay is visible */
+  @state() private showCancelConfirm = false;
+
   private boundKeyHandler = this.handleKeyDown.bind(this);
+  private boundHandleSessionCreated = this.handleTerminalSessionCreated.bind(this);
+  private boundHandleSessionError = this.handleTerminalSessionError.bind(this);
+  private boundHandleSessionClosed = this.handleTerminalSessionClosed.bind(this);
 
   override connectedCallback(): void {
     super.connectedCallback();
     document.addEventListener('keydown', this.boundKeyHandler);
+    gateway.on('cloud-terminal:created', this.boundHandleSessionCreated);
+    gateway.on('cloud-terminal:error', this.boundHandleSessionError);
+    gateway.on('cloud-terminal:closed', this.boundHandleSessionClosed);
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this.boundKeyHandler);
+    gateway.off('cloud-terminal:created', this.boundHandleSessionCreated);
+    gateway.off('cloud-terminal:error', this.boundHandleSessionError);
+    gateway.off('cloud-terminal:closed', this.boundHandleSessionClosed);
   }
 
   override updated(changedProperties: Map<string, unknown>): void {
@@ -117,6 +156,16 @@ export class AosInstallationWizardModal extends LitElement {
       this.isInstalling = false;
       this.installComplete = false;
       this.installError = null;
+      this.terminalSession = null;
+      this.terminalSessionId = null;
+      this.terminalComplete = false;
+      this.terminalError = null;
+      this.terminalCommand = '';
+      this.showCancelConfirm = false;
+      // Mark wizard as needed so it reappears after cancel
+      if (this.projectPath) {
+        projectStateService.setWizardNeeded(this.projectPath);
+      }
     }
   }
 
@@ -125,7 +174,13 @@ export class AosInstallationWizardModal extends LitElement {
 
     if (e.key === 'Escape') {
       e.preventDefault();
-      this.handleCancel();
+      if (this.showCancelConfirm) {
+        // ESC on confirm overlay = dismiss overlay, stay in wizard
+        this.showCancelConfirm = false;
+      } else {
+        this.showCancelConfirmation();
+      }
+      return;
     }
 
     // Focus trap
@@ -160,6 +215,44 @@ export class AosInstallationWizardModal extends LitElement {
   }
 
   private handleCancel(): void {
+    this.showCancelConfirmation();
+  }
+
+  /**
+   * Show the cancel confirmation overlay with a context-dependent message.
+   */
+  private showCancelConfirmation(): void {
+    this.showCancelConfirm = true;
+  }
+
+  /**
+   * Get the context-dependent cancellation message.
+   */
+  private getCancelMessage(): string {
+    if (!this.hasSpecwright) {
+      return 'Specwright muss erst installiert werden damit die UI voll nutzbar ist';
+    }
+    if (!this.hasProductBrief) {
+      return 'Ein Product Brief wird empfohlen um Specwright optimal zu nutzen';
+    }
+    return 'Der Setup-Wizard wurde noch nicht abgeschlossen';
+  }
+
+  /**
+   * User confirms the cancellation. Terminate any running terminal, emit event, close modal.
+   */
+  private confirmCancel(): void {
+    // Terminate running terminal session if any
+    if (this.terminalSessionId && this.currentStep === 'terminal') {
+      gateway.send({
+        type: 'cloud-terminal:kill',
+        sessionId: this.terminalSessionId,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    this.showCancelConfirm = false;
+    // Wizard state stays in sessionStorage (wizardNeeded) so wizard reappears next time
     this.dispatchEvent(
       new CustomEvent('wizard-cancel', {
         bubbles: true,
@@ -169,22 +262,21 @@ export class AosInstallationWizardModal extends LitElement {
     this.closeModal();
   }
 
+  /**
+   * User dismisses the cancel confirmation, staying in the wizard.
+   */
+  private dismissCancelConfirm(): void {
+    this.showCancelConfirm = false;
+  }
+
   private handleOverlayClick(e: MouseEvent): void {
     if (e.target === e.currentTarget) {
-      this.handleCancel();
+      this.showCancelConfirmation();
     }
   }
 
   private handleInstallClick(): void {
-    this.isInstalling = true;
-    this.installError = null;
-    this.dispatchEvent(
-      new CustomEvent('install-requested', {
-        detail: { projectPath: this.projectPath },
-        bubbles: true,
-        composed: true,
-      })
-    );
+    this.startTerminal('install', 'curl -sSL https://raw.githubusercontent.com/simonx1/specwright/main/install.sh | bash -s -- --yes --all');
   }
 
   /**
@@ -211,14 +303,143 @@ export class AosInstallationWizardModal extends LitElement {
   }
 
   private handleCommandSelect(commandId: string): void {
-    this.dispatchEvent(
-      new CustomEvent<CommandSelectedDetail>('command-selected', {
-        detail: { command: commandId, projectPath: this.projectPath },
-        bubbles: true,
-        composed: true,
-      })
-    );
-    this.closeModal();
+    this.startTerminal('planning', `/${commandId}`);
+  }
+
+  // --- Terminal Integration (IW-003) ---
+
+  /**
+   * Start a terminal session for either install.sh or a planning command.
+   * Creates a cloud-terminal session via gateway, then switches to terminal step.
+   */
+  private startTerminal(mode: TerminalMode, command: string): void {
+    this.terminalMode = mode;
+    this.terminalCommand = command;
+    this.terminalComplete = false;
+    this.terminalError = null;
+
+    // Create a TerminalSession object for aos-terminal-session
+    const sessionId = `wizard-${mode}-${Date.now()}`;
+    this.terminalSession = {
+      id: sessionId,
+      name: mode === 'install' ? 'Installation' : 'Planning',
+      status: 'active',
+      createdAt: new Date(),
+      projectPath: this.projectPath,
+      isWorkflow: false,
+    };
+    this.terminalSessionId = null;
+
+    // Switch to terminal step
+    this.currentStep = 'terminal';
+
+    // Create a cloud terminal session via gateway
+    gateway.send({
+      type: 'cloud-terminal:create',
+      requestId: sessionId,
+      projectPath: this.projectPath,
+      terminalType: 'shell' as const,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Handle cloud-terminal:created event from gateway.
+   * Sends the initial command after a brief delay for the shell to be ready.
+   */
+  private handleTerminalSessionCreated(message: WebSocketMessage): void {
+    if (!this.terminalSession) return;
+    if (message.requestId !== this.terminalSession.id) return;
+
+    const sessionId = message.sessionId as string;
+    if (sessionId) {
+      this.terminalSessionId = sessionId;
+
+      // Send the command after a brief delay for shell readiness
+      setTimeout(() => {
+        gateway.send({
+          type: 'cloud-terminal:input',
+          sessionId,
+          data: this.terminalCommand + '\n',
+          timestamp: new Date().toISOString(),
+        });
+      }, 500);
+    }
+  }
+
+  /**
+   * Handle cloud-terminal:error event from gateway.
+   */
+  private handleTerminalSessionError(message: WebSocketMessage): void {
+    if (!this.terminalSession) return;
+    // Only handle errors for our session
+    const errorSessionId = message.sessionId as string | undefined;
+    if (errorSessionId && errorSessionId !== this.terminalSessionId) return;
+    // Also skip if no session ID and we haven't connected yet
+    if (!errorSessionId && message.requestId !== this.terminalSession.id) return;
+
+    this.terminalError = (message.message as string) || 'Verbindung zum Terminal fehlgeschlagen';
+  }
+
+  /**
+   * Handle cloud-terminal:closed event from gateway.
+   * When the terminal process exits, check exit code for success/failure.
+   */
+  private handleTerminalSessionClosed(message: WebSocketMessage): void {
+    if (!this.terminalSessionId) return;
+    if (message.sessionId !== this.terminalSessionId) return;
+
+    const exitCode = message.exitCode as number | undefined;
+    if (exitCode === 0) {
+      this.terminalComplete = true;
+      this.terminalError = null;
+
+      if (this.terminalMode === 'install') {
+        // Install completed - auto-advance to selection after brief delay
+        setTimeout(() => {
+          this.currentStep = 'selection';
+          this.terminalSession = null;
+          this.terminalSessionId = null;
+        }, 1500);
+      } else {
+        // Planning command completed - fire event and close
+        this.dispatchEvent(
+          new CustomEvent<CommandSelectedDetail>('command-selected', {
+            detail: { command: this.terminalCommand, projectPath: this.projectPath },
+            bubbles: true,
+            composed: true,
+          })
+        );
+      }
+    } else {
+      this.terminalError = exitCode !== undefined
+        ? `Prozess beendet mit Exit Code ${exitCode}`
+        : 'Prozess wurde unerwartet beendet';
+    }
+  }
+
+  /**
+   * Retry the terminal command after an error.
+   */
+  private handleTerminalRetry(): void {
+    this.startTerminal(this.terminalMode, this.terminalCommand);
+  }
+
+  /**
+   * Continue to next step after successful terminal execution.
+   */
+  private handleTerminalContinue(): void {
+    if (this.terminalMode === 'install') {
+      this.currentStep = 'selection';
+      this.terminalSession = null;
+      this.terminalSessionId = null;
+    } else {
+      // Planning command completed successfully - wizard is done
+      if (this.projectPath) {
+        projectStateService.clearWizardNeeded(this.projectPath);
+      }
+      this.closeModal();
+    }
   }
 
   private get isExistingProject(): boolean {
@@ -250,11 +471,30 @@ export class AosInstallationWizardModal extends LitElement {
 
   private renderStepIndicator() {
     if (this.hasSpecwright) {
-      // Single step - no indicator needed
+      // Only show planning + terminal steps when specwright already installed
+      if (this.currentStep === 'terminal') {
+        return html`
+          <div class="installation-wizard__steps">
+            <div class="installation-wizard__step-indicator installation-wizard__step-indicator--completed">
+              <span class="installation-wizard__step-number">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </span>
+              <span class="installation-wizard__step-label">Planning</span>
+            </div>
+            <div class="installation-wizard__step-divider installation-wizard__step-divider--active"></div>
+            <div class="installation-wizard__step-indicator installation-wizard__step-indicator--active">
+              <span class="installation-wizard__step-number">2</span>
+              <span class="installation-wizard__step-label">Terminal</span>
+            </div>
+          </div>
+        `;
+      }
       return nothing;
     }
 
-    const installDone = this.currentStep === 'selection';
+    const installDone = this.currentStep === 'selection' || this.currentStep === 'terminal';
+    const selectionDone = this.currentStep === 'terminal' && this.terminalMode === 'planning';
+    const isTerminalStep = this.currentStep === 'terminal';
 
     return html`
       <div class="installation-wizard__steps">
@@ -267,10 +507,21 @@ export class AosInstallationWizardModal extends LitElement {
           <span class="installation-wizard__step-label">Installation</span>
         </div>
         <div class="installation-wizard__step-divider ${installDone ? 'installation-wizard__step-divider--active' : ''}"></div>
-        <div class="installation-wizard__step-indicator ${this.currentStep === 'selection' ? 'installation-wizard__step-indicator--active' : ''}">
-          <span class="installation-wizard__step-number">2</span>
+        <div class="installation-wizard__step-indicator ${selectionDone ? 'installation-wizard__step-indicator--completed' : this.currentStep === 'selection' ? 'installation-wizard__step-indicator--active' : ''}">
+          <span class="installation-wizard__step-number">
+            ${selectionDone
+              ? html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+              : '2'}
+          </span>
           <span class="installation-wizard__step-label">Planning</span>
         </div>
+        ${isTerminalStep ? html`
+          <div class="installation-wizard__step-divider ${isTerminalStep ? 'installation-wizard__step-divider--active' : ''}"></div>
+          <div class="installation-wizard__step-indicator ${isTerminalStep ? 'installation-wizard__step-indicator--active' : ''}">
+            <span class="installation-wizard__step-number">3</span>
+            <span class="installation-wizard__step-label">Terminal</span>
+          </div>
+        ` : nothing}
       </div>
     `;
   }
@@ -379,6 +630,108 @@ export class AosInstallationWizardModal extends LitElement {
     `;
   }
 
+  private renderTerminalStep() {
+    return html`
+      <div class="installation-wizard__terminal-step">
+        <div class="installation-wizard__terminal-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+          <span class="installation-wizard__terminal-title">
+            ${this.terminalMode === 'install' ? 'Framework installieren' : 'Planning starten'}
+          </span>
+          <code class="installation-wizard__terminal-cmd">${this.terminalCommand}</code>
+        </div>
+
+        <div class="installation-wizard__terminal-container">
+          ${this.terminalSession
+            ? html`
+                <aos-terminal-session
+                  .session=${this.terminalSession}
+                  .isActive=${true}
+                  .terminalSessionId=${this.terminalSessionId}
+                ></aos-terminal-session>
+              `
+            : nothing}
+        </div>
+
+        ${this.terminalComplete
+          ? html`
+              <div class="installation-wizard__success" role="status">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                ${this.terminalMode === 'install'
+                  ? 'Installation erfolgreich! Weiter zum Planning...'
+                  : 'Command erfolgreich abgeschlossen!'}
+              </div>
+            `
+          : nothing}
+
+        ${this.terminalError
+          ? html`
+              <div class="installation-wizard__error" role="alert">
+                ${this.terminalError}
+              </div>
+              <div class="installation-wizard__terminal-actions">
+                <button
+                  class="installation-wizard__install-button"
+                  @click=${this.handleTerminalRetry}
+                >
+                  Erneut versuchen
+                </button>
+              </div>
+            `
+          : nothing}
+
+        ${this.terminalComplete
+          ? html`
+              <div class="installation-wizard__terminal-actions">
+                <button
+                  class="installation-wizard__install-button"
+                  @click=${this.handleTerminalContinue}
+                >
+                  ${this.terminalMode === 'install' ? 'Weiter zum Planning' : 'Fertig'}
+                </button>
+              </div>
+            `
+          : nothing}
+      </div>
+    `;
+  }
+
+  private renderCancelConfirm() {
+    return html`
+      <div class="installation-wizard__cancel-overlay" @click=${(e: MouseEvent) => { if (e.target === e.currentTarget) this.dismissCancelConfirm(); }}>
+        <div class="installation-wizard__cancel-confirm">
+          <div class="installation-wizard__cancel-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <h3 class="installation-wizard__cancel-title">Wizard abbrechen?</h3>
+          <p class="installation-wizard__cancel-message">${this.getCancelMessage()}</p>
+          <p class="installation-wizard__cancel-hint">Der Wizard erscheint beim naechsten Oeffnen erneut.</p>
+          <div class="installation-wizard__cancel-actions">
+            <button
+              class="installation-wizard__cancel-stay"
+              @click=${this.dismissCancelConfirm}
+            >
+              Zurueck zum Wizard
+            </button>
+            <button
+              class="installation-wizard__cancel-leave"
+              @click=${this.confirmCancel}
+            >
+              Trotzdem abbrechen
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   override render() {
     if (!this.open) {
       return nothing;
@@ -408,9 +761,10 @@ export class AosInstallationWizardModal extends LitElement {
 
           ${this.renderStepIndicator()}
 
-          <div class="installation-wizard__content">
+          <div class="installation-wizard__content ${this.currentStep === 'terminal' ? 'installation-wizard__content--terminal' : ''}">
             ${this.currentStep === 'install' ? this.renderInstallStep() : nothing}
             ${this.currentStep === 'selection' ? this.renderSelectionStep() : nothing}
+            ${this.currentStep === 'terminal' ? this.renderTerminalStep() : nothing}
           </div>
 
           <footer class="installation-wizard__footer">
@@ -418,7 +772,7 @@ export class AosInstallationWizardModal extends LitElement {
               class="installation-wizard__cancel-button"
               @click=${this.handleCancel}
             >
-              Abbrechen
+              ${this.currentStep === 'terminal' ? 'Abbrechen & Schliessen' : 'Abbrechen'}
             </button>
             ${this.currentStep === 'install' && !this.isInstalling && !this.installComplete
               ? html`
@@ -431,6 +785,8 @@ export class AosInstallationWizardModal extends LitElement {
                 `
               : nothing}
           </footer>
+
+          ${this.showCancelConfirm ? this.renderCancelConfirm() : nothing}
         </div>
       </div>
     `;

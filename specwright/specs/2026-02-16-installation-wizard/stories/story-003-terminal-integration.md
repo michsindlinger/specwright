@@ -86,12 +86,12 @@ Scenario: Terminal-Fehler waehrend der Ausfuehrung
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: aos-installation-wizard-modal.ts enthaelt "aos-terminal-session"
-- [ ] CONTAINS: aos-installation-wizard-modal.ts enthaelt "cloud-terminal:create"
+- [x] CONTAINS: aos-installation-wizard-modal.ts enthaelt "aos-terminal-session"
+- [x] CONTAINS: aos-installation-wizard-modal.ts enthaelt "cloud-terminal:create"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -130,24 +130,24 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] **Integration hergestellt: aos-installation-wizard-modal -> aos-terminal-session**
-  - [ ] Import/Aufruf existiert in Code
-  - [ ] Verbindung ist funktional (nicht nur Stub)
-  - [ ] Validierung: `grep -q "aos-terminal-session" ui/frontend/src/components/setup/aos-installation-wizard-modal.ts`
-- [ ] **Integration hergestellt: aos-installation-wizard-modal -> gateway (cloud-terminal:create)**
-  - [ ] Import/Aufruf existiert in Code
-  - [ ] Verbindung ist funktional
-  - [ ] Validierung: `grep -q "cloud-terminal:create" ui/frontend/src/components/setup/aos-installation-wizard-modal.ts`
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] **Integration hergestellt: aos-installation-wizard-modal -> aos-terminal-session**
+  - [x] Import/Aufruf existiert in Code
+  - [x] Verbindung ist funktional (nicht nur Stub)
+  - [x] Validierung: `grep -q "aos-terminal-session" ui/frontend/src/components/setup/aos-installation-wizard-modal.ts`
+- [x] **Integration hergestellt: aos-installation-wizard-modal -> gateway (cloud-terminal:create)**
+  - [x] Import/Aufruf existiert in Code
+  - [x] Verbindung ist funktional
+  - [x] Validierung: `grep -q "cloud-terminal:create" ui/frontend/src/components/setup/aos-installation-wizard-modal.ts`
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt
-- [ ] Code Review durchgefuehrt und genehmigt
+- [x] Alle Akzeptanzkriterien erfuellt
+- [x] Code Review durchgefuehrt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 

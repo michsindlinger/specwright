@@ -6,6 +6,7 @@
 |----------|---------|-----------|
 | IW-001 | Specwright-Erkennung: validateProject() returns hasSpecwright, hasProductBrief, fileCount | project-context.service.ts, project.routes.ts |
 | IW-002 | Installation Wizard Modal: Multi-step wizard with install + planning command selection | aos-installation-wizard-modal.ts |
+| IW-003 | Terminal Integration: Embedded aos-terminal-session in wizard, cloud-terminal:create via gateway | aos-installation-wizard-modal.ts, theme.css |
 
 ## New Exports & APIs
 
@@ -38,7 +39,11 @@
 - IW-002 wizard uses `hasSpecwright` to decide initial step: `false` -> install step, `true` -> selection step
 - IW-002 wizard uses `hasProductBrief` to determine if wizard should appear at all (controlled by parent in IW-006)
 - IW-002 wizard uses `fileCount` to show "existing project" hint (threshold: 10 files)
-- IW-003 (Terminal Integration) should listen for `install-requested` event and `command-selected` event to run terminal commands
+- IW-003 Terminal Integration: Wizard now transitions to terminal step when user clicks "Framework installieren" or selects a planning command
+  - `startTerminal(mode, command)` creates a cloud-terminal:create shell session, embeds aos-terminal-session, and injects the command
+  - On terminal close with exit 0: install mode auto-advances to selection, planning mode fires command-selected event
+  - On error: shows error message with retry button
+  - New CSS classes: `installation-wizard__terminal-*` and `installation-wizard__content--terminal`
 - IW-004 (Abbruch-Handling) should listen for `wizard-cancel` and `modal-close` events
 - IW-006 (Router/Navigation) needs to wire wizard to app.ts, pass properties from validate response
 
@@ -50,4 +55,4 @@
 | ui/src/server/routes/project.routes.ts | Modified | IW-001 |
 | ui/tests/unit/project-context.service.test.ts | Modified | IW-001 |
 | ui/frontend/src/components/setup/aos-installation-wizard-modal.ts | Created | IW-002 |
-| ui/frontend/src/styles/theme.css | Modified | IW-002 |
+| ui/frontend/src/styles/theme.css | Modified | IW-002, IW-003 |
