@@ -15,6 +15,7 @@
 | WTT-003 | UI-Trigger auf Terminal-Tabs umleiten - Custom Event workflow-terminal-request für Kanban/Dashboard/Queue | app.ts, kanban-board.ts, dashboard-view.ts, websocket.ts |
 | WTT-004 | Tab-Notifications bei Input-Bedarf - Badge und Animation wenn Workflow auf Eingabe wartet | aos-terminal.ts, aos-terminal-session.ts, aos-cloud-terminal-sidebar.ts, app.ts |
 | WTT-005 | Tab-Close Confirmation - Browser confirm() Dialog beim Schliessen aktiver Workflow-Tabs | aos-cloud-terminal-sidebar.ts, aos-terminal-tabs.ts |
+| WTT-006 | Legacy Cleanup - Entfernung alter Execution-Komponenten und Workflow-View | DELETED: execution-tabs.ts, execution-tab.ts, workflow-chat.ts, workflow-view.ts, execution-store.ts, execution.ts; MODIFIED: app.ts, route.types.ts |
 
 ---
 
@@ -49,6 +50,8 @@
 - **WTT-004 Event Chain**: Terminal → aos-terminal-session → aos-cloud-terminal-sidebar → app.ts → updates terminalSessions state
 - **WTT-004 Badge Clearing**: Badge automatically clears when user clicks on the tab (session-select event with clearNeedsInput flag)
 - **WTT-005 Close Confirmation**: `_handleSessionClose()` in aos-cloud-terminal-sidebar.ts checks `isWorkflow && status === 'active'` and shows browser confirm dialog before closing
+- **WTT-006 Legacy Cleanup**: Removed unused frontend components (execution-tabs, execution-tab, workflow-chat, workflow-view, execution-store, execution types) and cleaned up routes
+- **WTT-006 Note**: Backend JSON-Streaming methods (runClaudeCommand, handleClaudeEvent, etc.) were NOT removed because they are still used by Queue auto-continue functionality
 
 ---
 
@@ -74,3 +77,11 @@
 | ui/frontend/src/styles/theme.css | Modified - Added .tab.needs-input CSS class and @keyframes pulse-needs-input, .input-badge styles | WTT-004 |
 | ui/frontend/src/components/terminal/aos-terminal-tabs.ts | Modified - _handleCloseClick() now includes isWorkflow and status in event detail | WTT-005 |
 | ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts | Modified - _handleSessionClose() now checks for active workflow and shows confirm dialog | WTT-005 |
+| ui/frontend/src/components/execution-tabs.ts | DELETED - Legacy component | WTT-006 |
+| ui/frontend/src/components/execution-tab.ts | DELETED - Legacy component | WTT-006 |
+| ui/frontend/src/components/workflow-chat.ts | DELETED - Legacy component | WTT-006 |
+| ui/frontend/src/views/workflow-view.ts | DELETED - Legacy view | WTT-006 |
+| ui/frontend/src/stores/execution-store.ts | DELETED - Legacy store | WTT-006 |
+| ui/frontend/src/types/execution.ts | DELETED - Legacy types | WTT-006 |
+| ui/frontend/src/app.ts | Modified - Removed workflow-view import, workflows route, navItem, getPageTitle entry, renderView case | WTT-006 |
+| ui/frontend/src/types/route.types.ts | Modified - Removed 'workflows' from ViewType and VALID_VIEWS | WTT-006 |

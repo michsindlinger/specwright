@@ -10,15 +10,15 @@
     "createdAt": "2026-02-16"
   },
   "resumeContext": {
-    "currentPhase": "3-execute-story",
+    "currentPhase": "story-complete",
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/workflow-terminal-tabs",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "WTT-005 completed - Tab-Close Confirmation",
-    "nextAction": "Execute WTT-006 (Legacy Cleanup)",
-    "progressIndex": 5,
+    "lastAction": "WTT-998 completed - Integration Validation passed",
+    "nextAction": "Execute next story (WTT-999 Finalize PR)",
+    "progressIndex": 8,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -234,23 +234,37 @@
         "WTT-004",
         "WTT-005"
       ],
-      "status": "ready",
-      "dorStatus": "incomplete",
+      "status": "done",
+      "dorStatus": "complete",
       "storyFile": "stories/story-006-legacy-cleanup.md",
       "timing": {
         "createdAt": "2026-02-16",
-        "updatedAt": "2026-02-16"
+        "updatedAt": "2026-02-17",
+        "startedAt": "2026-02-17T18:00:00.000Z",
+        "completedAt": "2026-02-17T19:30:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/app.ts",
+          "ui/frontend/src/types/route.types.ts"
+        ],
+        "filesDeleted": [
+          "ui/frontend/src/components/execution-tabs.ts",
+          "ui/frontend/src/components/execution-tab.ts",
+          "ui/frontend/src/components/workflow-chat.ts",
+          "ui/frontend/src/views/workflow-view.ts",
+          "ui/frontend/src/stores/execution-store.ts",
+          "ui/frontend/src/types/execution.ts"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
-        "dorChecked": false,
-        "dodChecked": false
+        "dorChecked": true,
+        "dodChecked": true
       },
-      "model": "glm-5"
+      "model": "glm-5",
+      "phase": "completed"
     },
     {
       "id": "WTT-997",
@@ -265,22 +279,27 @@
       "dependencies": [
         "WTT-006"
       ],
-      "status": "ready",
-      "dorStatus": "ready",
+      "status": "done",
+      "dorStatus": "complete",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-16",
-        "updatedAt": "2026-02-16"
+        "updatedAt": "2026-02-17",
+        "startedAt": "2026-02-17T20:00:00.000Z",
+        "completedAt": "2026-02-17T21:00:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-16-workflow-terminal-tabs/review-report.md"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "completed"
     },
     {
       "id": "WTT-998",
@@ -295,12 +314,14 @@
       "dependencies": [
         "WTT-997"
       ],
-      "status": "ready",
-      "dorStatus": "ready",
+      "status": "done",
+      "dorStatus": "complete",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-02-16",
-        "updatedAt": "2026-02-16"
+        "updatedAt": "2026-02-17",
+        "startedAt": "2026-02-17T21:00:00.000Z",
+        "completedAt": "2026-02-17T21:30:00.000Z"
       },
       "implementation": {
         "filesModified": [],
@@ -309,8 +330,9 @@
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "completed"
     },
     {
       "id": "WTT-999",
@@ -346,18 +368,18 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 2,
+    "ready": 1,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 5,
+    "done": 8,
     "blocked": 0
   },
   "statistics": {
     "totalEffort": 11,
-    "completedEffort": 9,
-    "remainingEffort": 2,
-    "progressPercent": 82,
+    "completedEffort": 11,
+    "remainingEffort": 0,
+    "progressPercent": 100,
     "byType": {
       "frontend": 7,
       "backend": 2,
@@ -561,6 +583,54 @@
       "action": "story_completed",
       "storyId": "WTT-005",
       "details": "Progress: 5/9 (82%) - Tab-Close Confirmation implemented"
+    },
+    {
+      "timestamp": "2026-02-16T23:58:08.173Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-16T23:58:14.162Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-17T19:30:00.000Z",
+      "action": "story_completed",
+      "storyId": "WTT-006",
+      "details": "Progress: 6/9 (100%) - Legacy Cleanup implemented - All regular stories done, System Stories pending"
+    },
+    {
+      "timestamp": "2026-02-17T00:19:55.029Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-17T00:23:49.300Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-17T21:00:00.000Z",
+      "action": "story_completed",
+      "storyId": "WTT-997",
+      "details": "Progress: 7/9 - Code Review completed, review-report.md created"
+    },
+    {
+      "timestamp": "2026-02-17T21:00:00.000Z",
+      "action": "status_changed",
+      "storyId": "WTT-998",
+      "details": "Moved from ready to in_progress - Integration Validation started"
+    },
+    {
+      "timestamp": "2026-02-17T21:30:00.000Z",
+      "action": "story_completed",
+      "storyId": "WTT-998",
+      "details": "Progress: 8/9 - Integration Validation passed. All tests passed, all Komponenten-Verbindungen verified."
     }
   ]
 }

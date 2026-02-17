@@ -79,11 +79,11 @@ Scenario: Pruefung auf Qualitaetsstandards
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] Git Diff analysiert (main...HEAD)
-- [ ] Alle geaenderten Dateien reviewt
-- [ ] Probleme identifiziert und kategorisiert
-- [ ] review-report.md erstellt
-- [ ] Keine Critical Issues gefunden (oder dokumentiert)
+- [x] Git Diff analysiert (main...HEAD)
+- [x] Alle geaenderten Dateien reviewt
+- [x] Probleme identifiziert und kategorisiert
+- [x] review-report.md erstellt
+- [x] Keine Critical Issues gefunden (oder dokumentiert)
 
 ---
 
