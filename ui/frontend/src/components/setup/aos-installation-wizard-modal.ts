@@ -284,11 +284,11 @@ export class AosInstallationWizardModal extends LitElement {
   }
 
   private handleInstallClick(): void {
-    this.startTerminal('install', 'curl -sSL https://raw.githubusercontent.com/simonx1/specwright/main/install.sh | bash -s -- --yes --all');
+    this.startTerminal('install', 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash -s -- --yes --all');
   }
 
   private handleMigrateClick(): void {
-    this.startTerminal('migrate', 'curl -sSL https://raw.githubusercontent.com/simonx1/specwright/main/migrate-to-specwright.sh | bash -s -- --yes --no-symlinks');
+    this.startTerminal('migrate', 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/migrate-to-specwright.sh | bash -s -- --yes --no-symlinks');
   }
 
   /**
