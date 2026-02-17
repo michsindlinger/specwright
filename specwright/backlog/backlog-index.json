@@ -39,19 +39,20 @@
       "type": "bug",
       "title": "Story-997 Code Review fixt Findings nicht",
       "priority": "high",
-      "status": "in_progress",
+      "status": "done",
       "file": "items/bug-004-story-997-code-review-fixt-findings-nicht.md",
       "createdAt": "2026-02-17T09:58:13.429Z",
-      "updatedAt": "2026-02-17T10:00:37.569Z"
+      "updatedAt": "2026-02-17T10:05:45.625Z",
+      "completedAt": "2026-02-17T10:05:45.625Z"
     }
   ],
   "statistics": {
     "byStatus": {
       "open": 0,
-      "in_progress": 1,
+      "in_progress": 0,
       "in_review": 0,
       "blocked": 0,
-      "done": 3
+      "done": 4
     }
   },
   "resumeContext": {
