@@ -801,21 +801,6 @@ export class WorkflowExecutor {
             if (prResult.prUrl) {
               console.log(`[Workflow] PR created: ${prResult.prUrl}`);
               result.prUrl = prResult.prUrl;
-
-              // Send PR info to frontend so git-status-bar shows it
-              // (gh pr view on main won't find it after checkout)
-              if (client && prResult.prNumber) {
-                this.sendToClient(client, {
-                  type: 'git:pr-info:response',
-                  data: {
-                    number: prResult.prNumber,
-                    state: 'OPEN',
-                    url: prResult.prUrl,
-                    title: prTitle,
-                  },
-                  timestamp: new Date().toISOString()
-                }, projectPath);
-              }
             }
             if (prResult.warning) {
               console.warn(`[Workflow] PR creation warning: ${prResult.warning}`);

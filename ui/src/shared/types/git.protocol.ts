@@ -357,11 +357,11 @@ export interface GitDeleteUntrackedResponseMessage {
 }
 
 /**
- * Git pr-info response
+ * Git pr-info response (returns all open PRs for the repo)
  */
 export interface GitPrInfoResponseMessage {
   type: 'git:pr-info:response';
-  data: GitPrInfo | null;
+  data: GitPrInfo[];
   timestamp: string;
 }
 

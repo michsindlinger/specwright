@@ -337,7 +337,7 @@ export class GitService {
   /**
    * In-memory PR info cache with TTL
    */
-  private prCache = new Map<string, { data: GitPrInfo | null; timestamp: number }>();
+  private prCache = new Map<string, { data: GitPrInfo[]; timestamp: number }>();
   private static readonly PR_CACHE_TTL_MS = 60_000;
 
   /**
@@ -469,7 +469,7 @@ export class GitService {
    * Returns null if no PR exists or gh is not installed.
    * Uses in-memory cache with 60s TTL.
    */
-  async getPrInfo(projectPath: string): Promise<GitPrInfo | null> {
+  async getPrInfo(projectPath: string): Promise<GitPrInfo[]> {
     await this.ensureGitRepo(projectPath, 'getPrInfo');
 
     // Check cache
@@ -480,27 +480,26 @@ export class GitService {
 
     try {
       const { stdout } = await execFileAsync('gh', [
-        'pr', 'view', '--json', 'number,state,url,title',
+        'pr', 'list', '--state', 'open', '--json', 'number,state,url,title',
       ], {
         cwd: projectPath,
         timeout: GIT_CONFIG.OPERATION_TIMEOUT_MS,
       });
 
-      const parsed = JSON.parse(stdout.trim()) as GitPrInfo;
-      const result: GitPrInfo = {
-        number: parsed.number,
-        state: parsed.state,
-        url: parsed.url,
-        title: parsed.title,
-      };
+      const parsed = JSON.parse(stdout.trim()) as GitPrInfo[];
+      const result: GitPrInfo[] = parsed.map(pr => ({
+        number: pr.number,
+        state: pr.state,
+        url: pr.url,
+        title: pr.title,
+      }));
 
-      // Update cache
       this.prCache.set(projectPath, { data: result, timestamp: Date.now() });
       return result;
     } catch {
-      // gh not installed, no PR, or other error - graceful degradation
-      this.prCache.set(projectPath, { data: null, timestamp: Date.now() });
-      return null;
+      // gh not installed, no PRs, or other error - graceful degradation
+      this.prCache.set(projectPath, { data: [], timestamp: Date.now() });
+      return [];
     }
   }
 
