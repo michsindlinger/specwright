@@ -16,9 +16,9 @@
     "gitBranch": "feature/wizard-to-sidebar-migration",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Phase 1 and 2 already completed (git strategy set, WSM-001 in_progress)",
-    "nextAction": "Execute WSM-001",
-    "progressIndex": 0,
+    "lastAction": "Completed WSM-001",
+    "nextAction": "Execute next story: WSM-002",
+    "progressIndex": 1,
     "totalStories": 6,
     "gitStrategy": "branch"
   },
@@ -40,24 +40,34 @@
         "complexity": "XS"
       },
       "dependencies": [],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-001-getting-started-kachel-logik.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
         "updatedAt": "2026-02-17T00:00:00Z",
-        "startedAt": "2026-02-17T14:54:19.593Z"
+        "startedAt": "2026-02-17T14:54:19.593Z",
+        "completedAt": "2026-02-17T14:57:19.867Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/views/aos-getting-started-view.ts",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-001-getting-started-kachel-logik.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "e55068ebed32627f1c42a7cd7ac8972ddbbdc77e",
+            "message": "feat: [WSM-001] Getting Started Kachel-Logik",
+            "timestamp": "2026-02-17T15:57:11+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress"
+      "phase": "done"
     },
     {
       "id": "WSM-002",
@@ -215,31 +225,22 @@
   "boardStatus": {
     "total": 6,
     "ready": 5,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 0
   },
   "statistics": {
-    "totalEffort": 8,
-    "completedEffort": 0,
-    "remainingEffort": 8,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 5,
-      "backend": 0,
-      "devops": 0,
-      "test": 0,
-      "docs": 0,
-      "integration": 0,
-      "system": 3
+      "undefined": 6
     },
     "byPriority": {
-      "critical": 0,
-      "high": 8,
-      "medium": 0,
-      "low": 0
+      "undefined": 6
     }
   },
   "executionPlan": {
@@ -305,6 +306,12 @@
       "action": "phase_updated",
       "storyId": null,
       "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-02-17T14:57:19.867Z",
+      "action": "status_changed",
+      "storyId": "WSM-001",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }
