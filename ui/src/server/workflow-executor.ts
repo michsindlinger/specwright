@@ -384,6 +384,14 @@ export class WorkflowExecutor {
       await gitService.checkoutMain(projectPath);
       console.log(`[Workflow] Checked out main branch`);
 
+      // 2b. Mark story as "in_progress" on main before branching
+      try {
+        await this.updateBacklogIndexOnMain(projectPath, storyId, 'in_progress');
+        console.log(`[Workflow] Marked story ${storyId} as in_progress on main`);
+      } catch (statusError) {
+        console.warn(`[Workflow] Failed to mark story as in_progress (non-critical):`, statusError instanceof Error ? statusError.message : statusError);
+      }
+
       // 3. Create feature branch from main
       const branchResult = await gitService.createBranch(projectPath, branchName, 'main');
       console.log(`[Workflow] Branch created/checked out: ${branchName} (created: ${branchResult.created})`);

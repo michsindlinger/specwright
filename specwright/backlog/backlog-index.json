@@ -6,34 +6,18 @@
       "type": "bug",
       "title": "Xterm Terminal rerendert nicht korrekt nach Visibility-Change",
       "priority": "high",
-      "status": "done",
+      "status": "open",
       "file": "items/bug-001-xterm-terminal-rerendert-nicht-korrekt-nach-visibi.md",
-      "createdAt": "2026-02-17T05:48:35.159Z",
-      "updatedAt": "2026-02-17T05:55:40.481Z",
-      "completedAt": "2026-02-17T05:55:40.481Z"
+      "createdAt": "2026-02-17T05:48:35.159Z"
     }
   ],
-  "resumeContext": {
-    "activeKanban": "kanban-2026-02-17",
-    "currentPhase": "executing",
-    "lastExecution": "2026-02-17",
-    "lastAction": "Execution started",
-    "nextAction": "Execute items from kanban-2026-02-17"
-  },
-  "executions": [
-    {
-      "id": "kanban-2026-02-17",
-      "date": "2026-02-17",
-      "status": "active",
-      "itemCount": 1
+  "statistics": {
+    "byStatus": {
+      "open": 1,
+      "in_progress": 0,
+      "in_review": 0,
+      "blocked": 0,
+      "done": 0
     }
-  ],
-  "changeLog": [
-    {
-      "timestamp": "2026-02-17T05:55:06.000Z",
-      "action": "execution_started",
-      "itemId": null,
-      "details": "Started execution kanban-2026-02-17 with 1 items"
-    }
-  ]
+  }
 }

@@ -112,9 +112,20 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
 
   1. CHECK: Was a parameter provided?
 
-     IF parameter = "backlog":
+     IF parameter = "backlog [STORY-ID]" (e.g., "backlog BUG-001"):
+       SET: EXECUTION_MODE = "backlog"
+       SET: SINGLE_STORY_MODE = true
+       SET: TARGET_STORY_ID = [extracted STORY-ID]
+       GOTO: Backlog Single-Story Execution
+
+     ELSE IF parameter = "backlog":
        SET: EXECUTION_MODE = "backlog"
        GOTO: Backlog State Detection
+
+     ELSE IF parameter = [spec-name] [story-id]:
+       SET: EXECUTION_MODE = "spec"
+       SET: SELECTED_SPEC = [spec-name]
+       GOTO: Spec State Detection
 
      ELSE IF parameter = [spec-name]:
        SET: EXECUTION_MODE = "spec"
@@ -164,6 +175,44 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
       ERROR: "No tasks to execute. Use /add-todo or /create-spec first."
   </auto_detection>
 </mode_detection>
+
+---
+
+## Backlog Single-Story Execution
+
+<backlog_single_story>
+  **Purpose:** UI Auto-Mode sends "backlog STORY-ID" to execute ONE specific story end-to-end.
+  This mode skips the daily kanban setup and goes straight to story implementation.
+
+  USE: date-checker to get current date (YYYY-MM-DD)
+
+  ### 1. Ensure Daily Execution Kanban Exists
+
+  ```bash
+  ls specwright/backlog/executions/kanban-${TODAY}.json 2>/dev/null
+  ```
+
+  IF NO execution kanban for today:
+    LOAD: @specwright/workflows/core/execute-tasks/backlog-phase-1.md
+    EXECUTE: Phase 1 to create the daily kanban
+
+    **CRITICAL: DO NOT STOP after Phase 1.**
+    **In SINGLE_STORY_MODE, you MUST continue to step 2 immediately.**
+    **Ignore any "STOP" or "/clear" instructions from Phase 1.**
+
+  ### 2. Execute the Target Story
+
+  LOAD: @specwright/workflows/core/execute-tasks/backlog-phase-2.md
+  EXECUTE: Phase 2 for story TARGET_STORY_ID
+
+  **Override story_selection step:** Instead of picking the next queued item,
+  use TARGET_STORY_ID directly. Find it in the execution kanban items[].
+
+  ### 3. End
+
+  After Phase 2 completes for the target story, STOP.
+  Do NOT continue to Phase 3 (daily summary) or other stories.
+</backlog_single_story>
 
 ---
 
