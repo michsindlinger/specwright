@@ -27,6 +27,9 @@ interface ValidateResponse {
   valid: boolean;
   name?: string;
   error?: string;
+  hasSpecwright?: boolean;
+  hasProductBrief?: boolean;
+  fileCount?: number;
 }
 
 /**
@@ -120,7 +123,10 @@ router.post('/validate', (req: Request, res: Response) => {
   return res.status(200).json({
     valid: result.valid,
     name: result.name,
-    error: result.error
+    error: result.error,
+    hasSpecwright: result.hasSpecwright,
+    hasProductBrief: result.hasProductBrief,
+    fileCount: result.fileCount
   } as ValidateResponse);
 });
 

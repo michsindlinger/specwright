@@ -1,18 +1,20 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import type { PathLike } from 'fs';
-import { existsSync, statSync } from 'fs';
+import { existsSync, statSync, readdirSync } from 'fs';
 import { ProjectContextService } from '../../src/server/project-context.service.js';
 
 // Mock the fs module
 vi.mock('fs', () => ({
   existsSync: vi.fn(),
-  statSync: vi.fn()
+  statSync: vi.fn(),
+  readdirSync: vi.fn()
 }));
 
 describe('ProjectContextService', () => {
   let service: ProjectContextService;
   const mockExistsSync = vi.mocked(existsSync);
   const mockStatSync = vi.mocked(statSync);
+  const mockReaddirSync = vi.mocked(readdirSync);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,9 +54,8 @@ describe('ProjectContextService', () => {
       expect(result.error).toBe('Project path is not a directory');
     });
 
-    it('should return error when specwright/ and agent-os/ directories are missing', () => {
+    it('should return valid with hasSpecwright false when specwright/ and agent-os/ directories are missing', () => {
       mockExistsSync.mockImplementation((path: PathLike) => {
-        // Project path exists, but neither specwright/ nor agent-os/ exist
         const pathStr = path.toString();
         if (pathStr.endsWith('specwright') || pathStr.endsWith('agent-os')) {
           return false;
@@ -64,23 +65,66 @@ describe('ProjectContextService', () => {
       mockStatSync.mockReturnValue({
         isDirectory: () => true
       } as ReturnType<typeof statSync>);
-
-      const result = service.validateProject('/Users/dev/my-project');
-
-      expect(result.valid).toBe(false);
-      expect(result.error).toBe('Invalid project: missing specwright/ directory');
-    });
-
-    it('should return valid when project path and agent-os/ exist', () => {
-      mockExistsSync.mockReturnValue(true);
-      mockStatSync.mockReturnValue({
-        isDirectory: () => true
-      } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'README.md'] as unknown as ReturnType<typeof readdirSync>);
 
       const result = service.validateProject('/Users/dev/my-project');
 
       expect(result.valid).toBe(true);
+      expect(result.hasSpecwright).toBe(false);
+      expect(result.hasProductBrief).toBe(false);
+      expect(result.fileCount).toBe(2);
+    });
+
+    it('should return valid with hasSpecwright true when specwright/ exists', () => {
+      mockExistsSync.mockImplementation((path: PathLike) => {
+        const pathStr = path.toString();
+        // product-brief.md does not exist
+        if (pathStr.includes('product-brief.md')) {
+          return false;
+        }
+        return true;
+      });
+      mockStatSync.mockReturnValue({
+        isDirectory: () => true
+      } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright', 'package.json'] as unknown as ReturnType<typeof readdirSync>);
+
+      const result = service.validateProject('/Users/dev/my-project');
+
+      expect(result.valid).toBe(true);
+      expect(result.hasSpecwright).toBe(true);
+      expect(result.hasProductBrief).toBe(false);
       expect(result.name).toBe('my-project');
+    });
+
+    it('should detect product brief when it exists', () => {
+      mockExistsSync.mockReturnValue(true);
+      mockStatSync.mockReturnValue({
+        isDirectory: () => true
+      } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
+
+      const result = service.validateProject('/Users/dev/my-project');
+
+      expect(result.valid).toBe(true);
+      expect(result.hasSpecwright).toBe(true);
+      expect(result.hasProductBrief).toBe(true);
+    });
+
+    it('should count top-level entries excluding hidden dirs and node_modules', () => {
+      mockExistsSync.mockReturnValue(true);
+      mockStatSync.mockReturnValue({
+        isDirectory: () => true
+      } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue([
+        'src', 'package.json', 'README.md', '.git', '.env', 'node_modules', 'specwright'
+      ] as unknown as ReturnType<typeof readdirSync>);
+
+      const result = service.validateProject('/Users/dev/my-project');
+
+      expect(result.valid).toBe(true);
+      // Visible entries: src, package.json, README.md, specwright = 4 (excludes .git, .env, node_modules)
+      expect(result.fileCount).toBe(4);
     });
 
     it('should extract project name from path basename', () => {
@@ -88,6 +132,7 @@ describe('ProjectContextService', () => {
       mockStatSync.mockReturnValue({
         isDirectory: () => true
       } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue([] as unknown as ReturnType<typeof readdirSync>);
 
       const result = service.validateProject('/Users/dev/awesome-project');
 
@@ -105,11 +150,31 @@ describe('ProjectContextService', () => {
       expect(result.error).toBe('Project path does not exist');
     });
 
-    it('should switch project context for valid path', () => {
+    it('should return error when project has no specwright directory', () => {
+      mockExistsSync.mockImplementation((path: PathLike) => {
+        const pathStr = path.toString();
+        if (pathStr.endsWith('specwright') || pathStr.endsWith('agent-os')) {
+          return false;
+        }
+        return true;
+      });
+      mockStatSync.mockReturnValue({
+        isDirectory: () => true
+      } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src'] as unknown as ReturnType<typeof readdirSync>);
+
+      const result = service.switchProject('session-1', '/Users/dev/my-project');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Invalid project: missing specwright/ directory');
+    });
+
+    it('should switch project context for valid path with specwright', () => {
       mockExistsSync.mockReturnValue(true);
       mockStatSync.mockReturnValue({
         isDirectory: () => true
       } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
 
       const result = service.switchProject('session-1', '/Users/dev/my-project');
 
@@ -124,6 +189,7 @@ describe('ProjectContextService', () => {
       mockStatSync.mockReturnValue({
         isDirectory: () => true
       } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
 
       service.switchProject('session-a', '/Users/dev/project-a');
       service.switchProject('session-b', '/Users/dev/project-b');
@@ -148,6 +214,7 @@ describe('ProjectContextService', () => {
       mockStatSync.mockReturnValue({
         isDirectory: () => true
       } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
 
       service.switchProject('session-1', '/Users/dev/my-project');
 
@@ -164,6 +231,7 @@ describe('ProjectContextService', () => {
       mockStatSync.mockReturnValue({
         isDirectory: () => true
       } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
 
       const beforeSwitch = Date.now();
       service.switchProject('session-1', '/Users/dev/my-project');
@@ -182,6 +250,7 @@ describe('ProjectContextService', () => {
       mockStatSync.mockReturnValue({
         isDirectory: () => true
       } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
 
       service.switchProject('session-1', '/Users/dev/my-project');
       expect(service.getCurrentProject('session-1')).not.toBeNull();
@@ -196,6 +265,7 @@ describe('ProjectContextService', () => {
       mockStatSync.mockReturnValue({
         isDirectory: () => true
       } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
 
       service.switchProject('session-a', '/Users/dev/project-a');
       service.switchProject('session-b', '/Users/dev/project-b');
@@ -219,6 +289,7 @@ describe('ProjectContextService', () => {
       mockStatSync.mockReturnValue({
         isDirectory: () => true
       } as ReturnType<typeof statSync>);
+      mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
 
       service.switchProject('session-a', '/Users/dev/project-a');
       service.switchProject('session-b', '/Users/dev/project-b');
@@ -243,6 +314,7 @@ describe('ProjectContextService', () => {
         mockStatSync.mockReturnValue({
           isDirectory: () => true
         } as ReturnType<typeof statSync>);
+        mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
 
         // When ich einen POST Request an "/api/project/switch" mit Pfad "/Users/dev/my-project" sende
         const result = service.switchProject('session-1', '/Users/dev/my-project');
@@ -265,6 +337,7 @@ describe('ProjectContextService', () => {
         mockStatSync.mockReturnValue({
           isDirectory: () => true
         } as ReturnType<typeof statSync>);
+        mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
 
         // Given Nutzer A hat Projekt-Kontext "project-a" aktiv
         service.switchProject('user-a', '/Users/dev/project-a');
@@ -285,7 +358,7 @@ describe('ProjectContextService', () => {
     });
 
     describe('Szenario 4: Projekt-Validierung', () => {
-      it('should reject project without specwright/ or agent-os/ directory', () => {
+      it('should accept project without specwright/ but mark hasSpecwright as false', () => {
         // Given der Server läuft
         // Setup: path exists but neither specwright/ nor agent-os/ exist
         mockExistsSync.mockImplementation((path: PathLike) => {
@@ -298,15 +371,19 @@ describe('ProjectContextService', () => {
         mockStatSync.mockReturnValue({
           isDirectory: () => true
         } as ReturnType<typeof statSync>);
+        mockReaddirSync.mockReturnValue(['src', 'README.md'] as unknown as ReturnType<typeof readdirSync>);
 
         // When ich validiere einen Pfad ohne specwright/ oder agent-os/ Unterordner
         const result = service.validateProject('/Users/dev/invalid-folder');
 
-        // Then ist die Validierung fehlgeschlagen
-        expect(result.valid).toBe(false);
+        // Then ist die Validierung erfolgreich
+        expect(result.valid).toBe(true);
 
-        // And die Response enthält "Invalid project: missing specwright/ directory"
-        expect(result.error).toBe('Invalid project: missing specwright/ directory');
+        // And hasSpecwright ist false
+        expect(result.hasSpecwright).toBe(false);
+
+        // And fileCount is available
+        expect(result.fileCount).toBe(2);
       });
     });
 
@@ -326,12 +403,124 @@ describe('ProjectContextService', () => {
       });
     });
 
+    describe('IW-001 Szenario 1: Projekt ohne Specwright wird erkannt', () => {
+      it('should detect project without specwright as hasSpecwright false', () => {
+        mockExistsSync.mockImplementation((path: PathLike) => {
+          const pathStr = path.toString();
+          if (pathStr.endsWith('specwright') || pathStr.endsWith('agent-os')) {
+            return false;
+          }
+          return true;
+        });
+        mockStatSync.mockReturnValue({
+          isDirectory: () => true
+        } as ReturnType<typeof statSync>);
+        mockReaddirSync.mockReturnValue(['src', 'package.json', 'README.md'] as unknown as ReturnType<typeof readdirSync>);
+
+        const result = service.validateProject('/home/user/my-new-project');
+
+        expect(result.valid).toBe(true);
+        expect(result.hasSpecwright).toBe(false);
+        expect(result.hasProductBrief).toBe(false);
+        expect(result.fileCount).toBe(3);
+      });
+    });
+
+    describe('IW-001 Szenario 2: Projekt mit Specwright und Product Brief', () => {
+      it('should detect fully configured project', () => {
+        mockExistsSync.mockReturnValue(true);
+        mockStatSync.mockReturnValue({
+          isDirectory: () => true
+        } as ReturnType<typeof statSync>);
+        mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
+
+        const result = service.validateProject('/home/user/my-existing-project');
+
+        expect(result.valid).toBe(true);
+        expect(result.hasSpecwright).toBe(true);
+        expect(result.hasProductBrief).toBe(true);
+      });
+    });
+
+    describe('IW-001 Szenario 3: Specwright ohne Product Brief (install.sh)', () => {
+      it('should detect specwright installed but no product brief', () => {
+        mockExistsSync.mockImplementation((path: PathLike) => {
+          const pathStr = path.toString();
+          if (pathStr.includes('product-brief.md')) {
+            return false;
+          }
+          return true;
+        });
+        mockStatSync.mockReturnValue({
+          isDirectory: () => true
+        } as ReturnType<typeof statSync>);
+        mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
+
+        const result = service.validateProject('/home/user/installed-project');
+
+        expect(result.valid).toBe(true);
+        expect(result.hasSpecwright).toBe(true);
+        expect(result.hasProductBrief).toBe(false);
+      });
+    });
+
+    describe('IW-001 Szenario 4: Bestandsprojekt-Erkennung via Dateianzahl', () => {
+      it('should return high file count for existing projects', () => {
+        mockExistsSync.mockImplementation((path: PathLike) => {
+          const pathStr = path.toString();
+          if (pathStr.endsWith('specwright') || pathStr.endsWith('agent-os')) {
+            return false;
+          }
+          return true;
+        });
+        mockStatSync.mockReturnValue({
+          isDirectory: () => true
+        } as ReturnType<typeof statSync>);
+        const manyFiles = Array.from({ length: 15 }, (_, i) => `file-${i}.ts`);
+        mockReaddirSync.mockReturnValue(manyFiles as unknown as ReturnType<typeof readdirSync>);
+
+        const result = service.validateProject('/home/user/existing-project');
+
+        expect(result.valid).toBe(true);
+        expect(result.fileCount).toBe(15);
+        expect(result.hasSpecwright).toBe(false);
+      });
+    });
+
+    describe('IW-001 Edge Case: .agent-os Product Brief', () => {
+      it('should detect product brief under .agent-os/', () => {
+        mockExistsSync.mockImplementation((path: PathLike) => {
+          const pathStr = path.toString();
+          // specwright/ doesn't exist, but agent-os/ does
+          if (pathStr.endsWith('/specwright') && !pathStr.includes('.agent-os')) {
+            return false;
+          }
+          // .specwright doesn't exist
+          if (pathStr.endsWith('.specwright')) {
+            return false;
+          }
+          return true;
+        });
+        mockStatSync.mockReturnValue({
+          isDirectory: () => true
+        } as ReturnType<typeof statSync>);
+        mockReaddirSync.mockReturnValue(['src', 'agent-os'] as unknown as ReturnType<typeof readdirSync>);
+
+        const result = service.validateProject('/home/user/legacy-project');
+
+        expect(result.valid).toBe(true);
+        expect(result.hasSpecwright).toBe(true);
+        expect(result.hasProductBrief).toBe(true);
+      });
+    });
+
     describe('Szenario 6: Aktuelles Projekt abrufen', () => {
       it('should return current project details', () => {
         mockExistsSync.mockReturnValue(true);
         mockStatSync.mockReturnValue({
           isDirectory: () => true
         } as ReturnType<typeof statSync>);
+        mockReaddirSync.mockReturnValue(['src', 'specwright'] as unknown as ReturnType<typeof readdirSync>);
 
         // Given der Projekt-Kontext ist auf "/Users/dev/my-project" gesetzt
         service.switchProject('session-1', '/Users/dev/my-project');

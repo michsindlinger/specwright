@@ -105,16 +105,16 @@ Scenario: Product Brief unter .agent-os/ statt specwright/
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: ui/src/server/services/project-context.service.ts
-- [ ] CONTAINS: project-context.service.ts enthaelt "hasSpecwright"
-- [ ] CONTAINS: project-context.service.ts enthaelt "hasProductBrief"
-- [ ] CONTAINS: project-context.service.ts enthaelt "fileCount"
+- [x] FILE_EXISTS: ui/src/server/project-context.service.ts
+- [x] CONTAINS: project-context.service.ts enthaelt "hasSpecwright"
+- [x] CONTAINS: project-context.service.ts enthaelt "hasProductBrief"
+- [x] CONTAINS: project-context.service.ts enthaelt "fileCount"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui && npm run build:backend` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
-- [ ] TEST_PASS: `cd ui && npx vitest run` exits with code 0
+- [x] BUILD_PASS: `cd ui && npm run build:backend` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] TEST_PASS: `cd ui && npx vitest run` exits with code 0
 
 ---
 
@@ -153,18 +153,18 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Security/Performance Anforderungen erfuellt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Security/Performance Anforderungen erfuellt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Unit Tests geschrieben und bestanden
-- [ ] Code Review durchgefuehrt und genehmigt
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Unit Tests geschrieben und bestanden
+- [x] Code Review durchgefuehrt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 
