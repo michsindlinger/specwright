@@ -124,7 +124,11 @@ export class AosTerminal extends LitElement {
     // Wait for first render before initializing terminal
     this.updateComplete.then(() => {
       this.initializeTerminal();
-      this.setupGatewayListeners();
+      // Gateway listeners are set up in _doInitializeTerminal (or deferred via ResizeObserver)
+      // Only set them up here if terminal was initialized synchronously
+      if (!this._pendingInit) {
+        this.setupGatewayListeners();
+      }
     });
   }
 
@@ -143,27 +147,42 @@ export class AosTerminal extends LitElement {
 
   /**
    * Refresh terminal rendering after becoming visible again.
-   * Refits dimensions and requests the full buffer from the server
-   * for a clean re-render (clear + write).
+   * Uses double-rAF to ensure layout reflow is complete after
+   * display:none → display:block transitions, then refits dimensions
+   * and requests the full buffer from the server for a clean re-render.
    */
   public refreshTerminal(): void {
-    if (this.fitAddon && this.terminal) {
-      this.fitAddon.fit();
+    if (!this.fitAddon || !this.terminal) return;
 
-      // Request full buffer from server for a clean re-render.
-      // The buffer-response handler does clear() + write(buffer).
-      if (this.terminalSessionId) {
-        if (this.cloudMode) {
-          gateway.send({
-            type: 'cloud-terminal:buffer-request',
-            sessionId: this.terminalSessionId,
-            timestamp: new Date().toISOString(),
-          });
-        } else {
-          gateway.requestTerminalBuffer(this.terminalSessionId);
+    // Double requestAnimationFrame: first rAF schedules after current frame,
+    // second rAF runs after the browser has completed layout reflow.
+    // A single rAF is not enough after visibility changes (display:none → block).
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!this.fitAddon || !this.terminal || !this.terminalContainer) return;
+
+        // Skip if container still has zero dimensions (not yet visible)
+        if (this.terminalContainer.offsetWidth === 0 || this.terminalContainer.offsetHeight === 0) {
+          return;
         }
-      }
-    }
+
+        this.fitAddon.fit();
+
+        // Request full buffer from server for a clean re-render.
+        // The buffer-response handler does clear() + write(buffer).
+        if (this.terminalSessionId) {
+          if (this.cloudMode) {
+            gateway.send({
+              type: 'cloud-terminal:buffer-request',
+              sessionId: this.terminalSessionId,
+              timestamp: new Date().toISOString(),
+            });
+          } else {
+            gateway.requestTerminalBuffer(this.terminalSessionId);
+          }
+        }
+      });
+    });
   }
 
   private initializeTerminal(): void {
@@ -172,6 +191,26 @@ export class AosTerminal extends LitElement {
       console.error('Terminal container not found');
       return;
     }
+
+    // Don't initialize if container is not visible (zero dimensions).
+    // This happens when the terminal is inside a hidden sidebar or tab.
+    // The terminal will be initialized later via refreshTerminal() or
+    // when the container becomes visible and ResizeObserver fires.
+    if (this.terminalContainer.offsetWidth === 0 || this.terminalContainer.offsetHeight === 0) {
+      this._pendingInit = true;
+      this.setupResizeObserver();
+      return;
+    }
+
+    this._doInitializeTerminal();
+  }
+
+  /** Flag indicating terminal init was deferred because container was hidden */
+  private _pendingInit = false;
+
+  private _doInitializeTerminal(): void {
+    if (!this.terminalContainer) return;
+    this._pendingInit = false;
 
     // Create xterm.js Terminal with theme
     this.terminal = new Terminal({
@@ -216,8 +255,10 @@ export class AosTerminal extends LitElement {
       }
     });
 
-    // Setup resize observer
-    this.setupResizeObserver();
+    // Setup resize observer (only if not already set up during deferred init)
+    if (!this.resizeObserver) {
+      this.setupResizeObserver();
+    }
 
     // Emit ready event
     this.dispatchEvent(new CustomEvent('terminal-ready', {
@@ -378,18 +419,36 @@ export class AosTerminal extends LitElement {
   }
 
   private setupResizeObserver(): void {
-    if (!this.terminalContainer || !this.terminal || !this.fitAddon) {
+    if (!this.terminalContainer) {
+      return;
+    }
+
+    // Allow setup even without terminal/fitAddon when _pendingInit is true
+    // (deferred init waits for container to become visible via ResizeObserver)
+    if (!this._pendingInit && (!this.terminal || !this.fitAddon)) {
       return;
     }
 
     this.resizeObserver = new ResizeObserver(() => {
-      if (this.fitAddon && this.terminal && this.terminalContainer) {
-        // Skip when container is hidden (display: none gives zero dimensions).
-        // This prevents sending wrong resize to the backend PTY.
-        if (this.terminalContainer.offsetWidth === 0 || this.terminalContainer.offsetHeight === 0) {
-          return;
-        }
+      if (!this.terminalContainer) return;
 
+      // Skip when container is hidden (display: none gives zero dimensions).
+      // This prevents sending wrong resize to the backend PTY.
+      if (this.terminalContainer.offsetWidth === 0 || this.terminalContainer.offsetHeight === 0) {
+        return;
+      }
+
+      // Complete deferred initialization now that the container is visible
+      if (this._pendingInit) {
+        this._doInitializeTerminal();
+        this.setupGatewayListeners();
+        this.dispatchEvent(new CustomEvent('terminal-ready', {
+          detail: { terminal: this.terminal }
+        }));
+        return;
+      }
+
+      if (this.fitAddon && this.terminal) {
         this.fitAddon.fit();
 
         // Send resize event to backend

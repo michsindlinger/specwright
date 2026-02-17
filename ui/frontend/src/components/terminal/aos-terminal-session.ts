@@ -285,11 +285,10 @@ export class AosTerminalSession extends LitElement {
    * Public so parent components can trigger refresh (e.g., on sidebar open).
    */
   public refreshTerminal(): void {
-    // Use requestAnimationFrame to ensure the DOM is visible before fitting
-    requestAnimationFrame(() => {
-      const terminal = this.renderRoot.querySelector('aos-terminal') as AosTerminal | null;
-      terminal?.refreshTerminal();
-    });
+    // aos-terminal.refreshTerminal() already uses double-rAF internally,
+    // so we just need to find the element and delegate.
+    const terminal = this.renderRoot.querySelector('aos-terminal') as AosTerminal | null;
+    terminal?.refreshTerminal();
   }
 
   /**

@@ -21,5 +21,36 @@
       "blocked": 0,
       "done": 1
     }
-  }
+  },
+  "resumeContext": {
+    "activeKanban": "kanban-2026-02-17",
+    "currentPhase": "executing",
+    "lastExecution": "2026-02-17",
+    "lastAction": "Execution started",
+    "nextAction": "Execute items from kanban-2026-02-17"
+  },
+  "executions": [
+    {
+      "id": "kanban-2026-02-17",
+      "date": "2026-02-17",
+      "status": "active",
+      "itemCount": 1
+    }
+  ],
+  "changeLog": [
+    {
+      "timestamp": "2026-02-17T10:00:00.000Z",
+      "action": "execution_started",
+      "itemId": null,
+      "details": "Started execution kanban-2026-02-17 with 1 items"
+    },
+    {
+      "timestamp": "2026-02-17T06:10:59.591Z",
+      "action": "status_changed",
+      "itemId": "BUG-001",
+      "from": "open",
+      "to": "done",
+      "details": "Completed in kanban-2026-02-17"
+    }
+  ]
 }
