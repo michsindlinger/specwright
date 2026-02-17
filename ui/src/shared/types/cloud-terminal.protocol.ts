@@ -379,6 +379,9 @@ export const CLOUD_TERMINAL_CONFIG = {
   /** Default terminal size */
   DEFAULT_COLS: 120,
   DEFAULT_ROWS: 40,
+
+  /** Delay before sending workflow command after session creation (ms) */
+  WORKFLOW_COMMAND_DELAY_MS: 1500,
 } as const;
 
 /**

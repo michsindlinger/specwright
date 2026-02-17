@@ -233,7 +233,7 @@ export class CloudTerminalManager extends EventEmitter {
       } else {
         console.error(`[CloudTerminalManager] Failed to send workflow command to session ${session.sessionId}`);
       }
-    }, 1000); // 1 second delay for session initialization
+    }, CLOUD_TERMINAL_CONFIG.WORKFLOW_COMMAND_DELAY_MS);
 
     // Return session with workflow metadata attached
     return {

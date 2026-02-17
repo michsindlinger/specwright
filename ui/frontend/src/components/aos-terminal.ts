@@ -280,42 +280,53 @@ export class AosTerminal extends LitElement {
     gateway.on('cloud-terminal:buffer-response', this.terminalBufferResponseHandler);
   }
 
+  /** Debounce timer for input-needed detection */
+  private _inputNeededTimer: ReturnType<typeof setTimeout> | null = null;
+
   /**
    * Detect patterns in terminal output that indicate user input is needed.
    * Emits 'input-needed' event when such patterns are detected.
+   * Uses a debounce (500ms) to avoid false positives from streaming output.
    *
    * Patterns detected:
    * - Lines ending with '?' (Claude CLI prompts)
-   * - Lines ending with ':' followed by space (various prompts)
    * - "Press any key" patterns
-   * - ANSI cursor-show sequences (indicates interactive mode)
+   * - Explicit input prompts (Enter X:, Password:, etc.)
+   * - Yes/No confirmation prompts
    */
   private _detectInputNeeded(data: string): void {
     // Strip ANSI escape codes for pattern matching
     // eslint-disable-next-line no-control-regex
     const strippedData = data.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
 
-    // Patterns that indicate input is needed
+    // Patterns that indicate input is needed (precise, avoiding false positives)
     const inputPatterns = [
       /\?\s*$/,                           // Lines ending with '?' (Claude prompts)
-      /:\s*$/,                            // Lines ending with ':' (various prompts)
       /Press any key/i,                   // "Press any key" prompts
-      /Enter.*:/i,                        // "Enter X:" prompts
+      /Enter.*:\s*$/i,                    // "Enter X:" prompts
+      /Password\s*:\s*$/i,               // Password prompts
       /Input required/i,                  // Explicit input required
       /Bitte.*eingeben/i,                 // German input prompts
       /\[Y\/n\]/i,                        // Yes/No prompts
       /\[y\/N\]/i,                        // yes/No prompts
+      /\(y\/n\)/i,                        // (y/n) prompts
     ];
 
     // Check if any pattern matches
     const needsInput = inputPatterns.some(pattern => pattern.test(strippedData));
 
     if (needsInput) {
-      this.dispatchEvent(new CustomEvent('input-needed', {
-        detail: { sessionId: this.terminalSessionId },
-        bubbles: true,
-        composed: true,
-      }));
+      // Debounce: only fire after 500ms of no new output
+      // This prevents false positives from streaming log lines
+      if (this._inputNeededTimer) clearTimeout(this._inputNeededTimer);
+      this._inputNeededTimer = setTimeout(() => {
+        this._inputNeededTimer = null;
+        this.dispatchEvent(new CustomEvent('input-needed', {
+          detail: { sessionId: this.terminalSessionId },
+          bubbles: true,
+          composed: true,
+        }));
+      }, 500);
     }
   }
 

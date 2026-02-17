@@ -26,6 +26,10 @@ export interface TerminalSession {
   workflowContext?: string;
   /** Indicates workflow needs user input - used for tab notifications */
   needsInput?: boolean;
+  /** Model ID for workflow sessions (e.g., 'claude-sonnet-4-5-20250929') */
+  modelId?: string;
+  /** Provider ID for workflow sessions (e.g., 'anthropic') */
+  providerId?: string;
 }
 
 export interface LoadingState {
@@ -765,6 +769,8 @@ export class AosCloudTerminalSidebar extends LitElement {
       workflowName,
       workflowContext,
       needsInput: false,
+      modelId: options?.modelId,
+      providerId: options?.providerId,
     };
 
     // Add to sessions array
@@ -777,21 +783,6 @@ export class AosCloudTerminalSidebar extends LitElement {
     if (!this.isOpen) {
       this.isOpen = true;
     }
-
-    // Dispatch event for parent to handle backend session creation
-    this.dispatchEvent(
-      new CustomEvent('workflow-session-create', {
-        detail: {
-          sessionId,
-          workflowName,
-          workflowContext,
-          projectPath,
-          ...options,
-        },
-        bubbles: true,
-        composed: true,
-      })
-    );
 
     return sessionId;
   }

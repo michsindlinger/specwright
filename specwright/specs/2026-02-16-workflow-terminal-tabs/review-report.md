@@ -162,16 +162,26 @@ const modelConfig = message.modelConfig as CloudTerminalModelConfig;            
 
 ## Empfehlungen
 
-1. **[MUSS] C-1 beheben:** Protocol-Mismatch in `startWorkflowSession()` fixen, bevor Workflow-Tabs funktionieren koennen.
+1. ~~**[MUSS] C-1 beheben:** Protocol-Mismatch in `startWorkflowSession()` fixen~~ **BEHOBEN** (2026-02-17)
 
-2. **[MUSS] M-2 beheben:** Uncommitted WTT-006 Changes committen.
+2. ~~**[MUSS] M-2 beheben:** Uncommitted WTT-006 Changes committen~~ **BEHOBEN** (2026-02-17)
 
-3. **[SOLL] M-1 klaren:** Entweder `workflow-session-create` Event-Listener hinzufuegen oder das Event entfernen.
+3. ~~**[SOLL] M-1 klaren:** Entweder `workflow-session-create` Event-Listener hinzufuegen oder das Event entfernen~~ **BEHOBEN** (2026-02-17)
 
-4. **[KANN] m-1 verbessern:** Input-Detection Patterns praeziser machen um False-Positives zu reduzieren.
+4. ~~**[KANN] m-1 verbessern:** Input-Detection Patterns praeziser machen um False-Positives zu reduzieren~~ **BEHOBEN** (2026-02-17)
 
-5. **[KANN] m-2 verbessern:** Hardcoded Timeout durch Event-basierte Readiness-Erkennung ersetzen.
+5. ~~**[KANN] m-2 verbessern:** Hardcoded Timeout durch Event-basierte Readiness-Erkennung ersetzen~~ **BEHOBEN** (2026-02-17)
+
+## Fix-Details (2026-02-17)
+
+| Issue | Fix |
+|-------|-----|
+| C-1 | `startWorkflowSession()` sendet jetzt `workflowMetadata` und `modelConfig` als strukturierte Objekte gemaess `CloudTerminalCreateWorkflowMessage` Protokoll. `TerminalSession` um `modelId`/`providerId` erweitert. |
+| M-1 | Ungebundenes `workflow-session-create` Event aus `openWorkflowTab()` entfernt. Session-Erstellung laeuft ausschliesslich ueber `startWorkflowSession()`. |
+| M-2 | Bereits committed in WTT-999 Commits. |
+| m-1 | Breites `/:\s*$/` Pattern entfernt. Ersetzt durch spezifische Patterns (`Password:`, `Enter X:`). Debounce (500ms) hinzugefuegt um False-Positives bei Streaming-Output zu vermeiden. |
+| m-2 | Hardcoded `1000`ms durch `CLOUD_TERMINAL_CONFIG.WORKFLOW_COMMAND_DELAY_MS` (1500ms) ersetzt. Zentral konfigurierbar in `cloud-terminal.protocol.ts`. |
 
 ## Fazit
 
-**Review mit kritischen Issues** - Es gibt ein funktionales Problem (C-1: Protocol Mismatch) das die Kern-Funktionalitaet (Workflow-Terminal-Tab-Erstellung) blockiert. Zusaetzlich sind WTT-006 Aenderungen nicht committed (M-2). Diese beiden Issues muessen vor dem PR behoben werden. Die Architektur und das Design sind insgesamt solide.
+**Alle Issues behoben.** Die Architektur und das Design sind solide. Alle 5 Review-Findings wurden adressiert - TypeScript kompiliert fehlerfrei, Lint ist sauber.

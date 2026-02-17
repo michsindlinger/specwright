@@ -482,6 +482,7 @@ export class AosTerminalSession extends LitElement {
   /**
    * Start a workflow session - auto-connects without model selector.
    * Uses the backend's cloud-terminal:create-workflow endpoint.
+   * Sends structured workflowMetadata and modelConfig per CloudTerminalCreateWorkflowMessage protocol.
    */
   private startWorkflowSession(): void {
     if (!this.session.isWorkflow) return;
@@ -490,13 +491,22 @@ export class AosTerminalSession extends LitElement {
     this.connectionStatus = 'connecting';
     this.selectedTerminalType = 'claude-code';
 
-    // Send workflow creation request to backend
+    const workflowName = this.session.workflowName || 'unknown';
+
+    // Send workflow creation request with structured objects per protocol
     gateway.send({
       type: 'cloud-terminal:create-workflow',
       requestId: this.session.id,
       projectPath: this.session.projectPath,
-      workflowName: this.session.workflowName || 'unknown',
-      workflowContext: this.session.workflowContext || '',
+      workflowMetadata: {
+        workflowCommand: `/${workflowName}`,
+        workflowName,
+        workflowContext: this.session.workflowContext,
+      },
+      modelConfig: {
+        model: this.session.modelId || 'claude-sonnet-4-5-20250929',
+        provider: this.session.providerId || 'anthropic',
+      },
       timestamp: new Date().toISOString(),
     });
   }
