@@ -81,13 +81,13 @@ Scenario: Kanban-Board auf complete setzen
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] user-todos.md finalisiert (wenn vorhanden)
-- [ ] Project Knowledge aktualisiert (wenn "Creates Reusable" Stories vorhanden)
-- [ ] Alle Aenderungen committed
-- [ ] Pull Request erstellt
-- [ ] PR URL dokumentiert
-- [ ] Worktree aufgeraeumt (wenn verwendet)
-- [ ] Kanban-Board auf "complete" gesetzt
+- [x] user-todos.md finalisiert (wenn vorhanden)
+- [x] Project Knowledge aktualisiert (wenn "Creates Reusable" Stories vorhanden)
+- [x] Alle Aenderungen committed
+- [x] Pull Request erstellt
+- [x] PR URL dokumentiert
+- [x] Worktree aufgeraeumt (wenn verwendet)
+- [x] Kanban-Board auf "complete" gesetzt
 
 ---
 

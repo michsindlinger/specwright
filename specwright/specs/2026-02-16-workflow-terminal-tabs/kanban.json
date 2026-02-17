@@ -10,22 +10,22 @@
     "createdAt": "2026-02-16"
   },
   "resumeContext": {
-    "currentPhase": "3-execute-story",
-    "nextPhase": "complete",
+    "currentPhase": "complete",
+    "nextPhase": null,
     "worktreePath": null,
     "gitBranch": "feature/workflow-terminal-tabs",
-    "currentStory": "WTT-999",
-    "currentStoryPhase": "finalizing",
-    "lastAction": "WTT-999 Finalize PR started",
-    "nextAction": "Create Pull Request and finalize",
-    "progressIndex": 8,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "WTT-999 PR finalized - https://github.com/michsindlinger/specwright/pull/3",
+    "nextAction": null,
+    "progressIndex": 9,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
   "execution": {
-    "status": "executing",
+    "status": "completed",
     "startedAt": "2026-02-16T22:52:23.098Z",
-    "completedAt": null,
+    "completedAt": "2026-02-17T22:30:00.000Z",
     "model": "glm-5"
   },
   "stories": [
@@ -347,33 +347,37 @@
       "dependencies": [
         "WTT-998"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "complete",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-16",
         "updatedAt": "2026-02-17",
-        "startedAt": "2026-02-17T22:00:00.000Z"
+        "startedAt": "2026-02-17T22:00:00.000Z",
+        "completedAt": "2026-02-17T22:30:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-16-workflow-terminal-tabs/kanban.json"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "model": "glm-5"
+      "model": "glm-5",
+      "phase": "completed"
     }
   ],
   "boardStatus": {
     "total": 9,
     "ready": 0,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 8,
+    "done": 9,
     "blocked": 0
   },
   "statistics": {
@@ -638,6 +642,12 @@
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/workflow-terminal-tabs"
+    },
+    {
+      "timestamp": "2026-02-17T22:30:00.000Z",
+      "action": "story_completed",
+      "storyId": "WTT-999",
+      "details": "Progress: 9/9 (100%) - PR finalized - https://github.com/michsindlinger/specwright/pull/3"
     }
   ]
 }
