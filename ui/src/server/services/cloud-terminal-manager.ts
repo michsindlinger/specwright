@@ -95,7 +95,8 @@ export class CloudTerminalManager extends EventEmitter {
     terminalType: CloudTerminalType,
     modelConfig?: CloudTerminalModelConfig,
     cols?: number,
-    rows?: number
+    rows?: number,
+    initialPrompt?: string
   ): CloudTerminalSession {
     // Check max sessions limit
     if (this.sessions.size >= CLOUD_TERMINAL_CONFIG.MAX_SESSIONS) {
@@ -146,7 +147,10 @@ export class CloudTerminalManager extends EventEmitter {
         }
         const cliConfig = getCliCommandForModel(modelConfig.model);
         shellCommand = cliConfig.command;
-        shellArgs = cliConfig.args;
+        shellArgs = [...cliConfig.args];
+        if (initialPrompt) {
+          shellArgs.push(initialPrompt);
+        }
         shellEnv = {
           ...(process.env as Record<string, string>),
           CLAUDE_MODEL: modelConfig.model,
@@ -210,16 +214,19 @@ export class CloudTerminalManager extends EventEmitter {
     cols?: number,
     rows?: number
   ): CloudTerminalSession & { workflowMetadata: CloudTerminalWorkflowMetadata } {
-    // Create base session as claude-code terminal
-    const session = this.createSession(projectPath, 'claude-code', modelConfig, cols, rows);
+    // Build initial prompt from workflow metadata (e.g., "/specwright:add-bug test")
+    let initialPrompt = workflowMetadata.workflowCommand;
+    if (workflowMetadata.workflowContext) {
+      initialPrompt += ` ${workflowMetadata.workflowContext}`;
+    }
+
+    // Pass initial prompt as CLI argument - Claude Code processes it on startup
+    // and returns to interactive REPL mode afterwards
+    const session = this.createSession(projectPath, 'claude-code', modelConfig, cols, rows, initialPrompt);
 
     console.log(
-      `[CloudTerminalManager] Created workflow session ${session.sessionId} for command: ${workflowMetadata.workflowCommand}`
+      `[CloudTerminalManager] Created workflow session ${session.sessionId} with initial prompt: ${initialPrompt}`
     );
-
-    // BUG-002-B: Wait for CLI readiness before sending command
-    // Instead of a fixed delay, listen for PTY output that indicates the REPL is ready
-    this.waitForReadyAndSendCommand(session.sessionId, workflowMetadata);
 
     // Return session with workflow metadata attached
     return {
@@ -228,74 +235,6 @@ export class CloudTerminalManager extends EventEmitter {
     };
   }
 
-  /**
-   * BUG-002-B: Wait for CLI readiness by monitoring PTY output, then send command.
-   * Listens for the Claude CLI REPL prompt pattern in terminal output.
-   * Falls back to max timeout (10s) if prompt is never detected.
-   */
-  private waitForReadyAndSendCommand(
-    sessionId: CloudTerminalSessionId,
-    workflowMetadata: CloudTerminalWorkflowMetadata
-  ): void {
-    // Build the full command
-    let fullCommand = workflowMetadata.workflowCommand;
-    if (workflowMetadata.workflowContext) {
-      fullCommand += ` ${workflowMetadata.workflowContext}`;
-    }
-    fullCommand += '\r';
-
-    let sent = false;
-    let outputBuffer = '';
-
-    // Strip ANSI escape codes for prompt detection (PTY output contains color/cursor codes)
-    const stripAnsi = (str: string): string => str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
-
-    // Claude CLI REPL ready indicators:
-    // - Line ending with "> " (interactive prompt)
-    // - ">" at start of line (REPL prompt)
-    // - The prompt appears after initial startup messages
-    const readyPattern = /(?:^|\n)\s*>\s*$/;
-
-    const sendCommand = (): void => {
-      if (sent) return;
-      sent = true;
-
-      // Clean up listener and timeout
-      this.removeListener('session.data', dataListener);
-      clearTimeout(fallbackTimeout);
-
-      const result = this.sendInput(sessionId, fullCommand);
-      if (result) {
-        console.log(`[CloudTerminalManager] Sent workflow command after readiness: ${fullCommand.trim()}`);
-      } else {
-        console.error(`[CloudTerminalManager] Failed to send workflow command to session ${sessionId}`);
-      }
-    };
-
-    const dataListener = (dataSessionId: CloudTerminalSessionId, data: string): void => {
-      if (dataSessionId !== sessionId || sent) return;
-
-      outputBuffer += data;
-
-      // Strip ANSI escape codes before checking for prompt pattern
-      const cleanBuffer = stripAnsi(outputBuffer);
-      if (readyPattern.test(cleanBuffer)) {
-        console.log(`[CloudTerminalManager] CLI readiness detected for session ${sessionId}`);
-        sendCommand();
-      }
-    };
-
-    // Listen for PTY output
-    this.on('session.data', dataListener);
-
-    // Fallback timeout: send after max wait even if prompt not detected
-    const fallbackTimeout = setTimeout(() => {
-      if (!sent) {
-        console.warn(`[CloudTerminalManager] CLI readiness timeout for session ${sessionId}, sending command anyway`);
-        sendCommand();
-      }
-    }, CLOUD_TERMINAL_CONFIG.WORKFLOW_COMMAND_READY_TIMEOUT_MS);
-  }
 
   /**
    * Close a Cloud Terminal session
