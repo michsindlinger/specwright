@@ -12,7 +12,7 @@ import type { TerminalSession } from '../terminal/aos-cloud-terminal-sidebar.js'
  * - terminal: Terminal execution step (IW-003)
  * - complete: Wizard complete step
  */
-export type WizardStep = 'install' | 'selection' | 'terminal' | 'complete';
+export type WizardStep = 'migrate' | 'install' | 'selection' | 'terminal' | 'complete';
 
 /**
  * Planning command option for the selection step.
@@ -34,7 +34,7 @@ export interface CommandSelectedDetail {
 /**
  * Terminal mode: whether terminal is running install.sh or a planning command.
  */
-type TerminalMode = 'install' | 'planning';
+type TerminalMode = 'migrate' | 'install' | 'planning';
 
 /**
  * Available planning commands.
@@ -95,6 +95,9 @@ export class AosInstallationWizardModal extends LitElement {
   /** Number of top-level files/dirs in the project */
   @property({ type: Number }) fileCount = 0;
 
+  /** Whether the project uses agent-os/ and needs migration */
+  @property({ type: Boolean }) needsMigration = false;
+
   /** Path to the project */
   @property({ type: String }) projectPath = '';
 
@@ -154,7 +157,7 @@ export class AosInstallationWizardModal extends LitElement {
 
   override updated(changedProperties: Map<string, unknown>): void {
     if (changedProperties.has('open') && this.open) {
-      this.currentStep = this.hasSpecwright ? 'selection' : 'install';
+      this.currentStep = this.needsMigration ? 'migrate' : this.hasSpecwright ? 'selection' : 'install';
       this.isInstalling = false;
       this.installComplete = false;
       this.installError = null;
@@ -231,6 +234,9 @@ export class AosInstallationWizardModal extends LitElement {
    * Get the context-dependent cancellation message.
    */
   private getCancelMessage(): string {
+    if (this.needsMigration) {
+      return 'Die Migration von Agent OS zu Specwright wird empfohlen. Das Projekt funktioniert auch ohne Migration.';
+    }
     if (!this.hasSpecwright) {
       return 'Specwright muss erst installiert werden damit die UI voll nutzbar ist';
     }
@@ -281,6 +287,10 @@ export class AosInstallationWizardModal extends LitElement {
     this.startTerminal('install', 'curl -sSL https://raw.githubusercontent.com/simonx1/specwright/main/install.sh | bash -s -- --yes --all');
   }
 
+  private handleMigrateClick(): void {
+    this.startTerminal('migrate', 'curl -sSL https://raw.githubusercontent.com/simonx1/specwright/main/migrate-to-specwright.sh | bash -s -- --yes --no-symlinks');
+  }
+
   /**
    * Called externally when install.sh completes successfully.
    * Advances the wizard to the selection step.
@@ -322,9 +332,14 @@ export class AosInstallationWizardModal extends LitElement {
 
     // Create a TerminalSession object for aos-terminal-session
     const sessionId = `wizard-${mode}-${Date.now()}`;
+    const sessionNames: Record<TerminalMode, string> = {
+      migrate: 'Migration',
+      install: 'Installation',
+      planning: 'Planning',
+    };
     this.terminalSession = {
       id: sessionId,
-      name: mode === 'install' ? 'Installation' : 'Planning',
+      name: sessionNames[mode],
       status: 'active',
       createdAt: new Date(),
       projectPath: this.projectPath,
@@ -396,8 +411,8 @@ export class AosInstallationWizardModal extends LitElement {
       this.terminalComplete = true;
       this.terminalError = null;
 
-      if (this.terminalMode === 'install') {
-        // Install completed - auto-advance to selection after brief delay
+      if (this.terminalMode === 'install' || this.terminalMode === 'migrate') {
+        // Install/migrate completed - auto-advance to selection after brief delay
         setTimeout(() => {
           this.currentStep = 'selection';
           this.terminalSession = null;
@@ -424,7 +439,7 @@ export class AosInstallationWizardModal extends LitElement {
    * Continue to next step after successful terminal execution.
    */
   private handleTerminalContinue(): void {
-    if (this.terminalMode === 'install') {
+    if (this.terminalMode === 'install' || this.terminalMode === 'migrate') {
       this.currentStep = 'selection';
       this.terminalSession = null;
       this.terminalSessionId = null;
@@ -471,7 +486,45 @@ export class AosInstallationWizardModal extends LitElement {
 
   // --- Render ---
 
+  private renderCheckIcon() {
+    return html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+  }
+
   private renderStepIndicator() {
+    // Migration flow: Migration -> Planning -> Terminal
+    if (this.needsMigration) {
+      const migrateDone = this.currentStep === 'selection' || this.currentStep === 'terminal';
+      const selectionDone = this.currentStep === 'terminal' && this.terminalMode === 'planning';
+      const isTerminalStep = this.currentStep === 'terminal';
+      // During migrate terminal step, migration is still in progress
+      const isMigrateTerminal = isTerminalStep && this.terminalMode === 'migrate';
+
+      return html`
+        <div class="installation-wizard__steps">
+          <div class="installation-wizard__step-indicator ${migrateDone ? 'installation-wizard__step-indicator--completed' : 'installation-wizard__step-indicator--active'}">
+            <span class="installation-wizard__step-number">
+              ${migrateDone ? this.renderCheckIcon() : '1'}
+            </span>
+            <span class="installation-wizard__step-label">Migration</span>
+          </div>
+          <div class="installation-wizard__step-divider ${migrateDone ? 'installation-wizard__step-divider--active' : ''}"></div>
+          <div class="installation-wizard__step-indicator ${selectionDone ? 'installation-wizard__step-indicator--completed' : this.currentStep === 'selection' ? 'installation-wizard__step-indicator--active' : ''}">
+            <span class="installation-wizard__step-number">
+              ${selectionDone ? this.renderCheckIcon() : '2'}
+            </span>
+            <span class="installation-wizard__step-label">Planning</span>
+          </div>
+          ${isTerminalStep && !isMigrateTerminal ? html`
+            <div class="installation-wizard__step-divider installation-wizard__step-divider--active"></div>
+            <div class="installation-wizard__step-indicator installation-wizard__step-indicator--active">
+              <span class="installation-wizard__step-number">3</span>
+              <span class="installation-wizard__step-label">Terminal</span>
+            </div>
+          ` : nothing}
+        </div>
+      `;
+    }
+
     if (this.hasSpecwright) {
       // Only show planning + terminal steps when specwright already installed
       if (this.currentStep === 'terminal') {
@@ -479,7 +532,7 @@ export class AosInstallationWizardModal extends LitElement {
           <div class="installation-wizard__steps">
             <div class="installation-wizard__step-indicator installation-wizard__step-indicator--completed">
               <span class="installation-wizard__step-number">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                ${this.renderCheckIcon()}
               </span>
               <span class="installation-wizard__step-label">Planning</span>
             </div>
@@ -502,18 +555,14 @@ export class AosInstallationWizardModal extends LitElement {
       <div class="installation-wizard__steps">
         <div class="installation-wizard__step-indicator ${installDone ? 'installation-wizard__step-indicator--completed' : 'installation-wizard__step-indicator--active'}">
           <span class="installation-wizard__step-number">
-            ${installDone
-              ? html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
-              : '1'}
+            ${installDone ? this.renderCheckIcon() : '1'}
           </span>
           <span class="installation-wizard__step-label">Installation</span>
         </div>
         <div class="installation-wizard__step-divider ${installDone ? 'installation-wizard__step-divider--active' : ''}"></div>
         <div class="installation-wizard__step-indicator ${selectionDone ? 'installation-wizard__step-indicator--completed' : this.currentStep === 'selection' ? 'installation-wizard__step-indicator--active' : ''}">
           <span class="installation-wizard__step-number">
-            ${selectionDone
-              ? html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
-              : '2'}
+            ${selectionDone ? this.renderCheckIcon() : '2'}
           </span>
           <span class="installation-wizard__step-label">Planning</span>
         </div>
@@ -524,6 +573,37 @@ export class AosInstallationWizardModal extends LitElement {
             <span class="installation-wizard__step-label">Terminal</span>
           </div>
         ` : nothing}
+      </div>
+    `;
+  }
+
+  private renderMigrateStep() {
+    return html`
+      <div class="installation-wizard__install-step">
+        <div class="installation-wizard__install-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"></polyline>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+            <polyline points="7 23 3 19 7 15"></polyline>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          </svg>
+        </div>
+        <h3 class="installation-wizard__install-title">Migration zu Specwright</h3>
+        <p class="installation-wizard__install-desc">
+          Dieses Projekt verwendet noch die alte <code>agent-os/</code> Verzeichnisstruktur.
+          Migriere zu <code>specwright/</code> fuer die aktuelle Version.
+        </p>
+
+        <button
+          class="installation-wizard__install-button"
+          @click=${this.handleMigrateClick}
+        >
+          Migration starten
+        </button>
+
+        <p class="installation-wizard__install-hint">
+          Benennt <code>agent-os/</code> in <code>specwright/</code> um und aktualisiert alle Referenzen.
+        </p>
       </div>
     `;
   }
@@ -641,7 +721,7 @@ export class AosInstallationWizardModal extends LitElement {
             <line x1="12" y1="19" x2="20" y2="19"></line>
           </svg>
           <span class="installation-wizard__terminal-title">
-            ${this.terminalMode === 'install' ? 'Framework installieren' : 'Planning starten'}
+            ${this.terminalMode === 'migrate' ? 'Migration ausfuehren' : this.terminalMode === 'install' ? 'Framework installieren' : 'Planning starten'}
           </span>
           <code class="installation-wizard__terminal-cmd">${this.terminalCommand}</code>
         </div>
@@ -662,9 +742,11 @@ export class AosInstallationWizardModal extends LitElement {
           ? html`
               <div class="installation-wizard__success" role="status">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                ${this.terminalMode === 'install'
-                  ? 'Installation erfolgreich! Weiter zum Planning...'
-                  : 'Command erfolgreich abgeschlossen!'}
+                ${this.terminalMode === 'migrate'
+                  ? 'Migration erfolgreich! Weiter zum Planning...'
+                  : this.terminalMode === 'install'
+                    ? 'Installation erfolgreich! Weiter zum Planning...'
+                    : 'Command erfolgreich abgeschlossen!'}
               </div>
             `
           : nothing}
@@ -692,7 +774,7 @@ export class AosInstallationWizardModal extends LitElement {
                   class="installation-wizard__install-button"
                   @click=${this.handleTerminalContinue}
                 >
-                  ${this.terminalMode === 'install' ? 'Weiter zum Planning' : 'Fertig'}
+                  ${this.terminalMode === 'install' || this.terminalMode === 'migrate' ? 'Weiter zum Planning' : 'Fertig'}
                 </button>
               </div>
             `
@@ -764,6 +846,7 @@ export class AosInstallationWizardModal extends LitElement {
           ${this.renderStepIndicator()}
 
           <div class="installation-wizard__content ${this.currentStep === 'terminal' ? 'installation-wizard__content--terminal' : ''}">
+            ${this.currentStep === 'migrate' ? this.renderMigrateStep() : nothing}
             ${this.currentStep === 'install' ? this.renderInstallStep() : nothing}
             ${this.currentStep === 'selection' ? this.renderSelectionStep() : nothing}
             ${this.currentStep === 'terminal' ? this.renderTerminalStep() : nothing}
@@ -776,7 +859,7 @@ export class AosInstallationWizardModal extends LitElement {
             >
               ${this.currentStep === 'terminal' ? 'Abbrechen & Schliessen' : 'Abbrechen'}
             </button>
-            ${this.currentStep === 'install' && !this.isInstalling && !this.installComplete
+            ${(this.currentStep === 'install' || this.currentStep === 'migrate') && !this.isInstalling && !this.installComplete
               ? html`
                   <button
                     class="installation-wizard__skip-button"

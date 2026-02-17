@@ -20,6 +20,7 @@ export interface ValidateResult {
   error?: string;
   hasSpecwright?: boolean;
   hasProductBrief?: boolean;
+  needsMigration?: boolean;
   fileCount?: number;
 }
 
@@ -124,6 +125,9 @@ export class ProjectContextService {
     // Check for specwright/ or agent-os/ subdirectory
     const hasSpecwright = this.detectSpecwright(normalizedPath);
 
+    // Check if project uses agent-os/ and needs migration to specwright/
+    const needsMigration = this.detectNeedsMigration(normalizedPath);
+
     // Check for product brief (only meaningful if specwright exists)
     const hasProductBrief = hasSpecwright
       ? this.detectProductBrief(normalizedPath)
@@ -137,6 +141,7 @@ export class ProjectContextService {
       name: basename(normalizedPath),
       hasSpecwright,
       hasProductBrief,
+      needsMigration,
       fileCount
     };
   }
@@ -163,6 +168,16 @@ export class ProjectContextService {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Detects whether a project uses agent-os/ and needs migration to specwright/.
+   * Returns true if agent-os/ exists AND specwright/ does NOT exist.
+   */
+  private detectNeedsMigration(projectPath: string): boolean {
+    const hasAgentOs = existsSync(resolve(projectPath, 'agent-os'));
+    const hasSpecwrightDir = existsSync(resolve(projectPath, 'specwright'));
+    return hasAgentOs && !hasSpecwrightDir;
   }
 
   /**

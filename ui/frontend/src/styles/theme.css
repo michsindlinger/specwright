@@ -11260,6 +11260,23 @@ aos-model-selector .model-option.selected .model-name {
   margin: 0;
 }
 
+.getting-started-hint__action {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.getting-started-hint__action:hover {
+  opacity: 0.85;
+}
+
 /* Action Cards Grid */
 .getting-started-cards {
   display: grid;

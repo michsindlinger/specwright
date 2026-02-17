@@ -12,6 +12,7 @@ interface ActionCard {
 export class AosGettingStartedView extends LitElement {
   @property({ type: Boolean }) hasProductBrief = false;
   @property({ type: Boolean }) hasSpecwright = true;
+  @property({ type: Boolean }) needsMigration = false;
 
   private get standardCards(): ActionCard[] {
     return [
@@ -83,17 +84,61 @@ export class AosGettingStartedView extends LitElement {
           <p class="getting-started-subtitle">
             ${!this.hasSpecwright
               ? 'Specwright muss zuerst installiert werden, bevor du beginnen kannst.'
-              : this.hasProductBrief
-                ? 'Waehle eine Aktion um mit der Entwicklung zu beginnen.'
-                : 'Dein Projekt hat noch keinen Product Brief. Starte mit der Planung.'}
+              : this.needsMigration
+                ? 'Dieses Projekt verwendet noch die alte Agent OS Struktur. Eine Migration wird empfohlen.'
+                : this.hasProductBrief
+                  ? 'Waehle eine Aktion um mit der Entwicklung zu beginnen.'
+                  : 'Dein Projekt hat noch keinen Product Brief. Starte mit der Planung.'}
           </p>
         </div>
 
         ${!this.hasSpecwright
           ? this.renderNotInstalledState()
-          : this.hasProductBrief
-            ? this.renderStandardCards()
-            : this.renderPlanningCards()}
+          : this.needsMigration
+            ? this.renderMigrationHint()
+            : this.hasProductBrief
+              ? this.renderStandardCards()
+              : this.renderPlanningCards()}
+      </div>
+    `;
+  }
+
+  private handleStartWizard(): void {
+    this.dispatchEvent(
+      new CustomEvent('start-wizard', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private renderMigrationHint() {
+    return html`
+      <div class="getting-started-hint getting-started-hint--info">
+        <div class="getting-started-hint__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"></polyline>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+            <polyline points="7 23 3 19 7 15"></polyline>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          </svg>
+        </div>
+        <div class="getting-started-hint__content">
+          <p class="getting-started-hint__title">Migration empfohlen</p>
+          <p class="getting-started-hint__description">
+            Dieses Projekt verwendet noch <code>agent-os/</code> statt <code>specwright/</code>.
+            Starte den Migrations-Wizard, um auf die aktuelle Verzeichnisstruktur zu wechseln.
+          </p>
+          <button class="getting-started-hint__action" @click=${this.handleStartWizard}>
+            Migration starten
+          </button>
+        </div>
+      </div>
+
+      <div class="getting-started-cards">
+        ${this.hasProductBrief
+          ? this.standardCards.map(card => this.renderCard(card, false))
+          : this.planningCards.map(card => this.renderCard(card, false))}
       </div>
     `;
   }
@@ -107,9 +152,12 @@ export class AosGettingStartedView extends LitElement {
         <div class="getting-started-hint__content">
           <p class="getting-started-hint__title">Specwright nicht installiert</p>
           <p class="getting-started-hint__description">
-            Dieses Projekt hat noch kein Specwright-Setup. Fuege das Projekt ueber die Sidebar hinzu,
-            um den Installations-Wizard zu starten.
+            Dieses Projekt hat noch kein Specwright-Setup. Starte den Installations-Wizard,
+            um Specwright einzurichten.
           </p>
+          <button class="getting-started-hint__action" @click=${this.handleStartWizard}>
+            Installation starten
+          </button>
         </div>
       </div>
 

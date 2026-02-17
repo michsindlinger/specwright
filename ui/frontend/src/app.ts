@@ -147,6 +147,9 @@ export class AosApp extends LitElement {
   @state()
   private wizardHasProductBrief = false;
 
+  @state()
+  private wizardNeedsMigration = false;
+
   // GSQ-005: Bottom Panel state
   @state()
   private isBottomPanelOpen = false;
@@ -893,7 +896,14 @@ export class AosApp extends LitElement {
     // Load git status for newly opened project
     this._loadGitStatus();
 
-    // IW-006: Check if wizard is needed for this project
+    // IW-006: Validate project and trigger wizard if needed
+    this._validateAndTriggerWizard(path);
+  }
+
+  /**
+   * IW-006: Validate project and trigger wizard for newly added projects.
+   */
+  private async _validateAndTriggerWizard(path: string): Promise<void> {
     try {
       const validateResponse = await fetch('/api/project/validate', {
         method: 'POST',
@@ -905,17 +915,19 @@ export class AosApp extends LitElement {
           valid: boolean;
           hasSpecwright?: boolean;
           hasProductBrief?: boolean;
+          needsMigration?: boolean;
           fileCount?: number;
         };
         const hasSpecwright = data.hasSpecwright ?? false;
         const hasProductBrief = data.hasProductBrief ?? false;
+        const needsMigration = data.needsMigration ?? false;
 
-        // Store for getting-started view
         this.wizardHasSpecwright = hasSpecwright;
         this.wizardHasProductBrief = hasProductBrief;
+        this.wizardNeedsMigration = needsMigration;
 
-        // Trigger wizard if specwright is not installed OR product brief is missing
-        if (!hasSpecwright || !hasProductBrief) {
+        // Trigger wizard if specwright is not installed, needs migration, OR product brief is missing
+        if (!hasSpecwright || !hasProductBrief || needsMigration) {
           this.wizardProjectPath = path;
           this.wizardFileCount = data.fileCount ?? 0;
           this.showWizard = true;
@@ -930,6 +942,7 @@ export class AosApp extends LitElement {
   // IW-006: Handle wizard completion - navigate to getting-started
   private async _handleWizardComplete(): Promise<void> {
     this.showWizard = false;
+    this.wizardNeedsMigration = false;
     const path = this.wizardProjectPath;
 
     // Clear wizard-needed state
@@ -945,9 +958,10 @@ export class AosApp extends LitElement {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ path }),
         });
-        const data = await response.json() as { hasSpecwright?: boolean; hasProductBrief?: boolean };
+        const data = await response.json() as { hasSpecwright?: boolean; hasProductBrief?: boolean; needsMigration?: boolean };
         this.wizardHasSpecwright = data.hasSpecwright ?? true;
         this.wizardHasProductBrief = data.hasProductBrief ?? false;
+        this.wizardNeedsMigration = data.needsMigration ?? false;
       } catch {
         // Fallback: assume specwright is now installed
         this.wizardHasSpecwright = true;
@@ -961,6 +975,16 @@ export class AosApp extends LitElement {
   // IW-006: Handle wizard cancellation
   private _handleWizardCancel(): void {
     this.showWizard = false;
+  }
+
+  // IW-006: Start wizard from Getting Started view button
+  private _handleStartWizardFromView(): void {
+    const activeProject = this.openProjects.find(
+      (p) => p.id === this.activeProjectId
+    );
+    if (activeProject) {
+      this._validateAndTriggerWizard(activeProject.path);
+    }
   }
 
   // --- Project Context Management ---
@@ -1124,7 +1148,54 @@ export class AosApp extends LitElement {
 
     // Load git status for active project
     this._loadGitStatus();
+
+    // IW-006: Validate active project for wizard state after restore
+    const activeProject = this.openProjects.find(
+      (p) => p.id === this.activeProjectId
+    );
+    if (activeProject) {
+      this._validateProjectForWizard(activeProject.path);
+    }
     // Project restoration complete
+  }
+
+  /**
+   * IW-006: Validate a project and update wizard state.
+   * Used both during initial project selection and after restore.
+   */
+  private async _validateProjectForWizard(path: string): Promise<void> {
+    try {
+      const validateResponse = await fetch('/api/project/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      if (validateResponse.ok) {
+        const data = await validateResponse.json() as {
+          valid: boolean;
+          hasSpecwright?: boolean;
+          hasProductBrief?: boolean;
+          needsMigration?: boolean;
+          fileCount?: number;
+        };
+        const hasSpecwright = data.hasSpecwright ?? false;
+        const hasProductBrief = data.hasProductBrief ?? false;
+        const needsMigration = data.needsMigration ?? false;
+
+        this.wizardHasSpecwright = hasSpecwright;
+        this.wizardHasProductBrief = hasProductBrief;
+        this.wizardNeedsMigration = needsMigration;
+
+        // Show wizard if previously cancelled (wizardNeeded in sessionStorage)
+        if (projectStateService.isWizardNeeded(path)) {
+          this.wizardProjectPath = path;
+          this.wizardFileCount = data.fileCount ?? 0;
+          this.showWizard = true;
+        }
+      }
+    } catch {
+      // Validation failed, keep defaults
+    }
   }
 
   /**
@@ -1513,7 +1584,9 @@ export class AosApp extends LitElement {
         return html`<aos-getting-started-view
           .hasProductBrief=${this.wizardHasProductBrief}
           .hasSpecwright=${this.wizardHasSpecwright}
+          .needsMigration=${this.wizardNeedsMigration}
           @workflow-start-interactive=${this.handleWorkflowStart}
+          @start-wizard=${this._handleStartWizardFromView}
         ></aos-getting-started-view>`;
       case 'chat':
         return html`<aos-chat-view></aos-chat-view>`;
@@ -1665,6 +1738,7 @@ export class AosApp extends LitElement {
         .fileCount=${this.wizardFileCount}
         .hasSpecwright=${this.wizardHasSpecwright}
         .hasProductBrief=${this.wizardHasProductBrief}
+        .needsMigration=${this.wizardNeedsMigration}
         @wizard-complete=${this._handleWizardComplete}
         @wizard-cancel=${this._handleWizardCancel}
         @modal-close=${this._handleWizardCancel}
