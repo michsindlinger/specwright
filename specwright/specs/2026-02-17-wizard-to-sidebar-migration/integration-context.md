@@ -6,6 +6,7 @@
 |----------|---------|---------------------|
 | WSM-001 | Kachel-Logik: Removed disabled cards from not-installed/migration states, renamed event to start-setup-terminal | `ui/frontend/src/views/aos-getting-started-view.ts` |
 | WSM-002 | Setup-Terminal in Sidebar: Event handler, shell terminal creation, auto-detect after install | `ui/frontend/src/app.ts`, `ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts` |
+| WSM-003 | Wizard removed, state renamed wizard*->project*, validation navigates to getting-started | `ui/frontend/src/app.ts` |
 
 ## New Exports & APIs
 
@@ -26,10 +27,15 @@
 
 - The `start-setup-terminal` event bubbles and is composed, caught by `@start-setup-terminal` in `renderView()` of `app.ts`
 - The old `@start-wizard` event handler was replaced by `@start-setup-terminal`
-- `_handleStartWizardFromView` was removed as it's no longer referenced (wizard cleanup in WSM-003)
 - Doppelklick-Schutz: `_openSetupTerminalTab` checks for existing setup sessions before creating new ones
-- Auto-Detection: `cloud-terminal:closed` listener triggers `_validateProjectForWizard()` on exit code 0
+- Auto-Detection: `cloud-terminal:closed` listener triggers `_validateProjectState()` on exit code 0
 - Gateway listener registered in `connectedCallback()`, deregistered in `disconnectedCallback()`
+- WSM-003: Wizard modal completely removed. State properties renamed: `wizardHasSpecwright`->`projectHasSpecwright`, `wizardHasProductBrief`->`projectHasProductBrief`, `wizardNeedsMigration`->`projectNeedsMigration`, `wizardValidationPending`->`projectValidationPending`
+- WSM-003: `_validateAndTriggerWizard` replaced by `_validateAndNavigate` (navigates to getting-started instead of showing wizard)
+- WSM-003: `_validateProjectForWizard` replaced by `_validateProjectState` (no wizard-specific logic)
+- WSM-003: Removed methods: `_handleWizardComplete`, `_handleWizardCancel`
+- WSM-003: Removed state: `showWizard`, `wizardProjectPath`, `wizardFileCount`
+- WSM-003: Removed `projectStateService.setWizardNeeded/isWizardNeeded/clearWizardNeeded` calls
 
 ## File Change Summary
 
@@ -38,3 +44,4 @@
 | ui/frontend/src/views/aos-getting-started-view.ts | Modified | WSM-001 |
 | ui/frontend/src/app.ts | Modified | WSM-002 |
 | ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts | Modified | WSM-002 |
+| ui/frontend/src/app.ts | Modified | WSM-003 |

@@ -7,7 +7,6 @@ import './views/chat-view.js';
 import './views/settings-view.js';
 import './views/not-found-view.js';
 import './views/aos-getting-started-view.js';
-import './components/setup/aos-installation-wizard-modal.js';
 import './components/model-selector.js';
 import './components/toast-notification.js';
 import './components/loading-spinner.js';
@@ -131,28 +130,19 @@ export class AosApp extends LitElement {
   @state()
   private showQuickTodoModal = false;
 
-  // IW-006: Installation Wizard state
+  // Project validation state (WSM-003: renamed from wizard* to project*)
   @state()
-  private showWizard = false;
+  private projectHasSpecwright = false;
 
   @state()
-  private wizardProjectPath = '';
+  private projectHasProductBrief = false;
 
   @state()
-  private wizardFileCount = 0;
-
-  @state()
-  private wizardHasSpecwright = false;
-
-  @state()
-  private wizardHasProductBrief = false;
-
-  @state()
-  private wizardNeedsMigration = false;
+  private projectNeedsMigration = false;
 
   /** True while project validation is pending (prevents flash of wrong state) */
   @state()
-  private wizardValidationPending = true;
+  private projectValidationPending = true;
 
   // GSQ-005: Bottom Panel state
   @state()
@@ -908,15 +898,15 @@ export class AosApp extends LitElement {
     // Load git status for newly opened project
     this._loadGitStatus();
 
-    // IW-006: Validate project and trigger wizard if needed
-    this._validateAndTriggerWizard(path);
+    // WSM-003: Validate project and navigate to getting-started if needed
+    this._validateAndNavigate(path);
   }
 
   /**
-   * IW-006: Validate project and trigger wizard for newly added projects.
+   * WSM-003: Validate project and navigate to getting-started for newly added projects.
    */
-  private async _validateAndTriggerWizard(path: string): Promise<void> {
-    this.wizardValidationPending = true;
+  private async _validateAndNavigate(path: string): Promise<void> {
+    this.projectValidationPending = true;
     try {
       const validateResponse = await fetch('/api/project/validate', {
         method: 'POST',
@@ -929,67 +919,25 @@ export class AosApp extends LitElement {
           hasSpecwright?: boolean;
           hasProductBrief?: boolean;
           needsMigration?: boolean;
-          fileCount?: number;
         };
         const hasSpecwright = data.hasSpecwright ?? false;
         const hasProductBrief = data.hasProductBrief ?? false;
         const needsMigration = data.needsMigration ?? false;
 
-        this.wizardHasSpecwright = hasSpecwright;
-        this.wizardHasProductBrief = hasProductBrief;
-        this.wizardNeedsMigration = needsMigration;
+        this.projectHasSpecwright = hasSpecwright;
+        this.projectHasProductBrief = hasProductBrief;
+        this.projectNeedsMigration = needsMigration;
 
-        // Trigger wizard if specwright is not installed, needs migration, OR product brief is missing
+        // Navigate to getting-started if specwright is not installed, needs migration, OR product brief is missing
         if (!hasSpecwright || !hasProductBrief || needsMigration) {
-          this.wizardProjectPath = path;
-          this.wizardFileCount = data.fileCount ?? 0;
-          this.showWizard = true;
-          projectStateService.setWizardNeeded(path);
+          routerService.navigate('getting-started');
         }
       }
     } catch {
-      // Validation failed, skip wizard trigger
+      // Validation failed, skip navigation
     } finally {
-      this.wizardValidationPending = false;
+      this.projectValidationPending = false;
     }
-  }
-
-  // IW-006: Handle wizard completion - navigate to getting-started
-  private async _handleWizardComplete(): Promise<void> {
-    this.showWizard = false;
-    this.wizardNeedsMigration = false;
-    const path = this.wizardProjectPath;
-
-    // Clear wizard-needed state
-    if (path) {
-      projectStateService.clearWizardNeeded(path);
-    }
-
-    // Re-validate to update hasSpecwright/hasProductBrief for getting-started view
-    if (path) {
-      try {
-        const response = await fetch('/api/project/validate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path }),
-        });
-        const data = await response.json() as { hasSpecwright?: boolean; hasProductBrief?: boolean; needsMigration?: boolean };
-        this.wizardHasSpecwright = data.hasSpecwright ?? true;
-        this.wizardHasProductBrief = data.hasProductBrief ?? false;
-        this.wizardNeedsMigration = data.needsMigration ?? false;
-      } catch {
-        // Fallback: assume specwright is now installed
-        this.wizardHasSpecwright = true;
-      }
-    }
-
-    // Navigate to getting-started page
-    routerService.navigate('getting-started');
-  }
-
-  // IW-006: Handle wizard cancellation
-  private _handleWizardCancel(): void {
-    this.showWizard = false;
   }
 
   // WSM-002: Handle start-setup-terminal event from Getting Started view
@@ -1102,7 +1050,7 @@ export class AosApp extends LitElement {
 
     // Re-validate project only on success (exit code 0)
     if (exitCode === 0) {
-      this._validateProjectForWizard(setupSession.projectPath);
+      this._validateProjectState(setupSession.projectPath);
     }
   }
 
@@ -1268,22 +1216,22 @@ export class AosApp extends LitElement {
     // Load git status for active project
     this._loadGitStatus();
 
-    // IW-006: Validate active project for wizard state after restore
+    // WSM-003: Validate active project state after restore
     const activeProject = this.openProjects.find(
       (p) => p.id === this.activeProjectId
     );
     if (activeProject) {
-      this._validateProjectForWizard(activeProject.path);
+      this._validateProjectState(activeProject.path);
     }
     // Project restoration complete
   }
 
   /**
-   * IW-006: Validate a project and update wizard state.
+   * WSM-003: Validate a project and update project state properties.
    * Used both during initial project selection and after restore.
    */
-  private async _validateProjectForWizard(path: string): Promise<void> {
-    this.wizardValidationPending = true;
+  private async _validateProjectState(path: string): Promise<void> {
+    this.projectValidationPending = true;
     try {
       const validateResponse = await fetch('/api/project/validate', {
         method: 'POST',
@@ -1296,32 +1244,15 @@ export class AosApp extends LitElement {
           hasSpecwright?: boolean;
           hasProductBrief?: boolean;
           needsMigration?: boolean;
-          fileCount?: number;
         };
-        const hasSpecwright = data.hasSpecwright ?? false;
-        const hasProductBrief = data.hasProductBrief ?? false;
-        const needsMigration = data.needsMigration ?? false;
-
-        this.wizardHasSpecwright = hasSpecwright;
-        this.wizardHasProductBrief = hasProductBrief;
-        this.wizardNeedsMigration = needsMigration;
-
-        const projectNeedsSetup = !hasSpecwright || !hasProductBrief || needsMigration;
-
-        // Show wizard only if previously cancelled AND project still needs setup
-        if (projectStateService.isWizardNeeded(path) && projectNeedsSetup) {
-          this.wizardProjectPath = path;
-          this.wizardFileCount = data.fileCount ?? 0;
-          this.showWizard = true;
-        } else if (!projectNeedsSetup) {
-          // Project is fully set up - clear stale wizard-needed flag
-          projectStateService.clearWizardNeeded(path);
-        }
+        this.projectHasSpecwright = data.hasSpecwright ?? false;
+        this.projectHasProductBrief = data.hasProductBrief ?? false;
+        this.projectNeedsMigration = data.needsMigration ?? false;
       }
     } catch {
       // Validation failed, keep defaults
     } finally {
-      this.wizardValidationPending = false;
+      this.projectValidationPending = false;
     }
   }
 
@@ -1709,10 +1640,10 @@ export class AosApp extends LitElement {
         return html`<aos-dashboard-view></aos-dashboard-view>`;
       case 'getting-started':
         return html`<aos-getting-started-view
-          .hasProductBrief=${this.wizardHasProductBrief}
-          .hasSpecwright=${this.wizardHasSpecwright}
-          .needsMigration=${this.wizardNeedsMigration}
-          .loading=${this.wizardValidationPending}
+          .hasProductBrief=${this.projectHasProductBrief}
+          .hasSpecwright=${this.projectHasSpecwright}
+          .needsMigration=${this.projectNeedsMigration}
+          .loading=${this.projectValidationPending}
           @workflow-start-interactive=${this.handleWorkflowStart}
           @start-setup-terminal=${this._handleStartSetupTerminal}
         ></aos-getting-started-view>`;
@@ -1860,17 +1791,6 @@ export class AosApp extends LitElement {
         @project-selected=${this.handleProjectSelected}
         @modal-close=${this.handleAddProjectModalClose}
       ></aos-project-add-modal>
-      <aos-installation-wizard-modal
-        .open=${this.showWizard}
-        .projectPath=${this.wizardProjectPath}
-        .fileCount=${this.wizardFileCount}
-        .hasSpecwright=${this.wizardHasSpecwright}
-        .hasProductBrief=${this.wizardHasProductBrief}
-        .needsMigration=${this.wizardNeedsMigration}
-        @wizard-complete=${this._handleWizardComplete}
-        @wizard-cancel=${this._handleWizardCancel}
-        @modal-close=${this._handleWizardCancel}
-      ></aos-installation-wizard-modal>
       <aos-context-menu
         @menu-item-select=${this.handleMenuItemSelect}
       ></aos-context-menu>

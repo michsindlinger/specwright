@@ -10,21 +10,21 @@
     "createdAt": "2026-02-17T00:00:00Z"
   },
   "resumeContext": {
-    "currentPhase": "3-execute-story",
-    "nextPhase": "story-complete",
+    "currentPhase": "story-complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/wizard-to-sidebar-migration",
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Completed WSM-001",
-    "nextAction": "Execute next story: WSM-002",
-    "progressIndex": 1,
+    "currentStory": "WSM-003",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started WSM-003",
+    "nextAction": "Implement Wizard Entfernung & State Cleanup",
+    "progressIndex": 2,
     "totalStories": 6,
     "gitStrategy": "branch"
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-02-17T14:59:03.376Z",
     "completedAt": null,
     "model": null
   },
@@ -82,22 +82,37 @@
       "dependencies": [
         "WSM-001"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-setup-terminal-integration.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T14:59:03.376Z",
+        "completedAt": "2026-02-17T15:03:59.142Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/app.ts",
+          "ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-002-setup-terminal-integration.md",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/integration-context.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "a77f7b0",
+            "message": "feat: [WSM-002] Setup-Terminal in Sidebar",
+            "timestamp": "2026-02-17T16:10:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "WSM-003",
@@ -112,12 +127,13 @@
       "dependencies": [
         "WSM-002"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-wizard-entfernung-state-cleanup.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T15:05:16.494Z"
       },
       "implementation": {
         "filesModified": [],
@@ -127,7 +143,9 @@
       "verification": {
         "dorChecked": true,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "WSM-997",
@@ -224,11 +242,11 @@
   ],
   "boardStatus": {
     "total": 6,
-    "ready": 5,
-    "inProgress": 0,
+    "ready": 3,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
+    "done": 2,
     "blocked": 0
   },
   "statistics": {
@@ -312,6 +330,48 @@
       "action": "status_changed",
       "storyId": "WSM-001",
       "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T14:57:51.095Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-17T14:58:00.125Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T14:59:03.378Z",
+      "action": "status_changed",
+      "storyId": "WSM-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T15:03:59.143Z",
+      "action": "status_changed",
+      "storyId": "WSM-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T15:04:05.042Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-17T15:04:23.212Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T15:05:16.496Z",
+      "action": "status_changed",
+      "storyId": "WSM-003",
+      "details": "Story started: ready → in_progress"
     }
   ]
 }
