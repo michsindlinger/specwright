@@ -1315,19 +1315,22 @@ export class AosKanbanBoard extends LitElement {
 
     // WTT-003: Dispatch workflow-terminal-request event to app.ts
     // This will open a terminal tab and start the workflow there
-    const workflowRequestEvent = new CustomEvent('workflow-terminal-request', {
-      detail: {
-        command: 'execute-tasks',
-        argument: `${this.kanban.specId} ${storyId}`,
-        model,
-        specId: this.kanban.specId,
-        storyId,
-        gitStrategy,
-      },
-      bubbles: true,
-      composed: true,
-    });
-    this.dispatchEvent(workflowRequestEvent);
+    // BUG-002-A: Only open terminal for manual starts, NOT for Auto-Mode
+    if (!this.autoModeEnabled) {
+      const workflowRequestEvent = new CustomEvent('workflow-terminal-request', {
+        detail: {
+          command: 'execute-tasks',
+          argument: `${this.kanban.specId} ${storyId}`,
+          model,
+          specId: this.kanban.specId,
+          storyId,
+          gitStrategy,
+        },
+        bubbles: true,
+        composed: true,
+      });
+      this.dispatchEvent(workflowRequestEvent);
+    }
 
     // Still send the backend message to update kanban status and track execution
     gateway.send({
