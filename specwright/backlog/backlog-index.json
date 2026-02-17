@@ -1,5 +1,5 @@
 {
-  "nextId": 3,
+  "nextId": 4,
   "items": [
     {
       "id": "BUG-001",
@@ -22,6 +22,15 @@
       "createdAt": "2026-02-17T06:27:43.156Z",
       "updatedAt": "2026-02-17T06:34:13.915Z",
       "completedAt": "2026-02-17T06:34:13.915Z"
+    },
+    {
+      "id": "TODO-003",
+      "type": "todo",
+      "title": "Shift+Enter im Cloud Terminal aktivieren",
+      "priority": "medium",
+      "status": "open",
+      "file": "items/todo-003-shift-enter-im-cloud-terminal-aktivieren.md",
+      "createdAt": "2026-02-17T08:05:25.070Z"
     }
   ],
   "statistics": {
