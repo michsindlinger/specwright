@@ -28,15 +28,16 @@
       "type": "todo",
       "title": "Shift+Enter im Cloud Terminal aktivieren",
       "priority": "medium",
-      "status": "open",
+      "status": "in_progress",
       "file": "items/todo-003-shift-enter-im-cloud-terminal-aktivieren.md",
-      "createdAt": "2026-02-17T08:05:25.070Z"
+      "createdAt": "2026-02-17T08:05:25.070Z",
+      "updatedAt": "2026-02-17T08:10:23.098Z"
     }
   ],
   "statistics": {
     "byStatus": {
       "open": 0,
-      "in_progress": 0,
+      "in_progress": 1,
       "in_review": 0,
       "blocked": 0,
       "done": 2
