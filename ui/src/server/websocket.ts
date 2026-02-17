@@ -35,7 +35,8 @@ import { setupService, type StepOutput, type StepComplete } from './services/set
 import type {
   CloudTerminalSessionId,
   CloudTerminalType,
-  CloudTerminalModelConfig
+  CloudTerminalModelConfig,
+  CloudTerminalWorkflowMetadata
 } from '../shared/types/cloud-terminal.protocol.js';
 
 interface WebSocketClient extends WebSocket {
@@ -420,6 +421,9 @@ export class WebSocketHandler {
         // Cloud Terminal Messages (CCT-001)
         case 'cloud-terminal:create':
           this.handleCloudTerminalCreate(client, message);
+          break;
+        case 'cloud-terminal:create-workflow':
+          this.handleCloudTerminalCreateWorkflow(client, message);
           break;
         case 'cloud-terminal:close':
           this.handleCloudTerminalClose(client, message);
@@ -1890,7 +1894,6 @@ export class WebSocketHandler {
     const gitStrategy = (message.gitStrategy as 'branch' | 'worktree' | 'current-branch') || 'branch';
     // MSK-003-FIX: Prefer model from message (sent by frontend before updateStatus races)
     const modelFromMessage = message.model as string | undefined;
-    const autoMode = message.autoMode === true;
 
     if (!specId || !storyId) {
       const errorResponse: WebSocketMessage = {
@@ -1931,29 +1934,12 @@ export class WebSocketHandler {
         'in_progress'
       );
 
-      // KSE-005: Start the workflow executor with git strategy
-      // The workflow executor will handle branch/worktree creation
-      // MSK-003-FIX: Pass model to startStoryExecution
-      const executionId = await this.workflowExecutor.startStoryExecution(
-        client,
-        specId,
-        storyId,
-        projectPath,
-        gitStrategy,
-        model,  // Pass model to workflow executor
-        autoMode  // Pass auto-mode flag to control auto-continuation
-      );
-
-      // MPRO-005: Mark workflow active in WebSocketManager and broadcast to project
-      webSocketManager.markWorkflowActive(projectPath);
-
-      // Broadcast running count to all clients
-      this.broadcastRunningCount();
-      this.broadcastRunningCountToProject(projectPath);
+      // WTT-003: Do NOT start workflowExecutor here - the frontend now creates
+      // terminal tabs via workflow-terminal-request event which handles execution.
+      // This WebSocket message is only for kanban status tracking.
 
       const response: WebSocketMessage = {
         type: 'workflow.story.start.ack',
-        executionId,
         specId,
         storyId,
         gitStrategy,
@@ -3775,6 +3761,85 @@ export class WebSocketHandler {
         type: 'cloud-terminal:error',
         code: errorCode,
         message: error instanceof Error ? error.message : 'Failed to create Cloud Terminal session',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * Handle cloud-terminal:create-workflow (WTT-001)
+   * Creates a new Cloud Terminal session for workflow execution
+   * Automatically sends the workflow command after session initialization
+   */
+  private handleCloudTerminalCreateWorkflow(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = message.projectPath as string || this.getClientProjectPath(client);
+    const workflowMetadata = message.workflowMetadata as CloudTerminalWorkflowMetadata | undefined;
+    const modelConfig = message.modelConfig as CloudTerminalModelConfig | undefined;
+    const cols = message.cols as number | undefined;
+    const rows = message.rows as number | undefined;
+
+    if (!projectPath) {
+      const errorResponse: WebSocketMessage = {
+        type: 'cloud-terminal:error',
+        code: 'INVALID_PROJECT_PATH',
+        message: 'Project path is required',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    if (!workflowMetadata || !workflowMetadata.workflowCommand) {
+      const errorResponse: WebSocketMessage = {
+        type: 'cloud-terminal:error',
+        code: 'INVALID_MESSAGE',
+        message: 'Workflow metadata with workflowCommand is required',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    if (!modelConfig || !modelConfig.model) {
+      const errorResponse: WebSocketMessage = {
+        type: 'cloud-terminal:error',
+        code: 'INVALID_MESSAGE',
+        message: 'Model configuration is required for workflow sessions',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    try {
+      const session = this.cloudTerminalManager.createWorkflowSession(
+        projectPath,
+        workflowMetadata,
+        modelConfig,
+        cols,
+        rows
+      );
+      console.log(
+        `[WebSocket] Workflow session created: ${session.sessionId} for command: ${workflowMetadata.workflowCommand}`
+      );
+
+      // Send created response with workflow metadata and requestId for correlation
+      const createdResponse: WebSocketMessage = {
+        type: 'cloud-terminal:created',
+        requestId: message.requestId,
+        sessionId: session.sessionId,
+        session,
+        workflowMetadata,
+        timestamp: new Date().toISOString()
+      };
+      this.broadcast(createdResponse);
+    } catch (error) {
+      const errorCode = (error as Error & { code?: string }).code || 'SPAWN_FAILED';
+      const errorResponse: WebSocketMessage = {
+        type: 'cloud-terminal:error',
+        code: errorCode,
+        message: error instanceof Error ? error.message : 'Failed to create workflow session',
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));

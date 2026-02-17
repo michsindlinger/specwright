@@ -18,6 +18,18 @@ export interface TerminalSession {
   terminalSessionId?: string;
   /** Terminal type: 'shell' for plain terminal, 'claude-code' for AI session (defaults to 'claude-code') */
   terminalType?: 'shell' | 'claude-code';
+  /** Workflow session flag - if true, this is a workflow execution tab */
+  isWorkflow?: boolean;
+  /** Workflow name (e.g., "execute-tasks") - used as tab title prefix */
+  workflowName?: string;
+  /** Workflow context (e.g., "FE-001") - used as tab title suffix */
+  workflowContext?: string;
+  /** Indicates workflow needs user input - used for tab notifications */
+  needsInput?: boolean;
+  /** Model ID for workflow sessions (e.g., 'claude-sonnet-4-5-20250929') */
+  modelId?: string;
+  /** Provider ID for workflow sessions (e.g., 'anthropic') */
+  providerId?: string;
 }
 
 export interface LoadingState {
@@ -549,6 +561,7 @@ export class AosCloudTerminalSidebar extends LitElement {
               .terminalSessionId=${session.terminalSessionId || null}
               class="session-panel ${session.id === this.activeSessionId ? 'active' : 'inactive'}"
               @session-connected=${this._handleSessionConnected}
+              @input-needed=${this._handleInputNeeded}
             ></aos-terminal-session>
           `
         )}
@@ -628,20 +641,61 @@ export class AosCloudTerminalSidebar extends LitElement {
   }
 
   private _handleSessionSelect(e: CustomEvent<{ sessionId: string }>) {
-    this.activeSessionId = e.detail.sessionId;
+    const sessionId = e.detail.sessionId;
+    this.activeSessionId = sessionId;
+
+    // Emit event to parent (app.ts) to clear needsInput flag when tab becomes active
+    // WTT-004: Tab-Notifications bei Input-Bedarf
     this.dispatchEvent(
       new CustomEvent('session-select', {
-        detail: e.detail,
+        detail: { sessionId, clearNeedsInput: true },
         bubbles: true,
         composed: true,
       })
     );
   }
 
-  private _handleSessionClose(e: CustomEvent<{ sessionId: string }>) {
+  private _handleSessionClose(e: CustomEvent<{ sessionId: string; isWorkflow?: boolean; status?: string }>) {
+    // WTT-005: Tab-Close Confirmation
+    // Check if this is an active workflow that needs confirmation
+    const { sessionId, isWorkflow, status } = e.detail;
+
+    if (isWorkflow && status === 'active') {
+      // Show confirmation dialog for active workflow tabs
+      const confirmed = confirm('Workflow läuft noch - wirklich abbrechen?');
+
+      if (!confirmed) {
+        // User declined - keep tab open, workflow continues
+        return;
+      }
+    }
+
+    // Either: not a workflow, workflow not active, or user confirmed
     this.dispatchEvent(
       new CustomEvent('session-close', {
-        detail: e.detail,
+        detail: { sessionId },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  /**
+   * Handle input-needed event from aos-terminal-session.
+   * Forwards the event to parent (app.ts) to update the session's needsInput flag.
+   * WTT-004: Tab-Notifications bei Input-Bedarf
+   */
+  private _handleInputNeeded(e: CustomEvent<{ sessionId: string }>) {
+    const sessionId = e.detail.sessionId;
+
+    // Only set needsInput if this session is NOT currently active
+    // (active sessions clear needsInput automatically)
+    if (sessionId === this.activeSessionId) return;
+
+    // Forward event to parent (app.ts) so it can update terminalSessions state
+    this.dispatchEvent(
+      new CustomEvent('input-needed', {
+        detail: { sessionId },
         bubbles: true,
         composed: true,
       })
@@ -674,6 +728,63 @@ export class AosCloudTerminalSidebar extends LitElement {
    */
   clearError() {
     this.errorMessage = null;
+  }
+
+  /**
+   * Open a workflow tab programmatically.
+   * Creates a new workflow session and opens the sidebar if closed.
+   *
+   * @param workflowName - Workflow name (e.g., 'execute-tasks')
+   * @param workflowContext - Context identifier (e.g., spec ID, story ID)
+   * @param projectPath - Project path for the session
+   * @param options - Optional workflow configuration
+   * @returns The created session ID
+   */
+  openWorkflowTab(
+    workflowName: string,
+    workflowContext: string,
+    projectPath: string,
+    options?: {
+      specId?: string;
+      storyId?: string;
+      modelId?: string;
+      providerId?: string;
+    }
+  ): string {
+    // Generate unique session ID
+    const sessionId = `workflow-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+    // Create session title: "workflowName: workflowContext"
+    const tabTitle = `${workflowName}: ${workflowContext}`;
+
+    // Create new workflow session
+    const newSession: TerminalSession = {
+      id: sessionId,
+      name: tabTitle,
+      status: 'active',
+      createdAt: new Date(),
+      projectPath,
+      terminalType: 'claude-code',
+      isWorkflow: true,
+      workflowName,
+      workflowContext,
+      needsInput: false,
+      modelId: options?.modelId,
+      providerId: options?.providerId,
+    };
+
+    // Add to sessions array
+    this.sessions = [...this.sessions, newSession];
+
+    // Set as active session
+    this.activeSessionId = sessionId;
+
+    // Open sidebar if closed
+    if (!this.isOpen) {
+      this.isOpen = true;
+    }
+
+    return sessionId;
   }
 
   private _handleRetry() {

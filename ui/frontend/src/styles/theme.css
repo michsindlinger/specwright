@@ -1911,6 +1911,36 @@ aos-spec-card {
   justify-content: center;
 }
 
+/* WTT-004: Tab-Notifications bei Input-Bedarf */
+/* Styles for terminal tabs that need user input */
+.tab.needs-input {
+  animation: pulse-needs-input 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-needs-input {
+  0%, 100% {
+    background: linear-gradient(135deg, var(--color-bg-tertiary, #252526) 0%, rgba(245, 158, 11, 0.1) 100%);
+  }
+  50% {
+    background: linear-gradient(135deg, var(--color-bg-tertiary, #252526) 0%, rgba(245, 158, 11, 0.25) 100%);
+  }
+}
+
+.input-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background: var(--color-accent-warning, #ff9800);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
 .kanban-columns {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -5233,309 +5263,6 @@ html[data-theme="light"] .hljs-deletion {
   font-size: var(--font-size-lg);
 }
 
-/* Workflow Chat Component */
-.workflow-chat {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.workflow-chat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-bg-tertiary);
-}
-
-.workflow-chat-info {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.workflow-status-icon {
-  font-size: var(--font-size-lg);
-}
-
-.workflow-name {
-  font-family: var(--font-family-mono);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.workflow-status-badge {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  text-transform: uppercase;
-}
-
-.workflow-status-badge.starting,
-.workflow-status-badge.running {
-  background-color: rgba(245, 158, 11, 0.2);
-  color: var(--color-accent-warning);
-}
-
-.workflow-status-badge.waiting_input {
-  background-color: rgba(var(--color-accent-primary-rgb), 0.2);
-  color: var(--color-accent-secondary);
-}
-
-.workflow-status-badge.completed {
-  background-color: rgba(var(--color-accent-success-rgb), 0.2);
-  color: var(--color-accent-primary);
-}
-
-.workflow-status-badge.failed {
-  background-color: rgba(var(--color-accent-error-rgb), 0.2);
-  color: var(--color-accent-error);
-}
-
-.workflow-status-badge.cancelled {
-  background-color: var(--color-bg-tertiary);
-  color: var(--color-text-muted);
-}
-
-.workflow-chat-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.cancel-workflow-btn,
-.close-workflow-btn {
-  padding: var(--spacing-sm) var(--spacing-md);
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.cancel-workflow-btn:hover {
-  background-color: var(--color-accent-error);
-  color: white;
-  border-color: var(--color-accent-error);
-}
-
-.close-workflow-btn:hover {
-  background-color: var(--color-bg-elevated);
-  color: var(--color-text-primary);
-}
-
-/* Workflow Step Indicator */
-.step-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.step-indicator-icon {
-  font-size: var(--font-size-base);
-}
-
-.step-indicator-progress {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.step-indicator-name {
-  color: var(--color-text-secondary);
-}
-
-.step-indicator-processing {
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.step-indicator-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-bg-tertiary);
-  border-top-color: var(--color-accent-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.step-indicator-success {
-  color: var(--color-accent-primary);
-  font-weight: var(--font-weight-semibold);
-}
-
-/* Workflow Messages */
-.workflow-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.workflow-starting {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-xl);
-  color: var(--color-text-muted);
-}
-
-.workflow-starting .loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--color-bg-tertiary);
-  border-top-color: var(--color-accent-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: var(--spacing-md);
-}
-
-/* Workflow Processing Indicator (WKFL-007) */
-.workflow-processing {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background-color: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.workflow-processing .spinner-container {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.workflow-processing .spinner-label {
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.workflow-message {
-  max-width: 85%;
-}
-
-.workflow-message.assistant {
-  align-self: flex-start;
-}
-
-.workflow-message.user {
-  align-self: flex-end;
-}
-
-.workflow-message.system {
-  align-self: center;
-  max-width: 100%;
-}
-
-.workflow-message .message-header {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xs);
-}
-
-.workflow-message .message-content {
-  background-color: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md) var(--spacing-md);
-  line-height: var(--line-height-base);
-  white-space: normal;
-  word-break: break-word;
-}
-
-.workflow-message.user .message-content {
-  background-color: var(--color-bg-primary);
-}
-
-.workflow-message.system .message-content {
-  background-color: rgba(var(--color-accent-primary-rgb), 0.1);
-  border-color: var(--color-accent-secondary);
-  text-align: center;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.workflow-error-message {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  background-color: rgba(var(--color-accent-error-rgb), 0.1);
-  border: 1px solid var(--color-accent-error);
-  border-radius: var(--radius-md);
-  color: var(--color-accent-error);
-}
-
-/* Workflow Input Area */
-.workflow-input-area {
-  padding: var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-  background-color: var(--color-bg-tertiary);
-}
-
-.workflow-input-area .input-wrapper {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: flex-end;
-}
-
-.workflow-input {
-  flex: 1;
-  min-height: 44px;
-  max-height: 120px;
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-family: var(--font-family-sans);
-  font-size: var(--font-size-base);
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  resize: none;
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.workflow-input:focus {
-  border-color: var(--color-accent-primary);
-}
-
-.workflow-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.workflow-input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.workflow-chat-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-xl);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
-
 /* Workflow Card Enhancements */
 .workflow-card.expanded {
   border-color: var(--color-accent-primary);
@@ -7095,72 +6822,6 @@ aos-collapsible-text {
 }
 
 /* ============================================
-   Execution Tabs Component (MCE-001)
-   ============================================ */
-
-.execution-tabs {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background-color: var(--color-bg-tertiary);
-  border-bottom: 1px solid var(--color-border);
-  overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
-  position: relative;
-  z-index: 1000;
-}
-
-.execution-tabs::-webkit-scrollbar {
-  height: 4px;
-}
-
-.execution-tabs::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.execution-tabs::-webkit-scrollbar-thumb {
-  background-color: var(--color-border);
-  border-radius: 2px;
-}
-
-.execution-tabs__add {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background-color: transparent;
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-lg);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.execution-tabs__add:hover {
-  background-color: var(--color-bg-elevated);
-  border-color: var(--color-accent-primary);
-  color: var(--color-accent-primary);
-}
-
-.execution-tabs__add:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--color-accent-primary);
-}
-
-/* Add Button Wrapper for Command Selector (MCE-004) */
-.execution-tabs__add-wrapper {
-  position: relative;
-  flex-shrink: 0;
-  z-index: 1000;
-}
-
-/* ============================================
    Command Selector Component (MCE-004)
    ============================================ */
 
@@ -7259,110 +6920,6 @@ aos-collapsible-text {
   color: var(--color-text-muted);
 }
 
-/* Individual Execution Tab */
-.execution-tab {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-md);
-  background-color: var(--color-bg-primary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-  max-width: 200px;
-}
-
-.execution-tab:hover {
-  background-color: var(--color-bg-elevated);
-  border-color: var(--color-border-hover);
-  color: var(--color-text-primary);
-}
-
-.execution-tab:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--color-accent-primary);
-}
-
-.execution-tab--active {
-  background-color: var(--color-bg-secondary);
-  border-color: var(--color-accent-primary);
-  color: var(--color-text-primary);
-}
-
-/* Status-specific tab styles */
-.execution-tab--running,
-.execution-tab--starting {
-  border-color: var(--color-accent-primary);
-}
-
-.execution-tab--waiting_input {
-  border-color: var(--color-accent-warning);
-}
-
-.execution-tab--completed {
-  border-color: var(--color-accent-primary);
-}
-
-.execution-tab--failed {
-  border-color: var(--color-accent-error);
-}
-
-.execution-tab--cancelled {
-  border-color: var(--color-text-muted);
-}
-
-.execution-tab__status-icon {
-  font-size: var(--font-size-sm);
-}
-
-.execution-tab__status-icon--running {
-  animation: tab-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes tab-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.execution-tab__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-  min-width: 0;
-}
-
-.execution-tab__close {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background-color: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  line-height: 1;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.execution-tab__close:hover {
-  background-color: var(--color-bg-primary);
-  color: var(--color-accent-error);
-}
-
-.execution-tab--active .execution-tab__close:hover {
-  background-color: var(--color-bg-elevated);
-}
-
 /* ============================================
    Status Indicators (MCE-003)
    ============================================ */
@@ -7442,20 +6999,6 @@ aos-collapsible-text {
 /* ============================================
    Background Notifications (MCE-006)
    ============================================ */
-
-/* Tab with unseen changes gets subtle pulse animation */
-.execution-tab--has-notification {
-  animation: tab-pulse 2s ease-in-out 3;
-}
-
-@keyframes tab-pulse {
-  0%, 100% {
-    background-color: var(--color-bg-secondary);
-  }
-  50% {
-    background-color: var(--color-bg-hover);
-  }
-}
 
 /* Notification badge - positioned in top-right corner of tab */
 .notification-badge {

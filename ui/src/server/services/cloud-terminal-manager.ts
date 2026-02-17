@@ -23,6 +23,7 @@ import {
   CloudTerminalSessionId,
   CloudTerminalType,
   CloudTerminalModelConfig,
+  CloudTerminalWorkflowMetadata,
   CLOUD_TERMINAL_CONFIG,
   CLOUD_TERMINAL_ERROR_CODES,
 } from '../../shared/types/cloud-terminal.protocol.js';
@@ -184,6 +185,61 @@ export class CloudTerminalManager extends EventEmitter {
       console.error(`[CloudTerminalManager] Failed to create session:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Create a new Cloud Terminal session for workflow execution
+   *
+   * This is a convenience wrapper around createSession that:
+   * 1. Creates a Claude Code terminal session
+   * 2. Waits for initialization
+   * 3. Automatically sends the workflow command
+   *
+   * @param projectPath - Project path for the terminal
+   * @param workflowMetadata - Workflow metadata containing command and context
+   * @param modelConfig - Model configuration for Claude Code CLI
+   * @param cols - Terminal columns (default: 120)
+   * @param rows - Terminal rows (default: 40)
+   * @returns Created session metadata with workflow metadata attached
+   * @throws Error if max sessions reached or spawn fails
+   */
+  public createWorkflowSession(
+    projectPath: string,
+    workflowMetadata: CloudTerminalWorkflowMetadata,
+    modelConfig: CloudTerminalModelConfig,
+    cols?: number,
+    rows?: number
+  ): CloudTerminalSession & { workflowMetadata: CloudTerminalWorkflowMetadata } {
+    // Create base session as claude-code terminal
+    const session = this.createSession(projectPath, 'claude-code', modelConfig, cols, rows);
+
+    console.log(
+      `[CloudTerminalManager] Created workflow session ${session.sessionId} for command: ${workflowMetadata.workflowCommand}`
+    );
+
+    // Schedule the workflow command to be sent after initialization
+    // Following the pattern from DevTeam setup (websocket.ts)
+    setTimeout(() => {
+      // Build the full command with context if provided
+      let fullCommand = workflowMetadata.workflowCommand;
+      if (workflowMetadata.workflowContext) {
+        fullCommand += ` ${workflowMetadata.workflowContext}`;
+      }
+      fullCommand += '\n';
+
+      const sent = this.sendInput(session.sessionId, fullCommand);
+      if (sent) {
+        console.log(`[CloudTerminalManager] Sent workflow command: ${fullCommand.trim()}`);
+      } else {
+        console.error(`[CloudTerminalManager] Failed to send workflow command to session ${session.sessionId}`);
+      }
+    }, CLOUD_TERMINAL_CONFIG.WORKFLOW_COMMAND_DELAY_MS);
+
+    // Return session with workflow metadata attached
+    return {
+      ...session,
+      workflowMetadata,
+    };
   }
 
   /**

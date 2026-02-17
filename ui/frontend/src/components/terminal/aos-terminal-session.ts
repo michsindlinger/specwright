@@ -263,9 +263,15 @@ export class AosTerminalSession extends LitElement {
       this.syncStateFromProps();
     }
 
-    // Show model selector when becoming active without a session
-    if (changed.has('isActive') && this.isActive && !this.terminalSessionId && !this.showModelSelector) {
-      this.showModelSelector = true;
+    // Handle session initialization when becoming active
+    if (changed.has('isActive') && this.isActive && !this.terminalSessionId) {
+      // Workflow sessions auto-connect without model selector
+      if (this.session.isWorkflow) {
+        this.startWorkflowSession();
+      } else if (!this.showModelSelector) {
+        // Regular sessions show model selector
+        this.showModelSelector = true;
+      }
     }
 
     // Refresh terminal when session becomes active (tab switch, sidebar reopen)
@@ -297,9 +303,16 @@ export class AosTerminalSession extends LitElement {
       this.showModelSelector = false;
       this.errorMessage = null;
     } else if (this.isActive) {
-      // No session yet, show model selector
-      this.showModelSelector = true;
-      this.connectionStatus = 'connecting';
+      // No session yet
+      if (this.session.isWorkflow) {
+        // Workflow sessions auto-connect without model selector
+        this.showModelSelector = false;
+        this.connectionStatus = 'connecting';
+      } else {
+        // Regular sessions show model selector
+        this.showModelSelector = true;
+        this.connectionStatus = 'connecting';
+      }
     }
   }
 
@@ -438,14 +451,23 @@ export class AosTerminalSession extends LitElement {
 
   /**
    * Reset session state and show model selector for a fresh start
+   * (or auto-start for workflow sessions)
    */
   private resetToNewSession(): void {
     const oldSessionId = this.terminalSessionId;
     this.terminalSessionId = null;
     this.connectionStatus = 'connecting';
-    this.showModelSelector = true;
     this.isSessionExpired = false;
     this.errorMessage = null;
+
+    // Workflow sessions auto-start without model selector
+    if (this.session.isWorkflow) {
+      this.showModelSelector = false;
+      // Start workflow session after reset
+      this.startWorkflowSession();
+    } else {
+      this.showModelSelector = true;
+    }
 
     // Notify parent that this session needs reset
     this.dispatchEvent(
@@ -455,6 +477,38 @@ export class AosTerminalSession extends LitElement {
         composed: true,
       })
     );
+  }
+
+  /**
+   * Start a workflow session - auto-connects without model selector.
+   * Uses the backend's cloud-terminal:create-workflow endpoint.
+   * Sends structured workflowMetadata and modelConfig per CloudTerminalCreateWorkflowMessage protocol.
+   */
+  private startWorkflowSession(): void {
+    if (!this.session.isWorkflow) return;
+
+    this.showModelSelector = false;
+    this.connectionStatus = 'connecting';
+    this.selectedTerminalType = 'claude-code';
+
+    const workflowName = this.session.workflowName || 'unknown';
+
+    // Send workflow creation request with structured objects per protocol
+    gateway.send({
+      type: 'cloud-terminal:create-workflow',
+      requestId: this.session.id,
+      projectPath: this.session.projectPath,
+      workflowMetadata: {
+        workflowCommand: `/${workflowName}`,
+        workflowName,
+        workflowContext: this.session.workflowContext,
+      },
+      modelConfig: {
+        model: this.session.modelId || 'claude-sonnet-4-5-20250929',
+        provider: this.session.providerId || 'anthropic',
+      },
+      timestamp: new Date().toISOString(),
+    });
   }
 
   /** Handle model-selected event with discriminated union detail */
@@ -490,6 +544,24 @@ export class AosTerminalSession extends LitElement {
         timestamp: new Date().toISOString(),
       });
     }
+  }
+
+  /**
+   * Handle input-needed event from aos-terminal.
+   * Forwards the event to parent to update needsInput state.
+   */
+  private _handleInputNeeded(_e: CustomEvent<{ sessionId: string }>): void {
+    // Only handle for workflow sessions
+    if (!this.session.isWorkflow) return;
+
+    // Forward event to parent (aos-cloud-terminal-sidebar)
+    this.dispatchEvent(
+      new CustomEvent('input-needed', {
+        detail: { sessionId: this.session.id },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   private getStatusText(): string {
@@ -598,6 +670,7 @@ export class AosTerminalSession extends LitElement {
         <aos-terminal
           .terminalSessionId=${this.terminalSessionId}
           .cloudMode=${true}
+          @input-needed=${this._handleInputNeeded}
         ></aos-terminal>
       `;
     }

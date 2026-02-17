@@ -382,6 +382,7 @@ export class AosDashboardView extends LitElement {
       ['specs.story.save.error', (msg) => this.onSpecStorySaveError(msg)],
       ['backlog.error', (msg) => this.onBacklogError(msg)],
       ['backlog.kanban', (msg) => this.onBacklogKanban(msg)],
+      ['backlog.kanban.refresh', () => gateway.send({ type: 'backlog.kanban' })],
       ['backlog.story-detail', (msg) => this.onBacklogStoryDetail(msg)],
       ['backlog.story.start.ack', (msg) => this.onBacklogStoryStartAck(msg)],
       ['backlog.story.start.error', (msg) => this.onBacklogStoryStartError(msg)],
@@ -1351,7 +1352,26 @@ export class AosDashboardView extends LitElement {
     }
 
     // Start the next story via backlog.story.start
+    // WTT-003: Dispatch workflow-terminal-request to open in terminal tab
     const model = nextStory.model || 'opus';
+    const projectPath = this.projectCtx?.activeProject?.path || '';
+
+    // Dispatch workflow-terminal-request event to app.ts
+    const workflowRequestEvent = new CustomEvent('workflow-terminal-request', {
+      detail: {
+        command: 'execute-tasks',
+        argument: 'backlog',
+        model,
+        specId: 'backlog',
+        storyId: nextStory.id,
+        projectPath,
+      },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(workflowRequestEvent);
+
+    // Also send to backend for status tracking
     gateway.send({
       type: 'backlog.story.start',
       storyId: nextStory.id,
@@ -1386,18 +1406,6 @@ export class AosDashboardView extends LitElement {
     this.createSpecModalOpen = false;
   }
 
-  private handleCreateSpecStart(e: CustomEvent): void {
-    this.createSpecModalOpen = false;
-    // Navigate to workflows view and pass the event details
-    // The workflow-start-interactive event will be handled by workflow-view
-    const { commandId, argument } = e.detail;
-
-    // Store the workflow start details in sessionStorage for the workflow view to pick up
-    sessionStorage.setItem('pendingWorkflow', JSON.stringify({ commandId, argument }));
-
-    // Navigate to workflows
-    routerService.navigate('workflows');
-  }
 
   override render() {
     if (!this.wsConnected) {
@@ -1534,7 +1542,6 @@ export class AosDashboardView extends LitElement {
         .open=${this.createSpecModalOpen}
         .providers=${this.providers}
         @modal-close=${this.handleCreateSpecModalClose}
-        @workflow-start-interactive=${this.handleCreateSpecStart}
       ></aos-create-spec-modal>
     `;
   }
@@ -1824,9 +1831,28 @@ export class AosDashboardView extends LitElement {
             status: toStatus
           });
           // BKE-001: If moving to in_progress, start story execution
+          // WTT-003: Dispatch workflow-terminal-request to open in terminal tab
           if (toStatus === 'in_progress') {
             const story = this.backlogKanban?.stories.find(s => s.id === storyId);
             const model = story?.model || 'opus';
+            const projectPath = this.projectCtx?.activeProject?.path || '';
+
+            // Dispatch workflow-terminal-request event to app.ts
+            const workflowRequestEvent = new CustomEvent('workflow-terminal-request', {
+              detail: {
+                command: 'execute-tasks',
+                argument: 'backlog',
+                model,
+                specId: 'backlog',
+                storyId,
+                projectPath,
+              },
+              bubbles: true,
+              composed: true,
+            });
+            this.dispatchEvent(workflowRequestEvent);
+
+            // Also send to backend for status tracking
             gateway.send({
               type: 'backlog.story.start',
               storyId,

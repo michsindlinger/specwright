@@ -4,7 +4,6 @@ import { ContextProvider } from '@lit/context';
 
 import './views/dashboard-view.js';
 import './views/chat-view.js';
-import './views/workflow-view.js';
 import './views/settings-view.js';
 import './views/not-found-view.js';
 import './components/model-selector.js';
@@ -147,7 +146,6 @@ export class AosApp extends LitElement {
   private navItems: NavItem[] = [
     { route: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { route: 'chat', label: 'Chat', icon: 'chat' },
-    { route: 'workflows', label: 'Workflows', icon: 'workflows' },
     { route: 'settings', label: 'Settings', icon: 'settings' },
   ];
 
@@ -316,11 +314,35 @@ export class AosApp extends LitElement {
     if (isQueueRunning !== undefined) {
       this.isQueueRunning = isQueueRunning;
     }
+
+    // WTT-003: Open terminal tab for queue item execution
+    const item = msg.item as { specId: string; specName: string; projectPath?: string; storyId?: string } | undefined;
+    if (item) {
+      this._openWorkflowTerminalTab({
+        command: 'execute-tasks',
+        argument: item.storyId ? `${item.specId} ${item.storyId}` : item.specId,
+        specId: item.specId,
+        storyId: item.storyId,
+        projectPath: item.projectPath,
+      });
+    }
   };
   private boundQueueCompleteHandler: MessageHandler = () => {
     this.isQueueRunning = false;
   };
   private boundKeydownHandler = (e: KeyboardEvent) => this._handleGlobalKeydown(e);
+  // WTT-003: Handler for workflow-terminal-request custom events
+  private _handleWorkflowTerminalRequest = (e: CustomEvent<{
+    command: string;
+    argument?: string;
+    model?: string;
+    specId?: string;
+    storyId?: string;
+    gitStrategy?: string;
+    projectPath?: string;
+  }>): void => {
+    this._openWorkflowTerminalTab(e.detail);
+  };
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -350,6 +372,9 @@ export class AosApp extends LitElement {
     gateway.on('queue.complete', this.boundQueueCompleteHandler);
     // GSQ-005: Keyboard shortcut
     document.addEventListener('keydown', this.boundKeydownHandler);
+
+    // WTT-003: Listen for workflow-terminal-request events
+    document.addEventListener('workflow-terminal-request', this._handleWorkflowTerminalRequest as EventListener);
 
     // Global error handler
     window.addEventListener('error', this.handleGlobalError.bind(this));
@@ -405,6 +430,8 @@ export class AosApp extends LitElement {
     gateway.off('queue.start.ack', this.boundQueueStartAckHandler);
     gateway.off('queue.complete', this.boundQueueCompleteHandler);
     document.removeEventListener('keydown', this.boundKeydownHandler);
+    // WTT-003: Remove workflow-terminal-request listener
+    document.removeEventListener('workflow-terminal-request', this._handleWorkflowTerminalRequest as EventListener);
   }
 
   private handleGlobalError(event: ErrorEvent): void {
@@ -510,7 +537,6 @@ export class AosApp extends LitElement {
     const icons: Record<string, unknown> = {
       dashboard: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
       chat: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
-      workflows: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/><circle cx="12" cy="12" r="3"/><path d="m17.5 6.5-2.1 2.1m-6.8 6.8-2.1 2.1m0-11-2.1 2.1m11 6.8 2.1 2.1"/></svg>`,
       settings: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
     };
     return icons[icon] || icon;
@@ -524,7 +550,6 @@ export class AosApp extends LitElement {
     const titles: Record<Route, string> = {
       dashboard: 'Dashboard',
       chat: 'Chat',
-      workflows: 'Workflows',
       settings: 'Settings',
       'not-found': 'Page Not Found',
     };
@@ -698,8 +723,34 @@ export class AosApp extends LitElement {
     return this.terminalSessions.filter(s => s.projectPath === projectPath);
   }
 
-  private _handleTerminalSessionSelect(e: CustomEvent<{ sessionId: string }>): void {
+  private _handleTerminalSessionSelect(e: CustomEvent<{ sessionId: string; clearNeedsInput?: boolean }>): void {
     this.activeTerminalSessionId = e.detail.sessionId;
+
+    // WTT-004: Clear needsInput flag when tab becomes active
+    if (e.detail.clearNeedsInput) {
+      this.terminalSessions = this.terminalSessions.map(session =>
+        session.id === e.detail.sessionId
+          ? { ...session, needsInput: false }
+          : session
+      );
+    }
+  }
+
+  /**
+   * WTT-004: Handle input-needed event from terminal session.
+   * Sets needsInput flag on the session to show badge on tab.
+   */
+  private _handleTerminalInputNeeded(e: CustomEvent<{ sessionId: string }>): void {
+    const { sessionId } = e.detail;
+
+    // Only set needsInput if this session is NOT currently active
+    if (sessionId === this.activeTerminalSessionId) return;
+
+    this.terminalSessions = this.terminalSessions.map(session =>
+      session.id === sessionId
+        ? { ...session, needsInput: true }
+        : session
+    );
   }
 
   private _handleTerminalSessionClose(e: CustomEvent<{ sessionId: string }>): void {
@@ -732,16 +783,12 @@ export class AosApp extends LitElement {
   private handleWorkflowStart(e: CustomEvent<{ commandId: string; argument?: string; model?: string }>): void {
     const { commandId, argument, model } = e.detail;
 
-    // Store the workflow request in sessionStorage for the workflow view to pick up
-    const pendingWorkflow = {
-      commandId,
+    // WTT-003: Open workflow in terminal tab instead of old workflow view
+    this._openWorkflowTerminalTab({
+      command: commandId,
       argument: argument?.trim() || undefined,
-      model: model || undefined
-    };
-    sessionStorage.setItem('pendingWorkflow', JSON.stringify(pendingWorkflow));
-
-    // Navigate to workflows page where it will auto-start
-    routerService.navigate('workflows');
+      model: model,
+    });
   }
 
   private async handleProjectSelected(
@@ -1156,6 +1203,93 @@ export class AosApp extends LitElement {
     }
   }
 
+  // WTT-003: Open a workflow terminal tab from UI triggers (kanban, dashboard, queue)
+  private _openWorkflowTerminalTab(detail: {
+    command: string;
+    argument?: string;
+    model?: string;
+    specId?: string;
+    storyId?: string;
+    gitStrategy?: string;
+    projectPath?: string;
+  }): void {
+    const { command, argument, model, specId, storyId, projectPath } = detail;
+
+    // Resolve project path
+    const resolvedProjectPath = projectPath || this.openProjects.find(p => p.id === this.activeProjectId)?.path || '';
+
+    if (!resolvedProjectPath) {
+      this.showToast('Kein Projekt ausgewählt', 'error');
+      return;
+    }
+
+    // Build workflow context: "command argument" or just "command"
+    const workflowContext = argument ? `${command} ${argument}` : command;
+
+    // Parse model to get provider and model ID
+    const modelConfig = this._parseModelConfig(model);
+
+    // Generate unique session ID
+    const sessionId = `workflow-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+    // Create session title: "workflowName: workflowContext"
+    const tabTitle = `${command}: ${workflowContext}`;
+
+    // Create the workflow session in app state (single source of truth)
+    const newSession: TerminalSession = {
+      id: sessionId,
+      name: tabTitle,
+      status: 'active',
+      createdAt: new Date(),
+      projectPath: resolvedProjectPath,
+      terminalType: 'claude-code',
+      isWorkflow: true,
+      workflowName: command,
+      workflowContext,
+      needsInput: false,
+      modelId: modelConfig.modelId,
+      providerId: modelConfig.providerId,
+    };
+
+    // Add to app's terminalSessions (flows down to sidebar via projectTerminalSessions)
+    this.terminalSessions = [...this.terminalSessions, newSession];
+
+    // Set the new session as active
+    this.activeTerminalSessionId = sessionId;
+
+    // Open sidebar if closed
+    if (!this.isTerminalSidebarOpen) {
+      this.isTerminalSidebarOpen = true;
+    }
+
+    console.log('[App] Opened workflow terminal tab:', { command, argument, specId, storyId, sessionId });
+  }
+
+  // WTT-003: Parse model string to provider and model ID
+  private _parseModelConfig(model?: string): { providerId?: string; modelId?: string } {
+    if (!model) {
+      return { providerId: undefined, modelId: undefined };
+    }
+
+    // Model format: "provider/model" or just "model"
+    if (model.includes('/')) {
+      const [providerId, modelId] = model.split('/');
+      return { providerId, modelId };
+    }
+
+    // Map known model IDs to their providers
+    const modelProviderMap: Record<string, string> = {
+      'opus': 'anthropic',
+      'sonnet': 'anthropic',
+      'haiku': 'anthropic',
+      'glm-5': 'glm',
+      'kimi-k2.5': 'kimi-kw',
+    };
+
+    const providerId = modelProviderMap[model];
+    return { providerId, modelId: model };
+  }
+
   private _handleBottomPanelToggle(): void {
     this.isBottomPanelOpen = !this.isBottomPanelOpen;
   }
@@ -1221,8 +1355,6 @@ export class AosApp extends LitElement {
         return html`<aos-dashboard-view></aos-dashboard-view>`;
       case 'chat':
         return html`<aos-chat-view></aos-chat-view>`;
-      case 'workflows':
-        return html`<aos-workflow-view></aos-workflow-view>`;
       case 'settings':
         return html`<aos-settings-view></aos-settings-view>`;
       default:
@@ -1392,6 +1524,7 @@ export class AosApp extends LitElement {
         @session-select=${this._handleTerminalSessionSelect}
         @session-close=${this._handleTerminalSessionClose}
         @session-connected=${this._handleTerminalSessionConnected}
+        @input-needed=${this._handleTerminalInputNeeded}
       ></aos-cloud-terminal-sidebar>
       <aos-git-commit-dialog
         .open=${this.showCommitDialog}

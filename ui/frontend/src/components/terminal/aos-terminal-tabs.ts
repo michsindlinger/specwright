@@ -150,6 +150,59 @@ export class AosTerminalTabs extends LitElement {
         font-size: 12px;
         font-style: italic;
       }
+
+      /* Workflow Tab Styles */
+      .tab.workflow {
+        background: linear-gradient(135deg, var(--bg-color-tertiary, #252526) 0%, rgba(0, 122, 204, 0.1) 100%);
+      }
+
+      .tab.workflow:hover {
+        background: linear-gradient(135deg, var(--bg-color-hover, #3c3c3c) 0%, rgba(0, 122, 204, 0.15) 100%);
+      }
+
+      .tab.workflow.active {
+        background: linear-gradient(135deg, var(--bg-color-secondary, #1e1e1e) 0%, rgba(0, 122, 204, 0.2) 100%);
+        border-bottom-color: #4caf50;
+      }
+
+      .tab-icon {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+        color: var(--accent-color, #007acc);
+      }
+
+      .tab.workflow .tab-icon {
+        color: #4caf50;
+      }
+
+      .tab.needs-input {
+        animation: pulse-input 1.5s ease-in-out infinite;
+      }
+
+      @keyframes pulse-input {
+        0%, 100% {
+          background: linear-gradient(135deg, var(--bg-color-tertiary, #252526) 0%, rgba(255, 152, 0, 0.1) 100%);
+        }
+        50% {
+          background: linear-gradient(135deg, var(--bg-color-tertiary, #252526) 0%, rgba(255, 152, 0, 0.25) 100%);
+        }
+      }
+
+      .input-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 14px;
+        height: 14px;
+        background: #ff9800;
+        border-radius: 50%;
+        font-size: 9px;
+        font-weight: 600;
+        color: white;
+        flex-shrink: 0;
+        margin-left: 4px;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -168,26 +221,48 @@ export class AosTerminalTabs extends LitElement {
     return html`
       <div class="tabs-container">
         ${this.sessions.map(
-          (session) => html`
-            <div
-              class="tab ${session.id === this.activeSessionId ? 'active' : ''}"
-              @click=${() => this._handleTabClick(session.id)}
-              title="${session.name} (${session.status})"
-            >
-              <span class="tab-status ${session.status}"></span>
-              <span class="tab-name">${session.name}</span>
-              <button
-                class="tab-close"
-                @click=${(e: Event) => this._handleCloseClick(e, session.id)}
-                title="Session schließen"
+          (session) => {
+            const isWorkflow = session.isWorkflow ?? false;
+            const needsInput = session.needsInput ?? false;
+            // Tab title: "workflowName: workflowContext" for workflows, otherwise session.name
+            const tabTitle = isWorkflow && session.workflowName
+              ? `${session.workflowName}: ${session.workflowContext ?? ''}`
+              : session.name;
+
+            return html`
+              <div
+                class="tab ${session.id === this.activeSessionId ? 'active' : ''} ${isWorkflow ? 'workflow' : ''} ${needsInput ? 'needs-input' : ''}"
+                @click=${() => this._handleTabClick(session.id)}
+                title="${tabTitle} (${session.status})"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-            </div>
-          `
+                ${isWorkflow
+                  ? html`
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                      <path d="M2 17l10 5 10-5"></path>
+                      <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                  `
+                  : html`<span class="tab-status ${session.status}"></span>`
+                }
+                <span class="tab-name">${tabTitle}</span>
+                ${needsInput
+                  ? html`<span class="input-badge" title="Eingabe erforderlich">!</span>`
+                  : ''
+                }
+                <button
+                  class="tab-close"
+                  @click=${(e: Event) => this._handleCloseClick(e, session)}
+                  title="Session schließen"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            `;
+          }
         )}
       </div>
     `;
@@ -203,11 +278,17 @@ export class AosTerminalTabs extends LitElement {
     );
   }
 
-  private _handleCloseClick(e: Event, sessionId: string) {
+  private _handleCloseClick(e: Event, session: TerminalSession) {
     e.stopPropagation();
+
+    // WTT-005: Include session info for close confirmation check
     this.dispatchEvent(
       new CustomEvent('session-close', {
-        detail: { sessionId },
+        detail: {
+          sessionId: session.id,
+          isWorkflow: session.isWorkflow ?? false,
+          status: session.status,
+        },
         bubbles: true,
         composed: true,
       })

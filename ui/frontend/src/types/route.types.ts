@@ -4,10 +4,10 @@
  */
 
 /** All supported top-level view routes */
-export type ViewType = 'dashboard' | 'chat' | 'workflows' | 'settings' | 'not-found';
+export type ViewType = 'dashboard' | 'chat' | 'settings' | 'not-found';
 
 /** Valid view routes (excludes 'not-found' which is a fallback) */
-export const VALID_VIEWS: readonly ViewType[] = ['dashboard', 'chat', 'workflows', 'settings'] as const;
+export const VALID_VIEWS: readonly ViewType[] = ['dashboard', 'chat', 'settings'] as const;
 
 /** Default route when no hash or empty hash */
 export const DEFAULT_VIEW: ViewType = 'dashboard';

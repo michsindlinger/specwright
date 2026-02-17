@@ -73,14 +73,14 @@ Scenario: Claude CLI ist nicht verfuegbar
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: ui/src/shared/types/cloud-terminal.protocol.ts
-- [ ] CONTAINS: ui/src/shared/types/cloud-terminal.protocol.ts enthaelt "cloud-terminal:create-workflow"
-- [ ] CONTAINS: ui/src/server/services/cloud-terminal-manager.ts enthaelt "createWorkflowSession"
-- [ ] CONTAINS: ui/src/server/websocket.ts enthaelt "cloud-terminal:create-workflow"
+- [x] FILE_EXISTS: ui/src/shared/types/cloud-terminal.protocol.ts
+- [x] CONTAINS: ui/src/shared/types/cloud-terminal.protocol.ts enthaelt "cloud-terminal:create-workflow"
+- [x] CONTAINS: ui/src/server/services/cloud-terminal-manager.ts enthaelt "createWorkflowSession"
+- [x] CONTAINS: ui/src/server/websocket.ts enthaelt "cloud-terminal:create-workflow"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: cd ui && npm run build:backend
+- [x] BUILD_PASS: cd ui && npm run build:backend
 
 ---
 
@@ -117,18 +117,18 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten
-- [ ] Security/Performance Anforderungen erfuellt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten
+- [x] Security/Performance Anforderungen erfuellt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt
-- [ ] Tests geschrieben und bestanden
-- [ ] Code Review durchgefuehrt
+- [x] Alle Akzeptanzkriterien erfuellt
+- [x] Tests geschrieben und bestanden
+- [x] Code Review durchgefuehrt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich
 
 ---
 

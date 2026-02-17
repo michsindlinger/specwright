@@ -1295,6 +1295,7 @@ export class AosKanbanBoard extends LitElement {
 
   /**
    * KSE-003/KSE-005: Send workflow.story.start event to backend
+   * WTT-003: Now dispatches workflow-terminal-request to open in terminal tab
    * This triggers /execute-tasks {specId} {storyId}
    * @param storyId - The story ID to start
    * @param gitStrategy - The git strategy to use ('branch' or 'worktree')
@@ -1311,6 +1312,24 @@ export class AosKanbanBoard extends LitElement {
       model,
       autoMode: this.autoModeEnabled
     });
+
+    // WTT-003: Dispatch workflow-terminal-request event to app.ts
+    // This will open a terminal tab and start the workflow there
+    const workflowRequestEvent = new CustomEvent('workflow-terminal-request', {
+      detail: {
+        command: 'execute-tasks',
+        argument: `${this.kanban.specId} ${storyId}`,
+        model,
+        specId: this.kanban.specId,
+        storyId,
+        gitStrategy,
+      },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(workflowRequestEvent);
+
+    // Still send the backend message to update kanban status and track execution
     gateway.send({
       type: 'workflow.story.start',
       specId: this.kanban.specId,

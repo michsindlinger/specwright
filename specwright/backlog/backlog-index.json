@@ -1,0 +1,14 @@
+{
+  "nextId": 2,
+  "items": [
+    {
+      "id": "BUG-001",
+      "type": "bug",
+      "title": "Xterm Terminal rerendert nicht korrekt nach Visibility-Change",
+      "priority": "high",
+      "status": "open",
+      "file": "items/bug-001-xterm-terminal-rerendert-nicht-korrekt-nach-visibi.md",
+      "createdAt": "2026-02-17T05:48:35.159Z"
+    }
+  ]
+}
