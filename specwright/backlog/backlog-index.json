@@ -9,17 +9,17 @@
       "status": "done",
       "file": "items/bug-001-xterm-terminal-rerendert-nicht-korrekt-nach-visibi.md",
       "createdAt": "2026-02-17T05:48:35.159Z",
-      "updatedAt": "2026-02-17T06:06:23.781Z",
-      "completedAt": "2026-02-17T06:10:59.591Z"
+      "updatedAt": "2026-02-17T06:12:02.218Z",
+      "completedAt": "2026-02-17T06:12:02.218Z"
     }
   ],
   "statistics": {
     "byStatus": {
       "open": 0,
-      "in_progress": 1,
+      "in_progress": 0,
       "in_review": 0,
       "blocked": 0,
-      "done": 0
+      "done": 1
     }
   },
   "resumeContext": {
