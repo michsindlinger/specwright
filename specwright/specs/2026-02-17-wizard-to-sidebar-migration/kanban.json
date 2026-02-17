@@ -10,15 +10,15 @@
     "createdAt": "2026-02-17T00:00:00Z"
   },
   "resumeContext": {
-    "currentPhase": "story-complete",
+    "currentPhase": "all-stories-done",
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/wizard-to-sidebar-migration",
-    "currentStory": "WSM-003",
+    "currentStory": "WSM-999",
     "currentStoryPhase": "implementing",
-    "lastAction": "Started WSM-003",
-    "nextAction": "Implement Wizard Entfernung & State Cleanup",
-    "progressIndex": 2,
+    "lastAction": "Started WSM-999",
+    "nextAction": "Implement Finalize PR",
+    "progressIndex": 5,
     "totalStories": 6,
     "gitStrategy": "branch"
   },
@@ -127,24 +127,35 @@
       "dependencies": [
         "WSM-002"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-wizard-entfernung-state-cleanup.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
         "updatedAt": "2026-02-17T00:00:00Z",
-        "startedAt": "2026-02-17T15:05:16.494Z"
+        "startedAt": "2026-02-17T15:05:16.494Z",
+        "completedAt": "2026-02-17T15:10:19.614Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/app.ts",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-003-wizard-entfernung-state-cleanup.md",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/integration-context.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "502a94b",
+            "message": "feat: [WSM-003] Wizard Entfernung & State Cleanup",
+            "timestamp": "2026-02-17T17:20:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -162,22 +173,35 @@
         "WSM-002",
         "WSM-003"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T15:11:08.982Z",
+        "completedAt": "2026-02-17T15:14:20.273Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/review-report.md",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-997-code-review.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "none",
+            "message": "feat: [WSM-997] Code Review completed",
+            "timestamp": "2026-02-17T17:30:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "WSM-998",
@@ -192,22 +216,34 @@
       "dependencies": [
         "WSM-997"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T15:14:31.893Z",
+        "completedAt": "2026-02-17T15:16:03.547Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-998-integration-validation.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "none",
+            "message": "feat: [WSM-998] Integration Validation completed",
+            "timestamp": "2026-02-17T17:35:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "WSM-999",
@@ -222,12 +258,13 @@
       "dependencies": [
         "WSM-998"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T15:16:45.759Z"
       },
       "implementation": {
         "filesModified": [],
@@ -237,16 +274,18 @@
       "verification": {
         "dorChecked": true,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     }
   ],
   "boardStatus": {
     "total": 6,
-    "ready": 3,
+    "ready": 0,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 2,
+    "done": 5,
     "blocked": 0
   },
   "statistics": {
@@ -371,6 +410,66 @@
       "timestamp": "2026-02-17T15:05:16.496Z",
       "action": "status_changed",
       "storyId": "WSM-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T15:10:19.614Z",
+      "action": "status_changed",
+      "storyId": "WSM-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T15:10:25.537Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: all-stories-done"
+    },
+    {
+      "timestamp": "2026-02-17T15:10:44.379Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T15:11:08.984Z",
+      "action": "status_changed",
+      "storyId": "WSM-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T15:13:26.114Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T15:14:20.274Z",
+      "action": "status_changed",
+      "storyId": "WSM-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T15:14:31.893Z",
+      "action": "status_changed",
+      "storyId": "WSM-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T15:16:03.547Z",
+      "action": "status_changed",
+      "storyId": "WSM-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T15:16:20.214Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T15:16:45.760Z",
+      "action": "status_changed",
+      "storyId": "WSM-999",
       "details": "Story started: ready → in_progress"
     }
   ]
