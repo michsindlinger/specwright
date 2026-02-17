@@ -77,6 +77,7 @@ export class AosStoryCard extends LitElement {
   @property({ type: String }) workflowStatus: WorkflowStatus = 'idle';
   @property({ type: String }) workflowError: string = '';
   @property({ type: Array }) providers: ProviderInfo[] = DEFAULT_PROVIDERS;
+  @property({ type: Boolean, reflect: true }) dragDisabled = false;
   @state() private isDragging = false;
   @state() private copied = false;
   @state() private dropdownOpen = false;
@@ -116,6 +117,15 @@ export class AosStoryCard extends LitElement {
     .story-card.dragging {
       opacity: 0.5;
       transform: scale(0.95);
+    }
+
+    .story-card.drag-disabled {
+      cursor: default;
+    }
+
+    .story-card.drag-disabled:hover {
+      transform: none;
+      box-shadow: none;
     }
 
     .story-header {
@@ -287,6 +297,135 @@ export class AosStoryCard extends LitElement {
       border-radius: 3px;
       border: 1px solid var(--border-color, #404040);
     }
+
+    /* Status badge styles (duplicated from theme.css for Shadow DOM) */
+    .story-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .story-status-badge .status-indicator {
+      font-size: 10px;
+    }
+
+    .status-ready {
+      background-color: rgba(var(--color-accent-success-rgb), 0.15);
+      color: var(--color-accent-primary);
+      border: 1px solid rgba(var(--color-accent-success-rgb), 0.3);
+    }
+
+    .status-ready .status-indicator {
+      color: var(--color-accent-primary);
+      text-shadow: 0 0 6px rgba(var(--color-accent-success-rgb), 0.5);
+    }
+
+    .status-blocked {
+      background-color: rgba(var(--color-accent-error-rgb), 0.15);
+      color: var(--color-accent-error);
+      border: 1px solid rgba(var(--color-accent-error-rgb), 0.3);
+    }
+
+    .status-blocked .status-indicator {
+      color: var(--color-accent-error);
+      animation: pulse-red 2s ease-in-out infinite;
+    }
+
+    .status-in-progress {
+      background-color: rgba(var(--color-accent-primary-rgb), 0.15);
+      color: var(--color-accent-primary);
+      border: 1px solid rgba(var(--color-accent-primary-rgb), 0.3);
+    }
+
+    .status-in-progress .status-indicator {
+      color: var(--color-accent-primary);
+      animation: pulse-blue 2s ease-in-out infinite;
+    }
+
+    .status-done {
+      background-color: rgba(107, 114, 128, 0.15);
+      color: #9ca3af;
+      border: 1px solid rgba(107, 114, 128, 0.3);
+    }
+
+    .status-done .status-indicator {
+      color: #9ca3af;
+    }
+
+    .status-unknown {
+      background-color: rgba(156, 163, 175, 0.1);
+      color: #9ca3af;
+      border: 1px dashed rgba(156, 163, 175, 0.4);
+    }
+
+    .status-unknown .status-indicator {
+      color: #9ca3af;
+    }
+
+    .status-working {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: var(--color-accent-warning);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .status-working .status-indicator {
+      color: var(--color-accent-warning);
+      animation: pulse-working 1.5s ease-in-out infinite;
+    }
+
+    .status-error {
+      background-color: rgba(var(--color-accent-error-rgb), 0.15);
+      color: var(--color-accent-error);
+      border: 1px solid rgba(var(--color-accent-error-rgb), 0.4);
+    }
+
+    .status-error .status-indicator {
+      color: var(--color-accent-error);
+    }
+
+    .status-in-review {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: var(--color-accent-warning);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .status-in-review .status-indicator {
+      color: var(--color-accent-warning);
+    }
+
+    @keyframes pulse-working {
+      0%, 100% {
+        opacity: 1;
+        transform: rotate(0deg);
+      }
+      50% {
+        opacity: 0.6;
+        transform: rotate(180deg);
+      }
+    }
+
+    @keyframes pulse-blue {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.6;
+      }
+    }
+
+    @keyframes pulse-red {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
   `;
   private handleClick(): void {
     this.dispatchEvent(
@@ -309,6 +448,7 @@ export class AosStoryCard extends LitElement {
   }
 
   private handleDragStart(e: DragEvent): void {
+    if (this.dragDisabled) { e.preventDefault(); return; }
     if (!e.dataTransfer) return;
 
     e.dataTransfer.setData('text/plain', this.story.id);
@@ -426,8 +566,8 @@ export class AosStoryCard extends LitElement {
   override render() {
     return html`
       <div
-        class="story-card ${this.isDragging ? 'dragging' : ''} ${this.dropdownOpen ? 'dropdown-open' : ''}"
-        draggable="true"
+        class="story-card ${this.isDragging ? 'dragging' : ''} ${this.dropdownOpen ? 'dropdown-open' : ''} ${this.dragDisabled ? 'drag-disabled' : ''}"
+        draggable="${this.dragDisabled ? 'false' : 'true'}"
         @click=${this.handleClick}
         @dragstart=${this.handleDragStart}
         @dragend=${this.handleDragEnd}

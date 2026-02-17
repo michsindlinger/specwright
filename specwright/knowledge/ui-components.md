@@ -1,7 +1,7 @@
 # UI Components
 
 > Verfügbare UI-Komponenten im Projekt.
-> Zuletzt aktualisiert: 2026-02-16
+> Zuletzt aktualisiert: 2026-02-17
 
 ## Komponenten-Übersicht
 
@@ -12,6 +12,8 @@
 | aos-file-editor | ui/frontend/src/components/file-editor/aos-file-editor.ts | content, filename | File Editor (2026-02-16) |
 | aos-file-tabs | ui/frontend/src/components/file-editor/aos-file-tabs.ts | tabs, activeTabPath | File Editor (2026-02-16) |
 | aos-file-editor-panel | ui/frontend/src/components/file-editor/aos-file-editor-panel.ts | (Orchestrator) | File Editor (2026-02-16) |
+| aos-installation-wizard-modal | ui/frontend/src/components/setup/aos-installation-wizard-modal.ts | projectPath, hasSpecwright, hasProductBrief, fileCount, open | Installation Wizard (2026-02-17) |
+| aos-getting-started-view | ui/frontend/src/views/aos-getting-started-view.ts | hasProductBrief, projectName | Installation Wizard (2026-02-17) |
 
 ---
 
@@ -199,6 +201,84 @@ panel.openFile('src/app.ts', 'app.ts');
 - Gateway-Subscriptions: files:read:response, files:write:response, etc.
 - Unsaved-Changes-Warnung via `window.confirm()`
 - Listener für `file-renamed` und `file-deleted` Document-Events
+
+---
+
+### aos-installation-wizard-modal
+
+**Pfad:** `ui/frontend/src/components/setup/aos-installation-wizard-modal.ts`
+**Erstellt:** Installation Wizard (2026-02-17)
+
+**Beschreibung:** Modaler Wizard fuer Specwright-Installation mit zweistufiger Logik: (1) Framework-Installation via install.sh, (2) Planning-Command-Auswahl. Erkennt Bestandsprojekte via Dateianzahl.
+
+**Props:**
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| open | boolean | false | Modal sichtbar/versteckt |
+| hasSpecwright | boolean | false | Ob specwright/ Ordner existiert |
+| hasProductBrief | boolean | false | Ob Product Brief existiert |
+| fileCount | number | 0 | Anzahl Top-Level-Dateien (Bestandsprojekt-Erkennung) |
+| projectPath | string | '' | Pfad zum Projekt |
+
+**Events:**
+| Event | Detail | Description |
+|-------|--------|-------------|
+| modal-close | - | Modal soll geschlossen werden |
+| wizard-cancel | - | Wizard wurde abgebrochen |
+| command-selected | { command, projectPath } | Planning-Command wurde im Terminal ausgefuehrt |
+
+**Usage Example:**
+```html
+<aos-installation-wizard-modal
+  .open=${this.showWizard}
+  .hasSpecwright=${this.wizardHasSpecwright}
+  .hasProductBrief=${this.wizardHasProductBrief}
+  .fileCount=${this.wizardFileCount}
+  .projectPath=${this.wizardProjectPath}
+  @modal-close=${this._handleWizardClose}
+  @wizard-cancel=${this._handleWizardCancel}
+  @command-selected=${this._handleWizardComplete}
+></aos-installation-wizard-modal>
+```
+
+**Notes:**
+- Multi-Step-Wizard: install -> command-select -> terminal -> complete
+- Nutzt aos-terminal-session fuer Command-Ausfuehrung
+- Light DOM Pattern
+- Bestandsprojekt-Hinweis bei fileCount > 10
+
+---
+
+### aos-getting-started-view
+
+**Pfad:** `ui/frontend/src/views/aos-getting-started-view.ts`
+**Erstellt:** Installation Wizard (2026-02-17)
+
+**Beschreibung:** Getting-Started-View mit kontextabhaengigen Naechste-Schritte-Cards. Zeigt Planning-Commands wenn kein Product Brief, sonst create-spec/add-todo/add-bug.
+
+**Props:**
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| hasProductBrief | boolean | false | Ob Product Brief existiert (steuert Card-Auswahl) |
+| hasSpecwright | boolean | true | Ob Specwright installiert ist |
+
+**Events:**
+| Event | Detail | Description |
+|-------|--------|-------------|
+| workflow-start-interactive | { command } | Workflow soll im Terminal gestartet werden |
+
+**Usage Example:**
+```html
+<aos-getting-started-view
+  .hasProductBrief=${this.hasProductBrief}
+  .hasSpecwright=${this.hasSpecwright}
+></aos-getting-started-view>
+```
+
+**Notes:**
+- Drei Zustaende: not installed, no product brief, fully configured
+- Erreichbar via /getting-started Route und Sidebar-Navigation
+- Light DOM Pattern
 
 ---
 
