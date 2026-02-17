@@ -843,6 +843,39 @@ export class WorkflowExecutor {
         warnings.push(`Backlog-Status-Update auf main fehlgeschlagen: ${errorMsg}`);
       }
 
+      // 5. Push main to remote so it's in sync
+      if (status === 'completed') {
+        try {
+          await gitService.push(projectPath);
+          console.log(`[Workflow] Pushed main to remote`);
+        } catch (pushMainError) {
+          const errorMsg = pushMainError instanceof Error ? pushMainError.message : String(pushMainError);
+          console.warn(`[Workflow] Push main failed (non-critical):`, errorMsg);
+          warnings.push(`Main-Push fehlgeschlagen: ${errorMsg}`);
+        }
+
+        // 6. Merge main into feature branch so PR stays conflict-free
+        try {
+          await gitService.checkout(projectPath, branchName);
+          console.log(`[Workflow] Checked out feature branch: ${branchName}`);
+
+          execSync('git merge main --no-edit -X theirs', { cwd: projectPath, stdio: 'pipe' });
+          console.log(`[Workflow] Merged main into ${branchName}`);
+
+          await gitService.pushBranch(projectPath, branchName);
+          console.log(`[Workflow] Pushed updated feature branch: ${branchName}`);
+
+          await gitService.checkoutMain(projectPath);
+          console.log(`[Workflow] Back on main`);
+        } catch (syncError) {
+          const errorMsg = syncError instanceof Error ? syncError.message : String(syncError);
+          console.warn(`[Workflow] Feature branch sync failed (non-critical):`, errorMsg);
+          warnings.push(`Feature-Branch-Sync fehlgeschlagen: ${errorMsg}`);
+          // Ensure we're back on main even if sync failed
+          try { await gitService.checkoutMain(projectPath); } catch { /* best effort */ }
+        }
+      }
+
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error('[Workflow] Backlog post-execution error:', errorMsg);
