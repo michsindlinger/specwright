@@ -60,6 +60,32 @@ Scenario: Dokumentation gefundener Probleme
   And gebe ich eine Empfehlung zur Behebung
 ```
 
+### Szenario 4: Fix gefundener Issues
+
+```gherkin
+Scenario: Systematisches Beheben gefundener Issues
+  Given der Code Review hat Issues gefunden
+  And der User wählt "Issues jetzt beheben"
+  When die Fix-Phase beginnt
+  Then wird jedes Finding einzeln adressiert (Critical > Major > Minor)
+  And für jedes Finding wird ein Fix implementiert
+  And nach jedem Fix wird der Fix verifiziert
+  And der review-report.md wird mit Fix-Status aktualisiert
+  And nach allen Fixes wird ein Re-Review durchgeführt
+```
+
+### Szenario 5: User wählt Dokumentieren statt Fixen
+
+```gherkin
+Scenario: User kann Findings dokumentieren ohne Fix
+  Given der Code Review hat Issues gefunden
+  And der User wählt "Issues dokumentieren und fortfahren"
+  When die Entscheidung verarbeitet wird
+  Then werden alle Issues im review-report.md als "deferred" markiert
+  And Story-997 wird als Done markiert
+  And Story-998 wird fortgesetzt
+```
+
 ---
 
 ## Technische Verifikation (Automated Checks)
@@ -124,7 +150,9 @@ Scenario: Dokumentation gefundener Probleme
 - [ ] Alle geänderten Dateien reviewt
 - [ ] Probleme identifiziert und kategorisiert
 - [ ] review-report.md erstellt
-- [ ] Keine Critical Issues gefunden (oder dokumentiert)
+- [ ] Alle Critical/Major Issues behoben ODER vom User explizit als "dokumentiert" akzeptiert
+- [ ] Fix Status Tabelle im review-report.md aktualisiert
+- [ ] Re-Review nach Fixes bestanden (falls Fixes durchgeführt)
 
 ---
 
@@ -193,13 +221,26 @@ Der generierte Review-Report folgt diesem Format:
 
 [Keine gefunden / Issue-Liste]
 
+## Fix Status
+
+| # | Schweregrad | Issue | Status | Fix-Details |
+|---|-------------|-------|--------|-------------|
+| 1 | [Critical/Major/Minor] | [Kurzbeschreibung] | [pending/fixed/skipped/deferred] | [Was wurde gefixt] |
+
+## Re-Review
+
+**Datum:** [DATE]
+**Geprüfte Dateien:** [N] (nur geänderte)
+**Neue Issues:** [N]
+**Ergebnis:** [Review bestanden / Weitere Fixes nötig]
+
 ## Empfehlungen
 
 [Liste von Empfehlungen]
 
 ## Fazit
 
-[Zusammenfassung: Review bestanden / Review mit Hinweisen / Review nicht bestanden]
+[Zusammenfassung: Review bestanden / Review bestanden (nach Fixes) / Review mit Hinweisen / Review nicht bestanden]
 ```
 
 ---
@@ -212,9 +253,15 @@ test -f specwright/specs/[SPEC_NAME]/review-report.md
 
 # Verify report has content
 grep -q "Review Summary" specwright/specs/[SPEC_NAME]/review-report.md
+
+# Verify Fix Status section exists
+grep -q "Fix Status" specwright/specs/[SPEC_NAME]/review-report.md
 ```
 
 **Story ist DONE wenn:**
 1. review-report.md wurde erstellt
 2. Alle Dateien wurden reviewt
 3. Probleme wurden dokumentiert
+4. Alle Critical/Major Issues behoben ODER vom User explizit als "dokumentiert" akzeptiert
+5. Fix Status Tabelle im Report aktualisiert
+6. Re-Review nach Fixes bestanden (falls Fixes durchgeführt)
