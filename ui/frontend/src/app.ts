@@ -1215,26 +1215,6 @@ export class AosApp extends LitElement {
   }): void {
     const { command, argument, model, specId, storyId, projectPath } = detail;
 
-    // Get the sidebar component reference
-    const sidebar = this.querySelector('aos-cloud-terminal-sidebar') as HTMLElement & {
-      openWorkflowTab: (
-        workflowName: string,
-        workflowContext: string,
-        projectPath: string,
-        options?: {
-          specId?: string;
-          storyId?: string;
-          modelId?: string;
-          providerId?: string;
-        }
-      ) => string;
-    } | null;
-
-    if (!sidebar) {
-      console.error('[App] Could not find aos-cloud-terminal-sidebar');
-      return;
-    }
-
     // Resolve project path
     const resolvedProjectPath = projectPath || this.openProjects.find(p => p.id === this.activeProjectId)?.path || '';
 
@@ -1249,26 +1229,38 @@ export class AosApp extends LitElement {
     // Parse model to get provider and model ID
     const modelConfig = this._parseModelConfig(model);
 
-    // Open the workflow tab
-    const sessionId = sidebar.openWorkflowTab(
-      command,
+    // Generate unique session ID
+    const sessionId = `workflow-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+    // Create session title: "workflowName: workflowContext"
+    const tabTitle = `${command}: ${workflowContext}`;
+
+    // Create the workflow session in app state (single source of truth)
+    const newSession: TerminalSession = {
+      id: sessionId,
+      name: tabTitle,
+      status: 'active',
+      createdAt: new Date(),
+      projectPath: resolvedProjectPath,
+      terminalType: 'claude-code',
+      isWorkflow: true,
+      workflowName: command,
       workflowContext,
-      resolvedProjectPath,
-      {
-        specId,
-        storyId,
-        modelId: modelConfig.modelId,
-        providerId: modelConfig.providerId,
-      }
-    );
+      needsInput: false,
+      modelId: modelConfig.modelId,
+      providerId: modelConfig.providerId,
+    };
+
+    // Add to app's terminalSessions (flows down to sidebar via projectTerminalSessions)
+    this.terminalSessions = [...this.terminalSessions, newSession];
+
+    // Set the new session as active
+    this.activeTerminalSessionId = sessionId;
 
     // Open sidebar if closed
     if (!this.isTerminalSidebarOpen) {
       this.isTerminalSidebarOpen = true;
     }
-
-    // Set the new session as active
-    this.activeTerminalSessionId = sessionId;
 
     console.log('[App] Opened workflow terminal tab:', { command, argument, specId, storyId, sessionId });
   }

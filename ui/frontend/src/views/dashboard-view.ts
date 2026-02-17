@@ -382,6 +382,7 @@ export class AosDashboardView extends LitElement {
       ['specs.story.save.error', (msg) => this.onSpecStorySaveError(msg)],
       ['backlog.error', (msg) => this.onBacklogError(msg)],
       ['backlog.kanban', (msg) => this.onBacklogKanban(msg)],
+      ['backlog.kanban.refresh', () => gateway.send({ type: 'backlog.kanban' })],
       ['backlog.story-detail', (msg) => this.onBacklogStoryDetail(msg)],
       ['backlog.story.start.ack', (msg) => this.onBacklogStoryStartAck(msg)],
       ['backlog.story.start.error', (msg) => this.onBacklogStoryStartError(msg)],

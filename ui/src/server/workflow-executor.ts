@@ -824,6 +824,17 @@ export class WorkflowExecutor {
         warnings.push(`Checkout main fehlgeschlagen: ${errorMsg}`);
       }
 
+      // 4. Update backlog-index.json on main so next story sees correct status
+      const newStatus = status === 'completed' ? 'done' : 'in_progress';
+      try {
+        await this.updateBacklogIndexOnMain(projectPath, storyId!, newStatus);
+        console.log(`[Workflow] Updated backlog-index.json on main: ${storyId} → ${newStatus}`);
+      } catch (updateError) {
+        const errorMsg = updateError instanceof Error ? updateError.message : String(updateError);
+        console.warn(`[Workflow] backlog-index.json update on main failed (non-critical):`, errorMsg);
+        warnings.push(`Backlog-Status-Update auf main fehlgeschlagen: ${errorMsg}`);
+      }
+
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error('[Workflow] Backlog post-execution error:', errorMsg);
@@ -842,6 +853,77 @@ export class WorkflowExecutor {
     }
 
     return result;
+  }
+
+  /**
+   * Update backlog-index.json on main after a story completes.
+   * This ensures the next story (which branches from main) sees the correct status,
+   * and the Kanban board stays in sync after page refresh.
+   */
+  private async updateBacklogIndexOnMain(
+    projectPath: string,
+    storyId: string,
+    newStatus: string
+  ): Promise<void> {
+    const backlogPath = projectDir(projectPath, 'backlog', 'backlog-index.json');
+
+    if (!existsSync(backlogPath)) {
+      console.log(`[Workflow] No backlog-index.json found at ${backlogPath}, skipping status update`);
+      return;
+    }
+
+    const backlogContent = await readFile(backlogPath, 'utf-8');
+    const backlogJson = JSON.parse(backlogContent) as {
+      items: Array<{ id: string; status: string; updatedAt?: string; completedAt?: string }>;
+      statistics?: { byStatus: Record<string, number> };
+      metadata?: { lastUpdated: string };
+    };
+
+    const itemIndex = backlogJson.items.findIndex(i => i.id === storyId);
+    if (itemIndex === -1) {
+      console.log(`[Workflow] Story ${storyId} not found in backlog-index.json, skipping status update`);
+      return;
+    }
+
+    // Update story status
+    backlogJson.items[itemIndex].status = newStatus;
+    backlogJson.items[itemIndex].updatedAt = new Date().toISOString();
+    if (newStatus === 'done') {
+      backlogJson.items[itemIndex].completedAt = new Date().toISOString();
+    }
+
+    // Recalculate statistics
+    if (backlogJson.statistics) {
+      backlogJson.statistics.byStatus = { open: 0, in_progress: 0, in_review: 0, blocked: 0, done: 0 };
+      for (const item of backlogJson.items) {
+        if (item.status in backlogJson.statistics.byStatus) {
+          backlogJson.statistics.byStatus[item.status]++;
+        }
+      }
+    }
+
+    if (backlogJson.metadata) {
+      backlogJson.metadata.lastUpdated = new Date().toISOString();
+    }
+
+    // Write and commit on main
+    await writeFile(backlogPath, JSON.stringify(backlogJson, null, 2));
+    try {
+      await gitService.commit(
+        projectPath,
+        [backlogPath],
+        `chore: mark backlog story ${storyId} as ${newStatus}`
+      );
+    } catch {
+      // Commit may fail if nothing changed (e.g. status was already set) — not critical
+      console.log(`[Workflow] Commit for backlog status update skipped (no changes or error)`);
+    }
+
+    // Broadcast kanban refresh to all clients
+    webSocketManager.sendToProject(projectPath, {
+      type: 'backlog.kanban.refresh',
+      timestamp: new Date().toISOString()
+    });
   }
 
   /**
