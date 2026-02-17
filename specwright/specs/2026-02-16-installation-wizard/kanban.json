@@ -17,15 +17,15 @@
     "currentStory": null,
     "currentStoryPhase": null,
     "lastAction": "PR created - https://github.com/michsindlinger/specwright/pull/8",
-    "nextAction": "All stories complete",
-    "progressIndex": 24,
+    "nextAction": "Spec execution complete",
+    "progressIndex": 25,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
   "execution": {
     "status": "completed",
     "startedAt": "2026-02-17T11:30:59.038Z",
-    "completedAt": "2026-02-17T11:45:50.082Z",
+    "completedAt": "2026-02-17T11:46:45.974Z",
     "model": null
   },
   "stories": [
@@ -383,21 +383,18 @@
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
         "startedAt": "2026-02-17T11:45:11.886Z",
-        "completedAt": "2026-02-17T11:45:50.082Z"
+        "completedAt": "2026-02-17T11:46:45.974Z"
       },
       "implementation": {
         "filesModified": [
-          "specwright/knowledge/knowledge-index.md",
-          "specwright/knowledge/ui-components.md",
-          "specwright/specs/2026-02-16-installation-wizard/kanban.json",
-          "specwright/specs/2026-02-16-installation-wizard/review-report.md"
+          "specwright/specs/2026-02-16-installation-wizard/kanban.json"
         ],
         "testsAdded": [],
         "commits": [
           {
-            "hash": "6d652bf",
-            "message": "feat: IW-999 Finalize PR - knowledge update and remaining changes",
-            "timestamp": "2026-02-17T12:50:00+01:00"
+            "hash": "744863b",
+            "message": "chore: IW-999 kanban update - story in progress",
+            "timestamp": "2026-02-17T12:44:00+01:00"
           }
         ]
       },
@@ -890,6 +887,18 @@
     },
     {
       "timestamp": "2026-02-17T11:45:54.475Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+    },
+    {
+      "timestamp": "2026-02-17T11:46:45.974Z",
+      "action": "status_changed",
+      "storyId": "IW-999",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:46:54.228Z",
       "action": "phase_updated",
       "storyId": null,
       "details": "Phase: complete"
