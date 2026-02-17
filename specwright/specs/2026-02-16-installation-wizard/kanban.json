@@ -14,11 +14,11 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/installation-wizard",
-    "currentStory": "IW-006",
+    "currentStory": "IW-997",
     "currentStoryPhase": "implementing",
-    "lastAction": "Started IW-006",
-    "nextAction": "Implement Router & Navigation Integration",
-    "progressIndex": 8,
+    "lastAction": "Started IW-997",
+    "nextAction": "Implement Code Review",
+    "progressIndex": 10,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -221,14 +221,22 @@
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
         "startedAt": "2026-02-17T11:31:49.237Z",
-        "completedAt": "2026-02-17T11:33:09.634Z"
+        "completedAt": "2026-02-17T11:37:01.393Z"
       },
       "implementation": {
         "filesModified": [
-          "ui/frontend/src/views/aos-getting-started-view.ts"
+          "ui/frontend/src/views/aos-getting-started-view.ts",
+          "specwright/specs/2026-02-16-installation-wizard/stories/story-005-getting-started-view.md",
+          "specwright/specs/2026-02-16-installation-wizard/integration-context.md"
         ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "8f31fd0",
+            "message": "feat: IW-005 Getting Started View",
+            "timestamp": "2026-02-17T13:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
@@ -254,24 +262,34 @@
         "IW-004",
         "IW-005"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-006-router-navigation-integration.md",
       "timing": {
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
-        "startedAt": "2026-02-17T11:33:19.158Z"
+        "startedAt": "2026-02-17T11:33:19.158Z",
+        "completedAt": "2026-02-17T11:38:04.181Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/app.ts",
+          "ui/frontend/src/types/route.types.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "pending",
+            "message": "feat: IW-006 Router & Navigation Integration",
+            "timestamp": "2026-02-17T13:30:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -292,12 +310,13 @@
         "IW-005",
         "IW-006"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-16T00:00:00Z",
-        "updatedAt": "2026-02-16T00:00:00Z"
+        "updatedAt": "2026-02-16T00:00:00Z",
+        "startedAt": "2026-02-17T11:38:14.334Z"
       },
       "implementation": {
         "filesModified": [],
@@ -307,7 +326,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "IW-998",
@@ -372,11 +393,11 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 3,
+    "ready": 2,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 5,
+    "done": 6,
     "blocked": 0
   },
   "statistics": {
@@ -674,6 +695,36 @@
       "action": "status_changed",
       "storyId": "IW-006",
       "details": "Story started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T11:37:01.393Z",
+      "action": "status_changed",
+      "storyId": "IW-005",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:37:12.129Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-17T11:37:22.374Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/installation-wizard"
+    },
+    {
+      "timestamp": "2026-02-17T11:38:04.182Z",
+      "action": "status_changed",
+      "storyId": "IW-006",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:38:14.334Z",
+      "action": "status_changed",
+      "storyId": "IW-997",
+      "details": "Story started: ready → in_progress"
     }
   ]
 }

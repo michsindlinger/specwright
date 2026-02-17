@@ -6,6 +6,8 @@ import './views/dashboard-view.js';
 import './views/chat-view.js';
 import './views/settings-view.js';
 import './views/not-found-view.js';
+import './views/aos-getting-started-view.js';
+import './components/setup/aos-installation-wizard-modal.js';
 import './components/model-selector.js';
 import './components/toast-notification.js';
 import './components/loading-spinner.js';
@@ -129,6 +131,22 @@ export class AosApp extends LitElement {
   @state()
   private showQuickTodoModal = false;
 
+  // IW-006: Installation Wizard state
+  @state()
+  private showWizard = false;
+
+  @state()
+  private wizardProjectPath = '';
+
+  @state()
+  private wizardFileCount = 0;
+
+  @state()
+  private wizardHasSpecwright = false;
+
+  @state()
+  private wizardHasProductBrief = false;
+
   // GSQ-005: Bottom Panel state
   @state()
   private isBottomPanelOpen = false;
@@ -152,6 +170,7 @@ export class AosApp extends LitElement {
 
   private navItems: NavItem[] = [
     { route: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { route: 'getting-started', label: 'Getting Started', icon: 'getting-started' },
     { route: 'chat', label: 'Chat', icon: 'chat' },
     { route: 'settings', label: 'Settings', icon: 'settings' },
   ];
@@ -575,6 +594,7 @@ export class AosApp extends LitElement {
     const icons: Record<string, unknown> = {
       dashboard: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
       chat: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+      'getting-started': html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>`,
       settings: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
     };
     return icons[icon] || icon;
@@ -587,6 +607,7 @@ export class AosApp extends LitElement {
   private getPageTitle(): string {
     const titles: Record<Route, string> = {
       dashboard: 'Dashboard',
+      'getting-started': 'Getting Started',
       chat: 'Chat',
       settings: 'Settings',
       'not-found': 'Page Not Found',
@@ -871,6 +892,77 @@ export class AosApp extends LitElement {
 
     // Load git status for newly opened project
     this._loadGitStatus();
+
+    // IW-006: Check if wizard is needed for this project
+    try {
+      const validateResponse = await fetch('/api/project/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      if (validateResponse.ok) {
+        const data = await validateResponse.json() as {
+          valid: boolean;
+          hasSpecwright?: boolean;
+          hasProductBrief?: boolean;
+          fileCount?: number;
+        };
+        const hasSpecwright = data.hasSpecwright ?? false;
+        const hasProductBrief = data.hasProductBrief ?? false;
+
+        // Store for getting-started view
+        this.wizardHasSpecwright = hasSpecwright;
+        this.wizardHasProductBrief = hasProductBrief;
+
+        // Trigger wizard if specwright is not installed OR product brief is missing
+        if (!hasSpecwright || !hasProductBrief) {
+          this.wizardProjectPath = path;
+          this.wizardFileCount = data.fileCount ?? 0;
+          this.showWizard = true;
+          projectStateService.setWizardNeeded(path);
+        }
+      }
+    } catch {
+      // Validation failed, skip wizard trigger
+    }
+  }
+
+  // IW-006: Handle wizard completion - navigate to getting-started
+  private _handleWizardComplete(): void {
+    this.showWizard = false;
+    const path = this.wizardProjectPath;
+
+    // Clear wizard-needed state
+    if (path) {
+      projectStateService.clearWizardNeeded(path);
+    }
+
+    // Re-validate to update hasSpecwright/hasProductBrief for getting-started view
+    if (path) {
+      fetch('/api/project/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      })
+        .then(r => r.json())
+        .then((data: unknown) => {
+          const validated = data as { hasSpecwright?: boolean; hasProductBrief?: boolean };
+          this.wizardHasSpecwright = validated.hasSpecwright ?? true;
+          this.wizardHasProductBrief = validated.hasProductBrief ?? false;
+        })
+        .catch(() => {
+          // Fallback: assume specwright is now installed
+          this.wizardHasSpecwright = true;
+        });
+    }
+
+    // Navigate to getting-started page
+    routerService.navigate('getting-started');
+  }
+
+  // IW-006: Handle wizard cancellation
+  private _handleWizardCancel(): void {
+    this.showWizard = false;
   }
 
   // --- Project Context Management ---
@@ -1419,6 +1511,12 @@ export class AosApp extends LitElement {
     switch (this.currentRoute) {
       case 'dashboard':
         return html`<aos-dashboard-view></aos-dashboard-view>`;
+      case 'getting-started':
+        return html`<aos-getting-started-view
+          .hasProductBrief=${this.wizardHasProductBrief}
+          .hasSpecwright=${this.wizardHasSpecwright}
+          @workflow-start-interactive=${this.handleWorkflowStart}
+        ></aos-getting-started-view>`;
       case 'chat':
         return html`<aos-chat-view></aos-chat-view>`;
       case 'settings':
@@ -1563,6 +1661,16 @@ export class AosApp extends LitElement {
         @project-selected=${this.handleProjectSelected}
         @modal-close=${this.handleAddProjectModalClose}
       ></aos-project-add-modal>
+      <aos-installation-wizard-modal
+        .open=${this.showWizard}
+        .projectPath=${this.wizardProjectPath}
+        .fileCount=${this.wizardFileCount}
+        .hasSpecwright=${this.wizardHasSpecwright}
+        .hasProductBrief=${this.wizardHasProductBrief}
+        @wizard-complete=${this._handleWizardComplete}
+        @wizard-cancel=${this._handleWizardCancel}
+        @modal-close=${this._handleWizardCancel}
+      ></aos-installation-wizard-modal>
       <aos-context-menu
         @menu-item-select=${this.handleMenuItemSelect}
       ></aos-context-menu>

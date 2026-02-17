@@ -9,6 +9,7 @@
 | IW-003 | Terminal Integration: Embedded aos-terminal-session in wizard, cloud-terminal:create via gateway | aos-installation-wizard-modal.ts, theme.css |
 | IW-004 | Wizard Abbruch-Handling: Cancel confirmation overlay, ESC handling, terminal kill on cancel, wizard-state persistence | aos-installation-wizard-modal.ts, project-state.service.ts |
 | IW-005 | Getting Started View: Kontextabhaengige Aktions-Cards basierend auf hasProductBrief (Standard vs Planning) | aos-getting-started-view.ts |
+| IW-006 | Router & Navigation Integration: Wizard trigger in handleProjectSelected, getting-started route + navItem, wizard-complete navigates to getting-started | app.ts, route.types.ts |
 
 ## New Exports & APIs
 
@@ -71,8 +72,14 @@
   - IW-006 needs to: listen for `workflow-start-interactive` event and route to workflow execution
   - IW-006 needs to: add `/getting-started` route in router
   - IW-006 needs to: add "Getting Started" menu item in navigation
-- IW-006 (Router/Navigation) needs to wire wizard to app.ts, pass properties from validate response
-- IW-006 should use `projectStateService.isWizardNeeded(path)` to decide whether to re-show wizard for a project
+- IW-006 Router & Navigation Integration: All integrations wired in app.ts
+  - Wizard modal rendered with full property bindings (.open, .projectPath, .fileCount, .hasSpecwright, .hasProductBrief)
+  - handleProjectSelected calls /api/project/validate, opens wizard if !hasSpecwright || !hasProductBrief
+  - _handleWizardComplete: closes wizard, clears wizardNeeded state, re-validates, navigates to getting-started
+  - _handleWizardCancel: closes wizard
+  - Getting-started view rendered in renderView switch with hasProductBrief/hasSpecwright props
+  - Getting Started nav item added between Dashboard and Chat
+  - 'getting-started' added to ViewType and VALID_VIEWS in route.types.ts
 
 ## File Change Summary
 
@@ -84,4 +91,8 @@
 | ui/frontend/src/components/setup/aos-installation-wizard-modal.ts | Created | IW-002 |
 | ui/frontend/src/styles/theme.css | Modified | IW-002, IW-003 |
 | ui/frontend/src/services/project-state.service.ts | Modified | IW-004 |
-| ui/frontend/src/views/aos-getting-started-view.ts | Modified | IW-005 |
+| ui/frontend/src/views/aos-getting-started-view.ts | Created | IW-005 |
+| ui/frontend/src/styles/theme.css | Modified | IW-005 |
+| ui/frontend/src/app.ts | Modified | IW-005 |
+| ui/frontend/src/types/route.types.ts | Modified | IW-005, IW-006 |
+| ui/frontend/src/app.ts | Modified | IW-006 |
