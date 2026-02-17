@@ -755,6 +755,17 @@ export class AosApp extends LitElement {
 
   private _handleTerminalSessionClose(e: CustomEvent<{ sessionId: string }>): void {
     const sessionId = e.detail.sessionId;
+    const session = this.terminalSessions.find(s => s.id === sessionId);
+
+    // Send close message to backend to terminate the session
+    if (session?.terminalSessionId) {
+      gateway.send({
+        type: 'cloud-terminal:close',
+        sessionId: session.terminalSessionId,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     this.terminalSessions = this.terminalSessions.filter(s => s.id !== sessionId);
 
     if (this.activeTerminalSessionId === sessionId) {
