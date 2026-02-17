@@ -1405,18 +1405,6 @@ export class AosDashboardView extends LitElement {
     this.createSpecModalOpen = false;
   }
 
-  private handleCreateSpecStart(e: CustomEvent): void {
-    this.createSpecModalOpen = false;
-    // Navigate to workflows view and pass the event details
-    // The workflow-start-interactive event will be handled by workflow-view
-    const { commandId, argument } = e.detail;
-
-    // Store the workflow start details in sessionStorage for the workflow view to pick up
-    sessionStorage.setItem('pendingWorkflow', JSON.stringify({ commandId, argument }));
-
-    // Navigate to workflows
-    routerService.navigate('workflows');
-  }
 
   override render() {
     if (!this.wsConnected) {
@@ -1553,7 +1541,6 @@ export class AosDashboardView extends LitElement {
         .open=${this.createSpecModalOpen}
         .providers=${this.providers}
         @modal-close=${this.handleCreateSpecModalClose}
-        @workflow-start-interactive=${this.handleCreateSpecStart}
       ></aos-create-spec-modal>
     `;
   }
