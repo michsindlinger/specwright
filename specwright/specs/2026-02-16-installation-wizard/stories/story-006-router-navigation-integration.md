@@ -3,7 +3,7 @@
 > Story ID: IW-006
 > Spec: Installation Wizard
 > Created: 2026-02-16
-> Last Updated: 2026-02-16
+> Last Updated: 2026-02-17 (install.sh Synergy Update)
 
 **Priority**: High
 **Type**: Frontend
@@ -26,14 +26,25 @@ Feature: Router & Navigation Integration
 
 ## Akzeptanzkriterien (Gherkin-Szenarien)
 
-### Szenario 1: Wizard-Trigger bei Projekt-Hinzufuegen
+### Szenario 1: Wizard-Trigger bei Projekt ohne Framework
 
 ```gherkin
 Scenario: Wizard wird automatisch ausgeloest beim Hinzufuegen eines Projekts ohne Specwright
   Given ich befinde mich in der Specwright Web UI
   When ich ueber den Plus-Button ein neues Projekt hinzufuege
   And das Projekt keinen specwright/-Ordner hat
-  Then erscheint automatisch der Wizard Modal
+  Then erscheint automatisch der Wizard Modal im Installations-Schritt
+```
+
+### Szenario 1b: Wizard-Trigger bei Projekt mit Framework aber ohne Product Brief
+
+```gherkin
+Scenario: Wizard wird ausgeloest bei Projekt mit specwright/ aber ohne Product Brief
+  Given ich befinde mich in der Specwright Web UI
+  When ich ueber den Plus-Button ein Projekt hinzufuege
+  And das Projekt einen specwright/-Ordner hat (z.B. via install.sh)
+  And das Projekt keinen Product Brief hat
+  Then erscheint automatisch der Wizard Modal direkt im Planning-Schritt
 ```
 
 ### Szenario 2: Automatische Weiterleitung nach Wizard-Abschluss
@@ -55,11 +66,11 @@ Scenario: Getting Started als Menuepunkt in der Navigation
   And ich kann darauf klicken um zur /getting-started Seite zu gelangen
 ```
 
-### Szenario 4: Kein Wizard bei Projekt mit Specwright
+### Szenario 4: Kein Wizard bei vollstaendig eingerichtetem Projekt
 
 ```gherkin
-Scenario: Kein Wizard bei bereits installiertem Specwright
-  Given ich fuege ein Projekt hinzu das einen specwright/-Ordner hat
+Scenario: Kein Wizard bei Projekt mit specwright/ und Product Brief
+  Given ich fuege ein Projekt hinzu das einen specwright/-Ordner und einen Product Brief hat
   When das Projekt geoeffnet wird
   Then erscheint kein Wizard Modal
   And ich sehe die normale Projektansicht
@@ -131,8 +142,9 @@ Keine MCP Tools erforderlich.
 - [ ] Architektur-Vorgaben eingehalten (WIE section)
 - [ ] **Integration hergestellt: app.ts -> aos-installation-wizard-modal**
   - [ ] Import und Rendering in app.ts Template
-  - [ ] Property-Binding (.open, .projectPath, .fileCount, .hasSpecwright)
+  - [ ] Property-Binding (.open, .projectPath, .fileCount, .hasSpecwright, .hasProductBrief)
   - [ ] Event-Handler (@wizard-complete, @wizard-cancel, @modal-close)
+  - [ ] Wizard triggert bei `hasSpecwright === false` ODER `hasProductBrief === false`
   - [ ] Validierung: `grep -q "aos-installation-wizard-modal" ui/frontend/src/app.ts`
 - [ ] **Integration hergestellt: app.ts -> routerService (getting-started navigation)**
   - [ ] `routerService.navigate('getting-started')` bei wizard-complete
@@ -177,10 +189,10 @@ Keine MCP Tools erforderlich.
 **WAS:**
 - `'getting-started'` zu `ViewType` und `VALID_VIEWS` in `route.types.ts` hinzufuegen
 - `aos-installation-wizard-modal` und `aos-getting-started-view` in `app.ts` importieren
-- Wizard-Modal im Template rendern mit Property-Bindings
+- Wizard-Modal im Template rendern mit Property-Bindings (inkl. `.hasProductBrief`)
 - Nav-Item "Getting Started" in navItems-Array
-- renderView-Case fuer `'getting-started'`
-- Wizard-Trigger-Logik in `handleProjectSelected()`: Nach Projekt-Validierung pruefen ob `hasSpecwright === false`, dann Wizard oeffnen
+- renderView-Case fuer `'getting-started'` (mit `.hasProductBrief` Property-Binding)
+- Wizard-Trigger-Logik in `handleProjectSelected()`: Nach Projekt-Validierung pruefen ob `hasSpecwright === false` ODER `hasProductBrief === false`, dann Wizard oeffnen
 - Event-Handler: `wizard-complete` -> navigate zu getting-started + Wizard-State loeschen; `wizard-cancel` -> Modal schliessen
 
 **WIE (Architektur-Guidance ONLY):**

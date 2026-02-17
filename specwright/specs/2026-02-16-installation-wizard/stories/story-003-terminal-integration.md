@@ -3,7 +3,7 @@
 > Story ID: IW-003
 > Spec: Installation Wizard
 > Created: 2026-02-16
-> Last Updated: 2026-02-16
+> Last Updated: 2026-02-17 (install.sh Synergy Update)
 
 **Priority**: High
 **Type**: Frontend
@@ -26,11 +26,24 @@ Feature: Terminal-Integration im Wizard
 
 ## Akzeptanzkriterien (Gherkin-Szenarien)
 
-### Szenario 1: Terminal startet nach Command-Auswahl
+### Szenario 1: Terminal startet fuer install.sh (bei fehlendem Framework)
 
 ```gherkin
-Scenario: Claude Code Terminal startet nach Command-Auswahl
-  Given ich sehe den Wizard Modal mit den vier Setup-Optionen
+Scenario: Terminal fuehrt install.sh aus bei fehlendem specwright/
+  Given ich sehe den Wizard Modal im Installations-Schritt
+  And hasSpecwright ist false
+  When ich auf "Framework installieren" klicke
+  Then wechselt der Modal zur Terminal-Ansicht
+  And ein Claude Code Terminal wird im Modal angezeigt
+  And der Command "curl -sSL .../install.sh | bash -s -- --yes --all" wird ausgefuehrt
+  And nach erfolgreichem Abschluss wechselt der Wizard zum Planning-Schritt
+```
+
+### Szenario 1b: Terminal startet nach Planning-Command-Auswahl
+
+```gherkin
+Scenario: Claude Code Terminal startet nach Planning-Command-Auswahl
+  Given ich sehe den Wizard Modal im Planning-Schritt mit den vier Optionen
   When ich "plan-product" auswaehle
   Then wechselt der Modal zur Terminal-Ansicht
   And ein Claude Code Terminal wird im Modal angezeigt
@@ -159,10 +172,11 @@ Keine MCP Tools erforderlich.
 ### Technical Details
 
 **WAS:**
-- Terminal-Schritt in `aos-installation-wizard-modal` implementieren
+- Terminal-Schritt in `aos-installation-wizard-modal` implementieren (fuer beide Phasen: install.sh und Planning-Commands)
 - `aos-terminal-session` als Child-Komponente einbetten
 - Cloud-Terminal-Session via Gateway erstellen bei Command-Auswahl
-- Ausgewaehlten Slash-Command als initialen Input senden
+- Fuer install.sh-Schritt: `curl -sSL .../install.sh | bash -s -- --yes --all` als initialen Input senden
+- Fuer Planning-Schritt: Ausgewaehlten Slash-Command als initialen Input senden
 - Auf Terminal-Session-Events reagieren (created, closed, error)
 
 **WIE (Architektur-Guidance ONLY):**

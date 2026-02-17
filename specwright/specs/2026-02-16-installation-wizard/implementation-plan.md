@@ -1,15 +1,19 @@
 # Implementierungsplan: Installation Wizard
 
-> **Status:** APPROVED
+> **Status:** APPROVED (Updated for install.sh impact)
 > **Spec:** specwright/specs/2026-02-16-installation-wizard/
 > **Erstellt:** 2026-02-16
+> **Letzte Aktualisierung:** 2026-02-17 (install.sh Synergy Update)
 > **Basiert auf:** requirements-clarification.md
 
 ---
 
 ## Executive Summary
 
-Wenn ein Benutzer ueber den Plus-Button ein neues Projekt hinzufuegt, das KEINEN `specwright/`-Ordner enthaelt, erscheint ein modaler Installations-Wizard. Dieser bietet vier Setup-Commands (plan-product, plan-platform, analyze-product, analyze-platform), erkennt Bestandsprojekte via Dateianzahl, bettet ein Claude Code Terminal fuer die Command-Ausfuehrung ein, und leitet nach Abschluss auf eine `/getting-started`-Route weiter. Die Getting-Started-View zeigt die naechsten Schritte (create-spec, add-todo, add-bug) und bleibt ueber die Sidebar-Navigation erreichbar.
+Wenn ein Benutzer ueber den Plus-Button ein neues Projekt hinzufuegt, das KEINEN `specwright/`-Ordner enthaelt ODER zwar einen `specwright/`-Ordner aber noch keinen Product Brief hat, erscheint ein modaler Onboarding-Wizard. Dieser erkennt zwei Zustaende: (A) Framework nicht installiert -> fuehrt `install.sh` im Terminal aus, (B) Framework installiert aber kein Product Brief -> bietet vier Planning-Commands (plan-product, plan-platform, analyze-product, analyze-platform). Der Wizard erkennt Bestandsprojekte via Dateianzahl, bettet ein Claude Code Terminal fuer die Command-Ausfuehrung ein, und leitet nach Abschluss auf eine `/getting-started`-Route weiter. Die Getting-Started-View zeigt kontextabhaengig die naechsten Schritte: Planning-Commands wenn kein Product Brief existiert, sonst create-spec, add-todo, add-bug. Die View bleibt ueber die Sidebar-Navigation erreichbar.
+
+> **WICHTIG: install.sh Synergy (2026-02-17)**
+> Das neue `install.sh` (Unified Installer) erstellt den `specwright/`-Ordner mit der kompletten Framework-Infrastruktur. Die urspruengliche Erkennung nur via `specwright/`-Ordner-Existenz wuerde den Wizard unterlaufen, wenn ein User zuerst `install.sh` ausfuehrt. Die Erkennung wurde deshalb auf **zweistufig** erweitert: (1) Hat das Projekt einen `specwright/`-Ordner? (2) Existiert ein Product Brief (`specwright/product/product-brief.md`)? Der Wizard triggert wenn mindestens eine Bedingung nicht erfuellt ist.
 
 ---
 
@@ -21,14 +25,19 @@ Der Wizard ist ein Modal-Overlay (`aos-installation-wizard-modal`), konsistent m
 ### 2. Getting Started als neue Router-View
 Die `/getting-started`-Route folgt dem bestehenden Pattern der `ViewType` Union Types in `route.types.ts`. Hinzufuegen von `'getting-started'` zu `ViewType`, `VALID_VIEWS` und den `navItems` + `renderView()`-Switch in `app.ts` ist der Standard-Weg fuer neue Views.
 
-### 3. Backend-Erkennung via bestehende Infrastruktur
-Die `specwright/`-Ordner-Erkennung existiert bereits in `resolveProjectDir()` in `project-dirs.ts`. Die zentrale Aenderung: `validateProject()` in `project-context.service.ts` lehnt aktuell Projekte OHNE `specwright/`-Ordner ab. Dies muss geaendert werden zu: akzeptieren, aber Flag `hasSpecwright: boolean` zurueckgeben. Dateianzahl nutzt bestehende Infrastruktur oder eine neue leichtgewichtige Methode.
+### 3. Zweistufige Backend-Erkennung via bestehende Infrastruktur
+Die `specwright/`-Ordner-Erkennung existiert bereits in `resolveProjectDir()` in `project-dirs.ts`. Die zentrale Aenderung: `validateProject()` in `project-context.service.ts` lehnt aktuell Projekte OHNE `specwright/`-Ordner ab. Dies muss geaendert werden zu: akzeptieren, aber zwei Flags zurueckgeben: `hasSpecwright: boolean` (Framework installiert?) und `hasProductBrief: boolean` (Projekt geplant?). Die Product-Brief-Erkennung prueft auf `specwright/product/product-brief.md` oder `.agent-os/product/product-brief.md`. Dateianzahl nutzt bestehende Infrastruktur oder eine neue leichtgewichtige Methode.
+
+> **Hintergrund:** Das neue `install.sh` erstellt den `specwright/`-Ordner mit Workflows, Standards und Config, aber OHNE Product Brief. Ohne die zweistufige Erkennung wuerde der Wizard nach `install.sh`-Ausfuehrung nicht mehr triggern, obwohl der User noch keine Projektplanung durchgefuehrt hat.
 
 ### 4. Terminal-Einbettung via bestehende Cloud-Terminal-Infrastruktur
 Das Terminal im Wizard nutzt die `aos-terminal-session`-Komponente und den `CloudTerminalManager`-Backend-Service. Das Pattern fuer Session-Erstellung und initiale Command-Injection existiert bereits in `handleSetupStartDevteam()` in `websocket.ts`.
 
 ### 5. State-Persistenz via sessionStorage
 Ob der Wizard abgebrochen wurde (und wieder erscheinen soll), wird pro Projektpfad getrackt. Der natuerliche Ort ist der bestehende `projectStateService`, der bereits sessionStorage fuer Projekt-Tab-State nutzt.
+
+### 6. install.sh Integration im Wizard
+Wenn der Wizard erkennt dass `specwright/` noch nicht existiert (hasSpecwright=false), wird im Terminal-Schritt zuerst `install.sh --yes --all` ausgefuehrt. Das `install.sh` unterstuetzt bereits den `--yes`-Flag fuer non-interaktive Nutzung (explizit als "for Web UI wizard" dokumentiert). Nach erfolgreicher Framework-Installation wechselt der Wizard automatisch zum Planning-Schritt mit den vier Command-Cards. Wenn `specwright/` bereits existiert (z.B. weil `install.sh` vorher via CLI ausgefuehrt wurde), ueberspringt der Wizard den Installations-Schritt und zeigt direkt die Planning-Commands.
 
 ### Patterns & Technologien
 - **Pattern:** Modal-Overlay, Multi-Step-Wizard, Event-basierte Kommunikation
@@ -69,20 +78,24 @@ Ob der Wizard abgebrochen wurde (und wieder erscheinen soll), wird pro Projektpf
 ## Umsetzungsphasen
 
 ### Phase 1: Backend-Erkennung (Story 1)
-**Ziel:** Backend kann `specwright/`-Ordner-Existenz erkennen und Dateien zaehlen
+**Ziel:** Backend kann `specwright/`-Ordner-Existenz, Product-Brief-Existenz und Dateianzahl erkennen
 **Komponenten:**
-- `project-context.service.ts`: Neue Methode `validateProjectForWizard()` die `{ valid, exists, isDirectory, hasSpecwright, fileCount }` zurueckgibt
+- `project-context.service.ts`: Neue Methode `validateProjectForWizard()` die `{ valid, exists, isDirectory, hasSpecwright, hasProductBrief, fileCount }` zurueckgibt
 - `project.routes.ts`: `/validate`-Endpoint gibt erweiterte Response zurueck
-- Aktuell lehnt `validateProject()` Projekte ohne `specwright/` ab -- muss aufgespalten werden in Pfad-Validierung und Specwright-Erkennung
+- Aktuell lehnt `validateProject()` Projekte ohne `specwright/` ab -- muss aufgespalten werden in Pfad-Validierung, Specwright-Erkennung und Product-Brief-Erkennung
+- Product-Brief-Erkennung prueft auf `specwright/product/product-brief.md` ODER `.agent-os/product/product-brief.md` (beide Verzeichnisnamen unterstuetzt via `project-dirs.ts`)
 **Abhaengig von:** Nichts (Startphase)
 
 ### Phase 2: Wizard-Modal-Komponente (Story 2)
-**Ziel:** Frontend-Wizard-Modal mit Command-Auswahl-UI
+**Ziel:** Frontend-Wizard-Modal mit zweistufiger Logik und Command-Auswahl-UI
 **Komponenten:**
 - Neue `aos-installation-wizard-modal.ts` in `ui/frontend/src/components/setup/`
-- Vier Command-Cards: plan-product, plan-platform, analyze-product, analyze-platform
+- **Zweistufige Wizard-Logik:**
+  - Wenn `hasSpecwright === false`: Installations-Schritt zuerst (install.sh im Terminal), dann weiter zu Planning-Schritt
+  - Wenn `hasSpecwright === true && hasProductBrief === false`: Direkt zum Planning-Schritt (install.sh ueberspringen)
+- Vier Planning-Command-Cards: plan-product, plan-platform, analyze-product, analyze-platform
 - Dateianzahl-Hinweis bei vielen Dateien (Bestandsprojekt)
-- Multi-Step-UI: Auswahl-Schritt -> Terminal-Schritt -> Abschluss-Schritt
+- Multi-Step-UI: [Installations-Schritt (optional)] -> Planning-Auswahl-Schritt -> Terminal-Schritt -> Abschluss-Schritt
 **Abhaengig von:** Phase 1 (braucht Erkennungsdaten)
 
 ### Phase 3: Terminal-Integration im Wizard (Story 3)
@@ -104,13 +117,16 @@ Ob der Wizard abgebrochen wurde (und wieder erscheinen soll), wird pro Projektpf
 **Abhaengig von:** Phase 2
 
 ### Phase 5: Getting-Started-View (Story 5)
-**Ziel:** Neue `/getting-started`-Route mit Naechste-Schritte-Cards
+**Ziel:** Neue `/getting-started`-Route mit kontextabhaengigen Naechste-Schritte-Cards
 **Komponenten:**
 - Neue `aos-getting-started-view.ts` in `ui/frontend/src/views/`
-- Drei Action-Cards: create-spec, add-todo, add-bug
+- **Kontextabhaengige Inhalte:**
+  - Wenn `hasProductBrief === false`: Zeigt Planning-Cards prominent an (plan-product, plan-platform, analyze-product, analyze-platform) mit Hinweis dass zuerst ein Product Brief erstellt werden muss
+  - Wenn `hasProductBrief === true`: Zeigt Standard-Action-Cards (create-spec, add-todo, add-bug)
+- Erhaelt `hasProductBrief` als Property von `app.ts`
 - Jede Card triggert den bestehenden Workflow-Flow
 - Responsives Layout, zugaenglich fuer Einsteiger und Erfahrene
-**Abhaengig von:** Nichts (kann parallel zu Phase 1-4 gebaut werden)
+**Abhaengig von:** Phase 1 (braucht `hasProductBrief` aus Backend fuer kontextabhaengige Inhalte)
 
 ### Phase 6: Router & Navigation Integration (Story 6)
 **Ziel:** Alles zusammenfuehren
@@ -131,23 +147,25 @@ Ob der Wizard abgebrochen wurde (und wieder erscheinen soll), wird pro Projektpf
 
 | Source | Target | Verbindungsart | Zustaendige Story | Validierung |
 |--------|--------|----------------|-------------------|-------------|
-| `app.ts` (handleProjectSelected) | `aos-installation-wizard-modal` | Property Binding (.open, .projectPath, .fileCount, .hasSpecwright) | Story 2 + Story 6 | `grep "aos-installation-wizard-modal" ui/frontend/src/app.ts` |
-| `app.ts` | Backend `/api/project/validate` | REST API (erweiterte Response) | Story 1 | Check Response enthaelt hasSpecwright |
+| `app.ts` (handleProjectSelected) | `aos-installation-wizard-modal` | Property Binding (.open, .projectPath, .fileCount, .hasSpecwright, .hasProductBrief) | Story 2 + Story 6 | `grep "aos-installation-wizard-modal" ui/frontend/src/app.ts` |
+| `app.ts` | Backend `/api/project/validate` | REST API (erweiterte Response mit hasProductBrief) | Story 1 | Check Response enthaelt hasSpecwright + hasProductBrief |
 | `aos-installation-wizard-modal` | `aos-terminal-session` | Child-Component-Einbettung | Story 3 | `grep "aos-terminal-session" ui/frontend/src/components/setup/aos-installation-wizard-modal.ts` |
 | `aos-installation-wizard-modal` | `gateway.ts` | WebSocket cloud-terminal:create | Story 3 | Sendet cloud-terminal:create Message |
 | `aos-installation-wizard-modal` | `app.ts` | Custom Events (wizard-complete, wizard-cancel, modal-close) | Story 4 | `grep "wizard-complete" ui/frontend/src/app.ts` |
 | `app.ts` (wizard-complete Handler) | `routerService` | `routerService.navigate('getting-started')` | Story 6 | Hash aendert sich zu #/getting-started |
 | `app.ts` navItems | `aos-getting-started-view` | Route-Rendering in renderView() | Story 5 + Story 6 | getting-started in navItems + renderView |
+| `app.ts` | `aos-getting-started-view` | Property Binding (.hasProductBrief) | Story 5 + Story 6 | `grep "hasProductBrief" ui/frontend/src/views/aos-getting-started-view.ts` |
 | `aos-getting-started-view` | `app.ts` | Custom Event (workflow-start) zum Triggern von Command-Ausfuehrung | Story 5 | `grep "workflow-start" dispatch` |
 | Backend `/validate` | `project-context.service.ts` | Method Call: validateProjectForWizard() | Story 1 | Backend Tests |
 | Backend `/validate` | `fs.readdir` | Dateianzahl im Projektverzeichnis | Story 1 | Backend Tests |
+| Backend `/validate` | `fs.access` | Product-Brief-Existenz pruefen | Story 1 | Backend Tests |
 
 ### Verbindungs-Details
 
 **VERBINDUNG-1: app.ts -> aos-installation-wizard-modal**
 - **Art:** Lit Property Binding + Custom Events
-- **Schnittstelle:** `.open`, `.projectPath`, `.fileCount`, `.hasSpecwright` Properties; `@wizard-complete`, `@wizard-cancel`, `@modal-close` Events
-- **Datenfluss:** App setzt Properties wenn Projekt ohne specwright/ hinzugefuegt wird; Modal emittiert Events bei Abschluss oder Abbruch
+- **Schnittstelle:** `.open`, `.projectPath`, `.fileCount`, `.hasSpecwright`, `.hasProductBrief` Properties; `@wizard-complete`, `@wizard-cancel`, `@modal-close` Events
+- **Datenfluss:** App setzt Properties wenn Projekt ohne specwright/ ODER ohne Product Brief hinzugefuegt wird; Modal emittiert Events bei Abschluss oder Abbruch. Der Wizard nutzt `hasSpecwright` um zu entscheiden ob install.sh noetig ist, und `hasProductBrief` ob Planning-Commands angeboten werden.
 - **Story:** Story 2 (Modal-Erstellung), integriert in Story 6 (Router & Navigation)
 - **Validierung:** `grep -r "aos-installation-wizard-modal" ui/frontend/src/app.ts`
 
@@ -167,8 +185,8 @@ Ob der Wizard abgebrochen wurde (und wieder erscheinen soll), wird pro Projektpf
 
 **VERBINDUNG-4: Backend Validation erweiterte Response**
 - **Art:** REST API Response Erweiterung
-- **Schnittstelle:** `POST /api/project/validate` gibt `{ valid: boolean, hasSpecwright: boolean, fileCount: number }` zurueck
-- **Datenfluss:** Frontend ruft validate auf, bekommt Specwright-Erkennung + Dateianzahl
+- **Schnittstelle:** `POST /api/project/validate` gibt `{ valid: boolean, hasSpecwright: boolean, hasProductBrief: boolean, fileCount: number }` zurueck
+- **Datenfluss:** Frontend ruft validate auf, bekommt Specwright-Erkennung + Product-Brief-Erkennung + Dateianzahl. `hasSpecwright` zeigt ob `specwright/`-Ordner existiert (kann durch `install.sh` oder `plan-product` erstellt worden sein). `hasProductBrief` zeigt ob eine Projektplanung durchgefuehrt wurde.
 - **Story:** Story 1 (Specwright-Erkennung)
 - **Validierung:** Backend-Test fuer /api/project/validate Response-Shape
 
@@ -183,13 +201,14 @@ Ob der Wizard abgebrochen wurde (und wieder erscheinen soll), wird pro Projektpf
 
 ### Interne Abhaengigkeiten
 ```
-Phase 1 (Backend-Erkennung)
+Phase 1 (Backend-Erkennung: hasSpecwright + hasProductBrief + fileCount)
+    |
+    ├───────────────────────────────────────────────┐
+    v                                               v
+Phase 2 (Wizard-Modal: Zweistufige Logik)   Phase 5 (Getting-Started-View: kontextabhaengig)
     |
     v
-Phase 2 (Wizard-Modal) <--- Phase 5 (Getting-Started-View) [parallel]
-    |
-    v
-Phase 3 (Terminal-Integration)
+Phase 3 (Terminal-Integration: install.sh + Planning-Commands)
     |
     v
 Phase 4 (Abbruch-Handling)
@@ -213,8 +232,11 @@ Phase 6 (Router & Navigation) <--- Phase 5
 | Risiko | Wahrscheinlichkeit | Impact | Mitigation |
 |--------|-------------------|--------|------------|
 | Bestehende Projekt-Validierung bricht (Projekte die aktuell funktionieren koennten aufhoeren) | Medium | High | Validierung aufspalten in `validateProjectPath()` (existiert + Directory) und `validateProjectSpecwright()` (hat specwright/). Abwaertskompatiblen `validateProject()` beibehalten der beides aufruft. |
+| User fuehrt install.sh via CLI aus, Wizard triggert nicht mehr | High | High | **Zweistufige Erkennung:** `hasSpecwright` + `hasProductBrief`. Wizard triggert auch wenn `specwright/` existiert aber kein Product Brief vorhanden. install.sh erstellt nur Framework-Infrastruktur, nicht den Product Brief. |
+| Product-Brief-Pfad variiert zwischen Projekten (specwright/ vs .agent-os/) | Medium | Medium | `project-dirs.ts` nutzen fuer korrekte Pfadaufloesung. Beide Verzeichnisnamen unterstuetzen via bestehender `resolveProjectDir()`-Logik. |
 | Terminal-Session im Modal hat Sizing/Rendering-Probleme | Medium | Medium | Gleiches Pattern wie `aos-cloud-terminal-sidebar` mit explizitem Resize-Handling. `aos-terminal-session` handhabt Resize bereits via `refreshTerminal()`. |
 | Command-Ausfuehrungs-Erkennung (woher wissen wann plan-product fertig ist) | Medium | Medium | Terminal-Session-Close-Event monitoren ODER auf `specwright/`-Ordner-Erstellung pruefen. Einfachster Ansatz: Benutzer klickt "Fertig"-Button nach Command-Abschluss, oder `specwright/`-Ordner-Erscheinen via Polling erkennen. |
+| install.sh im Terminal schlaegt fehl (kein curl/wget, Netzwerkproblem) | Low | Medium | Fehler wird im Terminal angezeigt. Retry-Button anbieten. Wizard bleibt im Installations-Schritt bis erfolgreich oder abgebrochen. |
 | Race Condition: Benutzer fuegt Projekt hinzu, Wizard startet, sessionStorage-State kollidiert | Low | Medium | Dedizierter sessionStorage-Key pro Projektpfad fuer Wizard-State, getrennt vom Projekt-Tab-State. |
 | Dateianzahl-Heuristik unzuverlaessig (leere Git-Repos haben .git-Dateien) | Low | Low | Nur benutzersichtbare Dateien zaehlen (versteckte Dirs wie .git, node_modules ausschliessen). Konfigurierbarer Threshold. Hinweis ist nur beratend -- Benutzer hat immer freie Wahl. |
 
@@ -234,6 +256,8 @@ Phase 6 (Router & Navigation) <--- Phase 5
 | Problem | Urspruenglicher Plan | Verbesserung |
 |---------|---------------------|--------------|
 | `validateProject()` lehnt aktuell Projekte ohne specwright/ ab | validateProject direkt modifizieren | Separate `validateProjectForWizard()` erstellen um bestehende Aufrufer nicht zu brechen |
+| `install.sh` erstellt specwright/ ohne Product Brief -> Wizard triggert nicht mehr | Nur `hasSpecwright` pruefen | **Zweistufige Erkennung: `hasSpecwright` + `hasProductBrief`**. Wizard triggert bei fehlendem Framework ODER fehlendem Product Brief. |
+| Getting Started zeigt statische Cards | Immer gleiche 3 Cards | **Kontextabhaengige Inhalte:** Planning-Cards bei fehlendem Product Brief, Standard-Cards bei vorhandenem Product Brief |
 | Getting Started ueber Menu erreichbar -- Sidebar hat nur 4 feste Items | 5. Nav-Item immer sichtbar | Bedingt anzeigen (nur wenn Projekt specwright/ hat) ODER immer sichtbar unter einem Divider |
 | Dateianzahl koennte bei grossen Repos langsam sein | Vollstaendiger rekursiver Count | Nur Top-Level-Eintraege zaehlen (versteckte Directories ausschliessen). `fs.readdir()` mit Limit/Early-Exit bei Threshold |
 
@@ -263,6 +287,7 @@ Phase 6 (Router & Navigation) <--- Phase 5
 | Eigenes WebSocket-Protokoll fuer Wizard-Erkennung | Bestehenden `/api/project/validate` REST-Endpoint erweitern | Ein WebSocket-Message-Typ weniger; einfachere Architektur |
 | Neuer Wizard-State-Management-Service | Bestehenden `projectStateService` um Wizard-State erweitern | Keine neue Service-Datei noetig |
 | Eigene Command-Cards von Grund auf | Layout von bestehendem `workflow-card.ts` adaptieren | Konsistente UI; weniger Design-Arbeit |
+| Eigene Framework-Installation im Wizard | Bestehendes `install.sh --yes --all` im Terminal nutzen | Keine doppelte Installations-Logik; install.sh bereits fuer non-interaktive Nutzung optimiert |
 
 ### Feature-Preservation bestaetigt
 - [x] Alle Requirements aus Clarification sind abgedeckt (alle 10 gelisteten Requirements auf Phasen/Stories gemappt)

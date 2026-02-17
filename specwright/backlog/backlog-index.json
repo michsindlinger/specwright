@@ -1,5 +1,5 @@
 {
-  "nextId": 4,
+  "nextId": 5,
   "items": [
     {
       "id": "BUG-001",
@@ -33,6 +33,15 @@
       "createdAt": "2026-02-17T08:05:25.070Z",
       "updatedAt": "2026-02-17T08:13:47.669Z",
       "completedAt": "2026-02-17T08:13:47.669Z"
+    },
+    {
+      "id": "BUG-004",
+      "type": "bug",
+      "title": "Story-997 Code Review fixt Findings nicht",
+      "priority": "high",
+      "status": "open",
+      "file": "items/bug-004-story-997-code-review-fixt-findings-nicht.md",
+      "createdAt": "2026-02-17T09:58:13.429Z"
     }
   ],
   "statistics": {

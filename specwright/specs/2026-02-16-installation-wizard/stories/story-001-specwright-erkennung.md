@@ -3,7 +3,7 @@
 > Story ID: IW-001
 > Spec: Installation Wizard
 > Created: 2026-02-16
-> Last Updated: 2026-02-16
+> Last Updated: 2026-02-17 (install.sh Synergy Update)
 
 **Priority**: High
 **Type**: Backend
@@ -17,8 +17,9 @@
 ```gherkin
 Feature: Specwright-Erkennung beim Projekt-Hinzufuegen
   Als Benutzer der Specwright Web UI
-  moechte ich dass das System automatisch erkennt ob Specwright in einem Projekt installiert ist,
-  damit ich bei fehlender Installation durch einen Wizard gefuehrt werde.
+  moechte ich dass das System automatisch erkennt ob Specwright in einem Projekt installiert ist
+  und ob eine Projektplanung (Product Brief) vorliegt,
+  damit ich bei fehlender Installation oder fehlender Planung durch einen Wizard gefuehrt werde.
 ```
 
 ---
@@ -33,21 +34,37 @@ Scenario: Projekt ohne specwright-Ordner wird als nicht-installiert erkannt
   And das Projekt enthaelt keinen "specwright/"-Ordner
   When das System den Projektpfad validiert
   Then erhaelt das Frontend die Information "hasSpecwright: false"
+  And erhaelt das Frontend die Information "hasProductBrief: false"
   And das Frontend erhaelt die Anzahl der Dateien im Projekt
 ```
 
-### Szenario 2: Projekt mit Specwright wird normal behandelt
+### Szenario 2: Projekt mit Specwright und Product Brief wird normal behandelt
 
 ```gherkin
-Scenario: Projekt mit specwright-Ordner wird als installiert erkannt
+Scenario: Projekt mit specwright-Ordner und Product Brief wird als vollstaendig erkannt
   Given ich fuege ein Projekt mit Pfad "/home/user/my-existing-project" hinzu
   And das Projekt enthaelt einen "specwright/"-Ordner
+  And das Projekt enthaelt einen Product Brief unter "specwright/product/product-brief.md"
   When das System den Projektpfad validiert
   Then erhaelt das Frontend die Information "hasSpecwright: true"
+  And erhaelt das Frontend die Information "hasProductBrief: true"
   And der Wizard wird nicht ausgeloest
 ```
 
-### Szenario 3: Bestandsprojekt-Erkennung via Dateianzahl
+### Szenario 3: Projekt mit Specwright aber ohne Product Brief (install.sh-Szenario)
+
+```gherkin
+Scenario: Projekt mit specwright-Ordner aber ohne Product Brief wird als teilweise installiert erkannt
+  Given ich fuege ein Projekt hinzu das einen "specwright/"-Ordner hat
+  And der Ordner wurde via install.sh erstellt (enthaelt Workflows und Standards)
+  And es existiert KEIN "specwright/product/product-brief.md"
+  When das System den Projektpfad validiert
+  Then erhaelt das Frontend die Information "hasSpecwright: true"
+  And erhaelt das Frontend die Information "hasProductBrief: false"
+  And der Wizard wird ausgeloest (fuer Planning-Schritt)
+```
+
+### Szenario 4: Bestandsprojekt-Erkennung via Dateianzahl
 
 ```gherkin
 Scenario: Bestandsprojekt wird anhand der Dateianzahl erkannt
@@ -72,7 +89,14 @@ Scenario: Unvollstaendiger specwright-Ordner zaehlt als installiert
   And der Ordner enthaelt nur wenige Dateien
   When das System den Projektpfad validiert
   Then erhaelt das Frontend die Information "hasSpecwright: true"
-  And der Wizard wird nicht angezeigt
+  And hasProductBrief wird separat geprueft
+
+Scenario: Product Brief unter .agent-os/ statt specwright/
+  Given ich fuege ein Projekt hinzu das einen ".agent-os/"-Ordner hat
+  And das Projekt enthaelt ".agent-os/product/product-brief.md"
+  When das System den Projektpfad validiert
+  Then erhaelt das Frontend die Information "hasSpecwright: true"
+  And erhaelt das Frontend die Information "hasProductBrief: true"
 ```
 
 ---
@@ -83,6 +107,7 @@ Scenario: Unvollstaendiger specwright-Ordner zaehlt als installiert
 
 - [ ] FILE_EXISTS: ui/src/server/services/project-context.service.ts
 - [ ] CONTAINS: project-context.service.ts enthaelt "hasSpecwright"
+- [ ] CONTAINS: project-context.service.ts enthaelt "hasProductBrief"
 - [ ] CONTAINS: project-context.service.ts enthaelt "fileCount"
 
 ### Funktions-Pruefungen
@@ -153,15 +178,15 @@ Keine MCP Tools erforderlich.
 
 | Layer | Komponenten | Aenderung |
 |-------|-------------|----------|
-| Backend | `project-context.service.ts` | `validateProject()` erweitern: Response um `hasSpecwright` und `fileCount` ergaenzen. Projekte ohne specwright/ als valid akzeptieren |
+| Backend | `project-context.service.ts` | `validateProject()` erweitern: Response um `hasSpecwright`, `hasProductBrief` und `fileCount` ergaenzen. Projekte ohne specwright/ als valid akzeptieren |
 | Backend | `project.routes.ts` | `/api/project/validate` Response-Shape erweitern |
-| Shared Types | `ui/src/shared/types/` | ValidateResult Interface erweitern um `hasSpecwright: boolean` und `fileCount: number` |
+| Shared Types | `ui/src/shared/types/` | ValidateResult Interface erweitern um `hasSpecwright: boolean`, `hasProductBrief: boolean` und `fileCount: number` |
 
 **Kritische Integration Points:**
 - Backend `/api/project/validate` Response -> Frontend `projectStateService.validateProject()` (Handover zu IW-002)
 
 **Handover-Dokumente:**
-- API Contract: `POST /api/project/validate` gibt `{ valid: boolean, hasSpecwright: boolean, fileCount: number, name?: string, error?: string }` zurueck
+- API Contract: `POST /api/project/validate` gibt `{ valid: boolean, hasSpecwright: boolean, hasProductBrief: boolean, fileCount: number, name?: string, error?: string }` zurueck
 
 ---
 
@@ -169,13 +194,15 @@ Keine MCP Tools erforderlich.
 
 **WAS:**
 - `validateProject()` in `project-context.service.ts` erweitern: Projekte ohne specwright/ nicht mehr als invalid ablehnen, sondern `hasSpecwright: false` zurueckgeben
+- Neue Erkennung: `hasProductBrief` prueft ob `product/product-brief.md` im Projekt-Verzeichnis (specwright/ oder .agent-os/) existiert
 - Neue Methode oder Erweiterung: Dateianzahl (Top-Level, ohne versteckte Dirs) ermitteln
 - `/api/project/validate` Endpoint Response erweitern
 - Shared Types fuer das erweiterte ValidateResult
 
 **WIE (Architektur-Guidance ONLY):**
-- Bestehende `validateProject()` Logik so anpassen, dass Pfad-Existenz und specwright/-Erkennung getrennt sind
-- `resolveProjectDir()` aus `project-dirs.ts` weiterhin nutzen fuer specwright/-Erkennung
+- Bestehende `validateProject()` Logik so anpassen, dass Pfad-Existenz, specwright/-Erkennung und Product-Brief-Erkennung getrennt sind
+- `resolveProjectDir()` aus `project-dirs.ts` weiterhin nutzen fuer specwright/-Erkennung (unterstuetzt sowohl `specwright/` als auch `.agent-os/`)
+- Product-Brief-Erkennung: `fs.access()` auf `{projectDir}/product/product-brief.md` pruefen, wobei `projectDir` der aufgeloeste specwright/.agent-os Pfad ist
 - Dateianzahl via `fs.readdir()` mit Filterung von versteckten Directories (`.git`, `node_modules` etc.)
 - Abwaertskompatibilitaet sicherstellen: Bestehende Aufrufer von validateProject muessen weiterhin funktionieren
 - Kein rekursiver Scan - nur Top-Level-Eintraege zaehlen
@@ -220,6 +247,9 @@ cd ui && npx vitest run
 
 # ValidateResult contains hasSpecwright
 grep -q "hasSpecwright" ui/src/server/services/project-context.service.ts && echo "hasSpecwright found"
+
+# ValidateResult contains hasProductBrief
+grep -q "hasProductBrief" ui/src/server/services/project-context.service.ts && echo "hasProductBrief found"
 
 # ValidateResult contains fileCount
 grep -q "fileCount" ui/src/server/services/project-context.service.ts && echo "fileCount found"

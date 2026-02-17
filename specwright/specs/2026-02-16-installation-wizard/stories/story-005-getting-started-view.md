@@ -3,12 +3,12 @@
 > Story ID: IW-005
 > Spec: Installation Wizard
 > Created: 2026-02-16
-> Last Updated: 2026-02-16
+> Last Updated: 2026-02-17 (install.sh Synergy Update)
 
 **Priority**: High
 **Type**: Frontend
 **Estimated Effort**: S
-**Dependencies**: None
+**Dependencies**: IW-001
 
 ---
 
@@ -17,19 +17,21 @@
 ```gherkin
 Feature: Getting Started View
   Als Benutzer der Specwright Web UI
-  moechte ich nach der Installation eine uebersichtliche Naechste-Schritte-Seite sehen,
-  damit ich sofort weiss wie ich mit Specwright weiterarbeiten kann.
+  moechte ich nach der Installation eine kontextabhaengige Naechste-Schritte-Seite sehen,
+  damit ich sofort weiss wie ich mit Specwright weiterarbeiten kann -
+  sei es Projektplanung (wenn noch kein Product Brief existiert) oder Feature-Entwicklung.
 ```
 
 ---
 
 ## Akzeptanzkriterien (Gherkin-Szenarien)
 
-### Szenario 1: Drei Aktions-Cards werden angezeigt
+### Szenario 1: Standard-Cards bei vorhandenem Product Brief
 
 ```gherkin
-Scenario: Getting Started zeigt drei naechste Aktionen
+Scenario: Getting Started zeigt Standard-Aktionen wenn Product Brief existiert
   Given ich befinde mich auf der /getting-started Seite
+  And das Projekt hat einen Product Brief (hasProductBrief: true)
   When die Seite geladen wird
   Then sehe ich drei Aktions-Cards:
     | Aktion      | Beschreibung                                    |
@@ -39,23 +41,40 @@ Scenario: Getting Started zeigt drei naechste Aktionen
   And jede Card hat eine verstaendliche Beschreibung fuer Einsteiger und Erfahrene
 ```
 
-### Szenario 2: Aktions-Card fuehrt zum entsprechenden Workflow
+### Szenario 2: Planning-Cards bei fehlendem Product Brief
+
+```gherkin
+Scenario: Getting Started zeigt Planning-Aktionen wenn kein Product Brief existiert
+  Given ich befinde mich auf der /getting-started Seite
+  And das Projekt hat keinen Product Brief (hasProductBrief: false)
+  And Specwright ist installiert (hasSpecwright: true, z.B. via install.sh)
+  When die Seite geladen wird
+  Then sehe ich einen Hinweis dass zuerst ein Product Brief erstellt werden muss
+  And ich sehe vier Planning-Aktions-Cards:
+    | Aktion           | Beschreibung                                           |
+    | plan-product     | Fuer ein einzelnes Produkt/Projekt planen              |
+    | plan-platform    | Fuer eine Multi-Modul-Plattform planen                 |
+    | analyze-product  | Bestehendes Produkt analysieren und Specwright integrieren |
+    | analyze-platform | Bestehende Plattform analysieren und Specwright integrieren |
+```
+
+### Szenario 3: Aktions-Card fuehrt zum entsprechenden Workflow
 
 ```gherkin
 Scenario: Klick auf Aktions-Card startet den Workflow
   Given ich sehe die Getting Started Seite
-  When ich auf die "create-spec" Card klicke
-  Then wird der create-spec Workflow gestartet
+  When ich auf eine Card klicke (z.B. "create-spec" oder "plan-product")
+  Then wird der entsprechende Workflow gestartet
 ```
 
-### Szenario 3: Seite ist spaeter ueber Menu erreichbar
+### Szenario 4: Seite ist spaeter ueber Menu erreichbar
 
 ```gherkin
 Scenario: Getting Started ueber Navigation erreichbar
   Given ich befinde mich auf einer anderen Seite der Specwright UI
   When ich den "Getting Started" Menuepunkt in der Navigation anklicke
   Then werde ich zur /getting-started Seite weitergeleitet
-  And ich sehe die drei Aktions-Cards
+  And ich sehe die kontextabhaengigen Aktions-Cards
 ```
 
 ### Edge Cases & Fehlerszenarien
@@ -82,6 +101,8 @@ Scenario: Getting Started Seite bei Projekt ohne Specwright
 - [ ] CONTAINS: aos-getting-started-view.ts enthaelt "create-spec"
 - [ ] CONTAINS: aos-getting-started-view.ts enthaelt "add-todo"
 - [ ] CONTAINS: aos-getting-started-view.ts enthaelt "add-bug"
+- [ ] CONTAINS: aos-getting-started-view.ts enthaelt "plan-product"
+- [ ] CONTAINS: aos-getting-started-view.ts enthaelt "hasProductBrief"
 
 ### Funktions-Pruefungen
 
@@ -147,9 +168,10 @@ Keine MCP Tools erforderlich.
 
 | Layer | Komponenten | Aenderung |
 |-------|-------------|----------|
-| Frontend | `aos-getting-started-view.ts` (NEU) | Neue View-Komponente: Drei Aktions-Cards fuer create-spec, add-todo, add-bug mit Beschreibungen |
+| Frontend | `aos-getting-started-view.ts` (NEU) | Neue View-Komponente: Kontextabhaengige Aktions-Cards basierend auf `hasProductBrief`. Planning-Cards (plan-product etc.) wenn kein Product Brief, Standard-Cards (create-spec etc.) wenn Product Brief vorhanden. |
 
 **Kritische Integration Points:**
+- Erhaelt `hasProductBrief` als Property von `app.ts` (Verbindung in IW-006)
 - Emittiert `workflow-start` Event an `app.ts` zum Triggern von Workflows (Verbindung in IW-006)
 
 ---
@@ -158,7 +180,9 @@ Keine MCP Tools erforderlich.
 
 **WAS:**
 - Neue View-Komponente `aos-getting-started-view` im `views/`-Verzeichnis
-- Drei Aktions-Cards mit Icon, Titel und Beschreibung
+- **Kontextabhaengige Inhalte basierend auf `hasProductBrief` Property:**
+  - `hasProductBrief === false`: Zeigt Planning-Cards (plan-product, plan-platform, analyze-product, analyze-platform) mit Hinweis dass zuerst geplant werden muss
+  - `hasProductBrief === true`: Zeigt Standard-Cards (create-spec, add-todo, add-bug)
 - Jede Card emittiert ein Event zum Starten des Workflows
 - Responsives Layout fuer verschiedene Bildschirmgroessen
 - Hinweis-State wenn Specwright nicht installiert ist
@@ -166,15 +190,17 @@ Keine MCP Tools erforderlich.
 **WIE (Architektur-Guidance ONLY):**
 - View-Pattern von bestehenden Views folgen (z.B. `aos-dashboard-view`)
 - Light DOM rendering (wie alle aos-* Komponenten)
+- `hasProductBrief` als reactive Property (`@property({ type: Boolean })`)
+- Conditional Rendering via `${this.hasProductBrief ? this.renderStandardCards() : this.renderPlanningCards()}`
 - CSS Custom Properties fuer Theming
 - Lucide Icons fuer Card-Icons
 - Cards als einfache Layout-Elemente, kein eigenes Card-Component noetig
-- `workflow-start` Custom Event mit Detail `{ command: 'create-spec' | 'add-todo' | 'add-bug' }`
+- `workflow-start` Custom Event mit Detail `{ command: 'create-spec' | 'add-todo' | 'add-bug' | 'plan-product' | 'plan-platform' | 'analyze-product' | 'analyze-platform' }`
 
 **WO:**
 - `ui/frontend/src/views/aos-getting-started-view.ts` (NEU)
 
-**Abhaengigkeiten:** None (kann parallel gebaut werden)
+**Abhaengigkeiten:** IW-001 (braucht `hasProductBrief` aus Backend fuer kontextabhaengige Inhalte)
 
 **Geschaetzte Komplexitaet:** S
 
@@ -210,10 +236,16 @@ cd ui/frontend && npm run build
 # View file exists
 test -f ui/frontend/src/views/aos-getting-started-view.ts && echo "View exists"
 
-# Contains all three actions
+# Contains standard action cards
 grep -q "create-spec" ui/frontend/src/views/aos-getting-started-view.ts && echo "create-spec found"
 grep -q "add-todo" ui/frontend/src/views/aos-getting-started-view.ts && echo "add-todo found"
 grep -q "add-bug" ui/frontend/src/views/aos-getting-started-view.ts && echo "add-bug found"
+
+# Contains planning cards
+grep -q "plan-product" ui/frontend/src/views/aos-getting-started-view.ts && echo "plan-product found"
+
+# Contains hasProductBrief property
+grep -q "hasProductBrief" ui/frontend/src/views/aos-getting-started-view.ts && echo "hasProductBrief found"
 ```
 
 **Story ist DONE wenn:**

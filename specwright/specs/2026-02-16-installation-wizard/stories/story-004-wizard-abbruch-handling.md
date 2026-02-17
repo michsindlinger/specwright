@@ -3,7 +3,7 @@
 > Story ID: IW-004
 > Spec: Installation Wizard
 > Created: 2026-02-16
-> Last Updated: 2026-02-16
+> Last Updated: 2026-02-17 (install.sh Synergy Update)
 
 **Priority**: Medium
 **Type**: Frontend
@@ -31,7 +31,9 @@ Feature: Wizard Abbruch-Handling
 Scenario: Abbruch-Meldung bei Wizard-Abbruch
   Given ich sehe den Wizard Modal
   When ich den Wizard abbreche
-  Then sehe ich eine Meldung dass Specwright erst installiert werden muss damit die UI voll nutzbar ist
+  Then sehe ich eine kontextabhaengige Meldung:
+    - Wenn hasSpecwright false: "Specwright muss erst installiert werden damit die UI voll nutzbar ist"
+    - Wenn hasProductBrief false: "Ein Product Brief wird empfohlen um Specwright optimal zu nutzen"
   And der Modal schliesst sich nach Bestaetigung
 ```
 

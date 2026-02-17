@@ -2,14 +2,14 @@
 
 > Spec: Installation Wizard
 > Created: 2026-02-16
-> Last Updated: 2026-02-16
+> Last Updated: 2026-02-17 (install.sh Synergy Update)
 
 ## Overview
 
 This document provides an overview of all user stories for the Installation Wizard specification.
 
 **Total Stories**: 9 (6 regular + 3 system)
-**Estimated Effort**: ~27 SP
+**Estimated Effort**: ~29 SP (Updated: IW-002 von S auf M wegen zweistufiger Wizard-Logik)
 
 ---
 
@@ -17,11 +17,11 @@ This document provides an overview of all user stories for the Installation Wiza
 
 | Story ID | Title | Type | Priority | Dependencies | Status | Points |
 |----------|-------|------|----------|--------------|--------|--------|
-| IW-001 | Specwright-Erkennung beim Projekt-Hinzufuegen | Backend | High | None | Ready | 3 |
-| IW-002 | Installation Wizard Modal | Frontend | High | IW-001 | Ready | 3 |
-| IW-003 | Terminal-Integration im Wizard | Frontend | High | IW-002 | Ready | 3 |
+| IW-001 | Specwright- und Product-Brief-Erkennung beim Projekt-Hinzufuegen | Backend | High | None | Ready | 3 |
+| IW-002 | Installation Wizard Modal (Zweistufig: install.sh + Planning) | Frontend | High | IW-001 | Ready | 5 |
+| IW-003 | Terminal-Integration im Wizard (install.sh + Planning-Commands) | Frontend | High | IW-002 | Ready | 3 |
 | IW-004 | Wizard Abbruch-Handling | Frontend | Medium | IW-002 | Ready | 2 |
-| IW-005 | Getting Started View | Frontend | High | None | Ready | 3 |
+| IW-005 | Getting Started View (Kontextabhaengig) | Frontend | High | IW-001 | Ready | 3 |
 | IW-006 | Router & Navigation Integration | Frontend | High | IW-001, IW-002, IW-003, IW-004, IW-005 | Ready | 3 |
 | IW-997 | Code Review | System/Review | High | Alle regulaeren Stories | Ready | 3 |
 | IW-998 | Integration Validation | System/Integration | High | IW-997 | Ready | 3 |
@@ -32,19 +32,17 @@ This document provides an overview of all user stories for the Installation Wiza
 ## Dependency Graph
 
 ```
-IW-001 (No dependencies) ──────────────────────┐
-    |                                           |
-    v                                           |
-IW-002 (Depends on IW-001)                     |
-    |                                           |
-    ├──> IW-003 (Depends on IW-002)            |
-    |       |                                   |
-    ├──> IW-004 (Depends on IW-002)            |
-    |       |                                   |
-    v       v                                   |
-IW-005 (No dependencies) ─────────────────────┐|
-                                               ||
-                                               vv
+IW-001 (No dependencies)
+    |
+    ├──────────────────────────────────────────┐
+    v                                          v
+IW-002 (Depends on IW-001)              IW-005 (Depends on IW-001)
+    |                                          |
+    ├──> IW-003 (Depends on IW-002)           |
+    |       |                                  |
+    ├──> IW-004 (Depends on IW-002)           |
+    |       |                                  |
+    v       v                                  v
                                     IW-006 (Depends on IW-001..IW-005)
                                                |
                                                v
@@ -61,12 +59,12 @@ IW-005 (No dependencies) ──────────────────�
 
 ## Execution Plan
 
-### Phase 1: Parallel Execution (No Dependencies)
-- IW-001: Specwright-Erkennung beim Projekt-Hinzufuegen
-- IW-005: Getting Started View
+### Phase 1: Backend (No Dependencies)
+- IW-001: Specwright- und Product-Brief-Erkennung beim Projekt-Hinzufuegen
 
-### Phase 2: Sequential Execution (Depends on Phase 1)
+### Phase 2: Parallel Execution (Depends on Phase 1)
 - IW-002: Installation Wizard Modal (depends on IW-001)
+- IW-005: Getting Started View (depends on IW-001 fuer hasProductBrief)
 
 ### Phase 3: Parallel Execution (Depends on Phase 2)
 - IW-003: Terminal-Integration im Wizard (depends on IW-002)
