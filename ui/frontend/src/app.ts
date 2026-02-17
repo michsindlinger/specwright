@@ -1402,6 +1402,19 @@ export class AosApp extends LitElement {
           <ul class="nav-list">
             <li class="nav-item">
               <a
+                class="nav-link ${this.isFileTreeOpen ? 'active' : ''}"
+                @click=${this._handleFileTreeToggle}
+              >
+                <span class="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="vertical-align: middle;">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </span>
+                Files
+              </a>
+            </li>
+            <li class="nav-item">
+              <a
                 class="nav-link ${this.isBottomPanelOpen ? 'active' : ''}"
                 @click=${this._handleBottomPanelToggle}
               >
@@ -1434,15 +1447,6 @@ export class AosApp extends LitElement {
                   <span>Verbinde...</span>
                 </span>`
               : ''}
-            <button
-              class="file-tree-btn ${this.isFileTreeOpen ? 'active' : ''}"
-              @click=${this._handleFileTreeToggle}
-              title="Dateibaum"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-              </svg>
-            </button>
             <button
               class="terminal-btn ${this.terminalSessions.length > 0 ? 'has-sessions' : ''}"
               @click=${this._handleTerminalToggle}
@@ -1481,7 +1485,7 @@ export class AosApp extends LitElement {
           @checkout-branch=${this._handleCheckoutBranch}
         ></aos-git-status-bar>
         <div class="view-container">${this.renderView()}</div>
-        <aos-file-editor-panel></aos-file-editor-panel>
+        <aos-file-editor-panel .sidebarOpen=${this.isFileTreeOpen}></aos-file-editor-panel>
       </main>
       <aos-global-queue-panel
         .isOpen=${this.isBottomPanelOpen}

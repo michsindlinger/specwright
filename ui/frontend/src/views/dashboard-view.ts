@@ -1351,27 +1351,11 @@ export class AosDashboardView extends LitElement {
       return;
     }
 
-    // Start the next story via backlog.story.start
-    // WTT-003: Dispatch workflow-terminal-request to open in terminal tab
+    // Start the next story via backlog.story.start (backend spawns background terminal)
     const model = nextStory.model || 'opus';
-    const projectPath = this.projectCtx?.activeProject?.path || '';
 
-    // Dispatch workflow-terminal-request event to app.ts
-    const workflowRequestEvent = new CustomEvent('workflow-terminal-request', {
-      detail: {
-        command: 'execute-tasks',
-        argument: 'backlog',
-        model,
-        specId: 'backlog',
-        storyId: nextStory.id,
-        projectPath,
-      },
-      bubbles: true,
-      composed: true,
-    });
-    this.dispatchEvent(workflowRequestEvent);
-
-    // Also send to backend for status tracking
+    // BUG-004: Auto-mode runs in background - no Cloud Terminal needed
+    // Backend handles execution via workflowExecutor.startBacklogStoryExecution()
     gateway.send({
       type: 'backlog.story.start',
       storyId: nextStory.id,

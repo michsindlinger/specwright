@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
 import './aos-file-tabs.js';
 import './aos-file-editor.js';
@@ -55,6 +55,9 @@ function isBinaryFilename(filename: string): boolean {
  */
 @customElement('aos-file-editor-panel')
 export class AosFileEditorPanel extends LitElement {
+  /** Whether the file-tree sidebar is open. When false and no files are open, the panel hides itself. */
+  @property({ type: Boolean }) sidebarOpen = false;
+
   @state() private openFiles: OpenFile[] = [];
   @state() private activeTabPath = '';
   @state() private isLoading = false;
@@ -521,6 +524,11 @@ export class AosFileEditorPanel extends LitElement {
   }
 
   override render() {
+    // Hide panel entirely when sidebar is closed and no files are open
+    if (!this.sidebarOpen && this.openFiles.length === 0) {
+      return nothing;
+    }
+
     const active = this.activeFile;
 
     return html`
