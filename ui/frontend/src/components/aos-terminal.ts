@@ -233,6 +233,20 @@ export class AosTerminal extends LitElement {
     // Fit terminal to container
     this.fitAddon.fit();
 
+    // Shift+Enter → send newline to PTY (cloud mode only)
+    this.terminal.attachCustomKeyEventHandler((event) => {
+      if (this.cloudMode && event.key === 'Enter' && event.shiftKey && event.type === 'keydown') {
+        gateway.send({
+          type: 'cloud-terminal:input',
+          sessionId: this.terminalSessionId,
+          data: '\n',
+          timestamp: new Date().toISOString(),
+        });
+        return false; // Prevent xterm default handling
+      }
+      return true; // Let xterm handle all other keys
+    });
+
     // Handle user input
     this.terminal.onData((data) => {
       if (!this.terminalSessionId) return;
