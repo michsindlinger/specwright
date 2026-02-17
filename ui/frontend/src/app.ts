@@ -394,6 +394,10 @@ export class AosApp extends LitElement {
   private boundQueueCompleteHandler: MessageHandler = () => {
     this.isQueueRunning = false;
   };
+  // WSM-002: Handler for cloud-terminal:closed (setup session re-validation)
+  private boundCloudTerminalClosedHandler: MessageHandler = (msg) => {
+    this._handleCloudTerminalClosed(msg);
+  };
   private boundKeydownHandler = (e: KeyboardEvent) => this._handleGlobalKeydown(e);
   // WTT-003: Handler for workflow-terminal-request custom events
   private _handleWorkflowTerminalRequest = (e: CustomEvent<{
@@ -420,6 +424,8 @@ export class AosApp extends LitElement {
     gateway.on('gateway.error', this.boundErrorHandler);
     gateway.on('model.providers.list', this.boundModelProvidersHandler);
     gateway.on('cloud-terminal:list-response', this.boundCloudTerminalListHandler);
+    // WSM-002: Listen for terminal close events (setup session re-validation)
+    gateway.on('cloud-terminal:closed', this.boundCloudTerminalClosedHandler);
     gateway.on('git:status:response', this.boundGitStatusHandler);
     gateway.on('git:branches:response', this.boundGitBranchesHandler);
     gateway.on('git:checkout:response', this.boundGitCheckoutHandler);
@@ -479,6 +485,8 @@ export class AosApp extends LitElement {
     gateway.off('gateway.error', this.boundErrorHandler);
     gateway.off('model.providers.list', this.boundModelProvidersHandler);
     gateway.off('cloud-terminal:list-response', this.boundCloudTerminalListHandler);
+    // WSM-002: Remove terminal close listener
+    gateway.off('cloud-terminal:closed', this.boundCloudTerminalClosedHandler);
     gateway.off('git:status:response', this.boundGitStatusHandler);
     gateway.off('git:branches:response', this.boundGitBranchesHandler);
     gateway.off('git:checkout:response', this.boundGitCheckoutHandler);
@@ -984,13 +992,117 @@ export class AosApp extends LitElement {
     this.showWizard = false;
   }
 
-  // IW-006: Start wizard from Getting Started view button
-  private _handleStartWizardFromView(): void {
-    const activeProject = this.openProjects.find(
-      (p) => p.id === this.activeProjectId
+  // WSM-002: Handle start-setup-terminal event from Getting Started view
+  private _handleStartSetupTerminal(e: CustomEvent<{ type: 'install' | 'migrate' }>): void {
+    const { type } = e.detail;
+    const activeProject = this.openProjects.find(p => p.id === this.activeProjectId);
+    if (!activeProject) {
+      this.showToast('Kein Projekt ausgewählt', 'error');
+      return;
+    }
+    this._openSetupTerminalTab(type, activeProject.path);
+  }
+
+  // WSM-002: Open a setup terminal tab (install or migrate)
+  private _openSetupTerminalTab(setupType: 'install' | 'migrate', projectPath: string): void {
+    // Guard: Check if a setup terminal is already running
+    const existingSetup = this.terminalSessions.find(
+      s => s.isSetupSession === true && s.status !== 'disconnected' && s.projectPath === projectPath
     );
-    if (activeProject) {
-      this._validateAndTriggerWizard(activeProject.path);
+    if (existingSetup) {
+      // Focus existing setup terminal instead of creating a new one
+      this.activeTerminalSessionId = existingSetup.id;
+      if (!this.isTerminalSidebarOpen) {
+        this.isTerminalSidebarOpen = true;
+      }
+      this.showToast('Setup-Terminal läuft bereits', 'info');
+      return;
+    }
+
+    const sessionId = `setup-${setupType}-${Date.now()}`;
+    const sessionName = setupType === 'install' ? 'Installation' : 'Migration';
+    const command = setupType === 'install'
+      ? 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash -s -- --yes --all'
+      : 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/migrate-to-specwright.sh | bash -s -- --yes --no-symlinks';
+
+    // Create setup session
+    const newSession: TerminalSession = {
+      id: sessionId,
+      name: sessionName,
+      status: 'active',
+      createdAt: new Date(),
+      projectPath,
+      terminalType: 'shell',
+      isSetupSession: true,
+      setupType,
+    };
+
+    this.terminalSessions = [...this.terminalSessions, newSession];
+    this.activeTerminalSessionId = sessionId;
+
+    // Open sidebar
+    if (!this.isTerminalSidebarOpen) {
+      this.isTerminalSidebarOpen = true;
+    }
+
+    // Create shell terminal via gateway
+    gateway.send({
+      type: 'cloud-terminal:create',
+      requestId: sessionId,
+      projectPath,
+      terminalType: 'shell' as const,
+      timestamp: new Date().toISOString(),
+    });
+
+    // One-shot listener: wait for terminal creation, then send the command
+    const handleCreated: MessageHandler = (msg) => {
+      if (msg.requestId !== sessionId) return;
+      gateway.off('cloud-terminal:created', handleCreated);
+
+      const terminalSessionId = msg.sessionId as string;
+      if (terminalSessionId) {
+        // Update session with backend terminal ID
+        this.terminalSessions = this.terminalSessions.map(s =>
+          s.id === sessionId
+            ? { ...s, terminalSessionId }
+            : s
+        );
+
+        // Send the install/migrate command after terminal is ready
+        setTimeout(() => {
+          gateway.send({
+            type: 'cloud-terminal:input',
+            sessionId: terminalSessionId,
+            data: command + '\n',
+            timestamp: new Date().toISOString(),
+          });
+        }, 500); // TERMINAL_READY_DELAY
+      }
+    };
+    gateway.on('cloud-terminal:created', handleCreated);
+  }
+
+  // WSM-002: Handle cloud-terminal:closed for setup session re-validation
+  private _handleCloudTerminalClosed(msg: Record<string, unknown>): void {
+    const sessionId = msg.sessionId as string;
+    const exitCode = msg.exitCode as number | undefined;
+
+    // Find the matching setup session
+    const setupSession = this.terminalSessions.find(
+      s => s.terminalSessionId === sessionId && s.isSetupSession === true
+    );
+    if (!setupSession) return;
+
+    // Update session status
+    this.terminalSessions = this.terminalSessions.map(s =>
+      s.terminalSessionId === sessionId
+        ? { ...s, status: 'disconnected' as const }
+        : s
+    );
+
+    // Re-validate project only on success (exit code 0)
+    if (exitCode === 0) {
+      this._validateProjectForWizard(setupSession.projectPath);
     }
   }
 
@@ -1602,7 +1714,7 @@ export class AosApp extends LitElement {
           .needsMigration=${this.wizardNeedsMigration}
           .loading=${this.wizardValidationPending}
           @workflow-start-interactive=${this.handleWorkflowStart}
-          @start-wizard=${this._handleStartWizardFromView}
+          @start-setup-terminal=${this._handleStartSetupTerminal}
         ></aos-getting-started-view>`;
       case 'chat':
         return html`<aos-chat-view></aos-chat-view>`;

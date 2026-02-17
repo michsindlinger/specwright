@@ -30,6 +30,10 @@ export interface TerminalSession {
   modelId?: string;
   /** Provider ID for workflow sessions (e.g., 'anthropic') */
   providerId?: string;
+  /** Setup session flag - if true, this is an install/migrate terminal */
+  isSetupSession?: boolean;
+  /** Setup type: 'install' for fresh installation, 'migrate' for agent-os migration */
+  setupType?: 'install' | 'migrate';
 }
 
 export interface LoadingState {
