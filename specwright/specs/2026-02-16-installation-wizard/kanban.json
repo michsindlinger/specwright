@@ -16,9 +16,9 @@
     "gitBranch": "feature/installation-wizard",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed IW-001",
-    "nextAction": "Execute next story: IW-002",
-    "progressIndex": 1,
+    "lastAction": "Completed IW-002",
+    "nextAction": "Execute next story: IW-003",
+    "progressIndex": 3,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -84,24 +84,36 @@
       "dependencies": [
         "IW-001"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-installation-wizard-modal.md",
       "timing": {
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
-        "startedAt": "2026-02-17T11:19:02.050Z"
+        "startedAt": "2026-02-17T11:19:02.050Z",
+        "completedAt": "2026-02-17T11:26:33.834Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/setup/aos-installation-wizard-modal.ts",
+          "ui/frontend/src/styles/theme.css",
+          "specwright/specs/2026-02-16-installation-wizard/stories/story-002-installation-wizard-modal.md",
+          "specwright/specs/2026-02-16-installation-wizard/integration-context.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "eeb3fa1",
+            "message": "feat: IW-002 Installation Wizard Modal",
+            "timestamp": "2026-02-17T12:23:52+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress"
+      "phase": "done"
     },
     {
       "id": "IW-003",
@@ -116,12 +128,13 @@
       "dependencies": [
         "IW-002"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-terminal-integration.md",
       "timing": {
         "createdAt": "2026-02-16T00:00:00Z",
-        "updatedAt": "2026-02-16T00:00:00Z"
+        "updatedAt": "2026-02-16T00:00:00Z",
+        "startedAt": "2026-02-17T11:24:28.279Z"
       },
       "implementation": {
         "filesModified": [],
@@ -131,7 +144,8 @@
       "verification": {
         "dorChecked": true,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress"
     },
     {
       "id": "IW-004",
@@ -323,11 +337,11 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 7,
+    "ready": 6,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
+    "done": 2,
     "blocked": 0
   },
   "statistics": {
@@ -481,6 +495,36 @@
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/installation-wizard"
+    },
+    {
+      "timestamp": "2026-02-17T11:24:06.545Z",
+      "action": "status_changed",
+      "storyId": "IW-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:24:22.315Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/installation-wizard"
+    },
+    {
+      "timestamp": "2026-02-17T11:24:28.279Z",
+      "action": "status_changed",
+      "storyId": "IW-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T11:24:28.411Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/installation-wizard"
+    },
+    {
+      "timestamp": "2026-02-17T11:26:33.835Z",
+      "action": "status_changed",
+      "storyId": "IW-002",
+      "details": "Story completed: done → done"
     }
   ]
 }
