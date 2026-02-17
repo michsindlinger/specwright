@@ -25,7 +25,7 @@ export class AosGitStatusBar extends LitElement {
   @property({ type: Boolean }) hasProject = false;
   @property({ type: Array }) branches: GitBranchEntry[] = [];
   @property({ type: Boolean }) isOperationRunning = false;
-  @property({ type: Object }) prInfo: GitPrInfo | null = null;
+  @property({ type: Array }) prInfo: GitPrInfo[] = [];
 
   @state() private _dropdownOpen = false;
   @state() private _confirmDialogOpen = false;
@@ -135,9 +135,8 @@ export class AosGitStatusBar extends LitElement {
     }
   }
 
-  private _getPrStateModifier(): string {
-    if (!this.prInfo) return '';
-    switch (this.prInfo.state) {
+  private _getPrStateModifier(pr: GitPrInfo): string {
+    switch (pr.state) {
       case 'OPEN': return 'git-status-bar__pr-badge--open';
       case 'MERGED': return 'git-status-bar__pr-badge--merged';
       case 'CLOSED': return 'git-status-bar__pr-badge--closed';
@@ -265,13 +264,13 @@ export class AosGitStatusBar extends LitElement {
             </span>
           ` : nothing}
 
-          ${this.prInfo && this._isSafePrUrl(this.prInfo.url) ? html`
+          ${this.prInfo.filter(pr => this._isSafePrUrl(pr.url)).map(pr => html`
             <a
-              class="git-status-bar__pr-badge ${this._getPrStateModifier()}"
-              href=${this.prInfo.url}
+              class="git-status-bar__pr-badge ${this._getPrStateModifier(pr)}"
+              href=${pr.url}
               target="_blank"
               rel="noopener"
-              title="${this.prInfo.title}"
+              title="${pr.title}"
             >
               <svg class="git-status-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="18" cy="18" r="3"></circle>
@@ -279,9 +278,9 @@ export class AosGitStatusBar extends LitElement {
                 <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
                 <line x1="6" y1="9" x2="6" y2="21"></line>
               </svg>
-              #${this.prInfo.number} ${this.prInfo.state}
+              #${pr.number} ${pr.state}
             </a>
-          ` : nothing}
+          `)}
         </div>
 
         <div class="git-status-bar__actions">

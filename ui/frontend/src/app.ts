@@ -111,7 +111,7 @@ export class AosApp extends LitElement {
   private isGitOperationRunning = false;
 
   @state()
-  private gitPrInfo: GitPrInfo | null = null;
+  private gitPrInfo: GitPrInfo[] = [];
 
   @state()
   private pendingAutoPush = false;
@@ -298,7 +298,7 @@ export class AosApp extends LitElement {
     }
   };
   private boundGitPrInfoHandler: MessageHandler = (msg) => {
-    this.gitPrInfo = (msg.data as GitPrInfo | null) ?? null;
+    this.gitPrInfo = (msg.data as GitPrInfo[]) ?? [];
   };
   // GSQ-005: Queue gateway handlers
   private boundQueueStateHandler: MessageHandler = (msg) => {
@@ -1077,6 +1077,7 @@ export class AosApp extends LitElement {
   private _handleRefreshGit(): void {
     this.gitLoading = true;
     gateway.requestGitStatus();
+    gateway.requestGitPrInfo();
   }
 
   private _handlePullGit(e?: CustomEvent<{ rebase?: boolean }>): void {
@@ -1338,7 +1339,7 @@ export class AosApp extends LitElement {
     if (!this.activeProjectId) {
       this.gitStatus = null;
       this.gitBranches = [];
-      this.gitPrInfo = null;
+      this.gitPrInfo = [];
       return;
     }
     this.gitLoading = true;
