@@ -140,6 +140,9 @@ export class AosApp extends LitElement {
   @state()
   private projectNeedsMigration = false;
 
+  @state()
+  private projectHasIncompleteInstallation = false;
+
   /** True while project validation is pending (prevents flash of wrong state) */
   @state()
   private projectValidationPending = true;
@@ -919,17 +922,20 @@ export class AosApp extends LitElement {
           hasSpecwright?: boolean;
           hasProductBrief?: boolean;
           needsMigration?: boolean;
+          hasIncompleteInstallation?: boolean;
         };
         const hasSpecwright = data.hasSpecwright ?? false;
         const hasProductBrief = data.hasProductBrief ?? false;
         const needsMigration = data.needsMigration ?? false;
+        const hasIncompleteInstallation = data.hasIncompleteInstallation ?? false;
 
         this.projectHasSpecwright = hasSpecwright;
         this.projectHasProductBrief = hasProductBrief;
         this.projectNeedsMigration = needsMigration;
+        this.projectHasIncompleteInstallation = hasIncompleteInstallation;
 
-        // Navigate to getting-started if specwright is not installed, needs migration, OR product brief is missing
-        if (!hasSpecwright || !hasProductBrief || needsMigration) {
+        // Navigate to getting-started if specwright is not installed, incomplete, needs migration, OR product brief is missing
+        if (!hasSpecwright || hasIncompleteInstallation || !hasProductBrief || needsMigration) {
           routerService.navigate('getting-started');
         }
       }
@@ -1244,10 +1250,12 @@ export class AosApp extends LitElement {
           hasSpecwright?: boolean;
           hasProductBrief?: boolean;
           needsMigration?: boolean;
+          hasIncompleteInstallation?: boolean;
         };
         this.projectHasSpecwright = data.hasSpecwright ?? false;
         this.projectHasProductBrief = data.hasProductBrief ?? false;
         this.projectNeedsMigration = data.needsMigration ?? false;
+        this.projectHasIncompleteInstallation = data.hasIncompleteInstallation ?? false;
       }
     } catch {
       // Validation failed, keep defaults
@@ -1643,6 +1651,7 @@ export class AosApp extends LitElement {
           .hasProductBrief=${this.projectHasProductBrief}
           .hasSpecwright=${this.projectHasSpecwright}
           .needsMigration=${this.projectNeedsMigration}
+          .hasIncompleteInstallation=${this.projectHasIncompleteInstallation}
           .loading=${this.projectValidationPending}
           @workflow-start-interactive=${this.handleWorkflowStart}
           @start-setup-terminal=${this._handleStartSetupTerminal}

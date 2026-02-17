@@ -1,6 +1,6 @@
 import { existsSync, statSync, readdirSync } from 'fs';
 import { basename, resolve, normalize, join } from 'path';
-import { resolveProjectDir } from './utils/project-dirs.js';
+import { resolveProjectDir, resolveCommandDir } from './utils/project-dirs.js';
 
 export interface ProjectContext {
   path: string;
@@ -21,6 +21,7 @@ export interface ValidateResult {
   hasSpecwright?: boolean;
   hasProductBrief?: boolean;
   needsMigration?: boolean;
+  hasIncompleteInstallation?: boolean;
   fileCount?: number;
 }
 
@@ -128,6 +129,11 @@ export class ProjectContextService {
     // Check if project uses agent-os/ and needs migration to specwright/
     const needsMigration = this.detectNeedsMigration(normalizedPath);
 
+    // Check for incomplete installation (only meaningful if specwright exists)
+    const hasIncompleteInstallation = hasSpecwright
+      ? this.detectIncompleteInstallation(normalizedPath)
+      : false;
+
     // Check for product brief (only meaningful if specwright exists)
     const hasProductBrief = hasSpecwright
       ? this.detectProductBrief(normalizedPath)
@@ -142,6 +148,7 @@ export class ProjectContextService {
       hasSpecwright,
       hasProductBrief,
       needsMigration,
+      hasIncompleteInstallation,
       fileCount
     };
   }
@@ -190,6 +197,21 @@ export class ProjectContextService {
     const productBrief = join(productDir, 'product-brief.md');
     const platformBrief = join(productDir, 'platform-brief.md');
     return existsSync(productBrief) || existsSync(platformBrief);
+  }
+
+  /**
+   * Detects whether a specwright installation is incomplete.
+   * Checks for sentinel files from setup.sh and setup-claude-code.sh.
+   * Returns true if specwright/ exists but key workflow or command files are missing.
+   */
+  private detectIncompleteInstallation(projectPath: string): boolean {
+    const projectDirName = resolveProjectDir(projectPath);
+    const commandDirName = resolveCommandDir(projectPath);
+
+    const workflowSentinel = join(projectPath, projectDirName, 'workflows', 'core', 'create-spec.md');
+    const commandSentinel = join(projectPath, '.claude', 'commands', commandDirName, 'create-spec.md');
+
+    return !existsSync(workflowSentinel) || !existsSync(commandSentinel);
   }
 
   /**

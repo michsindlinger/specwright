@@ -10,22 +10,22 @@
     "createdAt": "2026-02-17T00:00:00Z"
   },
   "resumeContext": {
-    "currentPhase": "all-stories-done",
+    "currentPhase": "complete",
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/wizard-to-sidebar-migration",
-    "currentStory": "WSM-999",
-    "currentStoryPhase": "implementing",
-    "lastAction": "Started WSM-999",
-    "nextAction": "Implement Finalize PR",
-    "progressIndex": 5,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed WSM-999",
+    "nextAction": "All stories complete",
+    "progressIndex": 6,
     "totalStories": 6,
     "gitStrategy": "branch"
   },
   "execution": {
-    "status": "executing",
+    "status": "completed",
     "startedAt": "2026-02-17T14:59:03.376Z",
-    "completedAt": null,
+    "completedAt": "2026-02-17T15:34:48.495Z",
     "model": null
   },
   "stories": [
@@ -258,34 +258,46 @@
       "dependencies": [
         "WSM-998"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
         "updatedAt": "2026-02-17T00:00:00Z",
-        "startedAt": "2026-02-17T15:16:45.759Z"
+        "startedAt": "2026-02-17T15:16:45.759Z",
+        "completedAt": "2026-02-17T15:34:48.495Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/kanban.json",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-997-code-review.md",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/stories/story-998-integration-validation.md",
+          "specwright/specs/2026-02-17-wizard-to-sidebar-migration/review-report.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "6d9fba79bae899373e6364c58898a36b804dfcef",
+            "message": "feat: [WSM-999] Finalize PR",
+            "timestamp": "2026-02-17T16:17:40+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     }
   ],
   "boardStatus": {
     "total": 6,
     "ready": 0,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 5,
+    "done": 6,
     "blocked": 0
   },
   "statistics": {
@@ -471,6 +483,12 @@
       "action": "status_changed",
       "storyId": "WSM-999",
       "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T15:34:48.495Z",
+      "action": "status_changed",
+      "storyId": "WSM-999",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }

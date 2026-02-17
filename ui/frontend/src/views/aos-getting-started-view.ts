@@ -13,6 +13,7 @@ export class AosGettingStartedView extends LitElement {
   @property({ type: Boolean }) hasProductBrief = false;
   @property({ type: Boolean }) hasSpecwright = true;
   @property({ type: Boolean }) needsMigration = false;
+  @property({ type: Boolean }) hasIncompleteInstallation = false;
   @property({ type: Boolean }) loading = false;
 
   private get standardCards(): ActionCard[] {
@@ -70,7 +71,7 @@ export class AosGettingStartedView extends LitElement {
   private handleCardClick(command: string): void {
     this.dispatchEvent(
       new CustomEvent('workflow-start-interactive', {
-        detail: { commandId: command },
+        detail: { commandId: `specwright:${command}` },
         bubbles: true,
         composed: true,
       })
@@ -101,21 +102,25 @@ export class AosGettingStartedView extends LitElement {
           <p class="getting-started-subtitle">
             ${!this.hasSpecwright
               ? 'Specwright muss zuerst installiert werden, bevor du beginnen kannst.'
-              : this.needsMigration
-                ? 'Dieses Projekt verwendet noch die alte Agent OS Struktur. Eine Migration wird empfohlen.'
-                : this.hasProductBrief
-                  ? 'Waehle eine Aktion um mit der Entwicklung zu beginnen.'
-                  : 'Dein Projekt hat noch keinen Product/Platform Brief. Starte mit der Planung.'}
+              : this.hasIncompleteInstallation
+                ? 'Die Specwright-Installation ist unvollstaendig. Bitte neu installieren.'
+                : this.needsMigration
+                  ? 'Dieses Projekt verwendet noch die alte Agent OS Struktur. Eine Migration wird empfohlen.'
+                  : this.hasProductBrief
+                    ? 'Waehle eine Aktion um mit der Entwicklung zu beginnen.'
+                    : 'Dein Projekt hat noch keinen Product/Platform Brief. Starte mit der Planung.'}
           </p>
         </div>
 
         ${!this.hasSpecwright
           ? this.renderNotInstalledState()
-          : this.needsMigration
-            ? this.renderMigrationHint()
-            : this.hasProductBrief
-              ? this.renderStandardCards()
-              : this.renderPlanningCards()}
+          : this.hasIncompleteInstallation
+            ? this.renderIncompleteInstallationState()
+            : this.needsMigration
+              ? this.renderMigrationHint()
+              : this.hasProductBrief
+                ? this.renderStandardCards()
+                : this.renderPlanningCards()}
       </div>
     `;
   }
@@ -169,6 +174,26 @@ export class AosGettingStartedView extends LitElement {
           </p>
           <button class="getting-started-hint__action" @click=${() => this.handleStartSetup('install')}>
             Installation starten
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderIncompleteInstallationState() {
+    return html`
+      <div class="getting-started-hint getting-started-hint--warning">
+        <div class="getting-started-hint__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="getting-started-hint__content">
+          <p class="getting-started-hint__title">Installation unvollstaendig</p>
+          <p class="getting-started-hint__description">
+            Das Verzeichnis <code>specwright/</code> existiert, aber wichtige Dateien fehlen
+            (Workflows oder Commands). Bitte fuehre die Installation erneut aus.
+          </p>
+          <button class="getting-started-hint__action" @click=${() => this.handleStartSetup('install')}>
+            Neu installieren
           </button>
         </div>
       </div>

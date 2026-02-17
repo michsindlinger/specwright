@@ -11320,6 +11320,15 @@ aos-model-selector .model-option.selected .model-name {
   line-height: var(--line-height-relaxed);
 }
 
+.getting-started-hint--warning {
+  border-color: var(--color-accent-warning);
+}
+
+.getting-started-hint--warning svg {
+  flex-shrink: 0;
+  color: var(--color-accent-warning);
+}
+
 .getting-started-hint--info {
   border-color: var(--color-accent-primary);
 }
