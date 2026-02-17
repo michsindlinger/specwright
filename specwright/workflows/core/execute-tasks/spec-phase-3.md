@@ -291,7 +291,23 @@ maintaining full context throughout the story.
 
        ## Issues
 
-       [Categorized list of issues found]
+       ### Critical Issues
+
+       [Keine gefunden / Issue-Liste mit Datei, Zeile, Beschreibung, Empfehlung]
+
+       ### Major Issues
+
+       [Keine gefunden / Issue-Liste mit Datei, Zeile, Beschreibung, Empfehlung]
+
+       ### Minor Issues
+
+       [Keine gefunden / Issue-Liste mit Datei, Zeile, Beschreibung, Empfehlung]
+
+       ## Fix Status
+
+       | # | Schweregrad | Issue | Status | Fix-Details |
+       |---|-------------|-------|--------|-------------|
+       | 1 | [Critical/Major/Minor] | [Kurzbeschreibung] | [pending/fixed/skipped/deferred] | [Was wurde gefixt] |
 
        ## Empfehlungen
 
@@ -302,19 +318,172 @@ maintaining full context throughout the story.
        [Summary: Review passed / Review with notes / Review failed]
        ```
 
-    6. VERIFY: No critical issues blocking
-       IF critical issues found:
-         ASK user via AskUserQuestion:
-         "Code Review fand kritische Issues. Wie fortfahren?
-         1. Issues jetzt beheben (Recommended)
-         2. Issues dokumentieren und fortfahren
-         3. Zurück zu Phase 3 (reguläre Stories)"
+    6. EVALUATE: Review Results and Ask User
 
+       COUNT: Total issues found (Critical + Major + Minor)
+
+       IF total issues = 0:
+         LOG: "Code Review passed - keine Issues gefunden"
+         GOTO: step_997_mark_done
+
+       ELSE (issues found):
+         ASK user via AskUserQuestion:
+         "Code Review hat Issues gefunden:
+         - Critical: [N]
+         - Major: [N]
+         - Minor: [N]
+
+         Wie möchtest du fortfahren?
+         1. Issues jetzt beheben (Recommended) - Alle Critical/Major/Minor Issues werden systematisch gefixt
+         2. Issues dokumentieren und fortfahren - Issues bleiben im Report, kein Fix
+         3. Zurück zu Phase 3 (reguläre Stories) - Abbruch, Story-997 bleibt In Progress"
+
+         <fix_branch_option_1>
+           ### Option 1: Issues jetzt beheben
+
+           IF user chooses "Issues jetzt beheben":
+
+             LOG: "Starting Fix-Loop for all issues"
+
+             <fix_loop>
+               ### Fix-Loop: Systematisches Beheben aller Findings
+
+               COLLECT: All issues from review-report.md
+               SORT: By severity (Critical first, then Major, then Minor)
+               SET: TOTAL_ISSUES = count of all issues
+               SET: FIXED_COUNT = 0
+
+               FOR EACH issue in sorted_issues:
+                 SET: CURRENT_ISSUE = issue
+
+                 LOG: "Fixing issue {FIXED_COUNT + 1}/{TOTAL_ISSUES}: [{severity}] {description}"
+
+                 1. READ: The affected file at the specified location
+                    ```bash
+                    # Read the file containing the issue
+                    ```
+
+                 2. UNDERSTAND: The issue and the recommended fix
+
+                 3. IMPLEMENT: The fix
+                    - Apply the recommended change
+                    - Keep the fix minimal and focused
+                    - Do NOT introduce new issues
+
+                 4. VERIFY: The fix resolves the issue
+                    - Check that the specific problem is addressed
+                    - Run linter on the affected file if applicable
+                    ```bash
+                    # Verify fix (e.g., lint check on affected file)
+                    ```
+
+                 5. UPDATE: Fix Status in review-report.md
+                    - Change issue status from "pending" to "fixed"
+                    - Add Fix-Details describing what was changed
+
+                 SET: FIXED_COUNT = FIXED_COUNT + 1
+                 LOG: "Fixed {FIXED_COUNT}/{TOTAL_ISSUES}: [{severity}] {description}"
+
+               END FOR
+
+               LOG: "Fix-Loop complete: {FIXED_COUNT}/{TOTAL_ISSUES} issues fixed"
+             </fix_loop>
+
+             <re_review>
+               ### Re-Review: Delta-Review der gefixten Dateien
+
+               **Purpose:** Verify fixes didn't introduce new issues
+
+               1. COLLECT: All files that were modified during the Fix-Loop
+                  ```bash
+                  git diff --name-only
+                  ```
+
+               2. FOR EACH modified file:
+                  READ: Current file content
+                  ANALYZE: Only the changed sections (Delta-Review)
+                  CHECK:
+                  - Fix is correct and complete
+                  - No new issues introduced
+                  - Code style still conformant
+
+                  IF new issue found:
+                    RECORD: New issue
+                    FIX: Immediately (inline fix)
+                    LOG: "Re-Review: New issue found and fixed in {file}"
+
+               3. RUN: Project-wide checks
+                  ```bash
+                  # Run lint
+                  [LINT_COMMAND]
+
+                  # Run tests
+                  [TEST_COMMAND]
+                  ```
+
+               4. UPDATE: review-report.md
+                  - Update "## Fazit" to: "Review passed (after fixes)"
+                  - Update issue counts to reflect fixes
+                  - Add "## Re-Review" section:
+                    ```markdown
+                    ## Re-Review
+
+                    **Datum:** [DATE]
+                    **Geprüfte Dateien:** [N] (nur geänderte)
+                    **Neue Issues:** [N]
+                    **Ergebnis:** Review bestanden / Weitere Fixes nötig
+                    ```
+
+               5. IF re-review finds NO new issues:
+                  LOG: "Re-Review passed - all fixes verified"
+                  GOTO: step_997_mark_done
+
+               ELSE (new issues in re-review):
+                  LOG: "Re-Review found new issues - fixing inline"
+                  NOTE: Issues were already fixed inline in step 2
+                  GOTO: step_997_mark_done
+             </re_review>
+         </fix_branch_option_1>
+
+         <fix_branch_option_2>
+           ### Option 2: Issues dokumentieren und fortfahren
+
+           IF user chooses "Issues dokumentieren und fortfahren":
+
+             1. UPDATE: review-report.md
+                - Keep all issues as documented
+                - Update Fix Status table: All issues set to "deferred"
+                - Update "## Fazit" to: "Review abgeschlossen - Issues dokumentiert, nicht behoben"
+
+             2. LOG: "Issues documented but not fixed (user decision)"
+                NOTE: "Story-997 completed with documented but unfixed issues"
+
+             GOTO: step_997_mark_done
+         </fix_branch_option_2>
+
+         <fix_branch_option_3>
+           ### Option 3: Zurück zu Phase 3 (Abbruch)
+
+           IF user chooses "Zurück zu Phase 3":
+
+             1. LOG: "Story-997 aborted by user - returning to Phase 3"
+             2. UPDATE: kanban.json
+                - KEEP: story-997 as "In Progress"
+                - SET: resumeContext.currentPhase = "story-complete"
+                - SET: resumeContext.lastAction = "Story-997 Code Review aborted by user"
+                - SET: resumeContext.nextAction = "Resume Code Review"
+
+             STOP: "Code Review abgebrochen. Story-997 bleibt In Progress.
+                    Um fortzufahren: /clear → /execute-tasks"
+         </fix_branch_option_3>
+
+    <step_997_mark_done>
     7. MARK: story-997 as Done
        UPDATE: kanban.json
        COMMIT: "feat: [story-997] Code Review completed"
 
     8. PROCEED: To next story (story-998)
+    </step_997_mark_done>
   </code_review_execution>
 
   GOTO: phase_complete

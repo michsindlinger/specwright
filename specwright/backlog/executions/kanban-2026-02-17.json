@@ -14,10 +14,10 @@
     "currentStoryPhase": null,
     "worktreePath": null,
     "gitBranch": null,
-    "lastAction": "Completed TODO-003",
+    "lastAction": "Completed BUG-004",
     "nextAction": "Execute next item",
-    "progressIndex": 3,
-    "totalItems": 3
+    "progressIndex": 4,
+    "totalItems": 4
   },
   "sourceBacklog": {
     "path": "../backlog-index.json",
@@ -80,22 +80,42 @@
       "filesModified": [
         "ui/frontend/src/components/aos-terminal.ts"
       ]
+    },
+    {
+      "id": "BUG-004",
+      "title": "Story-997 Code Review fixt Findings nicht",
+      "type": "bug",
+      "priority": "high",
+      "effort": 3,
+      "category": "bug",
+      "sourceFile": "items/bug-004-story-997-code-review-fixt-findings-nicht.md",
+      "executionStatus": "done",
+      "timing": {
+        "queuedAt": "2026-02-17T10:05:00.000Z",
+        "startedAt": "2026-02-17T10:01:45.606Z",
+        "completedAt": "2026-02-17T10:04:43.122Z"
+      },
+      "filesModified": [
+        "specwright/workflows/core/execute-tasks/spec-phase-3.md",
+        "specwright/templates/docs/system-story-997-code-review-template.md"
+      ]
     }
   ],
   "boardStatus": {
-    "total": 3,
+    "total": 4,
     "queued": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 3,
+    "done": 4,
     "blocked": 0,
     "skipped": 0
   },
   "executionOrder": [
     "BUG-001",
     "BUG-002",
-    "TODO-003"
+    "TODO-003",
+    "BUG-004"
   ],
   "changeLog": [
     {
@@ -160,6 +180,22 @@
       "timestamp": "2026-02-17T08:12:53.224Z",
       "action": "status_changed",
       "itemId": "TODO-003",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Item completed"
+    },
+    {
+      "timestamp": "2026-02-17T10:01:45.606Z",
+      "action": "status_changed",
+      "itemId": "BUG-004",
+      "from": "queued",
+      "to": "in_progress",
+      "details": "Started execution"
+    },
+    {
+      "timestamp": "2026-02-17T10:04:43.122Z",
+      "action": "status_changed",
+      "itemId": "BUG-004",
       "from": "in_progress",
       "to": "done",
       "details": "Item completed"
