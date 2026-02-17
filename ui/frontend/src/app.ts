@@ -150,6 +150,10 @@ export class AosApp extends LitElement {
   @state()
   private wizardNeedsMigration = false;
 
+  /** True while project validation is pending (prevents flash of wrong state) */
+  @state()
+  private wizardValidationPending = true;
+
   // GSQ-005: Bottom Panel state
   @state()
   private isBottomPanelOpen = false;
@@ -904,6 +908,7 @@ export class AosApp extends LitElement {
    * IW-006: Validate project and trigger wizard for newly added projects.
    */
   private async _validateAndTriggerWizard(path: string): Promise<void> {
+    this.wizardValidationPending = true;
     try {
       const validateResponse = await fetch('/api/project/validate', {
         method: 'POST',
@@ -936,6 +941,8 @@ export class AosApp extends LitElement {
       }
     } catch {
       // Validation failed, skip wizard trigger
+    } finally {
+      this.wizardValidationPending = false;
     }
   }
 
@@ -1164,6 +1171,7 @@ export class AosApp extends LitElement {
    * Used both during initial project selection and after restore.
    */
   private async _validateProjectForWizard(path: string): Promise<void> {
+    this.wizardValidationPending = true;
     try {
       const validateResponse = await fetch('/api/project/validate', {
         method: 'POST',
@@ -1186,15 +1194,22 @@ export class AosApp extends LitElement {
         this.wizardHasProductBrief = hasProductBrief;
         this.wizardNeedsMigration = needsMigration;
 
-        // Show wizard if previously cancelled (wizardNeeded in sessionStorage)
-        if (projectStateService.isWizardNeeded(path)) {
+        const projectNeedsSetup = !hasSpecwright || !hasProductBrief || needsMigration;
+
+        // Show wizard only if previously cancelled AND project still needs setup
+        if (projectStateService.isWizardNeeded(path) && projectNeedsSetup) {
           this.wizardProjectPath = path;
           this.wizardFileCount = data.fileCount ?? 0;
           this.showWizard = true;
+        } else if (!projectNeedsSetup) {
+          // Project is fully set up - clear stale wizard-needed flag
+          projectStateService.clearWizardNeeded(path);
         }
       }
     } catch {
       // Validation failed, keep defaults
+    } finally {
+      this.wizardValidationPending = false;
     }
   }
 
@@ -1585,6 +1600,7 @@ export class AosApp extends LitElement {
           .hasProductBrief=${this.wizardHasProductBrief}
           .hasSpecwright=${this.wizardHasSpecwright}
           .needsMigration=${this.wizardNeedsMigration}
+          .loading=${this.wizardValidationPending}
           @workflow-start-interactive=${this.handleWorkflowStart}
           @start-wizard=${this._handleStartWizardFromView}
         ></aos-getting-started-view>`;

@@ -47,12 +47,14 @@ export class AosTerminalSession extends LitElement {
       flex-direction: column;
       height: 100%;
       overflow: hidden;
+      position: relative;
     }
 
     .session-container {
       display: flex;
       flex-direction: column;
-      height: 100%;
+      position: absolute;
+      inset: 0;
       background: var(--bg-color-secondary, #1e1e1e);
     }
 
@@ -123,8 +125,11 @@ export class AosTerminalSession extends LitElement {
 
     .terminal-wrapper {
       flex: 1;
+      min-height: 0;
       overflow: hidden;
       position: relative;
+      display: flex;
+      flex-direction: column;
     }
 
     .terminal-wrapper.hidden {
@@ -132,8 +137,10 @@ export class AosTerminalSession extends LitElement {
     }
 
     aos-terminal {
-      height: 100%;
-      display: block;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
 
     .error-overlay {

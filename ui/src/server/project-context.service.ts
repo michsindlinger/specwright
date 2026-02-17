@@ -181,13 +181,15 @@ export class ProjectContextService {
   }
 
   /**
-   * Detects whether a product brief exists in the project.
+   * Detects whether a product brief or platform brief exists in the project.
    * Checks under the resolved project dir (specwright/ or agent-os/).
    */
   private detectProductBrief(projectPath: string): boolean {
     const projectDirName = resolveProjectDir(projectPath);
-    const briefPath = join(projectPath, projectDirName, 'product', 'product-brief.md');
-    return existsSync(briefPath);
+    const productDir = join(projectPath, projectDirName, 'product');
+    const productBrief = join(productDir, 'product-brief.md');
+    const platformBrief = join(productDir, 'platform-brief.md');
+    return existsSync(productBrief) || existsSync(platformBrief);
   }
 
   /**

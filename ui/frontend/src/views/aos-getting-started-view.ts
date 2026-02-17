@@ -13,6 +13,7 @@ export class AosGettingStartedView extends LitElement {
   @property({ type: Boolean }) hasProductBrief = false;
   @property({ type: Boolean }) hasSpecwright = true;
   @property({ type: Boolean }) needsMigration = false;
+  @property({ type: Boolean }) loading = false;
 
   private get standardCards(): ActionCard[] {
     return [
@@ -77,6 +78,22 @@ export class AosGettingStartedView extends LitElement {
   }
 
   override render() {
+    if (this.loading) {
+      return html`
+        <div class="getting-started-container">
+          <div class="getting-started-header">
+            <h2 class="getting-started-title">Getting Started</h2>
+            <p class="getting-started-subtitle">Projekt wird geladen...</p>
+          </div>
+          <div class="getting-started-cards">
+            ${[1, 2, 3].map(() => html`
+              <div class="getting-started-card getting-started-card--skeleton"></div>
+            `)}
+          </div>
+        </div>
+      `;
+    }
+
     return html`
       <div class="getting-started-container">
         <div class="getting-started-header">
@@ -88,7 +105,7 @@ export class AosGettingStartedView extends LitElement {
                 ? 'Dieses Projekt verwendet noch die alte Agent OS Struktur. Eine Migration wird empfohlen.'
                 : this.hasProductBrief
                   ? 'Waehle eine Aktion um mit der Entwicklung zu beginnen.'
-                  : 'Dein Projekt hat noch keinen Product Brief. Starte mit der Planung.'}
+                  : 'Dein Projekt hat noch keinen Product/Platform Brief. Starte mit der Planung.'}
           </p>
         </div>
 
@@ -174,9 +191,9 @@ export class AosGettingStartedView extends LitElement {
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
         </div>
         <div class="getting-started-hint__content">
-          <p class="getting-started-hint__title">Product Brief fehlt</p>
+          <p class="getting-started-hint__title">Product/Platform Brief fehlt</p>
           <p class="getting-started-hint__description">
-            Erstelle zuerst einen Product Brief, um die Produktvision und den Scope zu definieren.
+            Erstelle zuerst einen Product Brief oder Platform Brief, um die Produktvision und den Scope zu definieren.
             Danach kannst du Features planen und umsetzen.
           </p>
         </div>

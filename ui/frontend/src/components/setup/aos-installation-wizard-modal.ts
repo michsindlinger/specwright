@@ -241,7 +241,7 @@ export class AosInstallationWizardModal extends LitElement {
       return 'Specwright muss erst installiert werden damit die UI voll nutzbar ist';
     }
     if (!this.hasProductBrief) {
-      return 'Ein Product Brief wird empfohlen um Specwright optimal zu nutzen';
+      return 'Ein Product/Platform Brief wird empfohlen um Specwright optimal zu nutzen';
     }
     return 'Der Setup-Wizard wurde noch nicht abgeschlossen';
   }
@@ -315,14 +315,15 @@ export class AosInstallationWizardModal extends LitElement {
   }
 
   private handleCommandSelect(commandId: string): void {
-    this.startTerminal('planning', `/${commandId}`);
+    this.startTerminal('planning', `/specwright:${commandId}`);
   }
 
   // --- Terminal Integration (IW-003) ---
 
   /**
-   * Start a terminal session for either install.sh or a planning command.
-   * Creates a cloud-terminal session via gateway, then switches to terminal step.
+   * Start a terminal session for either install.sh/migrate or a planning command.
+   * - install/migrate: Creates a shell terminal and sends the command as shell input.
+   * - planning: Creates a Claude Code workflow terminal that executes the slash command.
    */
   private startTerminal(mode: TerminalMode, command: string): void {
     this.terminalMode = mode;
@@ -330,7 +331,6 @@ export class AosInstallationWizardModal extends LitElement {
     this.terminalComplete = false;
     this.terminalError = null;
 
-    // Create a TerminalSession object for aos-terminal-session
     const sessionId = `wizard-${mode}-${Date.now()}`;
     const sessionNames: Record<TerminalMode, string> = {
       migrate: 'Migration',
@@ -343,26 +343,51 @@ export class AosInstallationWizardModal extends LitElement {
       status: 'active',
       createdAt: new Date(),
       projectPath: this.projectPath,
-      isWorkflow: false,
+      isWorkflow: mode === 'planning',
+      ...(mode === 'planning' ? {
+        workflowName: command.replace(/^\//, ''),
+        modelId: 'claude-sonnet-4-5-20250929',
+        providerId: 'anthropic',
+      } : {}),
     };
     this.terminalSessionId = null;
 
     // Switch to terminal step
     this.currentStep = 'terminal';
 
-    // Create a cloud terminal session via gateway
-    gateway.send({
-      type: 'cloud-terminal:create',
-      requestId: sessionId,
-      projectPath: this.projectPath,
-      terminalType: 'shell' as const,
-      timestamp: new Date().toISOString(),
-    });
+    if (mode === 'planning') {
+      // Planning commands use Claude Code workflow terminal
+      const workflowName = command.replace(/^\//, '');
+      gateway.send({
+        type: 'cloud-terminal:create-workflow',
+        requestId: sessionId,
+        projectPath: this.projectPath,
+        workflowMetadata: {
+          workflowCommand: command,
+          workflowName,
+        },
+        modelConfig: {
+          model: 'claude-sonnet-4-5-20250929',
+          provider: 'anthropic',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // Install/migrate commands use a plain shell terminal
+      gateway.send({
+        type: 'cloud-terminal:create',
+        requestId: sessionId,
+        projectPath: this.projectPath,
+        terminalType: 'shell' as const,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 
   /**
    * Handle cloud-terminal:created event from gateway.
-   * Sends the initial command after a brief delay for the shell to be ready.
+   * For shell terminals: sends the initial command after a brief delay.
+   * For workflow terminals: Claude Code handles the command automatically.
    */
   private handleTerminalSessionCreated(message: WebSocketMessage): void {
     if (!this.terminalSession) return;
@@ -372,15 +397,18 @@ export class AosInstallationWizardModal extends LitElement {
     if (sessionId) {
       this.terminalSessionId = sessionId;
 
-      // Send the command after a brief delay for shell readiness
-      setTimeout(() => {
-        gateway.send({
-          type: 'cloud-terminal:input',
-          sessionId,
-          data: this.terminalCommand + '\n',
-          timestamp: new Date().toISOString(),
-        });
-      }, TERMINAL_READY_DELAY);
+      // Only send manual input for shell terminals (install/migrate).
+      // Workflow terminals (planning) auto-execute via Claude Code CLI.
+      if (this.terminalMode !== 'planning') {
+        setTimeout(() => {
+          gateway.send({
+            type: 'cloud-terminal:input',
+            sessionId,
+            data: this.terminalCommand + '\n',
+            timestamp: new Date().toISOString(),
+          });
+        }, TERMINAL_READY_DELAY);
+      }
     }
   }
 

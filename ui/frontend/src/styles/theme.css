@@ -7501,9 +7501,9 @@ aos-collapsible-text {
   background-color: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  max-width: 560px;
+  max-width: 900px;
   width: 90%;
-  max-height: 85vh;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
@@ -7906,6 +7906,91 @@ aos-collapsible-text {
   outline-offset: 2px;
 }
 
+/* Cancel Confirmation Overlay */
+
+.installation-wizard__cancel-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: inherit;
+}
+
+.installation-wizard__cancel-confirm {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.installation-wizard__cancel-icon {
+  color: var(--color-accent-warning);
+  margin-bottom: var(--spacing-md);
+}
+
+.installation-wizard__cancel-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.installation-wizard__cancel-message {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+  line-height: var(--line-height-relaxed);
+}
+
+.installation-wizard__cancel-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-lg);
+}
+
+.installation-wizard__cancel-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+}
+
+.installation-wizard__cancel-stay,
+.installation-wizard__cancel-leave {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+}
+
+.installation-wizard__cancel-stay {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.installation-wizard__cancel-stay:hover {
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+
+.installation-wizard__cancel-leave {
+  background-color: var(--color-accent-error);
+  color: white;
+}
+
+.installation-wizard__cancel-leave:hover {
+  filter: brightness(1.1);
+}
+
 /* Terminal step (IW-003) */
 
 .installation-wizard__content--terminal {
@@ -7956,11 +8041,13 @@ aos-collapsible-text {
   position: relative;
   overflow: hidden;
   background-color: var(--color-bg-primary);
+  display: flex;
+  flex-direction: column;
 }
 
 .installation-wizard__terminal-container aos-terminal-session {
-  height: 100%;
-  display: block;
+  flex: 1;
+  min-height: 0;
 }
 
 .installation-wizard__terminal-actions {
@@ -10770,8 +10857,8 @@ aos-model-selector .model-option.selected .model-name {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   width: 90%;
-  max-width: 560px;
-  max-height: 85vh;
+  max-width: 900px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
@@ -10892,6 +10979,13 @@ aos-model-selector .model-option.selected .model-name {
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-lg);
+}
+
+.installation-wizard__content--terminal {
+  padding: 0;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Install Step */
@@ -11327,6 +11421,26 @@ aos-model-selector .model-option.selected .model-name {
   background-color: var(--color-bg-secondary);
   border-color: var(--color-border);
   box-shadow: none;
+}
+
+.getting-started-card--skeleton {
+  min-height: 160px;
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-secondary) 25%,
+    var(--color-bg-elevated) 50%,
+    var(--color-bg-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: default;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .getting-started-card__icon {

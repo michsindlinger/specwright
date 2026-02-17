@@ -519,23 +519,24 @@ export class AosTerminal extends LitElement {
   override render() {
     return html`
       <style>
-        .terminal-wrapper {
+        .aos-terminal-outer {
           height: calc(100vh - 250px); /* Full viewport minus header/tabs/banner */
           min-height: 400px;
           display: flex;
           flex-direction: column;
         }
-        .terminal-wrapper.cloud-mode {
-          height: 100%;
+        .aos-terminal-outer.cloud-mode {
+          flex: 1;
           min-height: 0;
+          height: auto;
         }
-        .terminal-container {
+        .aos-terminal-inner {
           flex: 1;
           overflow: hidden;
         }
       </style>
-      <div class="terminal-wrapper ${this.cloudMode ? 'cloud-mode' : ''}">
-        <div id="terminal-container" class="terminal-container"></div>
+      <div class="aos-terminal-outer ${this.cloudMode ? 'cloud-mode' : ''}">
+        <div id="terminal-container" class="aos-terminal-inner"></div>
       </div>
     `;
   }
