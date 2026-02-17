@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { spawnSync } from 'child_process';
 
 export interface Model {
   id: string;
@@ -36,7 +37,7 @@ const DEFAULT_CONFIG: ModelConfig = {
     {
       id: 'anthropic',
       name: 'Anthropic',
-      cliCommand: 'claude-ant',
+      cliCommand: 'claude',
       cliFlags: ['--model', '{modelId}'],
       models: [
         { id: 'opus', name: 'Opus 4.5', description: 'Most capable model for complex tasks' },
@@ -396,7 +397,26 @@ export function getCliCommandForModel(modelId: string): { command: string; args:
   // Fallback to anthropic defaults if model not found
   console.log(`[ModelConfig] Model '${modelId}' not found in any provider, using anthropic defaults`);
   return {
-    command: 'claude-ant',
+    command: 'claude',
     args: ['--model', modelId]
   };
+}
+
+export function checkCliAvailability(command: string): boolean {
+  try {
+    const result = spawnSync('which', [command], {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+export function checkDefaultCliAvailability(): { available: boolean; command: string } {
+  const config = loadModelConfig();
+  const defaultProvider = config.providers.find(p => p.id === config.defaultProvider);
+  const command = defaultProvider?.cliCommand ?? 'claude';
+  return { available: checkCliAvailability(command), command };
 }

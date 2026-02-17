@@ -1,5 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { createServer, Server } from 'http';
+import { existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { WebSocketHandler } from './websocket.js';
 import specsRouter from './routes/specs.js';
 import projectRouter from './routes/project.routes.js';
@@ -8,6 +11,7 @@ import quickTodoRouter from './routes/quick-todo.routes.js';
 import attachmentFileRouter from './routes/attachment-file.routes.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 interface HealthResponse {
   status: 'ok';
@@ -40,6 +44,15 @@ app.get('/health', (_req: Request, res: Response) => {
   };
   res.json(response);
 });
+
+// Serve frontend in production mode (built files from frontend/dist)
+const frontendDist = join(__dirname, '../../frontend/dist');
+if (existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (_req: Request, res: Response) => {
+    res.sendFile(join(frontendDist, 'index.html'));
+  });
+}
 
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

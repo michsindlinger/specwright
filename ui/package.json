@@ -4,11 +4,12 @@
   "description": "Web UI for Specwright - Claude Code integration",
   "type": "module",
   "scripts": {
+    "start": "npm run build:ui && tsx src/server/index.ts",
     "start:backend": "tsx src/server/index.ts",
     "build:backend": "tsc -p tsconfig.json",
+    "build:ui": "npm run build --prefix frontend",
     "dev:backend": "nodemon",
     "dev:ui": "npm run dev --prefix frontend",
-    "build:ui": "npm run build --prefix frontend",
     "lint": "eslint src && npm run lint --prefix frontend",
     "lint:backend": "eslint src",
     "lint:ui": "npm run lint --prefix frontend",

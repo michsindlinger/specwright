@@ -403,4 +403,6 @@ export const CLOUD_TERMINAL_ERROR_CODES = {
   SPAWN_FAILED: 'SPAWN_FAILED',
   /** Invalid message format */
   INVALID_MESSAGE: 'INVALID_MESSAGE',
+  /** CLI command not found in PATH */
+  CLI_NOT_FOUND: 'CLI_NOT_FOUND',
 } as const;

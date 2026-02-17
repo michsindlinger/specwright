@@ -50,7 +50,6 @@ FLAG_PROJECT=false
 FLAG_CLAUDE_CODE=false
 FLAG_ALL=false
 FLAG_UPDATE=false
-FLAG_WITH_UI=false
 FLAG_OVERWRITE=false
 FLAG_OVERWRITE_WORKFLOWS=false
 FLAG_OVERWRITE_STANDARDS=false
@@ -71,7 +70,6 @@ while [[ $# -gt 0 ]]; do
         --claude-code)         FLAG_CLAUDE_CODE=true; EXPLICIT_MODE=true; shift ;;
         --all)                 FLAG_ALL=true; shift ;;
         --update)              FLAG_UPDATE=true; shift ;;
-        --with-ui)             FLAG_WITH_UI=true; shift ;;
         --overwrite)           FLAG_OVERWRITE=true; shift ;;
         --overwrite-workflows) FLAG_OVERWRITE_WORKFLOWS=true; shift ;;
         --overwrite-standards) FLAG_OVERWRITE_STANDARDS=true; shift ;;
@@ -108,7 +106,6 @@ Modes (auto-detected if not specified):
   --update              Update existing installation
 
 Options:
-  --with-ui             Install Web UI dependencies (framework repo only)
   --overwrite           Overwrite all existing files
   --overwrite-workflows Overwrite only workflow files
   --overwrite-standards Overwrite only standards files
@@ -188,7 +185,7 @@ auto_detect() {
         grep -q '"kanban"' .mcp.json 2>/dev/null && DETECT_MCP_INSTALLED=true || true
     fi
 
-    # Framework repo?
+    # Framework repo? (used for local MCP file copy)
     if [[ -d "ui" && -f "specwright/scripts/mcp/kanban-mcp-server.ts" ]]; then
         DETECT_FRAMEWORK_REPO=true
     fi
@@ -210,8 +207,6 @@ INSTALL_PROJECT=false
 INSTALL_MCP=false
 INSTALL_CLAUDE_CODE=false
 INSTALL_MARKET_VALIDATION_PROJECT=false
-INSTALL_UI=false
-
 determine_install_plan() {
     if [[ "$FLAG_ALL" == true || "$EXPLICIT_MODE" == false ]]; then
         # Install everything that makes sense
@@ -224,10 +219,6 @@ determine_install_plan() {
         if [[ "$FLAG_NO_MCP" != true && "$DETECT_NODE_AVAILABLE" == true ]]; then
             INSTALL_MCP=true
         fi
-
-        if [[ "$FLAG_WITH_UI" == true && "$DETECT_FRAMEWORK_REPO" == true ]]; then
-            INSTALL_UI=true
-        fi
     else
         # Explicit mode selection
         [[ "$FLAG_GLOBAL" == true ]] && INSTALL_GLOBAL=true && INSTALL_MARKET_VALIDATION_GLOBAL=true || true
@@ -238,11 +229,6 @@ determine_install_plan() {
         if [[ "$INSTALL_PROJECT" == true && "$FLAG_NO_MCP" != true && "$DETECT_NODE_AVAILABLE" == true ]]; then
             INSTALL_MCP=true
         fi
-    fi
-
-    # --with-ui only in framework repo
-    if [[ "$FLAG_WITH_UI" == true && "$DETECT_FRAMEWORK_REPO" == true ]]; then
-        INSTALL_UI=true
     fi
 
     # --update implies overwrite for workflows
@@ -293,7 +279,6 @@ display_plan() {
     print_detection "Project directory:" "$DETECT_PROJECT_INSTALLED"
     print_detection "Claude Code:" "$DETECT_CLAUDE_CODE_INSTALLED"
     print_detection "MCP server:" "$DETECT_MCP_INSTALLED"
-    print_detection "Framework repo:" "$DETECT_FRAMEWORK_REPO"
 
     if [[ "$DETECT_NODE_AVAILABLE" == true ]]; then
         printf "  %-30s ${GREEN}%s${RESET}\n" "Node.js:" "$DETECT_NODE_VERSION"
@@ -309,7 +294,6 @@ display_plan() {
     print_plan_item "$INSTALL_MCP" "MCP server" "kanban server"
     print_plan_item "$INSTALL_CLAUDE_CODE" "Claude Code commands & agents" "34 commands, 13 agents"
     print_plan_item "$INSTALL_MARKET_VALIDATION_PROJECT" "Market validation (project)" "project directories"
-    print_plan_item "$INSTALL_UI" "Web UI dependencies" "npm install in ui/"
 
     if [[ "$FLAG_OVERWRITE" == true ]]; then
         echo ""
@@ -437,7 +421,6 @@ count_steps() {
     [[ "$INSTALL_MCP" == true ]] && total_steps=$((total_steps + 1)) || true
     [[ "$INSTALL_CLAUDE_CODE" == true ]] && total_steps=$((total_steps + 1)) || true
     [[ "$INSTALL_MARKET_VALIDATION_PROJECT" == true ]] && total_steps=$((total_steps + 1)) || true
-    [[ "$INSTALL_UI" == true ]] && total_steps=$((total_steps + 1)) || true
 }
 
 step() {
@@ -1078,35 +1061,6 @@ install_claude_code() {
     download_file "$REPO_URL/.claude/skills/review-implementation-plan/SKILL.md" ".claude/skills/review-implementation-plan/SKILL.md"
     substep_done
 
-    # UI Skills (optional)
-    if [[ "$FLAG_WITH_UI" == true && "$DETECT_FRAMEWORK_REPO" == true ]]; then
-        substep "UI skills" "16"
-        if [[ "$FLAG_DRY_RUN" != true ]]; then
-            mkdir -p .claude/skills/architect-refinement
-            mkdir -p .claude/skills/backend-express
-            mkdir -p .claude/skills/frontend-lit
-            mkdir -p .claude/skills/po-requirements
-            mkdir -p .claude/skills/quality-gates
-            mkdir -p .claude/skills/domain-specwright-ui
-        fi
-
-        download_file "$REPO_URL/.claude/skills/architect-refinement/SKILL.md" ".claude/skills/architect-refinement/SKILL.md"
-
-        local be_files=(SKILL.md api-design.md dos-and-donts.md services.md testing.md websocket.md)
-        for f in "${be_files[@]}"; do
-            download_file "$REPO_URL/.claude/skills/backend-express/$f" ".claude/skills/backend-express/$f"
-        done
-
-        local fe_files=(SKILL.md api-integration.md components.md dos-and-donts.md forms-validation.md state-management.md)
-        for f in "${fe_files[@]}"; do
-            download_file "$REPO_URL/.claude/skills/frontend-lit/$f" ".claude/skills/frontend-lit/$f"
-        done
-
-        download_file "$REPO_URL/.claude/skills/po-requirements/SKILL.md" ".claude/skills/po-requirements/SKILL.md"
-        download_file "$REPO_URL/.claude/skills/quality-gates/SKILL.md" ".claude/skills/quality-gates/SKILL.md"
-        download_file "$REPO_URL/.claude/skills/domain-specwright-ui/SKILL.md" ".claude/skills/domain-specwright-ui/SKILL.md"
-        substep_done
-    fi
 }
 
 # =============================================================================
@@ -1143,58 +1097,6 @@ MVEOF
     elif [[ "$FLAG_DRY_RUN" == true ]]; then
         FILES_INSTALLED=$((FILES_INSTALLED + 1))
     fi
-    substep_done
-}
-
-# =============================================================================
-# [7/N] Web UI Dependencies
-# =============================================================================
-
-install_ui() {
-    step "Installing Web UI dependencies..."
-
-    if [[ "$FLAG_DRY_RUN" == true ]]; then
-        substep "Backend dependencies" "npm"
-        substep_done
-        substep "Frontend dependencies" "npm"
-        substep_done
-        return
-    fi
-
-    # Check Node.js version
-    if [[ "$DETECT_NODE_AVAILABLE" != true ]]; then
-        echo -e "      ${YELLOW}Skipped: Node.js not found${RESET}"
-        return
-    fi
-
-    local node_major
-    node_major=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-    if [[ "$node_major" -lt 20 ]]; then
-        echo -e "      ${YELLOW}Skipped: Node.js 20+ required (found $(node -v))${RESET}"
-        return
-    fi
-
-    local UI_DIR
-    if [[ "$DETECT_FRAMEWORK_REPO" == true ]]; then
-        UI_DIR="ui"
-    else
-        echo -e "      ${YELLOW}Skipped: Not a framework repo${RESET}"
-        return
-    fi
-
-    substep "Backend dependencies" "npm"
-    (cd "$UI_DIR" && npm install --silent 2>/dev/null) || {
-        echo -e " ${YELLOW}[warning]${RESET}"
-    }
-    # Fix node-pty permissions on macOS
-    local spawn_helper="$UI_DIR/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper"
-    [[ -f "$spawn_helper" ]] && chmod +x "$spawn_helper" || true
-    substep_done
-
-    substep "Frontend dependencies" "npm"
-    (cd "$UI_DIR/frontend" && npm install --silent 2>/dev/null) || {
-        echo -e " ${YELLOW}[warning]${RESET}"
-    }
     substep_done
 }
 
@@ -1265,8 +1167,7 @@ main() {
     local anything=false
     if [[ "$INSTALL_GLOBAL" == true || "$INSTALL_MARKET_VALIDATION_GLOBAL" == true ||
           "$INSTALL_PROJECT" == true || "$INSTALL_MCP" == true ||
-          "$INSTALL_CLAUDE_CODE" == true || "$INSTALL_MARKET_VALIDATION_PROJECT" == true ||
-          "$INSTALL_UI" == true ]]; then
+          "$INSTALL_CLAUDE_CODE" == true || "$INSTALL_MARKET_VALIDATION_PROJECT" == true ]]; then
         anything=true
     fi
 
@@ -1286,7 +1187,6 @@ main() {
     [[ "$INSTALL_MCP" == true ]] && install_mcp || true
     [[ "$INSTALL_CLAUDE_CODE" == true ]] && install_claude_code || true
     [[ "$INSTALL_MARKET_VALIDATION_PROJECT" == true ]] && install_market_validation_project || true
-    [[ "$INSTALL_UI" == true ]] && install_ui || true
 
     write_version_marker
     print_summary

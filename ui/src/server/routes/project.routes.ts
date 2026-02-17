@@ -31,6 +31,7 @@ interface ValidateResponse {
   hasProductBrief?: boolean;
   needsMigration?: boolean;
   hasIncompleteInstallation?: boolean;
+  hasClaudeCli?: boolean;
   fileCount?: number;
 }
 
@@ -130,6 +131,7 @@ router.post('/validate', (req: Request, res: Response) => {
     hasProductBrief: result.hasProductBrief,
     needsMigration: result.needsMigration,
     hasIncompleteInstallation: result.hasIncompleteInstallation,
+    hasClaudeCli: result.hasClaudeCli,
     fileCount: result.fileCount
   } as ValidateResponse);
 });

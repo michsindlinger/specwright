@@ -22,14 +22,16 @@ Specwright turns your AI coding assistant into a structured development partner:
 
 ## Quick Start
 
-### One-Command Installation
+### Per-Project Installation
+
+Run this in each project where you want to use Specwright:
 
 ```bash
 cd your-project/
 curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash
 ```
 
-The unified installer auto-detects your environment and installs everything needed:
+The installer auto-detects your environment and installs everything needed:
 - Global templates & standards (`~/.specwright/`)
 - Project workflows, standards & configuration
 - Claude Code commands (34) & agents (13)
@@ -58,21 +60,47 @@ bash install.sh --dry-run
 bash install.sh --global           # Only global templates & standards
 bash install.sh --project          # Only project-level setup
 bash install.sh --claude-code      # Only commands & agents
-
-# With Web UI (framework repo only, requires Node.js 20+)
-bash install.sh --with-ui
 ```
 
-### Framework + Web UI
+## Optional: Web UI
+
+The Web UI is **project-independent** - you install it once and then open and manage all your projects from within the UI. It is separate from the per-project installation above.
+
+### Install the Web UI (one-time)
 
 ```bash
-# Install everything including UI dependencies
-curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash -s -- --with-ui
-
-# Start the UI
-cd ui && npm run dev:backend    # Backend on http://localhost:3001
-cd ui/frontend && npm run dev   # Frontend on http://localhost:5173
+curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-ui.sh | bash
 ```
+
+The installer will:
+1. Ask you where to install (default: `~/specwright-ui`)
+2. Clone the repository
+3. Install all dependencies
+4. Build the frontend for production use
+
+### Start the UI
+
+```bash
+cd ~/specwright-ui/ui && npm start
+```
+
+Then open **http://localhost:3001** in your browser.
+
+To use a different port:
+
+```bash
+cd ~/specwright-ui/ui && PORT=8080 npm start
+```
+
+### How it works
+
+The Web UI provides three main views:
+
+- **Dashboard** - Kanban board showing specs and stories across status columns
+- **Chat** - Interactive chat interface for Claude Code communication
+- **Workflows** - Execute and monitor Specwright workflows with live progress
+
+You add your project directories within the UI and switch between them freely. Each project needs the per-project Specwright installation (`install.sh`), but the UI itself is shared.
 
 ## Core Commands
 
@@ -130,7 +158,7 @@ After each story, the system:
 
 ## Architecture
 
-### Target Project Structure (when installed in your project)
+### Project Structure (per-project installation)
 
 ```
 your-project/
@@ -150,16 +178,6 @@ your-project/
     └── team/                        # Team config (DoD, DoR)
 ```
 
-### Web UI
-
-The optional Web UI provides three main views:
-
-- **Dashboard** - Kanban board showing specs and stories across status columns
-- **Chat** - Interactive chat interface for Claude Code communication
-- **Workflows** - Execute and monitor Specwright workflows with live progress
-
-The UI connects to your project via the Claude Code SDK and supports switching between multiple projects.
-
 ### Hybrid Lookup System
 
 Templates and standards use a two-level lookup:
@@ -170,7 +188,7 @@ This allows global defaults with per-project customization.
 
 ## Optional: Market Validation
 
-Market validation is included in the unified installer. Just use the commands:
+Market validation is included in the project installer. Just use the commands:
 
 ```bash
 /validate-market "Your product idea"
@@ -189,12 +207,12 @@ bash install.sh --no-mcp
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
 - `curl` for installation
-- `node` 20+ (required for Web UI, optional for MCP server)
+- `node` 20+ (optional - required for Web UI and MCP server)
 
 ## Update
 
 ```bash
-# Update everything (overwrites workflows and standards)
+# Update project installation (overwrites workflows and standards)
 curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash -s -- --update
 
 # Update only workflows
@@ -205,6 +223,9 @@ bash install.sh --update --overwrite-standards
 
 # Overwrite all files (full reinstall)
 bash install.sh --overwrite
+
+# Update the Web UI
+cd ~/specwright-ui/ui && git pull && npm install && npm run build:ui
 ```
 
 ## Contributing

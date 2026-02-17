@@ -1,6 +1,7 @@
 import { existsSync, statSync, readdirSync } from 'fs';
 import { basename, resolve, normalize, join } from 'path';
 import { resolveProjectDir, resolveCommandDir } from './utils/project-dirs.js';
+import { checkDefaultCliAvailability } from './model-config.js';
 
 export interface ProjectContext {
   path: string;
@@ -22,6 +23,7 @@ export interface ValidateResult {
   hasProductBrief?: boolean;
   needsMigration?: boolean;
   hasIncompleteInstallation?: boolean;
+  hasClaudeCli?: boolean;
   fileCount?: number;
 }
 
@@ -142,6 +144,9 @@ export class ProjectContextService {
     // Count top-level entries (excluding hidden dirs like .git, node_modules)
     const fileCount = this.countTopLevelEntries(normalizedPath);
 
+    // Check if the default CLI command is available in PATH
+    const { available: hasClaudeCli } = checkDefaultCliAvailability();
+
     return {
       valid: true,
       name: basename(normalizedPath),
@@ -149,6 +154,7 @@ export class ProjectContextService {
       hasProductBrief,
       needsMigration,
       hasIncompleteInstallation,
+      hasClaudeCli,
       fileCount
     };
   }

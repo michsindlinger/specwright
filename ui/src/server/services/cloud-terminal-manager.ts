@@ -28,7 +28,7 @@ import {
   CLOUD_TERMINAL_ERROR_CODES,
 } from '../../shared/types/cloud-terminal.protocol.js';
 import { TerminalManager } from './terminal-manager.js';
-import { getCliCommandForModel } from '../model-config.js';
+import { getCliCommandForModel, checkCliAvailability } from '../model-config.js';
 
 /**
  * Extended cloud terminal session with internal state
@@ -156,6 +156,13 @@ export class CloudTerminalManager extends EventEmitter {
           CLAUDE_MODEL: modelConfig.model,
           CLAUDE_PROVIDER: modelConfig.provider || 'anthropic',
         };
+      }
+
+      // Pre-flight check: verify CLI command exists in PATH
+      if (!checkCliAvailability(shellCommand)) {
+        const error = new Error(`CLI '${shellCommand}' nicht im PATH gefunden. Bitte installieren: npm install -g @anthropic-ai/claude-code`);
+        (error as Error & { code: string }).code = CLOUD_TERMINAL_ERROR_CODES.CLI_NOT_FOUND;
+        throw error;
       }
 
       // Spawn PTY process
