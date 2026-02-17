@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-02-17-wizard-to-sidebar-migration",
     "name": "Wizard-to-Sidebar Migration",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-02-17T00:00:00Z"
   },
-
   "resumeContext": {
-    "currentPhase": "1-kanban-setup",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "3-execute-story",
+    "nextPhase": "story-complete",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/wizard-to-sidebar-migration",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Kanban board created",
-    "nextAction": "Run /execute-tasks 2026-02-17-wizard-to-sidebar-migration",
+    "lastAction": "Phase 1 and 2 already completed (git strategy set, WSM-001 in_progress)",
+    "nextAction": "Execute WSM-001",
     "progressIndex": 0,
-    "totalStories": 6
+    "totalStories": 6,
+    "gitStrategy": "branch"
   },
-
   "execution": {
     "status": "not_started",
     "startedAt": null,
     "completedAt": null,
     "model": null
   },
-
   "stories": [
     {
       "id": "WSM-001",
@@ -43,12 +40,13 @@
         "complexity": "XS"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-001-getting-started-kachel-logik.md",
       "timing": {
         "createdAt": "2026-02-17T00:00:00Z",
-        "updatedAt": "2026-02-17T00:00:00Z"
+        "updatedAt": "2026-02-17T00:00:00Z",
+        "startedAt": "2026-02-17T14:54:19.593Z"
       },
       "implementation": {
         "filesModified": [],
@@ -58,7 +56,8 @@
       "verification": {
         "dorChecked": true,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress"
     },
     {
       "id": "WSM-002",
@@ -70,7 +69,9 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["WSM-001"],
+      "dependencies": [
+        "WSM-001"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-setup-terminal-integration.md",
@@ -98,7 +99,9 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["WSM-002"],
+      "dependencies": [
+        "WSM-002"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-wizard-entfernung-state-cleanup.md",
@@ -126,7 +129,11 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["WSM-001", "WSM-002", "WSM-003"],
+      "dependencies": [
+        "WSM-001",
+        "WSM-002",
+        "WSM-003"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
@@ -154,7 +161,9 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["WSM-997"],
+      "dependencies": [
+        "WSM-997"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
@@ -182,7 +191,9 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["WSM-998"],
+      "dependencies": [
+        "WSM-998"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
@@ -201,17 +212,15 @@
       }
     }
   ],
-
   "boardStatus": {
     "total": 6,
-    "ready": 6,
-    "inProgress": 0,
+    "ready": 5,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
     "done": 0,
     "blocked": 0
   },
-
   "statistics": {
     "totalEffort": 8,
     "completedEffort": 0,
@@ -233,43 +242,69 @@
       "low": 0
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "phase": 1,
         "name": "Getting Started View",
-        "stories": ["WSM-001"],
+        "stories": [
+          "WSM-001"
+        ],
         "description": "Kachel-Logik anpassen: keine Kacheln bei Install/Migrate, neues Event"
       },
       {
         "phase": 2,
         "name": "Setup Terminal Integration",
-        "stories": ["WSM-002"],
+        "stories": [
+          "WSM-002"
+        ],
         "description": "TerminalSession erweitern, _openSetupTerminalTab(), Auto-Detect"
       },
       {
         "phase": 3,
         "name": "Wizard Cleanup",
-        "stories": ["WSM-003"],
+        "stories": [
+          "WSM-003"
+        ],
         "description": "Wizard-Modal entfernen, State umbenennen, Validation-Flow anpassen"
       },
       {
         "phase": 4,
         "name": "System Stories",
-        "stories": ["WSM-997", "WSM-998", "WSM-999"],
+        "stories": [
+          "WSM-997",
+          "WSM-998",
+          "WSM-999"
+        ],
         "description": "Code Review, Integration Validation, PR Finalization"
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-02-17T00:00:00Z",
       "action": "kanban_created",
       "storyId": null,
       "details": "Kanban initialized with 6 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-17T14:54:19.593Z",
+      "action": "status_changed",
+      "storyId": "WSM-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T14:54:19.734Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/wizard-to-sidebar-migration"
+    },
+    {
+      "timestamp": "2026-02-17T14:54:47.642Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
     }
   ]
 }

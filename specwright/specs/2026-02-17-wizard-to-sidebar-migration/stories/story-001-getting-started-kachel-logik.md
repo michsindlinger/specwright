@@ -83,17 +83,17 @@ Scenario: Klick auf Installation/Migration feuert Setup-Event
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: ui/frontend/src/views/aos-getting-started-view.ts
+- [x] FILE_EXISTS: ui/frontend/src/views/aos-getting-started-view.ts
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: aos-getting-started-view.ts enthaelt "start-setup-terminal"
-- [ ] NOT_CONTAINS: aos-getting-started-view.ts enthaelt NICHT "start-wizard"
-- [ ] NOT_CONTAINS: aos-getting-started-view.ts enthaelt NICHT "getting-started-cards--disabled"
+- [x] CONTAINS: aos-getting-started-view.ts enthaelt "start-setup-terminal"
+- [x] NOT_CONTAINS: aos-getting-started-view.ts enthaelt NICHT "start-wizard"
+- [x] NOT_CONTAINS: aos-getting-started-view.ts enthaelt NICHT "getting-started-cards--disabled"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: cd ui/frontend && npm run build exits with code 0
+- [x] BUILD_PASS: cd ui/frontend && npm run build exits with code 0
 
 ---
 
@@ -132,18 +132,18 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Security/Performance Anforderungen erfuellt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Security/Performance Anforderungen erfuellt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Kein separater Unit-Test noetig (reine View-Aenderung)
-- [ ] Code Review durchgefuehrt und genehmigt
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Kein separater Unit-Test noetig (reine View-Aenderung)
+- [x] Code Review durchgefuehrt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 

@@ -120,9 +120,10 @@ export class AosGettingStartedView extends LitElement {
     `;
   }
 
-  private handleStartWizard(): void {
+  private handleStartSetup(type: 'install' | 'migrate'): void {
     this.dispatchEvent(
-      new CustomEvent('start-wizard', {
+      new CustomEvent('start-setup-terminal', {
+        detail: { type },
         bubbles: true,
         composed: true,
       })
@@ -144,18 +145,12 @@ export class AosGettingStartedView extends LitElement {
           <p class="getting-started-hint__title">Migration empfohlen</p>
           <p class="getting-started-hint__description">
             Dieses Projekt verwendet noch <code>agent-os/</code> statt <code>specwright/</code>.
-            Starte den Migrations-Wizard, um auf die aktuelle Verzeichnisstruktur zu wechseln.
+            Starte die Migration, um auf die aktuelle Verzeichnisstruktur zu wechseln.
           </p>
-          <button class="getting-started-hint__action" @click=${this.handleStartWizard}>
+          <button class="getting-started-hint__action" @click=${() => this.handleStartSetup('migrate')}>
             Migration starten
           </button>
         </div>
-      </div>
-
-      <div class="getting-started-cards">
-        ${this.hasProductBrief
-          ? this.standardCards.map(card => this.renderCard(card, false))
-          : this.planningCards.map(card => this.renderCard(card, false))}
       </div>
     `;
   }
@@ -169,17 +164,13 @@ export class AosGettingStartedView extends LitElement {
         <div class="getting-started-hint__content">
           <p class="getting-started-hint__title">Specwright nicht installiert</p>
           <p class="getting-started-hint__description">
-            Dieses Projekt hat noch kein Specwright-Setup. Starte den Installations-Wizard,
+            Dieses Projekt hat noch kein Specwright-Setup. Starte die Installation,
             um Specwright einzurichten.
           </p>
-          <button class="getting-started-hint__action" @click=${this.handleStartWizard}>
+          <button class="getting-started-hint__action" @click=${() => this.handleStartSetup('install')}>
             Installation starten
           </button>
         </div>
-      </div>
-
-      <div class="getting-started-cards getting-started-cards--disabled">
-        ${this.standardCards.map(card => this.renderCard(card, true))}
       </div>
     `;
   }
