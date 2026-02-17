@@ -1235,8 +1235,8 @@ export class AosApp extends LitElement {
       return;
     }
 
-    // Build workflow context: "command argument" or just "command"
-    const workflowContext = argument ? `${command} ${argument}` : command;
+    // Build workflow context: only the argument (e.g., spec ID, story ID)
+    const workflowContext = argument?.trim() || undefined;
 
     // Parse model to get provider and model ID
     const modelConfig = this._parseModelConfig(model);
@@ -1244,8 +1244,8 @@ export class AosApp extends LitElement {
     // Generate unique session ID
     const sessionId = `workflow-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-    // Create session title: "workflowName: workflowContext"
-    const tabTitle = `${command}: ${workflowContext}`;
+    // Create session title: "workflowName: argument" or just "workflowName"
+    const tabTitle = workflowContext ? `${command}: ${workflowContext}` : command;
 
     // Create the workflow session in app state (single source of truth)
     const newSession: TerminalSession = {

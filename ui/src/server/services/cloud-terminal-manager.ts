@@ -242,10 +242,13 @@ export class CloudTerminalManager extends EventEmitter {
     if (workflowMetadata.workflowContext) {
       fullCommand += ` ${workflowMetadata.workflowContext}`;
     }
-    fullCommand += '\n';
+    fullCommand += '\r';
 
     let sent = false;
     let outputBuffer = '';
+
+    // Strip ANSI escape codes for prompt detection (PTY output contains color/cursor codes)
+    const stripAnsi = (str: string): string => str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
 
     // Claude CLI REPL ready indicators:
     // - Line ending with "> " (interactive prompt)
@@ -274,8 +277,9 @@ export class CloudTerminalManager extends EventEmitter {
 
       outputBuffer += data;
 
-      // Check if CLI prompt is ready
-      if (readyPattern.test(outputBuffer)) {
+      // Strip ANSI escape codes before checking for prompt pattern
+      const cleanBuffer = stripAnsi(outputBuffer);
+      if (readyPattern.test(cleanBuffer)) {
         console.log(`[CloudTerminalManager] CLI readiness detected for session ${sessionId}`);
         sendCommand();
       }

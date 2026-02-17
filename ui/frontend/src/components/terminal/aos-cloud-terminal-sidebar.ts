@@ -754,8 +754,8 @@ export class AosCloudTerminalSidebar extends LitElement {
     // Generate unique session ID
     const sessionId = `workflow-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-    // Create session title: "workflowName: workflowContext"
-    const tabTitle = `${workflowName}: ${workflowContext}`;
+    // Create session title: "workflowName: argument" or just "workflowName"
+    const tabTitle = workflowContext ? `${workflowName}: ${workflowContext}` : workflowName;
 
     // Create new workflow session
     const newSession: TerminalSession = {

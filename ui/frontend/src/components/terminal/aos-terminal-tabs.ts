@@ -224,9 +224,9 @@ export class AosTerminalTabs extends LitElement {
           (session) => {
             const isWorkflow = session.isWorkflow ?? false;
             const needsInput = session.needsInput ?? false;
-            // Tab title: "workflowName: workflowContext" for workflows, otherwise session.name
+            // Tab title: "workflowName: argument" for workflows with argument, otherwise workflowName or session.name
             const tabTitle = isWorkflow && session.workflowName
-              ? `${session.workflowName}: ${session.workflowContext ?? ''}`
+              ? (session.workflowContext ? `${session.workflowName}: ${session.workflowContext}` : session.workflowName)
               : session.name;
 
             return html`
