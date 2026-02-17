@@ -14,10 +14,10 @@
     "currentStoryPhase": null,
     "worktreePath": null,
     "gitBranch": null,
-    "lastAction": "Completed BUG-001",
+    "lastAction": "Completed BUG-002",
     "nextAction": "Execute next item",
-    "progressIndex": 1,
-    "totalItems": 1
+    "progressIndex": 2,
+    "totalItems": 2
   },
   "sourceBacklog": {
     "path": "../backlog-index.json",
@@ -42,20 +42,41 @@
         "ui/frontend/src/components/aos-terminal.ts",
         "ui/frontend/src/components/terminal/aos-terminal-session.ts"
       ]
+    },
+    {
+      "id": "BUG-002",
+      "title": "Workflow Terminal Tabs: Auto-Mode oeffnet Terminal & Command startet nicht",
+      "type": "bug",
+      "priority": "high",
+      "effort": 2,
+      "category": "bug",
+      "sourceFile": "items/bug-002-workflow-terminal-tabs-auto-mode-oeffnet-terminal-.md",
+      "executionStatus": "done",
+      "timing": {
+        "queuedAt": "2026-02-17T06:30:00.000Z",
+        "startedAt": "2026-02-17T06:29:57.301Z",
+        "completedAt": "2026-02-17T06:33:15.751Z"
+      },
+      "filesModified": [
+        "ui/frontend/src/components/kanban-board.ts",
+        "ui/src/server/services/cloud-terminal-manager.ts",
+        "ui/src/shared/types/cloud-terminal.protocol.ts"
+      ]
     }
   ],
   "boardStatus": {
-    "total": 1,
+    "total": 2,
     "queued": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
+    "done": 2,
     "blocked": 0,
     "skipped": 0
   },
   "executionOrder": [
-    "BUG-001"
+    "BUG-001",
+    "BUG-002"
   ],
   "changeLog": [
     {
@@ -76,6 +97,28 @@
       "timestamp": "2026-02-17T06:10:59.591Z",
       "action": "status_changed",
       "itemId": "BUG-001",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Item completed"
+    },
+    {
+      "timestamp": "2026-02-17T06:30:00.000Z",
+      "action": "kanban_synced",
+      "itemId": null,
+      "details": "Synced 1 new items: BUG-002"
+    },
+    {
+      "timestamp": "2026-02-17T06:29:57.301Z",
+      "action": "status_changed",
+      "itemId": "BUG-002",
+      "from": "queued",
+      "to": "in_progress",
+      "details": "Started execution"
+    },
+    {
+      "timestamp": "2026-02-17T06:33:15.751Z",
+      "action": "status_changed",
+      "itemId": "BUG-002",
       "from": "in_progress",
       "to": "done",
       "details": "Item completed"

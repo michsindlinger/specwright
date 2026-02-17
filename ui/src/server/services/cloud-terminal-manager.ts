@@ -217,29 +217,80 @@ export class CloudTerminalManager extends EventEmitter {
       `[CloudTerminalManager] Created workflow session ${session.sessionId} for command: ${workflowMetadata.workflowCommand}`
     );
 
-    // Schedule the workflow command to be sent after initialization
-    // Following the pattern from DevTeam setup (websocket.ts)
-    setTimeout(() => {
-      // Build the full command with context if provided
-      let fullCommand = workflowMetadata.workflowCommand;
-      if (workflowMetadata.workflowContext) {
-        fullCommand += ` ${workflowMetadata.workflowContext}`;
-      }
-      fullCommand += '\n';
-
-      const sent = this.sendInput(session.sessionId, fullCommand);
-      if (sent) {
-        console.log(`[CloudTerminalManager] Sent workflow command: ${fullCommand.trim()}`);
-      } else {
-        console.error(`[CloudTerminalManager] Failed to send workflow command to session ${session.sessionId}`);
-      }
-    }, CLOUD_TERMINAL_CONFIG.WORKFLOW_COMMAND_DELAY_MS);
+    // BUG-002-B: Wait for CLI readiness before sending command
+    // Instead of a fixed delay, listen for PTY output that indicates the REPL is ready
+    this.waitForReadyAndSendCommand(session.sessionId, workflowMetadata);
 
     // Return session with workflow metadata attached
     return {
       ...session,
       workflowMetadata,
     };
+  }
+
+  /**
+   * BUG-002-B: Wait for CLI readiness by monitoring PTY output, then send command.
+   * Listens for the Claude CLI REPL prompt pattern in terminal output.
+   * Falls back to max timeout (10s) if prompt is never detected.
+   */
+  private waitForReadyAndSendCommand(
+    sessionId: CloudTerminalSessionId,
+    workflowMetadata: CloudTerminalWorkflowMetadata
+  ): void {
+    // Build the full command
+    let fullCommand = workflowMetadata.workflowCommand;
+    if (workflowMetadata.workflowContext) {
+      fullCommand += ` ${workflowMetadata.workflowContext}`;
+    }
+    fullCommand += '\n';
+
+    let sent = false;
+    let outputBuffer = '';
+
+    // Claude CLI REPL ready indicators:
+    // - Line ending with "> " (interactive prompt)
+    // - ">" at start of line (REPL prompt)
+    // - The prompt appears after initial startup messages
+    const readyPattern = /(?:^|\n)\s*>\s*$/;
+
+    const sendCommand = (): void => {
+      if (sent) return;
+      sent = true;
+
+      // Clean up listener and timeout
+      this.removeListener('session.data', dataListener);
+      clearTimeout(fallbackTimeout);
+
+      const result = this.sendInput(sessionId, fullCommand);
+      if (result) {
+        console.log(`[CloudTerminalManager] Sent workflow command after readiness: ${fullCommand.trim()}`);
+      } else {
+        console.error(`[CloudTerminalManager] Failed to send workflow command to session ${sessionId}`);
+      }
+    };
+
+    const dataListener = (dataSessionId: CloudTerminalSessionId, data: string): void => {
+      if (dataSessionId !== sessionId || sent) return;
+
+      outputBuffer += data;
+
+      // Check if CLI prompt is ready
+      if (readyPattern.test(outputBuffer)) {
+        console.log(`[CloudTerminalManager] CLI readiness detected for session ${sessionId}`);
+        sendCommand();
+      }
+    };
+
+    // Listen for PTY output
+    this.on('session.data', dataListener);
+
+    // Fallback timeout: send after max wait even if prompt not detected
+    const fallbackTimeout = setTimeout(() => {
+      if (!sent) {
+        console.warn(`[CloudTerminalManager] CLI readiness timeout for session ${sessionId}, sending command anyway`);
+        sendCommand();
+      }
+    }, CLOUD_TERMINAL_CONFIG.WORKFLOW_COMMAND_READY_TIMEOUT_MS);
   }
 
   /**

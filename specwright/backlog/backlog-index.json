@@ -17,10 +17,11 @@
       "type": "bug",
       "title": "Workflow Terminal Tabs: Auto-Mode oeffnet Terminal & Command startet nicht",
       "priority": "high",
-      "status": "in_progress",
+      "status": "done",
       "file": "items/bug-002-workflow-terminal-tabs-auto-mode-oeffnet-terminal-.md",
       "createdAt": "2026-02-17T06:27:43.156Z",
-      "updatedAt": "2026-02-17T06:28:43.839Z"
+      "updatedAt": "2026-02-17T06:28:43.839Z",
+      "completedAt": "2026-02-17T06:33:15.751Z"
     }
   ],
   "statistics": {
@@ -58,6 +59,14 @@
       "timestamp": "2026-02-17T06:10:59.591Z",
       "action": "status_changed",
       "itemId": "BUG-001",
+      "from": "open",
+      "to": "done",
+      "details": "Completed in kanban-2026-02-17"
+    },
+    {
+      "timestamp": "2026-02-17T06:33:15.751Z",
+      "action": "status_changed",
+      "itemId": "BUG-002",
       "from": "open",
       "to": "done",
       "details": "Completed in kanban-2026-02-17"

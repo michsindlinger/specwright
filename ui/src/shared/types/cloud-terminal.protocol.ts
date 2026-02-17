@@ -380,8 +380,11 @@ export const CLOUD_TERMINAL_CONFIG = {
   DEFAULT_COLS: 120,
   DEFAULT_ROWS: 40,
 
-  /** Delay before sending workflow command after session creation (ms) */
+  /** @deprecated Use WORKFLOW_COMMAND_READY_TIMEOUT_MS instead. Kept for backward compatibility. */
   WORKFLOW_COMMAND_DELAY_MS: 1500,
+
+  /** Max timeout for CLI readiness detection before sending workflow command (ms) */
+  WORKFLOW_COMMAND_READY_TIMEOUT_MS: 10_000,
 } as const;
 
 /**
