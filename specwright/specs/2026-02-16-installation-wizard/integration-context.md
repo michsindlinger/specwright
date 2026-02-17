@@ -7,6 +7,7 @@
 | IW-001 | Specwright-Erkennung: validateProject() returns hasSpecwright, hasProductBrief, fileCount | project-context.service.ts, project.routes.ts |
 | IW-002 | Installation Wizard Modal: Multi-step wizard with install + planning command selection | aos-installation-wizard-modal.ts |
 | IW-003 | Terminal Integration: Embedded aos-terminal-session in wizard, cloud-terminal:create via gateway | aos-installation-wizard-modal.ts, theme.css |
+| IW-004 | Wizard Abbruch-Handling: Cancel confirmation overlay, ESC handling, terminal kill on cancel, wizard-state persistence | aos-installation-wizard-modal.ts, project-state.service.ts |
 
 ## New Exports & APIs
 
@@ -30,6 +31,11 @@
 - Public methods: `installSucceeded()`, `installFailed(error: string)` for external control of install step
 - Exported types: `WizardStep`, `PlanningCommand`, `CommandSelectedDetail`
 
+**Wizard State (in projectStateService):**
+- `ui/frontend/src/services/project-state.service.ts` -> `projectStateService.isWizardNeeded(path)` - Returns boolean
+- `ui/frontend/src/services/project-state.service.ts` -> `projectStateService.setWizardNeeded(path)` - Marks wizard needed
+- `ui/frontend/src/services/project-state.service.ts` -> `projectStateService.clearWizardNeeded(path)` - Clears wizard needed
+
 ## Integration Notes
 
 - `validateProject()` now returns `valid: true` even for projects without specwright/ (sets `hasSpecwright: false`)
@@ -44,8 +50,14 @@
   - On terminal close with exit 0: install mode auto-advances to selection, planning mode fires command-selected event
   - On error: shows error message with retry button
   - New CSS classes: `installation-wizard__terminal-*` and `installation-wizard__content--terminal`
-- IW-004 (Abbruch-Handling) should listen for `wizard-cancel` and `modal-close` events
+- IW-004 Abbruch-Handling: Cancel button and ESC now show a confirmation overlay with context-dependent message
+  - `projectStateService.isWizardNeeded(path)` checks if wizard should reappear for a project
+  - `projectStateService.setWizardNeeded(path)` called on modal open
+  - `projectStateService.clearWizardNeeded(path)` called only on successful wizard completion (planning command done)
+  - Cancel during terminal step sends `cloud-terminal:kill` to terminate the running session
+  - `wizard-cancel` event fired after user confirms cancellation
 - IW-006 (Router/Navigation) needs to wire wizard to app.ts, pass properties from validate response
+- IW-006 should use `projectStateService.isWizardNeeded(path)` to decide whether to re-show wizard for a project
 
 ## File Change Summary
 
@@ -56,3 +68,4 @@
 | ui/tests/unit/project-context.service.test.ts | Modified | IW-001 |
 | ui/frontend/src/components/setup/aos-installation-wizard-modal.ts | Created | IW-002 |
 | ui/frontend/src/styles/theme.css | Modified | IW-002, IW-003 |
+| ui/frontend/src/services/project-state.service.ts | Modified | IW-004 |

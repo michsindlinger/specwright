@@ -74,12 +74,12 @@ Scenario: ESC-Taste schliesst den Wizard mit Abbruch-Meldung
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: aos-installation-wizard-modal.ts enthaelt "wizard-cancel"
-- [ ] CONTAINS: aos-installation-wizard-modal.ts enthaelt "sessionStorage" oder "wizardNeeded"
+- [x] CONTAINS: aos-installation-wizard-modal.ts enthaelt "wizard-cancel"
+- [x] CONTAINS: aos-installation-wizard-modal.ts enthaelt "sessionStorage" oder "wizardNeeded"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -118,16 +118,16 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt
-- [ ] Code Review durchgefuehrt und genehmigt
+- [x] Alle Akzeptanzkriterien erfuellt
+- [x] Code Review durchgefuehrt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 
