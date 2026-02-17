@@ -99,8 +99,9 @@ export class GitHandler {
    */
   public async handlePull(client: WebSocketClient, message: WebSocketMessage, projectPath: string): Promise<void> {
     const rebase = message.rebase === true;
+    const strategy = message.strategy as 'merge' | 'rebase' | 'ff-only' | undefined;
     try {
-      const data = await this.service.pull(projectPath, rebase);
+      const data = await this.service.pull(projectPath, rebase, strategy);
 
       const response: WebSocketMessage = {
         type: 'git:pull:response',

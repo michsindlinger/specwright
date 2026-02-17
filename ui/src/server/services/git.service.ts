@@ -273,13 +273,23 @@ export class GitService {
   /**
    * Pull from remote
    * @param projectPath - Project directory
-   * @param rebase - If true, uses --rebase flag
+   * @param rebase - If true, uses --rebase flag (legacy, use strategy instead)
+   * @param strategy - Pull strategy: 'merge' | 'rebase' | 'ff-only' (takes precedence over rebase)
    */
-  async pull(projectPath: string, rebase = false): Promise<GitPullResult> {
+  async pull(projectPath: string, rebase = false, strategy?: 'merge' | 'rebase' | 'ff-only'): Promise<GitPullResult> {
     await this.ensureGitRepo(projectPath, 'pull');
 
     try {
-      const args = rebase ? ['pull', '--rebase'] : ['pull'];
+      let args: string[];
+      if (strategy === 'rebase') {
+        args = ['pull', '--rebase'];
+      } else if (strategy === 'ff-only') {
+        args = ['pull', '--ff-only'];
+      } else if (strategy === 'merge') {
+        args = ['pull', '--no-rebase'];
+      } else {
+        args = rebase ? ['pull', '--rebase'] : ['pull'];
+      }
       const { stdout, stderr } = await this.execGit(args, projectPath);
 
       // Check for "Already up to date"
@@ -313,6 +323,15 @@ export class GitService {
         throw new GitError(
           'Merge conflicts detected. Conflicts must be resolved outside the application.',
           GIT_ERROR_CODES.MERGE_CONFLICT,
+          'pull',
+        );
+      }
+
+      // Check for divergent branches
+      if (combined.includes('divergent branches') || combined.includes('Need to specify how to reconcile')) {
+        throw new GitError(
+          'Divergent branches detected. Please choose a pull strategy.',
+          GIT_ERROR_CODES.DIVERGENT_BRANCHES,
           'pull',
         );
       }
@@ -388,6 +407,15 @@ export class GitService {
         throw new GitError(
           'Network error during push',
           GIT_ERROR_CODES.NETWORK_ERROR,
+          'push',
+        );
+      }
+
+      // Push rejected - remote has new commits
+      if (stderr.includes('rejected') || stderr.includes('fetch first') || stderr.includes('non-fast-forward')) {
+        throw new GitError(
+          'Push rejected. Remote contains commits not present locally. Pull first.',
+          GIT_ERROR_CODES.PUSH_REJECTED,
           'push',
         );
       }

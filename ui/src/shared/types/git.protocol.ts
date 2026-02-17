@@ -231,6 +231,8 @@ export interface GitPullMessage {
   type: 'git:pull';
   /** Whether to use --rebase instead of merge */
   rebase?: boolean;
+  /** Pull strategy: merge, rebase, or ff-only (takes precedence over rebase flag) */
+  strategy?: 'merge' | 'rebase' | 'ff-only';
   timestamp: string;
 }
 
@@ -441,6 +443,10 @@ export const GIT_ERROR_CODES = {
   OPERATION_FAILED: 'OPERATION_FAILED',
   /** No project selected */
   NO_PROJECT: 'NO_PROJECT',
+  /** Divergent branches - no pull strategy configured */
+  DIVERGENT_BRANCHES: 'DIVERGENT_BRANCHES',
+  /** Push rejected - remote has commits that local doesn't have */
+  PUSH_REJECTED: 'PUSH_REJECTED',
 } as const;
 
 // ============================================================================

@@ -542,12 +542,12 @@ export class Gateway {
 
   /**
    * Pull from remote
-   * @param rebase - If true, uses --rebase instead of merge
+   * @param strategy - Pull strategy: 'merge' | 'rebase' | 'ff-only'. If omitted, uses default git behavior.
    */
-  public requestGitPull(rebase = false): void {
+  public requestGitPull(strategy?: 'merge' | 'rebase' | 'ff-only'): void {
     this.send({
       type: 'git:pull',
-      rebase,
+      strategy,
       timestamp: new Date().toISOString()
     });
   }

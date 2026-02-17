@@ -19,6 +19,7 @@ import './components/file-editor/aos-file-editor-panel.js';
 import type { AosFileEditorPanel } from './components/file-editor/aos-file-editor-panel.js';
 import './components/git/aos-git-status-bar.js';
 import './components/git/aos-git-commit-dialog.js';
+import './components/git/aos-git-pull-strategy-dialog.js';
 import './components/queue/aos-global-queue-panel.js';
 import './components/queue/aos-queue-section.js';
 import './components/queue/aos-specs-section.js';
@@ -120,6 +121,12 @@ export class AosApp extends LitElement {
   private commitAndPushPhase: 'idle' | 'committing' | 'pushing' = 'idle';
 
   @state()
+  private showPullStrategyDialog = false;
+
+  @state()
+  private pullStrategyRetryPush = false;
+
+  @state()
   private showQuickTodoModal = false;
 
   // GSQ-005: Bottom Panel state
@@ -196,6 +203,28 @@ export class AosApp extends LitElement {
       return;
     }
 
+    // Push rejected: open pull strategy dialog with auto-retry push
+    if (code === 'PUSH_REJECTED') {
+      this.isGitOperationRunning = false;
+      if (this.pendingAutoPush) {
+        this.pendingAutoPush = false;
+        this.commitAndPushPhase = 'idle';
+        this.showCommitDialog = false;
+        this.commitError = '';
+      }
+      this.pullStrategyRetryPush = true;
+      this.showPullStrategyDialog = true;
+      return;
+    }
+
+    // Divergent branches: open pull strategy dialog without auto-retry push
+    if (code === 'DIVERGENT_BRANCHES') {
+      this.isGitOperationRunning = false;
+      this.pullStrategyRetryPush = false;
+      this.showPullStrategyDialog = true;
+      return;
+    }
+
     if (operation === 'push' && this.pendingAutoPush) {
       this.pendingAutoPush = false;
       this.commitAndPushPhase = 'idle';
@@ -245,6 +274,15 @@ export class AosApp extends LitElement {
     this.isGitOperationRunning = false;
     const data = msg.data as { success: boolean; summary: string; commitsReceived: number; hasConflicts: boolean } | undefined;
     if (data) {
+      // Auto-push after successful pull when pull was triggered from push rejection
+      if (this.pullStrategyRetryPush) {
+        this.pullStrategyRetryPush = false;
+        this.showToast('Pull erfolgreich, starte Push...', 'info');
+        this.isGitOperationRunning = true;
+        gateway.requestGitPush();
+        return;
+      }
+
       if (data.commitsReceived === 0) {
         this.showToast('Bereits aktuell', 'info');
       } else {
@@ -1091,10 +1129,10 @@ export class AosApp extends LitElement {
     gateway.requestGitPrInfo();
   }
 
-  private _handlePullGit(e?: CustomEvent<{ rebase?: boolean }>): void {
-    const rebase = e?.detail?.rebase === true;
+  private _handlePullGit(e?: CustomEvent<{ rebase?: boolean; strategy?: 'merge' | 'rebase' | 'ff-only' }>): void {
+    const strategy = e?.detail?.strategy;
     this.isGitOperationRunning = true;
-    gateway.requestGitPull(rebase);
+    gateway.requestGitPull(strategy);
   }
 
   private _handlePushGit(): void {
@@ -1148,6 +1186,18 @@ export class AosApp extends LitElement {
 
   private _handleDeleteUntracked(e: CustomEvent<{ file: string }>): void {
     gateway.sendGitDeleteUntracked(e.detail.file);
+  }
+
+  private _handlePullStrategySelect(e: CustomEvent<{ strategy: 'merge' | 'rebase' | 'ff-only' }>): void {
+    const { strategy } = e.detail;
+    this.showPullStrategyDialog = false;
+    this.isGitOperationRunning = true;
+    gateway.requestGitPull(strategy);
+  }
+
+  private _handlePullStrategyCancel(): void {
+    this.showPullStrategyDialog = false;
+    this.pullStrategyRetryPush = false;
   }
 
   // --- GSQ-007: Queue event handlers (from queue-section and specs-section) ---
@@ -1337,6 +1387,10 @@ export class AosApp extends LitElement {
         return 'Kein Projekt ausgewaehlt.';
       case 'TIMEOUT':
         return 'Git-Operation abgelaufen. Bitte erneut versuchen.';
+      case 'DIVERGENT_BRANCHES':
+        return 'Branches sind divergiert. Bitte Pull-Strategie waehlen.';
+      case 'PUSH_REJECTED':
+        return 'Push abgelehnt. Remote enthaelt neue Commits.';
       default:
         return `Git ${operation || 'Fehler'}: ${rawMessage}`;
     }
@@ -1555,6 +1609,12 @@ export class AosApp extends LitElement {
         @delete-untracked=${this._handleDeleteUntracked}
         @dialog-close=${this._handleCommitDialogClose}
       ></aos-git-commit-dialog>
+      <aos-git-pull-strategy-dialog
+        .open=${this.showPullStrategyDialog}
+        .retryPush=${this.pullStrategyRetryPush}
+        @pull-strategy-select=${this._handlePullStrategySelect}
+        @pull-strategy-cancel=${this._handlePullStrategyCancel}
+      ></aos-git-pull-strategy-dialog>
     `;
   }
 
