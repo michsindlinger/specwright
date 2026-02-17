@@ -1,0 +1,275 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+
+  "spec": {
+    "id": "2026-02-17-wizard-to-sidebar-migration",
+    "name": "Wizard-to-Sidebar Migration",
+    "prefix": "WSM",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-02-17T00:00:00Z"
+  },
+
+  "resumeContext": {
+    "currentPhase": "1-kanban-setup",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Kanban board created",
+    "nextAction": "Run /execute-tasks 2026-02-17-wizard-to-sidebar-migration",
+    "progressIndex": 0,
+    "totalStories": 6
+  },
+
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+
+  "stories": [
+    {
+      "id": "WSM-001",
+      "title": "Getting Started Kachel-Logik",
+      "slug": "getting-started-kachel-logik",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "XS"
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-getting-started-kachel-logik.md",
+      "timing": {
+        "createdAt": "2026-02-17T00:00:00Z",
+        "updatedAt": "2026-02-17T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WSM-002",
+      "title": "Setup-Terminal in Sidebar",
+      "slug": "setup-terminal-integration",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": ["WSM-001"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-setup-terminal-integration.md",
+      "timing": {
+        "createdAt": "2026-02-17T00:00:00Z",
+        "updatedAt": "2026-02-17T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WSM-003",
+      "title": "Wizard Entfernung & State Cleanup",
+      "slug": "wizard-entfernung-state-cleanup",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "S"
+      },
+      "dependencies": ["WSM-002"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-wizard-entfernung-state-cleanup.md",
+      "timing": {
+        "createdAt": "2026-02-17T00:00:00Z",
+        "updatedAt": "2026-02-17T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WSM-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": ["WSM-001", "WSM-002", "WSM-003"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-02-17T00:00:00Z",
+        "updatedAt": "2026-02-17T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WSM-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": ["WSM-997"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-02-17T00:00:00Z",
+        "updatedAt": "2026-02-17T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "WSM-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": ["WSM-998"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-02-17T00:00:00Z",
+        "updatedAt": "2026-02-17T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    }
+  ],
+
+  "boardStatus": {
+    "total": 6,
+    "ready": 6,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 0
+  },
+
+  "statistics": {
+    "totalEffort": 8,
+    "completedEffort": 0,
+    "remainingEffort": 8,
+    "progressPercent": 0,
+    "byType": {
+      "frontend": 5,
+      "backend": 0,
+      "devops": 0,
+      "test": 0,
+      "docs": 0,
+      "integration": 0,
+      "system": 3
+    },
+    "byPriority": {
+      "critical": 0,
+      "high": 8,
+      "medium": 0,
+      "low": 0
+    }
+  },
+
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Getting Started View",
+        "stories": ["WSM-001"],
+        "description": "Kachel-Logik anpassen: keine Kacheln bei Install/Migrate, neues Event"
+      },
+      {
+        "phase": 2,
+        "name": "Setup Terminal Integration",
+        "stories": ["WSM-002"],
+        "description": "TerminalSession erweitern, _openSetupTerminalTab(), Auto-Detect"
+      },
+      {
+        "phase": 3,
+        "name": "Wizard Cleanup",
+        "stories": ["WSM-003"],
+        "description": "Wizard-Modal entfernen, State umbenennen, Validation-Flow anpassen"
+      },
+      {
+        "phase": 4,
+        "name": "System Stories",
+        "stories": ["WSM-997", "WSM-998", "WSM-999"],
+        "description": "Code Review, Integration Validation, PR Finalization"
+      }
+    ]
+  },
+
+  "changeLog": [
+    {
+      "timestamp": "2026-02-17T00:00:00Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 6 stories from /create-spec"
+    }
+  ]
+}
