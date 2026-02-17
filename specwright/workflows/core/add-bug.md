@@ -1705,6 +1705,51 @@ Validate that the bug fix complies with size guidelines for single-session execu
 
 </step>
 
+<step number="8" name="auto_git_commit">
+
+### Step 8: Auto Git Commit
+
+Automatically commit all bug files so the working tree is clean before execution.
+
+<mandatory_actions>
+  1. DELEGATE to git-workflow via Task tool (model="haiku"):
+
+     PROMPT:
+     """
+     Create a git commit for the newly created bug files.
+
+     1. Stage all new/modified files:
+        ```bash
+        git add specwright/backlog/
+        ```
+
+     2. Create commit:
+        ```bash
+        git commit -m "bug: add [BUG_TITLE]"
+        ```
+
+        Where [BUG_TITLE] is the short bug title (e.g., "login-nach-reset-fehlerhaft").
+
+     3. Do NOT push to remote.
+     """
+
+  2. VERIFY: Commit was successful (exit code 0)
+
+  3. IF commit fails:
+     WARN user: "Auto-Commit fehlgeschlagen. Bitte manuell committen."
+     SHOW: git status output
+     CONTINUE: Do not block workflow completion
+</mandatory_actions>
+
+<instructions>
+  ACTION: Automatically commit bug files after creation
+  FORMAT: bug: add [bug-title]
+  PUSH: Never push automatically
+  FAIL: Warn but do not block on commit failure
+</instructions>
+
+</step>
+
 </process_flow>
 
 ## Final Checklist
@@ -1730,6 +1775,7 @@ Validate that the bug fix complies with size guidelines for single-session execu
   - [ ] **backlog.json updated with new item**
   - [ ] **statistics recalculated**
   - [ ] **changeLog entry added**
+  - [ ] **Auto Git Commit erstellt (Step 8)** - Clean working tree
   - [ ] Ready for /execute-tasks backlog
 </verify>
 

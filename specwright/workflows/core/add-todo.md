@@ -592,6 +592,51 @@ Validate that the task complies with size guidelines for single-session executio
 
 </step>
 
+<step number="7" name="auto_git_commit">
+
+### Step 7: Auto Git Commit
+
+Automatically commit all todo files so the working tree is clean before execution.
+
+<mandatory_actions>
+  1. DELEGATE to git-workflow via Task tool (model="haiku"):
+
+     PROMPT:
+     """
+     Create a git commit for the newly created todo files.
+
+     1. Stage all new/modified files:
+        ```bash
+        git add specwright/backlog/
+        ```
+
+     2. Create commit:
+        ```bash
+        git commit -m "todo: add [TODO_TITLE]"
+        ```
+
+        Where [TODO_TITLE] is the short todo title (e.g., "loading-state-modal").
+
+     3. Do NOT push to remote.
+     """
+
+  2. VERIFY: Commit was successful (exit code 0)
+
+  3. IF commit fails:
+     WARN user: "Auto-Commit fehlgeschlagen. Bitte manuell committen."
+     SHOW: git status output
+     CONTINUE: Do not block workflow completion
+</mandatory_actions>
+
+<instructions>
+  ACTION: Automatically commit todo files after creation
+  FORMAT: todo: add [todo-title]
+  PUSH: Never push automatically
+  FAIL: Warn but do not block on commit failure
+</instructions>
+
+</step>
+
 </process_flow>
 
 ## Final Checklist
@@ -608,6 +653,7 @@ Validate that the task complies with size guidelines for single-session executio
   - [ ] **backlog.json updated with new item**
   - [ ] **statistics recalculated**
   - [ ] **changeLog entry added**
+  - [ ] **Auto Git Commit erstellt (Step 7)** - Clean working tree
   - [ ] Ready for /execute-tasks backlog
 </verify>
 

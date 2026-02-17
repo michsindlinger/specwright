@@ -370,6 +370,52 @@ Main agent does technical refinement guided by architect-refinement skill.
 
 </step>
 
+<step number="8" name="auto_git_commit">
+
+### Step 8: Auto Git Commit
+
+Automatically commit all story files so the working tree is clean before execution.
+
+<mandatory_actions>
+  1. DELEGATE to git-workflow via Task tool (model="haiku"):
+
+     PROMPT:
+     """
+     Create a git commit for the newly added story files.
+
+     1. Stage all new/modified files:
+        ```bash
+        git add specwright/specs/[SELECTED_SPEC]/
+        ```
+
+     2. Create commit:
+        ```bash
+        git commit -m "story: add [STORY_ID] to [SPEC_NAME]"
+        ```
+
+        Where [STORY_ID] is the story ID (e.g., "PROF-004") and
+        [SPEC_NAME] is the spec folder name (e.g., "2026-02-17-user-profiles").
+
+     3. Do NOT push to remote.
+     """
+
+  2. VERIFY: Commit was successful (exit code 0)
+
+  3. IF commit fails:
+     WARN user: "Auto-Commit fehlgeschlagen. Bitte manuell committen."
+     SHOW: git status output
+     CONTINUE: Do not block workflow completion
+</mandatory_actions>
+
+<instructions>
+  ACTION: Automatically commit story files after creation
+  FORMAT: story: add [story-id] to [spec-name]
+  PUSH: Never push automatically
+  FAIL: Warn but do not block on commit failure
+</instructions>
+
+</step>
+
 </process_flow>
 
 ## Final Checklist
@@ -386,6 +432,7 @@ Main agent does technical refinement guided by architect-refinement skill.
   - [ ] **kanban.json updated with new story object** (v2.0)
   - [ ] **boardStatus and statistics recalculated** (v2.0)
   - [ ] **changeLog entry added** (v2.0)
+  - [ ] **Auto Git Commit erstellt (Step 8)** - Clean working tree
   - [ ] Ready for /execute-tasks
 </verify>
 

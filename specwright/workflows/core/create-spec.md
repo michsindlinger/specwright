@@ -1942,6 +1942,51 @@ Present completed specification to user.
 
 </step>
 
+<step number="5" name="auto_git_commit">
+
+### Step 5: Auto Git Commit
+
+Automatically commit all spec files so the working tree is clean before execution.
+
+<mandatory_actions>
+  1. DELEGATE to git-workflow via Task tool (model="haiku"):
+
+     PROMPT:
+     """
+     Create a git commit for the newly created spec files.
+
+     1. Stage all new files:
+        ```bash
+        git add specwright/specs/[SPEC_FOLDER_NAME]/
+        ```
+
+     2. Create commit:
+        ```bash
+        git commit -m "spec: create [SPEC_NAME]"
+        ```
+
+        Where [SPEC_NAME] is the human-readable spec name (e.g., "auto-git-commit-after-commands").
+
+     3. Do NOT push to remote.
+     """
+
+  2. VERIFY: Commit was successful (exit code 0)
+
+  3. IF commit fails:
+     WARN user: "Auto-Commit fehlgeschlagen. Bitte manuell committen."
+     SHOW: git status output
+     CONTINUE: Do not block workflow completion
+</mandatory_actions>
+
+<instructions>
+  ACTION: Automatically commit spec files after creation
+  FORMAT: spec: create [spec-name]
+  PUSH: Never push automatically
+  FAIL: Warn but do not block on commit failure
+</instructions>
+
+</step>
+
 </process_flow>
 
 ## Final Checklist
@@ -1968,5 +2013,6 @@ Present completed specification to user.
   - [ ] **Story size validation passed (Step 3.5)**
   - [ ] **effort-estimation.md created (OPTIONAL - Step 3.6)** (v2.7)
   - [ ] **System Stories created (story-997, story-998, story-999)** (v3.0)
+  - [ ] **Auto Git Commit erstellt (Step 5)** - Clean working tree
   - [ ] Ready for /execute-tasks
 </verify>
