@@ -14,13 +14,13 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/installation-wizard",
-    "currentStory": "IW-997",
-    "currentStoryPhase": "implementing",
-    "lastAction": "Started IW-997",
-    "nextAction": "Implement Code Review",
-    "progressIndex": 10,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed IW-005",
+    "nextAction": "Execute next story: IW-998",
+    "progressIndex": 19,
     "totalStories": 9,
-    "gitStrategy": "branch"
+    "gitStrategy": "current-branch"
   },
   "execution": {
     "status": "executing",
@@ -47,21 +47,20 @@
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
         "startedAt": "2026-02-17T10:37:13.263Z",
-        "completedAt": "2026-02-17T11:18:16.642Z"
+        "completedAt": "2026-02-17T11:40:32.733Z"
       },
       "implementation": {
         "filesModified": [
           "ui/src/server/project-context.service.ts",
           "ui/src/server/routes/project.routes.ts",
-          "ui/tests/unit/project-context.service.test.ts",
-          "specwright/specs/2026-02-16-installation-wizard/stories/story-001-specwright-erkennung.md"
+          "ui/tests/unit/project-context.service.test.ts"
         ],
         "testsAdded": [],
         "commits": [
           {
             "hash": "73891e9",
             "message": "feat: IW-001 Specwright-Erkennung beim Projekt-Hinzufuegen",
-            "timestamp": "2026-02-17T12:17:00Z"
+            "timestamp": "2026-02-17T00:00:00Z"
           }
         ]
       },
@@ -91,21 +90,18 @@
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
         "startedAt": "2026-02-17T11:19:02.050Z",
-        "completedAt": "2026-02-17T11:26:33.834Z"
+        "completedAt": "2026-02-17T11:40:36.690Z"
       },
       "implementation": {
         "filesModified": [
-          "ui/frontend/src/components/setup/aos-installation-wizard-modal.ts",
-          "ui/frontend/src/styles/theme.css",
-          "specwright/specs/2026-02-16-installation-wizard/stories/story-002-installation-wizard-modal.md",
-          "specwright/specs/2026-02-16-installation-wizard/integration-context.md"
+          "ui/frontend/src/components/setup/aos-installation-wizard-modal.ts"
         ],
         "testsAdded": [],
         "commits": [
           {
             "hash": "eeb3fa1",
             "message": "feat: IW-002 Installation Wizard Modal",
-            "timestamp": "2026-02-17T12:23:52+01:00"
+            "timestamp": "2026-02-17T00:00:00Z"
           }
         ]
       },
@@ -135,21 +131,19 @@
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
         "startedAt": "2026-02-17T11:24:28.279Z",
-        "completedAt": "2026-02-17T11:30:33.972Z"
+        "completedAt": "2026-02-17T11:40:40.823Z"
       },
       "implementation": {
         "filesModified": [
           "ui/frontend/src/components/setup/aos-installation-wizard-modal.ts",
-          "ui/frontend/src/styles/theme.css",
-          "specwright/specs/2026-02-16-installation-wizard/integration-context.md",
-          "specwright/specs/2026-02-16-installation-wizard/stories/story-003-terminal-integration.md"
+          "ui/src/server/websocket.ts"
         ],
         "testsAdded": [],
         "commits": [
           {
             "hash": "4dafe8c",
             "message": "feat: IW-003 Terminal-Integration im Wizard",
-            "timestamp": "2026-02-17T12:50:00Z"
+            "timestamp": "2026-02-17T00:00:00Z"
           }
         ]
       },
@@ -179,21 +173,19 @@
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
         "startedAt": "2026-02-17T11:27:20.598Z",
-        "completedAt": "2026-02-17T11:32:12.772Z"
+        "completedAt": "2026-02-17T11:40:44.921Z"
       },
       "implementation": {
         "filesModified": [
           "ui/frontend/src/components/setup/aos-installation-wizard-modal.ts",
-          "ui/frontend/src/services/project-state.service.ts",
-          "specwright/specs/2026-02-16-installation-wizard/stories/story-004-wizard-abbruch-handling.md",
-          "specwright/specs/2026-02-16-installation-wizard/integration-context.md"
+          "ui/frontend/src/services/project-state.service.ts"
         ],
         "testsAdded": [],
         "commits": [
           {
             "hash": "30f895a",
             "message": "feat: IW-004 Wizard Abbruch-Handling",
-            "timestamp": "2026-02-17T12:30:00+01:00"
+            "timestamp": "2026-02-17T00:00:00Z"
           }
         ]
       },
@@ -221,20 +213,24 @@
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
         "startedAt": "2026-02-17T11:31:49.237Z",
-        "completedAt": "2026-02-17T11:37:01.393Z"
+        "completedAt": "2026-02-17T11:41:26.001Z"
       },
       "implementation": {
         "filesModified": [
           "ui/frontend/src/views/aos-getting-started-view.ts",
-          "specwright/specs/2026-02-16-installation-wizard/stories/story-005-getting-started-view.md",
-          "specwright/specs/2026-02-16-installation-wizard/integration-context.md"
+          "ui/frontend/src/styles/theme.css"
         ],
         "testsAdded": [],
         "commits": [
           {
             "hash": "8f31fd0",
             "message": "feat: IW-005 Getting Started View",
-            "timestamp": "2026-02-17T13:00:00Z"
+            "timestamp": "2026-02-17T12:36:50+01:00"
+          },
+          {
+            "hash": "2ee7b84",
+            "message": "chore: IW-005 add getting-started CSS styles",
+            "timestamp": "2026-02-17T13:00:00+01:00"
           }
         ]
       },
@@ -269,7 +265,7 @@
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
         "startedAt": "2026-02-17T11:33:19.158Z",
-        "completedAt": "2026-02-17T11:38:04.181Z"
+        "completedAt": "2026-02-17T11:40:53.480Z"
       },
       "implementation": {
         "filesModified": [
@@ -279,9 +275,9 @@
         "testsAdded": [],
         "commits": [
           {
-            "hash": "pending",
+            "hash": "ba65d31",
             "message": "feat: IW-006 Router & Navigation Integration",
-            "timestamp": "2026-02-17T13:30:00Z"
+            "timestamp": "2026-02-17T00:00:00Z"
           }
         ]
       },
@@ -310,13 +306,14 @@
         "IW-005",
         "IW-006"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-16T00:00:00Z",
         "updatedAt": "2026-02-16T00:00:00Z",
-        "startedAt": "2026-02-17T11:38:14.334Z"
+        "startedAt": "2026-02-17T11:38:14.334Z",
+        "completedAt": "2026-02-17T11:41:02.147Z"
       },
       "implementation": {
         "filesModified": [],
@@ -325,9 +322,9 @@
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -343,12 +340,13 @@
       "dependencies": [
         "IW-997"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-02-16T00:00:00Z",
-        "updatedAt": "2026-02-16T00:00:00Z"
+        "updatedAt": "2026-02-16T00:00:00Z",
+        "startedAt": "2026-02-17T11:41:12.134Z"
       },
       "implementation": {
         "filesModified": [],
@@ -358,7 +356,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "IW-999",
@@ -393,11 +393,11 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 2,
+    "ready": 1,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 6,
+    "done": 7,
     "blocked": 0
   },
   "statistics": {
@@ -725,6 +725,84 @@
       "action": "status_changed",
       "storyId": "IW-997",
       "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T11:39:12.075Z",
+      "action": "status_changed",
+      "storyId": "IW-006",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:39:30.060Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/installation-wizard"
+    },
+    {
+      "timestamp": "2026-02-17T11:40:02.414Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/installation-wizard"
+    },
+    {
+      "timestamp": "2026-02-17T11:40:26.983Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git current-branch setup: feature/installation-wizard"
+    },
+    {
+      "timestamp": "2026-02-17T11:40:32.733Z",
+      "action": "status_changed",
+      "storyId": "IW-001",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:40:36.690Z",
+      "action": "status_changed",
+      "storyId": "IW-002",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:40:40.823Z",
+      "action": "status_changed",
+      "storyId": "IW-003",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:40:44.921Z",
+      "action": "status_changed",
+      "storyId": "IW-004",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:40:48.804Z",
+      "action": "status_changed",
+      "storyId": "IW-005",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:40:53.480Z",
+      "action": "status_changed",
+      "storyId": "IW-006",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:41:02.147Z",
+      "action": "status_changed",
+      "storyId": "IW-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-17T11:41:12.134Z",
+      "action": "status_changed",
+      "storyId": "IW-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-17T11:41:26.002Z",
+      "action": "status_changed",
+      "storyId": "IW-005",
+      "details": "Story completed: done → done"
     }
   ]
 }
