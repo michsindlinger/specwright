@@ -9,6 +9,7 @@ import projectRouter from './routes/project.routes.js';
 import imageUploadRouter from './routes/image-upload.routes.js';
 import quickTodoRouter from './routes/quick-todo.routes.js';
 import attachmentFileRouter from './routes/attachment-file.routes.js';
+import versionRouter from './routes/version.routes.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -33,6 +34,7 @@ app.use('/api/specs/:specId', specsRouter);
 app.use('/api/images', imageUploadRouter);
 app.use('/api/backlog', quickTodoRouter);
 app.use('/api/attachments', attachmentFileRouter);
+app.use('/api/version', versionRouter);
 
 // Health check endpoint
 app.get('/health', (_req: Request, res: Response) => {

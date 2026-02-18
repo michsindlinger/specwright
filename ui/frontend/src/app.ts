@@ -153,6 +153,19 @@ export class AosApp extends LitElement {
   @state()
   private projectValidationPending = true;
 
+  // Framework update state
+  @state()
+  private frameworkUpdateAvailable = false;
+
+  @state()
+  private frameworkLatestVersion = '';
+
+  @state()
+  private frameworkInstalledVersion = '';
+
+  @state()
+  private frameworkUpdateChangelog = '';
+
   // GSQ-005: Bottom Panel state
   @state()
   private isBottomPanelOpen = false;
@@ -956,10 +969,13 @@ export class AosApp extends LitElement {
     } finally {
       this.projectValidationPending = false;
     }
+
+    // Check for framework updates (non-blocking)
+    this.checkFrameworkVersion(path);
   }
 
   // WSM-002: Handle start-setup-terminal event from Getting Started view
-  private _handleStartSetupTerminal(e: CustomEvent<{ type: 'install' | 'migrate' }>): void {
+  private _handleStartSetupTerminal(e: CustomEvent<{ type: 'install' | 'migrate' | 'update' }>): void {
     const { type } = e.detail;
     const activeProject = this.openProjects.find(p => p.id === this.activeProjectId);
     if (!activeProject) {
@@ -969,8 +985,8 @@ export class AosApp extends LitElement {
     this._openSetupTerminalTab(type, activeProject.path);
   }
 
-  // WSM-002: Open a setup terminal tab (install or migrate)
-  private _openSetupTerminalTab(setupType: 'install' | 'migrate', projectPath: string): void {
+  // WSM-002: Open a setup terminal tab (install, migrate, or update)
+  private _openSetupTerminalTab(setupType: 'install' | 'migrate' | 'update', projectPath: string): void {
     // Guard: Check if a setup terminal is already running
     const existingSetup = this.terminalSessions.find(
       s => s.isSetupSession === true && s.status !== 'disconnected' && s.projectPath === projectPath
@@ -986,10 +1002,18 @@ export class AosApp extends LitElement {
     }
 
     const sessionId = `setup-${setupType}-${Date.now()}`;
-    const sessionName = setupType === 'install' ? 'Installation' : 'Migration';
-    const command = setupType === 'install'
-      ? 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash -s -- --yes --all'
-      : 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/migrate-to-specwright.sh | bash -s -- --yes --no-symlinks';
+    const sessionNames: Record<string, string> = {
+      install: 'Installation',
+      migrate: 'Migration',
+      update: 'Update',
+    };
+    const sessionName = sessionNames[setupType] || setupType;
+    const commands: Record<string, string> = {
+      install: 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash -s -- --yes --all',
+      migrate: 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/migrate-to-specwright.sh | bash -s -- --yes --no-symlinks',
+      update: 'curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/check-update.sh | bash -s -- --update',
+    };
+    const command = commands[setupType];
 
     // Create setup session
     const newSession: TerminalSession = {
@@ -1277,6 +1301,32 @@ export class AosApp extends LitElement {
       // Validation failed, keep defaults
     } finally {
       this.projectValidationPending = false;
+    }
+
+    // Check for framework updates (non-blocking)
+    this.checkFrameworkVersion(path);
+  }
+
+  /**
+   * Check if a framework update is available.
+   * Called after project validation to show update banner.
+   */
+  private async checkFrameworkVersion(projectPath: string): Promise<void> {
+    try {
+      const response = await fetch(`/api/version?projectPath=${encodeURIComponent(projectPath)}`);
+      if (!response.ok) return;
+      const data = await response.json() as {
+        installedVersion: string | null;
+        latestVersion: string | null;
+        updateAvailable: boolean;
+        changelog: string | null;
+      };
+      this.frameworkUpdateAvailable = data.updateAvailable;
+      this.frameworkLatestVersion = data.latestVersion ?? '';
+      this.frameworkInstalledVersion = data.installedVersion ?? '';
+      this.frameworkUpdateChangelog = data.changelog ?? '';
+    } catch {
+      // Non-critical, silently ignore
     }
   }
 
@@ -1671,6 +1721,10 @@ export class AosApp extends LitElement {
           .hasClaudeCli=${this.projectHasClaudeCli}
           .hasMcpKanban=${this.projectHasMcpKanban}
           .loading=${this.projectValidationPending}
+          .updateAvailable=${this.frameworkUpdateAvailable}
+          .latestVersion=${this.frameworkLatestVersion}
+          .installedVersion=${this.frameworkInstalledVersion}
+          .updateChangelog=${this.frameworkUpdateChangelog}
           @workflow-start-interactive=${this.handleWorkflowStart}
           @start-setup-terminal=${this._handleStartSetupTerminal}
         ></aos-getting-started-view>`;

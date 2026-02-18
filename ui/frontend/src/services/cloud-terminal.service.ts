@@ -15,8 +15,8 @@ const DB_NAME = 'specwright-cloud-terminal';
 const DB_VERSION = 1;
 const STORE_NAME = 'sessions';
 
-/** Maximum number of concurrent sessions */
-export const MAX_SESSIONS = 5;
+/** Maximum number of concurrent sessions (unlimited) */
+export const MAX_SESSIONS = Infinity;
 
 /** Inactivity timeout in milliseconds (30 minutes) */
 export const INACTIVITY_TIMEOUT = 30 * 60 * 1000;

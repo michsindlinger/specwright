@@ -32,8 +32,8 @@ export interface TerminalSession {
   providerId?: string;
   /** Setup session flag - if true, this is an install/migrate terminal */
   isSetupSession?: boolean;
-  /** Setup type: 'install' for fresh installation, 'migrate' for agent-os migration */
-  setupType?: 'install' | 'migrate';
+  /** Setup type: 'install' for fresh installation, 'migrate' for agent-os migration, 'update' for framework update */
+  setupType?: 'install' | 'migrate' | 'update';
 }
 
 export interface LoadingState {

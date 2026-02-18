@@ -17,6 +17,10 @@ export class AosGettingStartedView extends LitElement {
   @property({ type: Boolean }) hasClaudeCli = true;
   @property({ type: Boolean }) hasMcpKanban = true;
   @property({ type: Boolean }) loading = false;
+  @property({ type: Boolean }) updateAvailable = false;
+  @property({ type: String }) latestVersion = '';
+  @property({ type: String }) installedVersion = '';
+  @property({ type: String }) updateChangelog = '';
 
   private get standardCards(): ActionCard[] {
     return [
@@ -99,6 +103,7 @@ export class AosGettingStartedView extends LitElement {
 
     return html`
       <div class="getting-started-container">
+        ${this.renderUpdateBanner()}
         <div class="getting-started-header">
           <h2 class="getting-started-title">Getting Started</h2>
           <p class="getting-started-subtitle">
@@ -143,6 +148,72 @@ export class AosGettingStartedView extends LitElement {
         composed: true,
       })
     );
+  }
+
+  private isUpdateDismissed(): boolean {
+    try {
+      return localStorage.getItem(`specwright-update-dismissed-${this.latestVersion}`) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  private dismissUpdate(): void {
+    try {
+      localStorage.setItem(`specwright-update-dismissed-${this.latestVersion}`, 'true');
+    } catch {
+      // localStorage unavailable
+    }
+    this.requestUpdate();
+  }
+
+  private handleStartUpdate(): void {
+    this.dispatchEvent(
+      new CustomEvent('start-setup-terminal', {
+        detail: { type: 'update' },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private renderUpdateBanner() {
+    if (!this.updateAvailable || this.isUpdateDismissed()) {
+      return '';
+    }
+
+    return html`
+      <div class="getting-started-hint getting-started-hint--info" style="position: relative;">
+        <button
+          style="position: absolute; top: 8px; right: 8px; background: none; border: none; cursor: pointer; color: var(--text-secondary, #888); font-size: 18px; line-height: 1; padding: 4px;"
+          @click=${() => this.dismissUpdate()}
+          title="Ausblenden"
+        >&times;</button>
+        <div class="getting-started-hint__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+          </svg>
+        </div>
+        <div class="getting-started-hint__content">
+          <p class="getting-started-hint__title">Specwright Update verfuegbar</p>
+          <p class="getting-started-hint__description">
+            Installierte Version: <strong>${this.installedVersion}</strong> &rarr;
+            Neue Version: <strong>${this.latestVersion}</strong>
+          </p>
+          ${this.updateChangelog ? html`
+            <pre class="getting-started-hint__code" style="white-space: pre-wrap; font-size: 12px; max-height: 120px; overflow-y: auto;">${this.updateChangelog}</pre>
+          ` : ''}
+          <p class="getting-started-hint__description">
+            Update manuell installieren:
+          </p>
+          <pre class="getting-started-hint__code">bash &lt;(curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/check-update.sh) --update</pre>
+          <button class="getting-started-hint__action" @click=${() => this.handleStartUpdate()}>
+            Update starten
+          </button>
+        </div>
+      </div>
+    `;
   }
 
   private renderMigrationHint() {

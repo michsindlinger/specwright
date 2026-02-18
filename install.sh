@@ -15,6 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
+FRAMEWORK_VERSION="3.1.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -292,7 +293,7 @@ display_plan() {
     print_plan_item "$INSTALL_MARKET_VALIDATION_GLOBAL" "Market validation (global)" "templates, agents, commands"
     print_plan_item "$INSTALL_PROJECT" "Project setup" "workflows, standards, config"
     print_plan_item "$INSTALL_MCP" "MCP server" "kanban server"
-    print_plan_item "$INSTALL_CLAUDE_CODE" "Claude Code commands & agents" "34 commands, 13 agents"
+    print_plan_item "$INSTALL_CLAUDE_CODE" "Claude Code commands & agents" "35 commands, 13 agents"
     print_plan_item "$INSTALL_MARKET_VALIDATION_PROJECT" "Market validation (project)" "project directories"
 
     if [[ "$FLAG_OVERWRITE" == true ]]; then
@@ -903,6 +904,11 @@ CONFIGEOF
         FILES_SKIPPED=$((FILES_SKIPPED + 1))
     fi
     substep_done
+
+    # Per-project installed version
+    if [[ "$FLAG_DRY_RUN" != true ]]; then
+        echo "$FRAMEWORK_VERSION" > "specwright/.installed-version"
+    fi
 }
 
 # =============================================================================
@@ -1018,8 +1024,8 @@ install_claude_code() {
         mkdir -p .claude/skills/review-implementation-plan
     fi
 
-    # Commands (34)
-    substep "Commands" "34"
+    # Commands (35)
+    substep "Commands" "35"
     local command_files=(
         plan-product.md plan-platform.md
         create-spec.md change-spec.md
@@ -1036,6 +1042,7 @@ install_claude_code() {
         process-feedback.md update-changelog.md
         extract-design.md
         create-instagram-account.md create-content-plan.md
+        check-update.md
     )
     for f in "${command_files[@]}"; do
         download_file "$REPO_URL/.claude/commands/specwright/$f" ".claude/commands/specwright/$f"
@@ -1109,10 +1116,15 @@ write_version_marker() {
         return
     fi
 
-    local marker="$HOME/.specwright/.installer-version"
     mkdir -p "$HOME/.specwright"
+
+    # Legacy marker (backward compat)
+    local marker="$HOME/.specwright/.installer-version"
     echo "version=$INSTALLER_VERSION" > "$marker"
     echo "installed=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$marker"
+
+    # Framework version
+    echo "$FRAMEWORK_VERSION" > "$HOME/.specwright/.version"
 }
 
 # =============================================================================

@@ -1016,7 +1016,7 @@ export class SpecsReader {
   }
 
   async getStoryDetail(projectPath: string, specId: string, storyId: string): Promise<StoryDetail | null> {
-    const storiesPath = join(projectPath, 'agent-os', 'specs', specId, 'stories');
+    const storiesPath = join(projectDir(projectPath, 'specs', specId), 'stories');
 
     try {
       const files = await fs.readdir(storiesPath);

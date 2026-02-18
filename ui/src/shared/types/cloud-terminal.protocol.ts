@@ -364,8 +364,8 @@ export type CloudTerminalMessage =
  * Cloud Terminal configuration limits
  */
 export const CLOUD_TERMINAL_CONFIG = {
-  /** Maximum number of concurrent sessions per user */
-  MAX_SESSIONS: 5,
+  /** Maximum number of concurrent sessions per user (unlimited) */
+  MAX_SESSIONS: Infinity,
 
   /** Maximum buffer size per session (10MB) */
   MAX_BUFFER_SIZE: 10 * 1024 * 1024,
