@@ -60,30 +60,30 @@ Scenario: Dokumentation gefundener Probleme
   And gebe ich eine Empfehlung zur Behebung
 ```
 
-### Szenario 4: Fix gefundener Issues
+### Szenario 4: Auto-Fix gefundener Issues
 
 ```gherkin
-Scenario: Systematisches Beheben gefundener Issues
+Scenario: Automatisches Beheben gefundener Issues
   Given der Code Review hat Issues gefunden
-  And der User wählt "Issues jetzt beheben"
-  When die Fix-Phase beginnt
-  Then wird jedes Finding einzeln adressiert (Critical > Major > Minor)
+  When die Auto-Fix-Phase beginnt
+  Then wird jedes Finding automatisch adressiert (Critical > Major > Minor)
   And für jedes Finding wird ein Fix implementiert
   And nach jedem Fix wird der Fix verifiziert
   And der review-report.md wird mit Fix-Status aktualisiert
   And nach allen Fixes wird ein Re-Review durchgeführt
 ```
 
-### Szenario 5: User wählt Dokumentieren statt Fixen
+### Szenario 5: Fehlgeschlagener Fix wird als Bug-Ticket erstellt
 
 ```gherkin
-Scenario: User kann Findings dokumentieren ohne Fix
+Scenario: Fix schlägt fehl und wird als Bug-Ticket auf das Board gestellt
   Given der Code Review hat Issues gefunden
-  And der User wählt "Issues dokumentieren und fortfahren"
-  When die Entscheidung verarbeitet wird
-  Then werden alle Issues im review-report.md als "deferred" markiert
-  And Story-997 wird als Done markiert
-  And Story-998 wird fortgesetzt
+  And ein Auto-Fix schlägt fehl
+  When der Fix nicht angewendet werden kann
+  Then wird ein Bug-Ticket via kanban_add_item erstellt
+  And das Ticket erhält Typ "fix" und Referenz auf Story-997
+  And der review-report.md zeigt Status "fix-failed"
+  And Story-997 wird trotzdem als Done markiert
 ```
 
 ---
@@ -150,7 +150,7 @@ Scenario: User kann Findings dokumentieren ohne Fix
 - [ ] Alle geänderten Dateien reviewt
 - [ ] Probleme identifiziert und kategorisiert
 - [ ] review-report.md erstellt
-- [ ] Alle Critical/Major Issues behoben ODER vom User explizit als "dokumentiert" akzeptiert
+- [ ] Alle Critical/Major Issues automatisch behoben ODER als Bug-Ticket (fix) erstellt
 - [ ] Fix Status Tabelle im review-report.md aktualisiert
 - [ ] Re-Review nach Fixes bestanden (falls Fixes durchgeführt)
 
@@ -262,6 +262,6 @@ grep -q "Fix Status" specwright/specs/[SPEC_NAME]/review-report.md
 1. review-report.md wurde erstellt
 2. Alle Dateien wurden reviewt
 3. Probleme wurden dokumentiert
-4. Alle Critical/Major Issues behoben ODER vom User explizit als "dokumentiert" akzeptiert
+4. Alle Critical/Major Issues automatisch behoben ODER als Bug-Ticket (fix) erstellt
 5. Fix Status Tabelle im Report aktualisiert
 6. Re-Review nach Fixes bestanden (falls Fixes durchgeführt)

@@ -318,7 +318,7 @@ maintaining full context throughout the story.
        [Summary: Review passed / Review with notes / Review failed]
        ```
 
-    6. EVALUATE: Review Results and Ask User
+    6. EVALUATE and AUTO-FIX: Review Results
 
        COUNT: Total issues found (Critical + Major + Minor)
 
@@ -327,155 +327,137 @@ maintaining full context throughout the story.
          GOTO: step_997_mark_done
 
        ELSE (issues found):
-         ASK user via AskUserQuestion:
-         "Code Review hat Issues gefunden:
-         - Critical: [N]
-         - Major: [N]
-         - Minor: [N]
+         LOG: "Code Review hat {TOTAL} Issues gefunden (Critical: {N}, Major: {N}, Minor: {N}) - starte Auto-Fix"
 
-         Wie möchtest du fortfahren?
-         1. Issues jetzt beheben (Recommended) - Alle Critical/Major/Minor Issues werden systematisch gefixt
-         2. Issues dokumentieren und fortfahren - Issues bleiben im Report, kein Fix
-         3. Zurück zu Phase 3 (reguläre Stories) - Abbruch, Story-997 bleibt In Progress"
+         <auto_fix>
+           ### Auto-Fix: Systematisches Beheben aller Findings
 
-         <fix_branch_option_1>
-           ### Option 1: Issues jetzt beheben
+           **WICHTIG:** Findings werden automatisch gefixt ohne User-Abfrage.
+           Dies ermöglicht Auto-Mode-Execution (Kanban-Board arbeitet Stories nacheinander ab).
+           Nur bei fehlgeschlagenem Fix wird ein Bug-Ticket erstellt.
 
-           IF user chooses "Issues jetzt beheben":
+           COLLECT: All issues from review-report.md
+           SORT: By severity (Critical first, then Major, then Minor)
+           SET: TOTAL_ISSUES = count of all issues
+           SET: FIXED_COUNT = 0
+           SET: FAILED_FIXES = []
 
-             LOG: "Starting Fix-Loop for all issues"
+           FOR EACH issue in sorted_issues:
+             SET: CURRENT_ISSUE = issue
 
-             <fix_loop>
-               ### Fix-Loop: Systematisches Beheben aller Findings
+             LOG: "Fixing issue {FIXED_COUNT + 1}/{TOTAL_ISSUES}: [{severity}] {description}"
 
-               COLLECT: All issues from review-report.md
-               SORT: By severity (Critical first, then Major, then Minor)
-               SET: TOTAL_ISSUES = count of all issues
-               SET: FIXED_COUNT = 0
+             1. READ: The affected file at the specified location
 
-               FOR EACH issue in sorted_issues:
-                 SET: CURRENT_ISSUE = issue
+             2. UNDERSTAND: The issue and the recommended fix from the review
 
-                 LOG: "Fixing issue {FIXED_COUNT + 1}/{TOTAL_ISSUES}: [{severity}] {description}"
+             3. IMPLEMENT: The fix
+                - Apply the recommended change
+                - Keep the fix minimal and focused
+                - Do NOT introduce new issues
 
-                 1. READ: The affected file at the specified location
-                    ```bash
-                    # Read the file containing the issue
-                    ```
+             4. VERIFY: The fix resolves the issue
+                - Check that the specific problem is addressed
+                - Run linter on the affected file if applicable
+                ```bash
+                # Verify fix (e.g., lint check on affected file)
+                ```
 
-                 2. UNDERSTAND: The issue and the recommended fix
+             5. IF fix successful:
+                UPDATE: Fix Status in review-report.md
+                - Change issue status from "pending" to "fixed"
+                - Add Fix-Details describing what was changed
+                SET: FIXED_COUNT = FIXED_COUNT + 1
+                LOG: "Fixed {FIXED_COUNT}/{TOTAL_ISSUES}: [{severity}] {description}"
 
-                 3. IMPLEMENT: The fix
-                    - Apply the recommended change
-                    - Keep the fix minimal and focused
-                    - Do NOT introduce new issues
+             6. IF fix failed (cannot resolve, introduces new issues, or lint fails):
+                LOG: "Fix failed for [{severity}] {description} - creating bug ticket"
+                UPDATE: Fix Status in review-report.md
+                - Change issue status from "pending" to "fix-failed"
+                - Add Fix-Details: "Auto-Fix fehlgeschlagen - Bug-Ticket erstellt"
 
-                 4. VERIFY: The fix resolves the issue
-                    - Check that the specific problem is addressed
-                    - Run linter on the affected file if applicable
-                    ```bash
-                    # Verify fix (e.g., lint check on affected file)
-                    ```
+                CREATE: Bug ticket via kanban_add_item
+                - itemType: "fix"
+                - data:
+                  - id: "{SPEC_PREFIX}-FIX-{NUMBER}"
+                  - title: "Fix: {issue description}"
+                  - type: "{affected layer}"
+                  - priority: "{severity mapped: Critical->critical, Major->high, Minor->medium}"
+                  - effort: 1
+                  - status: "ready"
+                  - dependencies: []
+                  - fixFor: "{SPEC_PREFIX}-997"
+                  - errorOutput: "{issue details from review-report}"
 
-                 5. UPDATE: Fix Status in review-report.md
-                    - Change issue status from "pending" to "fixed"
-                    - Add Fix-Details describing what was changed
+                APPEND: issue to FAILED_FIXES list
 
-                 SET: FIXED_COUNT = FIXED_COUNT + 1
-                 LOG: "Fixed {FIXED_COUNT}/{TOTAL_ISSUES}: [{severity}] {description}"
+           END FOR
 
-               END FOR
+           LOG: "Auto-Fix complete: {FIXED_COUNT}/{TOTAL_ISSUES} fixed, {len(FAILED_FIXES)} failed"
+         </auto_fix>
 
-               LOG: "Fix-Loop complete: {FIXED_COUNT}/{TOTAL_ISSUES} issues fixed"
-             </fix_loop>
+         <re_review>
+           ### Re-Review: Delta-Review der gefixten Dateien
 
-             <re_review>
-               ### Re-Review: Delta-Review der gefixten Dateien
+           **Purpose:** Verify fixes didn't introduce new issues
 
-               **Purpose:** Verify fixes didn't introduce new issues
+           IF FIXED_COUNT = 0:
+             LOG: "No fixes applied - skipping Re-Review"
+             GOTO: step_997_update_report
 
-               1. COLLECT: All files that were modified during the Fix-Loop
-                  ```bash
-                  git diff --name-only
-                  ```
+           1. COLLECT: All files that were modified during the Auto-Fix
+              ```bash
+              git diff --name-only
+              ```
 
-               2. FOR EACH modified file:
-                  READ: Current file content
-                  ANALYZE: Only the changed sections (Delta-Review)
-                  CHECK:
-                  - Fix is correct and complete
-                  - No new issues introduced
-                  - Code style still conformant
+           2. FOR EACH modified file:
+              READ: Current file content
+              ANALYZE: Only the changed sections (Delta-Review)
+              CHECK:
+              - Fix is correct and complete
+              - No new issues introduced
+              - Code style still conformant
 
-                  IF new issue found:
-                    RECORD: New issue
-                    FIX: Immediately (inline fix)
-                    LOG: "Re-Review: New issue found and fixed in {file}"
+              IF new issue found:
+                RECORD: New issue
+                FIX: Immediately (inline fix)
+                LOG: "Re-Review: New issue found and fixed in {file}"
 
-               3. RUN: Project-wide checks
-                  ```bash
-                  # Run lint
-                  [LINT_COMMAND]
+           3. RUN: Project-wide checks
+              ```bash
+              # Run lint
+              [LINT_COMMAND]
 
-                  # Run tests
-                  [TEST_COMMAND]
-                  ```
+              # Run tests
+              [TEST_COMMAND]
+              ```
+         </re_review>
 
-               4. UPDATE: review-report.md
-                  - Update "## Fazit" to: "Review passed (after fixes)"
-                  - Update issue counts to reflect fixes
-                  - Add "## Re-Review" section:
-                    ```markdown
-                    ## Re-Review
+         <step_997_update_report>
+           ### Update Review Report
 
-                    **Datum:** [DATE]
-                    **Geprüfte Dateien:** [N] (nur geänderte)
-                    **Neue Issues:** [N]
-                    **Ergebnis:** Review bestanden / Weitere Fixes nötig
-                    ```
+           UPDATE: review-report.md
 
-               5. IF re-review finds NO new issues:
-                  LOG: "Re-Review passed - all fixes verified"
-                  GOTO: step_997_mark_done
+           IF FAILED_FIXES is empty:
+             - Update "## Fazit" to: "Review passed (after fixes)"
+           ELSE:
+             - Update "## Fazit" to: "Review passed (after fixes) - {len(FAILED_FIXES)} Issues als Bug-Tickets erstellt"
 
-               ELSE (new issues in re-review):
-                  LOG: "Re-Review found new issues - fixing inline"
-                  NOTE: Issues were already fixed inline in step 2
-                  GOTO: step_997_mark_done
-             </re_review>
-         </fix_branch_option_1>
+           - Update issue counts to reflect fixes
+           - Add "## Re-Review" section:
+             ```markdown
+             ## Re-Review
 
-         <fix_branch_option_2>
-           ### Option 2: Issues dokumentieren und fortfahren
+             **Datum:** [DATE]
+             **Geprüfte Dateien:** [N] (nur geänderte)
+             **Neue Issues:** [N]
+             **Auto-Fix Ergebnis:** {FIXED_COUNT}/{TOTAL_ISSUES} gefixt, {len(FAILED_FIXES)} als Bug-Tickets erstellt
+             **Ergebnis:** Review bestanden
+             ```
 
-           IF user chooses "Issues dokumentieren und fortfahren":
-
-             1. UPDATE: review-report.md
-                - Keep all issues as documented
-                - Update Fix Status table: All issues set to "deferred"
-                - Update "## Fazit" to: "Review abgeschlossen - Issues dokumentiert, nicht behoben"
-
-             2. LOG: "Issues documented but not fixed (user decision)"
-                NOTE: "Story-997 completed with documented but unfixed issues"
-
-             GOTO: step_997_mark_done
-         </fix_branch_option_2>
-
-         <fix_branch_option_3>
-           ### Option 3: Zurück zu Phase 3 (Abbruch)
-
-           IF user chooses "Zurück zu Phase 3":
-
-             1. LOG: "Story-997 aborted by user - returning to Phase 3"
-             2. UPDATE: kanban.json
-                - KEEP: story-997 as "In Progress"
-                - SET: resumeContext.currentPhase = "story-complete"
-                - SET: resumeContext.lastAction = "Story-997 Code Review aborted by user"
-                - SET: resumeContext.nextAction = "Resume Code Review"
-
-             STOP: "Code Review abgebrochen. Story-997 bleibt In Progress.
-                    Um fortzufahren: /clear → /execute-tasks"
-         </fix_branch_option_3>
+           LOG: "Review Report updated"
+           GOTO: step_997_mark_done
+         </step_997_update_report>
 
     <step_997_mark_done>
     7. MARK: story-997 as Done
