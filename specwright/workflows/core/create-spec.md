@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.5
+version: 3.6
 encoding: UTF-8
 ---
 
@@ -33,6 +33,17 @@ Create detailed feature specifications: Main agent gathers fachliche requirement
 - **NEW: Verbindungs-Validierung** im Self-Review (Step 2.5.2)
 - **ENHANCED: Story Generation** - Stories erhalten Integration-Metadata wenn zuständig für Verbindung
 - **FIX: "Komponenten gebaut aber nicht verbunden"** - Verhindert isolierte Implementierung
+
+**v3.6 Changes (Context Window Optimization):**
+- **NEW: Phase Detection** - Resume support via optional spec folder path argument
+  - `/create-spec` (no argument) → Starts fresh from Step 1
+  - `/create-spec specwright/specs/YYYY-MM-DD-name/` → Auto-detects phase and resumes
+- **NEW: Phase Completion Messages** - After each major phase, user is informed they can `/clear` and resume
+  - Phase 1 complete → After requirements clarification approved (Step 2.3)
+  - Phase 2 complete → After stories generated from plan (Step 2.6)
+  - Phase 3 complete → After technical refinement (Step 3.5)
+- **BENEFIT:** Prevents context window compaction during large spec creation
+- **BACKWARD COMPATIBLE:** Without argument, workflow behaves exactly as before
 
 **v3.5 Changes (Architecture Migration):**
 - **BREAKING: Step 3 - Main Agent + Skill** - Architect refinement is now done by main agent guided by architect-refinement skill (was: Sub-Agent delegation)
@@ -95,6 +106,75 @@ Create detailed feature specifications: Main agent gathers fachliche requirement
 <pre_flight_check>
   EXECUTE: specwright/workflows/meta/pre-flight.md
 </pre_flight_check>
+
+<phase_detection>
+
+### Phase Detection (Resume Support - v3.6)
+
+This workflow supports resuming from a previous session to prevent context window compaction.
+The user can provide a spec folder path as argument to resume where they left off.
+
+**Usage:**
+- Fresh start: `/create-spec` (no argument)
+- Resume: `/create-spec specwright/specs/YYYY-MM-DD-spec-name/`
+
+<detection_logic>
+  IF $ARGUMENTS contains a path to a spec folder:
+
+    1. VALIDATE folder exists:
+       - IF folder does NOT exist: ERROR "Spec folder not found: [path]. Start fresh with /create-spec (without path)."
+
+    2. STORE spec folder path for use in subsequent steps (skip folder creation in Step 2.2)
+
+    3. DETECT current state by checking file existence:
+
+       CHECK_A: [spec-folder]/requirements-clarification.md
+       CHECK_B: [spec-folder]/implementation-plan.md
+       CHECK_C: [spec-folder]/stories/ (directory exists and contains .md files)
+       CHECK_D: First story file has filled "WAS:" section (technical refinement done)
+
+    4. DETERMINE resume point:
+
+       a. IF CHECK_A = false (no clarification):
+          → ERROR: "No requirements-clarification.md found in [path]. Start fresh with /create-spec (without path)."
+
+       b. IF CHECK_A = true AND CHECK_B = false (clarification exists, no plan):
+          → INFORM user:
+            ```
+            Resuming from Phase 2 (Implementation Plan).
+            Phase 1 (PO Requirements) was completed in a previous session.
+            Loading: requirements-clarification.md
+            ```
+          → READ: [spec-folder]/requirements-clarification.md
+          → JUMP TO: Step 2.5 (Implementation Plan)
+
+       c. IF CHECK_A = true AND CHECK_B = true AND CHECK_C = true AND CHECK_D = false
+          (plan + stories exist, but stories not yet refined):
+          → INFORM user:
+            ```
+            Resuming from Phase 3 (Technical Refinement).
+            Phase 1 (PO Requirements) and Phase 2 (Planning) were completed in previous sessions.
+            Loading: spec context files
+            ```
+          → READ: [spec-folder]/requirements-clarification.md (for reference)
+          → READ: [spec-folder]/implementation-plan.md
+          → READ: [spec-folder]/spec.md
+          → JUMP TO: Step 3 (Technical Refinement)
+
+       d. IF CHECK_A = true AND CHECK_B = true AND CHECK_C = true AND CHECK_D = true
+          (stories already have technical refinement):
+          → INFORM user:
+            ```
+            Spec appears to be mostly complete. Running final validations.
+            ```
+          → JUMP TO: Step 3.4 (DoR Validation)
+
+  ELSE (no argument provided):
+    → Start from Step 1 (Feature Selection) - normal flow
+
+</detection_logic>
+
+</phase_detection>
 
 <process_flow>
 
@@ -333,7 +413,20 @@ Before generating user stories, create a summary document for user approval.
      ```
 
   2. BASED on user choice:
-     - If "Approve": Proceed to Step 2.5 (Implementation Plan)
+     - If "Approve":
+       - PRESENT phase completion info:
+         ```
+         Phase 1 complete! Requirements clarification approved.
+
+         Saved to: specwright/specs/[YYYY-MM-DD-spec-name]/requirements-clarification.md
+
+         To free up context for optimal planning quality, you can:
+         1. Run /clear
+         2. Then run: /create-spec specwright/specs/[YYYY-MM-DD-spec-name]/
+
+         Or just continue in this session - proceeding to Implementation Plan now.
+         ```
+       - Proceed to Step 2.5 (Implementation Plan)
      - If "Request Changes": Update clarification, re-ask approval
      - If "Continue": Return to Step 2.1 with focused questions
 </mandatory_actions>
@@ -822,6 +915,24 @@ Before generating user stories, create a summary document for user approval.
     - ADD to story metadata: `Integration: [Source] → [Target]`
     - This will be used by Architect to add Integration-DoD items
   - Stories with integration responsibility MUST connect components, not just create them
+
+  9. PRESENT phase completion info (v3.6):
+     ```
+     Phase 2 complete! Implementation plan approved and [N] stories generated.
+
+     Saved to: specwright/specs/[YYYY-MM-DD-spec-name]/
+     - implementation-plan.md (approved)
+     - spec.md, spec-lite.md
+     - story-index.md, kanban.json
+     - stories/ ([N] story files, fachlich only)
+
+     The next phase (Technical Refinement) processes every story individually
+     and benefits greatly from a fresh context window.
+
+     Recommended: Run /clear, then /create-spec specwright/specs/[YYYY-MM-DD-spec-name]/
+
+     Or continue in this session - proceeding to Technical Refinement now.
+     ```
 </mandatory_actions>
 
 </substep>
