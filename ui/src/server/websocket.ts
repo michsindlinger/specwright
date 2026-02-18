@@ -31,6 +31,7 @@ import {
   type Model,
   type ModelProvider
 } from './model-config.js';
+import { loadGeneralConfig, updateGeneralConfig } from './general-config.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
 import { setupService, type StepOutput, type StepComplete } from './services/setup.service.js';
 import type {
@@ -318,6 +319,12 @@ export class WebSocketHandler {
           break;
         case 'settings.defaults.update':
           this.handleSettingsDefaultsUpdate(client, message);
+          break;
+        case 'settings.general.get':
+          this.handleSettingsGeneralGet(client);
+          break;
+        case 'settings.general.update':
+          this.handleSettingsGeneralUpdate(client, message);
           break;
         case 'queue.add':
           this.handleQueueAdd(client, message);
@@ -2912,6 +2919,39 @@ export class WebSocketHandler {
       const errorResponse: WebSocketMessage = {
         type: 'settings.error',
         error: error instanceof Error ? error.message : 'Failed to update defaults',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  private handleSettingsGeneralGet(client: WebSocketClient): void {
+    const projectPath = this.getClientProjectPath(client) || undefined;
+    const config = loadGeneralConfig(projectPath);
+    const response: WebSocketMessage = {
+      type: 'settings.general',
+      config,
+      timestamp: new Date().toISOString()
+    };
+    client.send(JSON.stringify(response));
+  }
+
+  private handleSettingsGeneralUpdate(client: WebSocketClient, message: WebSocketMessage): void {
+    const baseBranch = message.baseBranch as string | undefined;
+    const projectPath = this.getClientProjectPath(client) || undefined;
+
+    try {
+      const config = updateGeneralConfig({ baseBranch }, projectPath);
+      const response: WebSocketMessage = {
+        type: 'settings.general',
+        config,
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'settings.error',
+        error: error instanceof Error ? error.message : 'Failed to update general settings',
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));

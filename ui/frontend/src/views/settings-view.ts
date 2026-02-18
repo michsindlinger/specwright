@@ -1,9 +1,11 @@
 import { LitElement, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { consume } from '@lit/context';
 import { gateway, type WebSocketMessage } from '../gateway.js';
 import { routerService } from '../services/router.service.js';
 import type { ParsedRoute } from '../types/route.types.js';
 import { themeService, type ThemeMode } from '../services/theme.service.js';
+import { projectContext, type ProjectContextValue } from '../context/project-context.js';
 import '../components/setup/aos-setup-wizard.js';
 
 interface Model {
@@ -53,6 +55,9 @@ interface NewProviderForm {
 
 @customElement('aos-settings-view')
 export class AosSettingsView extends LitElement {
+  @consume({ context: projectContext, subscribe: true })
+  private projectCtx!: ProjectContextValue;
+
   @state() private config: ModelConfig | null = null;
   @state() private loading = true;
   @state() private error = '';
@@ -62,11 +67,15 @@ export class AosSettingsView extends LitElement {
   @state() private saving = false;
   @state() private addingProvider = false;
   @state() private newProvider: NewProviderForm | null = null;
+  @state() private generalConfig: { baseBranch: string } | null = null;
+  @state() private generalSaving = false;
+  @state() private baseBranchInput = '';
 
   private boundHandlers: Map<string, (msg: WebSocketMessage) => void> = new Map();
   private readonly BUILT_IN_PROVIDERS = ['anthropic', 'glm', 'gemini'];
   private readonly VALID_TABS: readonly SettingsSection[] = ['models', 'general', 'appearance', 'setup'] as const;
   private boundRouteChangeHandler = (route: ParsedRoute) => this.onRouteChanged(route);
+  private lastActiveProjectId: string | null = null;
 
   override connectedCallback() {
     super.connectedCallback();
@@ -82,11 +91,28 @@ export class AosSettingsView extends LitElement {
     routerService.off('route-changed', this.boundRouteChangeHandler);
   }
 
+  override updated(changedProperties: Map<string, unknown>) {
+    super.updated(changedProperties);
+
+    if (this.projectCtx) {
+      const currentActiveId = this.projectCtx.activeProject?.id ?? null;
+      if (currentActiveId !== this.lastActiveProjectId) {
+        this.lastActiveProjectId = currentActiveId;
+        // Invalidate cached general config so it reloads for the new project
+        this.generalConfig = null;
+        if (this.activeSection === 'general') {
+          this.loadGeneralConfig();
+        }
+      }
+    }
+  }
+
   private setupHandlers(): void {
     const handlers: [string, (msg: WebSocketMessage) => void][] = [
       ['settings.config', (msg) => this.onConfigReceived(msg)],
+      ['settings.general', (msg) => this.onGeneralConfigReceived(msg)],
       ['settings.error', (msg) => this.onSettingsError(msg)],
-      ['gateway.connected', () => this.loadConfig()]
+      ['gateway.connected', () => this.onGatewayConnected()]
     ];
 
     for (const [type, handler] of handlers) {
@@ -100,6 +126,13 @@ export class AosSettingsView extends LitElement {
       gateway.off(type, handler);
     }
     this.boundHandlers.clear();
+  }
+
+  private onGatewayConnected(): void {
+    this.loadConfig();
+    if (this.activeSection === 'general') {
+      this.loadGeneralConfig();
+    }
   }
 
   private loadConfig(): void {
@@ -124,6 +157,9 @@ export class AosSettingsView extends LitElement {
   private handleSectionChange(section: SettingsSection): void {
     this.activeSection = section;
     routerService.navigate('settings', [section]);
+    if (section === 'general' && !this.generalConfig) {
+      this.loadGeneralConfig();
+    }
   }
 
   private restoreRouteState(): void {
@@ -134,6 +170,9 @@ export class AosSettingsView extends LitElement {
       const tab = route.segments[0] as SettingsSection;
       if (this.VALID_TABS.includes(tab)) {
         this.activeSection = tab;
+        if (tab === 'general' && !this.generalConfig) {
+          this.loadGeneralConfig();
+        }
       } else {
         routerService.navigate('settings');
       }
@@ -151,6 +190,9 @@ export class AosSettingsView extends LitElement {
     const tab = route.segments[0] as SettingsSection;
     if (this.VALID_TABS.includes(tab)) {
       this.activeSection = tab;
+      if (tab === 'general' && !this.generalConfig) {
+        this.loadGeneralConfig();
+      }
     } else {
       routerService.navigate('settings');
     }
@@ -426,7 +468,6 @@ export class AosSettingsView extends LitElement {
               <button
                 class="settings-nav-item ${this.activeSection === 'general' ? 'active' : ''}"
                 @click=${() => this.handleSectionChange('general')}
-                disabled
               >
                 General
               </button>
@@ -469,7 +510,7 @@ export class AosSettingsView extends LitElement {
       case 'models':
         return this.renderModelsSection();
       case 'general':
-        return this.renderComingSoon('General');
+        return this.renderGeneralSection();
       case 'appearance':
         return this.renderAppearanceSection();
       case 'setup':
@@ -539,11 +580,74 @@ export class AosSettingsView extends LitElement {
     this.requestUpdate();
   }
 
-  private renderComingSoon(section: string) {
+  private onGeneralConfigReceived(msg: WebSocketMessage): void {
+    const config = msg.config as { baseBranch: string };
+    this.generalConfig = config;
+    this.baseBranchInput = config.baseBranch;
+    this.generalSaving = false;
+  }
+
+  private loadGeneralConfig(): void {
+    gateway.send({ type: 'settings.general.get' });
+  }
+
+  private handleBaseBranchSave(): void {
+    const value = this.baseBranchInput.trim();
+    if (!value) {
+      this.error = 'Base branch name cannot be empty';
+      return;
+    }
+    if (!/^[a-zA-Z0-9_.\-/]+$/.test(value)) {
+      this.error = 'Invalid branch name. Only alphanumeric characters, underscores, dots, hyphens, and slashes are allowed.';
+      return;
+    }
+    this.error = '';
+    this.generalSaving = true;
+    gateway.send({ type: 'settings.general.update', baseBranch: value });
+  }
+
+  private renderGeneralSection() {
+    if (!this.generalConfig) {
+      return html`
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>Loading general settings...</p>
+        </div>
+      `;
+    }
+
     return html`
-      <div class="coming-soon">
-        <h3>${section} Settings</h3>
-        <p>Coming soon...</p>
+      <div class="general-section">
+        <div class="section-header">
+          <div>
+            <h3>General</h3>
+            <p class="section-description">Configure general project settings.</p>
+          </div>
+        </div>
+
+        <div class="provider-card">
+          <div class="form-field">
+            <label for="base-branch-input">Base Branch for Pull Requests</label>
+            <span class="form-hint">The target branch for pull requests created during backlog execution (e.g. main, develop, staging).</span>
+            <div class="general-input-row">
+              <input
+                id="base-branch-input"
+                type="text"
+                .value=${this.baseBranchInput}
+                @input=${(e: Event) => { this.baseBranchInput = (e.target as HTMLInputElement).value; }}
+                ?disabled=${this.generalSaving}
+                placeholder="main"
+              />
+              <button
+                class="save-btn"
+                @click=${() => this.handleBaseBranchSave()}
+                ?disabled=${this.generalSaving || this.baseBranchInput.trim() === this.generalConfig?.baseBranch}
+              >
+                ${this.generalSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }

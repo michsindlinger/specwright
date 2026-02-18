@@ -1,0 +1,10 @@
+{
+  "defaults": {
+    "baseBranch": "main"
+  },
+  "projects": {
+    "/Users/michaelsindlinger/Entwicklung/rockstardevelopers/herding": {
+      "baseBranch": "develop"
+    }
+  }
+}

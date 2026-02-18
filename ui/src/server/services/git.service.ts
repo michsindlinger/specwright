@@ -741,15 +741,16 @@ export class GitService {
   }
 
   /**
-   * Switch to the main branch
+   * Switch to the main/base branch
    * @param projectPath - Project directory
+   * @param baseBranch - Branch to checkout (defaults to 'main')
    */
-  async checkoutMain(projectPath: string): Promise<GitCheckoutResult> {
+  async checkoutMain(projectPath: string, baseBranch = 'main'): Promise<GitCheckoutResult> {
     await this.ensureGitRepo(projectPath, 'checkoutMain');
 
     try {
-      await this.execGit(['checkout', 'main'], projectPath);
-      return { success: true, branch: 'main' };
+      await this.execGit(['checkout', baseBranch], projectPath);
+      return { success: true, branch: baseBranch };
     } catch (error) {
       const err = error as Error & { stderr?: string };
       throw new GitError(
@@ -841,12 +842,13 @@ export class GitService {
     _branchName: string,
     title: string,
     body?: string,
+    baseBranch = 'main',
   ): Promise<GitCreatePullRequestResult> {
     await this.ensureGitRepo(projectPath, 'createPullRequest');
 
     try {
       // Build gh pr create command
-      const args = ['pr', 'create', '--title', title, '--base', 'main'];
+      const args = ['pr', 'create', '--title', title, '--base', baseBranch];
       if (body) {
         args.push('--body', body);
       } else {

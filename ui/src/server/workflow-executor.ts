@@ -8,6 +8,7 @@ import { TerminalManager } from './services/terminal-manager.js';
 import { SpecsReader, KanbanJsonCorruptedError, type ModelSelection } from './specs-reader.js';
 import { withKanbanLock } from './utils/kanban-lock.js';
 import { getCliCommandForModel } from './model-config.js';
+import { getBaseBranch } from './general-config.js';
 import { queueHandler } from './handlers/queue.handler.js';
 import { resolveCommandDir, projectDir } from './utils/project-dirs.js';
 import { gitService } from './services/git.service.js';
@@ -408,29 +409,31 @@ export class WorkflowExecutor {
       throw preFlightError;
     }
 
-    try {
-      // 1. Ensure we're on main branch before creating feature branch
-      await gitService.checkoutMain(projectPath);
-      console.log(`[Workflow] Checked out main branch`);
+    const baseBranch = getBaseBranch(projectPath);
 
-      // 2. Pull latest main to ensure we branch from current state
+    try {
+      // 1. Ensure we're on base branch before creating feature branch
+      await gitService.checkoutMain(projectPath, baseBranch);
+      console.log(`[Workflow] Checked out ${baseBranch} branch`);
+
+      // 2. Pull latest base branch to ensure we branch from current state
       try {
         await gitService.pull(projectPath);
-        console.log(`[Workflow] Pulled latest main`);
+        console.log(`[Workflow] Pulled latest ${baseBranch}`);
       } catch (pullError) {
-        console.warn(`[Workflow] Pull failed (continuing with local main):`, pullError instanceof Error ? pullError.message : pullError);
+        console.warn(`[Workflow] Pull failed (continuing with local ${baseBranch}):`, pullError instanceof Error ? pullError.message : pullError);
       }
 
-      // 3. Mark story as "in_progress" on main before branching
+      // 3. Mark story as "in_progress" on base branch before branching
       try {
         await this.updateBacklogIndexOnMain(projectPath, storyId, 'in_progress');
-        console.log(`[Workflow] Marked story ${storyId} as in_progress on main`);
+        console.log(`[Workflow] Marked story ${storyId} as in_progress on ${baseBranch}`);
       } catch (statusError) {
         console.warn(`[Workflow] Failed to mark story as in_progress (non-critical):`, statusError instanceof Error ? statusError.message : statusError);
       }
 
-      // 4. Create feature branch from main
-      const branchResult = await gitService.createBranch(projectPath, branchName, 'main');
+      // 4. Create feature branch from base branch
+      const branchResult = await gitService.createBranch(projectPath, branchName, baseBranch);
       console.log(`[Workflow] Branch created/checked out: ${branchName} (created: ${branchResult.created})`);
     } catch (error) {
       // BPS-003: Log error but continue - don't fail the entire execution
@@ -814,10 +817,11 @@ export class WorkflowExecutor {
 
     // BPS-003: Collect warnings to send to frontend
     const warnings: string[] = [];
+    const baseBranch = getBaseBranch(projectPath);
 
     try {
       if (status === 'completed') {
-        // Success path: Push branch, create PR, checkout main
+        // Success path: Push branch, create PR, checkout base branch
         console.log(`[Workflow] Story ${storyId} completed successfully, creating PR...`);
 
         // 1. Push branch to remote
@@ -833,7 +837,7 @@ export class WorkflowExecutor {
         // 2. Create Pull Request
         try {
           const prTitle = `feat: ${storyId}`;
-          const prResult = await gitService.createPullRequest(projectPath, branchName, prTitle);
+          const prResult = await gitService.createPullRequest(projectPath, branchName, prTitle, undefined, baseBranch);
           if (prResult.success) {
             if (prResult.prUrl) {
               console.log(`[Workflow] PR created: ${prResult.prUrl}`);
@@ -859,14 +863,14 @@ export class WorkflowExecutor {
         console.log(`[Workflow] Story ${storyId} failed, branch ${branchName} stays for manual recovery`);
       }
 
-      // 3. Always checkout main at the end (success or failure)
+      // 3. Always checkout base branch at the end (success or failure)
       try {
-        await gitService.checkoutMain(projectPath);
-        console.log(`[Workflow] Checked out main branch`);
+        await gitService.checkoutMain(projectPath, baseBranch);
+        console.log(`[Workflow] Checked out ${baseBranch} branch`);
       } catch (checkoutError) {
         const errorMsg = checkoutError instanceof Error ? checkoutError.message : String(checkoutError);
-        console.warn(`[Workflow] Checkout main failed:`, errorMsg);
-        warnings.push(`Checkout main fehlgeschlagen: ${errorMsg}`);
+        console.warn(`[Workflow] Checkout ${baseBranch} failed:`, errorMsg);
+        warnings.push(`Checkout ${baseBranch} fehlgeschlagen: ${errorMsg}`);
       }
 
       // 4. Update backlog-index.json on main so next story sees correct status
@@ -896,20 +900,20 @@ export class WorkflowExecutor {
           await gitService.checkout(projectPath, branchName);
           console.log(`[Workflow] Checked out feature branch: ${branchName}`);
 
-          execSync('git merge main --no-edit -X theirs', { cwd: projectPath, stdio: 'pipe' });
-          console.log(`[Workflow] Merged main into ${branchName}`);
+          execSync(`git merge ${baseBranch} --no-edit -X theirs`, { cwd: projectPath, stdio: 'pipe' });
+          console.log(`[Workflow] Merged ${baseBranch} into ${branchName}`);
 
           await gitService.pushBranch(projectPath, branchName);
           console.log(`[Workflow] Pushed updated feature branch: ${branchName}`);
 
-          await gitService.checkoutMain(projectPath);
-          console.log(`[Workflow] Back on main`);
+          await gitService.checkoutMain(projectPath, baseBranch);
+          console.log(`[Workflow] Back on ${baseBranch}`);
         } catch (syncError) {
           const errorMsg = syncError instanceof Error ? syncError.message : String(syncError);
           console.warn(`[Workflow] Feature branch sync failed (non-critical):`, errorMsg);
           warnings.push(`Feature-Branch-Sync fehlgeschlagen: ${errorMsg}`);
-          // Ensure we're back on main even if sync failed
-          try { await gitService.checkoutMain(projectPath); } catch { /* best effort */ }
+          // Ensure we're back on base branch even if sync failed
+          try { await gitService.checkoutMain(projectPath, baseBranch); } catch { /* best effort */ }
         }
       }
 
