@@ -32,9 +32,10 @@ export class FileHandler {
     projectPath: string
   ): Promise<void> {
     const path = (message.path as string) || '.';
+    const showHidden = (message.showHidden as boolean) || false;
 
     try {
-      const result = await this.service.list(projectPath, path);
+      const result = await this.service.list(projectPath, path, showHidden);
       const response: WebSocketMessage = {
         type: 'files:list:response',
         path: result.path,

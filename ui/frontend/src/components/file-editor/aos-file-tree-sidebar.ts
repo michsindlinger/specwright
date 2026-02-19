@@ -1,4 +1,4 @@
-import { LitElement, html } from 'lit';
+import { LitElement, html, svg } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import './aos-file-tree.js';
@@ -37,6 +37,7 @@ export class AosFileTreeSidebar extends LitElement {
   @state() private sidebarWidth = 280;
   @state() private isResizing = false;
   @state() private filterText = '';
+  @state() private showHidden = false;
   private readonly minSidebarWidth = 200;
   private get maxSidebarWidth() {
     return window.innerWidth * 0.5;
@@ -147,6 +148,10 @@ export class AosFileTreeSidebar extends LitElement {
         height: 16px;
       }
 
+      .file-tree-sidebar-btn--active {
+        color: var(--color-accent-primary, #007acc);
+      }
+
       .file-tree-sidebar-content {
         flex: 1;
         min-height: 0;
@@ -216,6 +221,18 @@ export class AosFileTreeSidebar extends LitElement {
           </div>
           <div class="file-tree-sidebar-actions">
             <button
+              class="file-tree-sidebar-close-btn ${this.showHidden ? 'file-tree-sidebar-btn--active' : ''}"
+              @click=${this._handleToggleHidden}
+              title="${this.showHidden ? 'Versteckte Dateien ausblenden' : 'Versteckte Dateien anzeigen'}"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                ${this.showHidden
+                  ? svg`<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`
+                  : svg`<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`
+                }
+              </svg>
+            </button>
+            <button
               class="file-tree-sidebar-close-btn"
               @click=${this._handleClose}
               title="Sidebar schliessen"
@@ -242,6 +259,7 @@ export class AosFileTreeSidebar extends LitElement {
           <aos-file-tree
             rootPath="."
             .filterText=${this.filterText}
+            .showHidden=${this.showHidden}
             @file-open=${this._handleFileOpen}
             @file-contextmenu=${this._handleFileContextMenu}
           ></aos-file-tree>
@@ -252,6 +270,15 @@ export class AosFileTreeSidebar extends LitElement {
         @tree-refresh=${this._handleTreeRefresh}
       ></aos-file-context-menu>
     `;
+  }
+
+  private _handleToggleHidden() {
+    this.showHidden = !this.showHidden;
+    try {
+      localStorage.setItem('file-tree-show-hidden', String(this.showHidden));
+    } catch {
+      // localStorage unavailable
+    }
   }
 
   private _handleFilterInput(e: Event) {
@@ -336,7 +363,7 @@ export class AosFileTreeSidebar extends LitElement {
   override connectedCallback() {
     super.connectedCallback();
 
-    // Load saved width preference
+    // Load saved preferences
     try {
       const savedWidth = localStorage.getItem('file-tree-sidebar-width');
       if (savedWidth) {
@@ -344,6 +371,10 @@ export class AosFileTreeSidebar extends LitElement {
         if (width >= this.minSidebarWidth && width <= this.maxSidebarWidth) {
           this.sidebarWidth = width;
         }
+      }
+      const savedShowHidden = localStorage.getItem('file-tree-show-hidden');
+      if (savedShowHidden === 'true') {
+        this.showHidden = true;
       }
     } catch {
       // localStorage unavailable

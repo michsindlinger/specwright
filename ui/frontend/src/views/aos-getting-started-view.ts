@@ -209,7 +209,7 @@ export class AosGettingStartedView extends LitElement {
           <p class="getting-started-hint__description">
             Update manuell installieren:
           </p>
-          <pre class="getting-started-hint__code">bash &lt;(curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/check-update.sh) --update</pre>
+          <pre class="getting-started-hint__code" style="white-space: pre-wrap; word-break: break-all;">bash &lt;(curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/check-update.sh) --update</pre>
           <button class="getting-started-hint__action" @click=${() => this.handleStartUpdate()}>
             Update starten
           </button>

@@ -1804,6 +1804,11 @@ export class AosApp extends LitElement {
         <header class="header">
           <h2 class="header-title">${this.getPageTitle()}</h2>
           <div class="header-actions">
+            ${this.frameworkUpdateAvailable ? html`
+              <a class="update-badge" href="#" @click=${(e: Event) => { e.preventDefault(); routerService.navigate('getting-started'); }}>
+                Update ${this.frameworkLatestVersion}
+              </a>
+            ` : ''}
             ${this.isReconnecting
               ? html`<span class="reconnecting-indicator">
                   <aos-loading-spinner size="small"></aos-loading-spinner>

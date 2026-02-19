@@ -35,6 +35,9 @@ export class AosFileTree extends LitElement {
   /** Client-side filter text - only entries matching this string are shown */
   @property({ type: String }) filterText = '';
 
+  /** Whether to show hidden (dot) files */
+  @property({ type: Boolean }) showHidden = false;
+
   /** Map of directory path -> entries (lazy-loaded per folder) */
   @state() private entries: Map<string, FileEntry[]> = new Map();
 
@@ -85,10 +88,19 @@ export class AosFileTree extends LitElement {
     this.boundHandlers.clear();
   }
 
+  override updated(changedProperties: Map<string, unknown>) {
+    if (changedProperties.has('showHidden') && changedProperties.get('showHidden') !== undefined) {
+      this.entries = new Map();
+      this.expandedDirs = new Set();
+      this.initialLoading = true;
+      this.loadDirectory(this.rootPath);
+    }
+  }
+
   private loadDirectory(dirPath: string): void {
     this.loadingDirs = new Set([...this.loadingDirs, dirPath]);
     this.requestUpdate();
-    gateway.send({ type: 'files:list', path: dirPath });
+    gateway.send({ type: 'files:list', path: dirPath, showHidden: this.showHidden });
   }
 
   private onFilesList(msg: WebSocketMessage): void {

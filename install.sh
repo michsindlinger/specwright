@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.1.0"
+FRAMEWORK_VERSION="3.2.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================

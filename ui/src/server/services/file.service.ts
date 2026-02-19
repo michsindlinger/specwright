@@ -103,15 +103,19 @@ export class FileService {
   /**
    * List directory contents (non-recursive, direct children only).
    */
-  async list(projectPath: string, dirPath: string): Promise<FileListResult> {
+  async list(projectPath: string, dirPath: string, showHidden = false): Promise<FileListResult> {
     const resolved = this.validatePath(projectPath, dirPath);
 
     const dirents = await fs.readdir(resolved, { withFileTypes: true });
     const entries: FileEntry[] = [];
 
     for (const dirent of dirents) {
-      // Skip hidden files/folders starting with .
-      if (dirent.name.startsWith('.')) continue;
+      if (dirent.name.startsWith('.')) {
+        // Always skip .git directory
+        if (dirent.name === '.git') continue;
+        // Skip other dotfiles unless showHidden is true
+        if (!showHidden) continue;
+      }
       // Skip node_modules
       if (dirent.name === 'node_modules') continue;
 
