@@ -2,7 +2,7 @@
 description: Add bug to backlog with hypothesis-driven root-cause analysis
 globs:
 alwaysApply: false
-version: 3.2
+version: 3.3
 encoding: UTF-8
 ---
 
@@ -19,6 +19,11 @@ Add a bug to the backlog with structured root-cause analysis. Uses hypothesis-dr
 - Dokumentierter Analyseprozess
 - **NEU: User Hypothesis Dialog** - Benutzer-Wissen VOR der RCA abfragen
 - **NEU v3.1: Optionaler PlanAgent-Modus** für komplexe Bug-Fixes mit architektonischen Auswirkungen
+
+**v3.3 Changes (Content Passthrough):**
+- **FIX: Bug story content preserved** - Step 6 now reads the full bug story file and passes it as `content` to `backlog_add_item`
+- **NEW: `content` parameter for `backlog_add_item`** - MCP tool accepts optional full markdown content, falls back to slim template
+- **FIX: `/execute-tasks backlog` sees full story** - Item files in `items/` now contain RCA, Gherkin, WAS/WIE/WO, DoR/DoD
 
 **v3.2 Changes (Architecture Migration):**
 - **BREAKING: Step 3 - Main Agent RCA** - Root-Cause-Analyse wird vom Main Agent direkt durchgeführt (war: Sub-Agent-Delegation basierend auf Bug-Typ)
@@ -1580,6 +1585,13 @@ Validate that the bug fix complies with size guidelines for single-session execu
   - Category: [CATEGORY]
   - Root Cause: [Brief summary from Step 3]
   - Related Spec: [IF applicable]
+  - Story File Path: specwright/backlog/stories/bug-[YYYY-MM-DD]-[INDEX]-[slug].md
+
+  READ the full bug story file created in Step 4+5:
+  ```
+  READ: specwright/backlog/stories/bug-[YYYY-MM-DD]-[INDEX]-[slug].md
+  STORE: Full file content as FULL_BUG_STORY_CONTENT
+  ```
 
   CALL MCP TOOL: backlog_add_item
   Input:
@@ -1589,6 +1601,7 @@ Validate that the bug fix complies with size guidelines for single-session execu
       "title": "[BUG_TITLE]",
       "description": "[BUG_DESCRIPTION from Step 2]\n\nRoot Cause: [BRIEF_ROOT_CAUSE]\n\nSeverity: [SEVERITY]",
       "priority": "[PRIORITY]",
+      "content": "[FULL_BUG_STORY_CONTENT]",
       "source": "/add-bug command",
       "relatedSpec": "[RELATED_SPEC or null]",
       "estimatedEffort": [EFFORT_POINTS],
@@ -1597,19 +1610,24 @@ Validate that the bug fix complies with size guidelines for single-session execu
     }
   }
 
+  ⚠️ **CRITICAL:** The `content` field passes the FULL bug story (RCA, Gherkin, WAS/WIE/WO, DoR/DoD)
+  to the MCP tool. This ensures the item file in `items/` contains all technical details
+  that `/execute-tasks backlog` needs for implementation. Without `content`, only a slim
+  template with title + description would be created.
+
   VERIFY: Tool returns {
     "success": true,
     "itemId": "BUG-NNN",
     "path": "items/bug-NNN-slug.md"
   }
 
-  LOG: "Bug {itemId} added to backlog via MCP tool"
+  LOG: "Bug {itemId} added to backlog via MCP tool (with full story content)"
 
   NOTE: The MCP tool automatically:
   - Generates unique bug ID (BUG-001, BUG-002, etc.)
-  - Creates bug item file in specwright/backlog/items/
+  - Creates bug item file in specwright/backlog/items/ with FULL story content
   - Updates backlog-index.json (creates if needed)
-  - Uses bug template with all metadata
+  - Falls back to slim template if no content provided (backward compatible)
   - All atomic with file lock (no corruption risk)
 </mandatory_actions>
 

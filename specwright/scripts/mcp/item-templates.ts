@@ -32,6 +32,7 @@ export interface TodoItemData {
   estimatedEffort?: number;
   severity?: string;
   reproduction?: string;
+  content?: string;
 }
 
 /**

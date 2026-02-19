@@ -250,7 +250,7 @@ function updateStatistics(kanban: KanbanJsonV1): void {
 const server = new Server(
   {
     name: 'kanban-mcp-server',
-    version: '1.0.0',
+    version: '1.1.0',
   },
   {
     capabilities: {
@@ -448,6 +448,7 @@ const TOOLS: Tool[] = [
             title: { type: 'string', description: 'Item title' },
             description: { type: 'string', description: 'Detailed description' },
             priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], description: 'Priority level' },
+            content: { type: 'string', description: 'Full markdown content (optional, otherwise generated from template)' },
             source: { type: 'string', description: 'Where this item came from (optional)' },
             relatedSpec: { type: 'string', description: 'Related spec ID (optional)' },
             estimatedEffort: { type: 'number', description: 'Effort estimate (optional)' },
@@ -1313,7 +1314,7 @@ async function handleBacklogAddItem(
   const itemFile = `items/${args.itemType}-${paddedNumber}-${slug}.md`;
   const itemFilePath = join(backlogDir, itemFile);
 
-  const content = generateTodoTemplate(data, itemId);
+  const content = data.content || generateTodoTemplate(data, itemId);
   await writeFile(itemFilePath, content, 'utf-8');
 
   // Update index
