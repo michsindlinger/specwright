@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
 import { resolveProjectDir } from '../utils/project-dirs.js';
 
 const router = Router();
@@ -22,24 +21,20 @@ interface VersionResponse {
 }
 
 function readInstalledVersion(projectPath?: string): string | null {
-  // Try per-project version first
+  // Read per-project version only (no global fallback).
+  // The global ~/.specwright/.version reflects the global templates installation,
+  // not the per-project installation state. Using it as fallback would mask
+  // outdated projects that lack a .installed-version file.
   if (projectPath) {
     try {
       const dirName = resolveProjectDir(projectPath);
       const versionFile = join(projectPath, dirName, '.installed-version');
       return readFileSync(versionFile, 'utf-8').trim();
     } catch {
-      // Fall through to global
+      return null;
     }
   }
-
-  // Try global version
-  try {
-    const globalVersionFile = join(homedir(), '.specwright', '.version');
-    return readFileSync(globalVersionFile, 'utf-8').trim();
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 async function fetchFromGitHub(path: string): Promise<string | null> {
@@ -118,8 +113,8 @@ router.get('/', async (req: Request, res: Response) => {
   const { version: latestVersion, changelog: rawChangelog } = await getLatestVersionAndChangelog();
 
   // Update available if:
-  // 1. Version is known and differs from latest, OR
-  // 2. No version file exists but project has a specwright dir (old installation without version tracking)
+  // 1. Per-project version exists and differs from latest, OR
+  // 2. No per-project version file but project has a specwright dir (old installation without version tracking)
   const updateAvailable = !!(
     latestVersion && (
       (installedVersion && installedVersion !== latestVersion) ||

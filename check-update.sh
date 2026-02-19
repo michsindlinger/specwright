@@ -21,10 +21,10 @@ else
     BOLD="" GREEN="" YELLOW="" DIM="" RESET=""
 fi
 
-# Find installed version
+# Find installed version (per-project only, no global fallback).
+# The global ~/.specwright/.version reflects global templates, not per-project state.
 INSTALLED=""
 [[ -f "specwright/.installed-version" ]] && INSTALLED=$(cat "specwright/.installed-version" | tr -d '[:space:]')
-[[ -z "$INSTALLED" && -f "$HOME/.specwright/.version" ]] && INSTALLED=$(cat "$HOME/.specwright/.version" | tr -d '[:space:]')
 
 # Check if specwright is installed but without version tracking (old installation)
 HAS_SPECWRIGHT_DIR=false
