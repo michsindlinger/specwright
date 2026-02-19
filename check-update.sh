@@ -26,7 +26,11 @@ INSTALLED=""
 [[ -f "specwright/.installed-version" ]] && INSTALLED=$(cat "specwright/.installed-version" | tr -d '[:space:]')
 [[ -z "$INSTALLED" && -f "$HOME/.specwright/.version" ]] && INSTALLED=$(cat "$HOME/.specwright/.version" | tr -d '[:space:]')
 
-if [[ -z "$INSTALLED" ]]; then
+# Check if specwright is installed but without version tracking (old installation)
+HAS_SPECWRIGHT_DIR=false
+[[ -d "specwright" || -d "agent-os" ]] && HAS_SPECWRIGHT_DIR=true
+
+if [[ -z "$INSTALLED" && "$HAS_SPECWRIGHT_DIR" == "false" ]]; then
     echo -e "${YELLOW}Keine Specwright-Installation gefunden.${RESET}"
     echo "Installieren: curl -sSL $REPO_URL/install.sh | bash"
     exit 0
@@ -41,17 +45,25 @@ fi
 
 echo -e "${BOLD}Specwright Version Check${RESET}"
 echo "========================"
-echo -e "  Installiert: ${DIM}$INSTALLED${RESET}"
+if [[ -n "$INSTALLED" ]]; then
+    echo -e "  Installiert: ${DIM}$INSTALLED${RESET}"
+else
+    echo -e "  Installiert: ${DIM}unbekannt (vor Versions-Tracking)${RESET}"
+fi
 echo -e "  Aktuell:     ${DIM}$LATEST${RESET}"
 
-if [[ "$INSTALLED" == "$LATEST" ]]; then
+if [[ -n "$INSTALLED" && "$INSTALLED" == "$LATEST" ]]; then
     echo ""
     echo -e "${GREEN}Du bist auf dem neuesten Stand.${RESET}"
     exit 0
 fi
 
 echo ""
-echo -e "${YELLOW}Update verfuegbar: $INSTALLED -> $LATEST${RESET}"
+if [[ -n "$INSTALLED" ]]; then
+    echo -e "${YELLOW}Update verfuegbar: $INSTALLED -> $LATEST${RESET}"
+else
+    echo -e "${YELLOW}Update verfuegbar: -> $LATEST${RESET}"
+fi
 
 # Show changelog for the latest version
 CHANGELOG=$(curl -sSL --max-time 3 "$REPO_URL/CHANGELOG.md" 2>/dev/null)

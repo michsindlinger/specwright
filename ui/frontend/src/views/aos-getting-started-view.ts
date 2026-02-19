@@ -198,8 +198,10 @@ export class AosGettingStartedView extends LitElement {
         <div class="getting-started-hint__content">
           <p class="getting-started-hint__title">Specwright Update verfuegbar</p>
           <p class="getting-started-hint__description">
-            Installierte Version: <strong>${this.installedVersion}</strong> &rarr;
-            Neue Version: <strong>${this.latestVersion}</strong>
+            ${this.installedVersion
+              ? html`Installierte Version: <strong>${this.installedVersion}</strong> &rarr; Neue Version: <strong>${this.latestVersion}</strong>`
+              : html`Neue Version: <strong>${this.latestVersion}</strong> verfuegbar (installierte Version unbekannt)`
+            }
           </p>
           ${this.updateChangelog ? html`
             <pre class="getting-started-hint__code" style="white-space: pre-wrap; font-size: 12px; max-height: 120px; overflow-y: auto;">${this.updateChangelog}</pre>

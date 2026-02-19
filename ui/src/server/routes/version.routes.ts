@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { resolveProjectDir } from '../utils/project-dirs.js';
@@ -99,6 +99,14 @@ function extractChangelogSection(changelog: string, version: string): string | n
 }
 
 /**
+ * Checks if a Specwright directory exists in the project (specwright/ or agent-os/).
+ */
+function hasSpecwrightDir(projectPath?: string): boolean {
+  if (!projectPath) return false;
+  return existsSync(join(projectPath, 'specwright')) || existsSync(join(projectPath, 'agent-os'));
+}
+
+/**
  * GET /api/version?projectPath=<path>
  *
  * Returns installed version, latest version, update availability, and changelog.
@@ -109,10 +117,14 @@ router.get('/', async (req: Request, res: Response) => {
   const installedVersion = readInstalledVersion(projectPath);
   const { version: latestVersion, changelog: rawChangelog } = await getLatestVersionAndChangelog();
 
+  // Update available if:
+  // 1. Version is known and differs from latest, OR
+  // 2. No version file exists but project has a specwright dir (old installation without version tracking)
   const updateAvailable = !!(
-    installedVersion &&
-    latestVersion &&
-    installedVersion !== latestVersion
+    latestVersion && (
+      (installedVersion && installedVersion !== latestVersion) ||
+      (!installedVersion && hasSpecwrightDir(projectPath))
+    )
   );
 
   let changelog: string | null = null;
