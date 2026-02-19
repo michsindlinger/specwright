@@ -935,17 +935,18 @@ install_mcp() {
     mkdir -p "$MCP_DIR"
 
     # Copy or download MCP server files
+    # ALWAYS overwrite: MCP files are pure framework code, not user-customizable
     substep "MCP server files" "4"
     local mcp_files=(kanban-mcp-server.ts kanban-lock.ts story-parser.ts item-templates.ts)
     if [[ "$DETECT_FRAMEWORK_REPO" == true ]]; then
         # Local copy in framework repo
         for f in "${mcp_files[@]}"; do
-            copy_file "specwright/scripts/mcp/$f" "$MCP_DIR/$f"
+            copy_file "specwright/scripts/mcp/$f" "$MCP_DIR/$f" true
         done
     else
         # Download from GitHub
         for f in "${mcp_files[@]}"; do
-            download_file "$REPO_URL/specwright/scripts/mcp/$f" "$MCP_DIR/$f"
+            download_file "$REPO_URL/specwright/scripts/mcp/$f" "$MCP_DIR/$f" "mcp" true
         done
     fi
     substep_done
