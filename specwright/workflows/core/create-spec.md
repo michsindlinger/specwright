@@ -414,19 +414,28 @@ Before generating user stories, create a summary document for user approval.
 
   2. BASED on user choice:
      - If "Approve":
-       - PRESENT phase completion info:
+       - ASK user via AskUserQuestion:
          ```
          Phase 1 complete! Requirements clarification approved.
-
          Saved to: specwright/specs/[YYYY-MM-DD-spec-name]/requirements-clarification.md
 
-         To free up context for optimal planning quality, you can:
-         1. Run /clear
-         2. Then run: /create-spec specwright/specs/[YYYY-MM-DD-spec-name]/
-
-         Or just continue in this session - proceeding to Implementation Plan now.
+         How would you like to proceed?
          ```
-       - Proceed to Step 2.5 (Implementation Plan)
+         Options:
+         1. "Continue in this session" - Proceed directly to Implementation Plan
+         2. "Clear context and resume" - Stop here, free up context for optimal planning quality
+       - If "Continue in this session":
+         - Proceed to Step 2.5 (Implementation Plan)
+       - If "Clear context and resume":
+         - PRESENT resume instructions:
+           ```
+           To resume with a fresh context:
+           1. Run /clear
+           2. Then run: /create-spec specwright/specs/[YYYY-MM-DD-spec-name]/
+
+           The workflow will automatically detect Phase 1 is complete and continue with the Implementation Plan.
+           ```
+         - STOP workflow execution here (do NOT proceed to Step 2.5)
      - If "Request Changes": Update clarification, re-ask approval
      - If "Continue": Return to Step 2.1 with focused questions
 </mandatory_actions>
@@ -916,7 +925,7 @@ Before generating user stories, create a summary document for user approval.
     - This will be used by Architect to add Integration-DoD items
   - Stories with integration responsibility MUST connect components, not just create them
 
-  9. PRESENT phase completion info (v3.6):
+  9. ASK user via AskUserQuestion (v3.7):
      ```
      Phase 2 complete! Implementation plan approved and [N] stories generated.
 
@@ -929,10 +938,23 @@ Before generating user stories, create a summary document for user approval.
      The next phase (Technical Refinement) processes every story individually
      and benefits greatly from a fresh context window.
 
-     Recommended: Run /clear, then /create-spec specwright/specs/[YYYY-MM-DD-spec-name]/
-
-     Or continue in this session - proceeding to Technical Refinement now.
+     How would you like to proceed?
      ```
+     Options:
+     1. "Clear context and resume (Recommended)" - Stop here, free up context for Technical Refinement
+     2. "Continue in this session" - Proceed directly to Technical Refinement
+     - If "Clear context and resume":
+       - PRESENT resume instructions:
+         ```
+         To resume with a fresh context:
+         1. Run /clear
+         2. Then run: /create-spec specwright/specs/[YYYY-MM-DD-spec-name]/
+
+         The workflow will automatically detect Phase 2 is complete and continue with Technical Refinement.
+         ```
+       - STOP workflow execution here (do NOT proceed to next phase)
+     - If "Continue in this session":
+       - Proceed to next phase (Technical Refinement)
 </mandatory_actions>
 
 </substep>
