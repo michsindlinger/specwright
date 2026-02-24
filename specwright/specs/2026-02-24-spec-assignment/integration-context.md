@@ -15,6 +15,8 @@
 | ASGN-003 | Assignment badge + toggle in spec-card overview, spec-assign event + WS handlers | spec-card.ts, dashboard-view.ts |
 | ASGN-004 | Assignment toggle in Kanban header, WS ack/error handling | kanban-board.ts, dashboard-view.ts |
 | ASGN-005 | CLI slash command /assign-spec for toggling spec assignment without Web UI | assign-spec.md |
+| ASGN-997 | Code Review: 1 Major fix (disabled-btn logic), 2 Minor skipped. Review passed. | review-report.md |
+| ASGN-998 | Integration Validation: 4/4 tests passed, 9/9 connections verified, build+lint clean | - |
 
 ---
 
