@@ -112,19 +112,19 @@ Keine MCP-Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] `KanbanJsonV1` Interface um `assignedToBot?` erweitert
-- [ ] `SpecInfo` Interface um `assignedToBot?: boolean` und `isReady?: boolean` erweitert
-- [ ] `KanbanBoard` Interface um `assignedToBot?: boolean` und `isReady?: boolean` erweitert
-- [ ] `isSpecReady()` Methode implementiert und korrekt
-- [ ] `toggleBotAssignment()` Methode implementiert mit Lock-Pattern
-- [ ] `getSpecInfo()` liest `assignedToBot` und berechnet `isReady`
-- [ ] `convertJsonToKanbanBoard()` gibt `assignedToBot` und `isReady` weiter
-- [ ] Backward Compatibility: fehlendes Feld = nicht assigned, kein Fehler
-- [ ] Backend Build kompiliert: `cd ui && npm run build:backend`
-- [ ] Lint fehlerfrei: `cd ui && npm run lint`
-- [ ] Keine `any` Types verwendet
-- [ ] Completion Check commands erfolgreich
+- [x] Code implementiert und folgt Style Guide
+- [x] `KanbanJsonV1` Interface um `assignedToBot?` erweitert
+- [x] `SpecInfo` Interface um `assignedToBot?: boolean` und `isReady?: boolean` erweitert
+- [x] `KanbanBoard` Interface um `assignedToBot?: boolean` und `isReady?: boolean` erweitert
+- [x] `isSpecReady()` Methode implementiert und korrekt
+- [x] `toggleBotAssignment()` Methode implementiert mit Lock-Pattern
+- [x] `getSpecInfo()` liest `assignedToBot` und berechnet `isReady`
+- [x] `convertJsonToKanbanBoard()` gibt `assignedToBot` und `isReady` weiter
+- [x] Backward Compatibility: fehlendes Feld = nicht assigned, kein Fehler
+- [x] Backend Build kompiliert: `cd ui && npm run build:backend`
+- [x] Lint fehlerfrei: `cd ui && npm run lint`
+- [x] Keine `any` Types verwendet
+- [x] Completion Check commands erfolgreich
 
 ---
 

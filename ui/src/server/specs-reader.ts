@@ -24,6 +24,8 @@ export interface SpecInfo {
   inProgressCount: number;
   hasKanban: boolean;
   gitStrategy: 'branch' | 'worktree' | 'current-branch' | null;
+  assignedToBot?: boolean;
+  isReady?: boolean;
   projectPath?: string;
   projectName?: string;
 }
@@ -54,6 +56,8 @@ export interface KanbanBoard {
   hasKanbanFile: boolean;
   currentPhase?: string | null;
   executionStatus?: string;
+  assignedToBot?: boolean;
+  isReady?: boolean;
 }
 
 export interface StoryDetail {
@@ -195,6 +199,12 @@ interface KanbanJsonChangeLogEntry {
   details: string;
 }
 
+interface KanbanJsonAssignedToBot {
+  assigned: boolean;
+  assignedAt: string;
+  assignedBy: string;
+}
+
 interface KanbanJsonV1 {
   $schema?: string;
   version: string;
@@ -203,6 +213,7 @@ interface KanbanJsonV1 {
   execution: KanbanJsonExecution;
   stories: KanbanJsonStory[];
   boardStatus: KanbanJsonBoardStatus;
+  assignedToBot?: KanbanJsonAssignedToBot;
   statistics?: {
     totalEffort: number;
     completedEffort: number;
@@ -409,7 +420,9 @@ export class SpecsReader {
       stories,
       hasKanbanFile: true,
       currentPhase: json.resumeContext?.currentPhase ?? null,
-      executionStatus: json.execution?.status ?? undefined
+      executionStatus: json.execution?.status ?? undefined,
+      assignedToBot: json.assignedToBot?.assigned ?? false,
+      isReady: json.boardStatus.ready === json.boardStatus.total && json.boardStatus.total > 0
     };
   }
 
@@ -442,6 +455,61 @@ export class SpecsReader {
       action,
       storyId,
       details
+    });
+  }
+
+  /**
+   * Checks whether a spec is ready for bot assignment.
+   * A spec is ready when ALL stories have status "ready" and there is at least one story.
+   */
+  public isSpecReady(kanban: KanbanJsonV1): boolean {
+    return kanban.boardStatus.ready === kanban.boardStatus.total && kanban.boardStatus.total > 0;
+  }
+
+  /**
+   * Atomically toggles the bot assignment for a spec.
+   * Uses withKanbanLock for safe read-modify-write.
+   * Assignment is only allowed when the spec is ready (all stories "ready").
+   */
+  public async toggleBotAssignment(
+    projectPath: string,
+    specId: string
+  ): Promise<{ assigned: boolean; error?: string }> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+
+    return await withKanbanLock(specPath, async () => {
+      const kanban = await this.readKanbanJsonUnlocked(specPath);
+      if (!kanban) {
+        return { assigned: false, error: 'kanban.json not found' };
+      }
+
+      const currentlyAssigned = kanban.assignedToBot?.assigned ?? false;
+
+      // When assigning (toggling to true), validate that spec is ready
+      if (!currentlyAssigned) {
+        if (!this.isSpecReady(kanban)) {
+          return { assigned: false, error: 'Spec muss Status \'ready\' haben' };
+        }
+      }
+
+      const newAssigned = !currentlyAssigned;
+
+      kanban.assignedToBot = {
+        assigned: newAssigned,
+        assignedAt: new Date().toISOString(),
+        assignedBy: 'user'
+      };
+
+      this.addChangeLogEntry(
+        kanban,
+        'bot-assignment-toggled',
+        null,
+        `assigned: ${newAssigned}`
+      );
+
+      await this.writeKanbanJsonUnlocked(specPath, kanban);
+
+      return { assigned: newAssigned };
     });
   }
 
@@ -717,7 +785,9 @@ export class SpecsReader {
           completedCount: jsonKanban.boardStatus.done,
           inProgressCount: jsonKanban.boardStatus.inProgress + (jsonKanban.boardStatus.inReview || 0) + (jsonKanban.boardStatus.testing || 0),
           hasKanban: true,
-          gitStrategy
+          gitStrategy,
+          assignedToBot: jsonKanban.assignedToBot?.assigned ?? false,
+          isReady: this.isSpecReady(jsonKanban)
         };
       }
 

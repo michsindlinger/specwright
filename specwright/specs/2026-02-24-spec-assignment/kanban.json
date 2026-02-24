@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-02-24-spec-assignment",
     "name": "Spec Assignment for External Bot",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-02-24T00:00:00Z"
   },
-
   "resumeContext": {
-    "currentPhase": "1-kanban-setup",
+    "currentPhase": "3-execute-story",
     "nextPhase": "2-worktree-setup",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/spec-assignment",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Technical refinement completed (Phase 3)",
-    "nextAction": "Run /execute-tasks 2026-02-24-spec-assignment",
+    "lastAction": "Phase 1+2 complete (kanban created, git branch strategy set)",
+    "nextAction": "Execute ASGN-001: Backend Data Layer",
     "progressIndex": 0,
-    "totalStories": 8
+    "totalStories": 8,
+    "gitStrategy": "branch"
   },
-
   "execution": {
-    "status": "not_started",
+    "status": "in_progress",
     "startedAt": null,
     "completedAt": null,
     "model": null
   },
-
   "stories": [
     {
       "id": "ASGN-001",
@@ -43,12 +40,13 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-001-backend-data-layer.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T15:00:00Z"
+        "updatedAt": "2026-02-24T15:00:00Z",
+        "startedAt": "2026-02-24T15:05:10.192Z"
       },
       "implementation": {
         "filesModified": [],
@@ -58,7 +56,8 @@
       "verification": {
         "dorChecked": true,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress"
     },
     {
       "id": "ASGN-002",
@@ -70,7 +69,9 @@
         "effort": 2,
         "complexity": "XS"
       },
-      "dependencies": ["ASGN-001"],
+      "dependencies": [
+        "ASGN-001"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-backend-websocket-handler.md",
@@ -98,7 +99,9 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["ASGN-002"],
+      "dependencies": [
+        "ASGN-002"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-frontend-spec-overview.md",
@@ -126,7 +129,9 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["ASGN-002"],
+      "dependencies": [
+        "ASGN-002"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-004-frontend-kanban-view.md",
@@ -182,7 +187,13 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["ASGN-001", "ASGN-002", "ASGN-003", "ASGN-004", "ASGN-005"],
+      "dependencies": [
+        "ASGN-001",
+        "ASGN-002",
+        "ASGN-003",
+        "ASGN-004",
+        "ASGN-005"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
@@ -210,7 +221,9 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["ASGN-997"],
+      "dependencies": [
+        "ASGN-997"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
@@ -238,7 +251,9 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["ASGN-998"],
+      "dependencies": [
+        "ASGN-998"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
@@ -257,17 +272,15 @@
       }
     }
   ],
-
   "boardStatus": {
     "total": 8,
-    "ready": 8,
-    "inProgress": 0,
+    "ready": 7,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
     "done": 0,
     "blocked": 0
   },
-
   "statistics": {
     "totalEffort": 15,
     "completedEffort": 0,
@@ -288,37 +301,47 @@
       "low": 0
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "name": "Phase 1: Foundation",
-        "stories": ["ASGN-001", "ASGN-005"],
+        "stories": [
+          "ASGN-001",
+          "ASGN-005"
+        ],
         "parallel": true,
         "description": "Backend Data Layer + Slash-Command (independent, can run in parallel)"
       },
       {
         "name": "Phase 2: WebSocket Integration",
-        "stories": ["ASGN-002"],
+        "stories": [
+          "ASGN-002"
+        ],
         "parallel": false,
         "description": "WebSocket Handler depends on Data Layer"
       },
       {
         "name": "Phase 3: Frontend",
-        "stories": ["ASGN-003", "ASGN-004"],
+        "stories": [
+          "ASGN-003",
+          "ASGN-004"
+        ],
         "parallel": true,
         "description": "Spec Overview + Kanban View (parallel, both depend on WebSocket)"
       },
       {
         "name": "Phase 4: System Stories",
-        "stories": ["ASGN-997", "ASGN-998", "ASGN-999"],
+        "stories": [
+          "ASGN-997",
+          "ASGN-998",
+          "ASGN-999"
+        ],
         "parallel": false,
         "description": "Code Review → Integration Validation → Finalize PR"
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-02-24T00:00:00Z",
@@ -331,6 +354,24 @@
       "action": "technical_refinement_completed",
       "storyId": null,
       "details": "Phase 3: Technical refinement completed for all 5 regular stories. DoR marked as ready. ASGN-002 complexity updated from S to XS."
+    },
+    {
+      "timestamp": "2026-02-24T15:05:10.192Z",
+      "action": "status_changed",
+      "storyId": "ASGN-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:05:10.355Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:06:06.132Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
     }
   ]
 }
