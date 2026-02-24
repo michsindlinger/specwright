@@ -422,7 +422,14 @@ export class SpecsReader {
       currentPhase: json.resumeContext?.currentPhase ?? null,
       executionStatus: json.execution?.status ?? undefined,
       assignedToBot: json.assignedToBot?.assigned ?? false,
-      isReady: json.boardStatus.ready === json.boardStatus.total && json.boardStatus.total > 0
+      // Compute isReady from actual story statuses instead of trusting stored boardStatus
+      // (boardStatus can be stale if kanban was created/modified externally)
+      isReady: (() => {
+        const statuses = json.stories.map(s => s.status);
+        const allReady = json.stories.length > 0 && json.stories.every(s => s.status === 'ready');
+        console.log(`[DEBUG isReady] convertJsonToKanbanBoard specId=${json.spec.id} storyCount=${json.stories.length} statuses=${JSON.stringify(statuses)} allReady=${allReady}`);
+        return allReady;
+      })()
     };
   }
 
@@ -463,7 +470,11 @@ export class SpecsReader {
    * A spec is ready when ALL stories have status "ready" and there is at least one story.
    */
   public isSpecReady(kanban: KanbanJsonV1): boolean {
-    return kanban.boardStatus.ready === kanban.boardStatus.total && kanban.boardStatus.total > 0;
+    // Compute from actual story statuses instead of trusting stored boardStatus
+    const statuses = kanban.stories.map(s => s.status);
+    const allReady = kanban.stories.length > 0 && kanban.stories.every(s => s.status === 'ready');
+    console.log(`[DEBUG isReady] isSpecReady specId=${kanban.spec.id} storyCount=${kanban.stories.length} statuses=${JSON.stringify(statuses)} allReady=${allReady}`);
+    return allReady;
   }
 
   /**
@@ -777,6 +788,8 @@ export class SpecsReader {
       const jsonKanban = await this.readKanbanJson(specPath);
       if (jsonKanban) {
         const gitStrategy = jsonKanban.resumeContext?.gitStrategy as 'branch' | 'worktree' | 'current-branch' | null;
+        const isReady = this.isSpecReady(jsonKanban);
+        console.log(`[DEBUG getSpecInfo] ${specId}: JSON path, isReady=${isReady}, assignedToBot=${jsonKanban.assignedToBot?.assigned}`);
         return {
           id: specId,
           name: this.capitalizeWords(name),
@@ -787,11 +800,12 @@ export class SpecsReader {
           hasKanban: true,
           gitStrategy,
           assignedToBot: jsonKanban.assignedToBot?.assigned ?? false,
-          isReady: this.isSpecReady(jsonKanban)
+          isReady
         };
       }
 
       // PRIORITY 2: Fallback to MD kanban
+      console.log(`[DEBUG getSpecInfo] ${specId}: MD fallback path (no kanban.json found)`);
       const kanbanPath = join(specPath, 'kanban-board.md');
       let hasKanban = false;
       let completedCount = 0;
@@ -846,7 +860,9 @@ export class SpecsReader {
         completedCount,
         inProgressCount,
         hasKanban,
-        gitStrategy: mdGitStrategy
+        gitStrategy: mdGitStrategy,
+        assignedToBot: false,
+        isReady: false
       };
     } catch {
       return null;

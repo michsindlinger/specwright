@@ -483,6 +483,7 @@ export class AosDashboardView extends LitElement {
 
   private onSpecsList(msg: WebSocketMessage): void {
     this.specs = (msg.specs as SpecInfo[]) || [];
+    console.log(`[DEBUG onSpecsList] specs:`, this.specs.map(s => ({ id: s.id, isReady: s.isReady, assignedToBot: s.assignedToBot })));
     this.loading = false;
 
     // DLN-002: Restore deep-link state after specs are loaded
@@ -536,6 +537,7 @@ export class AosDashboardView extends LitElement {
 
   private onSpecsKanban(msg: WebSocketMessage): void {
     const kanban = msg.kanban as KanbanBoard;
+    console.log(`[DEBUG onSpecsKanban] specId=${kanban.specId} isReady=${kanban.isReady} assignedToBot=${kanban.assignedToBot}`);
 
     // Check if user expects to see the kanban view (clicked on a spec)
     // If selectedSpec is set and matches this kanban, show it
@@ -1916,7 +1918,7 @@ export class AosDashboardView extends LitElement {
         .kanban=${this.kanban}
         .specName=${this.selectedSpec.name}
         .autoModeEnabled=${this.autoModeEnabled}
-        .assignedToBot=${this.kanban.assignedToBot ?? false}
+        .assignedToBot=${(() => { console.log(`[DEBUG kanban-board props] assignedToBot=${this.kanban.assignedToBot} isReady=${this.kanban.isReady}`); return this.kanban.assignedToBot ?? false; })()}
         .isReady=${this.kanban.isReady ?? false}
         @kanban-back=${this.handleKanbanBack}
         @auto-mode-toggle=${this.handleAutoModeToggle}

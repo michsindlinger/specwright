@@ -83,6 +83,7 @@ export class AosSpecCard extends LitElement {
   }
 
   override render() {
+    console.log(`[DEBUG spec-card] ${this.spec.id}: isReady=${this.spec.isReady}, assignedToBot=${this.spec.assignedToBot}, disabled=${!this.spec.isReady && !this.spec.assignedToBot}`);
     const progress = this.getProgressPercentage();
     const backlogCount = this.spec.storyCount - this.spec.completedCount - this.spec.inProgressCount;
 
@@ -99,24 +100,22 @@ export class AosSpecCard extends LitElement {
         <div class="spec-header">
           <h3 class="spec-name">${this.spec.name}</h3>
           <div class="spec-header-actions">
-            ${this.spec.assignedToBot || this.spec.isReady
-              ? html`<button
-                  class="assign-toggle-btn ${this.spec.assignedToBot ? 'assigned' : ''}"
-                  @click=${this.handleAssignToggle}
-                  ?disabled=${!this.spec.isReady && !this.spec.assignedToBot}
-                  aria-label="${this.spec.assignedToBot ? 'Bot-Assignment entfernen' : 'An Bot assignen'}"
-                  title="${this.spec.assignedToBot ? 'Bot-Assignment entfernen' : 'An Bot assignen'}"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 8V4H8"/>
-                    <rect width="16" height="12" x="4" y="8" rx="2"/>
-                    <path d="M2 14h2"/>
-                    <path d="M20 14h2"/>
-                    <path d="M15 13v2"/>
-                    <path d="M9 13v2"/>
-                  </svg>
-                </button>`
-              : ''}
+            <button
+              class="assign-toggle-btn ${this.spec.assignedToBot ? 'assigned' : ''} ${!this.spec.isReady && !this.spec.assignedToBot ? 'assign-disabled' : ''}"
+              @click=${this.handleAssignToggle}
+              ?disabled=${!this.spec.isReady && !this.spec.assignedToBot}
+              aria-label="${!this.spec.isReady && !this.spec.assignedToBot ? 'Spec muss "ready" sein' : (this.spec.assignedToBot ? 'Bot-Assignment entfernen' : 'An Bot assignen')}"
+              title="${!this.spec.isReady && !this.spec.assignedToBot ? 'Spec muss "ready" sein' : (this.spec.assignedToBot ? 'Bot-Assignment entfernen' : 'An Bot assignen')}"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8V4H8"/>
+                <rect width="16" height="12" x="4" y="8" rx="2"/>
+                <path d="M2 14h2"/>
+                <path d="M20 14h2"/>
+                <path d="M15 13v2"/>
+                <path d="M9 13v2"/>
+              </svg>
+            </button>
             ${this.spec.hasKanban
               ? html`<span class="kanban-badge">Kanban</span>`
               : html`<span class="no-kanban-badge">Not Started</span>`}
