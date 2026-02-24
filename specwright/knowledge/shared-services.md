@@ -1,7 +1,7 @@
 # Shared Services
 
 > Verfügbare Services, Hooks und Utilities im Projekt.
-> Zuletzt aktualisiert: 2026-02-16
+> Zuletzt aktualisiert: 2026-02-24
 
 ## Services-Übersicht
 
@@ -10,6 +10,8 @@
 | FileService | ui/src/server/services/file.service.ts | Service | File Editor (2026-02-16) |
 | FileHandler | ui/src/server/handlers/file.handler.ts | Handler | File Editor (2026-02-16) |
 | GitService | ui/src/server/services/git.service.ts | Service | Branch-per-Story Backlog (2026-02-16) |
+| isSpecReady | ui/src/server/specs-reader.ts | Method (SpecsReader) | Spec Assignment (2026-02-24) |
+| toggleBotAssignment | ui/src/server/specs-reader.ts | Method (SpecsReader) | Spec Assignment (2026-02-24) |
 
 ---
 
@@ -88,6 +90,46 @@
 - `createPullRequest` nutzt gh CLI via `execFile('gh', ...)`
 - Fehlerbehandlung mit `GitError` und spezifischen Error-Codes
 - Timeout: 30 Sekunden (GIT_CONFIG.OPERATION_TIMEOUT_MS)
+
+---
+
+### isSpecReady
+
+**Pfad:** `ui/src/server/specs-reader.ts`
+**Typ:** Method (SpecsReader)
+**Erstellt:** Spec Assignment (2026-02-24)
+
+**Beschreibung:** Prüft ob eine Spec bereit für Bot-Assignment ist. Eine Spec ist bereit wenn ALLE Stories Status "ready" haben und mindestens eine Story existiert.
+
+**Signatur:**
+| Methode | Parameter | Return | Beschreibung |
+|---------|-----------|--------|--------------|
+| isSpecReady | (kanban: KanbanJsonV1) | boolean | True wenn alle Stories "ready" |
+
+**Notes:**
+- Wiederverwendbar für Ready-Prüfungen an beliebigen Specs
+- Vergleicht `boardStatus.ready === boardStatus.total && total > 0`
+
+---
+
+### toggleBotAssignment
+
+**Pfad:** `ui/src/server/specs-reader.ts`
+**Typ:** Method (SpecsReader)
+**Erstellt:** Spec Assignment (2026-02-24)
+
+**Beschreibung:** Atomares Toggle für Bot-Assignment in kanban.json. Nutzt `withKanbanLock` für sichere Read-Modify-Write-Operationen. Assignment ist nur erlaubt wenn die Spec ready ist.
+
+**Signatur:**
+| Methode | Parameter | Return | Beschreibung |
+|---------|-----------|--------|--------------|
+| toggleBotAssignment | (projectPath: string, specId: string) | Promise<{ assigned: boolean; error?: string }> | Togglet assignedToBot-Feld in kanban.json |
+
+**Notes:**
+- Nutzt `withKanbanLock` für atomare JSON-Updates (kein Race-Condition-Risiko)
+- Validiert Ready-Status vor Assignment (Assign nur wenn `isSpecReady()` true)
+- Unassign ist immer erlaubt (keine Validierung nötig)
+- Pattern wiederverwendbar für andere Toggle-Felder in kanban.json
 
 ---
 

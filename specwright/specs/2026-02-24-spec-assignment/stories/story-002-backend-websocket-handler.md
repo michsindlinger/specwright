@@ -72,11 +72,11 @@ Scenario: Assignment-Toggle via WebSocket
 
 ## Technische Verifikation (Automated Checks)
 
-- [ ] FILE_EXISTS: ui/src/server/websocket.ts
-- [ ] CONTAINS: ui/src/server/websocket.ts enthält "specs.assign"
-- [ ] CONTAINS: ui/src/server/websocket.ts enthält "handleSpecsAssign"
-- [ ] BUILD_PASS: `cd ui && npm run build:backend` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] FILE_EXISTS: ui/src/server/websocket.ts
+- [x] CONTAINS: ui/src/server/websocket.ts enthält "specs.assign"
+- [x] CONTAINS: ui/src/server/websocket.ts enthält "handleSpecsAssign"
+- [x] BUILD_PASS: `cd ui && npm run build:backend` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0
 
 ---
 
@@ -112,23 +112,23 @@ Keine MCP-Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] `specs.assign` Case im Message-Router-Switch hinzugefügt
-- [ ] `handleSpecsAssign()` Handler-Methode implementiert
-- [ ] Success: `specs.assign.ack` Response mit `{ specId, assigned, timestamp }`
-- [ ] Error: `specs.assign.error` Response mit Fehlergrund
-- [ ] Broadcast an alle Clients im selben Projekt nach erfolgreichem Toggle
-- [ ] Backend Build kompiliert: `cd ui && npm run build:backend`
-- [ ] Lint fehlerfrei: `cd ui && npm run lint`
-- [ ] Keine `any` Types verwendet
-- [ ] Completion Check commands erfolgreich
+- [x] Code implementiert und folgt Style Guide
+- [x] `specs.assign` Case im Message-Router-Switch hinzugefügt
+- [x] `handleSpecsAssign()` Handler-Methode implementiert
+- [x] Success: `specs.assign.ack` Response mit `{ specId, assigned, timestamp }`
+- [x] Error: `specs.assign.error` Response mit Fehlergrund
+- [x] Broadcast an alle Clients im selben Projekt nach erfolgreichem Toggle
+- [x] Backend Build kompiliert: `cd ui && npm run build:backend`
+- [x] Lint fehlerfrei: `cd ui && npm run lint`
+- [x] Keine `any` Types verwendet
+- [x] Completion Check commands erfolgreich
 
 ### Integration DoD (v2.9)
 
-- [ ] **Integration hergestellt: websocket.ts → specs-reader.ts**
-  - [ ] Import/Aufruf von `toggleBotAssignment()` existiert in websocket.ts
-  - [ ] Verbindung ist funktional (nicht nur Stub)
-  - [ ] Validierung: `grep -q "toggleBotAssignment" ui/src/server/websocket.ts`
+- [x] **Integration hergestellt: websocket.ts → specs-reader.ts**
+  - [x] Import/Aufruf von `toggleBotAssignment()` existiert in websocket.ts
+  - [x] Verbindung ist funktional (nicht nur Stub)
+  - [x] Validierung: `grep -q "toggleBotAssignment" ui/src/server/websocket.ts`
 
 ---
 

@@ -1600,6 +1600,43 @@ aos-spec-card {
   white-space: nowrap;
 }
 
+/* ASGN-003: Assignment Toggle Button */
+.assign-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.2s, background-color 0.2s, border-color 0.2s;
+  color: var(--color-text-muted);
+}
+
+.assign-toggle-btn:hover:not(:disabled) {
+  opacity: 1;
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+
+.assign-toggle-btn.assigned {
+  opacity: 1;
+  background-color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+}
+
+.assign-toggle-btn.assigned:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.assign-toggle-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
 .spec-date {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);

@@ -133,6 +133,12 @@ interface KanbanJsonChangeLogEntry {
   details: string;
 }
 
+interface KanbanJsonAssignedToBot {
+  assigned: boolean;
+  assignedAt: string;
+  assignedBy: string;
+}
+
 interface KanbanJsonV1 {
   $schema?: string;
   version: string;
@@ -141,6 +147,7 @@ interface KanbanJsonV1 {
   execution: KanbanJsonExecution;
   stories: KanbanJsonStory[];
   boardStatus: KanbanJsonBoardStatus;
+  assignedToBot?: KanbanJsonAssignedToBot;
   statistics?: {
     totalEffort: number;
     completedEffort: number;

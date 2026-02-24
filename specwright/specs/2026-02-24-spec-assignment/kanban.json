@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-02-24-spec-assignment",
     "name": "Spec Assignment for External Bot",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-02-24T00:00:00Z"
   },
-
   "resumeContext": {
-    "currentPhase": "1-kanban-setup",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/spec-assignment",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Technical refinement completed (Phase 3)",
-    "nextAction": "Run /execute-tasks 2026-02-24-spec-assignment",
-    "progressIndex": 0,
-    "totalStories": 8
+    "lastAction": "PR created - https://github.com/michsindlinger/specwright/pull/10",
+    "nextAction": "All stories complete",
+    "progressIndex": 16,
+    "totalStories": 8,
+    "gitStrategy": "branch"
   },
-
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
-    "completedAt": null,
+    "status": "complete",
+    "startedAt": "2026-02-24T15:24:29.582Z",
+    "completedAt": "2026-02-24T15:35:13.343Z",
     "model": null
   },
-
   "stories": [
     {
       "id": "ASGN-001",
@@ -43,22 +40,34 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-001-backend-data-layer.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T15:00:00Z"
+        "updatedAt": "2026-02-24T15:00:00Z",
+        "startedAt": "2026-02-24T15:05:10.192Z",
+        "completedAt": "2026-02-24T15:10:48.507Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/specs-reader.ts",
+          "specwright/scripts/mcp/kanban-mcp-server.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "98038da",
+            "message": "feat: ASGN-001 Backend Data Layer - assignedToBot in kanban.json + SpecsReader",
+            "timestamp": "2026-02-24T15:30:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "ASGN-002",
@@ -70,23 +79,36 @@
         "effort": 2,
         "complexity": "XS"
       },
-      "dependencies": ["ASGN-001"],
-      "status": "ready",
+      "dependencies": [
+        "ASGN-001"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-backend-websocket-handler.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T15:00:00Z"
+        "updatedAt": "2026-02-24T15:00:00Z",
+        "startedAt": "2026-02-24T15:11:08.908Z",
+        "completedAt": "2026-02-24T15:16:22.764Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/websocket.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "a4ef51f",
+            "message": "feat: ASGN-002 Backend WebSocket Handler - specs.assign message handler",
+            "timestamp": "2026-02-24T15:30:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "ASGN-003",
@@ -98,23 +120,37 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["ASGN-002"],
-      "status": "ready",
+      "dependencies": [
+        "ASGN-002"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-frontend-spec-overview.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T15:00:00Z"
+        "updatedAt": "2026-02-24T15:00:00Z",
+        "startedAt": "2026-02-24T15:16:30.873Z",
+        "completedAt": "2026-02-24T15:24:48.290Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/spec-card.ts",
+          "ui/frontend/src/views/dashboard-view.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "78836dc",
+            "message": "feat: ASGN-003 Frontend Assignment in Spec-Übersicht - badge + toggle in spec-card",
+            "timestamp": "2026-02-24T16:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "ASGN-004",
@@ -126,23 +162,42 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["ASGN-002"],
-      "status": "ready",
+      "dependencies": [
+        "ASGN-002"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-004-frontend-kanban-view.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T15:00:00Z"
+        "updatedAt": "2026-02-24T15:00:00Z",
+        "startedAt": "2026-02-24T15:16:54.042Z",
+        "completedAt": "2026-02-24T15:24:09.085Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/kanban-board.ts",
+          "ui/frontend/src/views/dashboard-view.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "7d75197",
+            "message": "feat: ASGN-004 Frontend Assignment in Kanban View - toggle + WS handlers",
+            "timestamp": "2026-02-24T16:00:00Z"
+          },
+          {
+            "hash": "a2f2a94",
+            "message": "feat: ASGN-004 Frontend Assignment in Kanban View - toggle button + WS integration",
+            "timestamp": "2026-02-24T16:05:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "ASGN-005",
@@ -155,22 +210,35 @@
         "complexity": "XS"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-005-slash-command.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T15:00:00Z"
+        "updatedAt": "2026-02-24T15:00:00Z",
+        "startedAt": "2026-02-24T15:24:29.582Z",
+        "completedAt": "2026-02-24T15:27:06.821Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          ".claude/commands/specwright/assign-spec.md",
+          "specwright/specs/2026-02-24-spec-assignment/stories/story-005-slash-command.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "11c130a",
+            "message": "feat: ASGN-005 Slash-Command /assign-spec",
+            "timestamp": "2026-02-24T16:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "ASGN-997",
@@ -182,23 +250,44 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["ASGN-001", "ASGN-002", "ASGN-003", "ASGN-004", "ASGN-005"],
-      "status": "ready",
+      "dependencies": [
+        "ASGN-001",
+        "ASGN-002",
+        "ASGN-003",
+        "ASGN-004",
+        "ASGN-005"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T00:00:00Z"
+        "updatedAt": "2026-02-24T00:00:00Z",
+        "startedAt": "2026-02-24T15:26:21.446Z",
+        "completedAt": "2026-02-24T15:30:11.859Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-24-spec-assignment/review-report.md",
+          "ui/frontend/src/components/spec-card.ts",
+          "ui/frontend/src/components/kanban-board.ts",
+          ".claude/commands/specwright/assign-spec.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "5d6d7a4",
+            "message": "feat: ASGN-997 Code Review - review report + fix unassignment toggle bug",
+            "timestamp": "2026-02-24T16:30:02+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "ASGN-998",
@@ -210,23 +299,31 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["ASGN-997"],
-      "status": "ready",
+      "dependencies": [
+        "ASGN-997"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T00:00:00Z"
+        "updatedAt": "2026-02-24T00:00:00Z",
+        "startedAt": "2026-02-24T15:30:17.801Z",
+        "completedAt": "2026-02-24T15:35:08.492Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-24-spec-assignment/integration-context.md"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "ASGN-999",
@@ -238,87 +335,101 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["ASGN-998"],
-      "status": "ready",
+      "dependencies": [
+        "ASGN-998"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T00:00:00Z"
+        "updatedAt": "2026-02-24T00:00:00Z",
+        "startedAt": "2026-02-24T15:33:26.134Z",
+        "completedAt": "2026-02-24T15:35:13.343Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-24-spec-assignment/kanban.json"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "52b2c28",
+            "message": "chore: ASGN-998/999 Integration validation passed + finalize kanban",
+            "timestamp": "2026-02-24T16:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     }
   ],
-
   "boardStatus": {
     "total": 8,
-    "ready": 8,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 8,
     "blocked": 0
   },
-
   "statistics": {
-    "totalEffort": 15,
-    "completedEffort": 0,
-    "remainingEffort": 15,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 5,
-      "backend": 5,
-      "devops": 2,
-      "test": 0,
-      "docs": 0,
-      "system": 3
+      "undefined": 8
     },
     "byPriority": {
-      "critical": 0,
-      "high": 6,
-      "medium": 2,
-      "low": 0
+      "undefined": 8
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "name": "Phase 1: Foundation",
-        "stories": ["ASGN-001", "ASGN-005"],
+        "stories": [
+          "ASGN-001",
+          "ASGN-005"
+        ],
         "parallel": true,
         "description": "Backend Data Layer + Slash-Command (independent, can run in parallel)"
       },
       {
         "name": "Phase 2: WebSocket Integration",
-        "stories": ["ASGN-002"],
+        "stories": [
+          "ASGN-002"
+        ],
         "parallel": false,
         "description": "WebSocket Handler depends on Data Layer"
       },
       {
         "name": "Phase 3: Frontend",
-        "stories": ["ASGN-003", "ASGN-004"],
+        "stories": [
+          "ASGN-003",
+          "ASGN-004"
+        ],
         "parallel": true,
         "description": "Spec Overview + Kanban View (parallel, both depend on WebSocket)"
       },
       {
         "name": "Phase 4: System Stories",
-        "stories": ["ASGN-997", "ASGN-998", "ASGN-999"],
+        "stories": [
+          "ASGN-997",
+          "ASGN-998",
+          "ASGN-999"
+        ],
         "parallel": false,
         "description": "Code Review → Integration Validation → Finalize PR"
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-02-24T00:00:00Z",
@@ -331,6 +442,264 @@
       "action": "technical_refinement_completed",
       "storyId": null,
       "details": "Phase 3: Technical refinement completed for all 5 regular stories. DoR marked as ready. ASGN-002 complexity updated from S to XS."
+    },
+    {
+      "timestamp": "2026-02-24T15:05:10.192Z",
+      "action": "status_changed",
+      "storyId": "ASGN-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:05:10.355Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:06:06.132Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-02-24T15:10:48.507Z",
+      "action": "status_changed",
+      "storyId": "ASGN-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:11:02.936Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:11:08.908Z",
+      "action": "status_changed",
+      "storyId": "ASGN-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:11:09.056Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:15:57.437Z",
+      "action": "status_changed",
+      "storyId": "ASGN-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:16:11.340Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-24T15:16:22.766Z",
+      "action": "status_changed",
+      "storyId": "ASGN-002",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:16:24.915Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:16:30.873Z",
+      "action": "status_changed",
+      "storyId": "ASGN-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:16:31.017Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:16:48.075Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:16:54.042Z",
+      "action": "status_changed",
+      "storyId": "ASGN-004",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:16:54.174Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:22:40.451Z",
+      "action": "status_changed",
+      "storyId": "ASGN-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:22:57.121Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:24:09.087Z",
+      "action": "status_changed",
+      "storyId": "ASGN-004",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:24:25.638Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:24:29.583Z",
+      "action": "status_changed",
+      "storyId": "ASGN-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:24:48.291Z",
+      "action": "status_changed",
+      "storyId": "ASGN-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:25:03.745Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:26:12.676Z",
+      "action": "status_changed",
+      "storyId": "ASGN-005",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:26:21.446Z",
+      "action": "status_changed",
+      "storyId": "ASGN-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:26:27.468Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:26:46.793Z",
+      "action": "status_changed",
+      "storyId": "ASGN-005",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:27:06.822Z",
+      "action": "status_changed",
+      "storyId": "ASGN-005",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:27:16.822Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-24T15:27:26.891Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:30:08.476Z",
+      "action": "status_changed",
+      "storyId": "ASGN-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:30:11.859Z",
+      "action": "status_changed",
+      "storyId": "ASGN-997",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:30:17.801Z",
+      "action": "status_changed",
+      "storyId": "ASGN-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:30:26.528Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:31:40.804Z",
+      "action": "status_changed",
+      "storyId": "ASGN-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:31:49.711Z",
+      "action": "status_changed",
+      "storyId": "ASGN-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:33:12.115Z",
+      "action": "status_changed",
+      "storyId": "ASGN-998",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:33:26.134Z",
+      "action": "status_changed",
+      "storyId": "ASGN-999",
+      "details": "Story started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:34:22.774Z",
+      "action": "status_changed",
+      "storyId": "ASGN-999",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:34:27.181Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
+    },
+    {
+      "timestamp": "2026-02-24T15:35:08.492Z",
+      "action": "status_changed",
+      "storyId": "ASGN-998",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:35:13.343Z",
+      "action": "status_changed",
+      "storyId": "ASGN-999",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:35:18.628Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
     }
   ]
 }

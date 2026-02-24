@@ -5,6 +5,7 @@
 > Created: 2026-02-24
 > Last Updated: 2026-02-24
 
+**Status**: Done
 **Priority**: Medium
 **Type**: DevOps
 **Estimated Effort**: 2 SP
@@ -69,9 +70,9 @@ Scenario: Ungültiger Spec-Pfad
 
 ## Technische Verifikation (Automated Checks)
 
-- [ ] FILE_EXISTS: .claude/commands/specwright/assign-spec.md
-- [ ] CONTAINS: .claude/commands/specwright/assign-spec.md enthält "assign"
-- [ ] CONTAINS: .claude/commands/specwright/assign-spec.md enthält "kanban"
+- [x] FILE_EXISTS: .claude/commands/specwright/assign-spec.md
+- [x] CONTAINS: .claude/commands/specwright/assign-spec.md enthält "assign"
+- [x] CONTAINS: .claude/commands/specwright/assign-spec.md enthält "kanban"
 
 ---
 
@@ -109,15 +110,15 @@ Scenario: Ungültiger Spec-Pfad
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Command-Datei `assign-spec.md` erstellt
-- [ ] Command nimmt Spec-Pfad als Argument ($ARGUMENTS)
-- [ ] Command nutzt `kanban_read` MCP-Tool zum Lesen der kanban.json
-- [ ] "Ready"-Status wird validiert (alle Stories im Status "ready")
-- [ ] Bei nicht-ready: Fehlermeldung mit Erklärung
-- [ ] Bei ready: `assignedToBot`-Feld wird getoggelt via direkten File-Write
-- [ ] Bestätigung mit aktuellem Status wird ausgegeben
-- [ ] Bei ungültigem Pfad: Fehlermeldung "Spec nicht gefunden"
-- [ ] Completion Check commands erfolgreich
+- [x] Command-Datei `assign-spec.md` erstellt
+- [x] Command nimmt Spec-Pfad als Argument ($ARGUMENTS)
+- [x] Command nutzt `kanban_read` MCP-Tool zum Lesen der kanban.json
+- [x] "Ready"-Status wird validiert (alle Stories im Status "ready")
+- [x] Bei nicht-ready: Fehlermeldung mit Erklärung
+- [x] Bei ready: `assignedToBot`-Feld wird getoggelt via direkten File-Write
+- [x] Bestätigung mit aktuellem Status wird ausgegeben
+- [x] Bei ungültigem Pfad: Fehlermeldung "Spec nicht gefunden"
+- [x] Completion Check commands erfolgreich
 
 ---
 
