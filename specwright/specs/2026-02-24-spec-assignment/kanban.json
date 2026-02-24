@@ -10,22 +10,22 @@
     "createdAt": "2026-02-24T00:00:00Z"
   },
   "resumeContext": {
-    "currentPhase": "story-complete",
+    "currentPhase": "complete",
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/spec-assignment",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed ASGN-998",
-    "nextAction": "Execute next story: ASGN-999",
-    "progressIndex": 13,
+    "lastAction": "Completed ASGN-999",
+    "nextAction": "All stories complete",
+    "progressIndex": 14,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
   "execution": {
-    "status": "executing",
+    "status": "completed",
     "startedAt": "2026-02-24T15:24:29.582Z",
-    "completedAt": null,
+    "completedAt": "2026-02-24T15:34:22.774Z",
     "model": null
   },
   "stories": [
@@ -338,34 +338,45 @@
       "dependencies": [
         "ASGN-998"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
         "updatedAt": "2026-02-24T00:00:00Z",
-        "startedAt": "2026-02-24T15:31:49.711Z"
+        "startedAt": "2026-02-24T15:33:26.134Z",
+        "completedAt": "2026-02-24T15:34:22.774Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/knowledge/knowledge-index.md",
+          "specwright/knowledge/shared-services.md",
+          "specwright/specs/2026-02-24-spec-assignment/kanban.json"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "ddf84bd",
+            "message": "docs: ASGN-999 Update Project Knowledge + finalize kanban",
+            "timestamp": "2026-02-24T16:45:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     }
   ],
   "boardStatus": {
     "total": 8,
     "ready": 0,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 7,
+    "done": 8,
     "blocked": 0
   },
   "statistics": {
@@ -655,6 +666,18 @@
       "action": "status_changed",
       "storyId": "ASGN-998",
       "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:33:26.134Z",
+      "action": "status_changed",
+      "storyId": "ASGN-999",
+      "details": "Story started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:34:22.774Z",
+      "action": "status_changed",
+      "storyId": "ASGN-999",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }
