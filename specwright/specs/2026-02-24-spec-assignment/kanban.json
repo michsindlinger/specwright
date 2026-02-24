@@ -16,9 +16,9 @@
     "gitBranch": "feature/spec-assignment",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed ASGN-005",
-    "nextAction": "Complete ASGN-003 (still in_progress) then System Stories",
-    "progressIndex": 9,
+    "lastAction": "Completed ASGN-998",
+    "nextAction": "Execute next story: ASGN-999",
+    "progressIndex": 13,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
@@ -257,24 +257,36 @@
         "ASGN-004",
         "ASGN-005"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
         "updatedAt": "2026-02-24T00:00:00Z",
-        "startedAt": "2026-02-24T15:26:21.446Z"
+        "startedAt": "2026-02-24T15:26:21.446Z",
+        "completedAt": "2026-02-24T15:30:11.859Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-24-spec-assignment/review-report.md",
+          "ui/frontend/src/components/spec-card.ts",
+          "ui/frontend/src/components/kanban-board.ts",
+          ".claude/commands/specwright/assign-spec.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "5d6d7a4",
+            "message": "feat: ASGN-997 Code Review - review report + fix unassignment toggle bug",
+            "timestamp": "2026-02-24T16:30:02+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -290,22 +302,28 @@
       "dependencies": [
         "ASGN-997"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T00:00:00Z"
+        "updatedAt": "2026-02-24T00:00:00Z",
+        "startedAt": "2026-02-24T15:30:17.801Z",
+        "completedAt": "2026-02-24T15:33:12.114Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-24-spec-assignment/kanban.json"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "ASGN-999",
@@ -320,12 +338,13 @@
       "dependencies": [
         "ASGN-998"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T00:00:00Z"
+        "updatedAt": "2026-02-24T00:00:00Z",
+        "startedAt": "2026-02-24T15:31:49.711Z"
       },
       "implementation": {
         "filesModified": [],
@@ -335,16 +354,18 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     }
   ],
   "boardStatus": {
     "total": 8,
-    "ready": 2,
+    "ready": 0,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 5,
+    "done": 7,
     "blocked": 0
   },
   "statistics": {
@@ -592,6 +613,48 @@
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:30:08.476Z",
+      "action": "status_changed",
+      "storyId": "ASGN-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:30:11.859Z",
+      "action": "status_changed",
+      "storyId": "ASGN-997",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:30:17.801Z",
+      "action": "status_changed",
+      "storyId": "ASGN-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:30:26.528Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:31:40.804Z",
+      "action": "status_changed",
+      "storyId": "ASGN-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:31:49.711Z",
+      "action": "status_changed",
+      "storyId": "ASGN-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:33:12.115Z",
+      "action": "status_changed",
+      "storyId": "ASGN-998",
+      "details": "Story completed: done → done"
     }
   ]
 }

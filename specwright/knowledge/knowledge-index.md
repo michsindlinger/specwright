@@ -1,7 +1,7 @@
 # Project Knowledge Index
 
 > Automatisch gepflegt. Übersicht aller verfügbaren Projekt-Artefakte aus abgeschlossenen Specs.
-> Zuletzt aktualisiert: 2026-02-17
+> Zuletzt aktualisiert: 2026-02-24
 
 ## Kategorien
 
@@ -9,7 +9,7 @@
 |-----------|-------|------------------|----------|----------------------|
 | UI Components | ui-components.md | UI, Component, Button, Form, Modal, Input, Frontend, Widget | 7 | 2026-02-17 |
 | API Contracts | api-contracts.md | API, Endpoint, REST, Backend, Route, Controller | 0 | - |
-| Shared Services | shared-services.md | Service, Hook, Utility, Helper, Provider | 3 | 2026-02-16 |
+| Shared Services | shared-services.md | Service, Hook, Utility, Helper, Provider | 5 | 2026-02-24 |
 | Data Models | data-models.md | Model, Schema, Type, Interface, Entity, DTO | 1 | 2026-02-16 |
 
 > **Hinweis:** Architecture/Patterns sind in `specwright/product/` definiert (nicht hier).
@@ -19,7 +19,7 @@
 
 **UI:** aos-file-tree, aos-file-tree-sidebar, aos-file-editor, aos-file-tabs, aos-file-editor-panel, aos-installation-wizard-modal, aos-getting-started-view
 **API:** (keine Endpunkte)
-**Services:** FileService, FileHandler, GitService
+**Services:** FileService, FileHandler, GitService, isSpecReady, toggleBotAssignment
 **Models:** file.protocol.ts
 
 ---
