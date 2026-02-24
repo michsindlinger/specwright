@@ -12,6 +12,8 @@ export interface SpecInfo {
   inProgressCount: number;
   hasKanban: boolean;
   gitStrategy: 'branch' | 'worktree' | 'current-branch' | null;
+  assignedToBot?: boolean;
+  isReady?: boolean;
 }
 
 @customElement('aos-spec-card')
@@ -37,6 +39,17 @@ export class AosSpecCard extends LitElement {
     this.dispatchEvent(
       new CustomEvent('spec-delete', {
         detail: { specId: this.spec.id, specName: this.spec.name },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
+  private handleAssignToggle(e: Event): void {
+    e.stopPropagation();
+    this.dispatchEvent(
+      new CustomEvent('spec-assign', {
+        detail: { specId: this.spec.id },
         bubbles: true,
         composed: true
       })
@@ -86,6 +99,24 @@ export class AosSpecCard extends LitElement {
         <div class="spec-header">
           <h3 class="spec-name">${this.spec.name}</h3>
           <div class="spec-header-actions">
+            ${this.spec.assignedToBot || this.spec.isReady
+              ? html`<button
+                  class="assign-toggle-btn ${this.spec.assignedToBot ? 'assigned' : ''}"
+                  @click=${this.handleAssignToggle}
+                  ?disabled=${!this.spec.isReady}
+                  aria-label="${this.spec.assignedToBot ? 'Bot-Assignment entfernen' : 'An Bot assignen'}"
+                  title="${this.spec.assignedToBot ? 'Bot-Assignment entfernen' : 'An Bot assignen'}"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 8V4H8"/>
+                    <rect width="16" height="12" x="4" y="8" rx="2"/>
+                    <path d="M2 14h2"/>
+                    <path d="M20 14h2"/>
+                    <path d="M15 13v2"/>
+                    <path d="M9 13v2"/>
+                  </svg>
+                </button>`
+              : ''}
             ${this.spec.hasKanban
               ? html`<span class="kanban-badge">Kanban</span>`
               : html`<span class="no-kanban-badge">Not Started</span>`}

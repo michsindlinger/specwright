@@ -81,11 +81,11 @@ Scenario: Fehlermeldung bei gescheitertem Assignment
 
 ## Technische Verifikation (Automated Checks)
 
-- [ ] FILE_EXISTS: ui/frontend/src/components/spec-card.ts
-- [ ] CONTAINS: ui/frontend/src/components/spec-card.ts enthält "assignedToBot"
-- [ ] CONTAINS: ui/frontend/src/components/spec-card.ts enthält "spec-assign"
-- [ ] CONTAINS: ui/frontend/src/views/dashboard-view.ts enthält "specs.assign"
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] FILE_EXISTS: ui/frontend/src/components/spec-card.ts
+- [x] CONTAINS: ui/frontend/src/components/spec-card.ts enthält "assignedToBot"
+- [x] CONTAINS: ui/frontend/src/components/spec-card.ts enthält "spec-assign"
+- [x] CONTAINS: ui/frontend/src/views/dashboard-view.ts enthält "specs.assign"
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -121,28 +121,28 @@ Keine MCP-Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Frontend `SpecInfo` Interface um `assignedToBot?: boolean` und `isReady?: boolean` erweitert
-- [ ] Assignment-Badge in spec-card gerendert (Bot-Icon, hervorgehoben)
-- [ ] Toggle-Button für Assignment in spec-card (nur sichtbar wenn `isReady`)
-- [ ] Custom Event `spec-assign` wird korrekt dispatcht mit `{ specId }`
-- [ ] dashboard-view: Event-Handler für `spec-assign` → sendet `specs.assign` WS Message
-- [ ] dashboard-view: Listener für `specs.assign.ack` → aktualisiert lokalen `specs` State
-- [ ] dashboard-view: Listener für `specs.assign.error` → zeigt Toast-Notification
-- [ ] Badge nicht sichtbar wenn `assignedToBot` falsy
-- [ ] Toggle deaktiviert wenn `isReady` falsy
-- [ ] Frontend Build kompiliert: `cd ui/frontend && npm run build`
-- [ ] Keine `any` Types verwendet
-- [ ] Completion Check commands erfolgreich
+- [x] Code implementiert und folgt Style Guide
+- [x] Frontend `SpecInfo` Interface um `assignedToBot?: boolean` und `isReady?: boolean` erweitert
+- [x] Assignment-Badge in spec-card gerendert (Bot-Icon, hervorgehoben)
+- [x] Toggle-Button für Assignment in spec-card (nur sichtbar wenn `isReady`)
+- [x] Custom Event `spec-assign` wird korrekt dispatcht mit `{ specId }`
+- [x] dashboard-view: Event-Handler für `spec-assign` → sendet `specs.assign` WS Message
+- [x] dashboard-view: Listener für `specs.assign.ack` → aktualisiert lokalen `specs` State
+- [x] dashboard-view: Listener für `specs.assign.error` → zeigt Toast-Notification
+- [x] Badge nicht sichtbar wenn `assignedToBot` falsy
+- [x] Toggle deaktiviert wenn `isReady` falsy
+- [x] Frontend Build kompiliert: `cd ui/frontend && npm run build`
+- [x] Keine `any` Types verwendet
+- [x] Completion Check commands erfolgreich
 
 ### Integration DoD (v2.9)
 
-- [ ] **Integration hergestellt: spec-card.ts → dashboard-view.ts**
-  - [ ] Custom Event `spec-assign` wird dispatcht und in dashboard-view gehandled
-  - [ ] Validierung: `grep -q "spec-assign" ui/frontend/src/components/spec-card.ts`
-- [ ] **Integration hergestellt: dashboard-view.ts → WebSocket Gateway**
-  - [ ] WS Message `specs.assign` wird gesendet
-  - [ ] Validierung: `grep -q "specs.assign" ui/frontend/src/views/dashboard-view.ts`
+- [x] **Integration hergestellt: spec-card.ts → dashboard-view.ts**
+  - [x] Custom Event `spec-assign` wird dispatcht und in dashboard-view gehandled
+  - [x] Validierung: `grep -q "spec-assign" ui/frontend/src/components/spec-card.ts`
+- [x] **Integration hergestellt: dashboard-view.ts → WebSocket Gateway**
+  - [x] WS Message `specs.assign` wird gesendet
+  - [x] Validierung: `grep -q "specs.assign" ui/frontend/src/views/dashboard-view.ts`
 
 ---
 
