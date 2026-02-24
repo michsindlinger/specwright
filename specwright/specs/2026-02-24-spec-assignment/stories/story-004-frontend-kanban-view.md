@@ -71,10 +71,10 @@ Scenario: Assignment-Status konsistent zwischen Views
 
 ## Technische Verifikation (Automated Checks)
 
-- [ ] FILE_EXISTS: ui/frontend/src/components/kanban-board.ts
-- [ ] CONTAINS: ui/frontend/src/components/kanban-board.ts enthält "assignedToBot"
-- [ ] CONTAINS: ui/frontend/src/components/kanban-board.ts enthält "spec-assign-toggle"
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] FILE_EXISTS: ui/frontend/src/components/kanban-board.ts
+- [x] CONTAINS: ui/frontend/src/components/kanban-board.ts enthält "assignedToBot"
+- [x] CONTAINS: ui/frontend/src/components/kanban-board.ts enthält "spec-assign-toggle"
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -110,29 +110,29 @@ Keine MCP-Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Frontend `KanbanBoard` Interface um `assignedToBot?: boolean` und `isReady?: boolean` erweitert
-- [ ] `assignedToBot` Property in `kanban-board.ts` Komponente hinzugefügt
-- [ ] `isReady` Property in `kanban-board.ts` Komponente hinzugefügt
-- [ ] Toggle-Button im Kanban-Header gerendert (neben Auto-Mode-Toggle)
-- [ ] Toggle zeigt aktuellen Assignment-Status (assigned/not assigned)
-- [ ] Toggle deaktiviert wenn `isReady` falsy mit Tooltip
-- [ ] Custom Event `spec-assign-toggle` wird dispatcht mit `{ specId }`
-- [ ] dashboard-view: `assignedToBot` und `isReady` Properties an kanban-board durchgereicht
-- [ ] dashboard-view: Event-Handler für `spec-assign-toggle` → sendet `specs.assign` WS Message
-- [ ] dashboard-view: Kanban `assignedToBot` wird nach `specs.assign.ack` aktualisiert
-- [ ] Frontend Build kompiliert: `cd ui/frontend && npm run build`
-- [ ] Keine `any` Types verwendet
-- [ ] Completion Check commands erfolgreich
+- [x] Code implementiert und folgt Style Guide
+- [x] Frontend `KanbanBoard` Interface um `assignedToBot?: boolean` und `isReady?: boolean` erweitert
+- [x] `assignedToBot` Property in `kanban-board.ts` Komponente hinzugefügt
+- [x] `isReady` Property in `kanban-board.ts` Komponente hinzugefügt
+- [x] Toggle-Button im Kanban-Header gerendert (neben Auto-Mode-Toggle)
+- [x] Toggle zeigt aktuellen Assignment-Status (assigned/not assigned)
+- [x] Toggle deaktiviert wenn `isReady` falsy mit Tooltip
+- [x] Custom Event `spec-assign-toggle` wird dispatcht mit `{ specId }`
+- [x] dashboard-view: `assignedToBot` und `isReady` Properties an kanban-board durchgereicht
+- [x] dashboard-view: Event-Handler für `spec-assign-toggle` → sendet `specs.assign` WS Message
+- [x] dashboard-view: Kanban `assignedToBot` wird nach `specs.assign.ack` aktualisiert
+- [x] Frontend Build kompiliert: `cd ui/frontend && npm run build`
+- [x] Keine `any` Types verwendet
+- [x] Completion Check commands erfolgreich
 
 ### Integration DoD (v2.9)
 
-- [ ] **Integration hergestellt: dashboard-view.ts → kanban-board.ts**
-  - [ ] Property Binding `.assignedToBot` und `.isReady` existiert
-  - [ ] Validierung: `grep -q "assignedToBot" ui/frontend/src/components/kanban-board.ts`
-- [ ] **Integration hergestellt: kanban-board.ts → dashboard-view.ts**
-  - [ ] Custom Event `spec-assign-toggle` wird dispatcht und gehandled
-  - [ ] Validierung: `grep -q "spec-assign-toggle" ui/frontend/src/components/kanban-board.ts`
+- [x] **Integration hergestellt: dashboard-view.ts → kanban-board.ts**
+  - [x] Property Binding `.assignedToBot` und `.isReady` existiert
+  - [x] Validierung: `grep -q "assignedToBot" ui/frontend/src/components/kanban-board.ts`
+- [x] **Integration hergestellt: kanban-board.ts → dashboard-view.ts**
+  - [x] Custom Event `spec-assign-toggle` wird dispatcht und gehandled
+  - [x] Validierung: `grep -q "spec-assign-toggle" ui/frontend/src/components/kanban-board.ts`
 
 ---
 

@@ -395,7 +395,10 @@ export class AosDashboardView extends LitElement {
       ['workflow.interactive.complete', (msg) => this.onWorkflowComplete(msg)],
       // KAE-003: Phase update handler
       ['workflow.interactive.message', (msg) => this.onWorkflowMessage(msg)],
-      ['workflow.story.start.ack', (msg) => this.onWorkflowStartAck(msg)]
+      ['workflow.story.start.ack', (msg) => this.onWorkflowStartAck(msg)],
+      // ASGN-004: Assignment toggle handlers
+      ['specs.assign.ack', (msg) => this.onSpecsAssignAck(msg)],
+      ['specs.assign.error', (msg) => this.onSpecsAssignError(msg)]
     ];
 
     for (const [type, handler] of handlers) {
@@ -1199,6 +1202,58 @@ export class AosDashboardView extends LitElement {
     // No additional action needed - auto-execution will continue after workflow completes.
   }
 
+  /**
+   * ASGN-003: Handle spec-assign event from spec-card in spec overview.
+   * Sends specs.assign WS message to toggle assignment.
+   */
+  private handleSpecAssign(e: CustomEvent<{ specId: string }>): void {
+    const { specId } = e.detail;
+    gateway.send({ type: 'specs.assign', specId });
+  }
+
+  /**
+   * ASGN-004: Handle spec-assign-toggle event from kanban board.
+   * Sends specs.assign WS message to toggle assignment.
+   */
+  private handleSpecAssignToggle(e: CustomEvent<{ specId: string }>): void {
+    const { specId } = e.detail;
+    gateway.send({ type: 'specs.assign', specId });
+  }
+
+  /**
+   * ASGN-004: Handle specs.assign.ack WebSocket response.
+   * Updates kanban assignedToBot state in real-time.
+   */
+  private onSpecsAssignAck(msg: WebSocketMessage): void {
+    const specId = msg.specId as string;
+    const assigned = msg.assigned as boolean;
+
+    // Update kanban state if viewing this spec
+    if (this.kanban && this.kanban.specId === specId) {
+      this.kanban = { ...this.kanban, assignedToBot: assigned };
+    }
+
+    // Update spec card in list
+    this.specs = this.specs.map(spec =>
+      spec.id === specId ? { ...spec, assignedToBot: assigned } : spec
+    );
+  }
+
+  /**
+   * ASGN-004: Handle specs.assign.error WebSocket response.
+   * Shows error toast to user.
+   */
+  private onSpecsAssignError(msg: WebSocketMessage): void {
+    const error = (msg.error as string) || 'Assignment fehlgeschlagen';
+    this.dispatchEvent(
+      new CustomEvent('show-toast', {
+        detail: { message: error, type: 'error' },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
   private handleStoryModelChange(e: CustomEvent<{ storyId: string; model: string }>): void {
     console.log('[Dashboard] handleStoryModelChange called', e.detail);
 
@@ -1540,6 +1595,7 @@ export class AosDashboardView extends LitElement {
               .spec=${spec}
               @spec-select=${this.handleSpecSelect}
               @spec-delete=${this.handleSpecDelete}
+              @spec-assign=${this.handleSpecAssign}
             ></aos-spec-card>
           `
         )}
@@ -1860,11 +1916,14 @@ export class AosDashboardView extends LitElement {
         .kanban=${this.kanban}
         .specName=${this.selectedSpec.name}
         .autoModeEnabled=${this.autoModeEnabled}
+        .assignedToBot=${this.kanban.assignedToBot ?? false}
+        .isReady=${this.kanban.isReady ?? false}
         @kanban-back=${this.handleKanbanBack}
         @auto-mode-toggle=${this.handleAutoModeToggle}
         @auto-mode-error=${this.handleAutoModeError}
         @auto-mode-resume=${this.handleAutoModeResume}
         @auto-mode-git-strategy-selected=${this.handleAutoModeGitStrategySelected}
+        @spec-assign-toggle=${this.handleSpecAssignToggle}
         @story-select=${this.handleStorySelect}
         @story-move=${this.handleStoryMove}
         @story-model-change=${this.handleStoryModelChange}

@@ -34,6 +34,8 @@ export interface KanbanBoard {
   specId: string;
   stories: StoryInfo[];
   hasKanbanFile: boolean;
+  assignedToBot?: boolean;
+  isReady?: boolean;
 }
 
 export type KanbanStatus = 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked';
@@ -128,6 +130,9 @@ export class AosKanbanBoard extends LitElement {
   @property({ type: String }) specName = '';
   // UKB-002: Mode property for spec/backlog differentiation
   @property({ type: String }) mode: KanbanMode = 'spec';
+  // ASGN-004: Assignment properties
+  @property({ type: Boolean }) assignedToBot = false;
+  @property({ type: Boolean }) isReady = false;
   // UKB-002: Feature flags for conditional rendering
   @property({ type: Boolean }) showChat = true;
   @property({ type: Boolean }) showSpecViewer = true;
@@ -367,6 +372,65 @@ export class AosKanbanBoard extends LitElement {
 
     .kanban-column.in-review {
       border-top: 3px solid var(--warning-color, #f59e0b);
+    }
+
+    /* ASGN-004: Assignment Toggle */
+    .assign-toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      transition: background-color 0.3s ease;
+    }
+
+    .assign-toggle-container.assigned {
+      background-color: rgba(139, 92, 246, 0.1);
+    }
+
+    .assign-toggle-container.assign-disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .assign-toggle {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text-color-secondary, #a3a3a3);
+      gap: 0.5rem;
+    }
+
+    .assign-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .assign-toggle input:checked + .toggle-slider {
+      background-color: var(--accent-color, #8b5cf6);
+    }
+
+    .assign-toggle input:focus + .toggle-slider {
+      box-shadow: 0 0 1px var(--accent-color, #8b5cf6);
+    }
+
+    .assign-badge {
+      font-size: 0.75rem;
+      background-color: var(--accent-color, #8b5cf6);
+      color: white;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .assign-toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-weight: 500;
     }
 
     /* Auto Mode Toggle */
@@ -1465,6 +1529,20 @@ export class AosKanbanBoard extends LitElement {
   }
 
   /**
+   * ASGN-004: Handle assignment toggle click.
+   * Dispatches spec-assign-toggle event for parent to send WS message.
+   */
+  private handleAssignToggle(): void {
+    this.dispatchEvent(
+      new CustomEvent('spec-assign-toggle', {
+        detail: { specId: this.kanban.specId },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
+  /**
    * KAE-001: Handle auto-mode toggle change
    * Dispatches event for parent to handle state change.
    * Parent is source of truth and will update autoModeEnabled via property binding.
@@ -1711,6 +1789,36 @@ export class AosKanbanBoard extends LitElement {
                   <span>Spec Docs</span>
                 </button>
               ` : ''}
+            </div>
+          ` : ''}
+
+          <!-- ASGN-004: Assignment Toggle (only in spec mode) -->
+          ${this.mode === 'spec' ? html`
+            <div class="assign-toggle-container ${this.assignedToBot ? 'assigned' : ''} ${!this.isReady ? 'assign-disabled' : ''}">
+              <label class="assign-toggle" title="${!this.isReady ? 'Spec muss "ready" sein' : (this.assignedToBot ? 'Spec ist dem Bot zugewiesen' : 'Spec dem Bot zuweisen')}">
+                <input
+                  type="checkbox"
+                  .checked=${this.assignedToBot}
+                  .disabled=${!this.isReady}
+                  @change=${this.handleAssignToggle}
+                  aria-label="Toggle bot assignment"
+                />
+                <span class="toggle-slider"></span>
+                <span class="assign-toggle-label">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 8V4H8"></path>
+                    <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+                    <path d="M2 14h2"></path>
+                    <path d="M20 14h2"></path>
+                    <path d="M15 13v2"></path>
+                    <path d="M9 13v2"></path>
+                  </svg>
+                  Bot
+                </span>
+              </label>
+              ${this.assignedToBot
+                ? html`<span class="assign-badge">Assigned</span>`
+                : ''}
             </div>
           ` : ''}
 
