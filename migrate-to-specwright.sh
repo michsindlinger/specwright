@@ -2,7 +2,7 @@
 
 # Specwright Migration Script
 # Migrates existing Agent OS projects to Specwright
-# Version: 1.0
+# Version: 1.1
 
 set -e
 
@@ -102,7 +102,7 @@ run_cmd() {
 
 echo ""
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Specwright Migration Tool v1.0${NC}"
+echo -e "${BLUE}  Specwright Migration Tool v1.1${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
@@ -191,6 +191,8 @@ if [ "$GLOBAL_ONLY" = false ]; then
     # agent-os/ -> specwright/
     if [ -d "agent-os" ]; then
         if git rev-parse --is-inside-work-tree > /dev/null 2>&1 && git ls-files agent-os/ | head -1 | grep -q .; then
+            # Sync git index with filesystem (stage deletions/modifications) to prevent git mv failures
+            git add agent-os/ 2>/dev/null || true
             run_cmd "git mv agent-os/ specwright/" "git mv agent-os/ specwright/"
         else
             run_cmd "mv agent-os/ specwright/" "mv agent-os/ specwright/"
@@ -201,6 +203,7 @@ if [ "$GLOBAL_ONLY" = false ]; then
     # .agent-os/ -> .specwright/
     if [ -d ".agent-os" ]; then
         if git rev-parse --is-inside-work-tree > /dev/null 2>&1 && git ls-files .agent-os/ | head -1 | grep -q .; then
+            git add .agent-os/ 2>/dev/null || true
             run_cmd "git mv .agent-os/ .specwright/" "git mv .agent-os/ .specwright/"
         else
             run_cmd "mv .agent-os/ .specwright/" "mv .agent-os/ .specwright/"
@@ -211,6 +214,7 @@ if [ "$GLOBAL_ONLY" = false ]; then
     # .claude/commands/agent-os/ -> .claude/commands/specwright/
     if [ -d ".claude/commands/agent-os" ]; then
         if git rev-parse --is-inside-work-tree > /dev/null 2>&1 && git ls-files .claude/commands/agent-os/ | head -1 | grep -q .; then
+            git add .claude/commands/agent-os/ 2>/dev/null || true
             run_cmd "git mv .claude/commands/agent-os/ .claude/commands/specwright/" "git mv .claude/commands/agent-os/ .claude/commands/specwright/"
         else
             run_cmd "mv .claude/commands/agent-os/ .claude/commands/specwright/" "mv .claude/commands/agent-os/ .claude/commands/specwright/"
