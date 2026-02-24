@@ -252,6 +252,9 @@ export class WebSocketHandler {
         case 'specs.files':
           this.handleSpecsFiles(client, message);
           break;
+        case 'specs.assign':
+          this.handleSpecsAssign(client, message);
+          break;
         case 'workflow.story.start':
           this.handleWorkflowStoryStart(client, message).catch((err) => {
             console.error('[WebSocket] Unhandled error in handleWorkflowStoryStart:', err);
@@ -1887,6 +1890,70 @@ export class WebSocketHandler {
       const errorResponse: WebSocketMessage = {
         type: 'specs.files.error',
         error: error instanceof Error ? error.message : 'Failed to list spec files',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * ASGN-002: Handle spec assignment toggle via WebSocket.
+   * Calls toggleBotAssignment() on SpecsReader and broadcasts result to all project clients.
+   */
+  private async handleSpecsAssign(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
+    const specId = message.specId as string;
+
+    if (!specId) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.assign.error',
+        specId: '',
+        error: 'Spec ID is required',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.assign.error',
+        specId,
+        error: 'No project selected',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    try {
+      const result = await this.specsReader.toggleBotAssignment(projectPath, specId);
+
+      if (result.error) {
+        const errorResponse: WebSocketMessage = {
+          type: 'specs.assign.error',
+          specId,
+          error: result.error,
+          timestamp: new Date().toISOString()
+        };
+        client.send(JSON.stringify(errorResponse));
+        return;
+      }
+
+      const response: WebSocketMessage = {
+        type: 'specs.assign.ack',
+        specId,
+        assigned: result.assigned,
+        timestamp: new Date().toISOString()
+      };
+
+      // Broadcast to all clients in the same project
+      webSocketManager.sendToProject(projectPath, response);
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.assign.error',
+        specId,
+        error: error instanceof Error ? error.message : 'Failed to toggle assignment',
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));
