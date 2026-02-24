@@ -103,7 +103,7 @@ export class AosSpecCard extends LitElement {
               ? html`<button
                   class="assign-toggle-btn ${this.spec.assignedToBot ? 'assigned' : ''}"
                   @click=${this.handleAssignToggle}
-                  ?disabled=${!this.spec.isReady}
+                  ?disabled=${!this.spec.isReady && !this.spec.assignedToBot}
                   aria-label="${this.spec.assignedToBot ? 'Bot-Assignment entfernen' : 'An Bot assignen'}"
                   title="${this.spec.assignedToBot ? 'Bot-Assignment entfernen' : 'An Bot assignen'}"
                 >

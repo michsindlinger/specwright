@@ -227,7 +227,7 @@
         "testsAdded": [],
         "commits": [
           {
-            "hash": "pending",
+            "hash": "11c130a",
             "message": "feat: ASGN-005 Slash-Command /assign-spec",
             "timestamp": "2026-02-24T16:00:00Z"
           }

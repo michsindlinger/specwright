@@ -1794,12 +1794,12 @@ export class AosKanbanBoard extends LitElement {
 
           <!-- ASGN-004: Assignment Toggle (only in spec mode) -->
           ${this.mode === 'spec' ? html`
-            <div class="assign-toggle-container ${this.assignedToBot ? 'assigned' : ''} ${!this.isReady ? 'assign-disabled' : ''}">
-              <label class="assign-toggle" title="${!this.isReady ? 'Spec muss "ready" sein' : (this.assignedToBot ? 'Spec ist dem Bot zugewiesen' : 'Spec dem Bot zuweisen')}">
+            <div class="assign-toggle-container ${this.assignedToBot ? 'assigned' : ''} ${!this.isReady && !this.assignedToBot ? 'assign-disabled' : ''}">
+              <label class="assign-toggle" title="${!this.isReady && !this.assignedToBot ? 'Spec muss "ready" sein' : (this.assignedToBot ? 'Spec ist dem Bot zugewiesen' : 'Spec dem Bot zuweisen')}">
                 <input
                   type="checkbox"
                   .checked=${this.assignedToBot}
-                  .disabled=${!this.isReady}
+                  .disabled=${!this.isReady && !this.assignedToBot}
                   @change=${this.handleAssignToggle}
                   aria-label="Toggle bot assignment"
                 />
