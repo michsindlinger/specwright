@@ -11,6 +11,7 @@
 | Story | Summary | Key Changes |
 |-------|---------|-------------|
 | ASGN-001 | Backend Data Layer: assignedToBot in kanban.json + SpecsReader | specs-reader.ts, kanban-mcp-server.ts |
+| ASGN-002 | WebSocket handler for spec assignment toggle + broadcast | websocket.ts |
 
 ---
 
@@ -42,8 +43,11 @@ _None yet_
 - `assignedToBot` is an optional root-level field in kanban.json: `{ assigned: boolean, assignedAt: string, assignedBy: string }`
 - Missing field = not assigned (backward compatible via `?? false`)
 - `toggleBotAssignment()` uses `withKanbanLock()` → `readKanbanJsonUnlocked()` → validate → write for atomicity
-- ASGN-002 (WebSocket Handler) should call `toggleBotAssignment()` from SpecsReader
+- ASGN-002 (WebSocket Handler) calls `toggleBotAssignment()` from SpecsReader via `specs.assign` message type
+- WebSocket message flow: Client sends `specs.assign` with `{ specId }` → Server toggles via `specsReader.toggleBotAssignment()` → Broadcasts `specs.assign.ack` with `{ specId, assigned, timestamp }` to all project clients
+- Error responses (`specs.assign.error`) are sent only to the requesting client
 - ASGN-003/004 (Frontend) should use `SpecInfo.assignedToBot` and `SpecInfo.isReady` from list endpoint, and `KanbanBoard.assignedToBot`/`isReady` from kanban endpoint
+- ASGN-003/004 (Frontend) should listen for `specs.assign.ack` WebSocket messages to update assignment UI in real-time
 
 ---
 
@@ -53,3 +57,4 @@ _None yet_
 |------|--------|-------|
 | ui/src/server/specs-reader.ts | Modified | ASGN-001 |
 | specwright/scripts/mcp/kanban-mcp-server.ts | Modified | ASGN-001 |
+| ui/src/server/websocket.ts | Modified | ASGN-002 |
