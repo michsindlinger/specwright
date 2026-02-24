@@ -4,7 +4,7 @@
 # Runs Claude Code in a loop, executing one phase per iteration
 # until all stories are complete.
 #
-# Version: 2.0 (updated for kanban.json)
+# Version: 3.0 (updated for kanban.json v1.0 schema)
 #
 # Usage:
 #   ./auto-execute.sh [spec-name] [-v|--verbose] [-P|--provider NAME] [-a|--anthropic] [-g|--glm]
@@ -116,11 +116,8 @@ find_active_spec() {
         fi
     fi
 
-    # Find spec with existing kanban.json (primary) or kanban-board.md (legacy fallback)
+    # Find spec with existing kanban.json
     local kanban_file=$(ls $SPECS_DIR/*/kanban.json 2>/dev/null | head -1)
-    if [[ -z "$kanban_file" ]]; then
-        kanban_file=$(ls $SPECS_DIR/*/kanban-board.md 2>/dev/null | head -1)
-    fi
     if [[ -n "$kanban_file" ]]; then
         basename $(dirname "$kanban_file")
         return 0
@@ -148,13 +145,26 @@ get_current_phase() {
     fi
 
     local phase=""
-    phase=$(jq -r '.metadata.currentPhase // .currentPhase // "unknown"' "$kanban_json" 2>/dev/null)
+    phase=$(jq -r '.resumeContext.currentPhase // "unknown"' "$kanban_json" 2>/dev/null)
 
     if [[ -z "$phase" || "$phase" == "null" ]]; then
         echo "unknown"
     else
         echo "$phase"
     fi
+}
+
+# Get execution status from kanban.json
+get_execution_status() {
+    local spec="$1"
+    local kanban_json="$SPECS_DIR/$spec/kanban.json"
+
+    if [[ ! -f "$kanban_json" ]]; then
+        echo "unknown"
+        return 0
+    fi
+
+    jq -r '.execution.status // "unknown"' "$kanban_json" 2>/dev/null
 }
 
 # Get story count from kanban.json
@@ -167,19 +177,19 @@ get_story_counts() {
         return 0
     fi
 
+    # Primary: resumeContext tracks total, count done from stories array
     local total=""
     local completed=""
 
-    # Try metadata summary first
-    total=$(jq -r '.metadata.totalStories // empty' "$kanban_json" 2>/dev/null)
-    completed=$(jq -r '.metadata.completedStories // empty' "$kanban_json" 2>/dev/null)
+    total=$(jq '.resumeContext.totalStories // (.stories | length) // 0' "$kanban_json" 2>/dev/null)
+    completed=$(jq '[.stories[] | select(.status == "done")] | length // 0' "$kanban_json" 2>/dev/null)
 
-    # Fallback: count stories from columns
-    if [[ -z "$total" || "$total" == "null" ]]; then
-        total=$(jq '[.columns[].stories // [] | length] | add // 0' "$kanban_json" 2>/dev/null)
+    # Fallback: boardStatus summary
+    if [[ -z "$total" || "$total" == "null" || "$total" == "0" ]]; then
+        total=$(jq '.boardStatus.total // 0' "$kanban_json" 2>/dev/null)
     fi
     if [[ -z "$completed" || "$completed" == "null" ]]; then
-        completed=$(jq '[.columns[] | select(.name == "Done" or .name == "done" or .name == "Completed") | .stories // [] | length] | add // 0' "$kanban_json" 2>/dev/null)
+        completed=$(jq '.boardStatus.done // 0' "$kanban_json" 2>/dev/null)
     fi
 
     # Ensure we have numbers
@@ -382,7 +392,9 @@ main() {
         log_info "=========================================="
         log_info "=== Iteration $iteration ==="
         log_info "=========================================="
+        local exec_status_display=$(get_execution_status "$spec")
         log_info "Current Phase: $phase"
+        log_info "Execution Status: $exec_status_display"
         log_info "Progress: $counts stories done"
 
         # Detect stuck state (only warn if BOTH phase AND progress unchanged)
@@ -393,15 +405,28 @@ main() {
         last_phase="$phase"
         last_counts="$counts"
 
-        # Check if complete (case-insensitive, multiple completion indicators)
+        # Check if complete via phase
         local phase_lower=$(echo "$phase" | tr '[:upper:]' '[:lower:]')
-        if [[ "$phase_lower" == "complete" || "$phase_lower" == "completed" || "$phase_lower" == "none" || "$phase_lower" == "4-complete" || "$phase_lower" == "done" ]]; then
+        if [[ "$phase_lower" == "complete" || "$phase_lower" == "completed" || "$phase_lower" == "done" ]]; then
             log_success "=========================================="
             log_success "=== All phases complete! ==="
             log_success "=========================================="
             log_success "Spec execution finished successfully."
 
             # Play completion sound
+            afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || true
+
+            exit 0
+        fi
+
+        # Check if complete via execution status
+        local exec_status=$(get_execution_status "$spec")
+        if [[ "$exec_status" == "complete" || "$exec_status" == "completed" ]]; then
+            log_success "=========================================="
+            log_success "=== Execution complete (status: $exec_status)! ==="
+            log_success "=========================================="
+            log_success "Spec execution finished successfully."
+
             afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || true
 
             exit 0
