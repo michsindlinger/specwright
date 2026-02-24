@@ -1595,24 +1595,17 @@ export class AosDashboardView extends LitElement {
   }
 
   private getSortedSpecs(): SpecInfo[] {
-    const notStarted: SpecInfo[] = [];
-    const inProgress: SpecInfo[] = [];
-    const done: SpecInfo[] = [];
-
-    for (const spec of this.specs) {
-      if (!spec.hasKanban) {
-        notStarted.push(spec);
-      } else if (spec.completedCount === spec.storyCount) {
-        done.push(spec);
-      } else {
-        inProgress.push(spec);
-      }
-    }
+    let filtered = [...this.specs];
 
     if (this.showOnlyActive) {
-      return [...notStarted, ...inProgress];
+      filtered = filtered.filter(
+        spec => !spec.hasKanban || spec.completedCount !== spec.storyCount
+      );
     }
-    return [...notStarted, ...inProgress, ...done];
+
+    filtered.sort((a, b) => b.createdDate.localeCompare(a.createdDate));
+
+    return filtered;
   }
 
   private formatSpecDate(dateStr: string): string {

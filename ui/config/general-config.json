@@ -5,6 +5,9 @@
   "projects": {
     "/Users/michaelsindlinger/Entwicklung/rockstardevelopers/herding": {
       "baseBranch": "develop"
+    },
+    "/Users/michaelsindlinger/Entwicklung/rockstardevelopers/brodybookings/brodybookings": {
+      "baseBranch": "develop"
     }
   }
 }
