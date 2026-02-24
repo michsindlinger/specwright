@@ -14,11 +14,11 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/spec-assignment",
-    "currentStory": "ASGN-997",
-    "currentStoryPhase": "implementing",
-    "lastAction": "Started ASGN-997",
-    "nextAction": "Implement Code Review",
-    "progressIndex": 7,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed ASGN-005",
+    "nextAction": "Complete ASGN-003 (still in_progress) then System Stories",
+    "progressIndex": 9,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
@@ -217,14 +217,21 @@
         "createdAt": "2026-02-24T00:00:00Z",
         "updatedAt": "2026-02-24T15:00:00Z",
         "startedAt": "2026-02-24T15:24:29.582Z",
-        "completedAt": "2026-02-24T15:26:12.672Z"
+        "completedAt": "2026-02-24T15:27:06.821Z"
       },
       "implementation": {
         "filesModified": [
-          ".claude/commands/specwright/assign-spec.md"
+          ".claude/commands/specwright/assign-spec.md",
+          "specwright/specs/2026-02-24-spec-assignment/stories/story-005-slash-command.md"
         ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "pending",
+            "message": "feat: ASGN-005 Slash-Command /assign-spec",
+            "timestamp": "2026-02-24T16:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
@@ -558,6 +565,30 @@
     },
     {
       "timestamp": "2026-02-24T15:26:27.468Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:26:46.793Z",
+      "action": "status_changed",
+      "storyId": "ASGN-005",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:27:06.822Z",
+      "action": "status_changed",
+      "storyId": "ASGN-005",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:27:16.822Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-24T15:27:26.891Z",
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/spec-assignment"

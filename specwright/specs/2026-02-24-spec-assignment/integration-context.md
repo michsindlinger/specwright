@@ -14,6 +14,7 @@
 | ASGN-002 | WebSocket handler for spec assignment toggle + broadcast | websocket.ts |
 | ASGN-003 | Assignment badge + toggle in spec-card overview, spec-assign event + WS handlers | spec-card.ts, dashboard-view.ts |
 | ASGN-004 | Assignment toggle in Kanban header, WS ack/error handling | kanban-board.ts, dashboard-view.ts |
+| ASGN-005 | CLI slash command /assign-spec for toggling spec assignment without Web UI | assign-spec.md |
 
 ---
 
@@ -61,6 +62,7 @@ _None yet_
 - ASGN-003: dashboard-view handles `spec-assign` event from grid view spec cards → sends `specs.assign` WS message
 - ASGN-003: `onSpecsAssignAck` updates both `this.kanban.assignedToBot` and `this.specs[]` for real-time reactivity
 - ASGN-003: Toggle hidden when both `!assignedToBot && !isReady`, disabled when `!isReady`, highlighted with accent color when assigned
+- ASGN-005: CLI command `/assign-spec` provides same toggle functionality without Web UI, uses `kanban_read` MCP tool + direct file write, validates ready status before assigning, supports both spec path and spec ID as argument
 
 ---
 
@@ -75,3 +77,4 @@ _None yet_
 | ui/frontend/src/views/dashboard-view.ts | Modified | ASGN-003 |
 | ui/frontend/src/components/kanban-board.ts | Modified | ASGN-004 |
 | ui/frontend/src/views/dashboard-view.ts | Modified | ASGN-004 |
+| .claude/commands/specwright/assign-spec.md | Created | ASGN-005 |
