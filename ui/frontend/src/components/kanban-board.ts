@@ -1152,6 +1152,17 @@ export class AosKanbanBoard extends LitElement {
     }
   }
 
+  // Handle backlog item assign event - bubble up to parent
+  private handleBacklogItemAssign(e: CustomEvent<{ itemId: string }>): void {
+    this.dispatchEvent(
+      new CustomEvent('backlog-item-assign', {
+        detail: e.detail,
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
   // SCA-004: Close attachment panel
   private closeAttachmentPanel(): void {
     this.activeAttachmentStoryId = null;
@@ -1686,11 +1697,13 @@ export class AosKanbanBoard extends LitElement {
                       .workflowError=${workflowState?.error || ''}
                       .providers=${this.providers}
                       .dragDisabled=${this.isDragDisabled}
+                      .isBacklogMode=${this.mode === 'backlog'}
                       @story-select=${this.handleStorySelect}
                       @story-drag-start=${this.handleDragStart}
                       @story-drag-end=${this.handleDragEnd}
                       @story-model-change=${this.handleStoryModelChange}
                       @attachment-open=${this.handleAttachmentOpen}
+                      @backlog-item-assign=${this.handleBacklogItemAssign}
                     ></aos-story-card>
                   `;
                 }

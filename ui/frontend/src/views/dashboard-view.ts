@@ -43,6 +43,7 @@ interface BacklogStoryInfo {
   dorComplete?: boolean;
   dependencies?: string[];
   attachmentCount?: number;
+  assignedToBot?: boolean;
 }
 
 interface BacklogKanbanBoard {
@@ -177,6 +178,7 @@ export class AosDashboardView extends LitElement {
       dependencies: story.dependencies || [],
       dorComplete: story.dorComplete ?? true, // Default to true for legacy items
       attachmentCount: story.attachmentCount,
+      assignedToBot: story.assignedToBot,
     }));
 
     return {
@@ -398,7 +400,9 @@ export class AosDashboardView extends LitElement {
       ['workflow.story.start.ack', (msg) => this.onWorkflowStartAck(msg)],
       // ASGN-004: Assignment toggle handlers
       ['specs.assign.ack', (msg) => this.onSpecsAssignAck(msg)],
-      ['specs.assign.error', (msg) => this.onSpecsAssignError(msg)]
+      ['specs.assign.error', (msg) => this.onSpecsAssignError(msg)],
+      ['backlog.assign.ack', (msg) => this.onBacklogAssignAck(msg)],
+      ['backlog.assign.error', (msg) => this.onBacklogAssignError(msg)]
     ];
 
     for (const [type, handler] of handlers) {
@@ -1256,6 +1260,46 @@ export class AosDashboardView extends LitElement {
     );
   }
 
+  /**
+   * Handle backlog-item-assign event from kanban board.
+   * Sends backlog.assign WS message to toggle assignment.
+   */
+  private handleBacklogItemAssign(e: CustomEvent<{ itemId: string }>): void {
+    const { itemId } = e.detail;
+    gateway.send({ type: 'backlog.assign', itemId });
+  }
+
+  /**
+   * Handle backlog.assign.ack WebSocket response.
+   * Updates backlog story assignedToBot state in real-time.
+   */
+  private onBacklogAssignAck(msg: WebSocketMessage): void {
+    const itemId = msg.itemId as string;
+    const assigned = msg.assigned as boolean;
+
+    if (this.backlogKanban) {
+      const updatedStories = this.backlogKanban.stories.map(story =>
+        story.id === itemId ? { ...story, assignedToBot: assigned } : story
+      );
+      this.backlogKanban = { ...this.backlogKanban, stories: updatedStories };
+    }
+  }
+
+  /**
+   * Handle backlog.assign.error WebSocket response.
+   * Shows error toast to user.
+   */
+  private onBacklogAssignError(msg: WebSocketMessage): void {
+    const error = (msg.error as string) || 'Assignment fehlgeschlagen';
+    this.dispatchEvent(
+      new CustomEvent('show-toast', {
+        detail: { message: error, type: 'error' },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
   private handleStoryModelChange(e: CustomEvent<{ storyId: string; model: string }>): void {
     console.log('[Dashboard] handleStoryModelChange called', e.detail);
 
@@ -1852,6 +1896,7 @@ export class AosDashboardView extends LitElement {
         @auto-mode-toggle=${this.handleBacklogAutoModeToggle}
         @auto-mode-error=${this.handleBacklogAutoModeError}
         @auto-mode-resume=${this.handleBacklogAutoModeResume}
+        @backlog-item-assign=${this.handleBacklogItemAssign}
         @story-select=${(e: CustomEvent) => {
           // Navigate to backlog story detail when a story is clicked
           const storyId = e.detail.storyId as string;

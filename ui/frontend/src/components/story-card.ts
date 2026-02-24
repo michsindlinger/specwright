@@ -33,6 +33,7 @@ export interface StoryInfo {
   workflowStatus?: WorkflowStatus;
   workflowError?: string;
   attachmentCount?: number; // SCA-004: Number of attachments on this story
+  assignedToBot?: boolean; // Backlog item assignment
 }
 
 // Default fallback providers (used if none provided)
@@ -78,6 +79,7 @@ export class AosStoryCard extends LitElement {
   @property({ type: String }) workflowError: string = '';
   @property({ type: Array }) providers: ProviderInfo[] = DEFAULT_PROVIDERS;
   @property({ type: Boolean, reflect: true }) dragDisabled = false;
+  @property({ type: Boolean }) isBacklogMode = false;
   @state() private isDragging = false;
   @state() private copied = false;
   @state() private dropdownOpen = false;
@@ -212,6 +214,39 @@ export class AosStoryCard extends LitElement {
       font-weight: 600;
       margin-left: 0.15rem;
       color: var(--primary-color, #3b82f6);
+    }
+
+    .assign-toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      padding: 0.15rem;
+      border-radius: 3px;
+      cursor: pointer;
+      color: var(--text-color-secondary, #a3a3a3);
+      opacity: 0;
+      transition: opacity 0.2s, color 0.2s;
+      margin-left: 0.25rem;
+    }
+
+    .story-card:hover .assign-toggle-btn {
+      opacity: 1;
+    }
+
+    .assign-toggle-btn:hover {
+      color: var(--primary-color, #3b82f6);
+    }
+
+    .assign-toggle-btn.assigned {
+      color: var(--success-color, #22c55e);
+      opacity: 1;
+    }
+
+    .assign-toggle-btn.assign-disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
     }
 
     .story-title {
@@ -496,6 +531,17 @@ export class AosStoryCard extends LitElement {
     );
   }
 
+  private handleAssignToggle(e: Event): void {
+    e.stopPropagation();
+    this.dispatchEvent(
+      new CustomEvent('backlog-item-assign', {
+        detail: { itemId: this.story.id },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
   private handleAttachmentClick(e: Event): void {
     e.stopPropagation();
     this.dispatchEvent(
@@ -599,6 +645,24 @@ export class AosStoryCard extends LitElement {
               ? html`<span class="attachment-count">${this.story.attachmentCount}</span>`
               : ''}
           </button>
+          ${this.isBacklogMode ? html`
+            <button
+              class="assign-toggle-btn ${this.story.assignedToBot ? 'assigned' : ''} ${this.story.status !== 'backlog' && !this.story.assignedToBot ? 'assign-disabled' : ''}"
+              @click=${this.handleAssignToggle}
+              ?disabled=${this.story.status !== 'backlog' && !this.story.assignedToBot}
+              aria-label="${this.story.status !== 'backlog' && !this.story.assignedToBot ? 'Item muss im Backlog sein' : (this.story.assignedToBot ? 'Bot-Assignment entfernen' : 'An Bot assignen')}"
+              title="${this.story.status !== 'backlog' && !this.story.assignedToBot ? 'Item muss im Backlog sein' : (this.story.assignedToBot ? 'Bot-Assignment entfernen' : 'An Bot assignen')}"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8V4H8"/>
+                <rect width="16" height="12" x="4" y="8" rx="2"/>
+                <path d="M2 14h2"/>
+                <path d="M20 14h2"/>
+                <path d="M15 13v2"/>
+                <path d="M9 13v2"/>
+              </svg>
+            </button>
+          ` : ''}
           <span class="effort-badge">${this.getEffortLabel()}</span>
         </div>
 

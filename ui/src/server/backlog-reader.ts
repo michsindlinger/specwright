@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import { join, basename } from 'path';
 import { projectDir } from './utils/project-dirs.js';
 import { attachmentStorageService } from './services/attachment-storage.service.js';
+import { withKanbanLock } from './utils/kanban-lock.js';
 
 export type ModelSelection = 'opus' | 'sonnet' | 'haiku' | 'glm-5' | 'google/gemini-3-flash-preview' | 'google/gemini-3-pro-preview';
 
@@ -27,6 +28,7 @@ export interface BacklogStoryInfo {
   dorComplete: boolean;
   dependencies: string[];
   attachmentCount?: number;
+  assignedToBot?: boolean;
 }
 
 export interface BacklogKanbanBoard {
@@ -45,6 +47,12 @@ interface BacklogJsonItem {
   effort?: number;
   status: string;  // 'open' | 'done' | 'in_progress' | 'ready' | 'pending' | 'completed'
   file?: string;
+  // Assignment tracking
+  assignedToBot?: {
+    assigned: boolean;
+    assignedAt: string;
+    assignedBy: string;
+  };
   // Legacy fields (kept for backward compatibility)
   slug?: string;
   category?: string;
@@ -223,7 +231,8 @@ export class BacklogReader {
           model,
           // UKB-003: Added for StoryInfo compatibility
           dorComplete: true, // Backlog items don't have DoR concept, always true
-          dependencies: [] // Backlog items don't have dependencies
+          dependencies: [], // Backlog items don't have dependencies
+          assignedToBot: item.assignedToBot?.assigned ?? false,
         });
       }
 
@@ -443,5 +452,54 @@ export class BacklogReader {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Toggle bot assignment for a backlog item.
+   * Only items in backlog status (ready/open/pending) can be assigned.
+   * Uses file-based locking for atomic read-modify-write.
+   */
+  async toggleItemAssignment(
+    projectPath: string,
+    itemId: string
+  ): Promise<{ assigned: boolean; error?: string }> {
+    const backlogPath = projectDir(projectPath, 'backlog');
+    const backlogJsonPath = join(backlogPath, 'backlog-index.json');
+
+    return withKanbanLock(backlogPath, async () => {
+      let backlogJson: BacklogJson;
+      try {
+        const content = await fs.readFile(backlogJsonPath, 'utf-8');
+        backlogJson = JSON.parse(content);
+      } catch {
+        return { assigned: false, error: 'backlog-index.json not found or invalid' };
+      }
+
+      const item = backlogJson.items.find(i => i.id === itemId);
+      if (!item) {
+        return { assigned: false, error: `Item ${itemId} not found` };
+      }
+
+      // Only allow assignment for backlog items (ready/open/pending)
+      const backlogStatuses = ['ready', 'open', 'pending'];
+      const isBacklog = backlogStatuses.includes(item.status);
+      const isCurrentlyAssigned = item.assignedToBot?.assigned ?? false;
+
+      // Allow toggle-off regardless of status, but toggle-on only for backlog items
+      if (!isCurrentlyAssigned && !isBacklog) {
+        return { assigned: false, error: `Item ${itemId} must be in backlog status to be assigned` };
+      }
+
+      const newAssigned = !isCurrentlyAssigned;
+      item.assignedToBot = {
+        assigned: newAssigned,
+        assignedAt: new Date().toISOString(),
+        assignedBy: 'ui',
+      };
+
+      await fs.writeFile(backlogJsonPath, JSON.stringify(backlogJson, null, 2), 'utf-8');
+
+      return { assigned: newAssigned };
+    });
   }
 }

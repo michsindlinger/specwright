@@ -290,6 +290,9 @@ export class WebSocketHandler {
         case 'backlog.story.save':
           this.handleBacklogStorySave(client, message);
           break;
+        case 'backlog.assign':
+          this.handleBacklogAssign(client, message);
+          break;
         case 'terminal.input':
           this.handleTerminalInput(client, message);
           break;
@@ -1953,6 +1956,70 @@ export class WebSocketHandler {
       const errorResponse: WebSocketMessage = {
         type: 'specs.assign.error',
         specId,
+        error: error instanceof Error ? error.message : 'Failed to toggle assignment',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * Handle backlog item assignment toggle via WebSocket.
+   * Calls toggleItemAssignment() on BacklogReader and broadcasts result to all project clients.
+   */
+  private async handleBacklogAssign(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
+    const itemId = message.itemId as string;
+
+    if (!itemId) {
+      const errorResponse: WebSocketMessage = {
+        type: 'backlog.assign.error',
+        itemId: '',
+        error: 'Item ID is required',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      const errorResponse: WebSocketMessage = {
+        type: 'backlog.assign.error',
+        itemId,
+        error: 'No project selected',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    try {
+      const result = await this.backlogReader.toggleItemAssignment(projectPath, itemId);
+
+      if (result.error) {
+        const errorResponse: WebSocketMessage = {
+          type: 'backlog.assign.error',
+          itemId,
+          error: result.error,
+          timestamp: new Date().toISOString()
+        };
+        client.send(JSON.stringify(errorResponse));
+        return;
+      }
+
+      const response: WebSocketMessage = {
+        type: 'backlog.assign.ack',
+        itemId,
+        assigned: result.assigned,
+        timestamp: new Date().toISOString()
+      };
+
+      // Broadcast to all clients in the same project
+      webSocketManager.sendToProject(projectPath, response);
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'backlog.assign.error',
+        itemId,
         error: error instanceof Error ? error.message : 'Failed to toggle assignment',
         timestamp: new Date().toISOString()
       };
