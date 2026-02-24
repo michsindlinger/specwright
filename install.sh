@@ -54,6 +54,7 @@ FLAG_UPDATE=false
 FLAG_OVERWRITE=false
 FLAG_OVERWRITE_WORKFLOWS=false
 FLAG_OVERWRITE_STANDARDS=false
+FLAG_OVERWRITE_COMMANDS=false
 FLAG_NO_MCP=false
 FLAG_YES=false
 FLAG_DRY_RUN=false
@@ -74,6 +75,7 @@ while [[ $# -gt 0 ]]; do
         --overwrite)           FLAG_OVERWRITE=true; shift ;;
         --overwrite-workflows) FLAG_OVERWRITE_WORKFLOWS=true; shift ;;
         --overwrite-standards) FLAG_OVERWRITE_STANDARDS=true; shift ;;
+        --overwrite-commands)  FLAG_OVERWRITE_COMMANDS=true; shift ;;
         --no-mcp)              FLAG_NO_MCP=true; shift ;;
         --yes|-y)              FLAG_YES=true; shift ;;
         --dry-run)             FLAG_DRY_RUN=true; shift ;;
@@ -110,6 +112,7 @@ Options:
   --overwrite           Overwrite all existing files
   --overwrite-workflows Overwrite only workflow files
   --overwrite-standards Overwrite only standards files
+  --overwrite-commands  Overwrite only command & agent files
   --no-mcp              Skip MCP server installation
   --yes | -y            No confirmation prompt (non-interactive)
   --dry-run             Show what would be installed without doing it
@@ -232,10 +235,11 @@ determine_install_plan() {
         fi
     fi
 
-    # --update implies overwrite for workflows
+    # --update implies overwrite for workflows, standards, commands & agents
     if [[ "$FLAG_UPDATE" == true ]]; then
         FLAG_OVERWRITE_WORKFLOWS=true
         FLAG_OVERWRITE_STANDARDS=true
+        FLAG_OVERWRITE_COMMANDS=true
     fi
 }
 
@@ -299,10 +303,11 @@ display_plan() {
     if [[ "$FLAG_OVERWRITE" == true ]]; then
         echo ""
         echo -e "  ${YELLOW}Overwrite mode: ALL files${RESET}"
-    elif [[ "$FLAG_OVERWRITE_WORKFLOWS" == true || "$FLAG_OVERWRITE_STANDARDS" == true ]]; then
+    elif [[ "$FLAG_OVERWRITE_WORKFLOWS" == true || "$FLAG_OVERWRITE_STANDARDS" == true || "$FLAG_OVERWRITE_COMMANDS" == true ]]; then
         echo ""
         [[ "$FLAG_OVERWRITE_WORKFLOWS" == true ]] && echo -e "  ${YELLOW}Overwrite: workflows${RESET}" || true
         [[ "$FLAG_OVERWRITE_STANDARDS" == true ]] && echo -e "  ${YELLOW}Overwrite: standards${RESET}" || true
+        [[ "$FLAG_OVERWRITE_COMMANDS" == true ]] && echo -e "  ${YELLOW}Overwrite: commands & agents${RESET}" || true
     fi
 
     echo ""
@@ -350,6 +355,8 @@ download_file() {
         if [[ "$category" == "workflow" && "$FLAG_OVERWRITE_WORKFLOWS" == true ]]; then
             : # fall through to download
         elif [[ "$category" == "standard" && "$FLAG_OVERWRITE_STANDARDS" == true ]]; then
+            : # fall through to download
+        elif [[ ( "$category" == "command" || "$category" == "agent" ) && "$FLAG_OVERWRITE_COMMANDS" == true ]]; then
             : # fall through to download
         else
             FILES_SKIPPED=$((FILES_SKIPPED + 1))
@@ -722,14 +729,14 @@ install_market_validation_global() {
         marketing-system__quality-assurance.md
     )
     for a in "${agents[@]}"; do
-        download_file "$REPO_URL/.claude/agents/$a" "$C/agents/$a"
+        download_file "$REPO_URL/.claude/agents/$a" "$C/agents/$a" "agent"
     done
     substep_done
 
     # Commands (2)
     substep "Validation commands" "2"
-    download_file "$REPO_URL/.claude/commands/specwright/validate-market.md" "$C/commands/specwright/validate-market.md"
-    download_file "$REPO_URL/.claude/commands/specwright/validate-market-for-existing.md" "$C/commands/specwright/validate-market-for-existing.md"
+    download_file "$REPO_URL/.claude/commands/specwright/validate-market.md" "$C/commands/specwright/validate-market.md" "command"
+    download_file "$REPO_URL/.claude/commands/specwright/validate-market-for-existing.md" "$C/commands/specwright/validate-market-for-existing.md" "command"
     substep_done
 }
 
@@ -1046,7 +1053,7 @@ install_claude_code() {
         check-update.md
     )
     for f in "${command_files[@]}"; do
-        download_file "$REPO_URL/.claude/commands/specwright/$f" ".claude/commands/specwright/$f"
+        download_file "$REPO_URL/.claude/commands/specwright/$f" ".claude/commands/specwright/$f" "command"
     done
     substep_done
 
@@ -1060,13 +1067,13 @@ install_claude_code() {
         estimation-specialist.md
     )
     for f in "${agent_files[@]}"; do
-        download_file "$REPO_URL/.claude/agents/$f" ".claude/agents/$f"
+        download_file "$REPO_URL/.claude/agents/$f" ".claude/agents/$f" "agent"
     done
     substep_done
 
     # Skills (1)
     substep "Skills" "1"
-    download_file "$REPO_URL/.claude/skills/review-implementation-plan/SKILL.md" ".claude/skills/review-implementation-plan/SKILL.md"
+    download_file "$REPO_URL/.claude/skills/review-implementation-plan/SKILL.md" ".claude/skills/review-implementation-plan/SKILL.md" "command"
     substep_done
 
 }
