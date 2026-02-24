@@ -14,11 +14,11 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/spec-assignment",
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Completed ASGN-003",
-    "nextAction": "Execute next story: ASGN-005",
-    "progressIndex": 6,
+    "currentStory": "ASGN-997",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started ASGN-997",
+    "nextAction": "Implement Code Review",
+    "progressIndex": 7,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
@@ -210,24 +210,27 @@
         "complexity": "XS"
       },
       "dependencies": [],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-005-slash-command.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
         "updatedAt": "2026-02-24T15:00:00Z",
-        "startedAt": "2026-02-24T15:24:29.582Z"
+        "startedAt": "2026-02-24T15:24:29.582Z",
+        "completedAt": "2026-02-24T15:26:12.672Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          ".claude/commands/specwright/assign-spec.md"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -247,12 +250,13 @@
         "ASGN-004",
         "ASGN-005"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-24T00:00:00Z",
-        "updatedAt": "2026-02-24T00:00:00Z"
+        "updatedAt": "2026-02-24T00:00:00Z",
+        "startedAt": "2026-02-24T15:26:21.446Z"
       },
       "implementation": {
         "filesModified": [],
@@ -262,7 +266,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "ASGN-998",
@@ -327,11 +333,11 @@
   ],
   "boardStatus": {
     "total": 8,
-    "ready": 3,
+    "ready": 2,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 4,
+    "done": 5,
     "blocked": 0
   },
   "statistics": {
@@ -534,6 +540,24 @@
     },
     {
       "timestamp": "2026-02-24T15:25:03.745Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/spec-assignment"
+    },
+    {
+      "timestamp": "2026-02-24T15:26:12.676Z",
+      "action": "status_changed",
+      "storyId": "ASGN-005",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-24T15:26:21.446Z",
+      "action": "status_changed",
+      "storyId": "ASGN-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-24T15:26:27.468Z",
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/spec-assignment"
