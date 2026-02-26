@@ -245,6 +245,7 @@ export class AosApp extends LitElement {
 
     if (operation === 'generate-commit-message') {
       this.generatingCommitMessage = false;
+      this.showToast(rawMessage || 'Commit Message konnte nicht generiert werden', 'error');
       return;
     }
 
@@ -1483,7 +1484,7 @@ export class AosApp extends LitElement {
     gateway.sendGitCommit(files, message);
   }
 
-  private generatingCommitMessage = false;
+  @state() private generatingCommitMessage = false;
 
   private _handleGenerateCommitMessage(e: CustomEvent<{ files: string[] }>): void {
     this.generatingCommitMessage = true;
