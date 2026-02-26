@@ -4,6 +4,7 @@ import { consume } from '@lit/context';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
 import type { SkillSummary } from '../../../src/shared/types/team.protocol.js';
 import '../components/team/aos-team-card.js';
+import '../components/team/aos-team-detail-modal.js';
 
 type ViewState = 'loading' | 'loaded' | 'empty' | 'error';
 
@@ -15,6 +16,8 @@ export class AosTeamView extends LitElement {
   @state() private skills: SkillSummary[] = [];
   @state() private viewState: ViewState = 'loading';
   @state() private errorMessage = '';
+  @state() private modalOpen = false;
+  @state() private selectedSkillId = '';
 
   private lastProjectPath = '';
 
@@ -58,6 +61,8 @@ export class AosTeamView extends LitElement {
   }
 
   private handleCardClick(e: CustomEvent<{ skillId: string }>): void {
+    this.selectedSkillId = e.detail.skillId;
+    this.modalOpen = true;
     this.dispatchEvent(
       new CustomEvent('team-skill-select', {
         detail: { skillId: e.detail.skillId },
@@ -65,6 +70,10 @@ export class AosTeamView extends LitElement {
         composed: true,
       })
     );
+  }
+
+  private handleModalClose(): void {
+    this.modalOpen = false;
   }
 
   private handleRetry(): void {
@@ -80,6 +89,11 @@ export class AosTeamView extends LitElement {
         </div>
         ${this.renderContent()}
       </div>
+      <aos-team-detail-modal
+        .open=${this.modalOpen}
+        .skillId=${this.selectedSkillId}
+        @modal-close=${this.handleModalClose}
+      ></aos-team-detail-modal>
     `;
   }
 
