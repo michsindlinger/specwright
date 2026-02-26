@@ -10,15 +10,15 @@
     "createdAt": "2026-02-25T00:00:00Z"
   },
   "resumeContext": {
-    "currentPhase": "3-execute-story",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "story-complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/dev-team-visualization",
-    "currentStory": "TEAM-004",
+    "currentStory": "TEAM-005",
     "currentStoryPhase": "implementing",
-    "lastAction": "Started TEAM-004",
-    "nextAction": "Implement Team Detail Modal",
-    "progressIndex": 3,
+    "lastAction": "Started TEAM-005",
+    "nextAction": "Implement Integration und Testing",
+    "progressIndex": 4,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
@@ -171,24 +171,35 @@
       "dependencies": [
         "TEAM-003"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-004-team-detail-modal.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
         "updatedAt": "2026-02-25T00:00:00Z",
-        "startedAt": "2026-02-26T10:47:57.266Z"
+        "startedAt": "2026-02-26T10:47:57.266Z",
+        "completedAt": "2026-02-26T10:52:05.454Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-detail-modal.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "f8b328f",
+            "message": "feat: TEAM-004 Team Detail Modal",
+            "timestamp": "2026-02-26T12:30:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -207,12 +218,13 @@
         "TEAM-003",
         "TEAM-004"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-005-integration-testing.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
-        "updatedAt": "2026-02-25T00:00:00Z"
+        "updatedAt": "2026-02-25T00:00:00Z",
+        "startedAt": "2026-02-26T10:53:07.121Z"
       },
       "implementation": {
         "filesModified": [],
@@ -222,7 +234,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "TEAM-997",
@@ -321,11 +335,11 @@
   ],
   "boardStatus": {
     "total": 8,
-    "ready": 4,
+    "ready": 3,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 3,
+    "done": 4,
     "blocked": 0
   },
   "statistics": {
@@ -460,6 +474,30 @@
       "timestamp": "2026-02-26T10:47:57.267Z",
       "action": "status_changed",
       "storyId": "TEAM-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T10:52:05.454Z",
+      "action": "status_changed",
+      "storyId": "TEAM-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T10:52:15.655Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-26T10:52:24.469Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/dev-team-visualization"
+    },
+    {
+      "timestamp": "2026-02-26T10:53:07.124Z",
+      "action": "status_changed",
+      "storyId": "TEAM-005",
       "details": "Story started: ready → in_progress"
     }
   ]
