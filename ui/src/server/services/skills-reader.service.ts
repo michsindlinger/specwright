@@ -31,7 +31,7 @@ export class SkillsReaderService {
     globs: string[];
     alwaysApply: boolean;
   } {
-    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     if (!frontmatterMatch) {
       return { description: 'Keine Beschreibung verfügbar', globs: [], alwaysApply: false };
     }

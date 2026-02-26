@@ -14,10 +14,10 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/dev-team-visualization",
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Completed TEAM-005",
-    "nextAction": "Execute System Stories (997, 998, 999)",
+    "currentStory": "TEAM-997",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started TEAM-997",
+    "nextAction": "Implement Code Review",
     "progressIndex": 5,
     "totalStories": 8,
     "gitStrategy": "branch"
@@ -265,12 +265,13 @@
         "TEAM-004",
         "TEAM-005"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
-        "updatedAt": "2026-02-25T00:00:00Z"
+        "updatedAt": "2026-02-25T00:00:00Z",
+        "startedAt": "2026-02-26T10:58:34.965Z"
       },
       "implementation": {
         "filesModified": [],
@@ -280,7 +281,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "TEAM-998",
@@ -345,8 +348,8 @@
   ],
   "boardStatus": {
     "total": 8,
-    "ready": 3,
-    "inProgress": 0,
+    "ready": 2,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
     "done": 5,
@@ -521,6 +524,18 @@
       "action": "phase_updated",
       "storyId": null,
       "details": "Phase: all-stories-done"
+    },
+    {
+      "timestamp": "2026-02-26T10:57:58.359Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/dev-team-visualization"
+    },
+    {
+      "timestamp": "2026-02-26T10:58:34.966Z",
+      "action": "status_changed",
+      "storyId": "TEAM-997",
+      "details": "Story started: ready → in_progress"
     }
   ]
 }
