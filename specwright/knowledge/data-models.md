@@ -1,13 +1,15 @@
 # Data Models
 
 > Verfügbare Datenmodelle, Schemas und Types im Projekt.
-> Zuletzt aktualisiert: 2026-02-16
+> Zuletzt aktualisiert: 2026-02-26
 
 ## Modelle-Übersicht
 
 | Modell/Type | Pfad | Typ | Erstellt in Spec |
 |-------------|------|-----|------------------|
 | file.protocol.ts | ui/src/shared/types/file.protocol.ts | Shared Types | File Editor (2026-02-16) |
+| SkillSummary | ui/src/shared/types/team.protocol.ts | Interface | Dev-Team Visualization (2026-02-26) |
+| SkillDetail | ui/src/shared/types/team.protocol.ts | Interface | Dev-Team Visualization (2026-02-26) |
 
 ---
 
@@ -51,6 +53,47 @@ interface FileTab {
   path: string;
   filename: string;
   isModified: boolean;
+}
+```
+
+---
+
+### team.protocol.ts (SkillSummary, SkillDetail)
+
+**Pfad:** `ui/src/shared/types/team.protocol.ts`
+**Typ:** Shared Protocol Types (REST API)
+**Erstellt:** Dev-Team Visualization (2026-02-26)
+
+**Beschreibung:** TypeScript-Interfaces für die Skills/Team REST-API. Definiert den Vertrag zwischen Frontend und Backend für das Lesen von Skill-Definitionen.
+
+**Key Interfaces:**
+```typescript
+interface SkillSummary {
+  id: string;              // Skill directory name
+  name: string;            // Display name from SKILL.md
+  description: string;     // Description from frontmatter
+  category: string;        // Inferred from directory name prefix
+  learningsCount: number;  // Entries in dos-and-donts.md
+  globs: string[];         // Glob patterns from frontmatter
+  alwaysApply: boolean;    // Whether skill is always applied
+}
+
+interface SkillDetail extends SkillSummary {
+  skillContent: string;        // Full SKILL.md content (raw markdown)
+  dosAndDontsContent: string;  // Full dos-and-donts.md content
+  subDocuments: string[];      // Other .md files in skill directory
+}
+
+interface SkillsListResponse {
+  success: boolean;
+  skills?: SkillSummary[];
+  error?: string;
+}
+
+interface SkillDetailResponse {
+  success: boolean;
+  skill?: SkillDetail;
+  error?: string;
 }
 ```
 

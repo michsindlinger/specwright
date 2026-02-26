@@ -5,6 +5,7 @@
 > Created: 2026-02-25
 > Last Updated: 2026-02-25
 
+**Status**: Done
 **Priority**: Medium
 **Type**: Frontend
 **Estimated Effort**: S
@@ -85,17 +86,17 @@ Scenario: Laden der Detail-Daten
 
 ### Datei-Prüfungen
 
-- [ ] FILE_EXISTS: ui/frontend/src/components/team/aos-team-detail-modal.ts
+- [x] FILE_EXISTS: ui/frontend/src/components/team/aos-team-detail-modal.ts
 
 ### Inhalt-Prüfungen
 
-- [ ] CONTAINS: ui/frontend/src/components/team/aos-team-detail-modal.ts enthält "modal-close"
-- [ ] CONTAINS: ui/frontend/src/components/team/aos-team-detail-modal.ts enthält "/api/team"
-- [ ] CONTAINS: ui/frontend/src/views/aos-team-view.ts enthält "aos-team-detail-modal"
+- [x] CONTAINS: ui/frontend/src/components/team/aos-team-detail-modal.ts enthält "modal-close"
+- [x] CONTAINS: ui/frontend/src/components/team/aos-team-detail-modal.ts enthält "/api/team"
+- [x] CONTAINS: ui/frontend/src/views/aos-team-view.ts enthält "aos-team-detail-modal"
 
 ### Funktions-Prüfungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -132,17 +133,17 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten
-- [ ] Security/Performance Anforderungen erfüllt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten
+- [x] Security/Performance Anforderungen erfüllt
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
+- [x] Alle Akzeptanzkriterien erfüllt
 - [ ] Code Review durchgeführt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich
 
 ---
 

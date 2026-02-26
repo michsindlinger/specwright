@@ -1,5 +1,5 @@
 {
-  "nextId": 6,
+  "nextId": 7,
   "items": [
     {
       "id": "BUG-001",
@@ -53,6 +53,15 @@
       "status": "open",
       "file": "items/bug-005-kanban-auto-mode-state-geht-bei-navigation-verlore.md",
       "createdAt": "2026-02-25T05:15:10.620Z"
+    },
+    {
+      "id": "TODO-006",
+      "type": "todo",
+      "title": "Auto Commit Message Button im Commit Modal",
+      "priority": "medium",
+      "status": "open",
+      "file": "items/todo-006-auto-commit-message-button-im-commit-modal.md",
+      "createdAt": "2026-02-26T12:05:16.026Z"
     }
   ],
   "statistics": {

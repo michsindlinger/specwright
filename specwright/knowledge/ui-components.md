@@ -1,7 +1,7 @@
 # UI Components
 
 > Verfügbare UI-Komponenten im Projekt.
-> Zuletzt aktualisiert: 2026-02-17
+> Zuletzt aktualisiert: 2026-02-26
 
 ## Komponenten-Übersicht
 
@@ -14,6 +14,9 @@
 | aos-file-editor-panel | ui/frontend/src/components/file-editor/aos-file-editor-panel.ts | (Orchestrator) | File Editor (2026-02-16) |
 | aos-installation-wizard-modal | ui/frontend/src/components/setup/aos-installation-wizard-modal.ts | projectPath, hasSpecwright, hasProductBrief, fileCount, open | Installation Wizard (2026-02-17) |
 | aos-getting-started-view | ui/frontend/src/views/aos-getting-started-view.ts | hasProductBrief, projectName | Installation Wizard (2026-02-17) |
+| aos-team-view | ui/frontend/src/views/team-view.ts | (uses projectContext) | Dev-Team Visualization (2026-02-26) |
+| aos-team-card | ui/frontend/src/components/team/aos-team-card.ts | skill: SkillSummary | Dev-Team Visualization (2026-02-26) |
+| aos-team-detail-modal | ui/frontend/src/components/team/aos-team-detail-modal.ts | open, skillId | Dev-Team Visualization (2026-02-26) |
 
 ---
 
@@ -279,6 +282,108 @@ panel.openFile('src/app.ts', 'app.ts');
 - Drei Zustaende: not installed, no product brief, fully configured
 - Erreichbar via /getting-started Route und Sidebar-Navigation
 - Light DOM Pattern
+
+---
+
+### aos-team-view
+
+**Pfad:** `ui/frontend/src/views/team-view.ts`
+**Erstellt:** Dev-Team Visualization (2026-02-26)
+
+**Beschreibung:** Team-Übersichtsseite mit responsivem Karten-Grid. Lädt Skills via REST-API und zeigt Loading/Error/Empty States. Nutzt projectContext für aktiven Projektpfad.
+
+**Props/State:**
+| Prop/State | Type | Default | Description |
+|------------|------|---------|-------------|
+| skills (state) | SkillSummary[] | [] | Geladene Skills-Liste |
+| viewState (state) | 'loading' \| 'loaded' \| 'empty' \| 'error' | 'loading' | Aktueller View-State |
+| modalOpen (state) | boolean | false | Detail-Modal geöffnet |
+| selectedSkillId (state) | string | '' | ID des ausgewählten Skills |
+
+**Events:**
+| Event | Detail | Description |
+|-------|--------|-------------|
+| team-skill-select | { skillId } | Skill-Karte wurde angeklickt |
+
+**Usage Example:**
+```html
+<aos-team-view></aos-team-view>
+```
+
+**Notes:**
+- Nutzt `@consume` projectContext für aktiven Projektpfad
+- API-Call: `GET /api/team/${encodedPath}/skills`
+- Light DOM Pattern
+- Enthält aos-team-detail-modal Integration
+
+---
+
+### aos-team-card
+
+**Pfad:** `ui/frontend/src/components/team/aos-team-card.ts`
+**Erstellt:** Dev-Team Visualization (2026-02-26)
+
+**Beschreibung:** Skill-Karte mit Name, Kategorie-Badge (farbcodiert), Beschreibung und Learnings-Anzeige.
+
+**Props:**
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| skill | SkillSummary | - | Skill-Daten für die Anzeige |
+
+**Events:**
+| Event | Detail | Description |
+|-------|--------|-------------|
+| card-click | { skillId } | Karte wurde angeklickt |
+
+**Usage Example:**
+```html
+<aos-team-card
+  .skill=${skillSummary}
+  @card-click=${this.handleCardClick}
+></aos-team-card>
+```
+
+**Notes:**
+- Kategorie-Badges: frontend (blau), backend (grün), architecture (lila), quality, domain, devops, product
+- Light DOM Pattern
+- Zeigt "Always Active" Badge wenn `alwaysApply: true`
+
+---
+
+### aos-team-detail-modal
+
+**Pfad:** `ui/frontend/src/components/team/aos-team-detail-modal.ts`
+**Erstellt:** Dev-Team Visualization (2026-02-26)
+
+**Beschreibung:** Modal mit Tabs für Skill-Inhalt (SKILL.md) und Learnings (dos-and-donts.md). Lazy-Loading der Detail-Daten bei Öffnung.
+
+**Props:**
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| open | boolean | false | Modal sichtbar/versteckt |
+| skillId | string | '' | ID des anzuzeigenden Skills |
+
+**Events:**
+| Event | Detail | Description |
+|-------|--------|-------------|
+| modal-close | - | Modal soll geschlossen werden |
+
+**Usage Example:**
+```html
+<aos-team-detail-modal
+  .open=${this.modalOpen}
+  .skillId=${this.selectedSkillId}
+  @modal-close=${this.handleModalClose}
+></aos-team-detail-modal>
+```
+
+**Notes:**
+- Tabs: "Skill" (SKILL.md Inhalt) und "Learnings" (dos-and-donts.md)
+- Escape-Taste und Click-Outside zum Schließen
+- Lazy Loading: Detail-Daten erst bei Modal-Öffnung
+- API-Call: `GET /api/team/${encodedPath}/skills/${skillId}`
+- Light DOM Pattern
+- Nutzt `@consume` projectContext
 
 ---
 

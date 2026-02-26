@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-02-25-dev-team-visualization",
     "name": "Dev-Team Visualization",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-02-25T00:00:00Z"
   },
-
   "resumeContext": {
-    "currentPhase": "1-kanban-setup",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/dev-team-visualization",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Kanban board created",
-    "nextAction": "Run /execute-tasks 2026-02-25-dev-team-visualization",
-    "progressIndex": 0,
-    "totalStories": 8
+    "lastAction": "PR created - https://github.com/michsindlinger/specwright/pull/11",
+    "nextAction": "All stories complete",
+    "progressIndex": 8,
+    "totalStories": 8,
+    "gitStrategy": "branch"
   },
-
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
-    "completedAt": null,
+    "status": "completed",
+    "startedAt": "2026-02-26T10:36:31.401Z",
+    "completedAt": "2026-02-26T12:07:47.743Z",
     "model": null
   },
-
   "stories": [
     {
       "id": "TEAM-001",
@@ -43,22 +40,36 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-001-backend-skills-api.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
-        "updatedAt": "2026-02-25T00:00:00Z"
+        "updatedAt": "2026-02-25T00:00:00Z",
+        "startedAt": "2026-02-26T10:29:40.260Z",
+        "completedAt": "2026-02-26T10:34:46.224Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/team.protocol.ts",
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/src/server/routes/team.routes.ts",
+          "ui/src/server/index.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "a0597b7a9135010c8310d001f678cc4e9583506a",
+            "message": "feat: TEAM-001 Backend Skills-API-Endpunkt",
+            "timestamp": "2026-02-26T11:34:22+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "TEAM-002",
@@ -71,22 +82,36 @@
         "complexity": "XS"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-002-navigation-routing.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
-        "updatedAt": "2026-02-25T00:00:00Z"
+        "updatedAt": "2026-02-25T00:00:00Z",
+        "startedAt": "2026-02-26T10:36:31.401Z",
+        "completedAt": "2026-02-26T10:39:36.245Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/types/route.types.ts",
+          "ui/frontend/src/app.ts",
+          "ui/frontend/src/views/team-view.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "efeddefb60cba59bdb889f7c9ab9fe946f0e5f53",
+            "message": "feat: TEAM-002 Navigation & Routing",
+            "timestamp": "2026-02-26T11:39:12+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "TEAM-003",
@@ -98,23 +123,40 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["TEAM-001", "TEAM-002"],
-      "status": "ready",
+      "dependencies": [
+        "TEAM-001",
+        "TEAM-002"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-003-team-view-cards.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
-        "updatedAt": "2026-02-25T00:00:00Z"
+        "updatedAt": "2026-02-25T00:00:00Z",
+        "startedAt": "2026-02-26T10:41:02.338Z",
+        "completedAt": "2026-02-26T10:45:40.979Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "f0d2d57",
+            "message": "feat: TEAM-003 Team View + Team Card Komponenten",
+            "timestamp": "2026-02-26T12:00:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "TEAM-004",
@@ -126,23 +168,39 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["TEAM-003"],
-      "status": "ready",
+      "dependencies": [
+        "TEAM-003"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-004-team-detail-modal.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
-        "updatedAt": "2026-02-25T00:00:00Z"
+        "updatedAt": "2026-02-25T00:00:00Z",
+        "startedAt": "2026-02-26T10:47:57.266Z",
+        "completedAt": "2026-02-26T10:52:05.454Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-detail-modal.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "f8b328f",
+            "message": "feat: TEAM-004 Team Detail Modal",
+            "timestamp": "2026-02-26T12:30:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "TEAM-005",
@@ -154,23 +212,41 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["TEAM-001", "TEAM-002", "TEAM-003", "TEAM-004"],
-      "status": "ready",
+      "dependencies": [
+        "TEAM-001",
+        "TEAM-002",
+        "TEAM-003",
+        "TEAM-004"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-005-integration-testing.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
-        "updatedAt": "2026-02-25T00:00:00Z"
+        "updatedAt": "2026-02-25T00:00:00Z",
+        "startedAt": "2026-02-26T10:53:07.121Z",
+        "completedAt": "2026-02-26T10:56:54.330Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/tests/team/skills-reader.service.test.ts",
+          "ui/tests/team/team.routes.test.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "5aaefde",
+            "message": "feat: TEAM-005 Integration und Testing",
+            "timestamp": "2026-02-26T11:56:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "TEAM-997",
@@ -182,23 +258,43 @@
         "effort": 0,
         "complexity": "S"
       },
-      "dependencies": ["TEAM-001", "TEAM-002", "TEAM-003", "TEAM-004", "TEAM-005"],
-      "status": "ready",
+      "dependencies": [
+        "TEAM-001",
+        "TEAM-002",
+        "TEAM-003",
+        "TEAM-004",
+        "TEAM-005"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
-        "updatedAt": "2026-02-25T00:00:00Z"
+        "updatedAt": "2026-02-25T00:00:00Z",
+        "startedAt": "2026-02-26T10:58:34.965Z",
+        "completedAt": "2026-02-26T11:02:27.026Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-25-dev-team-visualization/review-report.md",
+          "specwright/specs/2026-02-25-dev-team-visualization/stories/story-997-code-review.md",
+          "ui/src/server/services/skills-reader.service.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "d77fe1e",
+            "message": "feat: TEAM-997 Code Review completed",
+            "timestamp": "2026-02-26T12:02:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "TEAM-998",
@@ -210,23 +306,30 @@
         "effort": 0,
         "complexity": "S"
       },
-      "dependencies": ["TEAM-997"],
-      "status": "ready",
+      "dependencies": [
+        "TEAM-997"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
-        "updatedAt": "2026-02-25T00:00:00Z"
+        "updatedAt": "2026-02-25T00:00:00Z",
+        "startedAt": "2026-02-26T12:01:19.028Z",
+        "completedAt": "2026-02-26T12:03:00.703Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-25-dev-team-visualization/stories/story-998-integration-validation.md"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "TEAM-999",
@@ -238,94 +341,280 @@
         "effort": 0,
         "complexity": "S"
       },
-      "dependencies": ["TEAM-998"],
-      "status": "ready",
+      "dependencies": [
+        "TEAM-998"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
-        "updatedAt": "2026-02-25T00:00:00Z"
+        "updatedAt": "2026-02-25T00:00:00Z",
+        "startedAt": "2026-02-26T12:04:13.401Z",
+        "completedAt": "2026-02-26T12:07:47.743Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/knowledge/knowledge-index.md",
+          "specwright/knowledge/ui-components.md",
+          "specwright/knowledge/api-contracts.md",
+          "specwright/knowledge/data-models.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "56fdb0f",
+            "message": "docs: Update Project Knowledge from Dev-Team Visualization",
+            "timestamp": "2026-02-26T13:07:16+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     }
   ],
-
   "boardStatus": {
     "total": 8,
-    "ready": 8,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 8,
     "blocked": 0
   },
-
   "statistics": {
-    "totalEffort": 13,
-    "completedEffort": 0,
-    "remainingEffort": 13,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 7,
-      "backend": 3,
-      "devops": 0,
-      "test": 3,
-      "docs": 0,
-      "integration": 0
+      "undefined": 8
     },
     "byPriority": {
-      "critical": 0,
-      "high": 7,
-      "medium": 6,
-      "low": 0
+      "undefined": 8
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "name": "Phase 1: Backend + Navigation (parallel)",
-        "stories": ["TEAM-001", "TEAM-002"],
+        "stories": [
+          "TEAM-001",
+          "TEAM-002"
+        ],
         "parallel": true
       },
       {
         "name": "Phase 2: Team View + Cards",
-        "stories": ["TEAM-003"],
+        "stories": [
+          "TEAM-003"
+        ],
         "parallel": false
       },
       {
         "name": "Phase 3: Detail Modal",
-        "stories": ["TEAM-004"],
+        "stories": [
+          "TEAM-004"
+        ],
         "parallel": false
       },
       {
         "name": "Phase 4: Testing",
-        "stories": ["TEAM-005"],
+        "stories": [
+          "TEAM-005"
+        ],
         "parallel": false
       },
       {
         "name": "Phase 5: System Stories",
-        "stories": ["TEAM-997", "TEAM-998", "TEAM-999"],
+        "stories": [
+          "TEAM-997",
+          "TEAM-998",
+          "TEAM-999"
+        ],
         "parallel": false
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-02-25T00:00:00Z",
       "action": "kanban_created",
       "storyId": null,
       "details": "Kanban initialized with 8 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-26T10:29:40.260Z",
+      "action": "status_changed",
+      "storyId": "TEAM-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T10:29:40.404Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/dev-team-visualization"
+    },
+    {
+      "timestamp": "2026-02-26T10:30:16.607Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-02-26T10:34:46.224Z",
+      "action": "status_changed",
+      "storyId": "TEAM-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T10:35:29.772Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/dev-team-visualization"
+    },
+    {
+      "timestamp": "2026-02-26T10:36:31.402Z",
+      "action": "status_changed",
+      "storyId": "TEAM-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T10:39:36.246Z",
+      "action": "status_changed",
+      "storyId": "TEAM-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T10:40:16.622Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/dev-team-visualization"
+    },
+    {
+      "timestamp": "2026-02-26T10:41:02.340Z",
+      "action": "status_changed",
+      "storyId": "TEAM-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T10:45:40.980Z",
+      "action": "status_changed",
+      "storyId": "TEAM-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T10:46:40.163Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/dev-team-visualization"
+    },
+    {
+      "timestamp": "2026-02-26T10:47:57.267Z",
+      "action": "status_changed",
+      "storyId": "TEAM-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T10:52:05.454Z",
+      "action": "status_changed",
+      "storyId": "TEAM-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T10:52:15.655Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-26T10:52:24.469Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/dev-team-visualization"
+    },
+    {
+      "timestamp": "2026-02-26T10:53:07.124Z",
+      "action": "status_changed",
+      "storyId": "TEAM-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T10:56:54.330Z",
+      "action": "status_changed",
+      "storyId": "TEAM-005",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T10:57:19.180Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: all-stories-done"
+    },
+    {
+      "timestamp": "2026-02-26T10:57:58.359Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/dev-team-visualization"
+    },
+    {
+      "timestamp": "2026-02-26T10:58:34.966Z",
+      "action": "status_changed",
+      "storyId": "TEAM-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T11:02:27.027Z",
+      "action": "status_changed",
+      "storyId": "TEAM-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T12:01:19.028Z",
+      "action": "status_changed",
+      "storyId": "TEAM-998",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T12:01:19.171Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/dev-team-visualization"
+    },
+    {
+      "timestamp": "2026-02-26T12:03:00.705Z",
+      "action": "status_changed",
+      "storyId": "TEAM-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T12:03:42.079Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/dev-team-visualization"
+    },
+    {
+      "timestamp": "2026-02-26T12:04:13.402Z",
+      "action": "status_changed",
+      "storyId": "TEAM-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T12:07:47.743Z",
+      "action": "status_changed",
+      "storyId": "TEAM-999",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T12:07:52.141Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
     }
   ]
 }

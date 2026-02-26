@@ -62,10 +62,10 @@ Scenario: Vollständiger Build ohne Fehler
 
 ### Funktions-Prüfungen
 
-- [ ] TEST_PASS: `cd ui && npx vitest run tests/team` exits with code 0
-- [ ] BUILD_PASS: `cd ui && npm run build:backend` exits with code 0
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] TEST_PASS: `cd ui && npx vitest run tests/team` exits with code 0
+- [x] BUILD_PASS: `cd ui && npm run build:backend` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0
 
 ---
 
@@ -102,17 +102,17 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Unit Tests geschrieben und bestanden
-- [ ] Code Review durchgeführt und genehmigt
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Unit Tests geschrieben und bestanden
+- [x] Code Review durchgeführt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich
 
 ---
 
