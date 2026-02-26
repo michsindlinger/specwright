@@ -10,6 +10,7 @@ import imageUploadRouter from './routes/image-upload.routes.js';
 import quickTodoRouter from './routes/quick-todo.routes.js';
 import attachmentFileRouter from './routes/attachment-file.routes.js';
 import versionRouter from './routes/version.routes.js';
+import teamRouter from './routes/team.routes.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,7 @@ app.use('/api/images', imageUploadRouter);
 app.use('/api/backlog', quickTodoRouter);
 app.use('/api/attachments', attachmentFileRouter);
 app.use('/api/version', versionRouter);
+app.use('/api/team', teamRouter);
 
 // Health check endpoint
 app.get('/health', (_req: Request, res: Response) => {

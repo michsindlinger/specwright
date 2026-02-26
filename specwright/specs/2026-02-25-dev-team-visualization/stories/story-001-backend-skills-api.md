@@ -81,19 +81,19 @@ Scenario: Skill ohne Frontmatter in SKILL.md
 
 ### Datei-Prüfungen
 
-- [ ] FILE_EXISTS: ui/src/server/services/skills-reader.service.ts
-- [ ] FILE_EXISTS: ui/src/server/routes/team.routes.ts
-- [ ] FILE_EXISTS: ui/src/shared/types/team.protocol.ts
+- [x] FILE_EXISTS: ui/src/server/services/skills-reader.service.ts
+- [x] FILE_EXISTS: ui/src/server/routes/team.routes.ts
+- [x] FILE_EXISTS: ui/src/shared/types/team.protocol.ts
 
 ### Inhalt-Prüfungen
 
-- [ ] CONTAINS: ui/src/server/index.ts enthält "team"
-- [ ] CONTAINS: ui/src/shared/types/team.protocol.ts enthält "SkillSummary"
-- [ ] CONTAINS: ui/src/shared/types/team.protocol.ts enthält "SkillDetail"
+- [x] CONTAINS: ui/src/server/index.ts enthält "team"
+- [x] CONTAINS: ui/src/shared/types/team.protocol.ts enthält "SkillSummary"
+- [x] CONTAINS: ui/src/shared/types/team.protocol.ts enthält "SkillDetail"
 
 ### Funktions-Prüfungen
 
-- [ ] BUILD_PASS: `cd ui && npm run build:backend` exits with code 0
+- [x] BUILD_PASS: `cd ui && npm run build:backend` exits with code 0
 
 ---
 
@@ -130,19 +130,19 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten
-- [ ] Security/Performance Anforderungen erfüllt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten
+- [x] Security/Performance Anforderungen erfüllt
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Unit Tests geschrieben und bestanden
-- [ ] Code Review durchgeführt und genehmigt
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Unit Tests geschrieben und bestanden
+- [x] Code Review durchgeführt und genehmigt
 
 #### Dokumentation
-- [ ] Dokumentation aktualisiert
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich
+- [x] Dokumentation aktualisiert
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich
 
 ---
 
