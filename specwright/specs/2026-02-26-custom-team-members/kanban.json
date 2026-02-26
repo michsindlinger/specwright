@@ -14,11 +14,11 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/custom-team-members",
-    "currentStory": "CTM-003",
+    "currentStory": "CTM-004",
     "currentStoryPhase": "implementing",
-    "lastAction": "Started CTM-003",
-    "nextAction": "Implement Frontend Gruppierte Darstellung",
-    "progressIndex": 1,
+    "lastAction": "Started CTM-004",
+    "nextAction": "Implement Edit-Funktionalität - Markdown-Editor Modal",
+    "progressIndex": 2,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -115,24 +115,37 @@
       "dependencies": [
         "CTM-001"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-003-frontend-grouped-display.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
         "updatedAt": "2026-02-26T00:00:00Z",
-        "startedAt": "2026-02-26T20:29:34.788Z"
+        "startedAt": "2026-02-26T20:29:34.788Z",
+        "completedAt": "2026-02-26T20:35:15.578Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/team.protocol.ts",
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "65b6dbb",
+            "message": "feat: CTM-003 Frontend grouped team display with teamType badges",
+            "timestamp": "2026-02-26T21:40:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -149,12 +162,13 @@
         "CTM-001",
         "CTM-003"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-004-edit-functionality.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:38:58.495Z"
       },
       "implementation": {
         "filesModified": [],
@@ -164,7 +178,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-005",
@@ -328,11 +344,11 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 6,
+    "ready": 5,
     "inProgress": 2,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
+    "done": 2,
     "blocked": 0
   },
   "statistics": {
@@ -443,6 +459,24 @@
       "timestamp": "2026-02-26T20:29:34.791Z",
       "action": "status_changed",
       "storyId": "CTM-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:35:15.579Z",
+      "action": "status_changed",
+      "storyId": "CTM-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T20:35:33.233Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:38:58.496Z",
+      "action": "status_changed",
+      "storyId": "CTM-004",
       "details": "Story started: ready → in_progress"
     }
   ]

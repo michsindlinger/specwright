@@ -5,6 +5,7 @@ import { projectContext, type ProjectContextValue } from '../context/project-con
 import type { SkillSummary } from '../../../src/shared/types/team.protocol.js';
 import '../components/team/aos-team-card.js';
 import '../components/team/aos-team-detail-modal.js';
+import '../components/team/aos-team-edit-modal.js';
 
 type ViewState = 'loading' | 'loaded' | 'empty' | 'error';
 
@@ -22,6 +23,7 @@ export class AosTeamView extends LitElement {
   @state() private viewState: ViewState = 'loading';
   @state() private errorMessage = '';
   @state() private modalOpen = false;
+  @state() private editModalOpen = false;
   @state() private selectedSkillId = '';
 
   private lastProjectPath = '';
@@ -103,6 +105,20 @@ export class AosTeamView extends LitElement {
     this.modalOpen = false;
   }
 
+  private handleEditClick(e: CustomEvent<{ skillId: string }>): void {
+    this.selectedSkillId = e.detail.skillId;
+    this.editModalOpen = true;
+  }
+
+  private handleEditModalClose(): void {
+    this.editModalOpen = false;
+  }
+
+  private handleSkillSaved(): void {
+    this.editModalOpen = false;
+    this.loadSkills();
+  }
+
   private handleRetry(): void {
     this.loadSkills();
   }
@@ -120,7 +136,14 @@ export class AosTeamView extends LitElement {
         .open=${this.modalOpen}
         .skillId=${this.selectedSkillId}
         @modal-close=${this.handleModalClose}
+        @edit-click=${this.handleEditClick}
       ></aos-team-detail-modal>
+      <aos-team-edit-modal
+        .open=${this.editModalOpen}
+        .skillId=${this.selectedSkillId}
+        @modal-close=${this.handleEditModalClose}
+        @skill-saved=${this.handleSkillSaved}
+      ></aos-team-edit-modal>
     `;
   }
 
@@ -206,6 +229,7 @@ export class AosTeamView extends LitElement {
                   <aos-team-card
                     .skill=${skill}
                     @card-click=${this.handleCardClick}
+                    @edit-click=${this.handleEditClick}
                   ></aos-team-card>
                 `)}
               </div>
@@ -226,6 +250,7 @@ export class AosTeamView extends LitElement {
             <aos-team-card
               .skill=${skill}
               @card-click=${this.handleCardClick}
+              @edit-click=${this.handleEditClick}
             ></aos-team-card>
           `)}
         </div>

@@ -225,6 +225,18 @@ export class SkillsReaderService {
       subDocuments,
     };
   }
+
+  /**
+   * Update the SKILL.md content for a given skill.
+   */
+  async updateSkillContent(projectPath: string, skillId: string, content: string): Promise<void> {
+    const skillsPath = this.getSkillsPath(projectPath);
+    const skillDir = join(skillsPath, skillId);
+
+    // Verify skill directory exists before writing
+    await fs.access(skillDir);
+    await fs.writeFile(join(skillDir, 'SKILL.md'), content, 'utf-8');
+  }
 }
 
 // ============================================================================

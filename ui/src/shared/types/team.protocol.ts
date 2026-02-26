@@ -78,3 +78,8 @@ export interface SkillDetailResponse {
   skill?: SkillDetail;
   error?: string;
 }
+
+export interface SkillUpdateResponse {
+  success: boolean;
+  error?: string;
+}

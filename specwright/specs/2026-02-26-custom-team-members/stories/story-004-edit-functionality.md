@@ -74,14 +74,14 @@ Scenario: Abbrechen der Bearbeitung
 
 ### Datei-Prüfungen
 
-- [ ] FILE_EXISTS: `ui/frontend/src/components/team/aos-team-edit-modal.ts`
-- [ ] CONTAINS: `ui/frontend/src/views/team-view.ts` enthält "aos-team-edit-modal"
-- [ ] CONTAINS: `ui/frontend/src/components/team/aos-team-detail-modal.ts` enthält "edit"
+- [x] FILE_EXISTS: `ui/frontend/src/components/team/aos-team-edit-modal.ts`
+- [x] CONTAINS: `ui/frontend/src/views/team-view.ts` enthält "aos-team-edit-modal"
+- [x] CONTAINS: `ui/frontend/src/components/team/aos-team-detail-modal.ts` enthält "edit"
 
 ### Funktions-Prüfungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0
 
 ---
 
@@ -110,19 +110,19 @@ Scenario: Abbrechen der Bearbeitung
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Lit-Patterns
-- [ ] Edit-Modal nutzt aos-file-editor (CodeMirror) wieder
-- [ ] PUT API-Call korrekt implementiert
+- [x] Code implementiert und folgt Lit-Patterns
+- [x] Edit-Modal nutzt aos-file-editor (CodeMirror) wieder
+- [x] PUT API-Call korrekt implementiert
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Frontend Build kompiliert
-- [ ] Keine Linting Errors
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Frontend Build kompiliert
+- [x] Keine Linting Errors
 
 #### Integration DoD
-- [ ] **Integration hergestellt: aos-team-edit-modal --> Backend API (PUT)**
-  - [ ] Fetch-Call mit PUT-Methode existiert
-  - [ ] Validierung: `grep -q "PUT\|fetch.*skills" ui/frontend/src/components/team/aos-team-edit-modal.ts`
+- [x] **Integration hergestellt: aos-team-edit-modal --> Backend API (PUT)**
+  - [x] Fetch-Call mit PUT-Methode existiert
+  - [x] Validierung: `grep -q "PUT\|fetch.*skills" ui/frontend/src/components/team/aos-team-edit-modal.ts`
 
 ---
 

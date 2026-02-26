@@ -2111,6 +2111,210 @@ aos-team-card {
   color: var(--color-text-secondary);
 }
 
+/* CTM-004: Team Edit Modal */
+.team-edit-modal__overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: var(--spacing-lg);
+}
+
+.team-edit-modal {
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 860px;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.team-edit-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.team-edit-modal__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-edit-modal__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.team-edit-modal__close:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-tertiary);
+}
+
+.team-edit-modal__content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.team-edit-modal__content aos-file-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.team-edit-modal__content aos-file-editor .file-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.team-edit-modal__content aos-file-editor .editor-codemirror {
+  flex: 1;
+  overflow: auto;
+}
+
+.team-edit-modal__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-2xl);
+  color: var(--color-text-muted);
+}
+
+.team-edit-modal__error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  color: var(--color-status-error);
+}
+
+.team-edit-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.team-edit-modal__error {
+  color: var(--color-status-error);
+  font-size: var(--font-size-sm);
+  margin-right: auto;
+}
+
+.team-edit-modal__btn {
+  padding: var(--spacing-xs) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.team-edit-modal__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.team-edit-modal__btn--secondary {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.team-edit-modal__btn--secondary:hover:not(:disabled) {
+  background-color: var(--color-bg-tertiary);
+}
+
+.team-edit-modal__btn--primary {
+  background-color: var(--color-accent-primary);
+  border: 1px solid var(--color-accent-primary);
+  color: #fff;
+}
+
+.team-edit-modal__btn--primary:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+}
+
+/* CTM-004: Edit Button on Team Card */
+.team-card__edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.team-card:hover .team-card__edit-btn {
+  opacity: 1;
+}
+
+.team-card__edit-btn:hover {
+  color: var(--color-accent-primary);
+  background-color: var(--color-bg-tertiary);
+}
+
+/* CTM-004: Edit Button in Detail Modal Header */
+.team-detail-modal__edit-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.team-detail-modal__edit-btn:hover {
+  color: var(--color-accent-primary);
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-accent-primary);
+}
+
 /* ASGN-003: Assignment Toggle Button */
 .assign-toggle-btn {
   background: transparent;

@@ -103,6 +103,17 @@ export class AosTeamDetailModal extends LitElement {
     }
   }
 
+  private handleEditClick(): void {
+    this.closeModal();
+    this.dispatchEvent(
+      new CustomEvent('edit-click', {
+        detail: { skillId: this.skillId },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   private handleRetry(): void {
     this.lastLoadedSkillId = '';
     this.loadSkillDetail();
@@ -178,6 +189,17 @@ export class AosTeamDetailModal extends LitElement {
       <div class="team-detail-modal__title-row">
         <h2 id="team-detail-modal-title" class="team-detail-modal__title">${this.skillDetail.name}</h2>
         <span class="team-card__badge ${this.getCategoryClass()}">${this.skillDetail.category}</span>
+        <button
+          class="team-detail-modal__edit-btn"
+          @click=${this.handleEditClick}
+          aria-label="Skill bearbeiten"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Bearbeiten
+        </button>
       </div>
     `;
   }
