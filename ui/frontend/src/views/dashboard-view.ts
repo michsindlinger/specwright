@@ -56,6 +56,32 @@ type SpecsViewMode = 'grid' | 'list';
 
 const STORAGE_KEY = 'aos-dashboard-view-mode';
 
+// BUG-005: Auto-mode state persistence across navigation
+const AUTO_MODE_STORAGE_KEY = 'aos-auto-mode-state';
+
+interface PersistedAutoModeState {
+  mode: 'spec' | 'backlog';
+  specId?: string;
+}
+
+function saveAutoModeState(state: PersistedAutoModeState): void {
+  try {
+    localStorage.setItem(AUTO_MODE_STORAGE_KEY, JSON.stringify(state));
+  } catch { /* localStorage unavailable */ }
+}
+
+function loadAutoModeState(): PersistedAutoModeState | null {
+  try {
+    const stored = localStorage.getItem(AUTO_MODE_STORAGE_KEY);
+    if (stored) return JSON.parse(stored) as PersistedAutoModeState;
+  } catch { /* parse error or unavailable */ }
+  return null;
+}
+
+function clearAutoModeState(): void {
+  try { localStorage.removeItem(AUTO_MODE_STORAGE_KEY); } catch { /* unavailable */ }
+}
+
 function isValidSpecsViewMode(value: unknown): value is SpecsViewMode {
   return value === 'grid' || value === 'list';
 }
@@ -197,6 +223,7 @@ export class AosDashboardView extends LitElement {
     routerService.on('route-changed', this.boundRouteChangeHandler);
     this.checkConnection();
     this.restoreRouteState();
+    this.restoreAutoModeState();
   }
 
   override updated(changedProperties: Map<string, unknown>) {
@@ -270,11 +297,38 @@ export class AosDashboardView extends LitElement {
   }
 
   /**
+   * BUG-005: Restore auto-mode state from localStorage after navigation.
+   * If auto-mode was active before navigation, restore it and set pending navigation.
+   */
+  private restoreAutoModeState(): void {
+    const state = loadAutoModeState();
+    if (!state) return;
+
+    if (state.mode === 'spec' && state.specId) {
+      this.autoModeEnabled = true;
+      this._autoModeRestoredFromStorage = true;
+      if (!this.pendingSpecId) {
+        this.pendingSpecId = state.specId;
+      }
+    } else if (state.mode === 'backlog') {
+      this._backlogAutoModeEnabled = true;
+      this._autoModeRestoredFromStorage = true;
+      if (!this.pendingDashboardTab) {
+        this.pendingDashboardTab = 'backlog';
+      }
+    }
+  }
+
+  /**
    * DLN-002: Pending deep-link state to restore after specs load.
    * Set by restoreRouteState(), consumed by onSpecsList().
    */
   private pendingSpecId: string | null = null;
   private pendingDashboardTab: 'backlog' | 'docs' | null = null;
+  // BUG-005: Track auto-mode restoration to prevent reset in onSpecsKanban
+  private _autoModeRestoredFromStorage = false;
+  // BUG-005: Buffer workflow events that arrive before spec is loaded
+  private _pendingWorkflowCompletions: WebSocketMessage[] = [];
 
   /**
    * DLN-002: Handle route changes from browser back/forward or external navigation.
@@ -291,6 +345,7 @@ export class AosDashboardView extends LitElement {
         this.kanban = null;
         this.selectedStory = null;
         this.autoModeEnabled = false;
+        clearAutoModeState();
         this.loadSpecs();
       }
       return;
@@ -465,6 +520,7 @@ export class AosDashboardView extends LitElement {
     this.kanban = null;
     this.selectedStory = null;
     this.autoModeEnabled = false;
+    clearAutoModeState();
     this.loadSpecs();
   }
 
@@ -510,6 +566,15 @@ export class AosDashboardView extends LitElement {
       }
       this.pendingSpecId = null;
     }
+
+    // BUG-005: Process pending workflow completion events that arrived before specs loaded
+    if (this._pendingWorkflowCompletions.length > 0) {
+      const pending = [...this._pendingWorkflowCompletions];
+      this._pendingWorkflowCompletions = [];
+      for (const event of pending) {
+        this.onWorkflowComplete(event);
+      }
+    }
   }
 
   private onSpecDeleteResponse(msg: WebSocketMessage): void {
@@ -553,7 +618,12 @@ export class AosDashboardView extends LitElement {
       this.loading = false;
       this.viewMode = 'kanban';
       if (isNewSpecView) {
-        this.autoModeEnabled = false;
+        // BUG-005: Don't reset auto-mode if it was restored from persisted state
+        if (this._autoModeRestoredFromStorage) {
+          this._autoModeRestoredFromStorage = false;
+        } else {
+          this.autoModeEnabled = false;
+        }
       }
       return;
     }
@@ -862,6 +932,19 @@ export class AosDashboardView extends LitElement {
 
     console.log('[Dashboard] onWorkflowComplete called:', { specId, storyId, selectedSpecId: this.selectedSpec?.id });
 
+    // BUG-005: If selectedSpec is null but auto-mode is active, try to restore spec context
+    if (!this.selectedSpec && this.autoModeEnabled) {
+      const spec = this.specs.find(s => s.id === specId);
+      if (spec) {
+        this.selectedSpec = spec;
+        gateway.send({ type: 'specs.kanban', specId });
+      } else if (this.specs.length === 0) {
+        // Specs not loaded yet, buffer event for processing after onSpecsList
+        this._pendingWorkflowCompletions.push(msg);
+        return;
+      }
+    }
+
     // Only process UI updates if this is for the currently selected spec
     if (!this.selectedSpec || this.selectedSpec.id !== specId) {
       console.log('[Dashboard] Spec mismatch or no selected spec, ignoring:', { selectedSpecId: this.selectedSpec?.id, specId });
@@ -1032,6 +1115,7 @@ export class AosDashboardView extends LitElement {
       if (allDone) {
         // Deactivate auto-mode and show notification
         this.autoModeEnabled = false;
+        clearAutoModeState();
         this.dispatchEvent(
           new CustomEvent('show-toast', {
             detail: {
@@ -1086,6 +1170,7 @@ export class AosDashboardView extends LitElement {
     this.selectedSpec = null;
     this.kanban = null;
     this.autoModeEnabled = false;
+    clearAutoModeState();
     // Refresh specs list to get updated counts
     this.loadSpecs();
     // DLN-002: Update URL back to dashboard root
@@ -1149,6 +1234,10 @@ export class AosDashboardView extends LitElement {
     if (enabled) {
       // KAE-004: Reset paused state when enabling auto-mode
       this.autoModePaused = false;
+      // BUG-005: Persist auto-mode state
+      if (this.selectedSpec) {
+        saveAutoModeState({ mode: 'spec', specId: this.selectedSpec.id });
+      }
 
       // FIX: Eagerly push autoModeEnabled to kanban-board BEFORE calling processAutoExecution.
       // Lit's property binding (.autoModeEnabled=${this.autoModeEnabled}) only updates after
@@ -1174,6 +1263,8 @@ export class AosDashboardView extends LitElement {
       this.updateKanbanProgress(null);
       // KAE-004: Reset paused state
       this.autoModePaused = false;
+      // BUG-005: Clear persisted state
+      clearAutoModeState();
     }
   }
 
@@ -1352,6 +1443,8 @@ export class AosDashboardView extends LitElement {
     if (enabled) {
       // Reset paused state when enabling auto-mode
       this._backlogAutoModePaused = false;
+      // BUG-005: Persist auto-mode state
+      saveAutoModeState({ mode: 'backlog' });
 
       // Eagerly push autoModeEnabled to kanban-board BEFORE calling processAutoExecution
       const kanbanBoard = this.querySelector('aos-kanban-board') as HTMLElement & { autoModeEnabled: boolean } | null;
@@ -1374,6 +1467,8 @@ export class AosDashboardView extends LitElement {
       this._backlogAutoModeProgress = null;
       this.updateBacklogKanbanProgress(null);
       this._backlogAutoModePaused = false;
+      // BUG-005: Clear persisted state
+      clearAutoModeState();
     }
   }
 
@@ -1438,6 +1533,7 @@ export class AosDashboardView extends LitElement {
       if (allDone) {
         // Deactivate auto-mode and show notification
         this._backlogAutoModeEnabled = false;
+        clearAutoModeState();
         this.dispatchEvent(
           new CustomEvent('show-toast', {
             detail: {

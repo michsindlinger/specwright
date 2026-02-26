@@ -1,0 +1,99 @@
+{
+  "$schema": "../../templates/schemas/execution-kanban-schema.json",
+  "version": "1.0",
+  "execution": {
+    "id": "kanban-2026-02-26",
+    "date": "2026-02-26",
+    "startedAt": "2026-02-26T13:25:00.000Z",
+    "completedAt": null,
+    "status": "executing"
+  },
+  "resumeContext": {
+    "currentPhase": "item-complete",
+    "currentItem": null,
+    "currentStoryPhase": null,
+    "worktreePath": null,
+    "gitBranch": null,
+    "lastAction": "Completed BUG-005",
+    "nextAction": "Execute next item",
+    "progressIndex": 1,
+    "totalItems": 2
+  },
+  "sourceBacklog": {
+    "path": "../backlog-index.json",
+    "snapshotAt": "2026-02-26T13:25:00.000Z"
+  },
+  "items": [
+    {
+      "id": "BUG-005",
+      "title": "Kanban Auto-Mode State geht bei Navigation verloren",
+      "type": "bug",
+      "priority": "high",
+      "effort": 2,
+      "category": "bug",
+      "sourceFile": "items/bug-005-kanban-auto-mode-state-geht-bei-navigation-verlore.md",
+      "executionStatus": "done",
+      "timing": {
+        "queuedAt": "2026-02-26T13:25:00.000Z",
+        "startedAt": "2026-02-26T12:22:06.577Z",
+        "completedAt": "2026-02-26T12:27:44.084Z"
+      },
+      "filesModified": [
+        "ui/frontend/src/views/dashboard-view.ts"
+      ]
+    },
+    {
+      "id": "TODO-006",
+      "title": "Auto Commit Message Button im Commit Modal",
+      "type": "todo",
+      "priority": "medium",
+      "effort": 2,
+      "category": "todo",
+      "sourceFile": "items/todo-006-auto-commit-message-button-im-commit-modal.md",
+      "executionStatus": "queued",
+      "timing": {
+        "queuedAt": "2026-02-26T13:25:00.000Z",
+        "startedAt": null,
+        "completedAt": null
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 2,
+    "queued": 1,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 1,
+    "blocked": 0,
+    "skipped": 0
+  },
+  "executionOrder": [
+    "BUG-005",
+    "TODO-006"
+  ],
+  "changeLog": [
+    {
+      "timestamp": "2026-02-26T13:25:00.000Z",
+      "action": "kanban_created",
+      "itemId": null,
+      "details": "Execution kanban created with 2 items"
+    },
+    {
+      "timestamp": "2026-02-26T12:22:06.577Z",
+      "action": "status_changed",
+      "itemId": "BUG-005",
+      "from": "queued",
+      "to": "in_progress",
+      "details": "Started execution"
+    },
+    {
+      "timestamp": "2026-02-26T12:27:44.084Z",
+      "action": "status_changed",
+      "itemId": "BUG-005",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Item completed"
+    }
+  ]
+}
