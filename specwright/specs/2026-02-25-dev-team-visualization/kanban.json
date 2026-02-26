@@ -14,11 +14,11 @@
     "nextPhase": "2-worktree-setup",
     "worktreePath": null,
     "gitBranch": "feature/dev-team-visualization",
-    "currentStory": "TEAM-002",
-    "currentStoryPhase": "implementing",
-    "lastAction": "Started TEAM-002",
-    "nextAction": "Implement Navigation & Routing",
-    "progressIndex": 1,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed TEAM-002",
+    "nextAction": "Execute next story: TEAM-003",
+    "progressIndex": 2,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
@@ -82,24 +82,35 @@
         "complexity": "XS"
       },
       "dependencies": [],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-002-navigation-routing.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
         "updatedAt": "2026-02-25T00:00:00Z",
-        "startedAt": "2026-02-26T10:36:31.401Z"
+        "startedAt": "2026-02-26T10:36:31.401Z",
+        "completedAt": "2026-02-26T10:39:36.245Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/types/route.types.ts",
+          "ui/frontend/src/app.ts",
+          "ui/frontend/src/views/team-view.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "efeddefb60cba59bdb889f7c9ab9fe946f0e5f53",
+            "message": "feat: TEAM-002 Navigation & Routing",
+            "timestamp": "2026-02-26T11:39:12+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -294,10 +305,10 @@
   "boardStatus": {
     "total": 8,
     "ready": 6,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
+    "done": 2,
     "blocked": 0
   },
   "statistics": {
@@ -397,6 +408,12 @@
       "action": "status_changed",
       "storyId": "TEAM-002",
       "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T10:39:36.246Z",
+      "action": "status_changed",
+      "storyId": "TEAM-002",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }
