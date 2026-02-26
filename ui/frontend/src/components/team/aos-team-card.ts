@@ -23,6 +23,24 @@ export class AosTeamCard extends LitElement {
     }
   }
 
+  private getTeamTypeBadgeClass(): string {
+    const teamType = this.skill.teamType || 'devteam';
+    switch (teamType) {
+      case 'team': return 'team-type--team';
+      case 'individual': return 'team-type--individual';
+      default: return 'team-type--devteam';
+    }
+  }
+
+  private getTeamTypeLabel(): string {
+    const teamType = this.skill.teamType || 'devteam';
+    switch (teamType) {
+      case 'team': return 'Team';
+      case 'individual': return 'Individual';
+      default: return 'DevTeam';
+    }
+  }
+
   private handleClick(): void {
     this.dispatchEvent(
       new CustomEvent('card-click', {
@@ -35,12 +53,17 @@ export class AosTeamCard extends LitElement {
 
   override render() {
     const categoryClass = this.getCategoryClass();
+    const teamTypeClass = this.getTeamTypeBadgeClass();
+    const teamTypeLabel = this.getTeamTypeLabel();
 
     return html`
       <div class="team-card" @click=${this.handleClick}>
         <div class="team-card__header">
           <h3 class="team-card__name">${this.skill.name}</h3>
-          <span class="team-card__badge ${categoryClass}">${this.skill.category}</span>
+          <div class="team-card__badges">
+            <span class="team-card__badge team-card__team-type ${teamTypeClass}">${teamTypeLabel}</span>
+            <span class="team-card__badge ${categoryClass}">${this.skill.category}</span>
+          </div>
         </div>
         <p class="team-card__description">${this.skill.description || 'Keine Beschreibung vorhanden.'}</p>
         <div class="team-card__footer">

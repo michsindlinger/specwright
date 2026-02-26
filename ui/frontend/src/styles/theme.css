@@ -1763,6 +1763,56 @@ aos-team-card {
   border-radius: var(--radius-sm);
 }
 
+/* Team Card Badges Container */
+.team-card__badges {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+/* Team Type Badges */
+.team-card__team-type.team-type--devteam {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+.team-card__team-type.team-type--team {
+  background-color: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+}
+
+.team-card__team-type.team-type--individual {
+  background-color: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+}
+
+/* Team Sections */
+.team-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.team-section__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-md) 0;
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.team-section__group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.team-section__group-name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-sm) 0;
+  padding-left: var(--spacing-xs);
+}
+
 /* Skeleton Loading */
 .team-card--skeleton {
   pointer-events: none;

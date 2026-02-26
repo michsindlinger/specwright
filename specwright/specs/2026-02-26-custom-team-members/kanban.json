@@ -14,11 +14,11 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/custom-team-members",
-    "currentStory": "CTM-002",
+    "currentStory": "CTM-003",
     "currentStoryPhase": "implementing",
-    "lastAction": "Started CTM-002",
-    "nextAction": "Implement Workflow & Command - /add-team-member",
-    "progressIndex": 0,
+    "lastAction": "Started CTM-003",
+    "nextAction": "Implement Frontend Gruppierte Darstellung",
+    "progressIndex": 1,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -72,24 +72,34 @@
       "dependencies": [
         "CTM-001"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-002-workflow-and-command.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
         "updatedAt": "2026-02-26T00:00:00Z",
-        "startedAt": "2026-02-26T20:24:01.435Z"
+        "startedAt": "2026-02-26T20:24:01.435Z",
+        "completedAt": "2026-02-26T20:27:21.187Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/workflows/team/add-team-member.md",
+          ".claude/commands/specwright/add-team-member.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "dfbf3be",
+            "message": "feat: CTM-002 /add-team-member workflow and command",
+            "timestamp": "2026-02-26T21:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -105,12 +115,13 @@
       "dependencies": [
         "CTM-001"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-003-frontend-grouped-display.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:29:34.788Z"
       },
       "implementation": {
         "filesModified": [],
@@ -120,7 +131,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-004",
@@ -315,31 +328,23 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 7,
+    "ready": 6,
     "inProgress": 2,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 0
   },
   "statistics": {
-    "totalEffort": 20,
-    "completedEffort": 0,
-    "remainingEffort": 20,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 8,
-      "backend": 6,
-      "devops": 0,
-      "test": 0,
-      "docs": 0,
-      "system": 6
+      "undefined": 9
     },
     "byPriority": {
-      "critical": 0,
-      "high": 8,
-      "medium": 1,
-      "low": 0
+      "undefined": 9
     }
   },
   "executionPlan": {
@@ -420,6 +425,24 @@
       "timestamp": "2026-02-26T20:24:01.437Z",
       "action": "status_changed",
       "storyId": "CTM-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:27:21.188Z",
+      "action": "status_changed",
+      "storyId": "CTM-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T20:27:34.163Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:29:34.791Z",
+      "action": "status_changed",
+      "storyId": "CTM-003",
       "details": "Story started: ready → in_progress"
     }
   ]

@@ -27,6 +27,10 @@ export interface SkillSummary {
   globs: string[];
   /** Whether the skill is always applied */
   alwaysApply: boolean;
+  /** Team type: "devteam" (default), "team", or "individual" */
+  teamType: 'devteam' | 'team' | 'individual';
+  /** Display name for custom teams (e.g., "Marketing Team") */
+  teamName: string;
 }
 
 /**
@@ -47,6 +51,10 @@ export interface SkillDetail {
   globs: string[];
   /** Whether the skill is always applied */
   alwaysApply: boolean;
+  /** Team type: "devteam" (default), "team", or "individual" */
+  teamType: 'devteam' | 'team' | 'individual';
+  /** Display name for custom teams (e.g., "Marketing Team") */
+  teamName: string;
   /** Full SKILL.md content (raw markdown) */
   skillContent: string;
   /** Full dos-and-donts.md content (raw markdown), empty string if not present */

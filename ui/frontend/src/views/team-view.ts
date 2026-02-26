@@ -1,4 +1,4 @@
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
@@ -7,6 +7,11 @@ import '../components/team/aos-team-card.js';
 import '../components/team/aos-team-detail-modal.js';
 
 type ViewState = 'loading' | 'loaded' | 'empty' | 'error';
+
+interface TeamGroup {
+  name: string;
+  skills: SkillSummary[];
+}
 
 @customElement('aos-team-view')
 export class AosTeamView extends LitElement {
@@ -60,6 +65,28 @@ export class AosTeamView extends LitElement {
     }
   }
 
+  private getDevTeamSkills(): SkillSummary[] {
+    return this.skills.filter(s => !s.teamType || s.teamType === 'devteam');
+  }
+
+  private getCustomTeamGroups(): TeamGroup[] {
+    const teamSkills = this.skills.filter(s => s.teamType === 'team');
+    const groups = new Map<string, SkillSummary[]>();
+    for (const skill of teamSkills) {
+      const name = skill.teamName || 'Unbenanntes Team';
+      const list = groups.get(name) || [];
+      list.push(skill);
+      groups.set(name, list);
+    }
+    return Array.from(groups.entries())
+      .map(([name, skills]) => ({ name, skills }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  private getIndividualSkills(): SkillSummary[] {
+    return this.skills.filter(s => s.teamType === 'individual');
+  }
+
   private handleCardClick(e: CustomEvent<{ skillId: string }>): void {
     this.selectedSkillId = e.detail.skillId;
     this.modalOpen = true;
@@ -84,7 +111,7 @@ export class AosTeamView extends LitElement {
     return html`
       <div class="team-view">
         <div class="team-view__header">
-          <h2 class="team-view__title">Development Team</h2>
+          <h2 class="team-view__title">Team</h2>
           <p class="team-view__subtitle">Skills und Agents in deinem Projekt</p>
         </div>
         ${this.renderContent()}
@@ -106,7 +133,7 @@ export class AosTeamView extends LitElement {
       case 'empty':
         return this.renderEmpty();
       case 'loaded':
-        return this.renderGrid();
+        return this.renderGrouped();
     }
   }
 
@@ -161,15 +188,47 @@ export class AosTeamView extends LitElement {
     `;
   }
 
-  private renderGrid() {
+  private renderGrouped() {
+    const devTeam = this.getDevTeamSkills();
+    const customTeams = this.getCustomTeamGroups();
+    const individuals = this.getIndividualSkills();
+
     return html`
-      <div class="team-grid">
-        ${this.skills.map(skill => html`
-          <aos-team-card
-            .skill=${skill}
-            @card-click=${this.handleCardClick}
-          ></aos-team-card>
-        `)}
+      ${devTeam.length > 0 ? this.renderSection('Development Team', devTeam) : nothing}
+      ${customTeams.length > 0 ? html`
+        <div class="team-section">
+          <h3 class="team-section__title">Custom Teams</h3>
+          ${customTeams.map(group => html`
+            <div class="team-section__group">
+              <h4 class="team-section__group-name">${group.name}</h4>
+              <div class="team-grid">
+                ${group.skills.map(skill => html`
+                  <aos-team-card
+                    .skill=${skill}
+                    @card-click=${this.handleCardClick}
+                  ></aos-team-card>
+                `)}
+              </div>
+            </div>
+          `)}
+        </div>
+      ` : nothing}
+      ${individuals.length > 0 ? this.renderSection('Einzelpersonen', individuals) : nothing}
+    `;
+  }
+
+  private renderSection(title: string, skills: SkillSummary[]) {
+    return html`
+      <div class="team-section">
+        <h3 class="team-section__title">${title}</h3>
+        <div class="team-grid">
+          ${skills.map(skill => html`
+            <aos-team-card
+              .skill=${skill}
+              @card-click=${this.handleCardClick}
+            ></aos-team-card>
+          `)}
+        </div>
       </div>
     `;
   }
