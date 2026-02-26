@@ -24,6 +24,7 @@ import type {
   GitPushBranchResult,
   GitCreatePullRequestResult,
   GitPreFlightResult,
+  GitGenerateCommitMessageResult,
 } from '../../shared/types/git.protocol.js';
 import { GIT_CONFIG, GIT_ERROR_CODES } from '../../shared/types/git.protocol.js';
 
@@ -352,6 +353,87 @@ export class GitService {
         'pull',
       );
     }
+  }
+
+  /**
+   * Generate a commit message based on the changes in the specified files.
+   * Analyzes file statuses (added/modified/deleted) and directory structure
+   * to produce a conventional commit message.
+   */
+  async generateCommitMessage(projectPath: string, files: string[]): Promise<GitGenerateCommitMessageResult> {
+    await this.ensureGitRepo(projectPath, 'generateCommitMessage');
+
+    // Get file statuses via porcelain format
+    const { stdout: statusOutput } = await this.execGit(
+      ['status', '--porcelain', '--', ...files],
+      projectPath,
+    );
+
+    const fileStatuses = statusOutput.split('\n').filter(l => l.length > 0).map(line => {
+      const idx = line[0];
+      const wt = line[1];
+      const path = line.substring(3).trim();
+      let status: 'added' | 'modified' | 'deleted' | 'renamed' = 'modified';
+      if (idx === '?' || idx === 'A') status = 'added';
+      else if (idx === 'D' || wt === 'D') status = 'deleted';
+      else if (idx === 'R') status = 'renamed';
+      return { path, status };
+    });
+
+    const addedCount = fileStatuses.filter(f => f.status === 'added').length;
+    const modifiedCount = fileStatuses.filter(f => f.status === 'modified').length;
+    const deletedCount = fileStatuses.filter(f => f.status === 'deleted').length;
+
+    // Determine commit type
+    let type: string;
+    const allTests = files.every(f => f.includes('test') || f.includes('spec'));
+    const allDocs = files.every(f => f.endsWith('.md') || f.endsWith('.txt'));
+
+    if (allTests) {
+      type = 'test';
+    } else if (allDocs) {
+      type = 'docs';
+    } else if (addedCount > 0 && modifiedCount === 0 && deletedCount === 0) {
+      type = 'feat';
+    } else if (deletedCount > 0 && addedCount === 0 && modifiedCount === 0) {
+      type = 'chore';
+    } else {
+      type = 'chore';
+    }
+
+    // Determine scope from common parent directory
+    const parentDirs = files.map(f => {
+      const parts = f.split('/');
+      return parts.length > 1 ? parts[parts.length - 2] : '';
+    });
+    const dirCounts = new Map<string, number>();
+    parentDirs.filter(Boolean).forEach(d => dirCounts.set(d, (dirCounts.get(d) || 0) + 1));
+
+    let scope = '';
+    if (dirCounts.size === 1) {
+      scope = [...dirCounts.keys()][0];
+    } else if (dirCounts.size > 1) {
+      scope = [...dirCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    }
+
+    // Build description
+    let description: string;
+    if (files.length === 1) {
+      const fileName = files[0].split('/').pop() || files[0];
+      const action = addedCount > 0 ? 'add' : deletedCount > 0 ? 'remove' : 'update';
+      description = `${action} ${fileName}`;
+    } else {
+      const parts: string[] = [];
+      if (addedCount > 0) parts.push(`add ${addedCount} file${addedCount > 1 ? 's' : ''}`);
+      if (modifiedCount > 0) parts.push(`update ${modifiedCount} file${modifiedCount > 1 ? 's' : ''}`);
+      if (deletedCount > 0) parts.push(`remove ${deletedCount} file${deletedCount > 1 ? 's' : ''}`);
+      description = parts.join(', ');
+    }
+
+    const scopePart = scope ? `(${scope})` : '';
+    const message = `${type}${scopePart}: ${description}`;
+
+    return { message };
   }
 
   /**

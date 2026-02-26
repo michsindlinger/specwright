@@ -14,9 +14,9 @@
     "currentStoryPhase": null,
     "worktreePath": null,
     "gitBranch": null,
-    "lastAction": "Completed BUG-005",
+    "lastAction": "Completed TODO-006",
     "nextAction": "Execute next item",
-    "progressIndex": 1,
+    "progressIndex": 2,
     "totalItems": 2
   },
   "sourceBacklog": {
@@ -50,21 +50,31 @@
       "effort": 2,
       "category": "todo",
       "sourceFile": "items/todo-006-auto-commit-message-button-im-commit-modal.md",
-      "executionStatus": "queued",
+      "executionStatus": "done",
       "timing": {
         "queuedAt": "2026-02-26T13:25:00.000Z",
-        "startedAt": null,
-        "completedAt": null
-      }
+        "startedAt": "2026-02-26T12:35:16.372Z",
+        "completedAt": "2026-02-26T12:44:40.695Z"
+      },
+      "filesModified": [
+        "ui/src/shared/types/git.protocol.ts",
+        "ui/src/server/services/git.service.ts",
+        "ui/src/server/handlers/git.handler.ts",
+        "ui/src/server/websocket.ts",
+        "ui/frontend/src/gateway.ts",
+        "ui/frontend/src/components/git/aos-git-commit-dialog.ts",
+        "ui/frontend/src/app.ts",
+        "ui/frontend/src/styles/theme.css"
+      ]
     }
   ],
   "boardStatus": {
     "total": 2,
-    "queued": 1,
+    "queued": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
+    "done": 2,
     "blocked": 0,
     "skipped": 0
   },
@@ -91,6 +101,22 @@
       "timestamp": "2026-02-26T12:27:44.084Z",
       "action": "status_changed",
       "itemId": "BUG-005",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Item completed"
+    },
+    {
+      "timestamp": "2026-02-26T12:35:16.372Z",
+      "action": "status_changed",
+      "itemId": "TODO-006",
+      "from": "queued",
+      "to": "in_progress",
+      "details": "Started execution"
+    },
+    {
+      "timestamp": "2026-02-26T12:44:40.695Z",
+      "action": "status_changed",
+      "itemId": "TODO-006",
       "from": "in_progress",
       "to": "done",
       "details": "Item completed"

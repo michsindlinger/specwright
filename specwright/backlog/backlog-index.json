@@ -61,10 +61,11 @@
       "type": "todo",
       "title": "Auto Commit Message Button im Commit Modal",
       "priority": "medium",
-      "status": "in_progress",
+      "status": "done",
       "file": "items/todo-006-auto-commit-message-button-im-commit-modal.md",
       "createdAt": "2026-02-26T12:05:16.026Z",
-      "updatedAt": "2026-02-26T12:34:27.896Z"
+      "updatedAt": "2026-02-26T12:34:27.896Z",
+      "completedAt": "2026-02-26T12:44:40.695Z"
     }
   ],
   "statistics": {
@@ -146,6 +147,14 @@
       "timestamp": "2026-02-26T12:27:44.084Z",
       "action": "status_changed",
       "itemId": "BUG-005",
+      "from": "open",
+      "to": "done",
+      "details": "Completed in kanban-2026-02-26"
+    },
+    {
+      "timestamp": "2026-02-26T12:44:40.695Z",
+      "action": "status_changed",
+      "itemId": "TODO-006",
       "from": "open",
       "to": "done",
       "details": "Completed in kanban-2026-02-26"

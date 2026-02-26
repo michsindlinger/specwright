@@ -228,6 +228,32 @@ export class GitHandler {
   }
 
   /**
+   * Handle git:generate-commit-message message.
+   * Generates a commit message based on the changes in the specified files.
+   */
+  public async handleGenerateCommitMessage(client: WebSocketClient, message: WebSocketMessage, projectPath: string): Promise<void> {
+    const files = message.files as string[];
+
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      this.sendError(client, 'git:error', 'generate-commit-message', 'files array is required and must not be empty');
+      return;
+    }
+
+    try {
+      const data = await this.service.generateCommitMessage(projectPath, files);
+
+      const response: WebSocketMessage = {
+        type: 'git:generate-commit-message:response',
+        data,
+        timestamp: new Date().toISOString(),
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      this.sendGitError(client, 'generate-commit-message', error);
+    }
+  }
+
+  /**
    * Handle git:pr-info message.
    * Returns PR info for the current branch, or null if no PR exists.
    */

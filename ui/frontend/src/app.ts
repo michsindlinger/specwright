@@ -243,6 +243,11 @@ export class AosApp extends LitElement {
       return;
     }
 
+    if (operation === 'generate-commit-message') {
+      this.generatingCommitMessage = false;
+      return;
+    }
+
     // Push rejected: open pull strategy dialog with auto-retry push
     if (code === 'PUSH_REJECTED') {
       this.isGitOperationRunning = false;
@@ -378,6 +383,14 @@ export class AosApp extends LitElement {
   private boundGitPrInfoHandler: MessageHandler = (msg) => {
     this.gitPrInfo = (msg.data as GitPrInfo[]) ?? [];
   };
+  private boundGitGenerateCommitMessageHandler: MessageHandler = (msg) => {
+    this.generatingCommitMessage = false;
+    const data = msg.data as { message: string } | undefined;
+    if (data?.message) {
+      const dialog = this.querySelector('aos-git-commit-dialog') as import('./components/git/aos-git-commit-dialog.js').AosGitCommitDialog | null;
+      dialog?.setCommitMessage(data.message);
+    }
+  };
   // GSQ-005: Queue gateway handlers
   private boundQueueStateHandler: MessageHandler = (msg) => {
     const items = (msg.items as QueueItem[]) || [];
@@ -449,6 +462,7 @@ export class AosApp extends LitElement {
     gateway.on('git:revert:response', this.boundGitRevertHandler);
     gateway.on('git:delete-untracked:response', this.boundGitDeleteUntrackedHandler);
     gateway.on('git:pr-info:response', this.boundGitPrInfoHandler);
+    gateway.on('git:generate-commit-message:response', this.boundGitGenerateCommitMessageHandler);
     gateway.on('git:error', this.boundGitErrorHandler);
     // GSQ-005: Queue gateway handlers
     gateway.on('queue.state', this.boundQueueStateHandler);
@@ -510,6 +524,7 @@ export class AosApp extends LitElement {
     gateway.off('git:revert:response', this.boundGitRevertHandler);
     gateway.off('git:delete-untracked:response', this.boundGitDeleteUntrackedHandler);
     gateway.off('git:pr-info:response', this.boundGitPrInfoHandler);
+    gateway.off('git:generate-commit-message:response', this.boundGitGenerateCommitMessageHandler);
     gateway.off('git:error', this.boundGitErrorHandler);
     // GSQ-005: Cleanup queue handlers + keyboard shortcut
     gateway.off('queue.state', this.boundQueueStateHandler);
@@ -1468,6 +1483,13 @@ export class AosApp extends LitElement {
     gateway.sendGitCommit(files, message);
   }
 
+  private generatingCommitMessage = false;
+
+  private _handleGenerateCommitMessage(e: CustomEvent<{ files: string[] }>): void {
+    this.generatingCommitMessage = true;
+    gateway.requestGenerateCommitMessage(e.detail.files);
+  }
+
   private _handleRevertFile(e: CustomEvent<{ file: string }>): void {
     gateway.sendGitRevert([e.detail.file]);
   }
@@ -1923,10 +1945,12 @@ export class AosApp extends LitElement {
         .committing=${this.committing}
         .autoPush=${this.pendingAutoPush}
         .progressPhase=${this.commitAndPushPhase}
+        .generatingMessage=${this.generatingCommitMessage}
         @git-commit=${this._handleGitCommit}
         @revert-file=${this._handleRevertFile}
         @revert-all=${this._handleRevertAll}
         @delete-untracked=${this._handleDeleteUntracked}
+        @generate-commit-message=${this._handleGenerateCommitMessage}
         @dialog-close=${this._handleCommitDialogClose}
       ></aos-git-commit-dialog>
       <aos-git-pull-strategy-dialog

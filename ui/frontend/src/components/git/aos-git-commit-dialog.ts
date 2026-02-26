@@ -17,6 +17,7 @@ import '../aos-confirm-dialog.js';
  * @fires revert-file - Fired when user clicks Revert on a single file { file: string }
  * @fires revert-all - Fired when user clicks "Alle reverten"
  * @fires delete-untracked - Fired when user confirms deletion of an untracked file { file: string }
+ * @fires generate-commit-message - Fired when user clicks Auto button { files: string[] }
  */
 @customElement('aos-git-commit-dialog')
 export class AosGitCommitDialog extends LitElement {
@@ -26,6 +27,7 @@ export class AosGitCommitDialog extends LitElement {
   @property({ type: Boolean }) committing = false;
   @property({ type: Boolean }) autoPush = false;
   @property({ type: String }) progressPhase: 'idle' | 'committing' | 'pushing' = 'idle';
+  @property({ type: Boolean }) generatingMessage = false;
 
   @state() private selectedFiles: Set<string> = new Set();
   @state() private commitMessage = '';
@@ -78,6 +80,22 @@ export class AosGitCommitDialog extends LitElement {
 
   private _handleMessageInput(e: Event): void {
     this.commitMessage = (e.target as HTMLTextAreaElement).value;
+  }
+
+  /** Set commit message programmatically (e.g. from auto-generated message) */
+  public setCommitMessage(message: string): void {
+    this.commitMessage = message;
+  }
+
+  private _handleGenerateMessage(): void {
+    if (this.selectedFiles.size === 0 || this.generatingMessage) return;
+    this.dispatchEvent(
+      new CustomEvent('generate-commit-message', {
+        bubbles: true,
+        composed: true,
+        detail: { files: Array.from(this.selectedFiles) },
+      })
+    );
   }
 
   private _handleCommit(): void {
@@ -254,7 +272,23 @@ export class AosGitCommitDialog extends LitElement {
 
           <div class="git-commit-dialog__body">
             <div class="git-commit-dialog__message-section">
-              <label class="git-commit-dialog__label" for="commit-message">Commit Message</label>
+              <div class="git-commit-dialog__message-header">
+                <label class="git-commit-dialog__label" for="commit-message">Commit Message</label>
+                <button
+                  class="git-commit-dialog__auto-message-btn"
+                  @click=${this._handleGenerateMessage}
+                  ?disabled=${this.selectedFiles.size === 0 || this.generatingMessage}
+                  title="Commit Message automatisch generieren"
+                >
+                  ${this.generatingMessage
+                    ? html`<aos-loading-spinner size="tiny"></aos-loading-spinner>`
+                    : html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path>
+                      </svg>`
+                  }
+                  Auto
+                </button>
+              </div>
               <textarea
                 id="commit-message"
                 class="git-commit-dialog__textarea"

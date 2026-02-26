@@ -65,6 +65,14 @@ export interface GitCommitResult {
 }
 
 /**
+ * Auto-generated commit message result
+ */
+export interface GitGenerateCommitMessageResult {
+  /** Generated commit message */
+  message: string;
+}
+
+/**
  * Pull result data
  */
 export interface GitPullResult {
@@ -192,6 +200,7 @@ export type GitMessageType =
   | 'git:revert'
   | 'git:delete-untracked'
   | 'git:pr-info'
+  | 'git:generate-commit-message'
   // Server -> Client
   | 'git:status:response'
   | 'git:branches:response'
@@ -202,6 +211,7 @@ export type GitMessageType =
   | 'git:revert:response'
   | 'git:delete-untracked:response'
   | 'git:pr-info:response'
+  | 'git:generate-commit-message:response'
   | 'git:error';
 
 // ============================================================================
@@ -294,6 +304,16 @@ export interface GitPrInfoMessage {
   timestamp: string;
 }
 
+/**
+ * Request auto-generated commit message based on file changes
+ */
+export interface GitGenerateCommitMessageMessage {
+  type: 'git:generate-commit-message';
+  /** Files to analyze for commit message generation */
+  files: string[];
+  timestamp: string;
+}
+
 // ============================================================================
 // Server -> Client Messages
 // ============================================================================
@@ -380,6 +400,15 @@ export interface GitPrInfoResponseMessage {
 }
 
 /**
+ * Git generate-commit-message response
+ */
+export interface GitGenerateCommitMessageResponseMessage {
+  type: 'git:generate-commit-message:response';
+  data: GitGenerateCommitMessageResult;
+  timestamp: string;
+}
+
+/**
  * Git error response
  */
 export interface GitErrorMessage {
@@ -409,7 +438,8 @@ export type GitClientMessage =
   | GitCheckoutMessage
   | GitRevertMessage
   | GitDeleteUntrackedMessage
-  | GitPrInfoMessage;
+  | GitPrInfoMessage
+  | GitGenerateCommitMessageMessage;
 
 /**
  * Union type of all Git messages (server -> client)
@@ -424,6 +454,7 @@ export type GitServerMessage =
   | GitRevertResponseMessage
   | GitDeleteUntrackedResponseMessage
   | GitPrInfoResponseMessage
+  | GitGenerateCommitMessageResponseMessage
   | GitErrorMessage;
 
 /**
