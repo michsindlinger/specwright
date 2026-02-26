@@ -63,13 +63,13 @@ Scenario: Direkter URL-Zugriff auf Team-Seite
 
 ### Inhalt-Prüfungen
 
-- [ ] CONTAINS: ui/frontend/src/types/route.types.ts enthält "'team'"
-- [ ] CONTAINS: ui/frontend/src/app.ts enthält "aos-team-view"
-- [ ] CONTAINS: ui/frontend/src/app.ts enthält "'Team'"
+- [x] CONTAINS: ui/frontend/src/types/route.types.ts enthält "'team'"
+- [x] CONTAINS: ui/frontend/src/app.ts enthält "aos-team-view"
+- [x] CONTAINS: ui/frontend/src/app.ts enthält "'Team'"
 
 ### Funktions-Prüfungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -106,17 +106,17 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten
-- [ ] Security/Performance Anforderungen erfüllt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten
+- [x] Security/Performance Anforderungen erfüllt
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Code Review durchgeführt und genehmigt
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Code Review durchgeführt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich
 
 ---
 
