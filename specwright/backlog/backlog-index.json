@@ -50,10 +50,11 @@
       "type": "bug",
       "title": "Kanban Auto-Mode State geht bei Navigation verloren",
       "priority": "high",
-      "status": "in_progress",
+      "status": "done",
       "file": "items/bug-005-kanban-auto-mode-state-geht-bei-navigation-verlore.md",
       "createdAt": "2026-02-25T05:15:10.620Z",
-      "updatedAt": "2026-02-26T12:19:46.828Z"
+      "updatedAt": "2026-02-26T12:19:46.828Z",
+      "completedAt": "2026-02-26T12:27:44.084Z"
     },
     {
       "id": "TODO-006",
@@ -75,11 +76,11 @@
     }
   },
   "resumeContext": {
-    "activeKanban": "kanban-2026-02-17",
+    "activeKanban": "kanban-2026-02-26",
     "currentPhase": "executing",
-    "lastExecution": "2026-02-17",
+    "lastExecution": "2026-02-26",
     "lastAction": "Execution started",
-    "nextAction": "Execute items from kanban-2026-02-17"
+    "nextAction": "Execute items from kanban-2026-02-26"
   },
   "executions": [
     {
@@ -87,6 +88,12 @@
       "date": "2026-02-17",
       "status": "active",
       "itemCount": 1
+    },
+    {
+      "id": "kanban-2026-02-26",
+      "date": "2026-02-26",
+      "status": "active",
+      "itemCount": 2
     }
   ],
   "changeLog": [
@@ -127,6 +134,20 @@
       "from": "open",
       "to": "done",
       "details": "Completed in kanban-2026-02-17"
+    },
+    {
+      "timestamp": "2026-02-26T13:25:00.000Z",
+      "action": "execution_started",
+      "itemId": null,
+      "details": "Started execution kanban-2026-02-26 with 2 items"
+    },
+    {
+      "timestamp": "2026-02-26T12:27:44.084Z",
+      "action": "status_changed",
+      "itemId": "BUG-005",
+      "from": "open",
+      "to": "done",
+      "details": "Completed in kanban-2026-02-26"
     }
   ]
 }
