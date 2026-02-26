@@ -8,6 +8,7 @@
 |----------|---------|---------------------|
 | TEAM-001 | Backend Skills-API: REST-Endpunkte zum Lesen von Skills | skills-reader.service.ts, team.routes.ts, team.protocol.ts |
 | TEAM-002 | Navigation & Routing: Team-Route und NavItem hinzugefügt | route.types.ts, app.ts, team-view.ts |
+| TEAM-003 | Team View + Team Card: Grid-Layout, API-Anbindung, Loading/Error/Empty States | team-view.ts, aos-team-card.ts, theme.css |
 
 ## New Exports & APIs
 
@@ -26,7 +27,8 @@
 - `GET /api/team/:projectPath/skills/:skillId` → Skill detail (SkillDetailResponse)
 
 **Components:**
-- `ui/frontend/src/views/team-view.ts` → `<aos-team-view>` - Placeholder Team View (wird in TEAM-003 ausgebaut)
+- `ui/frontend/src/views/team-view.ts` → `<aos-team-view>` - Team-Übersichtsseite mit Grid-Layout, API-Anbindung, Loading/Error/Empty States
+- `ui/frontend/src/components/team/aos-team-card.ts` → `<aos-team-card .skill=${skillSummary}>` - Skill-Karte mit Badge, Beschreibung, Learnings. Dispatcht `card-click` Event mit `{ skillId }`
 
 **Routes:**
 - `ui/frontend/src/types/route.types.ts` → `ViewType` includes `'team'`, `VALID_VIEWS` includes `'team'`
@@ -39,7 +41,11 @@
 - Kategorie wird aus Verzeichnisname abgeleitet (prefix vor erstem `-`)
 - Learnings-Count basiert auf `###` Headings in dos-and-donts.md nach `## Entries`
 - Team NavItem ist zwischen Dashboard und Getting Started platziert
-- Team-View Placeholder bereit für Ausbau in TEAM-003
+- Team-View vollständig implementiert mit Grid, Loading, Error, Empty States
+- aos-team-card dispatcht `card-click` Event mit `{ skillId }` - wird von TEAM-004 (Detail Modal) konsumiert
+- `team-skill-select` Event wird von aos-team-view nach oben propagiert (bubbles+composed)
+- Category-Badge farbcodiert: frontend=blau, backend=grün, architecture=lila, quality=gelb, domain=pink, devops=teal, product=orange
+- CSS-Klassen: `.team-grid`, `.team-card`, `.team-card__badge.category-*`, `.team-view__empty`
 
 ## File Change Summary
 
@@ -52,3 +58,6 @@
 | ui/frontend/src/types/route.types.ts | Modified | TEAM-002 |
 | ui/frontend/src/app.ts | Modified | TEAM-002 |
 | ui/frontend/src/views/team-view.ts | Created | TEAM-002 |
+| ui/frontend/src/views/team-view.ts | Modified | TEAM-003 |
+| ui/frontend/src/components/team/aos-team-card.ts | Created | TEAM-003 |
+| ui/frontend/src/styles/theme.css | Modified | TEAM-003 |
