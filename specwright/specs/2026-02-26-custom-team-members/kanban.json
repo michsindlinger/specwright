@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-02-26-custom-team-members",
     "name": "Custom Team Members",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-02-26T00:00:00Z"
   },
-
   "resumeContext": {
-    "currentPhase": "1-kanban-setup",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "2-complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Kanban board created",
-    "nextAction": "Run /execute-tasks 2026-02-26-custom-team-members",
+    "gitBranch": "feature/custom-team-members",
+    "currentStory": "CTM-002",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started CTM-002",
+    "nextAction": "Implement Workflow & Command - /add-team-member",
     "progressIndex": 0,
-    "totalStories": 9
+    "totalStories": 9,
+    "gitStrategy": "branch"
   },
-
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-02-26T20:24:01.435Z",
     "completedAt": null,
     "model": null
   },
-
   "stories": [
     {
       "id": "CTM-001",
@@ -43,12 +40,13 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-001-backend-foundation.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:19:46.353Z"
       },
       "implementation": {
         "filesModified": [],
@@ -58,7 +56,8 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress"
     },
     {
       "id": "CTM-002",
@@ -70,13 +69,16 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["CTM-001"],
-      "status": "ready",
+      "dependencies": [
+        "CTM-001"
+      ],
+      "status": "in_progress",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-002-workflow-and-command.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:24:01.435Z"
       },
       "implementation": {
         "filesModified": [],
@@ -86,7 +88,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-003",
@@ -98,7 +102,9 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["CTM-001"],
+      "dependencies": [
+        "CTM-001"
+      ],
       "status": "ready",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-003-frontend-grouped-display.md",
@@ -126,7 +132,10 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["CTM-001", "CTM-003"],
+      "dependencies": [
+        "CTM-001",
+        "CTM-003"
+      ],
       "status": "ready",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-004-edit-functionality.md",
@@ -154,7 +163,10 @@
         "effort": 1,
         "complexity": "XS"
       },
-      "dependencies": ["CTM-001", "CTM-003"],
+      "dependencies": [
+        "CTM-001",
+        "CTM-003"
+      ],
       "status": "ready",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-005-delete-functionality.md",
@@ -182,7 +194,12 @@
         "effort": 1,
         "complexity": "XS"
       },
-      "dependencies": ["CTM-002", "CTM-003", "CTM-004", "CTM-005"],
+      "dependencies": [
+        "CTM-002",
+        "CTM-003",
+        "CTM-004",
+        "CTM-005"
+      ],
       "status": "ready",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-006-integration-workflow-trigger.md",
@@ -210,7 +227,14 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["CTM-001", "CTM-002", "CTM-003", "CTM-004", "CTM-005", "CTM-006"],
+      "dependencies": [
+        "CTM-001",
+        "CTM-002",
+        "CTM-003",
+        "CTM-004",
+        "CTM-005",
+        "CTM-006"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
@@ -238,7 +262,9 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["CTM-997"],
+      "dependencies": [
+        "CTM-997"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
@@ -266,7 +292,9 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["CTM-998"],
+      "dependencies": [
+        "CTM-998"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
@@ -285,17 +313,15 @@
       }
     }
   ],
-
   "boardStatus": {
     "total": 9,
-    "ready": 9,
-    "inProgress": 0,
+    "ready": 7,
+    "inProgress": 2,
     "inReview": 0,
     "testing": 0,
     "done": 0,
     "blocked": 0
   },
-
   "statistics": {
     "totalEffort": 20,
     "completedEffort": 0,
@@ -316,49 +342,85 @@
       "low": 0
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "phase": 1,
         "name": "Backend Foundation",
-        "stories": ["CTM-001"],
+        "stories": [
+          "CTM-001"
+        ],
         "parallel": false
       },
       {
         "phase": 2,
         "name": "Workflow + Frontend",
-        "stories": ["CTM-002", "CTM-003"],
+        "stories": [
+          "CTM-002",
+          "CTM-003"
+        ],
         "parallel": true
       },
       {
         "phase": 3,
         "name": "Edit + Delete",
-        "stories": ["CTM-004", "CTM-005"],
+        "stories": [
+          "CTM-004",
+          "CTM-005"
+        ],
         "parallel": true
       },
       {
         "phase": 4,
         "name": "Integration",
-        "stories": ["CTM-006"],
+        "stories": [
+          "CTM-006"
+        ],
         "parallel": false
       },
       {
         "phase": 5,
         "name": "System Stories",
-        "stories": ["CTM-997", "CTM-998", "CTM-999"],
+        "stories": [
+          "CTM-997",
+          "CTM-998",
+          "CTM-999"
+        ],
         "parallel": false
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-02-26T00:00:00Z",
       "action": "kanban_created",
       "storyId": null,
       "details": "Kanban initialized with 9 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-26T20:19:46.353Z",
+      "action": "status_changed",
+      "storyId": "CTM-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:21:10.680Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 1-complete"
+    },
+    {
+      "timestamp": "2026-02-26T20:21:43.715Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:24:01.437Z",
+      "action": "status_changed",
+      "storyId": "CTM-002",
+      "details": "Story started: ready → in_progress"
     }
   ]
 }

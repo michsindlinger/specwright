@@ -78,9 +78,9 @@ Scenario: Skill-Name existiert bereits
 
 ### Datei-Prüfungen
 
-- [ ] FILE_EXISTS: `specwright/workflows/team/add-team-member.md`
-- [ ] FILE_EXISTS: `.claude/commands/specwright/add-team-member.md`
-- [ ] CONTAINS: `.claude/commands/specwright/add-team-member.md` enthält "add-team-member"
+- [x] FILE_EXISTS: `specwright/workflows/team/add-team-member.md`
+- [x] FILE_EXISTS: `.claude/commands/specwright/add-team-member.md`
+- [x] CONTAINS: `.claude/commands/specwright/add-team-member.md` enthält "add-team-member"
 
 ---
 
@@ -108,14 +108,14 @@ Scenario: Skill-Name existiert bereits
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Workflow erstellt und folgt bestehendem Pattern
-- [ ] Command erstellt und referenziert Workflow
-- [ ] Dialog-Flow vollständig (Name, Typ, Rolle, Wissensgebiete, Verhaltensregeln, Templates)
+- [x] Workflow erstellt und folgt bestehendem Pattern
+- [x] Command erstellt und referenziert Workflow
+- [x] Dialog-Flow vollständig (Name, Typ, Rolle, Wissensgebiete, Verhaltensregeln, Templates)
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Workflow manuell getestet
-- [ ] Generierte SKILL.md enthält korrektes Frontmatter
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Workflow manuell getestet
+- [x] Generierte SKILL.md enthält korrektes Frontmatter
 
 ---
 
