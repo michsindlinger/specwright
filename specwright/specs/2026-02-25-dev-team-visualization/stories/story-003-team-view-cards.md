@@ -79,18 +79,18 @@ Scenario: API-Fehler beim Laden
 
 ### Datei-Prüfungen
 
-- [ ] FILE_EXISTS: ui/frontend/src/views/aos-team-view.ts
-- [ ] FILE_EXISTS: ui/frontend/src/components/team/aos-team-card.ts
+- [x] FILE_EXISTS: ui/frontend/src/views/aos-team-view.ts
+- [x] FILE_EXISTS: ui/frontend/src/components/team/aos-team-card.ts
 
 ### Inhalt-Prüfungen
 
-- [ ] CONTAINS: ui/frontend/src/views/aos-team-view.ts enthält "aos-team-card"
-- [ ] CONTAINS: ui/frontend/src/views/aos-team-view.ts enthält "/api/team"
-- [ ] CONTAINS: ui/frontend/src/components/team/aos-team-card.ts enthält "card-click"
+- [x] CONTAINS: ui/frontend/src/views/aos-team-view.ts enthält "aos-team-card"
+- [x] CONTAINS: ui/frontend/src/views/aos-team-view.ts enthält "/api/team"
+- [x] CONTAINS: ui/frontend/src/components/team/aos-team-card.ts enthält "card-click"
 
 ### Funktions-Prüfungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -127,17 +127,17 @@ Keine MCP Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten
-- [ ] Security/Performance Anforderungen erfüllt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten
+- [x] Security/Performance Anforderungen erfüllt
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Code Review durchgeführt und genehmigt
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Code Review durchgeführt und genehmigt
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich
 
 ---
 

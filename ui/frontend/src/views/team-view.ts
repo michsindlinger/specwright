@@ -1,12 +1,161 @@
 import { LitElement, html } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
+import { consume } from '@lit/context';
+import { projectContext, type ProjectContextValue } from '../context/project-context.js';
+import type { SkillSummary } from '../../../src/shared/types/team.protocol.js';
+import '../components/team/aos-team-card.js';
+
+type ViewState = 'loading' | 'loaded' | 'empty' | 'error';
 
 @customElement('aos-team-view')
 export class AosTeamView extends LitElement {
+  @consume({ context: projectContext, subscribe: true })
+  private projectCtx!: ProjectContextValue;
+
+  @state() private skills: SkillSummary[] = [];
+  @state() private viewState: ViewState = 'loading';
+  @state() private errorMessage = '';
+
+  private lastProjectPath = '';
+
+  override updated() {
+    const currentPath = this.projectCtx?.activeProject?.path || '';
+    if (currentPath && currentPath !== this.lastProjectPath) {
+      this.lastProjectPath = currentPath;
+      this.loadSkills();
+    }
+  }
+
+  private async loadSkills(): Promise<void> {
+    const projectPath = this.projectCtx?.activeProject?.path;
+    if (!projectPath) {
+      this.viewState = 'empty';
+      return;
+    }
+
+    this.viewState = 'loading';
+
+    try {
+      const encodedPath = encodeURIComponent(projectPath);
+      const response = await fetch(`/api/team/${encodedPath}/skills`);
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Unknown API error');
+      }
+
+      this.skills = data.skills || [];
+      this.viewState = this.skills.length > 0 ? 'loaded' : 'empty';
+    } catch (err) {
+      this.errorMessage = err instanceof Error ? err.message : 'Fehler beim Laden der Skills';
+      this.viewState = 'error';
+    }
+  }
+
+  private handleCardClick(e: CustomEvent<{ skillId: string }>): void {
+    this.dispatchEvent(
+      new CustomEvent('team-skill-select', {
+        detail: { skillId: e.detail.skillId },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private handleRetry(): void {
+    this.loadSkills();
+  }
+
   override render() {
     return html`
       <div class="team-view">
-        <p style="color: var(--color-text-secondary);">Team view loading...</p>
+        <div class="team-view__header">
+          <h2 class="team-view__title">Development Team</h2>
+          <p class="team-view__subtitle">Skills und Agents in deinem Projekt</p>
+        </div>
+        ${this.renderContent()}
+      </div>
+    `;
+  }
+
+  private renderContent() {
+    switch (this.viewState) {
+      case 'loading':
+        return this.renderLoading();
+      case 'error':
+        return this.renderError();
+      case 'empty':
+        return this.renderEmpty();
+      case 'loaded':
+        return this.renderGrid();
+    }
+  }
+
+  private renderLoading() {
+    return html`
+      <div class="team-grid">
+        ${[1, 2, 3, 4].map(() => html`
+          <div class="team-card team-card--skeleton">
+            <div class="skeleton-line skeleton-line--title"></div>
+            <div class="skeleton-line skeleton-line--text"></div>
+            <div class="skeleton-line skeleton-line--text skeleton-line--short"></div>
+          </div>
+        `)}
+      </div>
+    `;
+  }
+
+  private renderError() {
+    return html`
+      <div class="team-view__empty">
+        <div class="team-view__empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <h3 class="team-view__empty-title">Fehler beim Laden</h3>
+        <p class="team-view__empty-description">${this.errorMessage}</p>
+        <button class="team-view__action-btn" @click=${this.handleRetry}>Erneut versuchen</button>
+      </div>
+    `;
+  }
+
+  private renderEmpty() {
+    return html`
+      <div class="team-view__empty">
+        <div class="team-view__empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <h3 class="team-view__empty-title">Noch kein Team vorhanden</h3>
+        <p class="team-view__empty-description">
+          Erstelle dein Development Team mit spezialisierten Skills und Agents.
+          Verwende <code>/build-development-team</code> um loszulegen.
+        </p>
+      </div>
+    `;
+  }
+
+  private renderGrid() {
+    return html`
+      <div class="team-grid">
+        ${this.skills.map(skill => html`
+          <aos-team-card
+            .skill=${skill}
+            @card-click=${this.handleCardClick}
+          ></aos-team-card>
+        `)}
       </div>
     `;
   }

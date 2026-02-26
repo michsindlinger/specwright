@@ -1600,6 +1600,257 @@ aos-spec-card {
   white-space: nowrap;
 }
 
+/* ============================================================
+   TEAM-003: Team View + Team Card Styles
+   ============================================================ */
+
+.team-view {
+  padding: var(--spacing-lg);
+  max-width: 1200px;
+}
+
+.team-view__header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.team-view__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.team-view__subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Team Grid */
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+}
+
+aos-team-card {
+  display: contents;
+}
+
+/* Team Card */
+.team-card {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.team-card:hover {
+  border-color: var(--color-accent-primary);
+  background-color: var(--color-bg-tertiary);
+}
+
+.team-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.team-card__name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.team-card__badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Category Badge Colors */
+.team-card__badge.category-frontend {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.team-card__badge.category-backend {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.team-card__badge.category-architecture {
+  background-color: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+}
+
+.team-card__badge.category-quality {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.team-card__badge.category-domain {
+  background-color: rgba(236, 72, 153, 0.15);
+  color: #f472b6;
+}
+
+.team-card__badge.category-devops {
+  background-color: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+}
+
+.team-card__badge.category-product {
+  background-color: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+}
+
+.team-card__badge.category-default {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+}
+
+.team-card__description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.team-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: var(--spacing-sm);
+}
+
+.team-card__learnings {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.team-card__learnings svg {
+  color: var(--color-text-muted);
+}
+
+.team-card__always-active {
+  font-size: var(--font-size-xs);
+  padding: 2px var(--spacing-sm);
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border-radius: var(--radius-sm);
+}
+
+/* Skeleton Loading */
+.team-card--skeleton {
+  pointer-events: none;
+  min-height: 140px;
+}
+
+.skeleton-line {
+  height: 14px;
+  background: linear-gradient(90deg, var(--color-bg-tertiary) 25%, var(--color-bg-elevated, var(--color-bg-secondary)) 50%, var(--color-bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-line--title {
+  width: 60%;
+  height: 18px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.skeleton-line--text {
+  width: 90%;
+  margin-bottom: var(--spacing-xs);
+}
+
+.skeleton-line--short {
+  width: 40%;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Empty / Error State */
+.team-view__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  gap: var(--spacing-md);
+}
+
+.team-view__empty-icon {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.team-view__empty-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.team-view__empty-description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.team-view__empty-description code {
+  background-color: var(--color-bg-tertiary);
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.team-view__action-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.team-view__action-btn:hover {
+  opacity: 0.9;
+}
+
 /* ASGN-003: Assignment Toggle Button */
 .assign-toggle-btn {
   background: transparent;
@@ -3990,6 +4241,10 @@ aos-project-selector .loading {
   }
 
   .command-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-grid {
     grid-template-columns: 1fr;
   }
 
