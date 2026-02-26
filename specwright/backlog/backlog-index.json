@@ -50,9 +50,10 @@
       "type": "bug",
       "title": "Kanban Auto-Mode State geht bei Navigation verloren",
       "priority": "high",
-      "status": "open",
+      "status": "in_progress",
       "file": "items/bug-005-kanban-auto-mode-state-geht-bei-navigation-verlore.md",
-      "createdAt": "2026-02-25T05:15:10.620Z"
+      "createdAt": "2026-02-25T05:15:10.620Z",
+      "updatedAt": "2026-02-26T12:19:46.828Z"
     },
     {
       "id": "TODO-006",
@@ -66,8 +67,8 @@
   ],
   "statistics": {
     "byStatus": {
-      "open": 0,
-      "in_progress": 0,
+      "open": 1,
+      "in_progress": 1,
       "in_review": 0,
       "blocked": 0,
       "done": 4
