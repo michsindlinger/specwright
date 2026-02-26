@@ -1806,7 +1806,7 @@ aos-team-card {
 }
 
 .team-section__group-name {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
   margin: 0 0 var(--spacing-sm) 0;
@@ -2215,7 +2215,7 @@ aos-team-card {
   align-items: center;
   justify-content: center;
   padding: var(--spacing-2xl);
-  color: var(--color-status-error);
+  color: var(--color-accent-error);
 }
 
 .team-edit-modal__footer {
@@ -2229,7 +2229,7 @@ aos-team-card {
 }
 
 .team-edit-modal__error {
-  color: var(--color-status-error);
+  color: var(--color-accent-error);
   font-size: var(--font-size-sm);
   margin-right: auto;
 }

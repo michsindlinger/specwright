@@ -14,11 +14,11 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/custom-team-members",
-    "currentStory": "CTM-005",
+    "currentStory": "CTM-997",
     "currentStoryPhase": "implementing",
-    "lastAction": "Started CTM-005",
-    "nextAction": "Implement Delete-Funktionalität - REST DELETE + Confirm",
-    "progressIndex": 3,
+    "lastAction": "Started CTM-997",
+    "nextAction": "Implement Code Review",
+    "progressIndex": 5,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -212,24 +212,37 @@
         "CTM-001",
         "CTM-003"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-005-delete-functionality.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
         "updatedAt": "2026-02-26T00:00:00Z",
-        "startedAt": "2026-02-26T20:49:07.622Z"
+        "startedAt": "2026-02-26T20:49:07.622Z",
+        "completedAt": "2026-02-26T20:53:45.356Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/src/server/routes/team.routes.ts",
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/components/team/aos-team-detail-modal.ts",
+          "ui/frontend/src/views/team-view.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "687b4f6",
+            "message": "feat: CTM-005 Delete-Funktionalität - REST DELETE + Confirm Dialog",
+            "timestamp": "2026-02-26T23:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -248,22 +261,35 @@
         "CTM-004",
         "CTM-005"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-006-integration-workflow-trigger.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:54:57.903Z",
+        "completedAt": "2026-02-26T20:57:57.246Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/app.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "b956407",
+            "message": "feat: CTM-006 Integration & Workflow-Trigger - Add-Button + Auto-Refresh",
+            "timestamp": "2026-02-27T00:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-997",
@@ -283,12 +309,13 @@
         "CTM-005",
         "CTM-006"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:59:06.223Z"
       },
       "implementation": {
         "filesModified": [],
@@ -298,7 +325,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-998",
@@ -363,11 +392,11 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 4,
+    "ready": 2,
     "inProgress": 2,
     "inReview": 0,
     "testing": 0,
-    "done": 3,
+    "done": 5,
     "blocked": 0
   },
   "statistics": {
@@ -520,6 +549,48 @@
       "timestamp": "2026-02-26T20:49:07.625Z",
       "action": "status_changed",
       "storyId": "CTM-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:53:45.356Z",
+      "action": "status_changed",
+      "storyId": "CTM-005",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T20:53:50.140Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-26T20:54:08.442Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:54:57.906Z",
+      "action": "status_changed",
+      "storyId": "CTM-006",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:57:57.246Z",
+      "action": "status_changed",
+      "storyId": "CTM-006",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T20:58:11.196Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:59:06.226Z",
+      "action": "status_changed",
+      "storyId": "CTM-997",
       "details": "Story started: ready → in_progress"
     }
   ]
