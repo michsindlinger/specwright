@@ -16,9 +16,9 @@
     "gitBranch": "feature/dev-team-visualization",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Phase corrected - kanban and git already set up via UI",
-    "nextAction": "Execute TEAM-001: Backend Skills-API-Endpunkt",
-    "progressIndex": 0,
+    "lastAction": "Completed TEAM-001",
+    "nextAction": "Execute next story: TEAM-002",
+    "progressIndex": 1,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
@@ -40,24 +40,36 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-001-backend-skills-api.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
         "updatedAt": "2026-02-25T00:00:00Z",
-        "startedAt": "2026-02-26T10:29:40.260Z"
+        "startedAt": "2026-02-26T10:29:40.260Z",
+        "completedAt": "2026-02-26T10:34:46.224Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/team.protocol.ts",
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/src/server/routes/team.routes.ts",
+          "ui/src/server/index.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "a0597b7a9135010c8310d001f678cc4e9583506a",
+            "message": "feat: TEAM-001 Backend Skills-API-Endpunkt",
+            "timestamp": "2026-02-26T11:34:22+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress"
+      "phase": "done"
     },
     {
       "id": "TEAM-002",
@@ -279,30 +291,22 @@
   "boardStatus": {
     "total": 8,
     "ready": 7,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 0
   },
   "statistics": {
-    "totalEffort": 13,
-    "completedEffort": 0,
-    "remainingEffort": 13,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 7,
-      "backend": 3,
-      "devops": 0,
-      "test": 3,
-      "docs": 0,
-      "integration": 0
+      "undefined": 8
     },
     "byPriority": {
-      "critical": 0,
-      "high": 7,
-      "medium": 6,
-      "low": 0
+      "undefined": 8
     }
   },
   "executionPlan": {
@@ -372,6 +376,12 @@
       "action": "phase_updated",
       "storyId": null,
       "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-02-26T10:34:46.224Z",
+      "action": "status_changed",
+      "storyId": "TEAM-001",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }
