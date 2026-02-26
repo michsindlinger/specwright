@@ -10,15 +10,15 @@
     "createdAt": "2026-02-25T00:00:00Z"
   },
   "resumeContext": {
-    "currentPhase": "story-complete",
+    "currentPhase": "all-stories-done",
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/dev-team-visualization",
-    "currentStory": "TEAM-005",
-    "currentStoryPhase": "implementing",
-    "lastAction": "Started TEAM-005",
-    "nextAction": "Implement Integration und Testing",
-    "progressIndex": 4,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed TEAM-005",
+    "nextAction": "Execute System Stories (997, 998, 999)",
+    "progressIndex": 5,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
@@ -218,24 +218,34 @@
         "TEAM-003",
         "TEAM-004"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-005-integration-testing.md",
       "timing": {
         "createdAt": "2026-02-25T00:00:00Z",
         "updatedAt": "2026-02-25T00:00:00Z",
-        "startedAt": "2026-02-26T10:53:07.121Z"
+        "startedAt": "2026-02-26T10:53:07.121Z",
+        "completedAt": "2026-02-26T10:56:54.330Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/tests/team/skills-reader.service.test.ts",
+          "ui/tests/team/team.routes.test.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "5aaefde",
+            "message": "feat: TEAM-005 Integration und Testing",
+            "timestamp": "2026-02-26T11:56:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -336,10 +346,10 @@
   "boardStatus": {
     "total": 8,
     "ready": 3,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 4,
+    "done": 5,
     "blocked": 0
   },
   "statistics": {
@@ -499,6 +509,18 @@
       "action": "status_changed",
       "storyId": "TEAM-005",
       "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T10:56:54.330Z",
+      "action": "status_changed",
+      "storyId": "TEAM-005",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T10:57:19.180Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: all-stories-done"
     }
   ]
 }

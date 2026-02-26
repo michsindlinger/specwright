@@ -10,6 +10,7 @@
 | TEAM-002 | Navigation & Routing: Team-Route und NavItem hinzugefügt | route.types.ts, app.ts, team-view.ts |
 | TEAM-003 | Team View + Team Card: Grid-Layout, API-Anbindung, Loading/Error/Empty States | team-view.ts, aos-team-card.ts, theme.css |
 | TEAM-004 | Team Detail Modal: Skill-Detail mit Tabs (Skill/Learnings), Escape/Overlay-Close | aos-team-detail-modal.ts, team-view.ts, theme.css |
+| TEAM-005 | Integration Tests: Vitest Service- und Route-Tests, Build/Lint verifiziert | skills-reader.service.test.ts, team.routes.test.ts |
 
 ## New Exports & APIs
 
@@ -51,6 +52,7 @@
 - Leere Learnings zeigen "Keine Learnings vorhanden" Zustand
 - Category-Badge farbcodiert: frontend=blau, backend=grün, architecture=lila, quality=gelb, domain=pink, devops=teal, product=orange
 - CSS-Klassen: `.team-grid`, `.team-card`, `.team-card__badge.category-*`, `.team-view__empty`
+- Tests: 18 Vitest-Tests (12 Service, 6 Route), alle bestanden, Build + Lint clean
 
 ## File Change Summary
 
@@ -69,3 +71,5 @@
 | ui/frontend/src/components/team/aos-team-detail-modal.ts | Created | TEAM-004 |
 | ui/frontend/src/views/team-view.ts | Modified | TEAM-004 |
 | ui/frontend/src/styles/theme.css | Modified | TEAM-004 |
+| ui/tests/team/skills-reader.service.test.ts | Created | TEAM-005 |
+| ui/tests/team/team.routes.test.ts | Created | TEAM-005 |
