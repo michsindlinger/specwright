@@ -6,6 +6,7 @@ import type { SkillSummary } from '../../../src/shared/types/team.protocol.js';
 import '../components/team/aos-team-card.js';
 import '../components/team/aos-team-detail-modal.js';
 import '../components/team/aos-team-edit-modal.js';
+import '../components/aos-confirm-dialog.js';
 
 type ViewState = 'loading' | 'loaded' | 'empty' | 'error';
 
@@ -25,6 +26,9 @@ export class AosTeamView extends LitElement {
   @state() private modalOpen = false;
   @state() private editModalOpen = false;
   @state() private selectedSkillId = '';
+  @state() private confirmDialogOpen = false;
+  @state() private confirmDialogMessage = '';
+  @state() private deleteTargetSkillId = '';
 
   private lastProjectPath = '';
 
@@ -119,6 +123,50 @@ export class AosTeamView extends LitElement {
     this.loadSkills();
   }
 
+  private handleDeleteClick(e: CustomEvent<{ skillId: string; skillName: string; teamType?: string }>): void {
+    const { skillId, skillName, teamType } = e.detail;
+    this.deleteTargetSkillId = skillId;
+    const isDevTeam = !teamType || teamType === 'devteam';
+    this.confirmDialogMessage = isDevTeam
+      ? `Dieser Skill gehört zum Development Team. Möchten Sie "${skillName}" wirklich löschen?`
+      : `Möchten Sie "${skillName}" wirklich löschen?`;
+    this.confirmDialogOpen = true;
+  }
+
+  private async handleDeleteConfirm(): Promise<void> {
+    this.confirmDialogOpen = false;
+    const projectPath = this.projectCtx?.activeProject?.path;
+    if (!projectPath || !this.deleteTargetSkillId) return;
+
+    try {
+      const encodedPath = encodeURIComponent(projectPath);
+      const encodedSkillId = encodeURIComponent(this.deleteTargetSkillId);
+      const response = await fetch(`/api/team/${encodedPath}/skills/${encodedSkillId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Fehler beim Löschen');
+      }
+
+      this.deleteTargetSkillId = '';
+      this.loadSkills();
+    } catch (err) {
+      console.error('Error deleting skill:', err);
+      this.deleteTargetSkillId = '';
+    }
+  }
+
+  private handleDeleteCancel(): void {
+    this.confirmDialogOpen = false;
+    this.deleteTargetSkillId = '';
+  }
+
   private handleRetry(): void {
     this.loadSkills();
   }
@@ -137,6 +185,7 @@ export class AosTeamView extends LitElement {
         .skillId=${this.selectedSkillId}
         @modal-close=${this.handleModalClose}
         @edit-click=${this.handleEditClick}
+        @delete-click=${this.handleDeleteClick}
       ></aos-team-detail-modal>
       <aos-team-edit-modal
         .open=${this.editModalOpen}
@@ -144,6 +193,14 @@ export class AosTeamView extends LitElement {
         @modal-close=${this.handleEditModalClose}
         @skill-saved=${this.handleSkillSaved}
       ></aos-team-edit-modal>
+      <aos-confirm-dialog
+        .open=${this.confirmDialogOpen}
+        title="Skill löschen"
+        .message=${this.confirmDialogMessage}
+        confirmText="Löschen"
+        @confirm=${this.handleDeleteConfirm}
+        @cancel=${this.handleDeleteCancel}
+      ></aos-confirm-dialog>
     `;
   }
 
@@ -230,6 +287,7 @@ export class AosTeamView extends LitElement {
                     .skill=${skill}
                     @card-click=${this.handleCardClick}
                     @edit-click=${this.handleEditClick}
+                    @delete-click=${this.handleDeleteClick}
                   ></aos-team-card>
                 `)}
               </div>
@@ -251,6 +309,7 @@ export class AosTeamView extends LitElement {
               .skill=${skill}
               @card-click=${this.handleCardClick}
               @edit-click=${this.handleEditClick}
+              @delete-click=${this.handleDeleteClick}
             ></aos-team-card>
           `)}
         </div>

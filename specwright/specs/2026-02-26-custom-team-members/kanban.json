@@ -10,15 +10,15 @@
     "createdAt": "2026-02-26T00:00:00Z"
   },
   "resumeContext": {
-    "currentPhase": "2-complete",
+    "currentPhase": "story-complete",
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/custom-team-members",
-    "currentStory": "CTM-004",
+    "currentStory": "CTM-005",
     "currentStoryPhase": "implementing",
-    "lastAction": "Started CTM-004",
-    "nextAction": "Implement Edit-Funktionalität - Markdown-Editor Modal",
-    "progressIndex": 2,
+    "lastAction": "Started CTM-005",
+    "nextAction": "Implement Delete-Funktionalität - REST DELETE + Confirm",
+    "progressIndex": 3,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -162,24 +162,40 @@
         "CTM-001",
         "CTM-003"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-004-edit-functionality.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
         "updatedAt": "2026-02-26T00:00:00Z",
-        "startedAt": "2026-02-26T20:38:58.495Z"
+        "startedAt": "2026-02-26T20:38:58.495Z",
+        "completedAt": "2026-02-26T20:46:30.346Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-edit-modal.ts",
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/components/team/aos-team-detail-modal.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css",
+          "ui/src/shared/types/team.protocol.ts",
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/src/server/routes/team.routes.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "96fb0e7",
+            "message": "feat: CTM-004 Edit-Funktionalität - Markdown-Editor Modal",
+            "timestamp": "2026-02-26T22:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -196,12 +212,13 @@
         "CTM-001",
         "CTM-003"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-005-delete-functionality.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:49:07.622Z"
       },
       "implementation": {
         "filesModified": [],
@@ -211,7 +228,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-006",
@@ -344,11 +363,11 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 5,
+    "ready": 4,
     "inProgress": 2,
     "inReview": 0,
     "testing": 0,
-    "done": 2,
+    "done": 3,
     "blocked": 0
   },
   "statistics": {
@@ -477,6 +496,30 @@
       "timestamp": "2026-02-26T20:38:58.496Z",
       "action": "status_changed",
       "storyId": "CTM-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:46:30.346Z",
+      "action": "status_changed",
+      "storyId": "CTM-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T20:47:18.920Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-26T20:47:37.123Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:49:07.625Z",
+      "action": "status_changed",
+      "storyId": "CTM-005",
       "details": "Story started: ready → in_progress"
     }
   ]

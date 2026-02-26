@@ -237,6 +237,18 @@ export class SkillsReaderService {
     await fs.access(skillDir);
     await fs.writeFile(join(skillDir, 'SKILL.md'), content, 'utf-8');
   }
+
+  /**
+   * Delete a skill directory and all its contents.
+   */
+  async deleteSkill(projectPath: string, skillId: string): Promise<void> {
+    const skillsPath = this.getSkillsPath(projectPath);
+    const skillDir = join(skillsPath, skillId);
+
+    // Verify skill directory exists before deleting
+    await fs.access(skillDir);
+    await fs.rm(skillDir, { recursive: true });
+  }
 }
 
 // ============================================================================
