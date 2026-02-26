@@ -7,20 +7,22 @@
 
 | Kategorie | Datei | Trigger-Keywords | Einträge | Zuletzt aktualisiert |
 |-----------|-------|------------------|----------|----------------------|
-| UI Components | ui-components.md | UI, Component, Button, Form, Modal, Input, Frontend, Widget | 10 | 2026-02-26 |
-| API Contracts | api-contracts.md | API, Endpoint, REST, Backend, Route, Controller | 2 | 2026-02-26 |
+| UI Components | ui-components.md | UI, Component, Button, Form, Modal, Input, Frontend, Widget | 11 | 2026-02-26 |
+| API Contracts | api-contracts.md | API, Endpoint, REST, Backend, Route, Controller | 4 | 2026-02-26 |
 | Shared Services | shared-services.md | Service, Hook, Utility, Helper, Provider | 5 | 2026-02-24 |
 | Data Models | data-models.md | Model, Schema, Type, Interface, Entity, DTO | 3 | 2026-02-26 |
+| Workflows & Commands | workflows-commands.md | Workflow, Command, Slash-Command, Dialog, Team | 2 | 2026-02-26 |
 
 > **Hinweis:** Architecture/Patterns sind in `specwright/product/` definiert (nicht hier).
 > Neue Kategorien werden automatisch hinzugefügt wenn Artefakte nicht in bestehende passen.
 
 ## Quick Summary
 
-**UI:** aos-file-tree, aos-file-tree-sidebar, aos-file-editor, aos-file-tabs, aos-file-editor-panel, aos-installation-wizard-modal, aos-getting-started-view, aos-team-view, aos-team-card, aos-team-detail-modal
-**API:** GET /api/team/:projectPath/skills, GET /api/team/:projectPath/skills/:skillId
+**UI:** aos-file-tree, aos-file-tree-sidebar, aos-file-editor, aos-file-tabs, aos-file-editor-panel, aos-installation-wizard-modal, aos-getting-started-view, aos-team-view, aos-team-card, aos-team-detail-modal, aos-team-edit-modal
+**API:** GET /api/team/:projectPath/skills, GET /api/team/:projectPath/skills/:skillId, PUT /api/team/:projectPath/skills/:skillId, DELETE /api/team/:projectPath/skills/:skillId
 **Services:** FileService, FileHandler, GitService, isSpecReady, toggleBotAssignment
 **Models:** file.protocol.ts, SkillSummary, SkillDetail
+**Workflows:** /add-team-member (Workflow + Command)
 
 ---
 
