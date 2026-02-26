@@ -390,6 +390,9 @@ export class WebSocketHandler {
         case 'git:pr-info':
           this.handleGitPrInfo(client);
           break;
+        case 'git:generate-commit-message':
+          this.handleGitGenerateCommitMessage(client, message);
+          break;
         // Attachment Messages (SCA-001)
         case 'attachment:upload':
           this.handleAttachmentUpload(client, message);
@@ -3545,6 +3548,18 @@ export class WebSocketHandler {
       return;
     }
     gitHandler.handlePrInfo(client, projectPath);
+  }
+
+  /**
+   * Handle git:generate-commit-message message.
+   */
+  private handleGitGenerateCommitMessage(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendGitNoProjectError(client, 'generate-commit-message');
+      return;
+    }
+    gitHandler.handleGenerateCommitMessage(client, message, projectPath);
   }
 
   /**

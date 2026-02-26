@@ -631,6 +631,21 @@ export class Gateway {
     });
   }
 
+  /**
+   * Request auto-generated commit message based on file changes
+   * @param files - Array of file paths to analyze
+   *
+   * Incoming Messages:
+   * - git:generate-commit-message:response: Generated commit message { message: string }
+   */
+  public requestGenerateCommitMessage(files: string[]): void {
+    this.send({
+      type: 'git:generate-commit-message',
+      files,
+      timestamp: new Date().toISOString()
+    });
+  }
+
   // ============================================================================
   // Attachment Methods (SCA-002)
   // Attachment operations via WebSocket
