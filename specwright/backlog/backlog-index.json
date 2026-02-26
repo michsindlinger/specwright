@@ -64,17 +64,17 @@
       "status": "done",
       "file": "items/todo-006-auto-commit-message-button-im-commit-modal.md",
       "createdAt": "2026-02-26T12:05:16.026Z",
-      "updatedAt": "2026-02-26T12:34:27.896Z",
-      "completedAt": "2026-02-26T12:44:40.695Z"
+      "updatedAt": "2026-02-26T12:45:38.778Z",
+      "completedAt": "2026-02-26T12:45:38.778Z"
     }
   ],
   "statistics": {
     "byStatus": {
       "open": 0,
-      "in_progress": 1,
+      "in_progress": 0,
       "in_review": 0,
       "blocked": 0,
-      "done": 5
+      "done": 6
     }
   },
   "resumeContext": {
