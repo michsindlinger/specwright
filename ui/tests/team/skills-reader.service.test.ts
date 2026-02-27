@@ -240,4 +240,101 @@ describe('SkillsReaderService', () => {
       expect(detail!.subDocuments).toEqual([]);
     });
   });
+
+  // ==========================================================================
+  // updateSkillContent
+  // ==========================================================================
+
+  describe('updateSkillContent', () => {
+    it('should write new content to SKILL.md', async () => {
+      await createSkill('backend-express', '# Old Content');
+
+      const newContent = '---\ndescription: Updated\n---\n\n# Backend Express\n\nNew content.';
+      await service.updateSkillContent(projectPath, 'backend-express', newContent);
+
+      const written = await fs.readFile(join(skillsDir, 'backend-express', 'SKILL.md'), 'utf-8');
+      expect(written).toBe(newContent);
+    });
+
+    it('should not affect other files in the skill directory', async () => {
+      const dosContent = '# Dos and Donts\n\n## Entries\n\nNo entries yet.';
+      await createSkill('backend-express', '# Old Content', dosContent, {
+        'patterns.md': '# Patterns',
+      });
+
+      await service.updateSkillContent(projectPath, 'backend-express', '# New Content');
+
+      const dos = await fs.readFile(join(skillsDir, 'backend-express', 'dos-and-donts.md'), 'utf-8');
+      const patterns = await fs.readFile(join(skillsDir, 'backend-express', 'patterns.md'), 'utf-8');
+      expect(dos).toBe(dosContent);
+      expect(patterns).toBe('# Patterns');
+    });
+
+    it('should throw error when skill directory does not exist', async () => {
+      await expect(
+        service.updateSkillContent(projectPath, 'nonexistent', '# Content')
+      ).rejects.toThrow();
+    });
+
+    it('should overwrite existing content completely', async () => {
+      await createSkill('my-skill', '# First version\n\nLong content here.');
+
+      await service.updateSkillContent(projectPath, 'my-skill', '# Short');
+
+      const written = await fs.readFile(join(skillsDir, 'my-skill', 'SKILL.md'), 'utf-8');
+      expect(written).toBe('# Short');
+    });
+  });
+
+  // ==========================================================================
+  // deleteSkill
+  // ==========================================================================
+
+  describe('deleteSkill', () => {
+    it('should remove the skill directory and all contents', async () => {
+      await createSkill('to-delete', '# Delete Me', '# Dos', {
+        'extra.md': '# Extra',
+      });
+
+      // Verify directory exists before delete
+      await expect(fs.access(join(skillsDir, 'to-delete'))).resolves.toBeUndefined();
+
+      await service.deleteSkill(projectPath, 'to-delete');
+
+      // Verify directory no longer exists
+      await expect(fs.access(join(skillsDir, 'to-delete'))).rejects.toThrow();
+    });
+
+    it('should not affect other skill directories', async () => {
+      await createSkill('keep-this', '# Keep');
+      await createSkill('delete-this', '# Delete');
+
+      await service.deleteSkill(projectPath, 'delete-this');
+
+      // Verify other skill still exists
+      const kept = await fs.readFile(join(skillsDir, 'keep-this', 'SKILL.md'), 'utf-8');
+      expect(kept).toBe('# Keep');
+
+      // Verify deleted skill is gone
+      await expect(fs.access(join(skillsDir, 'delete-this'))).rejects.toThrow();
+    });
+
+    it('should throw error when skill directory does not exist', async () => {
+      await expect(
+        service.deleteSkill(projectPath, 'nonexistent')
+      ).rejects.toThrow();
+    });
+
+    it('should remove nested subdirectories', async () => {
+      await createSkill('nested-skill', '# Nested');
+      // Create a nested subdirectory
+      const nestedDir = join(skillsDir, 'nested-skill', 'sub');
+      await fs.mkdir(nestedDir, { recursive: true });
+      await fs.writeFile(join(nestedDir, 'deep.md'), '# Deep', 'utf-8');
+
+      await service.deleteSkill(projectPath, 'nested-skill');
+
+      await expect(fs.access(join(skillsDir, 'nested-skill'))).rejects.toThrow();
+    });
+  });
 });

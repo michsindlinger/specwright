@@ -72,10 +72,11 @@
       "type": "todo",
       "title": "Tests für Custom Team Members Komponenten hinzufügen",
       "priority": "medium",
-      "status": "in_progress",
+      "status": "done",
       "file": "items/todo-007-tests-f-r-custom-team-members-komponenten-hinzuf-g.md",
       "createdAt": "2026-02-26T21:03:34.263Z",
-      "updatedAt": "2026-02-27T04:41:51.682Z"
+      "updatedAt": "2026-02-27T04:41:51.682Z",
+      "completedAt": "2026-02-27T04:49:50.206Z"
     },
     {
       "id": "BUG-008",
@@ -115,11 +116,11 @@
     }
   },
   "resumeContext": {
-    "activeKanban": "kanban-2026-02-26",
+    "activeKanban": "kanban-2026-02-27",
     "currentPhase": "executing",
-    "lastExecution": "2026-02-26",
+    "lastExecution": "2026-02-27",
     "lastAction": "Execution started",
-    "nextAction": "Execute items from kanban-2026-02-26"
+    "nextAction": "Execute items from kanban-2026-02-27"
   },
   "executions": [
     {
@@ -133,6 +134,12 @@
       "date": "2026-02-26",
       "status": "active",
       "itemCount": 2
+    },
+    {
+      "id": "kanban-2026-02-27",
+      "date": "2026-02-27",
+      "status": "active",
+      "itemCount": 4
     }
   ],
   "changeLog": [
@@ -195,6 +202,20 @@
       "from": "open",
       "to": "done",
       "details": "Completed in kanban-2026-02-26"
+    },
+    {
+      "timestamp": "2026-02-27T04:43:07.000Z",
+      "action": "execution_started",
+      "itemId": null,
+      "details": "Started execution kanban-2026-02-27 with 4 items"
+    },
+    {
+      "timestamp": "2026-02-27T04:49:50.206Z",
+      "action": "status_changed",
+      "itemId": "TODO-007",
+      "from": "open",
+      "to": "done",
+      "details": "Completed in kanban-2026-02-27"
     }
   ]
 }
