@@ -1,7 +1,7 @@
 # API Contracts
 
 > Verfügbare API-Endpunkte im Projekt.
-> Zuletzt aktualisiert: 2026-02-26 (Custom Team Members)
+> Zuletzt aktualisiert: 2026-02-27 (MCP Tools Management)
 
 ## Endpunkte-Übersicht
 
@@ -11,6 +11,7 @@
 | /api/team/:projectPath/skills/:skillId | GET | Detail-Informationen eines Skills | Dev-Team Visualization (2026-02-26) |
 | /api/team/:projectPath/skills/:skillId | PUT | Skill-Inhalt (SKILL.md) aktualisieren | Custom Team Members (2026-02-26) |
 | /api/team/:projectPath/skills/:skillId | DELETE | Skill-Verzeichnis löschen | Custom Team Members (2026-02-26) |
+| /api/team/:projectPath/mcp-config | GET | MCP-Server-Konfiguration lesen (ohne env) | MCP Tools Management (2026-02-27) |
 
 ---
 
@@ -172,6 +173,55 @@ interface SkillUpdateResponse {
 | 200 | Skill erfolgreich gelöscht |
 | 400 | projectPath oder skillId fehlt |
 | 500 | Interner Fehler |
+
+---
+
+### GET /api/team/:projectPath/mcp-config
+
+**Beschreibung:** Liest die `.mcp.json` des Projekts und liefert MCP-Server-Informationen (ohne env-Felder aus Sicherheitsgründen)
+**Erstellt:** MCP Tools Management (2026-02-27)
+**Route-Datei:** `ui/src/server/routes/team.routes.ts`
+
+**Request:**
+```typescript
+// URL Parameter
+interface Params {
+  projectPath: string; // URL-encoded project path
+}
+```
+
+**Response:**
+```typescript
+// Success Response (200)
+interface McpConfigResponse {
+  success: true;
+  servers: McpServerSummary[];
+}
+
+// Error Response (500)
+interface McpConfigResponse {
+  success: false;
+  error: string;
+}
+
+interface McpServerSummary {
+  name: string;
+  type: string;     // "stdio" | "sse" etc.
+  command: string;
+  args: string[];
+}
+```
+
+**Status Codes:**
+| Code | Beschreibung |
+|------|--------------|
+| 200 | MCP-Config erfolgreich geladen |
+| 500 | Interner Fehler |
+
+**Notes:**
+- env-Felder werden NIEMALS ans Frontend gesendet (Security)
+- Fallback: Sucht .mcp.json auch im Parent-Verzeichnis (Monorepo-Support)
+- Kein 404: Wenn keine .mcp.json existiert, kommt `{ success: true, servers: [], message: "..." }`
 
 ---
 

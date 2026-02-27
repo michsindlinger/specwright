@@ -1,7 +1,7 @@
 # Shared Services
 
 > Verfügbare Services, Hooks und Utilities im Projekt.
-> Zuletzt aktualisiert: 2026-02-24
+> Zuletzt aktualisiert: 2026-02-27 (MCP Tools Management)
 
 ## Services-Übersicht
 
@@ -10,6 +10,7 @@
 | FileService | ui/src/server/services/file.service.ts | Service | File Editor (2026-02-16) |
 | FileHandler | ui/src/server/handlers/file.handler.ts | Handler | File Editor (2026-02-16) |
 | GitService | ui/src/server/services/git.service.ts | Service | Branch-per-Story Backlog (2026-02-16) |
+| McpConfigReaderService | ui/src/server/services/mcp-config-reader.service.ts | Service | MCP Tools Management (2026-02-27) |
 | isSpecReady | ui/src/server/specs-reader.ts | Method (SpecsReader) | Spec Assignment (2026-02-24) |
 | toggleBotAssignment | ui/src/server/specs-reader.ts | Method (SpecsReader) | Spec Assignment (2026-02-24) |
 
@@ -130,6 +131,27 @@
 - Validiert Ready-Status vor Assignment (Assign nur wenn `isSpecReady()` true)
 - Unassign ist immer erlaubt (keine Validierung nötig)
 - Pattern wiederverwendbar für andere Toggle-Felder in kanban.json
+
+---
+
+### McpConfigReaderService
+
+**Pfad:** `ui/src/server/services/mcp-config-reader.service.ts`
+**Typ:** Service
+**Erstellt:** MCP Tools Management (2026-02-27)
+
+**Beschreibung:** Service zum Lesen und Parsen der `.mcp.json` Projekt-Konfiguration. Liefert MCP-Server-Informationen ohne sensitive env-Felder.
+
+**Methoden:**
+| Methode | Parameter | Return | Beschreibung |
+|---------|-----------|--------|--------------|
+| readConfig | (projectPath: string) | Promise<{ servers: McpServerSummary[]; message?: string }> | Liest .mcp.json und gibt Server-Liste zurück |
+
+**Notes:**
+- Singleton-Export: `mcpConfigReaderService`
+- env-Felder werden NIEMALS zurückgegeben (Security-critical)
+- Fallback: Sucht .mcp.json auch im Parent-Verzeichnis (Monorepo-Support)
+- Leere/fehlende .mcp.json gibt leeres Array + message zurück (kein Error)
 
 ---
 

@@ -1,7 +1,7 @@
 # UI Components
 
 > Verfügbare UI-Komponenten im Projekt.
-> Zuletzt aktualisiert: 2026-02-26 (Custom Team Members)
+> Zuletzt aktualisiert: 2026-02-27 (MCP Tools Management)
 
 ## Komponenten-Übersicht
 
@@ -18,6 +18,7 @@
 | aos-team-card | ui/frontend/src/components/team/aos-team-card.ts | skill: SkillSummary | Dev-Team Visualization (2026-02-26) |
 | aos-team-detail-modal | ui/frontend/src/components/team/aos-team-detail-modal.ts | open, skillId | Dev-Team Visualization (2026-02-26) |
 | aos-team-edit-modal | ui/frontend/src/components/team/aos-team-edit-modal.ts | open, skillId | Custom Team Members (2026-02-26) |
+| aos-mcp-server-card | ui/frontend/src/components/team/aos-mcp-server-card.ts | server: McpServerSummary | MCP Tools Management (2026-02-27) |
 
 ---
 
@@ -424,6 +425,31 @@ panel.openFile('src/app.ts', 'app.ts');
 - Escape-Taste und Click-Outside zum Schließen
 - Light DOM Pattern
 - Nutzt `@consume` projectContext
+
+---
+
+### aos-mcp-server-card
+
+**Pfad:** `ui/frontend/src/components/team/aos-mcp-server-card.ts`
+**Erstellt:** MCP Tools Management (2026-02-27)
+
+**Beschreibung:** Read-only Karte zur Anzeige eines MCP-Servers. Zeigt Name, Typ-Badge (stdio/sse/etc.) und Command+Args an.
+
+**Props:**
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| server | McpServerSummary | - | MCP-Server-Daten (name, type, command, args) |
+
+**Usage Example:**
+```html
+<aos-mcp-server-card .server=${mcpServer}></aos-mcp-server-card>
+```
+
+**Notes:**
+- Keine Events (read-only Anzeige)
+- Typ-Badge farbcodiert (stdio, sse, etc.)
+- Light DOM Pattern
+- Wird in team-view.ts im MCP-Bereich gerendert
 
 ---
 

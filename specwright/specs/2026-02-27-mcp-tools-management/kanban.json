@@ -14,10 +14,10 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/mcp-tools-management",
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Completed MCP-998",
-    "nextAction": "Execute next story: MCP-999",
+    "currentStory": "MCP-999",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started MCP-999",
+    "nextAction": "Implement Finalize PR",
     "progressIndex": 12,
     "totalStories": 8,
     "gitStrategy": "branch"
@@ -336,12 +336,13 @@
       "dependencies": [
         "MCP-998"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T21:04:59.908Z"
       },
       "implementation": {
         "filesModified": [],
@@ -351,13 +352,15 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     }
   ],
   "boardStatus": {
     "total": 8,
-    "ready": 1,
-    "inProgress": 0,
+    "ready": 0,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
     "done": 7,
@@ -652,6 +655,12 @@
       "action": "status_changed",
       "storyId": "MCP-998",
       "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-27T21:04:59.908Z",
+      "action": "status_changed",
+      "storyId": "MCP-999",
+      "details": "Story started: ready → in_progress"
     }
   ]
 }
