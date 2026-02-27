@@ -1464,6 +1464,7 @@ export class AosApp extends LitElement {
     this.pendingAutoPush = e?.detail?.autoPush === true;
     this.commitAndPushPhase = this.pendingAutoPush ? 'committing' : 'idle';
     this.showCommitDialog = true;
+    gateway.requestGitStatus();
   }
 
   private _handleCommitDialogClose(): void {
