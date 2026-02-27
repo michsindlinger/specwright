@@ -689,6 +689,10 @@ export class AosApp extends LitElement {
     // Load git status for new project
     this._loadGitStatus();
 
+    // Reset file tree to show new project's files
+    const sidebar = this.querySelector('aos-file-tree-sidebar') as { reset(): void } | null;
+    if (sidebar) sidebar.reset();
+
     // Update active terminal session to match new project
     // (projectTerminalSessions will now filter by new project path)
     const newProjectSessions = this.terminalSessions.filter(s => s.projectPath === project.path);
@@ -939,6 +943,10 @@ export class AosApp extends LitElement {
 
     // Load git status for newly opened project
     this._loadGitStatus();
+
+    // Reset file tree to show new project's files
+    const sidebar = this.querySelector('aos-file-tree-sidebar') as { reset(): void } | null;
+    if (sidebar) sidebar.reset();
 
     // WSM-003: Validate project and navigate to getting-started if needed
     this._validateAndNavigate(path);

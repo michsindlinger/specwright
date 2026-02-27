@@ -272,6 +272,18 @@ export class AosFileTreeSidebar extends LitElement {
     `;
   }
 
+  /**
+   * Reset file tree state for project switch.
+   * Clears cached entries and filter, then reloads.
+   */
+  reset(): void {
+    this.filterText = '';
+    const tree = this.querySelector('aos-file-tree') as AosFileTree | null;
+    if (tree) {
+      tree.reset();
+    }
+  }
+
   private _handleToggleHidden() {
     this.showHidden = !this.showHidden;
     try {

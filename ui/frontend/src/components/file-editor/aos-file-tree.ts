@@ -168,6 +168,18 @@ export class AosFileTree extends LitElement {
   }
 
   /**
+   * Reset the entire tree state and reload from scratch.
+   * Called when the project changes to clear cached entries.
+   */
+  reset(): void {
+    this.entries = new Map();
+    this.expandedDirs = new Set();
+    this.initialLoading = true;
+    this.error = '';
+    this.loadDirectory(this.rootPath);
+  }
+
+  /**
    * Refresh a directory's contents by re-fetching from the backend.
    * Used by aos-file-context-menu after file operations (create, rename, delete).
    */

@@ -222,6 +222,14 @@
       "from": "open",
       "to": "done",
       "details": "Completed in kanban-2026-02-27"
+    },
+    {
+      "timestamp": "2026-02-27T05:01:19.964Z",
+      "action": "status_changed",
+      "itemId": "BUG-008",
+      "from": "open",
+      "to": "done",
+      "details": "Completed in kanban-2026-02-27"
     }
   ]
 }
