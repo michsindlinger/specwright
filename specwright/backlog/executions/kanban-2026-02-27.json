@@ -1,0 +1,117 @@
+{
+  "$schema": "../../templates/schemas/execution-kanban-schema.json",
+  "version": "1.0",
+  "execution": {
+    "id": "kanban-2026-02-27",
+    "date": "2026-02-27",
+    "startedAt": "2026-02-27T04:58:35.000Z",
+    "completedAt": null,
+    "status": "executing"
+  },
+  "resumeContext": {
+    "currentPhase": "item-complete",
+    "currentItem": null,
+    "currentStoryPhase": null,
+    "worktreePath": null,
+    "gitBranch": null,
+    "lastAction": "Completed BUG-008",
+    "nextAction": "Execute next item",
+    "progressIndex": 1,
+    "totalItems": 3
+  },
+  "sourceBacklog": {
+    "path": "../backlog-index.json",
+    "snapshotAt": "2026-02-27T04:58:35.000Z"
+  },
+  "items": [
+    {
+      "id": "BUG-008",
+      "title": "File Tree aktualisiert nicht bei Projektwechsel",
+      "type": "bug",
+      "priority": "medium",
+      "effort": 1,
+      "category": "bug",
+      "sourceFile": "items/bug-008-file-tree-aktualisiert-nicht-bei-projektwechsel.md",
+      "executionStatus": "done",
+      "timing": {
+        "queuedAt": "2026-02-27T04:58:35.000Z",
+        "startedAt": "2026-02-27T04:59:25.543Z",
+        "completedAt": "2026-02-27T05:01:19.964Z"
+      },
+      "filesModified": [
+        "ui/frontend/src/components/file-editor/aos-file-tree.ts",
+        "ui/frontend/src/components/file-editor/aos-file-tree-sidebar.ts",
+        "ui/frontend/src/app.ts"
+      ]
+    },
+    {
+      "id": "BUG-010",
+      "title": "Git Commit Dialog zeigt veraltete Dateien",
+      "type": "bug",
+      "priority": "medium",
+      "effort": 1,
+      "category": "bug",
+      "sourceFile": "items/bug-010-git-commit-dialog-zeigt-veraltete-dateien.md",
+      "executionStatus": "queued",
+      "timing": {
+        "queuedAt": "2026-02-27T04:58:35.000Z",
+        "startedAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "TODO-009",
+      "title": "Installierte Specwright-Version im Header anzeigen",
+      "type": "todo",
+      "priority": "low",
+      "effort": 1,
+      "category": "todo",
+      "sourceFile": "items/todo-009-installierte-specwright-version-im-header-anzeigen.md",
+      "executionStatus": "queued",
+      "timing": {
+        "queuedAt": "2026-02-27T04:58:35.000Z",
+        "startedAt": null,
+        "completedAt": null
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 3,
+    "queued": 2,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 1,
+    "blocked": 0,
+    "skipped": 0
+  },
+  "executionOrder": [
+    "BUG-008",
+    "BUG-010",
+    "TODO-009"
+  ],
+  "changeLog": [
+    {
+      "timestamp": "2026-02-27T04:58:35.000Z",
+      "action": "kanban_created",
+      "itemId": null,
+      "details": "Execution kanban created with 3 items"
+    },
+    {
+      "timestamp": "2026-02-27T04:59:25.543Z",
+      "action": "status_changed",
+      "itemId": "BUG-008",
+      "from": "queued",
+      "to": "in_progress",
+      "details": "Started execution"
+    },
+    {
+      "timestamp": "2026-02-27T05:01:19.964Z",
+      "action": "status_changed",
+      "itemId": "BUG-008",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Item completed"
+    }
+  ]
+}
