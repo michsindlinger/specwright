@@ -10,15 +10,15 @@
     "createdAt": "2026-02-27T00:00:00Z"
   },
   "resumeContext": {
-    "currentPhase": "2-complete",
+    "currentPhase": "story-complete",
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/mcp-tools-management",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Kanban and Git strategy already configured",
-    "nextAction": "Execute story MCP-001",
-    "progressIndex": 0,
+    "lastAction": "MCP-001 completed",
+    "nextAction": "Execute next story",
+    "progressIndex": 1,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
@@ -40,24 +40,36 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-001-shared-types-and-backend-mcp-service.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
         "updatedAt": "2026-02-27T00:00:00Z",
-        "startedAt": "2026-02-27T20:33:07.050Z"
+        "startedAt": "2026-02-27T20:33:07.050Z",
+        "completedAt": "2026-02-27T20:38:58.023Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/team.protocol.ts",
+          "ui/src/server/services/mcp-config-reader.service.ts",
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/src/server/routes/team.routes.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "ef8df53",
+            "message": "feat: MCP-001 Shared Types & Backend MCP Service",
+            "timestamp": "2026-02-27T20:45:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress"
+      "phase": "done"
     },
     {
       "id": "MCP-002",
@@ -72,12 +84,13 @@
       "dependencies": [
         "MCP-001"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-002-mcp-tools-uebersicht-frontend.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T20:39:45.898Z"
       },
       "implementation": {
         "filesModified": [],
@@ -87,7 +100,8 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress"
     },
     {
       "id": "MCP-003",
@@ -278,32 +292,23 @@
   ],
   "boardStatus": {
     "total": 8,
-    "ready": 7,
+    "ready": 6,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 0
   },
   "statistics": {
-    "totalEffort": 18,
-    "completedEffort": 0,
-    "remainingEffort": 18,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 7,
-      "backend": 3,
-      "devops": 0,
-      "test": 3,
-      "docs": 0,
-      "integration": 0,
-      "system": 5
+      "undefined": 8
     },
     "byPriority": {
-      "critical": 0,
-      "high": 17,
-      "medium": 1,
-      "low": 0
+      "undefined": 8
     }
   },
   "executionPlan": {
@@ -373,6 +378,36 @@
       "action": "phase_updated",
       "storyId": null,
       "details": "Phase: 2-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:38:58.023Z",
+      "action": "status_changed",
+      "storyId": "MCP-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:39:24.653Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:39:39.948Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:39:45.898Z",
+      "action": "status_changed",
+      "storyId": "MCP-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T20:39:46.030Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
     }
   ]
 }

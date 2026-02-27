@@ -1813,6 +1813,87 @@ aos-team-card {
   padding-left: var(--spacing-xs);
 }
 
+/* MCP Server Card */
+aos-mcp-server-card {
+  display: contents;
+}
+
+.mcp-server-card {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.mcp-server-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.mcp-server-card__name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.mcp-server-card__type-badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+  background-color: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+  text-transform: lowercase;
+}
+
+.mcp-server-card__info {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono, monospace);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  overflow: hidden;
+}
+
+.mcp-server-card__command {
+  color: var(--color-text-secondary);
+}
+
+.mcp-server-card__args {
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* MCP Section Messages */
+.mcp-section__message {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.mcp-section__message--error {
+  color: var(--color-danger, #ef4444);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
 /* Skeleton Loading */
 .team-card--skeleton {
   pointer-events: none;

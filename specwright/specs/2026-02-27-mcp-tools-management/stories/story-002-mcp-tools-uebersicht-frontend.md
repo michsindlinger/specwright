@@ -71,16 +71,16 @@ Scenario: Fehlerhafter API-Aufruf
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: ui/frontend/src/components/team/aos-mcp-server-card.ts
+- [x] FILE_EXISTS: ui/frontend/src/components/team/aos-mcp-server-card.ts
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: ui/frontend/src/views/team-view.ts enthaelt "mcp-config"
-- [ ] CONTAINS: ui/frontend/src/views/team-view.ts enthaelt "aos-mcp-server-card"
+- [x] CONTAINS: ui/frontend/src/views/team-view.ts enthaelt "mcp-config"
+- [x] CONTAINS: ui/frontend/src/views/team-view.ts enthaelt "aos-mcp-server-card"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -119,25 +119,25 @@ Keine MCP-Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] MCP-Sektion zeigt Server-Karten an
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] MCP-Sektion zeigt Server-Karten an
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Frontend Build erfolgreich
+- [x] Keine Linting Errors
+- [x] Frontend Build erfolgreich
 
 #### Integration (Verbindung: team-view -> aos-mcp-server-card)
-- [ ] **Integration hergestellt: team-view.ts -> GET /api/team/:path/mcp-config**
-  - [ ] Fetch-Call existiert in team-view.ts
-  - [ ] Daten werden in State gespeichert
-- [ ] **Integration hergestellt: team-view.ts -> aos-mcp-server-card**
-  - [ ] Import existiert
-  - [ ] Property Binding `.server=${...}` im Template
+- [x] **Integration hergestellt: team-view.ts -> GET /api/team/:path/mcp-config**
+  - [x] Fetch-Call existiert in team-view.ts
+  - [x] Daten werden in State gespeichert
+- [x] **Integration hergestellt: team-view.ts -> aos-mcp-server-card**
+  - [x] Import existiert
+  - [x] Property Binding `.server=${...}` im Template
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 
