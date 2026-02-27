@@ -14,9 +14,9 @@
     "currentStoryPhase": null,
     "worktreePath": null,
     "gitBranch": null,
-    "lastAction": "Completed TODO-009",
-    "nextAction": "Execute next item",
-    "progressIndex": 3,
+    "lastAction": "Completed BUG-010",
+    "nextAction": "All items completed",
+    "progressIndex": 4,
     "totalItems": 4
   },
   "sourceBacklog": {
@@ -89,23 +89,26 @@
       "type": "bug",
       "priority": "medium",
       "effort": 1,
-      "category": "frontend",
+      "category": "bug",
       "sourceFile": "items/bug-010-git-commit-dialog-zeigt-veraltete-dateien.md",
-      "executionStatus": "queued",
+      "executionStatus": "done",
       "timing": {
-        "queuedAt": "2026-02-27T05:10:00.000Z",
-        "startedAt": null,
-        "completedAt": null
-      }
+        "queuedAt": "2026-02-27T05:15:00.000Z",
+        "startedAt": "2026-02-27T05:16:12.942Z",
+        "completedAt": "2026-02-27T05:18:40.398Z"
+      },
+      "filesModified": [
+        "ui/frontend/src/app.ts"
+      ]
     }
   ],
   "boardStatus": {
     "total": 4,
-    "queued": 1,
+    "queued": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 3,
+    "done": 4,
     "blocked": 0,
     "skipped": 0
   },
@@ -166,6 +169,22 @@
       "timestamp": "2026-02-27T05:11:43.279Z",
       "action": "status_changed",
       "itemId": "TODO-009",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Item completed"
+    },
+    {
+      "timestamp": "2026-02-27T05:16:12.942Z",
+      "action": "status_changed",
+      "itemId": "BUG-010",
+      "from": "queued",
+      "to": "in_progress",
+      "details": "Started execution"
+    },
+    {
+      "timestamp": "2026-02-27T05:18:40.398Z",
+      "action": "status_changed",
+      "itemId": "BUG-010",
       "from": "in_progress",
       "to": "done",
       "details": "Item completed"
