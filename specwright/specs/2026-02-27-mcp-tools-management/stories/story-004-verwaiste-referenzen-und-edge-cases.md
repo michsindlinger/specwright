@@ -9,6 +9,7 @@
 **Type**: Frontend
 **Estimated Effort**: XS
 **Dependencies**: MCP-002, MCP-003
+**Status**: Done
 
 ---
 
@@ -71,12 +72,12 @@ Scenario: Hinweis bei fehlender mcpServers-Property
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: ui/frontend/src/components/team/aos-team-card.ts enthaelt "availableMcpTools"
-- [ ] CONTAINS: ui/frontend/src/views/team-view.ts enthaelt Fehlerbehandlung fuer MCP-Daten
+- [x] CONTAINS: ui/frontend/src/components/team/aos-team-card.ts enthaelt "availableMcpTools"
+- [x] CONTAINS: ui/frontend/src/views/team-view.ts enthaelt Fehlerbehandlung fuer MCP-Daten
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -115,18 +116,18 @@ Keine MCP-Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Verwaist-Warnungen in Card und Detail-Modal sichtbar
-- [ ] Fehlermeldung bei invalider .mcp.json in MCP-Sektion
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Verwaist-Warnungen in Card und Detail-Modal sichtbar
+- [x] Fehlermeldung bei invalider .mcp.json in MCP-Sektion
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Frontend Build erfolgreich
+- [x] Keine Linting Errors
+- [x] Frontend Build erfolgreich
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 
