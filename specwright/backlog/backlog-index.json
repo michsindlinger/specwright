@@ -83,9 +83,10 @@
       "type": "bug",
       "title": "File Tree aktualisiert nicht bei Projektwechsel",
       "priority": "medium",
-      "status": "open",
+      "status": "in_progress",
       "file": "items/bug-008-file-tree-aktualisiert-nicht-bei-projektwechsel.md",
-      "createdAt": "2026-02-27T04:15:31.480Z"
+      "createdAt": "2026-02-27T04:15:31.480Z",
+      "updatedAt": "2026-02-27T04:57:08.384Z"
     },
     {
       "id": "TODO-009",
@@ -108,8 +109,8 @@
   ],
   "statistics": {
     "byStatus": {
-      "open": 3,
-      "in_progress": 0,
+      "open": 2,
+      "in_progress": 1,
       "in_review": 0,
       "blocked": 0,
       "done": 7
