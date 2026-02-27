@@ -66,13 +66,13 @@ Scenario: Tests fuer die erweiterten Team-Routes
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: ui/tests/team/mcp-config-reader.service.test.ts
+- [x] FILE_EXISTS: ui/tests/team/mcp-config-reader.service.test.ts
 
 ### Funktions-Pruefungen
 
-- [ ] TEST_PASS: `cd ui && npx vitest run tests/team/mcp-config-reader.service.test.ts` exits with code 0
-- [ ] TEST_PASS: `cd ui && npx vitest run tests/team/skills-reader.service.test.ts` exits with code 0
-- [ ] TEST_PASS: `cd ui && npx vitest run tests/team/team.routes.test.ts` exits with code 0
+- [x] TEST_PASS: `cd ui && npx vitest run tests/team/mcp-config-reader.service.test.ts` exits with code 0
+- [x] TEST_PASS: `cd ui && npx vitest run tests/team/skills-reader.service.test.ts` exits with code 0
+- [x] TEST_PASS: `cd ui && npx vitest run tests/team/team.routes.test.ts` exits with code 0
 
 ---
 
@@ -111,16 +111,16 @@ Keine MCP-Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Alle Test-Szenarien aus Akzeptanzkriterien abgedeckt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Alle Test-Szenarien aus Akzeptanzkriterien abgedeckt
 
 #### Qualitaetssicherung
-- [ ] Alle Tests bestehen (vitest run)
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Alle Tests bestehen (vitest run)
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 #### Dokumentation
-- [ ] Keine Linting Errors
+- [x] Keine Linting Errors
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 
