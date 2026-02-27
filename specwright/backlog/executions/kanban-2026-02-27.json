@@ -1,0 +1,100 @@
+{
+  "$schema": "../../templates/schemas/execution-kanban-schema.json",
+  "version": "1.0",
+  "execution": {
+    "id": "kanban-2026-02-27",
+    "date": "2026-02-27",
+    "startedAt": "2026-02-27T05:10:00.000Z",
+    "completedAt": null,
+    "status": "executing"
+  },
+  "resumeContext": {
+    "currentPhase": "item-complete",
+    "currentItem": null,
+    "currentStoryPhase": null,
+    "worktreePath": null,
+    "gitBranch": null,
+    "lastAction": "Completed TODO-009",
+    "nextAction": "Execute next item",
+    "progressIndex": 1,
+    "totalItems": 2
+  },
+  "sourceBacklog": {
+    "path": "../backlog-index.json",
+    "snapshotAt": "2026-02-27T05:10:00.000Z"
+  },
+  "items": [
+    {
+      "id": "TODO-009",
+      "title": "Installierte Specwright-Version im Header anzeigen",
+      "type": "todo",
+      "priority": "low",
+      "effort": 1,
+      "category": "frontend",
+      "sourceFile": "items/todo-009-installierte-specwright-version-im-header-anzeigen.md",
+      "executionStatus": "done",
+      "timing": {
+        "queuedAt": "2026-02-27T05:10:00.000Z",
+        "startedAt": "2026-02-27T05:09:56.863Z",
+        "completedAt": "2026-02-27T05:11:43.279Z"
+      },
+      "filesModified": [
+        "ui/frontend/src/app.ts",
+        "ui/frontend/src/styles/theme.css"
+      ]
+    },
+    {
+      "id": "BUG-010",
+      "title": "Git Commit Dialog zeigt veraltete Dateien",
+      "type": "bug",
+      "priority": "medium",
+      "effort": 1,
+      "category": "frontend",
+      "sourceFile": "items/bug-010-git-commit-dialog-zeigt-veraltete-dateien.md",
+      "executionStatus": "queued",
+      "timing": {
+        "queuedAt": "2026-02-27T05:10:00.000Z",
+        "startedAt": null,
+        "completedAt": null
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 2,
+    "queued": 1,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 1,
+    "blocked": 0,
+    "skipped": 0
+  },
+  "executionOrder": [
+    "BUG-010",
+    "TODO-009"
+  ],
+  "changeLog": [
+    {
+      "timestamp": "2026-02-27T05:10:00.000Z",
+      "action": "kanban_created",
+      "itemId": null,
+      "details": "Execution kanban created with 2 items"
+    },
+    {
+      "timestamp": "2026-02-27T05:09:56.863Z",
+      "action": "status_changed",
+      "itemId": "TODO-009",
+      "from": "queued",
+      "to": "in_progress",
+      "details": "Started execution"
+    },
+    {
+      "timestamp": "2026-02-27T05:11:43.279Z",
+      "action": "status_changed",
+      "itemId": "TODO-009",
+      "from": "in_progress",
+      "to": "done",
+      "details": "Item completed"
+    }
+  ]
+}

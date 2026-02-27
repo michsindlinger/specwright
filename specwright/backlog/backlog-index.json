@@ -94,10 +94,11 @@
       "type": "todo",
       "title": "Installierte Specwright-Version im Header anzeigen",
       "priority": "low",
-      "status": "in_progress",
+      "status": "done",
       "file": "items/todo-009-installierte-specwright-version-im-header-anzeigen.md",
       "createdAt": "2026-02-27T04:19:50.087Z",
-      "updatedAt": "2026-02-27T05:07:47.827Z"
+      "updatedAt": "2026-02-27T05:07:47.827Z",
+      "completedAt": "2026-02-27T05:11:43.279Z"
     },
     {
       "id": "BUG-010",
@@ -119,11 +120,11 @@
     }
   },
   "resumeContext": {
-    "activeKanban": "kanban-2026-02-26",
+    "activeKanban": "kanban-2026-02-27",
     "currentPhase": "executing",
-    "lastExecution": "2026-02-26",
+    "lastExecution": "2026-02-27",
     "lastAction": "Execution started",
-    "nextAction": "Execute items from kanban-2026-02-26"
+    "nextAction": "Execute items from kanban-2026-02-27"
   },
   "executions": [
     {
@@ -135,6 +136,12 @@
     {
       "id": "kanban-2026-02-26",
       "date": "2026-02-26",
+      "status": "active",
+      "itemCount": 2
+    },
+    {
+      "id": "kanban-2026-02-27",
+      "date": "2026-02-27",
       "status": "active",
       "itemCount": 2
     }
@@ -199,6 +206,20 @@
       "from": "open",
       "to": "done",
       "details": "Completed in kanban-2026-02-26"
+    },
+    {
+      "timestamp": "2026-02-27T05:10:00.000Z",
+      "action": "execution_started",
+      "itemId": null,
+      "details": "Started execution kanban-2026-02-27 with 2 items"
+    },
+    {
+      "timestamp": "2026-02-27T05:11:43.279Z",
+      "action": "status_changed",
+      "itemId": "TODO-009",
+      "from": "open",
+      "to": "done",
+      "details": "Completed in kanban-2026-02-27"
     }
   ]
 }

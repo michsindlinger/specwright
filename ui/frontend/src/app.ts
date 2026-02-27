@@ -1846,6 +1846,9 @@ export class AosApp extends LitElement {
                   <span>Verbinde...</span>
                 </span>`
               : ''}
+            ${this.frameworkInstalledVersion ? html`
+              <span class="version-label">v${this.frameworkInstalledVersion}</span>
+            ` : ''}
             <button
               class="terminal-btn ${this.terminalSessions.length > 0 ? 'has-sessions' : ''}"
               @click=${this._handleTerminalToggle}
