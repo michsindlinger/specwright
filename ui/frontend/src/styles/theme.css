@@ -4638,6 +4638,13 @@ aos-project-selector .loading {
   gap: var(--spacing-md);
 }
 
+.version-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
 /* Responsive Styles - Tablet and smaller */
 @media (max-width: 900px) {
   :root {
