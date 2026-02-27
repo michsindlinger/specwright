@@ -97,8 +97,8 @@
       "status": "done",
       "file": "items/todo-009-installierte-specwright-version-im-header-anzeigen.md",
       "createdAt": "2026-02-27T04:19:50.087Z",
-      "updatedAt": "2026-02-27T05:07:47.827Z",
-      "completedAt": "2026-02-27T05:11:43.279Z"
+      "updatedAt": "2026-02-27T05:12:34.772Z",
+      "completedAt": "2026-02-27T05:12:34.772Z"
     },
     {
       "id": "BUG-010",
@@ -113,10 +113,10 @@
   "statistics": {
     "byStatus": {
       "open": 1,
-      "in_progress": 1,
+      "in_progress": 0,
       "in_review": 0,
       "blocked": 0,
-      "done": 8
+      "done": 9
     }
   },
   "resumeContext": {
