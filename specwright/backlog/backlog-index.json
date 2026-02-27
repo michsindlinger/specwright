@@ -105,15 +105,16 @@
       "type": "bug",
       "title": "Git Commit Dialog zeigt veraltete Dateien",
       "priority": "medium",
-      "status": "open",
+      "status": "in_progress",
       "file": "items/bug-010-git-commit-dialog-zeigt-veraltete-dateien.md",
-      "createdAt": "2026-02-27T04:32:30.202Z"
+      "createdAt": "2026-02-27T04:32:30.202Z",
+      "updatedAt": "2026-02-27T05:14:25.345Z"
     }
   ],
   "statistics": {
     "byStatus": {
-      "open": 1,
-      "in_progress": 0,
+      "open": 0,
+      "in_progress": 1,
       "in_review": 0,
       "blocked": 0,
       "done": 9
