@@ -1,5 +1,5 @@
 {
-  "nextId": 8,
+  "nextId": 9,
   "items": [
     {
       "id": "BUG-001",
@@ -75,6 +75,15 @@
       "status": "open",
       "file": "items/todo-007-tests-f-r-custom-team-members-komponenten-hinzuf-g.md",
       "createdAt": "2026-02-26T21:03:34.263Z"
+    },
+    {
+      "id": "BUG-008",
+      "type": "bug",
+      "title": "File Tree aktualisiert nicht bei Projektwechsel",
+      "priority": "medium",
+      "status": "open",
+      "file": "items/bug-008-file-tree-aktualisiert-nicht-bei-projektwechsel.md",
+      "createdAt": "2026-02-27T04:15:31.480Z"
     }
   ],
   "statistics": {
