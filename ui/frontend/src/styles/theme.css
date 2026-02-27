@@ -1917,6 +1917,13 @@ aos-mcp-server-card {
   white-space: nowrap;
 }
 
+.team-card__mcp-badge--orphaned {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  text-decoration: line-through;
+  cursor: help;
+}
+
 /* MCP Tools Section (Edit Modal) */
 .team-edit-modal__mcp-section {
   padding: var(--spacing-md) var(--spacing-lg);
@@ -1980,12 +1987,27 @@ aos-mcp-server-card {
 }
 
 .team-detail-modal__mcp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-sm);
   background-color: rgba(20, 184, 166, 0.15);
   color: #2dd4bf;
+}
+
+.team-detail-modal__mcp-badge--orphaned {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.team-detail-modal__mcp-warning {
+  font-size: 10px;
+  font-weight: var(--font-weight-normal);
+  color: #fbbf24;
+  font-style: italic;
 }
 
 /* Skeleton Loading */

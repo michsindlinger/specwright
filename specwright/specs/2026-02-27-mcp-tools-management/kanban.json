@@ -14,11 +14,11 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/mcp-tools-management",
-    "currentStory": "MCP-003",
-    "currentStoryPhase": "implementing",
-    "lastAction": "Started MCP-003",
-    "nextAction": "Implement MCP-Zuweisung zu Skills",
-    "progressIndex": 3,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed MCP-004",
+    "nextAction": "Execute next story: MCP-005",
+    "progressIndex": 6,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
@@ -128,24 +128,31 @@
         "MCP-001",
         "MCP-002"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-003-mcp-zuweisung-zu-skills.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
         "updatedAt": "2026-02-27T00:00:00Z",
-        "startedAt": "2026-02-27T20:46:19.121Z"
+        "startedAt": "2026-02-27T20:46:19.121Z",
+        "completedAt": "2026-02-27T20:53:12.446Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/components/team/aos-team-detail-modal.ts",
+          "ui/frontend/src/components/team/aos-team-edit-modal.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -162,22 +169,31 @@
         "MCP-002",
         "MCP-003"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-004-verwaiste-referenzen-und-edge-cases.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T20:53:16.112Z",
+        "completedAt": "2026-02-27T20:53:20.581Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/components/team/aos-team-detail-modal.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "MCP-005",
@@ -306,11 +322,11 @@
   ],
   "boardStatus": {
     "total": 8,
-    "ready": 5,
-    "inProgress": 1,
+    "ready": 4,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 2,
+    "done": 4,
     "blocked": 0
   },
   "statistics": {
@@ -464,6 +480,48 @@
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:51:50.727Z",
+      "action": "status_changed",
+      "storyId": "MCP-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:51:56.171Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:52:12.526Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:53:01.364Z",
+      "action": "status_changed",
+      "storyId": "MCP-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T20:53:12.449Z",
+      "action": "status_changed",
+      "storyId": "MCP-003",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:53:16.112Z",
+      "action": "status_changed",
+      "storyId": "MCP-004",
+      "details": "Story started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T20:53:20.581Z",
+      "action": "status_changed",
+      "storyId": "MCP-004",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }

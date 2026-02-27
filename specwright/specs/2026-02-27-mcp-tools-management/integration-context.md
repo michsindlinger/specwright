@@ -7,6 +7,7 @@
 | MCP-001 | Shared Types & Backend MCP Service - Types, MCP config reader, mcpTools parsing | team.protocol.ts, mcp-config-reader.service.ts, skills-reader.service.ts, team.routes.ts |
 | MCP-002 | MCP Server cards in Team-View - New card component, MCP section in team-view | aos-mcp-server-card.ts, team-view.ts, theme.css |
 | MCP-003 | MCP-Zuweisung zu Skills - Checkboxen im Edit-Modal, Badges in Card, Tools in Detail-Modal | aos-team-edit-modal.ts, aos-team-card.ts, aos-team-detail-modal.ts, team-view.ts, theme.css |
+| MCP-004 | Verwaiste Referenzen & Edge Cases - Orphaned badges in Card/Detail, empty MCP message | aos-team-card.ts, aos-team-detail-modal.ts, team-view.ts, theme.css |
 
 ## New Exports & APIs
 
@@ -35,7 +36,8 @@
 - `mcpLoadState: McpLoadState` - Loading state for MCP config ('idle' | 'loading' | 'loaded' | 'error')
 - `loadMcpConfig()` - Fetches GET /:projectPath/mcp-config
 - `renderMcpSection()` - Renders MCP section after team sections (handles loaded, empty, error states)
-- `availableMcpTools` passed to `aos-team-edit-modal` via `.availableMcpTools=${this.mcpServers.map(s => s.name)}`
+- `availableMcpToolNames` getter returns MCP server names when loaded (used for orphaned detection)
+- `availableMcpTools` passed to `aos-team-card`, `aos-team-detail-modal`, and `aos-team-edit-modal`
 
 **Components (ui/frontend/src/components/team/aos-team-edit-modal.ts):**
 - `availableMcpTools: string[]` - Property for available MCP tool names
@@ -44,10 +46,14 @@
 - Save sends `{ content, mcpTools }` in PUT request body
 
 **Components (ui/frontend/src/components/team/aos-team-card.ts):**
+- `availableMcpTools: string[]` - Property for orphaned tool detection
 - MCP tool badges rendered in footer from `skill.mcpTools`
+- Orphaned tools get `.team-card__mcp-badge--orphaned` class + title tooltip
 
 **Components (ui/frontend/src/components/team/aos-team-detail-modal.ts):**
+- `availableMcpTools: string[]` - Property for orphaned tool detection
 - MCP tools section rendered in Skill tab from `skillDetail.mcpTools`
+- Orphaned tools get warning class + "MCP Tool nicht verfuegbar" text
 
 ## Integration Notes
 
@@ -58,6 +64,8 @@
 - MCP section renders AFTER team sections (Development Team, Custom Teams, Einzelpersonen) in renderGrouped()
 - MCP data loads in parallel to skills data (both triggered in updated())
 - MCP error does not affect team skills display (isolated error handling)
+- Orphaned detection: tool in `skill.mcpTools` not in `availableMcpTools` (only when availableMcpTools.length > 0)
+- Empty MCP section shows "Keine MCP-Server konfiguriert" (not "Keine MCP-Konfiguration gefunden")
 
 ## File Change Summary
 
@@ -75,3 +83,7 @@
 | ui/frontend/src/components/team/aos-team-detail-modal.ts | Modified | MCP-003 |
 | ui/frontend/src/views/team-view.ts | Modified | MCP-003 |
 | ui/frontend/src/styles/theme.css | Modified | MCP-003 |
+| ui/frontend/src/components/team/aos-team-card.ts | Modified | MCP-004 |
+| ui/frontend/src/components/team/aos-team-detail-modal.ts | Modified | MCP-004 |
+| ui/frontend/src/views/team-view.ts | Modified | MCP-004 |
+| ui/frontend/src/styles/theme.css | Modified | MCP-004 |
