@@ -16,9 +16,9 @@
     "gitBranch": "feature/mcp-tools-management",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "MCP-001 completed",
+    "lastAction": "MCP-002 completed",
     "nextAction": "Execute next story",
-    "progressIndex": 1,
+    "progressIndex": 2,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
@@ -84,24 +84,35 @@
       "dependencies": [
         "MCP-001"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-002-mcp-tools-uebersicht-frontend.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
         "updatedAt": "2026-02-27T00:00:00Z",
-        "startedAt": "2026-02-27T20:39:45.898Z"
+        "startedAt": "2026-02-27T20:39:45.898Z",
+        "completedAt": "2026-02-27T20:45:06.339Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-mcp-server-card.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "8bb8d06",
+            "message": "feat: MCP-002 MCP Tools Uebersicht im Frontend",
+            "timestamp": "2026-02-27T21:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress"
+      "phase": "done"
     },
     {
       "id": "MCP-003",
@@ -293,10 +304,10 @@
   "boardStatus": {
     "total": 8,
     "ready": 6,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
+    "done": 2,
     "blocked": 0
   },
   "statistics": {
@@ -405,6 +416,24 @@
     },
     {
       "timestamp": "2026-02-27T20:39:46.030Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:45:06.342Z",
+      "action": "status_changed",
+      "storyId": "MCP-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:45:17.634Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:45:27.077Z",
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/mcp-tools-management"
