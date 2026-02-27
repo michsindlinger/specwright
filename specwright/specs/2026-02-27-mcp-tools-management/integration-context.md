@@ -8,6 +8,9 @@
 | MCP-002 | MCP Server cards in Team-View - New card component, MCP section in team-view | aos-mcp-server-card.ts, team-view.ts, theme.css |
 | MCP-003 | MCP-Zuweisung zu Skills - Checkboxen im Edit-Modal, Badges in Card, Tools in Detail-Modal | aos-team-edit-modal.ts, aos-team-card.ts, aos-team-detail-modal.ts, team-view.ts, theme.css |
 | MCP-004 | Verwaiste Referenzen & Edge Cases - Orphaned badges in Card/Detail, empty MCP message | aos-team-card.ts, aos-team-detail-modal.ts, team-view.ts, theme.css |
+| MCP-005 | Backend Tests - McpConfigReaderService tests, mcpTools parsing/writing tests, MCP route tests | mcp-config-reader.service.test.ts, skills-reader.service.test.ts, team.routes.test.ts |
+| MCP-997 | Code Review - Full diff review, 1 minor CSS fix (--font-mono → --font-family-mono) | review-report.md, theme.css |
+| MCP-998 | Integration Validation - 60/60 tests passed, builds OK, lint OK, all 9 connections active | spec.md, story-998-integration-validation.md |
 
 ## New Exports & APIs
 

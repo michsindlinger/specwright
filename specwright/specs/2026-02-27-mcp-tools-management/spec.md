@@ -56,34 +56,39 @@ See: specwright/specs/2026-02-27-mcp-tools-management/story-index.md
 
 **Integration Type:** Full-stack
 
-- [ ] **Integration Test 1:** Backend MCP-Config API
+- [x] **Integration Test 1:** Backend MCP-Config API
   - Command: `cd ui && npx vitest run tests/team/mcp-config-reader.service.test.ts`
   - Validates: McpConfigReaderService liest `.mcp.json` korrekt
+  - Result: 11/11 Tests PASSED
   - Requires MCP: no
 
-- [ ] **Integration Test 2:** Backend Skills mcpTools Parsing
+- [x] **Integration Test 2:** Backend Skills mcpTools Parsing
   - Command: `cd ui && npx vitest run tests/team/skills-reader.service.test.ts`
   - Validates: Frontmatter-Parser erkennt mcpTools-Feld
+  - Result: 27/27 Tests PASSED
   - Requires MCP: no
 
-- [ ] **Integration Test 3:** Backend Team Routes
+- [x] **Integration Test 3:** Backend Team Routes
   - Command: `cd ui && npx vitest run tests/team/team.routes.test.ts`
   - Validates: GET mcp-config Endpoint und PUT mit mcpTools
+  - Result: 22/22 Tests PASSED
   - Requires MCP: no
 
-- [ ] **Integration Test 4:** Full Build
+- [x] **Integration Test 4:** Full Build
   - Command: `cd ui && npm run build:backend && cd frontend && npm run build`
   - Validates: Backend und Frontend kompilieren ohne Fehler
+  - Result: PASSED (Backend tsc + Frontend vite build)
   - Requires MCP: no
 
-- [ ] **Integration Test 5:** Lint Check
+- [x] **Integration Test 5:** Lint Check
   - Command: `cd ui && npm run lint`
   - Validates: Keine Linting-Fehler
+  - Result: PASSED (0 errors)
   - Requires MCP: no
 
 **Integration Scenarios:**
-- [ ] Scenario 1: Team-View laedt MCP-Config und zeigt Server-Karten an
-- [ ] Scenario 2: Skill-Edit mit MCP-Tool-Zuweisung speichert mcpTools ins Frontmatter
+- [x] Scenario 1: Team-View laedt MCP-Config und zeigt Server-Karten an
+- [x] Scenario 2: Skill-Edit mit MCP-Tool-Zuweisung speichert mcpTools ins Frontmatter
 
 ## Spec Documentation
 
