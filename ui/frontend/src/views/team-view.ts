@@ -127,6 +127,10 @@ export class AosTeamView extends LitElement {
     return this.skills.filter(s => s.teamType === 'individual');
   }
 
+  private get availableMcpToolNames(): string[] {
+    return this.mcpLoadState === 'loaded' ? this.mcpServers.map(s => s.name) : [];
+  }
+
   private handleCardClick(e: CustomEvent<{ skillId: string }>): void {
     this.selectedSkillId = e.detail.skillId;
     this.modalOpen = true;
@@ -241,6 +245,7 @@ export class AosTeamView extends LitElement {
       <aos-team-edit-modal
         .open=${this.editModalOpen}
         .skillId=${this.selectedSkillId}
+        .availableMcpTools=${this.mcpServers.map(s => s.name)}
         @modal-close=${this.handleEditModalClose}
         @skill-saved=${this.handleSkillSaved}
       ></aos-team-edit-modal>

@@ -14,17 +14,17 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/mcp-tools-management",
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "MCP-002 completed",
-    "nextAction": "Execute next story",
-    "progressIndex": 2,
+    "currentStory": "MCP-003",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started MCP-003",
+    "nextAction": "Implement MCP-Zuweisung zu Skills",
+    "progressIndex": 3,
     "totalStories": 8,
     "gitStrategy": "branch"
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-02-27T20:46:19.121Z",
     "completedAt": null,
     "model": null
   },
@@ -91,7 +91,7 @@
         "createdAt": "2026-02-27T00:00:00Z",
         "updatedAt": "2026-02-27T00:00:00Z",
         "startedAt": "2026-02-27T20:39:45.898Z",
-        "completedAt": "2026-02-27T20:45:06.339Z"
+        "completedAt": "2026-02-27T20:46:06.404Z"
       },
       "implementation": {
         "filesModified": [
@@ -104,7 +104,7 @@
           {
             "hash": "8bb8d06",
             "message": "feat: MCP-002 MCP Tools Uebersicht im Frontend",
-            "timestamp": "2026-02-27T21:00:00Z"
+            "timestamp": "2026-02-27T21:44:59+01:00"
           }
         ]
       },
@@ -128,12 +128,13 @@
         "MCP-001",
         "MCP-002"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-003-mcp-zuweisung-zu-skills.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T20:46:19.121Z"
       },
       "implementation": {
         "filesModified": [],
@@ -143,7 +144,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "MCP-004",
@@ -303,8 +306,8 @@
   ],
   "boardStatus": {
     "total": 8,
-    "ready": 6,
-    "inProgress": 0,
+    "ready": 5,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
     "done": 2,
@@ -434,6 +437,30 @@
     },
     {
       "timestamp": "2026-02-27T20:45:27.077Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:46:06.408Z",
+      "action": "status_changed",
+      "storyId": "MCP-002",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:46:11.912Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:46:19.124Z",
+      "action": "status_changed",
+      "storyId": "MCP-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T20:46:28.657Z",
       "action": "git_strategy_set",
       "storyId": null,
       "details": "Git branch setup via UI: feature/mcp-tools-management"

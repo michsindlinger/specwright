@@ -6,6 +6,7 @@
 |----------|---------|-----------|
 | MCP-001 | Shared Types & Backend MCP Service - Types, MCP config reader, mcpTools parsing | team.protocol.ts, mcp-config-reader.service.ts, skills-reader.service.ts, team.routes.ts |
 | MCP-002 | MCP Server cards in Team-View - New card component, MCP section in team-view | aos-mcp-server-card.ts, team-view.ts, theme.css |
+| MCP-003 | MCP-Zuweisung zu Skills - Checkboxen im Edit-Modal, Badges in Card, Tools in Detail-Modal | aos-team-edit-modal.ts, aos-team-card.ts, aos-team-detail-modal.ts, team-view.ts, theme.css |
 
 ## New Exports & APIs
 
@@ -34,6 +35,19 @@
 - `mcpLoadState: McpLoadState` - Loading state for MCP config ('idle' | 'loading' | 'loaded' | 'error')
 - `loadMcpConfig()` - Fetches GET /:projectPath/mcp-config
 - `renderMcpSection()` - Renders MCP section after team sections (handles loaded, empty, error states)
+- `availableMcpTools` passed to `aos-team-edit-modal` via `.availableMcpTools=${this.mcpServers.map(s => s.name)}`
+
+**Components (ui/frontend/src/components/team/aos-team-edit-modal.ts):**
+- `availableMcpTools: string[]` - Property for available MCP tool names
+- `selectedMcpTools: string[]` - State for currently selected MCP tools
+- MCP checkboxes section rendered when `availableMcpTools.length > 0`
+- Save sends `{ content, mcpTools }` in PUT request body
+
+**Components (ui/frontend/src/components/team/aos-team-card.ts):**
+- MCP tool badges rendered in footer from `skill.mcpTools`
+
+**Components (ui/frontend/src/components/team/aos-team-detail-modal.ts):**
+- MCP tools section rendered in Skill tab from `skillDetail.mcpTools`
 
 ## Integration Notes
 
@@ -56,3 +70,8 @@
 | ui/frontend/src/components/team/aos-mcp-server-card.ts | Created | MCP-002 |
 | ui/frontend/src/views/team-view.ts | Modified | MCP-002 |
 | ui/frontend/src/styles/theme.css | Modified | MCP-002 |
+| ui/frontend/src/components/team/aos-team-edit-modal.ts | Modified | MCP-003 |
+| ui/frontend/src/components/team/aos-team-card.ts | Modified | MCP-003 |
+| ui/frontend/src/components/team/aos-team-detail-modal.ts | Modified | MCP-003 |
+| ui/frontend/src/views/team-view.ts | Modified | MCP-003 |
+| ui/frontend/src/styles/theme.css | Modified | MCP-003 |
