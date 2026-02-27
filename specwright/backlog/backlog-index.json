@@ -1,5 +1,5 @@
 {
-  "nextId": 10,
+  "nextId": 11,
   "items": [
     {
       "id": "BUG-001",
@@ -93,6 +93,15 @@
       "status": "open",
       "file": "items/todo-009-installierte-specwright-version-im-header-anzeigen.md",
       "createdAt": "2026-02-27T04:19:50.087Z"
+    },
+    {
+      "id": "BUG-010",
+      "type": "bug",
+      "title": "Git Commit Dialog zeigt veraltete Dateien",
+      "priority": "medium",
+      "status": "open",
+      "file": "items/bug-010-git-commit-dialog-zeigt-veraltete-dateien.md",
+      "createdAt": "2026-02-27T04:32:30.202Z"
     }
   ],
   "statistics": {
