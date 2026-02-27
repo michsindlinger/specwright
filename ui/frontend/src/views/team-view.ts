@@ -238,6 +238,7 @@ export class AosTeamView extends LitElement {
       <aos-team-detail-modal
         .open=${this.modalOpen}
         .skillId=${this.selectedSkillId}
+        .availableMcpTools=${this.availableMcpToolNames}
         @modal-close=${this.handleModalClose}
         @edit-click=${this.handleEditClick}
         @delete-click=${this.handleDeleteClick}
@@ -245,7 +246,7 @@ export class AosTeamView extends LitElement {
       <aos-team-edit-modal
         .open=${this.editModalOpen}
         .skillId=${this.selectedSkillId}
-        .availableMcpTools=${this.mcpServers.map(s => s.name)}
+        .availableMcpTools=${this.availableMcpToolNames}
         @modal-close=${this.handleEditModalClose}
         @skill-saved=${this.handleSkillSaved}
       ></aos-team-edit-modal>
@@ -341,6 +342,7 @@ export class AosTeamView extends LitElement {
                 ${group.skills.map(skill => html`
                   <aos-team-card
                     .skill=${skill}
+                    .availableMcpTools=${this.availableMcpToolNames}
                     @card-click=${this.handleCardClick}
                     @edit-click=${this.handleEditClick}
                     @delete-click=${this.handleDeleteClick}
@@ -377,7 +379,7 @@ export class AosTeamView extends LitElement {
         <div class="team-section">
           <h3 class="team-section__title">MCP Tools</h3>
           <div class="mcp-section__message">
-            Keine MCP-Konfiguration gefunden
+            Keine MCP-Server konfiguriert
           </div>
         </div>
       `;
@@ -403,6 +405,7 @@ export class AosTeamView extends LitElement {
           ${skills.map(skill => html`
             <aos-team-card
               .skill=${skill}
+              .availableMcpTools=${this.availableMcpToolNames}
               @card-click=${this.handleCardClick}
               @edit-click=${this.handleEditClick}
               @delete-click=${this.handleDeleteClick}
