@@ -1,5 +1,5 @@
 {
-  "nextId": 9,
+  "nextId": 10,
   "items": [
     {
       "id": "BUG-001",
@@ -84,6 +84,15 @@
       "status": "open",
       "file": "items/bug-008-file-tree-aktualisiert-nicht-bei-projektwechsel.md",
       "createdAt": "2026-02-27T04:15:31.480Z"
+    },
+    {
+      "id": "TODO-009",
+      "type": "todo",
+      "title": "Installierte Specwright-Version im Header anzeigen",
+      "priority": "low",
+      "status": "open",
+      "file": "items/todo-009-installierte-specwright-version-im-header-anzeigen.md",
+      "createdAt": "2026-02-27T04:19:50.087Z"
     }
   ],
   "statistics": {
