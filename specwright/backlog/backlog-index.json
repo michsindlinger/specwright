@@ -86,8 +86,8 @@
       "status": "done",
       "file": "items/bug-008-file-tree-aktualisiert-nicht-bei-projektwechsel.md",
       "createdAt": "2026-02-27T04:15:31.480Z",
-      "updatedAt": "2026-02-27T04:57:08.384Z",
-      "completedAt": "2026-02-27T05:01:19.964Z"
+      "updatedAt": "2026-02-27T05:02:13.413Z",
+      "completedAt": "2026-02-27T05:02:13.413Z"
     },
     {
       "id": "TODO-009",
@@ -111,10 +111,10 @@
   "statistics": {
     "byStatus": {
       "open": 2,
-      "in_progress": 1,
+      "in_progress": 0,
       "in_review": 0,
       "blocked": 0,
-      "done": 7
+      "done": 8
     }
   },
   "resumeContext": {
