@@ -9,6 +9,7 @@
 **Type**: Backend
 **Estimated Effort**: S
 **Dependencies**: None
+**Status**: Done
 
 ---
 
@@ -86,21 +87,21 @@ Scenario: Skill hat kein mcpTools-Feld
 
 ### Datei-Pruefungen
 
-- [ ] FILE_EXISTS: ui/src/server/services/mcp-config-reader.service.ts
-- [ ] FILE_EXISTS: ui/src/shared/types/team.protocol.ts
+- [x] FILE_EXISTS: ui/src/server/services/mcp-config-reader.service.ts
+- [x] FILE_EXISTS: ui/src/shared/types/team.protocol.ts
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: ui/src/shared/types/team.protocol.ts enthaelt "McpServerSummary"
-- [ ] CONTAINS: ui/src/shared/types/team.protocol.ts enthaelt "McpConfigResponse"
-- [ ] CONTAINS: ui/src/shared/types/team.protocol.ts enthaelt "mcpTools"
-- [ ] CONTAINS: ui/src/server/services/skills-reader.service.ts enthaelt "mcpTools"
-- [ ] CONTAINS: ui/src/server/routes/team.routes.ts enthaelt "mcp-config"
+- [x] CONTAINS: ui/src/shared/types/team.protocol.ts enthaelt "McpServerSummary"
+- [x] CONTAINS: ui/src/shared/types/team.protocol.ts enthaelt "McpConfigResponse"
+- [x] CONTAINS: ui/src/shared/types/team.protocol.ts enthaelt "mcpTools"
+- [x] CONTAINS: ui/src/server/services/skills-reader.service.ts enthaelt "mcpTools"
+- [x] CONTAINS: ui/src/server/routes/team.routes.ts enthaelt "mcp-config"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui && npm run build:backend` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] BUILD_PASS: `cd ui && npm run build:backend` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0
 
 ---
 
@@ -139,17 +140,17 @@ Keine MCP-Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Security/Performance Anforderungen erfuellt (env-Feld gefiltert)
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Security/Performance Anforderungen erfuellt (env-Feld gefiltert)
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 
