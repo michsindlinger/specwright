@@ -122,11 +122,11 @@
     }
   },
   "resumeContext": {
-    "activeKanban": "kanban-2026-02-26",
+    "activeKanban": "kanban-2026-02-27",
     "currentPhase": "executing",
-    "lastExecution": "2026-02-26",
+    "lastExecution": "2026-02-27",
     "lastAction": "Execution started",
-    "nextAction": "Execute items from kanban-2026-02-26"
+    "nextAction": "Execute items from kanban-2026-02-27"
   },
   "executions": [
     {
@@ -140,6 +140,12 @@
       "date": "2026-02-26",
       "status": "active",
       "itemCount": 2
+    },
+    {
+      "id": "kanban-2026-02-27",
+      "date": "2026-02-27",
+      "status": "active",
+      "itemCount": 4
     }
   ],
   "changeLog": [
@@ -202,6 +208,20 @@
       "from": "open",
       "to": "done",
       "details": "Completed in kanban-2026-02-26"
+    },
+    {
+      "timestamp": "2026-02-27T04:43:07.000Z",
+      "action": "execution_started",
+      "itemId": null,
+      "details": "Started execution kanban-2026-02-27 with 4 items"
+    },
+    {
+      "timestamp": "2026-02-27T04:49:50.206Z",
+      "action": "status_changed",
+      "itemId": "TODO-007",
+      "from": "open",
+      "to": "done",
+      "details": "Completed in kanban-2026-02-27"
     }
   ]
 }
