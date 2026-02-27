@@ -1,5 +1,5 @@
 {
-  "nextId": 7,
+  "nextId": 8,
   "items": [
     {
       "id": "BUG-001",
@@ -66,6 +66,15 @@
       "createdAt": "2026-02-26T12:05:16.026Z",
       "updatedAt": "2026-02-26T12:45:38.778Z",
       "completedAt": "2026-02-26T12:45:38.778Z"
+    },
+    {
+      "id": "TODO-007",
+      "type": "todo",
+      "title": "Tests für Custom Team Members Komponenten hinzufügen",
+      "priority": "medium",
+      "status": "open",
+      "file": "items/todo-007-tests-f-r-custom-team-members-komponenten-hinzuf-g.md",
+      "createdAt": "2026-02-26T21:03:34.263Z"
     }
   ],
   "statistics": {

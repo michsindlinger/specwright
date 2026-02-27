@@ -73,13 +73,13 @@ Scenario: Löschen über den Delete-Button im Detail-Modal
 
 ### Inhalt-Prüfungen
 
-- [ ] CONTAINS: `ui/frontend/src/views/team-view.ts` enthält "aos-confirm-dialog"
-- [ ] CONTAINS: `ui/frontend/src/views/team-view.ts` enthält "DELETE"
+- [x] CONTAINS: `ui/frontend/src/views/team-view.ts` enthält "aos-confirm-dialog"
+- [x] CONTAINS: `ui/frontend/src/views/team-view.ts` enthält "DELETE"
 
 ### Funktions-Prüfungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0
 
 ---
 
@@ -108,19 +108,19 @@ Scenario: Löschen über den Delete-Button im Detail-Modal
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Lit-Patterns
-- [ ] `aos-confirm-dialog` korrekt wiederverwendet
-- [ ] DELETE API-Call korrekt implementiert
+- [x] Code implementiert und folgt Lit-Patterns
+- [x] `aos-confirm-dialog` korrekt wiederverwendet
+- [x] DELETE API-Call korrekt implementiert
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Frontend Build kompiliert
-- [ ] Keine Linting Errors
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Frontend Build kompiliert
+- [x] Keine Linting Errors
 
 #### Integration DoD
-- [ ] **Integration hergestellt: aos-team-view --> Backend API (DELETE)**
-  - [ ] Fetch-Call mit DELETE-Methode existiert
-  - [ ] Validierung: `grep -q "DELETE" ui/frontend/src/views/team-view.ts`
+- [x] **Integration hergestellt: aos-team-view --> Backend API (DELETE)**
+  - [x] Fetch-Call mit DELETE-Methode existiert
+  - [x] Validierung: `grep -q "DELETE" ui/frontend/src/views/team-view.ts`
 
 ---
 

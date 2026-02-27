@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-02-26-custom-team-members",
     "name": "Custom Team Members",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-02-26T00:00:00Z"
   },
-
   "resumeContext": {
-    "currentPhase": "1-kanban-setup",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/custom-team-members",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Kanban board created",
-    "nextAction": "Run /execute-tasks 2026-02-26-custom-team-members",
-    "progressIndex": 0,
-    "totalStories": 9
+    "lastAction": "PR created - https://github.com/michsindlinger/specwright/pull/14",
+    "nextAction": "All stories complete",
+    "progressIndex": 9,
+    "totalStories": 9,
+    "gitStrategy": "branch"
   },
-
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
-    "completedAt": null,
+    "status": "completed",
+    "startedAt": "2026-02-26T20:24:01.435Z",
+    "completedAt": "2026-02-26T21:14:57.589Z",
     "model": null
   },
-
   "stories": [
     {
       "id": "CTM-001",
@@ -43,22 +40,35 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-001-backend-foundation.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:19:46.353Z",
+        "completedAt": "2026-02-26T21:14:57.589Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/team.protocol.ts",
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/src/server/routes/team.routes.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "dfbf3be",
+            "message": "feat: CTM-001 Backend Foundation - shared types, service, API endpoints",
+            "timestamp": "2026-02-26T21:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "CTM-002",
@@ -70,23 +80,38 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["CTM-001"],
-      "status": "ready",
+      "dependencies": [
+        "CTM-001"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-002-workflow-and-command.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:24:01.435Z",
+        "completedAt": "2026-02-26T20:27:21.187Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/workflows/team/add-team-member.md",
+          ".claude/commands/specwright/add-team-member.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "dfbf3be",
+            "message": "feat: CTM-002 /add-team-member workflow and command",
+            "timestamp": "2026-02-26T21:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-003",
@@ -98,23 +123,41 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["CTM-001"],
-      "status": "ready",
+      "dependencies": [
+        "CTM-001"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-003-frontend-grouped-display.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:29:34.788Z",
+        "completedAt": "2026-02-26T20:35:15.578Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/team.protocol.ts",
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "65b6dbb",
+            "message": "feat: CTM-003 Frontend grouped team display with teamType badges",
+            "timestamp": "2026-02-26T21:40:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-004",
@@ -126,23 +169,45 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["CTM-001", "CTM-003"],
-      "status": "ready",
+      "dependencies": [
+        "CTM-001",
+        "CTM-003"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-004-edit-functionality.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:38:58.495Z",
+        "completedAt": "2026-02-26T20:46:30.346Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-edit-modal.ts",
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/components/team/aos-team-detail-modal.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css",
+          "ui/src/shared/types/team.protocol.ts",
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/src/server/routes/team.routes.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "96fb0e7",
+            "message": "feat: CTM-004 Edit-Funktionalität - Markdown-Editor Modal",
+            "timestamp": "2026-02-26T22:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-005",
@@ -154,23 +219,42 @@
         "effort": 1,
         "complexity": "XS"
       },
-      "dependencies": ["CTM-001", "CTM-003"],
-      "status": "ready",
+      "dependencies": [
+        "CTM-001",
+        "CTM-003"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-005-delete-functionality.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:49:07.622Z",
+        "completedAt": "2026-02-26T20:53:45.356Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/src/server/routes/team.routes.ts",
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/components/team/aos-team-detail-modal.ts",
+          "ui/frontend/src/views/team-view.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "687b4f6",
+            "message": "feat: CTM-005 Delete-Funktionalität - REST DELETE + Confirm Dialog",
+            "timestamp": "2026-02-26T23:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-006",
@@ -182,23 +266,41 @@
         "effort": 1,
         "complexity": "XS"
       },
-      "dependencies": ["CTM-002", "CTM-003", "CTM-004", "CTM-005"],
-      "status": "ready",
+      "dependencies": [
+        "CTM-002",
+        "CTM-003",
+        "CTM-004",
+        "CTM-005"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-006-integration-workflow-trigger.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:54:57.903Z",
+        "completedAt": "2026-02-26T20:57:57.246Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/app.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "b956407",
+            "message": "feat: CTM-006 Integration & Workflow-Trigger - Add-Button + Auto-Refresh",
+            "timestamp": "2026-02-27T00:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-997",
@@ -210,23 +312,43 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["CTM-001", "CTM-002", "CTM-003", "CTM-004", "CTM-005", "CTM-006"],
-      "status": "ready",
+      "dependencies": [
+        "CTM-001",
+        "CTM-002",
+        "CTM-003",
+        "CTM-004",
+        "CTM-005",
+        "CTM-006"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T20:59:06.223Z",
+        "completedAt": "2026-02-26T21:05:05.322Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-26-custom-team-members/review-report.md",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "b4bb59d",
+            "message": "feat: CTM-997 Code Review completed - 2 CSS fixes, review-report.md",
+            "timestamp": "2026-02-27T00:05:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "CTM-998",
@@ -238,23 +360,31 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["CTM-997"],
-      "status": "ready",
+      "dependencies": [
+        "CTM-997"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T21:05:59.417Z",
+        "completedAt": "2026-02-26T21:08:20.359Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-26-custom-team-members/spec.md",
+          "specwright/specs/2026-02-26-custom-team-members/stories/story-998-integration-validation.md"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "CTM-999",
@@ -266,99 +396,306 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["CTM-998"],
-      "status": "ready",
+      "dependencies": [
+        "CTM-998"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-26T00:00:00Z",
-        "updatedAt": "2026-02-26T00:00:00Z"
+        "updatedAt": "2026-02-26T00:00:00Z",
+        "startedAt": "2026-02-26T21:09:49.308Z",
+        "completedAt": "2026-02-26T21:14:42.053Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/knowledge/knowledge-index.md",
+          "specwright/knowledge/api-contracts.md",
+          "specwright/knowledge/ui-components.md",
+          "specwright/knowledge/workflows-commands.md",
+          "specwright/backlog/backlog-index.json",
+          "specwright/backlog/items/todo-007-tests-f-r-custom-team-members-komponenten-hinzuf-g.md",
+          "specwright/specs/2026-02-26-custom-team-members/kanban.json"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "25f60a0",
+            "message": "docs: Update Project Knowledge from Custom Team Members spec",
+            "timestamp": "2026-02-26T22:13:00+01:00"
+          },
+          {
+            "hash": "21d0ada",
+            "message": "feat: CTM-999 Finalize PR - backlog update, kanban status, todo for tests",
+            "timestamp": "2026-02-26T22:13:37+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     }
   ],
-
   "boardStatus": {
     "total": 9,
-    "ready": 9,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 9,
     "blocked": 0
   },
-
   "statistics": {
-    "totalEffort": 20,
-    "completedEffort": 0,
-    "remainingEffort": 20,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 8,
-      "backend": 6,
-      "devops": 0,
-      "test": 0,
-      "docs": 0,
-      "system": 6
+      "undefined": 9
     },
     "byPriority": {
-      "critical": 0,
-      "high": 8,
-      "medium": 1,
-      "low": 0
+      "undefined": 9
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "phase": 1,
         "name": "Backend Foundation",
-        "stories": ["CTM-001"],
+        "stories": [
+          "CTM-001"
+        ],
         "parallel": false
       },
       {
         "phase": 2,
         "name": "Workflow + Frontend",
-        "stories": ["CTM-002", "CTM-003"],
+        "stories": [
+          "CTM-002",
+          "CTM-003"
+        ],
         "parallel": true
       },
       {
         "phase": 3,
         "name": "Edit + Delete",
-        "stories": ["CTM-004", "CTM-005"],
+        "stories": [
+          "CTM-004",
+          "CTM-005"
+        ],
         "parallel": true
       },
       {
         "phase": 4,
         "name": "Integration",
-        "stories": ["CTM-006"],
+        "stories": [
+          "CTM-006"
+        ],
         "parallel": false
       },
       {
         "phase": 5,
         "name": "System Stories",
-        "stories": ["CTM-997", "CTM-998", "CTM-999"],
+        "stories": [
+          "CTM-997",
+          "CTM-998",
+          "CTM-999"
+        ],
         "parallel": false
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-02-26T00:00:00Z",
       "action": "kanban_created",
       "storyId": null,
       "details": "Kanban initialized with 9 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-26T20:19:46.353Z",
+      "action": "status_changed",
+      "storyId": "CTM-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:21:10.680Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 1-complete"
+    },
+    {
+      "timestamp": "2026-02-26T20:21:43.715Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:24:01.437Z",
+      "action": "status_changed",
+      "storyId": "CTM-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:27:21.188Z",
+      "action": "status_changed",
+      "storyId": "CTM-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T20:27:34.163Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:29:34.791Z",
+      "action": "status_changed",
+      "storyId": "CTM-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:35:15.579Z",
+      "action": "status_changed",
+      "storyId": "CTM-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T20:35:33.233Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:38:58.496Z",
+      "action": "status_changed",
+      "storyId": "CTM-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:46:30.346Z",
+      "action": "status_changed",
+      "storyId": "CTM-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T20:47:18.920Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-26T20:47:37.123Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:49:07.625Z",
+      "action": "status_changed",
+      "storyId": "CTM-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:53:45.356Z",
+      "action": "status_changed",
+      "storyId": "CTM-005",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T20:53:50.140Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-26T20:54:08.442Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:54:57.906Z",
+      "action": "status_changed",
+      "storyId": "CTM-006",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T20:57:57.246Z",
+      "action": "status_changed",
+      "storyId": "CTM-006",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T20:58:11.196Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T20:59:06.226Z",
+      "action": "status_changed",
+      "storyId": "CTM-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T21:05:05.322Z",
+      "action": "status_changed",
+      "storyId": "CTM-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T21:05:18.406Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T21:05:59.420Z",
+      "action": "status_changed",
+      "storyId": "CTM-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T21:08:20.359Z",
+      "action": "status_changed",
+      "storyId": "CTM-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T21:09:09.267Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/custom-team-members"
+    },
+    {
+      "timestamp": "2026-02-26T21:09:49.311Z",
+      "action": "status_changed",
+      "storyId": "CTM-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-26T21:14:42.053Z",
+      "action": "status_changed",
+      "storyId": "CTM-999",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T21:14:57.589Z",
+      "action": "status_changed",
+      "storyId": "CTM-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-26T21:15:03.413Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
     }
   ]
 }

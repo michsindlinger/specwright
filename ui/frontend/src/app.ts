@@ -1756,7 +1756,9 @@ export class AosApp extends LitElement {
           @start-setup-terminal=${this._handleStartSetupTerminal}
         ></aos-getting-started-view>`;
       case 'team':
-        return html`<aos-team-view></aos-team-view>`;
+        return html`<aos-team-view
+          @workflow-start-interactive=${this.handleWorkflowStart}
+        ></aos-team-view>`;
       case 'chat':
         return html`<aos-chat-view></aos-chat-view>`;
       case 'settings':

@@ -1,12 +1,19 @@
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
 import type { SkillSummary } from '../../../src/shared/types/team.protocol.js';
 import '../components/team/aos-team-card.js';
 import '../components/team/aos-team-detail-modal.js';
+import '../components/team/aos-team-edit-modal.js';
+import '../components/aos-confirm-dialog.js';
 
 type ViewState = 'loading' | 'loaded' | 'empty' | 'error';
+
+interface TeamGroup {
+  name: string;
+  skills: SkillSummary[];
+}
 
 @customElement('aos-team-view')
 export class AosTeamView extends LitElement {
@@ -17,7 +24,11 @@ export class AosTeamView extends LitElement {
   @state() private viewState: ViewState = 'loading';
   @state() private errorMessage = '';
   @state() private modalOpen = false;
+  @state() private editModalOpen = false;
   @state() private selectedSkillId = '';
+  @state() private confirmDialogOpen = false;
+  @state() private confirmDialogMessage = '';
+  @state() private deleteTargetSkillId = '';
 
   private lastProjectPath = '';
 
@@ -60,6 +71,28 @@ export class AosTeamView extends LitElement {
     }
   }
 
+  private getDevTeamSkills(): SkillSummary[] {
+    return this.skills.filter(s => !s.teamType || s.teamType === 'devteam');
+  }
+
+  private getCustomTeamGroups(): TeamGroup[] {
+    const teamSkills = this.skills.filter(s => s.teamType === 'team');
+    const groups = new Map<string, SkillSummary[]>();
+    for (const skill of teamSkills) {
+      const name = skill.teamName || 'Unbenanntes Team';
+      const list = groups.get(name) || [];
+      list.push(skill);
+      groups.set(name, list);
+    }
+    return Array.from(groups.entries())
+      .map(([name, skills]) => ({ name, skills }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  private getIndividualSkills(): SkillSummary[] {
+    return this.skills.filter(s => s.teamType === 'individual');
+  }
+
   private handleCardClick(e: CustomEvent<{ skillId: string }>): void {
     this.selectedSkillId = e.detail.skillId;
     this.modalOpen = true;
@@ -76,6 +109,74 @@ export class AosTeamView extends LitElement {
     this.modalOpen = false;
   }
 
+  private handleEditClick(e: CustomEvent<{ skillId: string }>): void {
+    this.selectedSkillId = e.detail.skillId;
+    this.editModalOpen = true;
+  }
+
+  private handleEditModalClose(): void {
+    this.editModalOpen = false;
+  }
+
+  private handleSkillSaved(): void {
+    this.editModalOpen = false;
+    this.loadSkills();
+  }
+
+  private handleDeleteClick(e: CustomEvent<{ skillId: string; skillName: string; teamType?: string }>): void {
+    const { skillId, skillName, teamType } = e.detail;
+    this.deleteTargetSkillId = skillId;
+    const isDevTeam = !teamType || teamType === 'devteam';
+    this.confirmDialogMessage = isDevTeam
+      ? `Dieser Skill gehört zum Development Team. Möchten Sie "${skillName}" wirklich löschen?`
+      : `Möchten Sie "${skillName}" wirklich löschen?`;
+    this.confirmDialogOpen = true;
+  }
+
+  private async handleDeleteConfirm(): Promise<void> {
+    this.confirmDialogOpen = false;
+    const projectPath = this.projectCtx?.activeProject?.path;
+    if (!projectPath || !this.deleteTargetSkillId) return;
+
+    try {
+      const encodedPath = encodeURIComponent(projectPath);
+      const encodedSkillId = encodeURIComponent(this.deleteTargetSkillId);
+      const response = await fetch(`/api/team/${encodedPath}/skills/${encodedSkillId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Fehler beim Löschen');
+      }
+
+      this.deleteTargetSkillId = '';
+      this.loadSkills();
+    } catch (err) {
+      console.error('Error deleting skill:', err);
+      this.deleteTargetSkillId = '';
+    }
+  }
+
+  private handleDeleteCancel(): void {
+    this.confirmDialogOpen = false;
+    this.deleteTargetSkillId = '';
+  }
+
+  private handleAddTeamMember(): void {
+    this.dispatchEvent(
+      new CustomEvent('workflow-start-interactive', {
+        detail: { commandId: 'specwright:add-team-member' },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   private handleRetry(): void {
     this.loadSkills();
   }
@@ -84,8 +185,15 @@ export class AosTeamView extends LitElement {
     return html`
       <div class="team-view">
         <div class="team-view__header">
-          <h2 class="team-view__title">Development Team</h2>
+          <h2 class="team-view__title">Team</h2>
           <p class="team-view__subtitle">Skills und Agents in deinem Projekt</p>
+          <button class="team-view__add-btn" @click=${this.handleAddTeamMember}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Teammitglied hinzufügen
+          </button>
         </div>
         ${this.renderContent()}
       </div>
@@ -93,7 +201,23 @@ export class AosTeamView extends LitElement {
         .open=${this.modalOpen}
         .skillId=${this.selectedSkillId}
         @modal-close=${this.handleModalClose}
+        @edit-click=${this.handleEditClick}
+        @delete-click=${this.handleDeleteClick}
       ></aos-team-detail-modal>
+      <aos-team-edit-modal
+        .open=${this.editModalOpen}
+        .skillId=${this.selectedSkillId}
+        @modal-close=${this.handleEditModalClose}
+        @skill-saved=${this.handleSkillSaved}
+      ></aos-team-edit-modal>
+      <aos-confirm-dialog
+        .open=${this.confirmDialogOpen}
+        title="Skill löschen"
+        .message=${this.confirmDialogMessage}
+        confirmText="Löschen"
+        @confirm=${this.handleDeleteConfirm}
+        @cancel=${this.handleDeleteCancel}
+      ></aos-confirm-dialog>
     `;
   }
 
@@ -106,7 +230,7 @@ export class AosTeamView extends LitElement {
       case 'empty':
         return this.renderEmpty();
       case 'loaded':
-        return this.renderGrid();
+        return this.renderGrouped();
     }
   }
 
@@ -161,15 +285,51 @@ export class AosTeamView extends LitElement {
     `;
   }
 
-  private renderGrid() {
+  private renderGrouped() {
+    const devTeam = this.getDevTeamSkills();
+    const customTeams = this.getCustomTeamGroups();
+    const individuals = this.getIndividualSkills();
+
     return html`
-      <div class="team-grid">
-        ${this.skills.map(skill => html`
-          <aos-team-card
-            .skill=${skill}
-            @card-click=${this.handleCardClick}
-          ></aos-team-card>
-        `)}
+      ${devTeam.length > 0 ? this.renderSection('Development Team', devTeam) : nothing}
+      ${customTeams.length > 0 ? html`
+        <div class="team-section">
+          <h3 class="team-section__title">Custom Teams</h3>
+          ${customTeams.map(group => html`
+            <div class="team-section__group">
+              <h4 class="team-section__group-name">${group.name}</h4>
+              <div class="team-grid">
+                ${group.skills.map(skill => html`
+                  <aos-team-card
+                    .skill=${skill}
+                    @card-click=${this.handleCardClick}
+                    @edit-click=${this.handleEditClick}
+                    @delete-click=${this.handleDeleteClick}
+                  ></aos-team-card>
+                `)}
+              </div>
+            </div>
+          `)}
+        </div>
+      ` : nothing}
+      ${individuals.length > 0 ? this.renderSection('Einzelpersonen', individuals) : nothing}
+    `;
+  }
+
+  private renderSection(title: string, skills: SkillSummary[]) {
+    return html`
+      <div class="team-section">
+        <h3 class="team-section__title">${title}</h3>
+        <div class="team-grid">
+          ${skills.map(skill => html`
+            <aos-team-card
+              .skill=${skill}
+              @card-click=${this.handleCardClick}
+              @edit-click=${this.handleEditClick}
+              @delete-click=${this.handleDeleteClick}
+            ></aos-team-card>
+          `)}
+        </div>
       </div>
     `;
   }

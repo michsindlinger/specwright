@@ -60,12 +60,12 @@ Scenario: Team-Seite aktualisiert sich nach Skill-Bearbeitung
 
 ### Inhalt-Prüfungen
 
-- [ ] CONTAINS: `ui/frontend/src/views/team-view.ts` enthält "workflow-start-interactive"
+- [x] CONTAINS: `ui/frontend/src/views/team-view.ts` enthält "workflow-start-interactive"
 
 ### Funktions-Prüfungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0
 
 ---
 
@@ -93,14 +93,14 @@ Scenario: Team-Seite aktualisiert sich nach Skill-Bearbeitung
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Lit-Patterns
-- [ ] workflow-start-interactive Event korrekt dispatched
-- [ ] Auto-Refresh nach Änderungen funktioniert
+- [x] Code implementiert und folgt Lit-Patterns
+- [x] workflow-start-interactive Event korrekt dispatched
+- [x] Auto-Refresh nach Änderungen funktioniert
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Frontend Build kompiliert
-- [ ] Keine Linting Errors
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Frontend Build kompiliert
+- [x] Keine Linting Errors
 
 ---
 

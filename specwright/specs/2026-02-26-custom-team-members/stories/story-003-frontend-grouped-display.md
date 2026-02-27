@@ -82,13 +82,13 @@ Scenario: Leere Sektionen werden nicht angezeigt
 
 ### Inhalt-Prüfungen
 
-- [ ] CONTAINS: `ui/frontend/src/views/team-view.ts` enthält "teamType"
-- [ ] CONTAINS: `ui/frontend/src/components/team/aos-team-card.ts` enthält "teamType"
+- [x] CONTAINS: `ui/frontend/src/views/team-view.ts` enthält "teamType"
+- [x] CONTAINS: `ui/frontend/src/components/team/aos-team-card.ts` enthält "teamType"
 
 ### Funktions-Prüfungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
-- [ ] LINT_PASS: `cd ui && npm run lint` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] LINT_PASS: `cd ui && npm run lint` exits with code 0
 
 ---
 
@@ -116,15 +116,15 @@ Scenario: Leere Sektionen werden nicht angezeigt
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Lit-Patterns
-- [ ] Architektur-Vorgaben eingehalten
-- [ ] Visuell korrekte Darstellung
+- [x] Code implementiert und folgt Lit-Patterns
+- [x] Architektur-Vorgaben eingehalten
+- [x] Visuell korrekte Darstellung
 
 #### Qualitätssicherung
-- [ ] Alle Akzeptanzkriterien erfüllt
-- [ ] Frontend Build kompiliert
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich
+- [x] Alle Akzeptanzkriterien erfüllt
+- [x] Frontend Build kompiliert
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich
 
 ---
 

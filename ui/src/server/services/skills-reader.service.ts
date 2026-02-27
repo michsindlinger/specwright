@@ -30,10 +30,12 @@ export class SkillsReaderService {
     description: string;
     globs: string[];
     alwaysApply: boolean;
+    teamType: 'devteam' | 'team' | 'individual';
+    teamName: string;
   } {
     const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     if (!frontmatterMatch) {
-      return { description: 'Keine Beschreibung verfügbar', globs: [], alwaysApply: false };
+      return { description: 'Keine Beschreibung verfügbar', globs: [], alwaysApply: false, teamType: 'devteam', teamName: '' };
     }
 
     const fm = frontmatterMatch[1];
@@ -56,7 +58,16 @@ export class SkillsReaderService {
     const alwaysApplyMatch = fm.match(/^alwaysApply:\s*(true|false)/m);
     const alwaysApply = alwaysApplyMatch ? alwaysApplyMatch[1] === 'true' : false;
 
-    return { description, globs, alwaysApply };
+    // Extract teamType (default: devteam)
+    const teamTypeMatch = fm.match(/^teamType:\s*(.+)$/m);
+    const rawTeamType = teamTypeMatch ? teamTypeMatch[1].trim().replace(/^["']|["']$/g, '') : 'devteam';
+    const teamType = (['team', 'individual'].includes(rawTeamType) ? rawTeamType : 'devteam') as 'devteam' | 'team' | 'individual';
+
+    // Extract teamName
+    const teamNameMatch = fm.match(/^teamName:\s*(.+)$/m);
+    const teamName = teamNameMatch ? teamNameMatch[1].trim().replace(/^["']|["']$/g, '') : '';
+
+    return { description, globs, alwaysApply, teamType, teamName };
   }
 
   /**
@@ -127,7 +138,7 @@ export class SkillsReaderService {
         continue;
       }
 
-      const { description, globs, alwaysApply } = this.parseFrontmatter(skillContent);
+      const { description, globs, alwaysApply, teamType, teamName } = this.parseFrontmatter(skillContent);
       const name = this.extractName(skillContent, dirName);
       const category = this.inferCategory(dirName);
 
@@ -148,6 +159,8 @@ export class SkillsReaderService {
         learningsCount,
         globs,
         alwaysApply,
+        teamType,
+        teamName,
       });
     }
 
@@ -172,7 +185,7 @@ export class SkillsReaderService {
       return null;
     }
 
-    const { description, globs, alwaysApply } = this.parseFrontmatter(skillContent);
+    const { description, globs, alwaysApply, teamType, teamName } = this.parseFrontmatter(skillContent);
     const name = this.extractName(skillContent, skillId);
     const category = this.inferCategory(skillId);
 
@@ -205,10 +218,36 @@ export class SkillsReaderService {
       learningsCount,
       globs,
       alwaysApply,
+      teamType,
+      teamName,
       skillContent,
       dosAndDontsContent,
       subDocuments,
     };
+  }
+
+  /**
+   * Update the SKILL.md content for a given skill.
+   */
+  async updateSkillContent(projectPath: string, skillId: string, content: string): Promise<void> {
+    const skillsPath = this.getSkillsPath(projectPath);
+    const skillDir = join(skillsPath, skillId);
+
+    // Verify skill directory exists before writing
+    await fs.access(skillDir);
+    await fs.writeFile(join(skillDir, 'SKILL.md'), content, 'utf-8');
+  }
+
+  /**
+   * Delete a skill directory and all its contents.
+   */
+  async deleteSkill(projectPath: string, skillId: string): Promise<void> {
+    const skillsPath = this.getSkillsPath(projectPath);
+    const skillDir = join(skillsPath, skillId);
+
+    // Verify skill directory exists before deleting
+    await fs.access(skillDir);
+    await fs.rm(skillDir, { recursive: true });
   }
 }
 

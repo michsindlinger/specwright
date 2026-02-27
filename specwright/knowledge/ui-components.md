@@ -1,7 +1,7 @@
 # UI Components
 
 > Verfügbare UI-Komponenten im Projekt.
-> Zuletzt aktualisiert: 2026-02-26
+> Zuletzt aktualisiert: 2026-02-26 (Custom Team Members)
 
 ## Komponenten-Übersicht
 
@@ -17,6 +17,7 @@
 | aos-team-view | ui/frontend/src/views/team-view.ts | (uses projectContext) | Dev-Team Visualization (2026-02-26) |
 | aos-team-card | ui/frontend/src/components/team/aos-team-card.ts | skill: SkillSummary | Dev-Team Visualization (2026-02-26) |
 | aos-team-detail-modal | ui/frontend/src/components/team/aos-team-detail-modal.ts | open, skillId | Dev-Team Visualization (2026-02-26) |
+| aos-team-edit-modal | ui/frontend/src/components/team/aos-team-edit-modal.ts | open, skillId | Custom Team Members (2026-02-26) |
 
 ---
 
@@ -382,6 +383,45 @@ panel.openFile('src/app.ts', 'app.ts');
 - Escape-Taste und Click-Outside zum Schließen
 - Lazy Loading: Detail-Daten erst bei Modal-Öffnung
 - API-Call: `GET /api/team/${encodedPath}/skills/${skillId}`
+- Light DOM Pattern
+- Nutzt `@consume` projectContext
+
+---
+
+### aos-team-edit-modal
+
+**Pfad:** `ui/frontend/src/components/team/aos-team-edit-modal.ts`
+**Erstellt:** Custom Team Members (2026-02-26)
+
+**Beschreibung:** Modal mit integriertem CodeMirror-Editor (aos-file-editor) zur Bearbeitung von SKILL.md Inhalten. Lazy-Loading der Skill-Daten, Speichern via PUT API.
+
+**Props:**
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| open | boolean | false | Modal sichtbar/versteckt |
+| skillId | string | '' | ID des zu bearbeitenden Skills |
+
+**Events:**
+| Event | Detail | Description |
+|-------|--------|-------------|
+| modal-close | - | Modal soll geschlossen werden |
+| skill-saved | { skillId } | Skill wurde erfolgreich gespeichert |
+
+**Usage Example:**
+```html
+<aos-team-edit-modal
+  .open=${this.editModalOpen}
+  .skillId=${this.editSkillId}
+  @modal-close=${this.handleEditClose}
+  @skill-saved=${this.handleSkillSaved}
+></aos-team-edit-modal>
+```
+
+**Notes:**
+- Nutzt aos-file-editor (CodeMirror 6) für Markdown-Editing
+- Lazy Loading: Detail-Daten erst bei Modal-Öffnung
+- API-Call: PUT /api/team/${encodedPath}/skills/${skillId}
+- Escape-Taste und Click-Outside zum Schließen
 - Light DOM Pattern
 - Nutzt `@consume` projectContext
 
