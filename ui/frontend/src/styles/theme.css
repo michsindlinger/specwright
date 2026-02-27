@@ -1861,7 +1861,7 @@ aos-mcp-server-card {
 .mcp-server-card__info {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-family-mono, monospace);
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
