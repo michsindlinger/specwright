@@ -75,8 +75,8 @@
       "status": "done",
       "file": "items/todo-007-tests-f-r-custom-team-members-komponenten-hinzuf-g.md",
       "createdAt": "2026-02-26T21:03:34.263Z",
-      "updatedAt": "2026-02-27T04:41:51.682Z",
-      "completedAt": "2026-02-27T04:49:50.206Z"
+      "updatedAt": "2026-02-27T04:50:46.701Z",
+      "completedAt": "2026-02-27T04:50:46.701Z"
     },
     {
       "id": "BUG-008",
@@ -109,10 +109,10 @@
   "statistics": {
     "byStatus": {
       "open": 3,
-      "in_progress": 1,
+      "in_progress": 0,
       "in_review": 0,
       "blocked": 0,
-      "done": 6
+      "done": 7
     }
   },
   "resumeContext": {
