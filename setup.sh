@@ -200,6 +200,7 @@ download_file "$REPO_URL/specwright/workflows/marketing/create-content-plan.md" 
 # Team workflows
 download_file "$REPO_URL/specwright/workflows/team/create-project-agents.md" "specwright/workflows/team/create-project-agents.md" "workflows"
 download_file "$REPO_URL/specwright/workflows/team/assign-skills-to-agent.md" "specwright/workflows/team/assign-skills-to-agent.md" "workflows"
+download_file "$REPO_URL/specwright/workflows/team/add-team-member.md" "specwright/workflows/team/add-team-member.md" "workflows"
 
 # Validation workflows
 download_file "$REPO_URL/specwright/workflows/validation/validate-market.md" "specwright/workflows/validation/validate-market.md" "workflows"

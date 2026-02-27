@@ -91,6 +91,7 @@ command_files=(
     # Self-Learning
     "add-learning.md"
     "add-domain.md"
+    "add-team-member.md"
 
     # Brainstorming
     "start-brainstorming.md"

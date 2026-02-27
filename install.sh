@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.3.0"
+FRAMEWORK_VERSION="3.5.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -297,7 +297,7 @@ display_plan() {
     print_plan_item "$INSTALL_MARKET_VALIDATION_GLOBAL" "Market validation (global)" "templates, agents, commands"
     print_plan_item "$INSTALL_PROJECT" "Project setup" "workflows, standards, config"
     print_plan_item "$INSTALL_MCP" "MCP server" "kanban server"
-    print_plan_item "$INSTALL_CLAUDE_CODE" "Claude Code commands & agents" "35 commands, 13 agents"
+    print_plan_item "$INSTALL_CLAUDE_CODE" "Claude Code commands & agents" "36 commands, 13 agents"
     print_plan_item "$INSTALL_MARKET_VALIDATION_PROJECT" "Market validation (project)" "project directories"
 
     if [[ "$FLAG_OVERWRITE" == true ]]; then
@@ -841,10 +841,11 @@ install_project() {
     download_file "$REPO_URL/specwright/workflows/marketing/create-content-plan.md" "specwright/workflows/marketing/create-content-plan.md" "workflow"
     substep_done
 
-    # Team workflows (2)
-    substep "Team workflows" "2"
+    # Team workflows (3)
+    substep "Team workflows" "3"
     download_file "$REPO_URL/specwright/workflows/team/create-project-agents.md" "specwright/workflows/team/create-project-agents.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/team/assign-skills-to-agent.md" "specwright/workflows/team/assign-skills-to-agent.md" "workflow"
+    download_file "$REPO_URL/specwright/workflows/team/add-team-member.md" "specwright/workflows/team/add-team-member.md" "workflow"
     substep_done
 
     # Validation workflows (3)
@@ -1032,8 +1033,8 @@ install_claude_code() {
         mkdir -p .claude/skills/review-implementation-plan
     fi
 
-    # Commands (35)
-    substep "Commands" "35"
+    # Commands (36)
+    substep "Commands" "36"
     local command_files=(
         plan-product.md plan-platform.md
         create-spec.md change-spec.md
@@ -1041,7 +1042,7 @@ install_claude_code() {
         execute-tasks.md
         retroactive-doc.md retroactive-spec.md document-feature.md
         build-development-team.md create-project-agents.md assign-skills-to-agent.md add-skill.md
-        add-learning.md add-domain.md
+        add-learning.md add-domain.md add-team-member.md
         start-brainstorming.md brainstorm-upselling-ideas.md
         validate-market.md validate-market-for-existing.md
         transfer-and-create-spec.md transfer-and-create-bug.md transfer-and-plan-product.md
