@@ -5,7 +5,7 @@ import type { SkillSummary, SkillDetail } from '../../src/shared/types/team.prot
 // Mock skills-reader.service before importing routes
 const mockListSkills = vi.fn<(projectPath: string) => Promise<SkillSummary[]>>();
 const mockGetSkillDetail = vi.fn<(projectPath: string, skillId: string) => Promise<SkillDetail | null>>();
-const mockUpdateSkillContent = vi.fn<(projectPath: string, skillId: string, content: string) => Promise<void>>();
+const mockUpdateSkillContent = vi.fn<(projectPath: string, skillId: string, content: string, mcpTools?: string[]) => Promise<void>>();
 const mockDeleteSkill = vi.fn<(projectPath: string, skillId: string) => Promise<void>>();
 
 vi.mock('../../src/server/services/skills-reader.service.js', () => ({
@@ -14,6 +14,16 @@ vi.mock('../../src/server/services/skills-reader.service.js', () => ({
     getSkillDetail: (...args: Parameters<typeof mockGetSkillDetail>) => mockGetSkillDetail(...args),
     updateSkillContent: (...args: Parameters<typeof mockUpdateSkillContent>) => mockUpdateSkillContent(...args),
     deleteSkill: (...args: Parameters<typeof mockDeleteSkill>) => mockDeleteSkill(...args),
+  },
+}));
+
+// Mock mcp-config-reader.service before importing routes
+import type { McpServerSummary } from '../../src/shared/types/team.protocol.js';
+const mockReadConfig = vi.fn<(projectPath: string) => Promise<{ servers: McpServerSummary[]; message?: string }>>();
+
+vi.mock('../../src/server/services/mcp-config-reader.service.js', () => ({
+  mcpConfigReaderService: {
+    readConfig: (...args: Parameters<typeof mockReadConfig>) => mockReadConfig(...args),
   },
 }));
 
@@ -211,7 +221,8 @@ describe('Team Routes', () => {
       expect(mockUpdateSkillContent).toHaveBeenCalledWith(
         '/tmp/project',
         'backend-express',
-        '# Updated Skill\nNew content.'
+        '# Updated Skill\nNew content.',
+        undefined
       );
     });
 
@@ -232,7 +243,8 @@ describe('Team Routes', () => {
       expect(mockUpdateSkillContent).toHaveBeenCalledWith(
         '/home/user/my project',
         'frontend-lit',
-        '# Skill'
+        '# Skill',
+        undefined
       );
     });
 
@@ -368,6 +380,145 @@ describe('Team Routes', () => {
         success: false,
         error: 'Internal server error',
       });
+    });
+  });
+
+  // ==========================================================================
+  // GET /:projectPath/mcp-config
+  // ==========================================================================
+
+  describe('GET /:projectPath/mcp-config', () => {
+    const handler = getHandler('get', '/:projectPath/mcp-config');
+
+    it('should return MCP servers with 200', async () => {
+      const servers: McpServerSummary[] = [
+        { name: 'playwright', type: 'stdio', command: 'npx', args: ['@anthropic/mcp-playwright'] },
+        { name: 'perplexity', type: 'sse', command: 'node', args: ['server.js'] },
+      ];
+      mockReadConfig.mockResolvedValue({ servers });
+
+      const req = mockReq({ projectPath: encodeURIComponent('/tmp/project') });
+      const res = mockRes();
+
+      await handler(req as Request, res as Response);
+
+      expect(res._status).toBe(200);
+      expect(res._json).toEqual({ success: true, servers });
+      expect(mockReadConfig).toHaveBeenCalledWith('/tmp/project');
+    });
+
+    it('should return empty servers with message when no config found', async () => {
+      mockReadConfig.mockResolvedValue({ servers: [], message: 'Keine MCP-Konfiguration gefunden' });
+
+      const req = mockReq({ projectPath: encodeURIComponent('/tmp/empty') });
+      const res = mockRes();
+
+      await handler(req as Request, res as Response);
+
+      expect(res._status).toBe(200);
+      expect(res._json).toEqual({
+        success: true,
+        servers: [],
+        message: 'Keine MCP-Konfiguration gefunden',
+      });
+    });
+
+    it('should return 500 on service error', async () => {
+      mockReadConfig.mockRejectedValue(new Error('Permission denied'));
+
+      const req = mockReq({ projectPath: encodeURIComponent('/tmp/broken') });
+      const res = mockRes();
+
+      await handler(req as Request, res as Response);
+
+      expect(res._status).toBe(500);
+      expect(res._json).toMatchObject({ success: false, error: 'Permission denied' });
+    });
+
+    it('should URL-decode projectPath before calling service', async () => {
+      mockReadConfig.mockResolvedValue({ servers: [] });
+
+      const req = mockReq({ projectPath: encodeURIComponent('/home/user/my project') });
+      const res = mockRes();
+
+      await handler(req as Request, res as Response);
+
+      expect(mockReadConfig).toHaveBeenCalledWith('/home/user/my project');
+    });
+  });
+
+  // ==========================================================================
+  // PUT /:projectPath/skills/:skillId - mcpTools extension
+  // ==========================================================================
+
+  describe('PUT /:projectPath/skills/:skillId - mcpTools', () => {
+    const handler = getHandler('put', '/:projectPath/skills/:skillId');
+
+    it('should pass mcpTools to service when provided', async () => {
+      mockUpdateSkillContent.mockResolvedValue(undefined);
+
+      const req = mockReq(
+        {
+          projectPath: encodeURIComponent('/tmp/project'),
+          skillId: 'backend-express',
+        },
+        { content: '# Skill', mcpTools: ['playwright', 'perplexity'] }
+      );
+      const res = mockRes();
+
+      await handler(req as Request, res as Response);
+
+      expect(res._status).toBe(200);
+      expect(res._json).toEqual({ success: true });
+      expect(mockUpdateSkillContent).toHaveBeenCalledWith(
+        '/tmp/project',
+        'backend-express',
+        '# Skill',
+        ['playwright', 'perplexity']
+      );
+    });
+
+    it('should pass undefined mcpTools when not provided in body', async () => {
+      mockUpdateSkillContent.mockResolvedValue(undefined);
+
+      const req = mockReq(
+        {
+          projectPath: encodeURIComponent('/tmp/project'),
+          skillId: 'backend-express',
+        },
+        { content: '# Skill' }
+      );
+      const res = mockRes();
+
+      await handler(req as Request, res as Response);
+
+      expect(res._status).toBe(200);
+      expect(mockUpdateSkillContent).toHaveBeenCalledWith(
+        '/tmp/project',
+        'backend-express',
+        '# Skill',
+        undefined
+      );
+    });
+
+    it('should return 400 when mcpTools is not an array', async () => {
+      const req = mockReq(
+        {
+          projectPath: encodeURIComponent('/tmp/project'),
+          skillId: 'backend-express',
+        },
+        { content: '# Skill', mcpTools: 'not-an-array' as unknown }
+      );
+      const res = mockRes();
+
+      await handler(req as Request, res as Response);
+
+      expect(res._status).toBe(400);
+      expect(res._json).toMatchObject({
+        success: false,
+        error: 'mcpTools must be an array of strings',
+      });
+      expect(mockUpdateSkillContent).not.toHaveBeenCalled();
     });
   });
 });

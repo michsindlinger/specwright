@@ -2,13 +2,15 @@ import { LitElement, html, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
-import type { SkillSummary } from '../../../src/shared/types/team.protocol.js';
+import type { SkillSummary, McpServerSummary } from '../../../src/shared/types/team.protocol.js';
 import '../components/team/aos-team-card.js';
 import '../components/team/aos-team-detail-modal.js';
 import '../components/team/aos-team-edit-modal.js';
+import '../components/team/aos-mcp-server-card.js';
 import '../components/aos-confirm-dialog.js';
 
 type ViewState = 'loading' | 'loaded' | 'empty' | 'error';
+type McpLoadState = 'idle' | 'loading' | 'loaded' | 'error';
 
 interface TeamGroup {
   name: string;
@@ -29,6 +31,9 @@ export class AosTeamView extends LitElement {
   @state() private confirmDialogOpen = false;
   @state() private confirmDialogMessage = '';
   @state() private deleteTargetSkillId = '';
+  @state() private mcpServers: McpServerSummary[] = [];
+  @state() private mcpLoadState: McpLoadState = 'idle';
+  @state() private mcpErrorMessage = '';
 
   private lastProjectPath = '';
 
@@ -37,6 +42,7 @@ export class AosTeamView extends LitElement {
     if (currentPath && currentPath !== this.lastProjectPath) {
       this.lastProjectPath = currentPath;
       this.loadSkills();
+      this.loadMcpConfig();
     }
   }
 
@@ -71,6 +77,34 @@ export class AosTeamView extends LitElement {
     }
   }
 
+  private async loadMcpConfig(): Promise<void> {
+    const projectPath = this.projectCtx?.activeProject?.path;
+    if (!projectPath) return;
+
+    this.mcpLoadState = 'loading';
+
+    try {
+      const encodedPath = encodeURIComponent(projectPath);
+      const response = await fetch(`/api/team/${encodedPath}/mcp-config`);
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || data.message || 'Unknown API error');
+      }
+
+      this.mcpServers = data.servers || [];
+      this.mcpLoadState = 'loaded';
+    } catch (err) {
+      this.mcpErrorMessage = err instanceof Error ? err.message : 'Fehler beim Laden der MCP-Konfiguration';
+      this.mcpLoadState = 'error';
+    }
+  }
+
   private getDevTeamSkills(): SkillSummary[] {
     return this.skills.filter(s => !s.teamType || s.teamType === 'devteam');
   }
@@ -91,6 +125,10 @@ export class AosTeamView extends LitElement {
 
   private getIndividualSkills(): SkillSummary[] {
     return this.skills.filter(s => s.teamType === 'individual');
+  }
+
+  private get availableMcpToolNames(): string[] {
+    return this.mcpLoadState === 'loaded' ? this.mcpServers.map(s => s.name) : [];
   }
 
   private handleCardClick(e: CustomEvent<{ skillId: string }>): void {
@@ -200,6 +238,7 @@ export class AosTeamView extends LitElement {
       <aos-team-detail-modal
         .open=${this.modalOpen}
         .skillId=${this.selectedSkillId}
+        .availableMcpTools=${this.availableMcpToolNames}
         @modal-close=${this.handleModalClose}
         @edit-click=${this.handleEditClick}
         @delete-click=${this.handleDeleteClick}
@@ -207,6 +246,7 @@ export class AosTeamView extends LitElement {
       <aos-team-edit-modal
         .open=${this.editModalOpen}
         .skillId=${this.selectedSkillId}
+        .availableMcpTools=${this.availableMcpToolNames}
         @modal-close=${this.handleEditModalClose}
         @skill-saved=${this.handleSkillSaved}
       ></aos-team-edit-modal>
@@ -302,6 +342,7 @@ export class AosTeamView extends LitElement {
                 ${group.skills.map(skill => html`
                   <aos-team-card
                     .skill=${skill}
+                    .availableMcpTools=${this.availableMcpToolNames}
                     @card-click=${this.handleCardClick}
                     @edit-click=${this.handleEditClick}
                     @delete-click=${this.handleDeleteClick}
@@ -313,6 +354,46 @@ export class AosTeamView extends LitElement {
         </div>
       ` : nothing}
       ${individuals.length > 0 ? this.renderSection('Einzelpersonen', individuals) : nothing}
+      ${this.renderMcpSection()}
+    `;
+  }
+
+  private renderMcpSection() {
+    if (this.mcpLoadState === 'idle' || this.mcpLoadState === 'loading') {
+      return nothing;
+    }
+
+    if (this.mcpLoadState === 'error') {
+      return html`
+        <div class="team-section">
+          <h3 class="team-section__title">MCP Tools</h3>
+          <div class="mcp-section__message mcp-section__message--error">
+            ${this.mcpErrorMessage}
+          </div>
+        </div>
+      `;
+    }
+
+    if (this.mcpServers.length === 0) {
+      return html`
+        <div class="team-section">
+          <h3 class="team-section__title">MCP Tools</h3>
+          <div class="mcp-section__message">
+            Keine MCP-Server konfiguriert
+          </div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="team-section">
+        <h3 class="team-section__title">MCP Tools</h3>
+        <div class="team-grid">
+          ${this.mcpServers.map(server => html`
+            <aos-mcp-server-card .server=${server}></aos-mcp-server-card>
+          `)}
+        </div>
+      </div>
     `;
   }
 
@@ -324,6 +405,7 @@ export class AosTeamView extends LitElement {
           ${skills.map(skill => html`
             <aos-team-card
               .skill=${skill}
+              .availableMcpTools=${this.availableMcpToolNames}
               @card-click=${this.handleCardClick}
               @edit-click=${this.handleEditClick}
               @delete-click=${this.handleDeleteClick}

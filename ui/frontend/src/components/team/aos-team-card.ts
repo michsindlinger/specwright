@@ -1,10 +1,11 @@
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import type { SkillSummary } from '../../../../src/shared/types/team.protocol.js';
 
 @customElement('aos-team-card')
 export class AosTeamCard extends LitElement {
   @property({ type: Object }) skill!: SkillSummary;
+  @property({ type: Array }) availableMcpTools: string[] = [];
 
   private getCategoryClass(): string {
     const cat = this.skill.category?.toLowerCase() || '';
@@ -118,7 +119,22 @@ export class AosTeamCard extends LitElement {
             </svg>
             ${this.skill.learningsCount} ${this.skill.learningsCount === 1 ? 'Learning' : 'Learnings'}
           </span>
-          ${this.skill.alwaysApply ? html`<span class="team-card__always-active">Always Active</span>` : ''}
+          <div class="team-card__footer-right">
+            ${this.skill.mcpTools && this.skill.mcpTools.length > 0 ? html`
+              <div class="team-card__mcp-badges">
+                ${this.skill.mcpTools.map(tool => {
+                  const isOrphaned = this.availableMcpTools.length > 0 && !this.availableMcpTools.includes(tool);
+                  return html`
+                    <span
+                      class="team-card__mcp-badge ${isOrphaned ? 'team-card__mcp-badge--orphaned' : ''}"
+                      title=${isOrphaned ? 'MCP Tool nicht verfuegbar' : tool}
+                    >${tool}</span>
+                  `;
+                })}
+              </div>
+            ` : nothing}
+            ${this.skill.alwaysApply ? html`<span class="team-card__always-active">Always Active</span>` : ''}
+          </div>
         </div>
       </div>
     `;

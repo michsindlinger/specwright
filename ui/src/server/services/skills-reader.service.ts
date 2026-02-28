@@ -32,10 +32,11 @@ export class SkillsReaderService {
     alwaysApply: boolean;
     teamType: 'devteam' | 'team' | 'individual';
     teamName: string;
+    mcpTools: string[];
   } {
     const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     if (!frontmatterMatch) {
-      return { description: 'Keine Beschreibung verfügbar', globs: [], alwaysApply: false, teamType: 'devteam', teamName: '' };
+      return { description: 'Keine Beschreibung verfügbar', globs: [], alwaysApply: false, teamType: 'devteam', teamName: '', mcpTools: [] };
     }
 
     const fm = frontmatterMatch[1];
@@ -67,7 +68,20 @@ export class SkillsReaderService {
     const teamNameMatch = fm.match(/^teamName:\s*(.+)$/m);
     const teamName = teamNameMatch ? teamNameMatch[1].trim().replace(/^["']|["']$/g, '') : '';
 
-    return { description, globs, alwaysApply, teamType, teamName };
+    // Extract mcpTools (YAML inline array format: mcpTools: [tool1, tool2])
+    const mcpTools: string[] = [];
+    const mcpToolsMatch = fm.match(/^mcpTools:\s*\[([^\]]*)\]/m);
+    if (mcpToolsMatch) {
+      const toolsStr = mcpToolsMatch[1].trim();
+      if (toolsStr) {
+        for (const tool of toolsStr.split(',')) {
+          const trimmed = tool.trim().replace(/^["']|["']$/g, '');
+          if (trimmed) mcpTools.push(trimmed);
+        }
+      }
+    }
+
+    return { description, globs, alwaysApply, teamType, teamName, mcpTools };
   }
 
   /**
@@ -138,7 +152,7 @@ export class SkillsReaderService {
         continue;
       }
 
-      const { description, globs, alwaysApply, teamType, teamName } = this.parseFrontmatter(skillContent);
+      const { description, globs, alwaysApply, teamType, teamName, mcpTools } = this.parseFrontmatter(skillContent);
       const name = this.extractName(skillContent, dirName);
       const category = this.inferCategory(dirName);
 
@@ -161,6 +175,7 @@ export class SkillsReaderService {
         alwaysApply,
         teamType,
         teamName,
+        mcpTools,
       });
     }
 
@@ -185,7 +200,7 @@ export class SkillsReaderService {
       return null;
     }
 
-    const { description, globs, alwaysApply, teamType, teamName } = this.parseFrontmatter(skillContent);
+    const { description, globs, alwaysApply, teamType, teamName, mcpTools } = this.parseFrontmatter(skillContent);
     const name = this.extractName(skillContent, skillId);
     const category = this.inferCategory(skillId);
 
@@ -220,6 +235,7 @@ export class SkillsReaderService {
       alwaysApply,
       teamType,
       teamName,
+      mcpTools,
       skillContent,
       dosAndDontsContent,
       subDocuments,
@@ -228,14 +244,49 @@ export class SkillsReaderService {
 
   /**
    * Update the SKILL.md content for a given skill.
+   * If mcpTools is provided, updates or adds the mcpTools field in the frontmatter.
    */
-  async updateSkillContent(projectPath: string, skillId: string, content: string): Promise<void> {
+  async updateSkillContent(projectPath: string, skillId: string, content: string, mcpTools?: string[]): Promise<void> {
     const skillsPath = this.getSkillsPath(projectPath);
     const skillDir = join(skillsPath, skillId);
 
     // Verify skill directory exists before writing
     await fs.access(skillDir);
-    await fs.writeFile(join(skillDir, 'SKILL.md'), content, 'utf-8');
+
+    let finalContent = content;
+    if (mcpTools !== undefined) {
+      finalContent = this.updateFrontmatterMcpTools(content, mcpTools);
+    }
+
+    await fs.writeFile(join(skillDir, 'SKILL.md'), finalContent, 'utf-8');
+  }
+
+  /**
+   * Update or add the mcpTools field in YAML frontmatter.
+   */
+  private updateFrontmatterMcpTools(content: string, mcpTools: string[]): string {
+    const frontmatterMatch = content.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)/);
+    if (!frontmatterMatch) {
+      // No frontmatter - add one with mcpTools
+      const toolsStr = mcpTools.length > 0 ? `[${mcpTools.join(', ')}]` : '[]';
+      return `---\nmcpTools: ${toolsStr}\n---\n${content}`;
+    }
+
+    const prefix = frontmatterMatch[1];
+    let fm = frontmatterMatch[2];
+    const suffix = frontmatterMatch[3];
+    const rest = content.slice(frontmatterMatch[0].length);
+
+    const toolsStr = mcpTools.length > 0 ? `[${mcpTools.join(', ')}]` : '[]';
+
+    // Replace existing mcpTools line or add new one
+    if (/^mcpTools:\s*/m.test(fm)) {
+      fm = fm.replace(/^mcpTools:\s*\[.*\]/m, `mcpTools: ${toolsStr}`);
+    } else {
+      fm = fm + `\nmcpTools: ${toolsStr}`;
+    }
+
+    return prefix + fm + suffix + rest;
   }
 
   /**

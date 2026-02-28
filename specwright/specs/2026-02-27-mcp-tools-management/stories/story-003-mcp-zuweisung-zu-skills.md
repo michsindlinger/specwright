@@ -91,13 +91,13 @@ Scenario: Keine MCP-Server im Projekt
 
 ### Inhalt-Pruefungen
 
-- [ ] CONTAINS: ui/frontend/src/components/team/aos-team-edit-modal.ts enthaelt "mcpTools"
-- [ ] CONTAINS: ui/frontend/src/components/team/aos-team-card.ts enthaelt "mcpTools"
-- [ ] CONTAINS: ui/frontend/src/components/team/aos-team-detail-modal.ts enthaelt "mcpTools"
+- [x] CONTAINS: ui/frontend/src/components/team/aos-team-edit-modal.ts enthaelt "mcpTools"
+- [x] CONTAINS: ui/frontend/src/components/team/aos-team-card.ts enthaelt "mcpTools"
+- [x] CONTAINS: ui/frontend/src/components/team/aos-team-detail-modal.ts enthaelt "mcpTools"
 
 ### Funktions-Pruefungen
 
-- [ ] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
+- [x] BUILD_PASS: `cd ui/frontend && npm run build` exits with code 0
 
 ---
 
@@ -136,28 +136,28 @@ Keine MCP-Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] MCP-Checkboxen im Edit-Modal funktional
-- [ ] MCP-Badges in Team-Card angezeigt
-- [ ] MCP-Tools im Detail-Modal angezeigt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] MCP-Checkboxen im Edit-Modal funktional
+- [x] MCP-Badges in Team-Card angezeigt
+- [x] MCP-Tools im Detail-Modal angezeigt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 #### Dokumentation
-- [ ] Keine Linting Errors
-- [ ] Frontend Build erfolgreich
+- [x] Keine Linting Errors
+- [x] Frontend Build erfolgreich
 
 #### Integration
-- [ ] **Integration hergestellt: aos-team-edit-modal -> PUT API mit mcpTools**
-  - [ ] mcpTools-Array wird im Save-Request mitgesendet
-  - [ ] Bestehende Checkboxen spiegeln aktuelle mcpTools wider
-- [ ] **Integration hergestellt: team-view -> aos-team-card (availableMcpTools)**
-  - [ ] Property wird von team-view an Cards weitergereicht
-- [ ] **Integration hergestellt: team-view -> aos-team-edit-modal (availableMcpTools)**
-  - [ ] Property wird von team-view an Edit-Modal weitergereicht
+- [x] **Integration hergestellt: aos-team-edit-modal -> PUT API mit mcpTools**
+  - [x] mcpTools-Array wird im Save-Request mitgesendet
+  - [x] Bestehende Checkboxen spiegeln aktuelle mcpTools wider
+- [x] **Integration hergestellt: team-view -> aos-team-card (availableMcpTools)**
+  - [x] Property wird von team-view an Cards weitergereicht
+- [x] **Integration hergestellt: team-view -> aos-team-edit-modal (availableMcpTools)**
+  - [x] Property wird von team-view an Edit-Modal weitergereicht
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 

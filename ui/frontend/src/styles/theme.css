@@ -1813,6 +1813,203 @@ aos-team-card {
   padding-left: var(--spacing-xs);
 }
 
+/* MCP Server Card */
+aos-mcp-server-card {
+  display: contents;
+}
+
+.mcp-server-card {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.mcp-server-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.mcp-server-card__name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.mcp-server-card__type-badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+  background-color: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+  text-transform: lowercase;
+}
+
+.mcp-server-card__info {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-mono, monospace);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  overflow: hidden;
+}
+
+.mcp-server-card__command {
+  color: var(--color-text-secondary);
+}
+
+.mcp-server-card__args {
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* MCP Section Messages */
+.mcp-section__message {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.mcp-section__message--error {
+  color: var(--color-danger, #ef4444);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* MCP Tool Badges (Team Card) */
+.team-card__footer-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.team-card__mcp-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.team-card__mcp-badge {
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  background-color: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+  white-space: nowrap;
+}
+
+.team-card__mcp-badge--orphaned {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  text-decoration: line-through;
+  cursor: help;
+}
+
+/* MCP Tools Section (Edit Modal) */
+.team-edit-modal__mcp-section {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.team-edit-modal__mcp-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.team-edit-modal__mcp-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.team-edit-modal__mcp-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.team-edit-modal__mcp-checkbox input[type="checkbox"] {
+  accent-color: #2dd4bf;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.team-edit-modal__mcp-label {
+  user-select: none;
+}
+
+/* MCP Tools Section (Detail Modal) */
+.team-detail-modal__mcp-section {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.team-detail-modal__mcp-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.team-detail-modal__mcp-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.team-detail-modal__mcp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  background-color: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+}
+
+.team-detail-modal__mcp-badge--orphaned {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.team-detail-modal__mcp-warning {
+  font-size: 10px;
+  font-weight: var(--font-weight-normal);
+  color: #fbbf24;
+  font-style: italic;
+}
+
 /* Skeleton Loading */
 .team-card--skeleton {
   pointer-events: none;

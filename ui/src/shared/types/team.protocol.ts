@@ -31,6 +31,8 @@ export interface SkillSummary {
   teamType: 'devteam' | 'team' | 'individual';
   /** Display name for custom teams (e.g., "Marketing Team") */
   teamName: string;
+  /** MCP tool names assigned to this skill from SKILL.md frontmatter */
+  mcpTools: string[];
 }
 
 /**
@@ -55,12 +57,38 @@ export interface SkillDetail {
   teamType: 'devteam' | 'team' | 'individual';
   /** Display name for custom teams (e.g., "Marketing Team") */
   teamName: string;
+  /** MCP tool names assigned to this skill from SKILL.md frontmatter */
+  mcpTools: string[];
   /** Full SKILL.md content (raw markdown) */
   skillContent: string;
   /** Full dos-and-donts.md content (raw markdown), empty string if not present */
   dosAndDontsContent: string;
   /** List of sub-document filenames (other .md files in the skill directory) */
   subDocuments: string[];
+}
+
+/**
+ * Summary of an MCP server from .mcp.json (env fields stripped for security).
+ */
+export interface McpServerSummary {
+  /** Server name (key from mcpServers object) */
+  name: string;
+  /** Server type: "stdio" or "sse" */
+  type: string;
+  /** Command to start the server */
+  command: string;
+  /** Command arguments */
+  args: string[];
+}
+
+/**
+ * Response for the MCP configuration endpoint.
+ */
+export interface McpConfigResponse {
+  success: boolean;
+  servers?: McpServerSummary[];
+  message?: string;
+  error?: string;
 }
 
 // ============================================================================

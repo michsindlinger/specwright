@@ -11,6 +11,7 @@ type LoadState = 'idle' | 'loading' | 'loaded' | 'error';
 export class AosTeamDetailModal extends LitElement {
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: String }) skillId = '';
+  @property({ type: Array }) availableMcpTools: string[] = [];
 
   @consume({ context: projectContext, subscribe: true })
   private projectCtx!: ProjectContextValue;
@@ -296,7 +297,31 @@ export class AosTeamDetailModal extends LitElement {
 
     return html`
       <div class="team-detail-modal__skill-content" role="tabpanel">
+        ${this.renderMcpToolsSection()}
         <pre class="team-detail-modal__markdown">${this.skillDetail.skillContent}</pre>
+      </div>
+    `;
+  }
+
+  private renderMcpToolsSection() {
+    if (!this.skillDetail?.mcpTools || this.skillDetail.mcpTools.length === 0) {
+      return nothing;
+    }
+
+    return html`
+      <div class="team-detail-modal__mcp-section">
+        <h4 class="team-detail-modal__mcp-title">MCP Tools</h4>
+        <div class="team-detail-modal__mcp-tools">
+          ${this.skillDetail.mcpTools.map(tool => {
+            const isOrphaned = this.availableMcpTools.length > 0 && !this.availableMcpTools.includes(tool);
+            return html`
+              <span class="team-detail-modal__mcp-badge ${isOrphaned ? 'team-detail-modal__mcp-badge--orphaned' : ''}">
+                ${tool}
+                ${isOrphaned ? html`<span class="team-detail-modal__mcp-warning">MCP Tool nicht verfuegbar</span>` : nothing}
+              </span>
+            `;
+          })}
+        </div>
       </div>
     `;
   }

@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-02-27-mcp-tools-management",
     "name": "MCP Tools Management",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-02-27T00:00:00Z"
   },
-
   "resumeContext": {
-    "currentPhase": "1-kanban-setup",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/mcp-tools-management",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Kanban board created",
-    "nextAction": "Run /execute-tasks 2026-02-27-mcp-tools-management",
-    "progressIndex": 0,
-    "totalStories": 8
+    "lastAction": "PR created - https://github.com/michsindlinger/specwright/pull/19",
+    "nextAction": "All stories complete",
+    "progressIndex": 13,
+    "totalStories": 8,
+    "gitStrategy": "branch"
   },
-
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
-    "completedAt": null,
+    "status": "completed",
+    "startedAt": "2026-02-27T20:46:19.121Z",
+    "completedAt": "2026-02-27T21:08:27.358Z",
     "model": null
   },
-
   "stories": [
     {
       "id": "MCP-001",
@@ -43,22 +40,36 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-001-shared-types-and-backend-mcp-service.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T20:33:07.050Z",
+        "completedAt": "2026-02-27T20:38:58.023Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/team.protocol.ts",
+          "ui/src/server/services/mcp-config-reader.service.ts",
+          "ui/src/server/services/skills-reader.service.ts",
+          "ui/src/server/routes/team.routes.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "ef8df53",
+            "message": "feat: MCP-001 Shared Types & Backend MCP Service",
+            "timestamp": "2026-02-27T20:45:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "MCP-002",
@@ -70,23 +81,38 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["MCP-001"],
-      "status": "ready",
+      "dependencies": [
+        "MCP-001"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-002-mcp-tools-uebersicht-frontend.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T20:39:45.898Z",
+        "completedAt": "2026-02-27T20:46:06.404Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-mcp-server-card.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "8bb8d06",
+            "message": "feat: MCP-002 MCP Tools Uebersicht im Frontend",
+            "timestamp": "2026-02-27T21:44:59+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "MCP-003",
@@ -98,23 +124,36 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["MCP-001", "MCP-002"],
-      "status": "ready",
+      "dependencies": [
+        "MCP-001",
+        "MCP-002"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-003-mcp-zuweisung-zu-skills.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T20:46:19.121Z",
+        "completedAt": "2026-02-27T20:53:12.446Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/components/team/aos-team-detail-modal.ts",
+          "ui/frontend/src/components/team/aos-team-edit-modal.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "MCP-004",
@@ -126,23 +165,41 @@
         "effort": 1,
         "complexity": "XS"
       },
-      "dependencies": ["MCP-002", "MCP-003"],
-      "status": "ready",
+      "dependencies": [
+        "MCP-002",
+        "MCP-003"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-004-verwaiste-referenzen-und-edge-cases.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T20:53:16.112Z",
+        "completedAt": "2026-02-27T20:55:42.938Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/components/team/aos-team-detail-modal.ts",
+          "ui/frontend/src/views/team-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "c09f6e7",
+            "message": "feat: MCP-004 Verwaiste Referenzen & Edge Cases",
+            "timestamp": "2026-02-27T22:00:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "MCP-005",
@@ -154,23 +211,39 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["MCP-001"],
-      "status": "ready",
+      "dependencies": [
+        "MCP-001"
+      ],
+      "status": "done",
       "dorStatus": "incomplete",
       "storyFile": "stories/story-005-backend-tests.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T20:56:00.933Z",
+        "completedAt": "2026-02-27T21:00:04.464Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/tests/team/mcp-config-reader.service.test.ts",
+          "ui/tests/team/skills-reader.service.test.ts",
+          "ui/tests/team/team.routes.test.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "339f9e3",
+            "message": "feat: MCP-005 Backend Tests for MCP Tools Management",
+            "timestamp": "2026-02-27T21:59:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "MCP-997",
@@ -182,23 +255,37 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["MCP-001", "MCP-002", "MCP-003", "MCP-004", "MCP-005"],
-      "status": "ready",
+      "dependencies": [
+        "MCP-001",
+        "MCP-002",
+        "MCP-003",
+        "MCP-004",
+        "MCP-005"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T20:57:41.395Z",
+        "completedAt": "2026-02-27T21:02:10.489Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-27-mcp-tools-management/review-report.md",
+          "specwright/specs/2026-02-27-mcp-tools-management/stories/story-997-code-review.md",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "MCP-998",
@@ -210,23 +297,31 @@
         "effort": 2,
         "complexity": "S"
       },
-      "dependencies": ["MCP-997"],
-      "status": "ready",
+      "dependencies": [
+        "MCP-997"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T21:02:19.681Z",
+        "completedAt": "2026-02-27T21:04:52.069Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-02-27-mcp-tools-management/spec.md"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "MCP-999",
@@ -238,95 +333,359 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["MCP-998"],
-      "status": "ready",
+      "dependencies": [
+        "MCP-998"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-02-27T00:00:00Z",
-        "updatedAt": "2026-02-27T00:00:00Z"
+        "updatedAt": "2026-02-27T00:00:00Z",
+        "startedAt": "2026-02-27T21:04:59.908Z",
+        "completedAt": "2026-02-27T21:08:27.358Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/knowledge/knowledge-index.md",
+          "specwright/knowledge/ui-components.md",
+          "specwright/knowledge/api-contracts.md",
+          "specwright/knowledge/shared-services.md",
+          "specwright/knowledge/data-models.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "062f1ae",
+            "message": "feat: MCP-999 Finalize PR - Project Knowledge Update",
+            "timestamp": "2026-02-27T22:05:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     }
   ],
-
   "boardStatus": {
     "total": 8,
-    "ready": 8,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 8,
     "blocked": 0
   },
-
   "statistics": {
-    "totalEffort": 18,
-    "completedEffort": 0,
-    "remainingEffort": 18,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 7,
-      "backend": 3,
-      "devops": 0,
-      "test": 3,
-      "docs": 0,
-      "integration": 0,
-      "system": 5
+      "undefined": 8
     },
     "byPriority": {
-      "critical": 0,
-      "high": 17,
-      "medium": 1,
-      "low": 0
+      "undefined": 8
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "name": "Phase 1: Backend Foundation",
-        "stories": ["MCP-001"],
+        "stories": [
+          "MCP-001"
+        ],
         "parallel": false
       },
       {
         "name": "Phase 2: Frontend + Tests",
-        "stories": ["MCP-002", "MCP-005"],
+        "stories": [
+          "MCP-002",
+          "MCP-005"
+        ],
         "parallel": true
       },
       {
         "name": "Phase 3: Assignment Features",
-        "stories": ["MCP-003"],
+        "stories": [
+          "MCP-003"
+        ],
         "parallel": false
       },
       {
         "name": "Phase 4: Polish",
-        "stories": ["MCP-004"],
+        "stories": [
+          "MCP-004"
+        ],
         "parallel": false
       },
       {
         "name": "Phase 5: System Stories",
-        "stories": ["MCP-997", "MCP-998", "MCP-999"],
+        "stories": [
+          "MCP-997",
+          "MCP-998",
+          "MCP-999"
+        ],
         "parallel": false
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-02-27T00:00:00Z",
       "action": "kanban_created",
       "storyId": null,
       "details": "Kanban initialized with 8 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-02-27T20:33:07.050Z",
+      "action": "status_changed",
+      "storyId": "MCP-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T20:33:07.196Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:33:42.075Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 2-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:38:58.023Z",
+      "action": "status_changed",
+      "storyId": "MCP-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:39:24.653Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:39:39.948Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:39:45.898Z",
+      "action": "status_changed",
+      "storyId": "MCP-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T20:39:46.030Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:45:06.342Z",
+      "action": "status_changed",
+      "storyId": "MCP-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:45:17.634Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:45:27.077Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:46:06.408Z",
+      "action": "status_changed",
+      "storyId": "MCP-002",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:46:11.912Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:46:19.124Z",
+      "action": "status_changed",
+      "storyId": "MCP-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T20:46:28.657Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:51:50.727Z",
+      "action": "status_changed",
+      "storyId": "MCP-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:51:56.171Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:52:12.526Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:53:01.364Z",
+      "action": "status_changed",
+      "storyId": "MCP-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T20:53:12.449Z",
+      "action": "status_changed",
+      "storyId": "MCP-003",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:53:16.112Z",
+      "action": "status_changed",
+      "storyId": "MCP-004",
+      "details": "Story started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T20:53:20.581Z",
+      "action": "status_changed",
+      "storyId": "MCP-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:54:46.514Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:55:03.086Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:55:42.938Z",
+      "action": "status_changed",
+      "storyId": "MCP-004",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-27T20:55:49.970Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T20:56:00.934Z",
+      "action": "status_changed",
+      "storyId": "MCP-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T20:56:03.361Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T20:57:41.397Z",
+      "action": "status_changed",
+      "storyId": "MCP-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T21:00:04.464Z",
+      "action": "status_changed",
+      "storyId": "MCP-005",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T21:00:21.524Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: story-complete"
+    },
+    {
+      "timestamp": "2026-02-27T21:00:37.534Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T21:02:09.883Z",
+      "action": "status_changed",
+      "storyId": "MCP-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T21:02:10.489Z",
+      "action": "status_changed",
+      "storyId": "MCP-997",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-27T21:02:19.681Z",
+      "action": "status_changed",
+      "storyId": "MCP-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T21:03:03.799Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mcp-tools-management"
+    },
+    {
+      "timestamp": "2026-02-27T21:04:37.319Z",
+      "action": "status_changed",
+      "storyId": "MCP-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T21:04:52.070Z",
+      "action": "status_changed",
+      "storyId": "MCP-998",
+      "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-02-27T21:04:59.908Z",
+      "action": "status_changed",
+      "storyId": "MCP-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-02-27T21:08:27.358Z",
+      "action": "status_changed",
+      "storyId": "MCP-999",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-02-27T21:08:31.314Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
     }
   ]
 }

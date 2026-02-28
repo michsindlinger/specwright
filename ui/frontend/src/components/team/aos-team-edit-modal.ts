@@ -11,6 +11,7 @@ type LoadState = 'idle' | 'loading' | 'loaded' | 'error';
 export class AosTeamEditModal extends LitElement {
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: String }) skillId = '';
+  @property({ type: Array }) availableMcpTools: string[] = [];
 
   @consume({ context: projectContext, subscribe: true })
   private projectCtx!: ProjectContextValue;
@@ -20,6 +21,7 @@ export class AosTeamEditModal extends LitElement {
   @state() private errorMessage = '';
   @state() private isSaving = false;
   @state() private currentContent = '';
+  @state() private selectedMcpTools: string[] = [];
 
   private lastLoadedSkillId = '';
   private boundKeyHandler = this.handleKeyDown.bind(this);
@@ -48,6 +50,7 @@ export class AosTeamEditModal extends LitElement {
       this.errorMessage = '';
       this.isSaving = false;
       this.currentContent = '';
+      this.selectedMcpTools = [];
     }
   }
 
@@ -100,6 +103,7 @@ export class AosTeamEditModal extends LitElement {
 
       this.skillDetail = data.skill;
       this.currentContent = data.skill.skillContent;
+      this.selectedMcpTools = [...(data.skill.mcpTools || [])];
       this.loadState = 'loaded';
     } catch (err) {
       this.errorMessage = err instanceof Error ? err.message : 'Fehler beim Laden';
@@ -109,6 +113,14 @@ export class AosTeamEditModal extends LitElement {
 
   private handleContentChanged(e: CustomEvent<{ content: string }>): void {
     this.currentContent = e.detail.content;
+  }
+
+  private handleMcpToolToggle(toolName: string): void {
+    if (this.selectedMcpTools.includes(toolName)) {
+      this.selectedMcpTools = this.selectedMcpTools.filter(t => t !== toolName);
+    } else {
+      this.selectedMcpTools = [...this.selectedMcpTools, toolName];
+    }
   }
 
   private async handleSave(): Promise<void> {
@@ -124,7 +136,7 @@ export class AosTeamEditModal extends LitElement {
       const response = await fetch(`/api/team/${encodedPath}/skills/${encodedSkillId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: this.currentContent }),
+        body: JSON.stringify({ content: this.currentContent, mcpTools: this.selectedMcpTools }),
       });
 
       const result = await response.json() as { success: boolean; error?: string };
@@ -227,6 +239,7 @@ export class AosTeamEditModal extends LitElement {
         `;
       case 'loaded':
         return html`
+          ${this.renderMcpToolsSection()}
           <aos-file-editor
             .content=${this.skillDetail?.skillContent ?? ''}
             .filename=${'SKILL.md'}
@@ -234,6 +247,30 @@ export class AosTeamEditModal extends LitElement {
           ></aos-file-editor>
         `;
     }
+  }
+
+  private renderMcpToolsSection() {
+    if (this.availableMcpTools.length === 0) {
+      return nothing;
+    }
+
+    return html`
+      <div class="team-edit-modal__mcp-section">
+        <h4 class="team-edit-modal__mcp-title">MCP Tools</h4>
+        <div class="team-edit-modal__mcp-checkboxes">
+          ${this.availableMcpTools.map(tool => html`
+            <label class="team-edit-modal__mcp-checkbox">
+              <input
+                type="checkbox"
+                .checked=${this.selectedMcpTools.includes(tool)}
+                @change=${() => this.handleMcpToolToggle(tool)}
+              />
+              <span class="team-edit-modal__mcp-label">${tool}</span>
+            </label>
+          `)}
+        </div>
+      </div>
+    `;
   }
 
   protected override createRenderRoot() {

@@ -1,7 +1,7 @@
 # Data Models
 
 > Verfügbare Datenmodelle, Schemas und Types im Projekt.
-> Zuletzt aktualisiert: 2026-02-26
+> Zuletzt aktualisiert: 2026-02-27 (MCP Tools Management)
 
 ## Modelle-Übersicht
 
@@ -10,6 +10,7 @@
 | file.protocol.ts | ui/src/shared/types/file.protocol.ts | Shared Types | File Editor (2026-02-16) |
 | SkillSummary | ui/src/shared/types/team.protocol.ts | Interface | Dev-Team Visualization (2026-02-26) |
 | SkillDetail | ui/src/shared/types/team.protocol.ts | Interface | Dev-Team Visualization (2026-02-26) |
+| McpServerSummary | ui/src/shared/types/team.protocol.ts | Interface | MCP Tools Management (2026-02-27) |
 
 ---
 
@@ -96,6 +97,39 @@ interface SkillDetailResponse {
   error?: string;
 }
 ```
+
+---
+
+### McpServerSummary
+
+**Pfad:** `ui/src/shared/types/team.protocol.ts`
+**Typ:** Interface
+**Erstellt:** MCP Tools Management (2026-02-27)
+
+**Beschreibung:** Interface für MCP-Server-Daten, die vom Backend an das Frontend geliefert werden. Enthält nur nicht-sensitive Informationen.
+
+**Interface:**
+```typescript
+interface McpServerSummary {
+  name: string;      // Server-Name (key aus .mcp.json)
+  type: string;      // Server-Typ ("stdio", "sse", etc.)
+  command: string;    // Ausführbarer Befehl
+  args: string[];     // Kommandozeilen-Argumente
+}
+
+interface McpConfigResponse {
+  success: boolean;
+  servers?: McpServerSummary[];
+  message?: string;
+  error?: string;
+}
+```
+
+**Notes:**
+- env-Feld wird bewusst NICHT included (Security)
+- Wird von McpConfigReaderService erzeugt
+- Wird von aos-mcp-server-card und team-view.ts konsumiert
+- mcpTools in SkillSummary/SkillDetail referenziert Server-Namen
 
 ---
 

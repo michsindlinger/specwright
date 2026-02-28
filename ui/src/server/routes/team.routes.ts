@@ -1,8 +1,49 @@
 import { Router, Request, Response } from 'express';
 import { skillsReaderService } from '../services/skills-reader.service.js';
-import { SkillsListResponse, SkillDetailResponse, SkillUpdateResponse } from '../../shared/types/team.protocol.js';
+import { mcpConfigReaderService } from '../services/mcp-config-reader.service.js';
+import { SkillsListResponse, SkillDetailResponse, SkillUpdateResponse, McpConfigResponse } from '../../shared/types/team.protocol.js';
 
 const router = Router();
+
+/**
+ * GET /api/team/:projectPath/mcp-config
+ *
+ * Returns the MCP server configuration for a project.
+ * Reads .mcp.json from project root or parent directory.
+ * SECURITY: env fields are stripped from server entries.
+ *
+ * @param projectPath - URL-encoded project path
+ * @returns McpConfigResponse with servers array
+ */
+router.get('/:projectPath/mcp-config', async (req: Request, res: Response) => {
+  try {
+    const { projectPath } = req.params;
+
+    if (!projectPath) {
+      return res.status(400).json({
+        success: false,
+        error: 'projectPath parameter is required',
+      } as McpConfigResponse);
+    }
+
+    const projectFullPath = decodeURIComponent(projectPath);
+    const result = await mcpConfigReaderService.readConfig(projectFullPath);
+
+    return res.json({
+      success: true,
+      servers: result.servers,
+      message: result.message,
+    } as McpConfigResponse);
+
+  } catch (error) {
+    console.error('Error reading MCP config:', error);
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error',
+    } as McpConfigResponse);
+  }
+});
 
 /**
  * GET /api/team/:projectPath/skills
@@ -106,7 +147,7 @@ router.get('/:projectPath/skills/:skillId', async (req: Request, res: Response) 
 router.put('/:projectPath/skills/:skillId', async (req: Request, res: Response) => {
   try {
     const { projectPath, skillId } = req.params;
-    const { content } = req.body as { content?: string };
+    const { content, mcpTools } = req.body as { content?: string; mcpTools?: string[] };
 
     if (!projectPath) {
       return res.status(400).json({
@@ -129,8 +170,15 @@ router.put('/:projectPath/skills/:skillId', async (req: Request, res: Response) 
       } as SkillUpdateResponse);
     }
 
+    if (mcpTools !== undefined && !Array.isArray(mcpTools)) {
+      return res.status(400).json({
+        success: false,
+        error: 'mcpTools must be an array of strings',
+      } as SkillUpdateResponse);
+    }
+
     const projectFullPath = decodeURIComponent(projectPath);
-    await skillsReaderService.updateSkillContent(projectFullPath, skillId, content);
+    await skillsReaderService.updateSkillContent(projectFullPath, skillId, content, mcpTools);
 
     return res.json({
       success: true,

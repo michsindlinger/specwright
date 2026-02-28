@@ -287,6 +287,150 @@ describe('SkillsReaderService', () => {
   });
 
   // ==========================================================================
+  // mcpTools parsing
+  // ==========================================================================
+
+  describe('mcpTools', () => {
+    it('should parse mcpTools from frontmatter inline array', async () => {
+      await createSkill('with-mcp', [
+        '---',
+        'description: Skill with MCP tools',
+        'mcpTools: [playwright, perplexity]',
+        '---',
+        '',
+        '# With MCP',
+      ].join('\n'));
+
+      const skills = await service.listSkills(projectPath);
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].mcpTools).toEqual(['playwright', 'perplexity']);
+    });
+
+    it('should return empty mcpTools when field is missing', async () => {
+      await createSkill('no-mcp', [
+        '---',
+        'description: Skill without MCP tools',
+        '---',
+        '',
+        '# No MCP',
+      ].join('\n'));
+
+      const skills = await service.listSkills(projectPath);
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].mcpTools).toEqual([]);
+    });
+
+    it('should return empty mcpTools for empty inline array', async () => {
+      await createSkill('empty-mcp', [
+        '---',
+        'description: Empty MCP tools',
+        'mcpTools: []',
+        '---',
+        '',
+        '# Empty MCP',
+      ].join('\n'));
+
+      const skills = await service.listSkills(projectPath);
+
+      expect(skills).toHaveLength(1);
+      expect(skills[0].mcpTools).toEqual([]);
+    });
+
+    it('should include mcpTools in skill detail', async () => {
+      await createSkill('detail-mcp', [
+        '---',
+        'description: Detail with MCP',
+        'mcpTools: [chrome-devtools, context7]',
+        '---',
+        '',
+        '# Detail MCP',
+      ].join('\n'));
+
+      const detail = await service.getSkillDetail(projectPath, 'detail-mcp');
+
+      expect(detail).not.toBeNull();
+      expect(detail!.mcpTools).toEqual(['chrome-devtools', 'context7']);
+    });
+
+    it('should update mcpTools in frontmatter via updateSkillContent', async () => {
+      await createSkill('update-mcp', [
+        '---',
+        'description: Update MCP',
+        'mcpTools: [old-tool]',
+        '---',
+        '',
+        '# Update MCP',
+      ].join('\n'));
+
+      const content = [
+        '---',
+        'description: Update MCP',
+        'mcpTools: [old-tool]',
+        '---',
+        '',
+        '# Update MCP',
+      ].join('\n');
+
+      await service.updateSkillContent(projectPath, 'update-mcp', content, ['new-tool-1', 'new-tool-2']);
+
+      const written = await fs.readFile(join(skillsDir, 'update-mcp', 'SKILL.md'), 'utf-8');
+      expect(written).toContain('mcpTools: [new-tool-1, new-tool-2]');
+      expect(written).not.toContain('old-tool');
+    });
+
+    it('should add mcpTools to frontmatter when not present', async () => {
+      await createSkill('add-mcp', [
+        '---',
+        'description: Add MCP',
+        '---',
+        '',
+        '# Add MCP',
+      ].join('\n'));
+
+      const content = [
+        '---',
+        'description: Add MCP',
+        '---',
+        '',
+        '# Add MCP',
+      ].join('\n');
+
+      await service.updateSkillContent(projectPath, 'add-mcp', content, ['tool-a']);
+
+      const written = await fs.readFile(join(skillsDir, 'add-mcp', 'SKILL.md'), 'utf-8');
+      expect(written).toContain('mcpTools: [tool-a]');
+    });
+
+    it('should set empty mcpTools array when passing empty array', async () => {
+      await createSkill('clear-mcp', [
+        '---',
+        'description: Clear MCP',
+        'mcpTools: [old-tool]',
+        '---',
+        '',
+        '# Clear MCP',
+      ].join('\n'));
+
+      const content = [
+        '---',
+        'description: Clear MCP',
+        'mcpTools: [old-tool]',
+        '---',
+        '',
+        '# Clear MCP',
+      ].join('\n');
+
+      await service.updateSkillContent(projectPath, 'clear-mcp', content, []);
+
+      const written = await fs.readFile(join(skillsDir, 'clear-mcp', 'SKILL.md'), 'utf-8');
+      expect(written).toContain('mcpTools: []');
+      expect(written).not.toContain('old-tool');
+    });
+  });
+
+  // ==========================================================================
   // deleteSkill
   // ==========================================================================
 
