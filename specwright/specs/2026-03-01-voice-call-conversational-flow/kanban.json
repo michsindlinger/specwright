@@ -1,0 +1,504 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+
+  "spec": {
+    "id": "2026-03-01-voice-call-conversational-flow",
+    "name": "Voice Call Conversational Flow",
+    "prefix": "VCF",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-03-01T00:00:00Z"
+  },
+
+  "resumeContext": {
+    "currentPhase": "1-kanban-setup",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Kanban board created",
+    "nextAction": "Run /execute-tasks 2026-03-01-voice-call-conversational-flow",
+    "progressIndex": 0,
+    "totalStories": 14
+  },
+
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+
+  "stories": [
+    {
+      "id": "VCF-001",
+      "title": "Voice Configuration & API Key Management",
+      "slug": "voice-configuration-api-key-management",
+      "classification": {
+        "type": "full-stack",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-voice-configuration-api-key-management.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-002",
+      "title": "Audio Adapters Setup",
+      "slug": "audio-adapters-setup",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": ["VCF-001"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-audio-adapters-setup.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-003",
+      "title": "STT Pipeline",
+      "slug": "stt-pipeline",
+      "classification": {
+        "type": "full-stack",
+        "priority": "critical",
+        "effort": 5,
+        "complexity": "M"
+      },
+      "dependencies": ["VCF-002"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-stt-pipeline.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-004",
+      "title": "TTS Pipeline",
+      "slug": "tts-pipeline",
+      "classification": {
+        "type": "full-stack",
+        "priority": "critical",
+        "effort": 5,
+        "complexity": "M"
+      },
+      "dependencies": ["VCF-002"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-004-tts-pipeline.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-005",
+      "title": "Agent Conversation Engine",
+      "slug": "agent-conversation-engine",
+      "classification": {
+        "type": "backend",
+        "priority": "critical",
+        "effort": 5,
+        "complexity": "M"
+      },
+      "dependencies": ["VCF-003", "VCF-004"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-005-agent-conversation-engine.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-006",
+      "title": "Voice Call View & Navigation",
+      "slug": "voice-call-view-navigation",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 5,
+        "complexity": "M"
+      },
+      "dependencies": ["VCF-005"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-006-voice-call-view-navigation.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-007",
+      "title": "Audio Visualizer & Call Controls",
+      "slug": "audio-visualizer-call-controls",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": ["VCF-006"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-007-audio-visualizer-call-controls.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-008",
+      "title": "Live Action Log & Transcript UI",
+      "slug": "live-action-log-transcript-ui",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": ["VCF-006"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-008-live-action-log-transcript-ui.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-009",
+      "title": "Team Card Call Integration",
+      "slug": "team-card-call-integration",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": 2,
+        "complexity": "XS"
+      },
+      "dependencies": ["VCF-006"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-009-team-card-call-integration.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-010",
+      "title": "Text Fallback & Input Mode Switching",
+      "slug": "text-fallback-input-mode-switching",
+      "classification": {
+        "type": "frontend",
+        "priority": "medium",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": ["VCF-007"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-010-text-fallback-input-mode-switching.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-011",
+      "title": "Transcript Storage & Voice Personas",
+      "slug": "transcript-storage-voice-personas",
+      "classification": {
+        "type": "full-stack",
+        "priority": "medium",
+        "effort": 3,
+        "complexity": "S"
+      },
+      "dependencies": ["VCF-005"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-011-transcript-storage-voice-personas.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": ["VCF-001", "VCF-002", "VCF-003", "VCF-004", "VCF-005", "VCF-006", "VCF-007", "VCF-008", "VCF-009", "VCF-010", "VCF-011"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-997-code-review.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": ["VCF-997"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-998-integration-validation.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "VCF-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "high",
+        "effort": 1,
+        "complexity": "S"
+      },
+      "dependencies": ["VCF-998"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-999-finalize-pr.md",
+      "timing": {
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-01T00:00:00Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": false,
+        "dodChecked": false
+      }
+    }
+  ],
+
+  "boardStatus": {
+    "total": 14,
+    "ready": 14,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 0
+  },
+
+  "statistics": {
+    "totalEffort": 43,
+    "completedEffort": 0,
+    "remainingEffort": 43,
+    "progressPercent": 0,
+    "byType": {
+      "frontend": 19,
+      "backend": 8,
+      "full-stack": 13,
+      "system": 3
+    },
+    "byPriority": {
+      "critical": 15,
+      "high": 22,
+      "medium": 6
+    }
+  },
+
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "name": "Infrastructure & Configuration",
+        "stories": ["VCF-001", "VCF-002"],
+        "parallel": false
+      },
+      {
+        "name": "Core Voice Pipeline",
+        "stories": ["VCF-003", "VCF-004", "VCF-005"],
+        "parallel": true,
+        "note": "VCF-003 and VCF-004 can run in parallel, VCF-005 depends on both"
+      },
+      {
+        "name": "Call UI Components",
+        "stories": ["VCF-006", "VCF-007", "VCF-008", "VCF-009"],
+        "parallel": true,
+        "note": "VCF-007/008/009 can run in parallel after VCF-006"
+      },
+      {
+        "name": "Integration & Polish",
+        "stories": ["VCF-010", "VCF-011"],
+        "parallel": true
+      },
+      {
+        "name": "System Stories",
+        "stories": ["VCF-997", "VCF-998", "VCF-999"],
+        "parallel": false
+      }
+    ]
+  },
+
+  "changeLog": [
+    {
+      "timestamp": "2026-03-01T00:00:00Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 14 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-03-01T20:00:00Z",
+      "action": "technical_refinement",
+      "storyId": null,
+      "details": "Technical refinement completed for all 11 regular stories (WAS/WIE/WO/DoR/DoD). All dorStatus set to ready."
+    }
+  ]
+}
