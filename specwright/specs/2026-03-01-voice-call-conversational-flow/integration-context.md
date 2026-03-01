@@ -14,6 +14,7 @@
 | VCF-008 | Action Log + Call Transcript UI components, gateway event integration for actions/transcript | action-log.ts, call-transcript.ts, voice-call-view.ts |
 | VCF-009 | Team Card phone icon + call-click event, Team View call handler with voice-config check + navigation to #/call/:skillId | aos-team-card.ts, team-view.ts |
 | VCF-010 | Text fallback + input mode switching: text input field, voice/text toggle, auto-fallback when no mic, backend voice:text:send handler | call-controls.ts, voice-call-view.ts, voice-call.service.ts, websocket.ts |
+| VCF-011 | TranscriptService for persisting call transcripts as JSON, Voice Persona mapping per agent category | transcript.service.ts, voice-call.service.ts, voice-config.ts |
 
 ## New Exports & APIs
 
@@ -35,6 +36,12 @@
 - `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.handleTextInput(callId, text)` - Route user-typed text through conversation engine (same as STT)
 - `ui/src/server/services/elevenlabs.adapter.ts` -> `elevenlabsAdapter.abort()` - Abort current TTS stream
 
+### VCF-011: TranscriptService + Voice Personas
+- `ui/src/server/services/transcript.service.ts` -> `saveTranscript(projectPath, data)` - Persist call transcript as JSON to specwright/transcripts/
+- `ui/src/server/services/transcript.service.ts` -> `loadTranscript(filePath)` - Load a previously saved transcript
+- `ui/src/server/services/transcript.service.ts` -> `listTranscripts(projectPath)` - List all transcripts (newest first)
+- `ui/src/server/voice-config.ts` -> `getPersonaVoiceId(agentCategory)` - Resolve ElevenLabs voice ID for agent category (case-insensitive match on persona.id)
+
 ### VCF-005: Conversation Engine (auto-triggered, no direct API calls needed)
 - VoiceCallService auto-triggers LLM call on final transcript (no frontend action needed)
 - `voice:call:start` message now accepts: `agentId`, `agentName`, `systemPrompt` (all optional)
@@ -54,6 +61,11 @@
 - `ui/frontend/src/services/audio-capture.service.ts` -> `AudioCaptureState` - 'idle' | 'requesting' | 'capturing' | 'error'
 - `ui/frontend/src/services/audio-playback.service.ts` -> `AudioPlaybackState` - 'idle' | 'playing' | 'error'
 - `ui/frontend/src/services/audio-playback.service.ts` -> `AudioPlaybackCallbacks` - Callback interface (onStateChange, onPlaybackStart, onPlaybackEnd, onBargeIn)
+
+### VCF-011 Types
+- `ui/src/server/services/transcript.service.ts` -> `TranscriptData` - Full transcript: { sessionId, skillId, agentName?, startTime, endTime, messages[], actions[] }
+- `ui/src/server/services/transcript.service.ts` -> `TranscriptMessage` - { role: 'user'|'agent', text, timestamp }
+- `ui/src/server/services/transcript.service.ts` -> `TranscriptAction` - { toolId, toolName, timestamp, output? }
 
 ## Integration Notes
 
@@ -135,6 +147,14 @@
 - VCF-010: Backend emits transcript event for text input so frontend transcript UI shows it
 - VCF-010: When switching voice→text: mic is muted; when switching text→voice: mic unmuted (VAD) or stays muted (PTT)
 - VCF-010: If mic was unavailable, clicking voice toggle attempts to re-acquire mic via retryMicAndSwitchMode()
+- VCF-011: TranscriptService saves transcripts to `{projectPath}/specwright/transcripts/YYYY-MM-DD-HH-mm-skillId.json`
+- VCF-011: Transcript data collected in-memory during call via `transcriptMessages[]` and `transcriptActions[]` on session
+- VCF-011: On `endCall()`, TranscriptService.saveTranscript() is called automatically (only if messages exist)
+- VCF-011: Voice Persona resolved at `startCall()` via `getPersonaVoiceId(agentId)` - matches persona.id case-insensitively
+- VCF-011: Persona fallback chain: exact match on persona.id → first configured persona → DEFAULT_VOICE_ID (Rachel)
+- VCF-011: User transcript messages collected from both STT final transcripts and text input (handleTextInput)
+- VCF-011: Agent transcript messages collected when LLM response completes (processTranscript)
+- VCF-011: Tool actions collected with toolId/toolName on action.start, output updated on action.complete
 
 ### Components
 - `ui/frontend/src/views/voice-call-view.ts` -> `<aos-voice-call-view>` - Fullscreen voice call view with agent info, connecting animation, call controls
@@ -181,3 +201,6 @@
 | ui/frontend/src/views/voice-call-view.ts | Modified | VCF-010 |
 | ui/src/server/services/voice-call.service.ts | Modified | VCF-010 |
 | ui/src/server/websocket.ts | Modified | VCF-010 |
+| ui/src/server/services/transcript.service.ts | Created | VCF-011 |
+| ui/src/server/services/voice-call.service.ts | Modified | VCF-011 |
+| ui/src/server/voice-config.ts | Modified | VCF-011 |
