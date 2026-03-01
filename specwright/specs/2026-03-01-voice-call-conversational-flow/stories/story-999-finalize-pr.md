@@ -68,13 +68,13 @@ Scenario: Aktualisierung des Project Knowledge
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] user-todos.md finalisiert (wenn vorhanden)
-- [ ] Project Knowledge aktualisiert (wenn "Creates Reusable" Stories vorhanden)
-- [ ] Alle Aenderungen committed
-- [ ] Pull Request erstellt
-- [ ] PR URL dokumentiert
-- [ ] Worktree aufgeraeumt (wenn verwendet)
-- [ ] Kanban-Board auf "complete" gesetzt
+- [x] user-todos.md finalisiert (nicht vorhanden - keine manuellen Tasks)
+- [x] Project Knowledge aktualisiert (13 Artefakte aus 8 Stories)
+- [x] Alle Aenderungen committed
+- [x] Pull Request erstellt (PR #20)
+- [x] PR URL dokumentiert: https://github.com/michsindlinger/specwright/pull/20
+- [x] Worktree aufgeraeumt (nicht verwendet - Branch-Strategy)
+- [x] Kanban-Board auf "complete" gesetzt
 
 ---
 
