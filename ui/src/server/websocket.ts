@@ -488,6 +488,9 @@ export class WebSocketHandler {
         case 'voice:audio:chunk':
           this.handleVoiceAudioChunk(client, message);
           break;
+        case 'voice:text:send':
+          this.handleVoiceTextSend(client, message);
+          break;
         case 'voice:tts:stop':
           this.handleVoiceTtsStop(client, message);
           break;
@@ -4110,6 +4113,19 @@ export class WebSocketHandler {
     if (!callId || !audio) return;
 
     this.voiceCallService.handleAudioChunk(callId, audio);
+  }
+
+  /**
+   * Handle voice:text:send (VCF-010)
+   * Routes user-typed text to VoiceCallService conversation engine
+   */
+  private handleVoiceTextSend(_client: WebSocketClient, message: WebSocketMessage): void {
+    const callId = message.callId as string;
+    const text = message.text as string;
+    if (!callId || !text) return;
+
+    console.log(`[WebSocket] Voice text input for call ${callId}: ${text.substring(0, 50)}...`);
+    this.voiceCallService.handleTextInput(callId, text);
   }
 
   /**

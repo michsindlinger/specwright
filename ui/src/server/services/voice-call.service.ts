@@ -255,6 +255,33 @@ export class VoiceCallService extends EventEmitter {
   }
 
   /**
+   * Handle text input from frontend (VCF-010).
+   * Routes user-typed text through the same conversation engine as STT transcripts.
+   * @param callId - Call identifier
+   * @param text - User-typed text message
+   */
+  handleTextInput(callId: string, text: string): void {
+    const session = this.sessions.get(callId);
+    if (!session || session.state !== 'active') return;
+
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    // Emit as final transcript so frontend receives it in transcript UI
+    this.emit('transcript', session.callId, {
+      text: trimmed,
+      isFinal: true,
+      confidence: 1.0,
+    });
+
+    // Process through LLM conversation engine (same path as STT)
+    this.processTranscript(session, trimmed).catch(err => {
+      console.error(`[VoiceCallService] LLM error for text input on call ${session.callId}:`, err);
+      this.emit('error', session.callId, err instanceof Error ? err : new Error(String(err)));
+    });
+  }
+
+  /**
    * Handle an agent text response by converting it to speech.
    * Splits text into sentences and streams each via ElevenLabs TTS.
    * @param callId - Call identifier

@@ -108,16 +108,16 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Text-Input-Feld in aos-call-controls verfuegbar
-- [ ] Automatischer Fallback auf Text wenn kein Mikrofon verfuegbar/erlaubt
-- [ ] Hinweis "Kein Mikrofon verfuegbar - Text-Modus aktiv" wird angezeigt
-- [ ] Manueller Wechsel zwischen Voice und Text waehrend des Calls moeglich
-- [ ] Text-Nachrichten werden als voice:text:send an Backend gesendet
-- [ ] TTS bleibt aktiv auch im Text-Modus (Agent antwortet per Sprache)
-- [ ] Konversationskontext bleibt bei Modus-Wechsel erhalten
-- [ ] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
-- [ ] Keine Linting-Fehler (`cd ui && npm run lint`)
+- [x] Code implementiert und folgt Style Guide
+- [x] Text-Input-Feld in aos-call-controls verfuegbar
+- [x] Automatischer Fallback auf Text wenn kein Mikrofon verfuegbar/erlaubt
+- [x] Hinweis "Kein Mikrofon verfuegbar - Text-Modus aktiv" wird angezeigt
+- [x] Manueller Wechsel zwischen Voice und Text waehrend des Calls moeglich
+- [x] Text-Nachrichten werden als voice:text:send an Backend gesendet
+- [x] TTS bleibt aktiv auch im Text-Modus (Agent antwortet per Sprache)
+- [x] Konversationskontext bleibt bei Modus-Wechsel erhalten
+- [x] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
+- [x] Keine Linting-Fehler (`cd ui && npm run lint`)
 
 ---
 

@@ -39,6 +39,8 @@ export class AosVoiceCallView extends LitElement {
   @state() private isAgentSpeaking = false;
   @state() private actions: VoiceAction[] = [];
   @state() private transcriptMessages: TranscriptMessage[] = [];
+  @state() private textMode = false;
+  @state() private micAvailable = true;
 
   private skillId = '';
   private durationInterval: ReturnType<typeof setInterval> | null = null;
@@ -276,23 +278,37 @@ export class AosVoiceCallView extends LitElement {
   private async initAudioServices(): Promise<void> {
     // Init audio capture (microphone)
     this.captureService = new AudioCaptureService();
-    const started = await this.captureService.start(this.callId, {
-      onError: (err) => console.error('[VoiceCallView] Capture error:', err),
-      onPermissionDenied: () => {
-        this.errorMessage = 'Mikrofon-Zugriff verweigert';
-        this.viewState = 'error';
-      },
-    });
+    let micStarted = false;
 
-    if (started) {
+    try {
+      micStarted = await this.captureService.start(this.callId, {
+        onError: (err) => console.error('[VoiceCallView] Capture error:', err),
+        onPermissionDenied: () => {
+          // VCF-010: Fallback to text mode instead of error
+          console.log('[VoiceCallView] Mic permission denied - switching to text mode');
+          this.micAvailable = false;
+          this.textMode = true;
+        },
+      });
+    } catch {
+      // VCF-010: Mic not available - fallback to text
+      console.log('[VoiceCallView] Mic not available - switching to text mode');
+      micStarted = false;
+    }
+
+    if (micStarted) {
+      this.micAvailable = true;
       this.setupUserVisualizer();
       // In PTT mode, start muted (wait for space key)
       if (this.voiceInputMode === 'push-to-talk') {
         this.captureService.mute();
       }
+    } else if (!this.micAvailable) {
+      // VCF-010: No mic - auto-activate text mode, keep call active
+      this.textMode = true;
     }
 
-    // Init audio playback (agent TTS)
+    // Init audio playback (agent TTS) - always init, TTS stays active in text mode
     this.playbackService = new AudioPlaybackService();
     this.playbackService.init(this.callId);
 
@@ -381,6 +397,59 @@ export class AosVoiceCallView extends LitElement {
       // Switching to PTT: stop continuous capture (wait for space key)
       this.captureService?.mute();
       this.pttActive = false;
+    }
+  }
+
+  // --- Text Mode Handlers (VCF-010) ---
+
+  private handleTextToggle(): void {
+    if (this.textMode && !this.micAvailable) {
+      // Try to re-acquire mic when switching back to voice
+      this.retryMicAndSwitchMode();
+      return;
+    }
+
+    this.textMode = !this.textMode;
+
+    if (this.textMode) {
+      // Switching to text: mute mic
+      this.captureService?.mute();
+    } else {
+      // Switching back to voice: unmute if in VAD mode and not muted
+      if (this.voiceInputMode === 'voice-activity' && !this.isMuted) {
+        this.captureService?.unmute();
+      }
+    }
+  }
+
+  private handleTextSend(e: CustomEvent<{ text: string }>): void {
+    const text = e.detail.text;
+    if (!text || !this.callId) return;
+
+    gateway.send({
+      type: 'voice:text:send',
+      callId: this.callId,
+      text,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  private async retryMicAndSwitchMode(): Promise<void> {
+    if (!this.captureService) {
+      this.captureService = new AudioCaptureService();
+    }
+
+    const started = await this.captureService.start(this.callId, {
+      onError: (err) => console.error('[VoiceCallView] Capture error:', err),
+      onPermissionDenied: () => {
+        console.log('[VoiceCallView] Mic still not available');
+      },
+    });
+
+    if (started) {
+      this.micAvailable = true;
+      this.textMode = false;
+      this.setupUserVisualizer();
     }
   }
 
@@ -495,11 +564,15 @@ export class AosVoiceCallView extends LitElement {
               input-mode=${this.voiceInputMode}
               ?call-active=${this.viewState === 'connecting' || this.viewState === 'active'}
               ?ptt-active=${this.pttActive}
+              ?text-mode=${this.textMode}
+              ?mic-available=${this.micAvailable}
               @mute-toggle=${this.handleMuteToggle}
               @hang-up=${this.endCall}
               @ptt-start=${this.handlePttStart}
               @ptt-end=${this.handlePttEnd}
               @mode-change=${this.handleModeChange}
+              @text-toggle=${this.handleTextToggle}
+              @text-send=${this.handleTextSend}
             ></aos-call-controls>
           ` : nothing}
 

@@ -14,10 +14,10 @@
     "nextPhase": "story-complete",
     "worktreePath": null,
     "gitBranch": "feature/voice-call-conversational-flow",
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Completed VCF-009",
-    "nextAction": "Execute next story: VCF-010",
+    "currentStory": "VCF-010",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started VCF-010",
+    "nextAction": "Implement Text Fallback & Input Mode Switching",
     "progressIndex": 9,
     "totalStories": 14,
     "gitStrategy": "branch"
@@ -445,12 +445,13 @@
       "dependencies": [
         "VCF-007"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-010-text-fallback-input-mode-switching.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T21:13:56.453Z"
       },
       "implementation": {
         "filesModified": [],
@@ -460,7 +461,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-011",
@@ -595,8 +598,8 @@
   ],
   "boardStatus": {
     "total": 14,
-    "ready": 5,
-    "inProgress": 0,
+    "ready": 4,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
     "done": 9,
@@ -845,6 +848,18 @@
       "action": "status_changed",
       "storyId": "VCF-009",
       "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T21:13:06.747Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T21:13:56.454Z",
+      "action": "status_changed",
+      "storyId": "VCF-010",
+      "details": "Story started: ready → in_progress"
     }
   ]
 }
