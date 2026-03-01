@@ -3,6 +3,8 @@ import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
 import type { SkillSummary, McpServerSummary } from '../../../src/shared/types/team.protocol.js';
+import type { VoiceConfigStatus } from '../../../src/shared/types/voice.protocol.js';
+import { gateway, type WebSocketMessage } from '../gateway.js';
 import '../components/team/aos-team-card.js';
 import '../components/team/aos-team-detail-modal.js';
 import '../components/team/aos-team-edit-modal.js';
@@ -205,6 +207,28 @@ export class AosTeamView extends LitElement {
     this.deleteTargetSkillId = '';
   }
 
+  private handleCallClick(e: CustomEvent<{ skillId: string }>): void {
+    const { skillId } = e.detail;
+
+    gateway.once('settings.voice', (msg: WebSocketMessage) => {
+      const config = msg.config as VoiceConfigStatus;
+      if (config.deepgramConfigured) {
+        window.location.hash = `#/call/${skillId}`;
+      } else {
+        this.showVoiceNotConfiguredToast();
+      }
+    });
+    gateway.send({ type: 'settings.voice.get' });
+  }
+
+  private showVoiceNotConfiguredToast(): void {
+    const toast = document.querySelector('aos-toast-notification') as
+      import('../components/toast-notification.js').AosToastNotification | null;
+    if (toast) {
+      toast.warning('Voice nicht konfiguriert. Bitte API-Keys unter Settings > Voice einrichten.');
+    }
+  }
+
   private handleAddTeamMember(): void {
     this.dispatchEvent(
       new CustomEvent('workflow-start-interactive', {
@@ -344,6 +368,7 @@ export class AosTeamView extends LitElement {
                     .skill=${skill}
                     .availableMcpTools=${this.availableMcpToolNames}
                     @card-click=${this.handleCardClick}
+                    @call-click=${this.handleCallClick}
                     @edit-click=${this.handleEditClick}
                     @delete-click=${this.handleDeleteClick}
                   ></aos-team-card>

@@ -106,16 +106,16 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Telefon-Icon (Lucide Phone) auf jeder Team Card sichtbar
-- [ ] Klick auf Icon emittiert call-click Custom Event mit skillId
-- [ ] Team View faengt call-click Event ab und navigiert zu #/call/:skillId
-- [ ] Voice-nicht-konfiguriert: Hinweis mit Link zu Voice-Settings
-- [ ] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
-- [ ] Keine Linting-Fehler (`cd ui && npm run lint`)
-- [ ] **Integration hergestellt: aos-team-card -> aos-voice-call-view (Navigation)**
-  - [ ] routerService.navigate funktional
-  - [ ] Korrekter skillId wird uebergeben
+- [x] Code implementiert und folgt Style Guide
+- [x] Telefon-Icon (Lucide Phone) auf jeder Team Card sichtbar
+- [x] Klick auf Icon emittiert call-click Custom Event mit skillId
+- [x] Team View faengt call-click Event ab und navigiert zu #/call/:skillId
+- [x] Voice-nicht-konfiguriert: Hinweis mit Link zu Voice-Settings
+- [x] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
+- [x] Keine Linting-Fehler (`cd ui && npm run lint`)
+- [x] **Integration hergestellt: aos-team-card -> aos-voice-call-view (Navigation)**
+  - [x] routerService.navigate funktional
+  - [x] Korrekter skillId wird uebergeben
 
 ---
 
