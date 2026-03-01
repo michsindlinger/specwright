@@ -764,6 +764,65 @@ export class Gateway {
     });
   }
 
+  // ============================================================================
+  // Voice Call Methods (VCF-003)
+  // Voice call lifecycle and audio streaming
+  //
+  // Incoming Messages (received via on() handlers):
+  // - voice:call:started: Call session started (STT connected)
+  // - voice:call:ended: Call session ended
+  // - voice:transcript:interim: Interim transcript (speech in progress)
+  // - voice:transcript:final: Final transcript (utterance complete)
+  // - voice:error: Voice pipeline error
+  // ============================================================================
+
+  /**
+   * Start a voice call session
+   * @param callId - Unique call identifier
+   */
+  public sendVoiceCallStart(callId: string): void {
+    this.send({
+      type: 'voice:call:start',
+      callId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * End a voice call session
+   * @param callId - Call identifier to end
+   */
+  public sendVoiceCallEnd(callId: string): void {
+    this.send({
+      type: 'voice:call:end',
+      callId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Send an audio chunk for STT processing
+   * @param callId - Call identifier
+   * @param audio - Base64-encoded PCM audio data
+   * @param sampleRate - Audio sample rate (default 16000)
+   * @param encoding - Audio encoding (default 'pcm16')
+   */
+  public sendVoiceAudioChunk(
+    callId: string,
+    audio: string,
+    sampleRate = 16000,
+    encoding = 'pcm16'
+  ): void {
+    this.send({
+      type: 'voice:audio:chunk',
+      callId,
+      audio,
+      sampleRate,
+      encoding,
+      timestamp: new Date().toISOString()
+    });
+  }
+
 }
 
 export const gateway = new Gateway();

@@ -34,6 +34,7 @@ import {
 import { loadGeneralConfig, updateGeneralConfig } from './general-config.js';
 import { loadVoiceConfigStatus, updateVoiceConfig } from './voice-config.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
+import { VoiceCallService } from './services/voice-call.service.js';
 import { setupService, type StepOutput, type StepComplete } from './services/setup.service.js';
 import type {
   CloudTerminalSessionId,
@@ -71,6 +72,7 @@ export class WebSocketHandler {
   private attachmentHandler;
   private fileHandler;
   private cloudTerminalManager: CloudTerminalManager;
+  private voiceCallService: VoiceCallService;
 
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server });
@@ -84,9 +86,11 @@ export class WebSocketHandler {
     this.attachmentHandler = attachmentHandler;
     this.fileHandler = fileHandler;
     this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager());
+    this.voiceCallService = new VoiceCallService();
     this.setupConnectionHandler();
     this.startHeartbeat();
     this.setupCloudTerminalListeners();
+    this.setupVoiceCallListeners();
     this.setupSetupListeners();
   }
 
@@ -137,6 +141,7 @@ export class WebSocketHandler {
       // Handle client disconnect
       client.on('close', () => {
         console.log(`Client disconnected: ${client.clientId}`);
+        this.voiceCallService.endCallsForClient(client.clientId);
         this.clients.delete(client.clientId);
       });
 
@@ -472,6 +477,16 @@ export class WebSocketHandler {
           break;
         case 'cloud-terminal:buffer-request':
           this.handleCloudTerminalBufferRequest(client, message);
+          break;
+        // Voice Call Messages (VCF-003)
+        case 'voice:call:start':
+          this.handleVoiceCallStart(client, message);
+          break;
+        case 'voice:call:end':
+          this.handleVoiceCallEnd(client, message);
+          break;
+        case 'voice:audio:chunk':
+          this.handleVoiceAudioChunk(client, message);
           break;
         default: {
           const response: WebSocketMessage = {
@@ -3923,6 +3938,92 @@ export class WebSocketHandler {
   // ============================================================================
   // Cloud Terminal Handlers (CCT-001)
   // ============================================================================
+
+  // ============================================================================
+  // Voice Call Handlers (VCF-003)
+  // ============================================================================
+
+  /**
+   * Set up VoiceCallService event listeners
+   * Forwards transcript and call lifecycle events to connected clients
+   */
+  private setupVoiceCallListeners(): void {
+    this.voiceCallService.on('transcript', (callId: string, event: { text: string; isFinal: boolean; confidence: number }) => {
+      const messageType = event.isFinal ? 'voice:transcript:final' : 'voice:transcript:interim';
+      const message: WebSocketMessage = {
+        type: messageType,
+        callId,
+        text: event.text,
+        isFinal: event.isFinal,
+        confidence: event.confidence,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
+
+    this.voiceCallService.on('call.started', (callId: string) => {
+      const message: WebSocketMessage = {
+        type: 'voice:call:started',
+        callId,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
+
+    this.voiceCallService.on('call.ended', (callId: string) => {
+      const message: WebSocketMessage = {
+        type: 'voice:call:ended',
+        callId,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
+
+    this.voiceCallService.on('error', (callId: string, error: Error) => {
+      const message: WebSocketMessage = {
+        type: 'voice:error',
+        callId,
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
+  }
+
+  /**
+   * Handle voice:call:start
+   * Creates a new voice call session with STT pipeline
+   */
+  private handleVoiceCallStart(client: WebSocketClient, message: WebSocketMessage): void {
+    const callId = (message.callId as string) || `call-${Date.now()}`;
+
+    console.log(`[WebSocket] Voice call start: ${callId} from client ${client.clientId}`);
+    this.voiceCallService.startCall(callId, client.clientId);
+  }
+
+  /**
+   * Handle voice:call:end
+   * Ends a voice call session
+   */
+  private handleVoiceCallEnd(_client: WebSocketClient, message: WebSocketMessage): void {
+    const callId = message.callId as string;
+    if (!callId) return;
+
+    console.log(`[WebSocket] Voice call end: ${callId}`);
+    this.voiceCallService.endCall(callId);
+  }
+
+  /**
+   * Handle voice:audio:chunk
+   * Routes audio data to VoiceCallService for STT processing
+   */
+  private handleVoiceAudioChunk(_client: WebSocketClient, message: WebSocketMessage): void {
+    const callId = message.callId as string;
+    const audio = message.audio as string;
+    if (!callId || !audio) return;
+
+    this.voiceCallService.handleAudioChunk(callId, audio);
+  }
 
   /**
    * Set up CloudTerminalManager event listeners
