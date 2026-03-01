@@ -32,6 +32,7 @@ export class AudioPlaybackService {
   private state: AudioPlaybackState = 'idle';
   private audioContext: AudioContext | null = null;
   private currentSource: AudioBufferSourceNode | null = null;
+  private analyser: AnalyserNode | null = null;
   private queue: AudioBuffer[] = [];
   private isProcessing = false;
   private callbacks: AudioPlaybackCallbacks = {};
@@ -46,6 +47,10 @@ export class AudioPlaybackService {
     this.callId = callId;
     this.callbacks = callbacks || {};
     this.audioContext = new AudioContext();
+    this.analyser = this.audioContext.createAnalyser();
+    this.analyser.fftSize = 128;
+    this.analyser.smoothingTimeConstant = 0.8;
+    this.analyser.connect(this.audioContext.destination);
     this.queue = [];
     this.isProcessing = false;
     this.setState('idle');
@@ -118,6 +123,10 @@ export class AudioPlaybackService {
    */
   destroy(): void {
     this.stop();
+    if (this.analyser) {
+      this.analyser.disconnect();
+      this.analyser = null;
+    }
     if (this.audioContext) {
       this.audioContext.close().catch(() => {});
       this.audioContext = null;
@@ -130,6 +139,13 @@ export class AudioPlaybackService {
    */
   getState(): AudioPlaybackState {
     return this.state;
+  }
+
+  /**
+   * Get the AnalyserNode for audio visualization
+   */
+  getAnalyser(): AnalyserNode | null {
+    return this.analyser;
   }
 
   /**
@@ -164,7 +180,7 @@ export class AudioPlaybackService {
 
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
-    source.connect(this.audioContext.destination);
+    source.connect(this.analyser || this.audioContext.destination);
 
     source.onended = () => {
       this.currentSource = null;

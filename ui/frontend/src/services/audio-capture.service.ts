@@ -118,6 +118,31 @@ export class AudioCaptureService {
     return this.state;
   }
 
+  /**
+   * Get the active MediaStream (for creating AnalyserNodes externally)
+   */
+  getMediaStream(): MediaStream | null {
+    return this.mediaStream;
+  }
+
+  /**
+   * Mute microphone without stopping capture (disables audio track)
+   */
+  mute(): void {
+    if (this.mediaStream) {
+      this.mediaStream.getAudioTracks().forEach((t) => { t.enabled = false; });
+    }
+  }
+
+  /**
+   * Unmute microphone (re-enables audio track)
+   */
+  unmute(): void {
+    if (this.mediaStream) {
+      this.mediaStream.getAudioTracks().forEach((t) => { t.enabled = true; });
+    }
+  }
+
   private setState(state: AudioCaptureState): void {
     this.state = state;
     this.callbacks.onStateChange?.(state);

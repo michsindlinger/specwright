@@ -4,6 +4,12 @@ import { consume } from '@lit/context';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
 import { gateway, type MessageHandler } from '../gateway.js';
 import { routerService } from '../services/router.service.js';
+import { AudioCaptureService } from '../services/audio-capture.service.js';
+import { AudioPlaybackService } from '../services/audio-playback.service.js';
+import type { AosAudioVisualizer } from '../components/voice/audio-visualizer.js';
+import type { InputMode } from '../components/voice/call-controls.js';
+import '../components/voice/audio-visualizer.js';
+import '../components/voice/call-controls.js';
 
 type CallViewState = 'connecting' | 'active' | 'ended' | 'error';
 
@@ -24,19 +30,28 @@ export class AosVoiceCallView extends LitElement {
   @state() private errorMessage = '';
   @state() private isMuted = false;
   @state() private callDuration = 0;
+  @state() private voiceInputMode: InputMode = 'voice-activity';
+  @state() private pttActive = false;
+  @state() private isAgentSpeaking = false;
 
   private skillId = '';
   private durationInterval: ReturnType<typeof setInterval> | null = null;
+  private captureService: AudioCaptureService | null = null;
+  private playbackService: AudioPlaybackService | null = null;
+  private vizAudioCtx: AudioContext | null = null;
+  private userAnalyser: AnalyserNode | null = null;
 
   // Gateway handlers
   private boundCallStartedHandler: MessageHandler = () => {
     this.viewState = 'active';
     this.startDurationTimer();
+    this.initAudioServices();
   };
 
   private boundCallEndedHandler: MessageHandler = () => {
     this.viewState = 'ended';
     this.stopDurationTimer();
+    this.cleanupAudioServices();
     setTimeout(() => this.navigateBack(), 1500);
   };
 
@@ -45,6 +60,23 @@ export class AosVoiceCallView extends LitElement {
     this.errorMessage = error;
     this.viewState = 'error';
     this.stopDurationTimer();
+    this.cleanupAudioServices();
+  };
+
+  private boundTtsChunkHandler: MessageHandler = (msg) => {
+    if (msg.audio && typeof msg.audio === 'string') {
+      this.playbackService?.enqueue(msg.audio);
+    }
+  };
+
+  private boundTtsStartHandler: MessageHandler = () => {
+    this.isAgentSpeaking = true;
+    this.updateVisualizerMode();
+  };
+
+  private boundTtsEndHandler: MessageHandler = () => {
+    this.isAgentSpeaking = false;
+    this.updateVisualizerMode();
   };
 
   override connectedCallback(): void {
@@ -64,6 +96,9 @@ export class AosVoiceCallView extends LitElement {
     gateway.on('voice:call:started', this.boundCallStartedHandler);
     gateway.on('voice:call:ended', this.boundCallEndedHandler);
     gateway.on('voice:error', this.boundVoiceErrorHandler);
+    gateway.on('voice:tts:chunk', this.boundTtsChunkHandler);
+    gateway.on('voice:tts:start', this.boundTtsStartHandler);
+    gateway.on('voice:tts:end', this.boundTtsEndHandler);
 
     // Load agent info and start call
     this.loadAgentInfo();
@@ -77,6 +112,9 @@ export class AosVoiceCallView extends LitElement {
     gateway.off('voice:call:started', this.boundCallStartedHandler);
     gateway.off('voice:call:ended', this.boundCallEndedHandler);
     gateway.off('voice:error', this.boundVoiceErrorHandler);
+    gateway.off('voice:tts:chunk', this.boundTtsChunkHandler);
+    gateway.off('voice:tts:start', this.boundTtsStartHandler);
+    gateway.off('voice:tts:end', this.boundTtsEndHandler);
 
     // End call if still active
     if (this.callId && (this.viewState === 'connecting' || this.viewState === 'active')) {
@@ -84,6 +122,7 @@ export class AosVoiceCallView extends LitElement {
     }
 
     this.stopDurationTimer();
+    this.cleanupAudioServices();
   }
 
   private async loadAgentInfo(): Promise<void> {
@@ -136,16 +175,126 @@ export class AosVoiceCallView extends LitElement {
     }
     this.viewState = 'ended';
     this.stopDurationTimer();
+    this.cleanupAudioServices();
     setTimeout(() => this.navigateBack(), 500);
-  }
-
-  private toggleMute(): void {
-    this.isMuted = !this.isMuted;
   }
 
   private navigateBack(): void {
     routerService.navigate('team');
   }
+
+  // --- Audio Service Management ---
+
+  private async initAudioServices(): Promise<void> {
+    // Init audio capture (microphone)
+    this.captureService = new AudioCaptureService();
+    const started = await this.captureService.start(this.callId, {
+      onError: (err) => console.error('[VoiceCallView] Capture error:', err),
+      onPermissionDenied: () => {
+        this.errorMessage = 'Mikrofon-Zugriff verweigert';
+        this.viewState = 'error';
+      },
+    });
+
+    if (started) {
+      this.setupUserVisualizer();
+      // In PTT mode, start muted (wait for space key)
+      if (this.voiceInputMode === 'push-to-talk') {
+        this.captureService.mute();
+      }
+    }
+
+    // Init audio playback (agent TTS)
+    this.playbackService = new AudioPlaybackService();
+    this.playbackService.init(this.callId);
+
+    this.updateVisualizerMode();
+  }
+
+  private cleanupAudioServices(): void {
+    this.captureService?.stop();
+    this.captureService = null;
+    this.playbackService?.destroy();
+    this.playbackService = null;
+    if (this.vizAudioCtx) {
+      this.vizAudioCtx.close().catch(() => {});
+      this.vizAudioCtx = null;
+    }
+    this.userAnalyser = null;
+  }
+
+  private setupUserVisualizer(): void {
+    const stream = this.captureService?.getMediaStream();
+    if (!stream) return;
+
+    // Create a separate AudioContext + AnalyserNode for user mic visualization
+    this.vizAudioCtx = new AudioContext();
+    const source = this.vizAudioCtx.createMediaStreamSource(stream);
+    this.userAnalyser = this.vizAudioCtx.createAnalyser();
+    this.userAnalyser.fftSize = 128;
+    this.userAnalyser.smoothingTimeConstant = 0.8;
+    source.connect(this.userAnalyser);
+  }
+
+  private updateVisualizerMode(): void {
+    const visualizer = this.renderRoot.querySelector('aos-audio-visualizer') as AosAudioVisualizer | null;
+    if (!visualizer) return;
+
+    if (this.isAgentSpeaking) {
+      const agentAnalyser = this.playbackService?.getAnalyser();
+      if (agentAnalyser) {
+        visualizer.mode = 'agent';
+        visualizer.setAnalyser(agentAnalyser);
+      }
+    } else {
+      if (this.userAnalyser) {
+        visualizer.mode = 'user';
+        visualizer.setAnalyser(this.userAnalyser);
+      }
+    }
+  }
+
+  // --- Call Control Event Handlers ---
+
+  private handleMuteToggle(): void {
+    this.isMuted = !this.isMuted;
+    if (this.isMuted) {
+      this.captureService?.mute();
+    } else if (this.voiceInputMode === 'voice-activity') {
+      // In VAD mode, unmute resumes continuous capture
+      this.captureService?.unmute();
+    }
+    // In PTT mode, unmute doesn't auto-start; user must hold space
+  }
+
+  private handlePttStart(): void {
+    this.pttActive = true;
+    if (!this.isMuted) {
+      this.captureService?.unmute();
+    }
+  }
+
+  private handlePttEnd(): void {
+    this.pttActive = false;
+    this.captureService?.mute();
+  }
+
+  private handleModeChange(e: CustomEvent<{ mode: InputMode }>): void {
+    this.voiceInputMode = e.detail.mode;
+    if (this.voiceInputMode === 'voice-activity') {
+      // Switching to VAD: start continuous capture (unless muted)
+      if (!this.isMuted) {
+        this.captureService?.unmute();
+      }
+      this.pttActive = false;
+    } else {
+      // Switching to PTT: stop continuous capture (wait for space key)
+      this.captureService?.mute();
+      this.pttActive = false;
+    }
+  }
+
+  // --- Timer ---
 
   private startDurationTimer(): void {
     this.callDuration = 0;
@@ -167,12 +316,13 @@ export class AosVoiceCallView extends LitElement {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
+  // --- Render ---
+
   private renderAvatar() {
     if (this.agentInfo.avatar) {
       return html`<img class="agent-avatar" src="${this.agentInfo.avatar}" alt="${this.agentInfo.name}" />`;
     }
 
-    // Default avatar with initials
     const initials = this.agentInfo.name
       ? this.agentInfo.name.charAt(0).toUpperCase()
       : '?';
@@ -200,9 +350,11 @@ export class AosVoiceCallView extends LitElement {
       <p class="agent-role">${this.agentInfo.role}</p>
       <p class="status-text status-text--active">${this.formatDuration(this.callDuration)}</p>
 
-      <!-- Slots for future stories (VCF-007, VCF-008) -->
       <div class="call-content">
-        <div class="visualizer-slot" id="visualizer-area"></div>
+        <aos-audio-visualizer
+          ?active=${this.viewState === 'active'}
+          mode=${this.isAgentSpeaking ? 'agent' : 'user'}
+        ></aos-audio-visualizer>
         <div class="transcript-slot" id="transcript-area"></div>
         <div class="action-log-slot" id="action-log-area"></div>
       </div>
@@ -246,40 +398,19 @@ export class AosVoiceCallView extends LitElement {
           ${this.viewState === 'error' ? this.renderError() : nothing}
         </div>
 
-        <div class="call-controls">
+        <div class="call-controls-area">
           ${this.viewState === 'connecting' || this.viewState === 'active' ? html`
-            <button
-              class="control-btn ${this.isMuted ? 'control-btn--active' : ''}"
-              @click=${this.toggleMute}
-              title="${this.isMuted ? 'Unmute' : 'Mute'}"
-            >
-              ${this.isMuted ? html`
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="1" y1="1" x2="23" y2="23"/>
-                  <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
-                  <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-              ` : html`
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-              `}
-            </button>
-            <button
-              class="control-btn control-btn--hangup"
-              @click=${this.endCall}
-              title="Auflegen"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/>
-                <line x1="23" y1="1" x2="1" y2="23"/>
-              </svg>
-            </button>
+            <aos-call-controls
+              ?muted=${this.isMuted}
+              input-mode=${this.voiceInputMode}
+              ?call-active=${this.viewState === 'connecting' || this.viewState === 'active'}
+              ?ptt-active=${this.pttActive}
+              @mute-toggle=${this.handleMuteToggle}
+              @hang-up=${this.endCall}
+              @ptt-start=${this.handlePttStart}
+              @ptt-end=${this.handlePttEnd}
+              @mode-change=${this.handleModeChange}
+            ></aos-call-controls>
           ` : nothing}
 
           ${this.viewState === 'error' ? html`
@@ -443,7 +574,7 @@ export class AosVoiceCallView extends LitElement {
       text-decoration: underline;
     }
 
-    /* Call Content (slots for future stories) */
+    /* Call Content */
     .call-content {
       width: 100%;
       margin-top: 2rem;
@@ -452,18 +583,18 @@ export class AosVoiceCallView extends LitElement {
       gap: 1rem;
     }
 
-    .visualizer-slot,
     .transcript-slot,
     .action-log-slot {
       min-height: 0;
     }
 
-    /* Call Controls */
-    .call-controls {
+    /* Call Controls Area */
+    .call-controls-area {
       display: flex;
       gap: 1.5rem;
       padding: 2rem 0;
       align-items: center;
+      justify-content: center;
     }
 
     .control-btn {
@@ -487,22 +618,6 @@ export class AosVoiceCallView extends LitElement {
 
     .control-btn:active {
       transform: scale(0.95);
-    }
-
-    .control-btn--active {
-      background: var(--color-accent-primary, #818cf8);
-      color: white;
-    }
-
-    .control-btn--hangup {
-      width: 64px;
-      height: 64px;
-      background: var(--color-accent-red, #f87171);
-      color: white;
-    }
-
-    .control-btn--hangup:hover {
-      background: #ef4444;
     }
 
     .control-btn--back {
