@@ -32,6 +32,7 @@ import {
   type ModelProvider
 } from './model-config.js';
 import { loadGeneralConfig, updateGeneralConfig } from './general-config.js';
+import { loadVoiceConfigStatus, updateVoiceConfig } from './voice-config.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
 import { setupService, type StepOutput, type StepComplete } from './services/setup.service.js';
 import type {
@@ -331,6 +332,12 @@ export class WebSocketHandler {
           break;
         case 'settings.general.update':
           this.handleSettingsGeneralUpdate(client, message);
+          break;
+        case 'settings.voice.get':
+          this.handleSettingsVoiceGet(client);
+          break;
+        case 'settings.voice.update':
+          this.handleSettingsVoiceUpdate(client, message);
           break;
         case 'queue.add':
           this.handleQueueAdd(client, message);
@@ -3089,6 +3096,39 @@ export class WebSocketHandler {
       const errorResponse: WebSocketMessage = {
         type: 'settings.error',
         error: error instanceof Error ? error.message : 'Failed to update general settings',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  private handleSettingsVoiceGet(client: WebSocketClient): void {
+    const config = loadVoiceConfigStatus();
+    const response: WebSocketMessage = {
+      type: 'settings.voice',
+      config,
+      timestamp: new Date().toISOString()
+    };
+    client.send(JSON.stringify(response));
+  }
+
+  private handleSettingsVoiceUpdate(client: WebSocketClient, message: WebSocketMessage): void {
+    const deepgramApiKey = message.deepgramApiKey as string | undefined;
+    const elevenLabsApiKey = message.elevenLabsApiKey as string | undefined;
+    const defaultInputMode = message.defaultInputMode as string | undefined;
+
+    try {
+      const config = updateVoiceConfig({ deepgramApiKey, elevenLabsApiKey, defaultInputMode });
+      const response: WebSocketMessage = {
+        type: 'settings.voice',
+        config,
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'settings.error',
+        error: error instanceof Error ? error.message : 'Failed to update voice settings',
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));

@@ -28,7 +28,16 @@ interface ModelConfig {
   providers: ModelProvider[];
 }
 
-type SettingsSection = 'models' | 'general' | 'appearance' | 'setup';
+type SettingsSection = 'models' | 'general' | 'voice' | 'appearance' | 'setup';
+
+type VoiceInputMode = 'push-to-talk' | 'voice-activity';
+
+interface VoiceConfigStatus {
+  deepgramConfigured: boolean;
+  elevenLabsConfigured: boolean;
+  defaultInputMode: VoiceInputMode;
+  voicePersonas: Array<{ id: string; name: string; voiceId: string }>;
+}
 
 interface EditingProvider {
   providerId: string;
@@ -70,10 +79,15 @@ export class AosSettingsView extends LitElement {
   @state() private generalConfig: { baseBranch: string } | null = null;
   @state() private generalSaving = false;
   @state() private baseBranchInput = '';
+  @state() private voiceConfig: VoiceConfigStatus | null = null;
+  @state() private voiceSaving = false;
+  @state() private deepgramKeyInput = '';
+  @state() private elevenLabsKeyInput = '';
+  @state() private voiceInputMode: VoiceInputMode = 'push-to-talk';
 
   private boundHandlers: Map<string, (msg: WebSocketMessage) => void> = new Map();
   private readonly BUILT_IN_PROVIDERS = ['anthropic', 'glm', 'gemini'];
-  private readonly VALID_TABS: readonly SettingsSection[] = ['models', 'general', 'appearance', 'setup'] as const;
+  private readonly VALID_TABS: readonly SettingsSection[] = ['models', 'general', 'voice', 'appearance', 'setup'] as const;
   private boundRouteChangeHandler = (route: ParsedRoute) => this.onRouteChanged(route);
   private lastActiveProjectId: string | null = null;
 
@@ -111,6 +125,7 @@ export class AosSettingsView extends LitElement {
     const handlers: [string, (msg: WebSocketMessage) => void][] = [
       ['settings.config', (msg) => this.onConfigReceived(msg)],
       ['settings.general', (msg) => this.onGeneralConfigReceived(msg)],
+      ['settings.voice', (msg) => this.onVoiceConfigReceived(msg)],
       ['settings.error', (msg) => this.onSettingsError(msg)],
       ['gateway.connected', () => this.onGatewayConnected()]
     ];
@@ -132,6 +147,9 @@ export class AosSettingsView extends LitElement {
     this.loadConfig();
     if (this.activeSection === 'general') {
       this.loadGeneralConfig();
+    }
+    if (this.activeSection === 'voice') {
+      this.loadVoiceConfig();
     }
   }
 
@@ -160,6 +178,9 @@ export class AosSettingsView extends LitElement {
     if (section === 'general' && !this.generalConfig) {
       this.loadGeneralConfig();
     }
+    if (section === 'voice' && !this.voiceConfig) {
+      this.loadVoiceConfig();
+    }
   }
 
   private restoreRouteState(): void {
@@ -172,6 +193,9 @@ export class AosSettingsView extends LitElement {
         this.activeSection = tab;
         if (tab === 'general' && !this.generalConfig) {
           this.loadGeneralConfig();
+        }
+        if (tab === 'voice' && !this.voiceConfig) {
+          this.loadVoiceConfig();
         }
       } else {
         routerService.navigate('settings');
@@ -192,6 +216,9 @@ export class AosSettingsView extends LitElement {
       this.activeSection = tab;
       if (tab === 'general' && !this.generalConfig) {
         this.loadGeneralConfig();
+      }
+      if (tab === 'voice' && !this.voiceConfig) {
+        this.loadVoiceConfig();
       }
     } else {
       routerService.navigate('settings');
@@ -474,6 +501,14 @@ export class AosSettingsView extends LitElement {
             </li>
             <li>
               <button
+                class="settings-nav-item ${this.activeSection === 'voice' ? 'active' : ''}"
+                @click=${() => this.handleSectionChange('voice')}
+              >
+                Voice
+              </button>
+            </li>
+            <li>
+              <button
                 class="settings-nav-item ${this.activeSection === 'appearance' ? 'active' : ''}"
                 @click=${() => this.handleSectionChange('appearance')}
               >
@@ -511,6 +546,8 @@ export class AosSettingsView extends LitElement {
         return this.renderModelsSection();
       case 'general':
         return this.renderGeneralSection();
+      case 'voice':
+        return this.renderVoiceSection();
       case 'appearance':
         return this.renderAppearanceSection();
       case 'setup':
@@ -604,6 +641,141 @@ export class AosSettingsView extends LitElement {
     this.error = '';
     this.generalSaving = true;
     gateway.send({ type: 'settings.general.update', baseBranch: value });
+  }
+
+  private onVoiceConfigReceived(msg: WebSocketMessage): void {
+    const config = msg.config as VoiceConfigStatus;
+    this.voiceConfig = config;
+    this.voiceInputMode = config.defaultInputMode;
+    this.voiceSaving = false;
+    this.deepgramKeyInput = '';
+    this.elevenLabsKeyInput = '';
+  }
+
+  private loadVoiceConfig(): void {
+    gateway.send({ type: 'settings.voice.get' });
+  }
+
+  private handleVoiceApiKeySave(): void {
+    this.voiceSaving = true;
+    this.error = '';
+
+    const updates: Record<string, string> = {};
+    if (this.deepgramKeyInput.trim()) {
+      updates.deepgramApiKey = this.deepgramKeyInput;
+    }
+    if (this.elevenLabsKeyInput.trim()) {
+      updates.elevenLabsApiKey = this.elevenLabsKeyInput;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      this.voiceSaving = false;
+      return;
+    }
+
+    gateway.send({ type: 'settings.voice.update', ...updates });
+  }
+
+  private handleVoiceInputModeSave(): void {
+    this.voiceSaving = true;
+    this.error = '';
+    gateway.send({ type: 'settings.voice.update', defaultInputMode: this.voiceInputMode });
+  }
+
+  private renderVoiceSection() {
+    if (!this.voiceConfig) {
+      return html`
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>Loading voice settings...</p>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="general-section">
+        <div class="section-header">
+          <div>
+            <h3>Voice</h3>
+            <p class="section-description">Configure API keys for voice calls with your agents.</p>
+          </div>
+        </div>
+
+        <div class="provider-card">
+          <h4 style="margin: 0 0 var(--spacing-md) 0">API Keys</h4>
+
+          <div class="form-field">
+            <label for="deepgram-key-input">Deepgram API Key (Speech-to-Text)</label>
+            <span class="form-hint">
+              Status: ${this.voiceConfig.deepgramConfigured
+                ? html`<span style="color: var(--color-success, #22c55e)">Configured</span>`
+                : html`<span style="color: var(--color-warning, #f59e0b)">Not configured</span>`}
+            </span>
+            <input
+              id="deepgram-key-input"
+              type="password"
+              .value=${this.deepgramKeyInput}
+              @input=${(e: Event) => { this.deepgramKeyInput = (e.target as HTMLInputElement).value; }}
+              ?disabled=${this.voiceSaving}
+              placeholder=${this.voiceConfig.deepgramConfigured ? 'Enter new key to update' : 'Enter your Deepgram API key'}
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="elevenlabs-key-input">ElevenLabs API Key (Text-to-Speech)</label>
+            <span class="form-hint">
+              Status: ${this.voiceConfig.elevenLabsConfigured
+                ? html`<span style="color: var(--color-success, #22c55e)">Configured</span>`
+                : html`<span style="color: var(--color-warning, #f59e0b)">Not configured</span>`}
+            </span>
+            <input
+              id="elevenlabs-key-input"
+              type="password"
+              .value=${this.elevenLabsKeyInput}
+              @input=${(e: Event) => { this.elevenLabsKeyInput = (e.target as HTMLInputElement).value; }}
+              ?disabled=${this.voiceSaving}
+              placeholder=${this.voiceConfig.elevenLabsConfigured ? 'Enter new key to update' : 'Enter your ElevenLabs API key'}
+            />
+          </div>
+
+          <div class="form-actions" style="margin-top: var(--spacing-md)">
+            <button
+              class="save-btn"
+              @click=${() => this.handleVoiceApiKeySave()}
+              ?disabled=${this.voiceSaving || (!this.deepgramKeyInput.trim() && !this.elevenLabsKeyInput.trim())}
+            >
+              ${this.voiceSaving ? 'Saving...' : 'Save API Keys'}
+            </button>
+          </div>
+        </div>
+
+        <div class="provider-card">
+          <h4 style="margin: 0 0 var(--spacing-md) 0">Default Input Mode</h4>
+
+          <div class="form-field">
+            <label for="voice-input-mode">Standard input mode for new voice calls</label>
+            <div class="general-input-row">
+              <select
+                id="voice-input-mode"
+                .value=${this.voiceInputMode}
+                @change=${(e: Event) => { this.voiceInputMode = (e.target as HTMLSelectElement).value as VoiceInputMode; }}
+                ?disabled=${this.voiceSaving}
+              >
+                <option value="push-to-talk">Push-to-Talk</option>
+                <option value="voice-activity">Voice Activity Detection</option>
+              </select>
+              <button
+                class="save-btn"
+                @click=${() => this.handleVoiceInputModeSave()}
+                ?disabled=${this.voiceSaving || this.voiceInputMode === this.voiceConfig?.defaultInputMode}
+              >
+                ${this.voiceSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   private renderGeneralSection() {
