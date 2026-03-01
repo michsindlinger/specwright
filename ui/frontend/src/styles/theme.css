@@ -2382,12 +2382,14 @@ aos-mcp-server-card {
 
 .team-edit-modal__content aos-file-editor {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
 .team-edit-modal__content aos-file-editor .file-editor {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
