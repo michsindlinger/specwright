@@ -13,6 +13,7 @@
 | VCF-007 | Audio Visualizer (Canvas FFT) + Call Controls (Mute/PTT/VAD/Hangup) + Audio service integration in call view | audio-visualizer.ts, call-controls.ts, voice-call-view.ts |
 | VCF-008 | Action Log + Call Transcript UI components, gateway event integration for actions/transcript | action-log.ts, call-transcript.ts, voice-call-view.ts |
 | VCF-009 | Team Card phone icon + call-click event, Team View call handler with voice-config check + navigation to #/call/:skillId | aos-team-card.ts, team-view.ts |
+| VCF-010 | Text fallback + input mode switching: text input field, voice/text toggle, auto-fallback when no mic, backend voice:text:send handler | call-controls.ts, voice-call-view.ts, voice-call.service.ts, websocket.ts |
 
 ## New Exports & APIs
 
@@ -31,6 +32,7 @@
 - `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.handleAgentResponse(callId, text, voiceId?)` - Route agent text to TTS pipeline
 - `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.stopTts(callId)` - Stop TTS (barge-in)
 - `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.isTtsActive(callId)` - Check TTS state
+- `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.handleTextInput(callId, text)` - Route user-typed text through conversation engine (same as STT)
 - `ui/src/server/services/elevenlabs.adapter.ts` -> `elevenlabsAdapter.abort()` - Abort current TTS stream
 
 ### VCF-005: Conversation Engine (auto-triggered, no direct API calls needed)
@@ -124,11 +126,20 @@
 - VCF-009: Before navigating, team-view checks voice config via `gateway.once('settings.voice')` + `gateway.send({ type: 'settings.voice.get' })`
 - VCF-009: If deepgramConfigured=true → navigates to `#/call/${skillId}` (triggers aos-voice-call-view from VCF-006)
 - VCF-009: If not configured → shows toast warning via `aos-toast-notification.warning()`
+- VCF-010: aos-call-controls new props: `text-mode` (boolean), `mic-available` (boolean); new events: `text-toggle`, `text-send` (detail: { text })
+- VCF-010: In text mode, voice controls (mute, VAD/PTT toggle) are hidden; only text input, text/voice toggle, and hangup shown
+- VCF-010: PTT Space key handler disabled when textMode=true to allow normal typing
+- VCF-010: voice-call-view manages textMode + micAvailable state; auto-fallback on mic permission denied or getUserMedia error
+- VCF-010: Text messages sent as `voice:text:send` { callId, text, timestamp } via gateway.send()
+- VCF-010: Backend VoiceCallService.handleTextInput(callId, text) routes text through processTranscript (same as STT)
+- VCF-010: Backend emits transcript event for text input so frontend transcript UI shows it
+- VCF-010: When switching voice→text: mic is muted; when switching text→voice: mic unmuted (VAD) or stays muted (PTT)
+- VCF-010: If mic was unavailable, clicking voice toggle attempts to re-acquire mic via retryMicAndSwitchMode()
 
 ### Components
 - `ui/frontend/src/views/voice-call-view.ts` -> `<aos-voice-call-view>` - Fullscreen voice call view with agent info, connecting animation, call controls
 - `ui/frontend/src/components/voice/audio-visualizer.ts` -> `<aos-audio-visualizer>` - Canvas-based FFT waveform (props: active, mode; method: setAnalyser(node))
-- `ui/frontend/src/components/voice/call-controls.ts` -> `<aos-call-controls>` - Mute/Hangup/PTT/VAD controls (props: muted, input-mode, call-active, ptt-active; events: mute-toggle, hang-up, ptt-start, ptt-end, mode-change)
+- `ui/frontend/src/components/voice/call-controls.ts` -> `<aos-call-controls>` - Mute/Hangup/PTT/VAD/Text controls (props: muted, input-mode, call-active, ptt-active, text-mode, mic-available; events: mute-toggle, hang-up, ptt-start, ptt-end, mode-change, text-toggle, text-send)
 - `ui/frontend/src/components/voice/action-log.ts` -> `<aos-action-log>` - Live action log for tool calls (props: actions: VoiceAction[]; auto-scroll, status icons running/complete/error)
 - `ui/frontend/src/components/voice/call-transcript.ts` -> `<aos-call-transcript>` - Live transcript with user/agent labels (props: messages: TranscriptMessage[]; auto-scroll, color-coded by role)
 
@@ -166,3 +177,7 @@
 | ui/frontend/src/views/voice-call-view.ts | Modified | VCF-008 |
 | ui/frontend/src/components/team/aos-team-card.ts | Modified | VCF-009 |
 | ui/frontend/src/views/team-view.ts | Modified | VCF-009 |
+| ui/frontend/src/components/voice/call-controls.ts | Modified | VCF-010 |
+| ui/frontend/src/views/voice-call-view.ts | Modified | VCF-010 |
+| ui/src/server/services/voice-call.service.ts | Modified | VCF-010 |
+| ui/src/server/websocket.ts | Modified | VCF-010 |
