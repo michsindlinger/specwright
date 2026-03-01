@@ -14,17 +14,17 @@
     "nextPhase": "story-complete",
     "worktreePath": null,
     "gitBranch": "feature/voice-call-conversational-flow",
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Phase corrected - VCF-001 already in_progress",
-    "nextAction": "Execute VCF-001",
-    "progressIndex": 0,
+    "currentStory": "VCF-002",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started VCF-002",
+    "nextAction": "Implement Audio Adapters Setup",
+    "progressIndex": 1,
     "totalStories": 14,
     "gitStrategy": "branch"
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-03-01T20:09:23.260Z",
     "completedAt": null,
     "model": null
   },
@@ -40,24 +40,37 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-001-voice-configuration-api-key-management.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
         "updatedAt": "2026-03-01T00:00:00Z",
-        "startedAt": "2026-03-01T19:57:15.546Z"
+        "startedAt": "2026-03-01T19:57:15.546Z",
+        "completedAt": "2026-03-01T20:08:08.325Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/voice.protocol.ts",
+          "ui/src/server/voice-config.ts",
+          "ui/src/server/websocket.ts",
+          "ui/frontend/src/views/settings-view.ts",
+          "specwright/specs/2026-03-01-voice-call-conversational-flow/integration-context.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "91955d8",
+            "message": "feat: VCF-001 Voice Configuration & API Key Management",
+            "timestamp": "2026-03-01T20:30:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress"
+      "phase": "done"
     },
     {
       "id": "VCF-002",
@@ -72,12 +85,13 @@
       "dependencies": [
         "VCF-001"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-audio-adapters-setup.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T20:09:23.260Z"
       },
       "implementation": {
         "filesModified": [],
@@ -87,7 +101,9 @@
       "verification": {
         "dorChecked": false,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-003",
@@ -463,28 +479,23 @@
   ],
   "boardStatus": {
     "total": 14,
-    "ready": 13,
+    "ready": 12,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 0
   },
   "statistics": {
-    "totalEffort": 43,
-    "completedEffort": 0,
-    "remainingEffort": 43,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 19,
-      "backend": 8,
-      "full-stack": 13,
-      "system": 3
+      "undefined": 14
     },
     "byPriority": {
-      "critical": 15,
-      "high": 22,
-      "medium": 6
+      "undefined": 14
     }
   },
   "executionPlan": {
@@ -568,6 +579,24 @@
       "action": "phase_updated",
       "storyId": null,
       "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-03-01T20:08:08.326Z",
+      "action": "status_changed",
+      "storyId": "VCF-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T20:08:21.288Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T20:09:23.262Z",
+      "action": "status_changed",
+      "storyId": "VCF-002",
+      "details": "Story started: ready → in_progress"
     }
   ]
 }

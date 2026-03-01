@@ -113,15 +113,15 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] DeepgramAdapter erstellt WebSocket-Verbindung zu Deepgram Streaming API
-- [ ] DeepgramAdapter streamt Audio-Chunks und emittiert Transcript-Events
-- [ ] ElevenLabsAdapter streamt Text zu Audio via ElevenLabs API
-- [ ] Fehlerbehandlung bei ungueltigem API Key (Fehlermeldung an Client)
-- [ ] Reconnect-Logik bei Verbindungsabbruch im DeepgramAdapter
-- [ ] npm Dependencies installiert (@deepgram/sdk, elevenlabs)
-- [ ] Backend kompiliert fehlerfrei (`cd ui && npm run build:backend`)
-- [ ] Keine Linting-Fehler (`cd ui && npm run lint`)
+- [x] Code implementiert und folgt Style Guide
+- [x] DeepgramAdapter erstellt WebSocket-Verbindung zu Deepgram Streaming API
+- [x] DeepgramAdapter streamt Audio-Chunks und emittiert Transcript-Events
+- [x] ElevenLabsAdapter streamt Text zu Audio via ElevenLabs API
+- [x] Fehlerbehandlung bei ungueltigem API Key (Fehlermeldung an Client)
+- [x] Reconnect-Logik bei Verbindungsabbruch im DeepgramAdapter
+- [x] npm Dependencies installiert (@deepgram/sdk, @elevenlabs/elevenlabs-js)
+- [x] Backend kompiliert fehlerfrei (`cd ui && npm run build:backend`)
+- [x] Keine Linting-Fehler (`cd ui && npm run lint`)
 
 ---
 
