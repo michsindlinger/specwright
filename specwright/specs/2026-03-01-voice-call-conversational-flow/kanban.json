@@ -14,11 +14,11 @@
     "nextPhase": "story-complete",
     "worktreePath": null,
     "gitBranch": "feature/voice-call-conversational-flow",
-    "currentStory": "VCF-009",
-    "currentStoryPhase": "implementing",
-    "lastAction": "Started VCF-009",
-    "nextAction": "Implement Team Card Call Integration",
-    "progressIndex": 8,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed VCF-009",
+    "nextAction": "Execute next story: VCF-010",
+    "progressIndex": 9,
     "totalStories": 14,
     "gitStrategy": "branch"
   },
@@ -402,24 +402,34 @@
       "dependencies": [
         "VCF-006"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-009-team-card-call-integration.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
         "updatedAt": "2026-03-01T00:00:00Z",
-        "startedAt": "2026-03-01T21:08:29.244Z"
+        "startedAt": "2026-03-01T21:08:29.244Z",
+        "completedAt": "2026-03-01T21:12:01.682Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/views/team-view.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "dcec443",
+            "message": "feat: VCF-009 Team Card Call Integration",
+            "timestamp": "2026-03-02T04:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -586,10 +596,10 @@
   "boardStatus": {
     "total": 14,
     "ready": 5,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 8,
+    "done": 9,
     "blocked": 0
   },
   "statistics": {
@@ -829,6 +839,12 @@
       "action": "status_changed",
       "storyId": "VCF-009",
       "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T21:12:01.682Z",
+      "action": "status_changed",
+      "storyId": "VCF-009",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }

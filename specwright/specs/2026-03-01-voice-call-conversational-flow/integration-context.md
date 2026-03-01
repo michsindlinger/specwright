@@ -12,6 +12,7 @@
 | VCF-006 | Fullscreen Voice Call View, route 'call', Gateway voice:* listeners, agent info display | voice-call-view.ts, route.types.ts, app.ts |
 | VCF-007 | Audio Visualizer (Canvas FFT) + Call Controls (Mute/PTT/VAD/Hangup) + Audio service integration in call view | audio-visualizer.ts, call-controls.ts, voice-call-view.ts |
 | VCF-008 | Action Log + Call Transcript UI components, gateway event integration for actions/transcript | action-log.ts, call-transcript.ts, voice-call-view.ts |
+| VCF-009 | Team Card phone icon + call-click event, Team View call handler with voice-config check + navigation to #/call/:skillId | aos-team-card.ts, team-view.ts |
 
 ## New Exports & APIs
 
@@ -118,6 +119,11 @@
 - VCF-008: VoiceAction interface: { toolId, toolName, status: 'running'|'complete'|'error', timestamp, output? }
 - VCF-008: TranscriptMessage interface: { id, role: 'user'|'agent', text, timestamp, isInterim? }
 - VCF-008: State arrays (actions, transcriptMessages) are reset in cleanupAudioServices() when call ends
+- VCF-009: aos-team-card now has a phone icon button (Lucide Phone SVG) that dispatches `call-click` CustomEvent with `{ skillId }` (bubbles, composed)
+- VCF-009: Team View handles `@call-click` on all aos-team-card instances (devteam, custom teams, individuals)
+- VCF-009: Before navigating, team-view checks voice config via `gateway.once('settings.voice')` + `gateway.send({ type: 'settings.voice.get' })`
+- VCF-009: If deepgramConfigured=true → navigates to `#/call/${skillId}` (triggers aos-voice-call-view from VCF-006)
+- VCF-009: If not configured → shows toast warning via `aos-toast-notification.warning()`
 
 ### Components
 - `ui/frontend/src/views/voice-call-view.ts` -> `<aos-voice-call-view>` - Fullscreen voice call view with agent info, connecting animation, call controls
@@ -158,3 +164,5 @@
 | ui/frontend/src/components/voice/action-log.ts | Created | VCF-008 |
 | ui/frontend/src/components/voice/call-transcript.ts | Created | VCF-008 |
 | ui/frontend/src/views/voice-call-view.ts | Modified | VCF-008 |
+| ui/frontend/src/components/team/aos-team-card.ts | Modified | VCF-009 |
+| ui/frontend/src/views/team-view.ts | Modified | VCF-009 |
