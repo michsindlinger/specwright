@@ -117,18 +117,18 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] aos-action-log zeigt Agent-Aktionen (Tool-Calls) als Live-Streaming-Liste
-- [ ] Action-Log hat Auto-Scroll bei neuen Eintraegen
-- [ ] Jede Aktion zeigt Status-Icon (pending/running/complete/error) und Zeitstempel
-- [ ] aos-call-transcript zeigt Gespraechsverlauf mit User/Agent-Labels
-- [ ] Farbcodierung: User-Nachrichten, Agent-Nachrichten, Aktions-Eintraege unterscheidbar
-- [ ] Live-Updates bei eingehenden voice:transcript:* und voice:action:* Events
-- [ ] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
-- [ ] Keine Linting-Fehler (`cd ui && npm run lint`)
-- [ ] **Integration hergestellt: aos-voice-call-view -> aos-action-log / aos-call-transcript**
-  - [ ] Property Binding funktional
-  - [ ] Events werden korrekt propagiert
+- [x] Code implementiert und folgt Style Guide
+- [x] aos-action-log zeigt Agent-Aktionen (Tool-Calls) als Live-Streaming-Liste
+- [x] Action-Log hat Auto-Scroll bei neuen Eintraegen
+- [x] Jede Aktion zeigt Status-Icon (pending/running/complete/error) und Zeitstempel
+- [x] aos-call-transcript zeigt Gespraechsverlauf mit User/Agent-Labels
+- [x] Farbcodierung: User-Nachrichten, Agent-Nachrichten, Aktions-Eintraege unterscheidbar
+- [x] Live-Updates bei eingehenden voice:transcript:* und voice:action:* Events
+- [x] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
+- [x] Keine Linting-Fehler (`cd ui && npm run lint`)
+- [x] **Integration hergestellt: aos-voice-call-view -> aos-action-log / aos-call-transcript**
+  - [x] Property Binding funktional
+  - [x] Events werden korrekt propagiert
 
 ---
 

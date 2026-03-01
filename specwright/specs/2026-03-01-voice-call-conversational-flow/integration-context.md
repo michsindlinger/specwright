@@ -11,6 +11,7 @@
 | VCF-005 | Agent Conversation Engine: Full STT->LLM->TTS loop, Claude CLI integration, tool call events, conversation history | voice-call.service.ts, websocket.ts |
 | VCF-006 | Fullscreen Voice Call View, route 'call', Gateway voice:* listeners, agent info display | voice-call-view.ts, route.types.ts, app.ts |
 | VCF-007 | Audio Visualizer (Canvas FFT) + Call Controls (Mute/PTT/VAD/Hangup) + Audio service integration in call view | audio-visualizer.ts, call-controls.ts, voice-call-view.ts |
+| VCF-008 | Action Log + Call Transcript UI components, gateway event integration for actions/transcript | action-log.ts, call-transcript.ts, voice-call-view.ts |
 
 ## New Exports & APIs
 
@@ -110,11 +111,20 @@
 - VCF-007: Agent visualizer uses AudioPlaybackService.getAnalyser()
 - VCF-007: InputMode type defined locally in call-controls.ts as 'push-to-talk' | 'voice-activity' (avoids deep import path to shared types)
 - VCF-007: Property named `voiceInputMode` in voice-call-view (not `inputMode`) to avoid HTMLElement.inputMode conflict
+- VCF-008: aos-action-log is a pure presentation component - receives VoiceAction[] via property binding from voice-call-view
+- VCF-008: aos-call-transcript is a pure presentation component - receives TranscriptMessage[] via property binding from voice-call-view
+- VCF-008: voice-call-view now listens to voice:action:start, voice:action:complete, voice:transcript:interim, voice:transcript:final, voice:agent:response gateway events
+- VCF-008: Interim transcripts (voice:transcript:interim) replace the last user interim message; final transcripts replace interim with permanent entry
+- VCF-008: VoiceAction interface: { toolId, toolName, status: 'running'|'complete'|'error', timestamp, output? }
+- VCF-008: TranscriptMessage interface: { id, role: 'user'|'agent', text, timestamp, isInterim? }
+- VCF-008: State arrays (actions, transcriptMessages) are reset in cleanupAudioServices() when call ends
 
 ### Components
 - `ui/frontend/src/views/voice-call-view.ts` -> `<aos-voice-call-view>` - Fullscreen voice call view with agent info, connecting animation, call controls
 - `ui/frontend/src/components/voice/audio-visualizer.ts` -> `<aos-audio-visualizer>` - Canvas-based FFT waveform (props: active, mode; method: setAnalyser(node))
 - `ui/frontend/src/components/voice/call-controls.ts` -> `<aos-call-controls>` - Mute/Hangup/PTT/VAD controls (props: muted, input-mode, call-active, ptt-active; events: mute-toggle, hang-up, ptt-start, ptt-end, mode-change)
+- `ui/frontend/src/components/voice/action-log.ts` -> `<aos-action-log>` - Live action log for tool calls (props: actions: VoiceAction[]; auto-scroll, status icons running/complete/error)
+- `ui/frontend/src/components/voice/call-transcript.ts` -> `<aos-call-transcript>` - Live transcript with user/agent labels (props: messages: TranscriptMessage[]; auto-scroll, color-coded by role)
 
 ## File Change Summary
 
@@ -145,3 +155,6 @@
 | ui/frontend/src/views/voice-call-view.ts | Modified | VCF-007 |
 | ui/frontend/src/services/audio-capture.service.ts | Modified | VCF-007 |
 | ui/frontend/src/services/audio-playback.service.ts | Modified | VCF-007 |
+| ui/frontend/src/components/voice/action-log.ts | Created | VCF-008 |
+| ui/frontend/src/components/voice/call-transcript.ts | Created | VCF-008 |
+| ui/frontend/src/views/voice-call-view.ts | Modified | VCF-008 |

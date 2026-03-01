@@ -8,8 +8,12 @@ import { AudioCaptureService } from '../services/audio-capture.service.js';
 import { AudioPlaybackService } from '../services/audio-playback.service.js';
 import type { AosAudioVisualizer } from '../components/voice/audio-visualizer.js';
 import type { InputMode } from '../components/voice/call-controls.js';
+import type { VoiceAction } from '../components/voice/action-log.js';
+import type { TranscriptMessage } from '../components/voice/call-transcript.js';
 import '../components/voice/audio-visualizer.js';
 import '../components/voice/call-controls.js';
+import '../components/voice/action-log.js';
+import '../components/voice/call-transcript.js';
 
 type CallViewState = 'connecting' | 'active' | 'ended' | 'error';
 
@@ -33,6 +37,8 @@ export class AosVoiceCallView extends LitElement {
   @state() private voiceInputMode: InputMode = 'voice-activity';
   @state() private pttActive = false;
   @state() private isAgentSpeaking = false;
+  @state() private actions: VoiceAction[] = [];
+  @state() private transcriptMessages: TranscriptMessage[] = [];
 
   private skillId = '';
   private durationInterval: ReturnType<typeof setInterval> | null = null;
@@ -79,6 +85,78 @@ export class AosVoiceCallView extends LitElement {
     this.updateVisualizerMode();
   };
 
+  private boundActionStartHandler: MessageHandler = (msg) => {
+    const action: VoiceAction = {
+      toolId: (msg.toolId as string) || '',
+      toolName: (msg.toolName as string) || 'Unknown Action',
+      status: 'running',
+      timestamp: (msg.timestamp as string) || new Date().toISOString(),
+    };
+    this.actions = [...this.actions, action];
+  };
+
+  private boundActionCompleteHandler: MessageHandler = (msg) => {
+    const toolId = msg.toolId as string;
+    this.actions = this.actions.map(a =>
+      a.toolId === toolId ? { ...a, status: 'complete' as const, output: msg.output as string } : a
+    );
+  };
+
+  private boundTranscriptInterimHandler: MessageHandler = (msg) => {
+    const text = msg.text as string;
+    if (!text) return;
+
+    const last = this.transcriptMessages[this.transcriptMessages.length - 1];
+    if (last?.isInterim && last.role === 'user') {
+      this.transcriptMessages = [
+        ...this.transcriptMessages.slice(0, -1),
+        { ...last, text },
+      ];
+    } else {
+      this.transcriptMessages = [...this.transcriptMessages, {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        text,
+        timestamp: new Date().toISOString(),
+        isInterim: true,
+      }];
+    }
+  };
+
+  private boundTranscriptFinalHandler: MessageHandler = (msg) => {
+    const text = msg.text as string;
+    if (!text) return;
+
+    const last = this.transcriptMessages[this.transcriptMessages.length - 1];
+    if (last?.isInterim && last.role === 'user') {
+      this.transcriptMessages = [
+        ...this.transcriptMessages.slice(0, -1),
+        { ...last, text, isInterim: false },
+      ];
+    } else {
+      this.transcriptMessages = [...this.transcriptMessages, {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        text,
+        timestamp: new Date().toISOString(),
+        isInterim: false,
+      }];
+    }
+  };
+
+  private boundAgentResponseHandler: MessageHandler = (msg) => {
+    const text = msg.text as string;
+    if (!text) return;
+
+    this.transcriptMessages = [...this.transcriptMessages, {
+      id: `msg-${Date.now()}`,
+      role: 'agent',
+      text,
+      timestamp: new Date().toISOString(),
+      isInterim: false,
+    }];
+  };
+
   override connectedCallback(): void {
     super.connectedCallback();
 
@@ -99,6 +177,11 @@ export class AosVoiceCallView extends LitElement {
     gateway.on('voice:tts:chunk', this.boundTtsChunkHandler);
     gateway.on('voice:tts:start', this.boundTtsStartHandler);
     gateway.on('voice:tts:end', this.boundTtsEndHandler);
+    gateway.on('voice:action:start', this.boundActionStartHandler);
+    gateway.on('voice:action:complete', this.boundActionCompleteHandler);
+    gateway.on('voice:transcript:interim', this.boundTranscriptInterimHandler);
+    gateway.on('voice:transcript:final', this.boundTranscriptFinalHandler);
+    gateway.on('voice:agent:response', this.boundAgentResponseHandler);
 
     // Load agent info and start call
     this.loadAgentInfo();
@@ -115,6 +198,11 @@ export class AosVoiceCallView extends LitElement {
     gateway.off('voice:tts:chunk', this.boundTtsChunkHandler);
     gateway.off('voice:tts:start', this.boundTtsStartHandler);
     gateway.off('voice:tts:end', this.boundTtsEndHandler);
+    gateway.off('voice:action:start', this.boundActionStartHandler);
+    gateway.off('voice:action:complete', this.boundActionCompleteHandler);
+    gateway.off('voice:transcript:interim', this.boundTranscriptInterimHandler);
+    gateway.off('voice:transcript:final', this.boundTranscriptFinalHandler);
+    gateway.off('voice:agent:response', this.boundAgentResponseHandler);
 
     // End call if still active
     if (this.callId && (this.viewState === 'connecting' || this.viewState === 'active')) {
@@ -216,6 +304,8 @@ export class AosVoiceCallView extends LitElement {
     this.captureService = null;
     this.playbackService?.destroy();
     this.playbackService = null;
+    this.actions = [];
+    this.transcriptMessages = [];
     if (this.vizAudioCtx) {
       this.vizAudioCtx.close().catch(() => {});
       this.vizAudioCtx = null;
@@ -355,8 +445,8 @@ export class AosVoiceCallView extends LitElement {
           ?active=${this.viewState === 'active'}
           mode=${this.isAgentSpeaking ? 'agent' : 'user'}
         ></aos-audio-visualizer>
-        <div class="transcript-slot" id="transcript-area"></div>
-        <div class="action-log-slot" id="action-log-area"></div>
+        <aos-call-transcript .messages=${this.transcriptMessages}></aos-call-transcript>
+        <aos-action-log .actions=${this.actions}></aos-action-log>
       </div>
     `;
   }
@@ -583,8 +673,8 @@ export class AosVoiceCallView extends LitElement {
       gap: 1rem;
     }
 
-    .transcript-slot,
-    .action-log-slot {
+    aos-call-transcript,
+    aos-action-log {
       min-height: 0;
     }
 
