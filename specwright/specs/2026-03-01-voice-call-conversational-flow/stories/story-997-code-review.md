@@ -117,13 +117,13 @@ Scenario: Automatisches Beheben gefundener Issues
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] Git Diff analysiert (main...HEAD)
-- [ ] Alle geaenderten Dateien reviewt
-- [ ] Probleme identifiziert und kategorisiert
-- [ ] review-report.md erstellt
-- [ ] Alle Critical/Major Issues automatisch behoben ODER als Bug-Ticket erstellt
-- [ ] Fix Status Tabelle im review-report.md aktualisiert
-- [ ] Re-Review nach Fixes bestanden (falls Fixes durchgefuehrt)
+- [x] Git Diff analysiert (main...HEAD)
+- [x] Alle geaenderten Dateien reviewt
+- [x] Probleme identifiziert und kategorisiert
+- [x] review-report.md erstellt
+- [x] Alle Critical/Major Issues automatisch behoben ODER als Bug-Ticket erstellt
+- [x] Fix Status Tabelle im review-report.md aktualisiert
+- [x] Re-Review nach Fixes bestanden (falls Fixes durchgefuehrt)
 
 ---
 

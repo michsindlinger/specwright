@@ -44,6 +44,7 @@ export class AosVoiceCallView extends LitElement {
 
   private skillId = '';
   private durationInterval: ReturnType<typeof setInterval> | null = null;
+  private navigationTimeout: ReturnType<typeof setTimeout> | null = null;
   private captureService: AudioCaptureService | null = null;
   private playbackService: AudioPlaybackService | null = null;
   private vizAudioCtx: AudioContext | null = null;
@@ -60,7 +61,7 @@ export class AosVoiceCallView extends LitElement {
     this.viewState = 'ended';
     this.stopDurationTimer();
     this.cleanupAudioServices();
-    setTimeout(() => this.navigateBack(), 1500);
+    this.navigationTimeout = setTimeout(() => this.navigateBack(), 1500);
   };
 
   private boundVoiceErrorHandler: MessageHandler = (msg) => {
@@ -213,6 +214,11 @@ export class AosVoiceCallView extends LitElement {
 
     this.stopDurationTimer();
     this.cleanupAudioServices();
+
+    if (this.navigationTimeout) {
+      clearTimeout(this.navigationTimeout);
+      this.navigationTimeout = null;
+    }
   }
 
   private async loadAgentInfo(): Promise<void> {
@@ -266,7 +272,7 @@ export class AosVoiceCallView extends LitElement {
     this.viewState = 'ended';
     this.stopDurationTimer();
     this.cleanupAudioServices();
-    setTimeout(() => this.navigateBack(), 500);
+    this.navigationTimeout = setTimeout(() => this.navigateBack(), 500);
   }
 
   private navigateBack(): void {
