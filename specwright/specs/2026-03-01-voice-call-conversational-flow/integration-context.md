@@ -9,6 +9,7 @@
 | VCF-003 | STT Pipeline: AudioCaptureService (Frontend) + VoiceCallService (Backend) + WS routing | audio-capture.service.ts, voice-call.service.ts, websocket.ts, gateway.ts |
 | VCF-004 | TTS Pipeline: AudioPlaybackService (Frontend) + VoiceCallService TTS flow + ElevenLabs integration + Barge-in | audio-playback.service.ts, voice-call.service.ts, elevenlabs.adapter.ts, websocket.ts |
 | VCF-005 | Agent Conversation Engine: Full STT->LLM->TTS loop, Claude CLI integration, tool call events, conversation history | voice-call.service.ts, websocket.ts |
+| VCF-006 | Fullscreen Voice Call View, route 'call', Gateway voice:* listeners, agent info display | voice-call-view.ts, route.types.ts, app.ts |
 
 ## New Exports & APIs
 
@@ -85,6 +86,20 @@
 - VCF-005: isProcessing flag prevents concurrent LLM calls per session
 - VCF-005 new events: `action.start` (callId, {toolId, toolName, input}), `action.complete` (callId, {toolId, output})
 - VCF-005 new WS message types: `voice:action:start`, `voice:action:complete`
+- VCF-006: aos-voice-call-view is a fullscreen Lit component at `ui/frontend/src/views/voice-call-view.ts`
+- VCF-006: Route `#/call/:skillId` - skillId extracted from `routerService.getCurrentRoute()?.segments[0]`
+- VCF-006: ViewType union includes 'call', VALID_VIEWS includes 'call'
+- VCF-006: Agent info fetched from `/api/team/:projectPath/skills/:skillId` (name, role, avatar)
+- VCF-006: viewState: connecting -> active (on voice:call:started) -> ended (on voice:call:ended/hangup)
+- VCF-006: Gateway listeners: voice:call:started, voice:call:ended, voice:error
+- VCF-006: Sends voice:call:start on connectedCallback with callId, agentId, agentName
+- VCF-006: Cleanup in disconnectedCallback: sends voice:call:end, removes gateway listeners
+- VCF-006: Layout slots for future stories: #visualizer-area (VCF-007), #transcript-area (VCF-008), #action-log-area (VCF-008)
+- VCF-006: Mute button toggles `isMuted` state (audio capture integration in VCF-007)
+- VCF-006: After call end, auto-navigates back to team view after 500ms/1500ms delay
+
+### Components
+- `ui/frontend/src/views/voice-call-view.ts` -> `<aos-voice-call-view>` - Fullscreen voice call view with agent info, connecting animation, call controls
 
 ## File Change Summary
 
@@ -107,3 +122,6 @@
 | ui/src/server/websocket.ts | Modified | VCF-004 |
 | ui/src/server/services/voice-call.service.ts | Modified | VCF-005 |
 | ui/src/server/websocket.ts | Modified | VCF-005 |
+| ui/frontend/src/views/voice-call-view.ts | Created | VCF-006 |
+| ui/frontend/src/types/route.types.ts | Modified | VCF-006 |
+| ui/frontend/src/app.ts | Modified | VCF-006 |
