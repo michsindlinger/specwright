@@ -78,6 +78,31 @@ function validateInputMode(mode: string): VoiceInputMode {
 }
 
 /**
+ * Get the ElevenLabs voice ID for a given agent category.
+ * Matches against persona IDs (case-insensitive).
+ * Falls back to first configured persona, or null if none configured.
+ * @param agentCategory - Agent category/role identifier (e.g., 'architect', 'frontend-dev')
+ */
+export function getPersonaVoiceId(agentCategory: string): string | null {
+  const config = loadConfig();
+
+  if (!config.voicePersonas || config.voicePersonas.length === 0) {
+    return null;
+  }
+
+  const normalized = agentCategory.toLowerCase();
+  const persona = config.voicePersonas.find(
+    p => p.id.toLowerCase() === normalized
+  );
+
+  if (persona) {
+    return persona.voiceId;
+  }
+
+  return config.voicePersonas[0].voiceId;
+}
+
+/**
  * Update voice configuration. Only provided fields are updated.
  * Returns safe config status (no API key values).
  */

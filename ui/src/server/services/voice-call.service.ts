@@ -30,8 +30,10 @@ import { spawn, ChildProcess } from 'child_process';
 import { DeepgramAdapter } from './deepgram.adapter.js';
 import type { DeepgramTranscriptEvent } from './deepgram.adapter.js';
 import { ElevenLabsAdapter } from './elevenlabs.adapter.js';
-import { loadVoiceConfig } from '../voice-config.js';
+import { loadVoiceConfig, getPersonaVoiceId } from '../voice-config.js';
 import { getProviderCommand, getDefaultSelection } from '../model-config.js';
+import { saveTranscript } from './transcript.service.js';
+import type { TranscriptMessage, TranscriptAction } from './transcript.service.js';
 
 export type VoiceCallState = 'idle' | 'connecting' | 'active' | 'ended';
 
@@ -70,6 +72,9 @@ interface ManagedVoiceSession extends VoiceCallSession {
   isProcessing: boolean;
   agentId?: string;
   agentName?: string;
+  // VCF-011: Transcript collection
+  transcriptMessages: TranscriptMessage[];
+  transcriptActions: TranscriptAction[];
 }
 
 const DEFAULT_VOICE_SYSTEM_PROMPT = `You are a voice conversation assistant. You are speaking with the user via a real-time voice call.
@@ -141,6 +146,9 @@ export class VoiceCallService extends EventEmitter {
       isProcessing: false,
       agentId: options?.agentId,
       agentName: options?.agentName,
+      // VCF-011: Transcript collection
+      transcriptMessages: [],
+      transcriptActions: [],
     };
 
     this.sessions.set(callId, session);
@@ -155,8 +163,16 @@ export class VoiceCallService extends EventEmitter {
       return;
     }
 
-    // Resolve default voice ID from config personas
-    if (config.voicePersonas && config.voicePersonas.length > 0) {
+    // VCF-011: Resolve persona voice for this agent category
+    if (options?.agentId) {
+      const personaVoiceId = getPersonaVoiceId(options.agentId);
+      if (personaVoiceId) {
+        session.ttsVoiceId = personaVoiceId;
+      }
+    }
+
+    // Fallback: default voice from first configured persona
+    if (session.ttsVoiceId === DEFAULT_VOICE_ID && config.voicePersonas && config.voicePersonas.length > 0) {
       session.ttsVoiceId = config.voicePersonas[0].voiceId;
     }
 
@@ -227,6 +243,24 @@ export class VoiceCallService extends EventEmitter {
 
     session.state = 'ended';
     session.endedAt = new Date();
+
+    // VCF-011: Save transcript before deleting session
+    if (session.transcriptMessages.length > 0) {
+      try {
+        saveTranscript(session.projectPath, {
+          sessionId: session.callId,
+          skillId: session.agentId || 'unknown',
+          agentName: session.agentName,
+          startTime: session.startedAt.toISOString(),
+          endTime: session.endedAt.toISOString(),
+          messages: session.transcriptMessages,
+          actions: session.transcriptActions,
+        });
+      } catch (err) {
+        console.error(`[VoiceCallService] Failed to save transcript for ${callId}:`, err);
+      }
+    }
+
     this.sessions.delete(callId);
 
     console.log(`[VoiceCallService] Call ended: ${callId}`);
@@ -272,6 +306,13 @@ export class VoiceCallService extends EventEmitter {
       text: trimmed,
       isFinal: true,
       confidence: 1.0,
+    });
+
+    // VCF-011: Collect text input as transcript message
+    session.transcriptMessages.push({
+      role: 'user',
+      text: trimmed,
+      timestamp: new Date().toISOString(),
     });
 
     // Process through LLM conversation engine (same path as STT)
@@ -438,6 +479,15 @@ export class VoiceCallService extends EventEmitter {
         confidence: event.confidence,
       });
 
+      // VCF-011: Collect final user transcripts
+      if (event.isFinal && event.text.trim()) {
+        session.transcriptMessages.push({
+          role: 'user',
+          text: event.text.trim(),
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       // VCF-005: Auto-trigger LLM conversation on final transcript
       if (event.isFinal && event.text.trim()) {
         this.processTranscript(session, event.text).catch(err => {
@@ -598,6 +648,13 @@ export class VoiceCallService extends EventEmitter {
           // Save assistant response to conversation history
           if (fullContent) {
             session.conversationHistory.push({ role: 'assistant', content: fullContent });
+
+            // VCF-011: Collect agent response for transcript
+            session.transcriptMessages.push({
+              role: 'agent',
+              text: fullContent,
+              timestamp: new Date().toISOString(),
+            });
           }
 
           session.claudeProcess = null;
@@ -678,6 +735,13 @@ export class VoiceCallService extends EventEmitter {
               const input = (block.input as Record<string, unknown>) || {};
               console.log(`[VoiceCallService] Tool call: ${toolName} for ${session.callId}`);
               this.emit('action.start', session.callId, { toolId, toolName, input });
+
+              // VCF-011: Collect action for transcript
+              session.transcriptActions.push({
+                toolId,
+                toolName,
+                timestamp: new Date().toISOString(),
+              });
             }
           }
         }
@@ -694,6 +758,12 @@ export class VoiceCallService extends EventEmitter {
                 : JSON.stringify(block.content);
               console.log(`[VoiceCallService] Tool complete: ${toolId} for ${session.callId}`);
               this.emit('action.complete', session.callId, { toolId, output });
+
+              // VCF-011: Update action output in transcript
+              const transcriptAction = session.transcriptActions.find(a => a.toolId === toolId);
+              if (transcriptAction) {
+                transcriptAction.output = output;
+              }
             }
           }
         }

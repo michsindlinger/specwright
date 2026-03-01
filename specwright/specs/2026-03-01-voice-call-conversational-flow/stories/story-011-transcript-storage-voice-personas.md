@@ -116,17 +116,17 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] TranscriptService speichert Gespraechstranskripte als JSON-Dateien
-- [ ] Transkript-Datei enthaelt alle User/Agent-Nachrichten mit Zeitstempeln und Aktions-Markierungen
-- [ ] Transkripte werden unter specwright/transcripts/ gespeichert (Namensformat: YYYY-MM-DD-HH-mm-skillId.json)
-- [ ] Voice-Persona-Zuordnung in voice-config.json: Agent-Kategorie -> ElevenLabs Voice-ID
-- [ ] VoiceCallService nutzt Persona-Mapping fuer Voice-ID bei TTS-Aufrufen
-- [ ] Backend kompiliert fehlerfrei (`cd ui && npm run build:backend`)
-- [ ] Keine Linting-Fehler (`cd ui && npm run lint`)
-- [ ] **Integration hergestellt: VoiceCallService -> TranscriptService (saveTranscript)**
-  - [ ] Import/Aufruf existiert in Code
-  - [ ] Verbindung ist funktional (nicht nur Stub)
+- [x] Code implementiert und folgt Style Guide
+- [x] TranscriptService speichert Gespraechstranskripte als JSON-Dateien
+- [x] Transkript-Datei enthaelt alle User/Agent-Nachrichten mit Zeitstempeln und Aktions-Markierungen
+- [x] Transkripte werden unter specwright/transcripts/ gespeichert (Namensformat: YYYY-MM-DD-HH-mm-skillId.json)
+- [x] Voice-Persona-Zuordnung in voice-config.json: Agent-Kategorie -> ElevenLabs Voice-ID
+- [x] VoiceCallService nutzt Persona-Mapping fuer Voice-ID bei TTS-Aufrufen
+- [x] Backend kompiliert fehlerfrei (`cd ui && npm run build:backend`)
+- [x] Keine Linting-Fehler (`cd ui && npm run lint`)
+- [x] **Integration hergestellt: VoiceCallService -> TranscriptService (saveTranscript)**
+  - [x] Import/Aufruf existiert in Code
+  - [x] Verbindung ist funktional (nicht nur Stub)
 
 ---
 
