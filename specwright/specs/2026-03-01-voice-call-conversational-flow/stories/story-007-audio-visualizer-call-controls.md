@@ -116,19 +116,19 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] aos-audio-visualizer zeigt Canvas-basierte Wellenform-Animation (FFT-Daten)
-- [ ] Animation reagiert auf Agent-Audio und User-Mikrofon
-- [ ] aos-call-controls bietet Mute-Toggle, Hang-up-Button, PTT-Button, VAD-Toggle
-- [ ] Mute/Unmute schaltet Mikrofon-Audio korrekt
-- [ ] Push-to-Talk: Leertaste aktiviert/deaktiviert Mikrofon
-- [ ] VAD-Modus: Automatische Spracherkennung
-- [ ] Modus-Wechsel (PTT/VAD) waehrend des Calls moeglich
-- [ ] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
-- [ ] Keine Linting-Fehler (`cd ui && npm run lint`)
-- [ ] **Integration hergestellt: aos-voice-call-view -> aos-audio-visualizer / aos-call-controls**
-  - [ ] Property Binding funktional
-  - [ ] Events werden korrekt propagiert
+- [x] Code implementiert und folgt Style Guide
+- [x] aos-audio-visualizer zeigt Canvas-basierte Wellenform-Animation (FFT-Daten)
+- [x] Animation reagiert auf Agent-Audio und User-Mikrofon
+- [x] aos-call-controls bietet Mute-Toggle, Hang-up-Button, PTT-Button, VAD-Toggle
+- [x] Mute/Unmute schaltet Mikrofon-Audio korrekt
+- [x] Push-to-Talk: Leertaste aktiviert/deaktiviert Mikrofon
+- [x] VAD-Modus: Automatische Spracherkennung
+- [x] Modus-Wechsel (PTT/VAD) waehrend des Calls moeglich
+- [x] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
+- [x] Keine Linting-Fehler (`cd ui && npm run lint`)
+- [x] **Integration hergestellt: aos-voice-call-view -> aos-audio-visualizer / aos-call-controls**
+  - [x] Property Binding funktional
+  - [x] Events werden korrekt propagiert
 
 ---
 

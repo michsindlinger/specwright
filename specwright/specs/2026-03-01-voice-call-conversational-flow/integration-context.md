@@ -10,6 +10,7 @@
 | VCF-004 | TTS Pipeline: AudioPlaybackService (Frontend) + VoiceCallService TTS flow + ElevenLabs integration + Barge-in | audio-playback.service.ts, voice-call.service.ts, elevenlabs.adapter.ts, websocket.ts |
 | VCF-005 | Agent Conversation Engine: Full STT->LLM->TTS loop, Claude CLI integration, tool call events, conversation history | voice-call.service.ts, websocket.ts |
 | VCF-006 | Fullscreen Voice Call View, route 'call', Gateway voice:* listeners, agent info display | voice-call-view.ts, route.types.ts, app.ts |
+| VCF-007 | Audio Visualizer (Canvas FFT) + Call Controls (Mute/PTT/VAD/Hangup) + Audio service integration in call view | audio-visualizer.ts, call-controls.ts, voice-call-view.ts |
 
 ## New Exports & APIs
 
@@ -97,9 +98,23 @@
 - VCF-006: Layout slots for future stories: #visualizer-area (VCF-007), #transcript-area (VCF-008), #action-log-area (VCF-008)
 - VCF-006: Mute button toggles `isMuted` state (audio capture integration in VCF-007)
 - VCF-006: After call end, auto-navigates back to team view after 500ms/1500ms delay
+- VCF-007: aos-audio-visualizer uses Canvas + requestAnimationFrame + AnalyserNode.getByteFrequencyData() for mirrored bar visualization
+- VCF-007: Two visualizer modes: 'user' (purple bars) and 'agent' (green bars), switches based on isAgentSpeaking
+- VCF-007: aos-call-controls dispatches custom events: mute-toggle, hang-up, ptt-start, ptt-end, mode-change
+- VCF-007: PTT via document keydown/keyup on Space key (only when inputMode='push-to-talk')
+- VCF-007: voice-call-view now instantiates AudioCaptureService + AudioPlaybackService on call start
+- VCF-007: voice-call-view listens for voice:tts:chunk/start/end gateway messages to feed AudioPlaybackService and switch visualizer mode
+- VCF-007: AudioCaptureService extended: getMediaStream(), mute(), unmute() - mute/unmute toggle MediaStream audio track enabled
+- VCF-007: AudioPlaybackService extended: AnalyserNode in audio chain (source → analyser → destination), getAnalyser()
+- VCF-007: User visualizer uses separate AudioContext with MediaStreamSource from AudioCaptureService.getMediaStream()
+- VCF-007: Agent visualizer uses AudioPlaybackService.getAnalyser()
+- VCF-007: InputMode type defined locally in call-controls.ts as 'push-to-talk' | 'voice-activity' (avoids deep import path to shared types)
+- VCF-007: Property named `voiceInputMode` in voice-call-view (not `inputMode`) to avoid HTMLElement.inputMode conflict
 
 ### Components
 - `ui/frontend/src/views/voice-call-view.ts` -> `<aos-voice-call-view>` - Fullscreen voice call view with agent info, connecting animation, call controls
+- `ui/frontend/src/components/voice/audio-visualizer.ts` -> `<aos-audio-visualizer>` - Canvas-based FFT waveform (props: active, mode; method: setAnalyser(node))
+- `ui/frontend/src/components/voice/call-controls.ts` -> `<aos-call-controls>` - Mute/Hangup/PTT/VAD controls (props: muted, input-mode, call-active, ptt-active; events: mute-toggle, hang-up, ptt-start, ptt-end, mode-change)
 
 ## File Change Summary
 
@@ -125,3 +140,8 @@
 | ui/frontend/src/views/voice-call-view.ts | Created | VCF-006 |
 | ui/frontend/src/types/route.types.ts | Modified | VCF-006 |
 | ui/frontend/src/app.ts | Modified | VCF-006 |
+| ui/frontend/src/components/voice/audio-visualizer.ts | Created | VCF-007 |
+| ui/frontend/src/components/voice/call-controls.ts | Created | VCF-007 |
+| ui/frontend/src/views/voice-call-view.ts | Modified | VCF-007 |
+| ui/frontend/src/services/audio-capture.service.ts | Modified | VCF-007 |
+| ui/frontend/src/services/audio-playback.service.ts | Modified | VCF-007 |

@@ -14,11 +14,11 @@
     "nextPhase": "story-complete",
     "worktreePath": null,
     "gitBranch": "feature/voice-call-conversational-flow",
-    "currentStory": "VCF-006",
-    "currentStoryPhase": "implementing",
-    "lastAction": "Started VCF-006",
-    "nextAction": "Implement Voice Call View & Navigation",
-    "progressIndex": 5,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed VCF-007",
+    "nextAction": "Execute next story: VCF-008",
+    "progressIndex": 7,
     "totalStories": 14,
     "gitStrategy": "branch"
   },
@@ -268,24 +268,35 @@
       "dependencies": [
         "VCF-005"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-006-voice-call-view-navigation.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
         "updatedAt": "2026-03-01T00:00:00Z",
-        "startedAt": "2026-03-01T20:42:50.110Z"
+        "startedAt": "2026-03-01T20:42:50.110Z",
+        "completedAt": "2026-03-01T20:47:13.741Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/views/voice-call-view.ts",
+          "ui/frontend/src/types/route.types.ts",
+          "ui/frontend/src/app.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "bccb742",
+            "message": "feat: VCF-006 Voice Call View & Navigation",
+            "timestamp": "2026-03-02T01:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -301,22 +312,38 @@
       "dependencies": [
         "VCF-006"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-007-audio-visualizer-call-controls.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T20:48:15.718Z",
+        "completedAt": "2026-03-01T20:58:21.962Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/voice/audio-visualizer.ts",
+          "ui/frontend/src/components/voice/call-controls.ts",
+          "ui/frontend/src/views/voice-call-view.ts",
+          "ui/frontend/src/services/audio-capture.service.ts",
+          "ui/frontend/src/services/audio-playback.service.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "00143d9",
+            "message": "feat: VCF-007 Audio Visualizer & Call Controls",
+            "timestamp": "2026-03-02T02:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-008",
@@ -541,11 +568,11 @@
   ],
   "boardStatus": {
     "total": 14,
-    "ready": 8,
-    "inProgress": 1,
+    "ready": 7,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 5,
+    "done": 7,
     "blocked": 0
   },
   "statistics": {
@@ -731,6 +758,30 @@
       "action": "status_changed",
       "storyId": "VCF-006",
       "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T20:47:13.741Z",
+      "action": "status_changed",
+      "storyId": "VCF-006",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T20:47:29.203Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T20:48:15.719Z",
+      "action": "status_changed",
+      "storyId": "VCF-007",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T20:58:21.962Z",
+      "action": "status_changed",
+      "storyId": "VCF-007",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }
