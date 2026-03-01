@@ -5,6 +5,7 @@
 > Created: 2026-03-01
 > Last Updated: 2026-03-01
 
+**Status**: Done
 **Priority**: Critical
 **Type**: Backend
 **Estimated Effort**: 5 SP
@@ -116,18 +117,18 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] VoiceCallService orchestriert den vollstaendigen STT -> LLM -> TTS Loop
-- [ ] Claude CLI wird mit Voice-spezifischem System-Prompt und Agent-Skill-Kontext aufgerufen
-- [ ] Tool-Calls werden ausgefuehrt und als voice:action:start/complete Events gestreamt
-- [ ] Konversationskontext bleibt ueber mehrere Turns erhalten
-- [ ] LLM-Response-Text wird satzweise an TTS-Pipeline gestreamt
-- [ ] Konfigurierbarer LLM-Provider (nutzt bestehende model-config.ts)
-- [ ] Backend kompiliert fehlerfrei (`cd ui && npm run build:backend`)
-- [ ] Keine Linting-Fehler (`cd ui && npm run lint`)
-- [ ] **Integration hergestellt: VoiceCallService -> ClaudeHandler -> Tool Calls -> WS Events**
-  - [ ] Import/Aufruf existiert in Code
-  - [ ] Verbindung ist funktional (nicht nur Stub)
+- [x] Code implementiert und folgt Style Guide
+- [x] VoiceCallService orchestriert den vollstaendigen STT -> LLM -> TTS Loop
+- [x] Claude CLI wird mit Voice-spezifischem System-Prompt und Agent-Skill-Kontext aufgerufen
+- [x] Tool-Calls werden ausgefuehrt und als voice:action:start/complete Events gestreamt
+- [x] Konversationskontext bleibt ueber mehrere Turns erhalten
+- [x] LLM-Response-Text wird satzweise an TTS-Pipeline gestreamt
+- [x] Konfigurierbarer LLM-Provider (nutzt bestehende model-config.ts)
+- [x] Backend kompiliert fehlerfrei (`cd ui && npm run build:backend`)
+- [x] Keine Linting-Fehler (`cd ui && npm run lint`)
+- [x] **Integration hergestellt: VoiceCallService -> ClaudeHandler -> Tool Calls -> WS Events**
+  - [x] Import/Aufruf existiert in Code
+  - [x] Verbindung ist funktional (nicht nur Stub)
 
 ---
 

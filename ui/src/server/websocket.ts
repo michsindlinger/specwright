@@ -4042,6 +4042,30 @@ export class WebSocketHandler {
       };
       this.broadcast(message);
     });
+
+    // Action events (VCF-005: Agent Conversation Engine)
+    this.voiceCallService.on('action.start', (callId: string, action: { toolId: string; toolName: string; input: Record<string, unknown> }) => {
+      const message: WebSocketMessage = {
+        type: 'voice:action:start',
+        callId,
+        toolId: action.toolId,
+        toolName: action.toolName,
+        input: action.input,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
+
+    this.voiceCallService.on('action.complete', (callId: string, action: { toolId: string; output: string }) => {
+      const message: WebSocketMessage = {
+        type: 'voice:action:complete',
+        callId,
+        toolId: action.toolId,
+        output: action.output,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
   }
 
   /**
@@ -4050,9 +4074,18 @@ export class WebSocketHandler {
    */
   private handleVoiceCallStart(client: WebSocketClient, message: WebSocketMessage): void {
     const callId = (message.callId as string) || `call-${Date.now()}`;
+    const projectPath = this.getClientProjectPath(client) || undefined;
+    const systemPrompt = message.systemPrompt as string | undefined;
+    const agentId = message.agentId as string | undefined;
+    const agentName = message.agentName as string | undefined;
 
-    console.log(`[WebSocket] Voice call start: ${callId} from client ${client.clientId}`);
-    this.voiceCallService.startCall(callId, client.clientId);
+    console.log(`[WebSocket] Voice call start: ${callId} from client ${client.clientId} (agent: ${agentName || 'default'})`);
+    this.voiceCallService.startCall(callId, client.clientId, {
+      projectPath,
+      systemPrompt,
+      agentId,
+      agentName,
+    });
   }
 
   /**

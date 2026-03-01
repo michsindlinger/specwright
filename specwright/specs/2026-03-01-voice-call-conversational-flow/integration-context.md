@@ -8,6 +8,7 @@
 | VCF-002 | Deepgram STT + ElevenLabs TTS adapters with EventEmitter pattern | deepgram.adapter.ts, elevenlabs.adapter.ts |
 | VCF-003 | STT Pipeline: AudioCaptureService (Frontend) + VoiceCallService (Backend) + WS routing | audio-capture.service.ts, voice-call.service.ts, websocket.ts, gateway.ts |
 | VCF-004 | TTS Pipeline: AudioPlaybackService (Frontend) + VoiceCallService TTS flow + ElevenLabs integration + Barge-in | audio-playback.service.ts, voice-call.service.ts, elevenlabs.adapter.ts, websocket.ts |
+| VCF-005 | Agent Conversation Engine: Full STT->LLM->TTS loop, Claude CLI integration, tool call events, conversation history | voice-call.service.ts, websocket.ts |
 
 ## New Exports & APIs
 
@@ -18,7 +19,7 @@
 - `ui/src/server/services/deepgram.adapter.ts` -> `new DeepgramAdapter({ apiKey })` - STT streaming adapter (EventEmitter: transcript, error, close, open)
 - `ui/src/server/services/elevenlabs.adapter.ts` -> `new ElevenLabsAdapter({ apiKey })` - TTS streaming adapter (EventEmitter: audioChunk, complete, error)
 - `ui/src/server/services/voice-call.service.ts` -> `new VoiceCallService()` - Core voice orchestrator (EventEmitter: transcript, error, call.started, call.ended)
-- `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.startCall(callId, clientId)` - Start a voice call session
+- `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.startCall(callId, clientId, options?)` - Start a voice call session (options: projectPath, systemPrompt, agentId, agentName)
 - `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.endCall(callId)` - End a voice call session
 - `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.handleAudioChunk(callId, audioBase64)` - Route audio to DeepgramAdapter
 - `ui/frontend/src/services/audio-capture.service.ts` -> `new AudioCaptureService()` - Browser microphone capture (PCM 16kHz, WS streaming)
@@ -27,6 +28,11 @@
 - `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.stopTts(callId)` - Stop TTS (barge-in)
 - `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.isTtsActive(callId)` - Check TTS state
 - `ui/src/server/services/elevenlabs.adapter.ts` -> `elevenlabsAdapter.abort()` - Abort current TTS stream
+
+### VCF-005: Conversation Engine (auto-triggered, no direct API calls needed)
+- VoiceCallService auto-triggers LLM call on final transcript (no frontend action needed)
+- `voice:call:start` message now accepts: `agentId`, `agentName`, `systemPrompt` (all optional)
+- Conversation history maintained in-memory per session (Map<callId, messages[]>)
 
 ### Types
 - `ui/src/shared/types/voice.protocol.ts` -> `VoiceConfig` - Full config interface (backend)
@@ -38,6 +44,7 @@
 - `ui/src/server/services/elevenlabs.adapter.ts` -> `ElevenLabsAdapterOptions` - Constructor options
 - `ui/src/server/services/voice-call.service.ts` -> `VoiceCallSession` - Session info interface
 - `ui/src/server/services/voice-call.service.ts` -> `VoiceCallState` - 'idle' | 'connecting' | 'active' | 'ended'
+- `ui/src/server/services/voice-call.service.ts` -> `VoiceCallOptions` - startCall options (projectPath, systemPrompt, agentId, agentName)
 - `ui/frontend/src/services/audio-capture.service.ts` -> `AudioCaptureState` - 'idle' | 'requesting' | 'capturing' | 'error'
 - `ui/frontend/src/services/audio-playback.service.ts` -> `AudioPlaybackState` - 'idle' | 'playing' | 'error'
 - `ui/frontend/src/services/audio-playback.service.ts` -> `AudioPlaybackCallbacks` - Callback interface (onStateChange, onPlaybackStart, onPlaybackEnd, onBargeIn)
@@ -69,6 +76,15 @@
 - Default voice ID from config.voicePersonas[0].voiceId, falls back to ElevenLabs "Rachel" (21m00Tcm4TlvDq8ikWAM)
 - VoiceCallService new events: `tts.start`, `tts.chunk`, `tts.end`, `tts.stopped`, `tts.fallback`
 - New WS message types: `voice:tts:start`, `voice:tts:chunk`, `voice:tts:end`, `voice:tts:stop`, `voice:tts:stopped`, `voice:response:text`, `voice:agent:response`
+- VCF-005: Full conversation loop: Final transcript → auto-trigger processTranscript → Claude CLI spawn → text chunks flushed sentence-by-sentence to TTS → tool calls emitted as action events
+- VCF-005: Claude CLI spawned via spawnWithLoginShell (same pattern as ClaudeHandler) with `--print --verbose --output-format stream-json`
+- VCF-005: Conversation history maintained in-memory per session, included in each LLM prompt
+- VCF-005: LLM provider uses getDefaultSelection()/getProviderCommand() from model-config.ts
+- VCF-005: voice:call:start message now optionally passes agentId, agentName, systemPrompt for agent-specific prompts
+- VCF-005: endCall() kills running Claude process on call end
+- VCF-005: isProcessing flag prevents concurrent LLM calls per session
+- VCF-005 new events: `action.start` (callId, {toolId, toolName, input}), `action.complete` (callId, {toolId, output})
+- VCF-005 new WS message types: `voice:action:start`, `voice:action:complete`
 
 ## File Change Summary
 
@@ -89,3 +105,5 @@
 | ui/src/server/services/voice-call.service.ts | Modified | VCF-004 |
 | ui/src/server/services/elevenlabs.adapter.ts | Modified | VCF-004 |
 | ui/src/server/websocket.ts | Modified | VCF-004 |
+| ui/src/server/services/voice-call.service.ts | Modified | VCF-005 |
+| ui/src/server/websocket.ts | Modified | VCF-005 |
