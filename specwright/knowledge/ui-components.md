@@ -1,7 +1,7 @@
 # UI Components
 
 > Verfügbare UI-Komponenten im Projekt.
-> Zuletzt aktualisiert: 2026-02-27 (MCP Tools Management)
+> Zuletzt aktualisiert: 2026-03-01 (Voice Call Conversational Flow)
 
 ## Komponenten-Übersicht
 
@@ -19,6 +19,11 @@
 | aos-team-detail-modal | ui/frontend/src/components/team/aos-team-detail-modal.ts | open, skillId | Dev-Team Visualization (2026-02-26) |
 | aos-team-edit-modal | ui/frontend/src/components/team/aos-team-edit-modal.ts | open, skillId | Custom Team Members (2026-02-26) |
 | aos-mcp-server-card | ui/frontend/src/components/team/aos-mcp-server-card.ts | server: McpServerSummary | MCP Tools Management (2026-02-27) |
+| aos-voice-call-view | ui/frontend/src/views/voice-call-view.ts | (Orchestrator) | Voice Call Conversational Flow (2026-03-01) |
+| aos-audio-visualizer | ui/frontend/src/components/voice/audio-visualizer.ts | audioData, isActive | Voice Call Conversational Flow (2026-03-01) |
+| aos-call-controls | ui/frontend/src/components/voice/call-controls.ts | callState, isMuted, inputMode | Voice Call Conversational Flow (2026-03-01) |
+| aos-action-log | ui/frontend/src/components/voice/action-log.ts | actions | Voice Call Conversational Flow (2026-03-01) |
+| aos-call-transcript | ui/frontend/src/components/voice/call-transcript.ts | entries | Voice Call Conversational Flow (2026-03-01) |
 
 ---
 
@@ -450,6 +455,118 @@ panel.openFile('src/app.ts', 'app.ts');
 - Typ-Badge farbcodiert (stdio, sse, etc.)
 - Light DOM Pattern
 - Wird in team-view.ts im MCP-Bereich gerendert
+
+---
+
+### aos-voice-call-view
+
+**Pfad:** `ui/frontend/src/views/voice-call-view.ts`
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** Vollbild Voice Call View mit Gateway Integration. Orchestriert Audio-Visualizer, Call-Controls, Action-Log und Transcript. Verwaltet den gesamten Call-Lifecycle (idle -> connecting -> active -> ended).
+
+**Usage Example:**
+```html
+<aos-voice-call-view></aos-voice-call-view>
+```
+
+**Notes:**
+- Vollbild-View, erreichbar via `/call/:agentId` Route
+- Integriert AudioCaptureService und AudioPlaybackService
+- Gateway-Subscriptions fuer voice:* WebSocket Messages
+- Light DOM Pattern
+
+---
+
+### aos-audio-visualizer
+
+**Pfad:** `ui/frontend/src/components/voice/audio-visualizer.ts`
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** Canvas-basierte Audio-Wellenform-Visualisierung. Zeigt Echtzeit-Audioaktivitaet als animierte Wellenform an.
+
+**Usage Example:**
+```html
+<aos-audio-visualizer
+  .audioData=${this.audioData}
+  .isActive=${this.isActive}
+></aos-audio-visualizer>
+```
+
+**Notes:**
+- Canvas-basiertes Rendering fuer Performance
+- Animiert via requestAnimationFrame
+- Light DOM Pattern
+
+---
+
+### aos-call-controls
+
+**Pfad:** `ui/frontend/src/components/voice/call-controls.ts`
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** Voice Call Steuerungs-Buttons (Mute, End Call, Input Mode Switch). Unterstuetzt Umschaltung zwischen Voice- und Text-Modus.
+
+**Events:**
+| Event | Detail | Description |
+|-------|--------|-------------|
+| mute-toggle | - | Mikrofon stumm/aktiv schalten |
+| end-call | - | Call beenden |
+| input-mode-change | { mode: 'voice' \| 'text' } | Eingabemodus wechseln |
+
+**Usage Example:**
+```html
+<aos-call-controls
+  .callState=${this.callState}
+  .isMuted=${this.isMuted}
+  .inputMode=${this.inputMode}
+  @mute-toggle=${this._handleMuteToggle}
+  @end-call=${this._handleEndCall}
+  @input-mode-change=${this._handleInputModeChange}
+></aos-call-controls>
+```
+
+**Notes:**
+- Light DOM Pattern
+- Unterstuetzt Text-Fallback-Modus (VCF-010)
+
+---
+
+### aos-action-log
+
+**Pfad:** `ui/frontend/src/components/voice/action-log.ts`
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** Live-Streaming Action Log fuer Tool-Calls. Zeigt Agent-Aktionen in Echtzeit an (Tool-Aufrufe, Ergebnisse, etc.).
+
+**Usage Example:**
+```html
+<aos-action-log .actions=${this.actions}></aos-action-log>
+```
+
+**Notes:**
+- Auto-Scroll zum neuesten Eintrag
+- Farbcodierung nach Aktionstyp
+- Light DOM Pattern
+
+---
+
+### aos-call-transcript
+
+**Pfad:** `ui/frontend/src/components/voice/call-transcript.ts`
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** Live-Gespraechs-Transkript mit Farbcodierung. Zeigt User- und Agent-Beitraege in Echtzeit an.
+
+**Usage Example:**
+```html
+<aos-call-transcript .entries=${this.transcriptEntries}></aos-call-transcript>
+```
+
+**Notes:**
+- Farbcodierung: User vs Agent Beitraege
+- Auto-Scroll zum neuesten Eintrag
+- Light DOM Pattern
 
 ---
 

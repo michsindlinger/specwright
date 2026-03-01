@@ -1,7 +1,7 @@
 # Shared Services
 
 > Verfügbare Services, Hooks und Utilities im Projekt.
-> Zuletzt aktualisiert: 2026-02-27 (MCP Tools Management)
+> Zuletzt aktualisiert: 2026-03-01 (Voice Call Conversational Flow)
 
 ## Services-Übersicht
 
@@ -13,6 +13,13 @@
 | McpConfigReaderService | ui/src/server/services/mcp-config-reader.service.ts | Service | MCP Tools Management (2026-02-27) |
 | isSpecReady | ui/src/server/specs-reader.ts | Method (SpecsReader) | Spec Assignment (2026-02-24) |
 | toggleBotAssignment | ui/src/server/specs-reader.ts | Method (SpecsReader) | Spec Assignment (2026-02-24) |
+| VoiceConfigService | ui/src/server/voice-config.ts | Service | Voice Call Conversational Flow (2026-03-01) |
+| DeepgramAdapter | ui/src/server/services/deepgram.adapter.ts | Service | Voice Call Conversational Flow (2026-03-01) |
+| ElevenLabsAdapter | ui/src/server/services/elevenlabs.adapter.ts | Service | Voice Call Conversational Flow (2026-03-01) |
+| AudioCaptureService | ui/frontend/src/services/audio-capture.service.ts | Service | Voice Call Conversational Flow (2026-03-01) |
+| VoiceCallService | ui/src/server/services/voice-call.service.ts | Service | Voice Call Conversational Flow (2026-03-01) |
+| AudioPlaybackService | ui/frontend/src/services/audio-playback.service.ts | Service | Voice Call Conversational Flow (2026-03-01) |
+| TranscriptService | ui/src/server/services/transcript.service.ts | Service | Voice Call Conversational Flow (2026-03-01) |
 
 ---
 
@@ -152,6 +159,114 @@
 - env-Felder werden NIEMALS zurückgegeben (Security-critical)
 - Fallback: Sucht .mcp.json auch im Parent-Verzeichnis (Monorepo-Support)
 - Leere/fehlende .mcp.json gibt leeres Array + message zurück (kein Error)
+
+---
+
+### VoiceConfigService
+
+**Pfad:** `ui/src/server/voice-config.ts`
+**Typ:** Service
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** Config-Service fuer Voice-Konfiguration. Verwaltet API-Keys (Deepgram, ElevenLabs), Input-Modus-Einstellungen und Voice Personas.
+
+**Notes:**
+- Laedt Konfiguration aus Settings
+- Unterstuetzt Voice Personas (verschiedene Stimmen/Persoenlichkeiten)
+- Input-Modus: voice oder text
+
+---
+
+### DeepgramAdapter
+
+**Pfad:** `ui/src/server/services/deepgram.adapter.ts`
+**Typ:** Service
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** STT (Speech-to-Text) Adapter fuer Deepgram Nova-3 Streaming API. Konvertiert Audio-Chunks in Text mit Echtzeit-Streaming.
+
+**Notes:**
+- Nutzt @deepgram/sdk npm Paket
+- Streaming-basiert fuer niedrige Latenz
+- Unterstuetzt interim/final Transkriptions-Ergebnisse
+
+---
+
+### ElevenLabsAdapter
+
+**Pfad:** `ui/src/server/services/elevenlabs.adapter.ts`
+**Typ:** Service
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** TTS (Text-to-Speech) Adapter fuer ElevenLabs Streaming API. Konvertiert Text in Audio-Chunks fuer Echtzeit-Wiedergabe.
+
+**Notes:**
+- Nutzt elevenlabs npm Paket
+- Streaming-basiert fuer niedrige Latenz
+- Unterstuetzt verschiedene Stimmen via Voice Personas
+
+---
+
+### AudioCaptureService
+
+**Pfad:** `ui/frontend/src/services/audio-capture.service.ts`
+**Typ:** Service (Frontend)
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** Browser Mikrofon-Capture als PCM 16kHz Stream. Nutzt Web Audio API und MediaStream fuer Echtzeit-Audio-Aufnahme.
+
+**Notes:**
+- Singleton-Pattern
+- PCM 16kHz Mono Output
+- Web Audio API: AudioContext + MediaStreamSource + ScriptProcessorNode/AudioWorklet
+- Permission-Handling fuer Mikrofon-Zugriff
+
+---
+
+### VoiceCallService
+
+**Pfad:** `ui/src/server/services/voice-call.service.ts`
+**Typ:** Service
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** Core Voice Call Orchestrator. Koordiniert den gesamten STT -> LLM -> TTS Loop. Empfaengt Audio-Chunks, verarbeitet sie via DeepgramAdapter (STT), sendet Text an Claude (LLM), und gibt Antworten via ElevenLabsAdapter (TTS) zurueck.
+
+**Notes:**
+- Zentraler Service fuer Voice Call Lifecycle
+- Integriert DeepgramAdapter, ElevenLabsAdapter, Claude SDK
+- Barge-in Support (User unterbricht Agent)
+- Transcript-Tracking via TranscriptService
+
+---
+
+### AudioPlaybackService
+
+**Pfad:** `ui/frontend/src/services/audio-playback.service.ts`
+**Typ:** Service (Frontend)
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** Browser AudioContext Chunk-Playback mit Barge-in Support. Spielt Audio-Chunks in Echtzeit ab und unterstuetzt Unterbrechung durch den User.
+
+**Notes:**
+- Singleton-Pattern
+- Web Audio API: AudioContext + AudioBuffer
+- Chunk-basiertes Playback fuer Streaming
+- Barge-in: Stoppt sofort bei User-Unterbrechung
+
+---
+
+### TranscriptService
+
+**Pfad:** `ui/src/server/services/transcript.service.ts`
+**Typ:** Service
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** Persistiert Voice Call Transkripte als JSON. Speichert User- und Agent-Beitraege mit Zeitstempeln fuer spaetere Analyse.
+
+**Notes:**
+- JSON-basierte Speicherung
+- Wird von VoiceCallService aufgerufen
+- Transkripte werden pro Call gespeichert
 
 ---
 
