@@ -2,25 +2,33 @@
  * VoiceCallService
  *
  * Core orchestrator for Voice Calls. Manages voice call sessions,
- * routes audio chunks to DeepgramAdapter for STT, and emits
- * transcript events back to the WebSocket layer.
+ * routes audio chunks to DeepgramAdapter for STT, sends agent responses
+ * to ElevenLabsAdapter for TTS, and emits events to the WebSocket layer.
  *
  * Architecture:
  * - EventEmitter pattern (like CloudTerminalManager)
  * - Session-Map for concurrent call management
- * - Lifecycle: idle → connecting → active → ended
- * - Routes: Browser audio → DeepgramAdapter → transcript events
+ * - Lifecycle: idle -> connecting -> active -> ended
+ * - STT: Browser audio -> DeepgramAdapter -> transcript events
+ * - TTS: Agent text -> sentence split -> ElevenLabsAdapter -> audio chunks -> Frontend
+ * - Barge-in: Incoming user audio during TTS stops TTS immediately
  *
  * Emits:
  * - 'transcript' (callId, { text, isFinal, confidence }) - Transcript data
  * - 'error' (callId, Error) - Error in voice pipeline
  * - 'call.started' (callId) - Call session started and STT connected
  * - 'call.ended' (callId) - Call session ended
+ * - 'tts.start' (callId) - TTS generation started
+ * - 'tts.chunk' (callId, audioBase64) - Complete sentence audio chunk
+ * - 'tts.end' (callId) - All TTS sentences completed
+ * - 'tts.stopped' (callId) - TTS stopped due to barge-in
+ * - 'tts.fallback' (callId, text) - TTS unavailable, text-only response
  */
 
 import { EventEmitter } from 'events';
 import { DeepgramAdapter } from './deepgram.adapter.js';
 import type { DeepgramTranscriptEvent } from './deepgram.adapter.js';
+import { ElevenLabsAdapter } from './elevenlabs.adapter.js';
 import { loadVoiceConfig } from '../voice-config.js';
 
 export type VoiceCallState = 'idle' | 'connecting' | 'active' | 'ended';
@@ -35,7 +43,15 @@ export interface VoiceCallSession {
 
 interface ManagedVoiceSession extends VoiceCallSession {
   deepgramAdapter: DeepgramAdapter | null;
+  elevenlabsAdapter: ElevenLabsAdapter | null;
+  ttsActive: boolean;
+  ttsSentenceQueue: string[];
+  ttsCurrentAudioChunks: Buffer[];
+  ttsVoiceId: string;
 }
+
+// ElevenLabs default voice (Rachel - multilingual)
+const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
 
 export class VoiceCallService extends EventEmitter {
   private sessions: Map<string, ManagedVoiceSession> = new Map();
@@ -58,11 +74,15 @@ export class VoiceCallService extends EventEmitter {
       startedAt: new Date(),
       endedAt: null,
       deepgramAdapter: null,
+      elevenlabsAdapter: null,
+      ttsActive: false,
+      ttsSentenceQueue: [],
+      ttsCurrentAudioChunks: [],
+      ttsVoiceId: DEFAULT_VOICE_ID,
     };
 
     this.sessions.set(callId, session);
 
-    // Load voice config to get API key
     const config = loadVoiceConfig();
 
     if (!config.deepgramApiKey) {
@@ -73,7 +93,12 @@ export class VoiceCallService extends EventEmitter {
       return;
     }
 
-    // Create and connect DeepgramAdapter
+    // Resolve default voice ID from config personas
+    if (config.voicePersonas && config.voicePersonas.length > 0) {
+      session.ttsVoiceId = config.voicePersonas[0].voiceId;
+    }
+
+    // Create and connect DeepgramAdapter (STT)
     try {
       session.deepgramAdapter = new DeepgramAdapter({
         apiKey: config.deepgramApiKey,
@@ -87,6 +112,20 @@ export class VoiceCallService extends EventEmitter {
       this.sessions.delete(callId);
       const error = err instanceof Error ? err : new Error(String(err));
       this.emit('error', callId, error);
+      return;
+    }
+
+    // Create ElevenLabsAdapter (TTS) - optional, graceful if not configured
+    if (config.elevenLabsApiKey) {
+      try {
+        session.elevenlabsAdapter = new ElevenLabsAdapter({
+          apiKey: config.elevenLabsApiKey,
+        });
+        this.attachElevenLabsListeners(session);
+      } catch (err) {
+        console.warn(`[VoiceCallService] ElevenLabs setup failed, TTS disabled:`, err);
+        session.elevenlabsAdapter = null;
+      }
     }
   }
 
@@ -98,9 +137,23 @@ export class VoiceCallService extends EventEmitter {
     const session = this.sessions.get(callId);
     if (!session) return;
 
+    // Stop TTS if active
+    if (session.ttsActive) {
+      session.ttsActive = false;
+      session.ttsSentenceQueue = [];
+      if (session.elevenlabsAdapter) {
+        session.elevenlabsAdapter.abort();
+      }
+    }
+
     if (session.deepgramAdapter) {
       session.deepgramAdapter.close();
       session.deepgramAdapter = null;
+    }
+
+    if (session.elevenlabsAdapter) {
+      session.elevenlabsAdapter.removeAllListeners();
+      session.elevenlabsAdapter = null;
     }
 
     session.state = 'ended';
@@ -112,7 +165,8 @@ export class VoiceCallService extends EventEmitter {
   }
 
   /**
-   * Handle an incoming audio chunk from the client
+   * Handle an incoming audio chunk from the client.
+   * Routes to DeepgramAdapter for STT. If TTS is active, triggers barge-in.
    * @param callId - Call identifier
    * @param audioBase64 - Base64-encoded PCM audio data
    */
@@ -120,11 +174,71 @@ export class VoiceCallService extends EventEmitter {
     const session = this.sessions.get(callId);
     if (!session || session.state !== 'active') return;
 
+    // Barge-in: if TTS is playing and user starts speaking, stop TTS
+    if (session.ttsActive) {
+      this.stopTts(callId);
+    }
+
     if (!session.deepgramAdapter || !session.deepgramAdapter.isConnected) return;
 
-    // Decode base64 to Buffer
     const audioBuffer = Buffer.from(audioBase64, 'base64');
     session.deepgramAdapter.send(audioBuffer);
+  }
+
+  /**
+   * Handle an agent text response by converting it to speech.
+   * Splits text into sentences and streams each via ElevenLabs TTS.
+   * @param callId - Call identifier
+   * @param text - Agent response text to speak
+   * @param voiceId - Optional ElevenLabs voice ID override
+   */
+  handleAgentResponse(callId: string, text: string, voiceId?: string): void {
+    const session = this.sessions.get(callId);
+    if (!session || session.state !== 'active') return;
+
+    if (!session.elevenlabsAdapter) {
+      this.emit('tts.fallback', callId, text);
+      return;
+    }
+
+    const sentences = this.splitIntoSentences(text);
+    if (sentences.length === 0) return;
+
+    const resolvedVoiceId = voiceId || session.ttsVoiceId;
+    session.ttsSentenceQueue.push(...sentences);
+
+    if (!session.ttsActive) {
+      session.ttsActive = true;
+      session.ttsVoiceId = resolvedVoiceId;
+      this.emit('tts.start', callId);
+
+      this.processTtsQueue(session).catch((err) => {
+        console.error(`[VoiceCallService] TTS queue error for call ${session.callId}:`, err);
+        session.ttsActive = false;
+        this.emit('error', callId, err instanceof Error ? err : new Error(String(err)));
+      });
+    }
+  }
+
+  /**
+   * Stop TTS playback (barge-in).
+   * Aborts the current ElevenLabs stream and clears the sentence queue.
+   * @param callId - Call identifier
+   */
+  stopTts(callId: string): void {
+    const session = this.sessions.get(callId);
+    if (!session || !session.ttsActive) return;
+
+    session.ttsActive = false;
+    session.ttsSentenceQueue = [];
+    session.ttsCurrentAudioChunks = [];
+
+    if (session.elevenlabsAdapter) {
+      session.elevenlabsAdapter.abort();
+    }
+
+    console.log(`[VoiceCallService] TTS stopped (barge-in): ${callId}`);
+    this.emit('tts.stopped', callId);
   }
 
   /**
@@ -163,6 +277,54 @@ export class VoiceCallService extends EventEmitter {
     return session !== null && session !== undefined && session.state === 'active';
   }
 
+  /**
+   * Check if TTS is active for a call
+   */
+  isTtsActive(callId: string): boolean {
+    const session = this.sessions.get(callId);
+    return session !== null && session !== undefined && session.ttsActive;
+  }
+
+  /**
+   * Process the TTS sentence queue sequentially.
+   * For each sentence: stream via ElevenLabs, accumulate audio chunks,
+   * emit complete sentence audio as a single tts.chunk event.
+   */
+  private async processTtsQueue(session: ManagedVoiceSession): Promise<void> {
+    while (session.ttsSentenceQueue.length > 0 && session.ttsActive) {
+      const sentence = session.ttsSentenceQueue.shift()!;
+      session.ttsCurrentAudioChunks = [];
+
+      if (!session.elevenlabsAdapter) break;
+
+      // Stream the sentence - audioChunk events are collected by the listener
+      await session.elevenlabsAdapter.stream(session.ttsVoiceId, sentence);
+
+      // After stream completes, emit accumulated audio as one chunk
+      if (session.ttsActive && session.ttsCurrentAudioChunks.length > 0) {
+        const fullAudio = Buffer.concat(session.ttsCurrentAudioChunks);
+        this.emit('tts.chunk', session.callId, fullAudio.toString('base64'));
+      }
+    }
+
+    // All sentences processed
+    if (session.ttsActive) {
+      session.ttsActive = false;
+      this.emit('tts.end', session.callId);
+    }
+  }
+
+  /**
+   * Split text into sentences for streaming TTS.
+   * Splits on sentence-ending punctuation followed by whitespace.
+   */
+  private splitIntoSentences(text: string): string[] {
+    return text
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
+
   private attachDeepgramListeners(session: ManagedVoiceSession): void {
     const adapter = session.deepgramAdapter;
     if (!adapter) return;
@@ -187,10 +349,29 @@ export class VoiceCallService extends EventEmitter {
     });
 
     adapter.on('close', () => {
-      // Only handle if not intentionally ended
       if (session.state === 'active') {
         console.warn(`[VoiceCallService] Deepgram connection lost for call ${session.callId}`);
-        // DeepgramAdapter handles reconnection internally
+      }
+    });
+  }
+
+  private attachElevenLabsListeners(session: ManagedVoiceSession): void {
+    const adapter = session.elevenlabsAdapter;
+    if (!adapter) return;
+
+    adapter.on('audioChunk', (buffer: Buffer) => {
+      if (session.ttsActive) {
+        session.ttsCurrentAudioChunks.push(buffer);
+      }
+    });
+
+    adapter.on('error', (err: Error) => {
+      console.error(`[VoiceCallService] ElevenLabs error for call ${session.callId}:`, err.message);
+      if (session.ttsActive) {
+        session.ttsActive = false;
+        session.ttsSentenceQueue = [];
+        // Emit fallback: send remaining text as text-only
+        this.emit('error', session.callId, err);
       }
     });
   }

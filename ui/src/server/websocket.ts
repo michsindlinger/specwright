@@ -488,6 +488,12 @@ export class WebSocketHandler {
         case 'voice:audio:chunk':
           this.handleVoiceAudioChunk(client, message);
           break;
+        case 'voice:tts:stop':
+          this.handleVoiceTtsStop(client, message);
+          break;
+        case 'voice:agent:response':
+          this.handleVoiceAgentResponse(client, message);
+          break;
         default: {
           const response: WebSocketMessage = {
             type: 'ack',
@@ -3988,6 +3994,54 @@ export class WebSocketHandler {
       };
       this.broadcast(message);
     });
+
+    // TTS events (VCF-004)
+    this.voiceCallService.on('tts.start', (callId: string) => {
+      const message: WebSocketMessage = {
+        type: 'voice:tts:start',
+        callId,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
+
+    this.voiceCallService.on('tts.chunk', (callId: string, audioBase64: string) => {
+      const message: WebSocketMessage = {
+        type: 'voice:tts:chunk',
+        callId,
+        audio: audioBase64,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
+
+    this.voiceCallService.on('tts.end', (callId: string) => {
+      const message: WebSocketMessage = {
+        type: 'voice:tts:end',
+        callId,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
+
+    this.voiceCallService.on('tts.stopped', (callId: string) => {
+      const message: WebSocketMessage = {
+        type: 'voice:tts:stopped',
+        callId,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
+
+    this.voiceCallService.on('tts.fallback', (callId: string, text: string) => {
+      const message: WebSocketMessage = {
+        type: 'voice:response:text',
+        callId,
+        text,
+        timestamp: new Date().toISOString(),
+      };
+      this.broadcast(message);
+    });
   }
 
   /**
@@ -4023,6 +4077,32 @@ export class WebSocketHandler {
     if (!callId || !audio) return;
 
     this.voiceCallService.handleAudioChunk(callId, audio);
+  }
+
+  /**
+   * Handle voice:tts:stop (VCF-004)
+   * Frontend requests TTS stop (barge-in)
+   */
+  private handleVoiceTtsStop(_client: WebSocketClient, message: WebSocketMessage): void {
+    const callId = message.callId as string;
+    if (!callId) return;
+
+    console.log(`[WebSocket] Voice TTS stop (barge-in): ${callId}`);
+    this.voiceCallService.stopTts(callId);
+  }
+
+  /**
+   * Handle voice:agent:response (VCF-004)
+   * Triggers TTS for an agent text response
+   */
+  private handleVoiceAgentResponse(_client: WebSocketClient, message: WebSocketMessage): void {
+    const callId = message.callId as string;
+    const text = message.text as string;
+    if (!callId || !text) return;
+
+    const voiceId = message.voiceId as string | undefined;
+    console.log(`[WebSocket] Voice agent response for call ${callId}: ${text.substring(0, 50)}...`);
+    this.voiceCallService.handleAgentResponse(callId, text, voiceId);
   }
 
   /**

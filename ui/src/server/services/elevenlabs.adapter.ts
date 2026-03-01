@@ -49,6 +49,7 @@ export class ElevenLabsAdapter extends EventEmitter {
   private client: ElevenLabsClient;
   private options: Required<Omit<ElevenLabsAdapterOptions, 'apiKey'>> & { apiKey: string };
   private isStreaming = false;
+  private currentReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
   constructor(options: ElevenLabsAdapterOptions) {
     super();
@@ -118,8 +119,21 @@ export class ElevenLabsAdapter extends EventEmitter {
     }
   }
 
+  /**
+   * Abort the current TTS stream (e.g., for barge-in).
+   * Cancels the active reader and resets streaming state.
+   */
+  abort(): void {
+    if (this.currentReader) {
+      this.currentReader.cancel().catch(() => {});
+      this.currentReader = null;
+    }
+    this.isStreaming = false;
+  }
+
   private async processStream(audioStream: ReadableStream<Uint8Array>): Promise<void> {
     const reader = audioStream.getReader();
+    this.currentReader = reader;
 
     try {
       while (true) {
@@ -136,10 +150,14 @@ export class ElevenLabsAdapter extends EventEmitter {
         }
       }
     } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      console.error('[ElevenLabsAdapter] Stream error:', error.message);
-      this.emit('error', error);
+      // Ignore errors from abort (reader.cancel)
+      if (this.currentReader !== null) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        console.error('[ElevenLabsAdapter] Stream error:', error.message);
+        this.emit('error', error);
+      }
     } finally {
+      this.currentReader = null;
       reader.releaseLock();
     }
   }
