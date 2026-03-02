@@ -115,19 +115,19 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] AudioCaptureService (Frontend) nimmt Mikrofon-Audio als PCM 16kHz auf
-- [ ] Audio-Chunks werden via Gateway als voice:audio:chunk gesendet
-- [ ] VoiceCallService (Backend) empfaengt Audio-Chunks und leitet an DeepgramAdapter
-- [ ] Interim- und Final-Transkripte werden als voice:transcript:interim/final ans Frontend gestreamt
-- [ ] Mikrofon-Berechtigung-Handling: Fallback auf Text-Modus bei Verweigerung
-- [ ] WebSocket Handler routet voice:audio:chunk an VoiceCallService
-- [ ] Backend kompiliert fehlerfrei (`cd ui && npm run build:backend`)
-- [ ] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
-- [ ] Keine Linting-Fehler (`cd ui && npm run lint`)
-- [ ] **Integration hergestellt: Browser Mikrofon -> Gateway -> WebSocket Handler -> VoiceCallService -> DeepgramAdapter**
-  - [ ] Import/Aufruf existiert in Code
-  - [ ] Verbindung ist funktional (nicht nur Stub)
+- [x] Code implementiert und folgt Style Guide
+- [x] AudioCaptureService (Frontend) nimmt Mikrofon-Audio als PCM 16kHz auf
+- [x] Audio-Chunks werden via Gateway als voice:audio:chunk gesendet
+- [x] VoiceCallService (Backend) empfaengt Audio-Chunks und leitet an DeepgramAdapter
+- [x] Interim- und Final-Transkripte werden als voice:transcript:interim/final ans Frontend gestreamt
+- [x] Mikrofon-Berechtigung-Handling: Fallback auf Text-Modus bei Verweigerung
+- [x] WebSocket Handler routet voice:audio:chunk an VoiceCallService
+- [x] Backend kompiliert fehlerfrei (`cd ui && npm run build:backend`)
+- [x] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
+- [x] Keine Linting-Fehler (`cd ui && npm run lint`)
+- [x] **Integration hergestellt: Browser Mikrofon -> Gateway -> WebSocket Handler -> VoiceCallService -> DeepgramAdapter**
+  - [x] Import/Aufruf existiert in Code
+  - [x] Verbindung ist funktional (nicht nur Stub)
 
 ---
 

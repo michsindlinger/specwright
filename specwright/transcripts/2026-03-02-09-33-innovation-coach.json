@@ -1,0 +1,20 @@
+{
+  "sessionId": "call-1772440380576-gyu6t",
+  "skillId": "innovation-coach",
+  "agentName": "innovation-coach",
+  "startTime": "2026-03-02T08:33:00.578Z",
+  "endTime": "2026-03-02T08:33:20.458Z",
+  "messages": [
+    {
+      "role": "user",
+      "text": "Hallo, das ist ein Test. Kannst Du mal bitte was sagen?",
+      "timestamp": "2026-03-02T08:33:06.160Z"
+    },
+    {
+      "role": "agent",
+      "text": "Hallo! Ja, ich kann dich hören. Ich bin dein Innovation Coach und stehe dir zur Verfügung. Wie kann ich dir heute helfen? Hast du ein Projekt oder eine Idee, an der du arbeiten möchtest?",
+      "timestamp": "2026-03-02T08:33:11.445Z"
+    }
+  ],
+  "actions": []
+}

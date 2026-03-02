@@ -118,19 +118,19 @@ Scenario: Verbindung kann nicht hergestellt werden
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] aos-voice-call-view Lit Component erstellt mit Vollbild-Layout
-- [ ] Agent-Avatar, Name und Rolle werden korrekt angezeigt
-- [ ] Connecting-Animation waehrend Verbindungsaufbau
-- [ ] Roter Auflegen-Button beendet Call und navigiert zurueck
-- [ ] Route 'call' in ViewType registriert
-- [ ] app.ts rendert aos-voice-call-view fuer case 'call'
-- [ ] Gateway Listener fuer voice:* Events korrekt registriert
-- [ ] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
-- [ ] Keine Linting-Fehler (`cd ui && npm run lint`)
-- [ ] **Integration hergestellt: aos-voice-call-view -> Gateway (voice:call:start)**
-  - [ ] Import/Aufruf existiert in Code
-  - [ ] Verbindung ist funktional (nicht nur Stub)
+- [x] Code implementiert und folgt Style Guide
+- [x] aos-voice-call-view Lit Component erstellt mit Vollbild-Layout
+- [x] Agent-Avatar, Name und Rolle werden korrekt angezeigt
+- [x] Connecting-Animation waehrend Verbindungsaufbau
+- [x] Roter Auflegen-Button beendet Call und navigiert zurueck
+- [x] Route 'call' in ViewType registriert
+- [x] app.ts rendert aos-voice-call-view fuer case 'call'
+- [x] Gateway Listener fuer voice:* Events korrekt registriert
+- [x] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
+- [x] Keine Linting-Fehler (`cd ui && npm run lint`)
+- [x] **Integration hergestellt: aos-voice-call-view -> Gateway (voice:call:start)**
+  - [x] Import/Aufruf existiert in Code
+  - [x] Verbindung ist funktional (nicht nur Stub)
 
 ---
 

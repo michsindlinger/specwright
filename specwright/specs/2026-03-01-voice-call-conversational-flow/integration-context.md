@@ -1,0 +1,206 @@
+# Integration Context - Voice Call Conversational Flow
+
+## Completed Stories
+
+| Story ID | Summary | Key Files |
+|----------|---------|-----------|
+| VCF-001 | Voice config service + API key management + Settings UI | voice-config.ts, voice.protocol.ts, websocket.ts, settings-view.ts |
+| VCF-002 | Deepgram STT + ElevenLabs TTS adapters with EventEmitter pattern | deepgram.adapter.ts, elevenlabs.adapter.ts |
+| VCF-003 | STT Pipeline: AudioCaptureService (Frontend) + VoiceCallService (Backend) + WS routing | audio-capture.service.ts, voice-call.service.ts, websocket.ts, gateway.ts |
+| VCF-004 | TTS Pipeline: AudioPlaybackService (Frontend) + VoiceCallService TTS flow + ElevenLabs integration + Barge-in | audio-playback.service.ts, voice-call.service.ts, elevenlabs.adapter.ts, websocket.ts |
+| VCF-005 | Agent Conversation Engine: Full STT->LLM->TTS loop, Claude CLI integration, tool call events, conversation history | voice-call.service.ts, websocket.ts |
+| VCF-006 | Fullscreen Voice Call View, route 'call', Gateway voice:* listeners, agent info display | voice-call-view.ts, route.types.ts, app.ts |
+| VCF-007 | Audio Visualizer (Canvas FFT) + Call Controls (Mute/PTT/VAD/Hangup) + Audio service integration in call view | audio-visualizer.ts, call-controls.ts, voice-call-view.ts |
+| VCF-008 | Action Log + Call Transcript UI components, gateway event integration for actions/transcript | action-log.ts, call-transcript.ts, voice-call-view.ts |
+| VCF-009 | Team Card phone icon + call-click event, Team View call handler with voice-config check + navigation to #/call/:skillId | aos-team-card.ts, team-view.ts |
+| VCF-010 | Text fallback + input mode switching: text input field, voice/text toggle, auto-fallback when no mic, backend voice:text:send handler | call-controls.ts, voice-call-view.ts, voice-call.service.ts, websocket.ts |
+| VCF-011 | TranscriptService for persisting call transcripts as JSON, Voice Persona mapping per agent category | transcript.service.ts, voice-call.service.ts, voice-config.ts |
+
+## New Exports & APIs
+
+### Services
+- `ui/src/server/voice-config.ts` -> `loadVoiceConfigStatus()` - Returns safe config status (no API keys)
+- `ui/src/server/voice-config.ts` -> `loadVoiceConfig()` - Returns full config (backend-only)
+- `ui/src/server/voice-config.ts` -> `updateVoiceConfig(updates)` - Update config fields
+- `ui/src/server/services/deepgram.adapter.ts` -> `new DeepgramAdapter({ apiKey })` - STT streaming adapter (EventEmitter: transcript, error, close, open)
+- `ui/src/server/services/elevenlabs.adapter.ts` -> `new ElevenLabsAdapter({ apiKey })` - TTS streaming adapter (EventEmitter: audioChunk, complete, error)
+- `ui/src/server/services/voice-call.service.ts` -> `new VoiceCallService()` - Core voice orchestrator (EventEmitter: transcript, error, call.started, call.ended)
+- `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.startCall(callId, clientId, options?)` - Start a voice call session (options: projectPath, systemPrompt, agentId, agentName)
+- `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.endCall(callId)` - End a voice call session
+- `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.handleAudioChunk(callId, audioBase64)` - Route audio to DeepgramAdapter
+- `ui/frontend/src/services/audio-capture.service.ts` -> `new AudioCaptureService()` - Browser microphone capture (PCM 16kHz, WS streaming)
+- `ui/frontend/src/services/audio-playback.service.ts` -> `new AudioPlaybackService()` - Browser audio playback (AudioContext, chunk queue, barge-in)
+- `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.handleAgentResponse(callId, text, voiceId?)` - Route agent text to TTS pipeline
+- `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.stopTts(callId)` - Stop TTS (barge-in)
+- `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.isTtsActive(callId)` - Check TTS state
+- `ui/src/server/services/voice-call.service.ts` -> `voiceCallService.handleTextInput(callId, text)` - Route user-typed text through conversation engine (same as STT)
+- `ui/src/server/services/elevenlabs.adapter.ts` -> `elevenlabsAdapter.abort()` - Abort current TTS stream
+
+### VCF-011: TranscriptService + Voice Personas
+- `ui/src/server/services/transcript.service.ts` -> `saveTranscript(projectPath, data)` - Persist call transcript as JSON to specwright/transcripts/
+- `ui/src/server/services/transcript.service.ts` -> `loadTranscript(filePath)` - Load a previously saved transcript
+- `ui/src/server/services/transcript.service.ts` -> `listTranscripts(projectPath)` - List all transcripts (newest first)
+- `ui/src/server/voice-config.ts` -> `getPersonaVoiceId(agentCategory)` - Resolve ElevenLabs voice ID for agent category (case-insensitive match on persona.id)
+
+### VCF-005: Conversation Engine (auto-triggered, no direct API calls needed)
+- VoiceCallService auto-triggers LLM call on final transcript (no frontend action needed)
+- `voice:call:start` message now accepts: `agentId`, `agentName`, `systemPrompt` (all optional)
+- Conversation history maintained in-memory per session (Map<callId, messages[]>)
+
+### Types
+- `ui/src/shared/types/voice.protocol.ts` -> `VoiceConfig` - Full config interface (backend)
+- `ui/src/shared/types/voice.protocol.ts` -> `VoiceConfigStatus` - Safe config for frontend
+- `ui/src/shared/types/voice.protocol.ts` -> `VoiceInputMode` - 'push-to-talk' | 'voice-activity'
+- `ui/src/shared/types/voice.protocol.ts` -> `VoicePersona` - Persona config interface
+- `ui/src/server/services/deepgram.adapter.ts` -> `DeepgramTranscriptEvent` - Transcript event type (text, isFinal, confidence)
+- `ui/src/server/services/deepgram.adapter.ts` -> `DeepgramAdapterOptions` - Constructor options
+- `ui/src/server/services/elevenlabs.adapter.ts` -> `ElevenLabsAdapterOptions` - Constructor options
+- `ui/src/server/services/voice-call.service.ts` -> `VoiceCallSession` - Session info interface
+- `ui/src/server/services/voice-call.service.ts` -> `VoiceCallState` - 'idle' | 'connecting' | 'active' | 'ended'
+- `ui/src/server/services/voice-call.service.ts` -> `VoiceCallOptions` - startCall options (projectPath, systemPrompt, agentId, agentName)
+- `ui/frontend/src/services/audio-capture.service.ts` -> `AudioCaptureState` - 'idle' | 'requesting' | 'capturing' | 'error'
+- `ui/frontend/src/services/audio-playback.service.ts` -> `AudioPlaybackState` - 'idle' | 'playing' | 'error'
+- `ui/frontend/src/services/audio-playback.service.ts` -> `AudioPlaybackCallbacks` - Callback interface (onStateChange, onPlaybackStart, onPlaybackEnd, onBargeIn)
+
+### VCF-011 Types
+- `ui/src/server/services/transcript.service.ts` -> `TranscriptData` - Full transcript: { sessionId, skillId, agentName?, startTime, endTime, messages[], actions[] }
+- `ui/src/server/services/transcript.service.ts` -> `TranscriptMessage` - { role: 'user'|'agent', text, timestamp }
+- `ui/src/server/services/transcript.service.ts` -> `TranscriptAction` - { toolId, toolName, timestamp, output? }
+
+## Integration Notes
+
+- Config file: `ui/config/voice-config.json` (created on first save)
+- WebSocket messages: `settings.voice.get` / `settings.voice.update` -> response `settings.voice`
+- API keys are NEVER sent to frontend - only `isConfigured` booleans
+- VoiceConfigService follows general-config.ts pattern (load/save with caching)
+- Settings View has new 'voice' tab between 'general' and 'appearance'
+- DeepgramAdapter uses EventEmitter pattern (like TerminalManager): `connect()`, `send(chunk)`, `close()`
+- ElevenLabsAdapter uses EventEmitter pattern: `stream(voiceId, text)` -> emits audioChunk/complete
+- Both adapters receive API keys via `loadVoiceConfig()` from VCF-001
+- DeepgramAdapter has auto-reconnect (3 attempts, exponential backoff)
+- Dependencies: `@deepgram/sdk`, `@elevenlabs/elevenlabs-js` (NOTE: `elevenlabs` is deprecated)
+- VoiceCallService follows CloudTerminalManager pattern (EventEmitter, Session-Map, Lifecycle)
+- Audio pipeline: Browser getUserMedia → PCM 16kHz → base64 → WS `voice:audio:chunk` → VoiceCallService → DeepgramAdapter
+- Transcript pipeline: DeepgramAdapter `transcript` event → VoiceCallService → WS `voice:transcript:interim/final` → Frontend
+- WS message types: `voice:call:start`, `voice:call:end`, `voice:audio:chunk`, `voice:call:started`, `voice:call:ended`, `voice:transcript:interim`, `voice:transcript:final`, `voice:error`
+- Gateway methods: `sendVoiceCallStart(callId)`, `sendVoiceCallEnd(callId)`, `sendVoiceAudioChunk(callId, audio)`
+- AudioCaptureService sends audio directly via `gateway.send()` (not Gateway methods) for performance
+- Client disconnect automatically cleans up voice call sessions via `endCallsForClient()`
+- TTS pipeline: `handleAgentResponse(callId, text)` → split into sentences → ElevenLabsAdapter.stream() per sentence → accumulate audio chunks → emit `tts.chunk` with full sentence audio (base64 mp3)
+- TTS barge-in: VoiceCallService detects incoming user audio during TTS → calls `stopTts()` → aborts ElevenLabsAdapter → emits `tts.stopped`
+- TTS fallback: If ElevenLabs not configured/fails → emits `tts.fallback` → WS sends `voice:response:text` (text-only)
+- AudioPlaybackService receives `voice:tts:chunk` messages, decodes mp3 via AudioContext.decodeAudioData(), queues AudioBuffers, plays sequentially
+- AudioPlaybackService barge-in: `stop()` halts playback and sends `voice:tts:stop` via Gateway to backend
+- Default voice ID from config.voicePersonas[0].voiceId, falls back to ElevenLabs "Rachel" (21m00Tcm4TlvDq8ikWAM)
+- VoiceCallService new events: `tts.start`, `tts.chunk`, `tts.end`, `tts.stopped`, `tts.fallback`
+- New WS message types: `voice:tts:start`, `voice:tts:chunk`, `voice:tts:end`, `voice:tts:stop`, `voice:tts:stopped`, `voice:response:text`, `voice:agent:response`
+- VCF-005: Full conversation loop: Final transcript → auto-trigger processTranscript → Claude CLI spawn → text chunks flushed sentence-by-sentence to TTS → tool calls emitted as action events
+- VCF-005: Claude CLI spawned via spawnWithLoginShell (same pattern as ClaudeHandler) with `--print --verbose --output-format stream-json`
+- VCF-005: Conversation history maintained in-memory per session, included in each LLM prompt
+- VCF-005: LLM provider uses getDefaultSelection()/getProviderCommand() from model-config.ts
+- VCF-005: voice:call:start message now optionally passes agentId, agentName, systemPrompt for agent-specific prompts
+- VCF-005: endCall() kills running Claude process on call end
+- VCF-005: isProcessing flag prevents concurrent LLM calls per session
+- VCF-005 new events: `action.start` (callId, {toolId, toolName, input}), `action.complete` (callId, {toolId, output})
+- VCF-005 new WS message types: `voice:action:start`, `voice:action:complete`
+- VCF-006: aos-voice-call-view is a fullscreen Lit component at `ui/frontend/src/views/voice-call-view.ts`
+- VCF-006: Route `#/call/:skillId` - skillId extracted from `routerService.getCurrentRoute()?.segments[0]`
+- VCF-006: ViewType union includes 'call', VALID_VIEWS includes 'call'
+- VCF-006: Agent info fetched from `/api/team/:projectPath/skills/:skillId` (name, role, avatar)
+- VCF-006: viewState: connecting -> active (on voice:call:started) -> ended (on voice:call:ended/hangup)
+- VCF-006: Gateway listeners: voice:call:started, voice:call:ended, voice:error
+- VCF-006: Sends voice:call:start on connectedCallback with callId, agentId, agentName
+- VCF-006: Cleanup in disconnectedCallback: sends voice:call:end, removes gateway listeners
+- VCF-006: Layout slots for future stories: #visualizer-area (VCF-007), #transcript-area (VCF-008), #action-log-area (VCF-008)
+- VCF-006: Mute button toggles `isMuted` state (audio capture integration in VCF-007)
+- VCF-006: After call end, auto-navigates back to team view after 500ms/1500ms delay
+- VCF-007: aos-audio-visualizer uses Canvas + requestAnimationFrame + AnalyserNode.getByteFrequencyData() for mirrored bar visualization
+- VCF-007: Two visualizer modes: 'user' (purple bars) and 'agent' (green bars), switches based on isAgentSpeaking
+- VCF-007: aos-call-controls dispatches custom events: mute-toggle, hang-up, ptt-start, ptt-end, mode-change
+- VCF-007: PTT via document keydown/keyup on Space key (only when inputMode='push-to-talk')
+- VCF-007: voice-call-view now instantiates AudioCaptureService + AudioPlaybackService on call start
+- VCF-007: voice-call-view listens for voice:tts:chunk/start/end gateway messages to feed AudioPlaybackService and switch visualizer mode
+- VCF-007: AudioCaptureService extended: getMediaStream(), mute(), unmute() - mute/unmute toggle MediaStream audio track enabled
+- VCF-007: AudioPlaybackService extended: AnalyserNode in audio chain (source → analyser → destination), getAnalyser()
+- VCF-007: User visualizer uses separate AudioContext with MediaStreamSource from AudioCaptureService.getMediaStream()
+- VCF-007: Agent visualizer uses AudioPlaybackService.getAnalyser()
+- VCF-007: InputMode type defined locally in call-controls.ts as 'push-to-talk' | 'voice-activity' (avoids deep import path to shared types)
+- VCF-007: Property named `voiceInputMode` in voice-call-view (not `inputMode`) to avoid HTMLElement.inputMode conflict
+- VCF-008: aos-action-log is a pure presentation component - receives VoiceAction[] via property binding from voice-call-view
+- VCF-008: aos-call-transcript is a pure presentation component - receives TranscriptMessage[] via property binding from voice-call-view
+- VCF-008: voice-call-view now listens to voice:action:start, voice:action:complete, voice:transcript:interim, voice:transcript:final, voice:agent:response gateway events
+- VCF-008: Interim transcripts (voice:transcript:interim) replace the last user interim message; final transcripts replace interim with permanent entry
+- VCF-008: VoiceAction interface: { toolId, toolName, status: 'running'|'complete'|'error', timestamp, output? }
+- VCF-008: TranscriptMessage interface: { id, role: 'user'|'agent', text, timestamp, isInterim? }
+- VCF-008: State arrays (actions, transcriptMessages) are reset in cleanupAudioServices() when call ends
+- VCF-009: aos-team-card now has a phone icon button (Lucide Phone SVG) that dispatches `call-click` CustomEvent with `{ skillId }` (bubbles, composed)
+- VCF-009: Team View handles `@call-click` on all aos-team-card instances (devteam, custom teams, individuals)
+- VCF-009: Before navigating, team-view checks voice config via `gateway.once('settings.voice')` + `gateway.send({ type: 'settings.voice.get' })`
+- VCF-009: If deepgramConfigured=true → navigates to `#/call/${skillId}` (triggers aos-voice-call-view from VCF-006)
+- VCF-009: If not configured → shows toast warning via `aos-toast-notification.warning()`
+- VCF-010: aos-call-controls new props: `text-mode` (boolean), `mic-available` (boolean); new events: `text-toggle`, `text-send` (detail: { text })
+- VCF-010: In text mode, voice controls (mute, VAD/PTT toggle) are hidden; only text input, text/voice toggle, and hangup shown
+- VCF-010: PTT Space key handler disabled when textMode=true to allow normal typing
+- VCF-010: voice-call-view manages textMode + micAvailable state; auto-fallback on mic permission denied or getUserMedia error
+- VCF-010: Text messages sent as `voice:text:send` { callId, text, timestamp } via gateway.send()
+- VCF-010: Backend VoiceCallService.handleTextInput(callId, text) routes text through processTranscript (same as STT)
+- VCF-010: Backend emits transcript event for text input so frontend transcript UI shows it
+- VCF-010: When switching voice→text: mic is muted; when switching text→voice: mic unmuted (VAD) or stays muted (PTT)
+- VCF-010: If mic was unavailable, clicking voice toggle attempts to re-acquire mic via retryMicAndSwitchMode()
+- VCF-011: TranscriptService saves transcripts to `{projectPath}/specwright/transcripts/YYYY-MM-DD-HH-mm-skillId.json`
+- VCF-011: Transcript data collected in-memory during call via `transcriptMessages[]` and `transcriptActions[]` on session
+- VCF-011: On `endCall()`, TranscriptService.saveTranscript() is called automatically (only if messages exist)
+- VCF-011: Voice Persona resolved at `startCall()` via `getPersonaVoiceId(agentId)` - matches persona.id case-insensitively
+- VCF-011: Persona fallback chain: exact match on persona.id → first configured persona → DEFAULT_VOICE_ID (Rachel)
+- VCF-011: User transcript messages collected from both STT final transcripts and text input (handleTextInput)
+- VCF-011: Agent transcript messages collected when LLM response completes (processTranscript)
+- VCF-011: Tool actions collected with toolId/toolName on action.start, output updated on action.complete
+
+### Components
+- `ui/frontend/src/views/voice-call-view.ts` -> `<aos-voice-call-view>` - Fullscreen voice call view with agent info, connecting animation, call controls
+- `ui/frontend/src/components/voice/audio-visualizer.ts` -> `<aos-audio-visualizer>` - Canvas-based FFT waveform (props: active, mode; method: setAnalyser(node))
+- `ui/frontend/src/components/voice/call-controls.ts` -> `<aos-call-controls>` - Mute/Hangup/PTT/VAD/Text controls (props: muted, input-mode, call-active, ptt-active, text-mode, mic-available; events: mute-toggle, hang-up, ptt-start, ptt-end, mode-change, text-toggle, text-send)
+- `ui/frontend/src/components/voice/action-log.ts` -> `<aos-action-log>` - Live action log for tool calls (props: actions: VoiceAction[]; auto-scroll, status icons running/complete/error)
+- `ui/frontend/src/components/voice/call-transcript.ts` -> `<aos-call-transcript>` - Live transcript with user/agent labels (props: messages: TranscriptMessage[]; auto-scroll, color-coded by role)
+
+## File Change Summary
+
+| File | Action | Story |
+|------|--------|-------|
+| ui/src/shared/types/voice.protocol.ts | Created | VCF-001 |
+| ui/src/server/voice-config.ts | Created | VCF-001 |
+| ui/src/server/websocket.ts | Modified | VCF-001 |
+| ui/frontend/src/views/settings-view.ts | Modified | VCF-001 |
+| ui/src/server/services/deepgram.adapter.ts | Created | VCF-002 |
+| ui/src/server/services/elevenlabs.adapter.ts | Created | VCF-002 |
+| ui/package.json | Modified | VCF-002 |
+| ui/frontend/src/services/audio-capture.service.ts | Created | VCF-003 |
+| ui/src/server/services/voice-call.service.ts | Created | VCF-003 |
+| ui/src/server/websocket.ts | Modified | VCF-003 |
+| ui/frontend/src/gateway.ts | Modified | VCF-003 |
+| ui/frontend/src/services/audio-playback.service.ts | Created | VCF-004 |
+| ui/src/server/services/voice-call.service.ts | Modified | VCF-004 |
+| ui/src/server/services/elevenlabs.adapter.ts | Modified | VCF-004 |
+| ui/src/server/websocket.ts | Modified | VCF-004 |
+| ui/src/server/services/voice-call.service.ts | Modified | VCF-005 |
+| ui/src/server/websocket.ts | Modified | VCF-005 |
+| ui/frontend/src/views/voice-call-view.ts | Created | VCF-006 |
+| ui/frontend/src/types/route.types.ts | Modified | VCF-006 |
+| ui/frontend/src/app.ts | Modified | VCF-006 |
+| ui/frontend/src/components/voice/audio-visualizer.ts | Created | VCF-007 |
+| ui/frontend/src/components/voice/call-controls.ts | Created | VCF-007 |
+| ui/frontend/src/views/voice-call-view.ts | Modified | VCF-007 |
+| ui/frontend/src/services/audio-capture.service.ts | Modified | VCF-007 |
+| ui/frontend/src/services/audio-playback.service.ts | Modified | VCF-007 |
+| ui/frontend/src/components/voice/action-log.ts | Created | VCF-008 |
+| ui/frontend/src/components/voice/call-transcript.ts | Created | VCF-008 |
+| ui/frontend/src/views/voice-call-view.ts | Modified | VCF-008 |
+| ui/frontend/src/components/team/aos-team-card.ts | Modified | VCF-009 |
+| ui/frontend/src/views/team-view.ts | Modified | VCF-009 |
+| ui/frontend/src/components/voice/call-controls.ts | Modified | VCF-010 |
+| ui/frontend/src/views/voice-call-view.ts | Modified | VCF-010 |
+| ui/src/server/services/voice-call.service.ts | Modified | VCF-010 |
+| ui/src/server/websocket.ts | Modified | VCF-010 |
+| ui/src/server/services/transcript.service.ts | Created | VCF-011 |
+| ui/src/server/services/voice-call.service.ts | Modified | VCF-011 |
+| ui/src/server/voice-config.ts | Modified | VCF-011 |

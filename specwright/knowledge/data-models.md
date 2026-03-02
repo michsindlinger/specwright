@@ -1,7 +1,7 @@
 # Data Models
 
 > Verfügbare Datenmodelle, Schemas und Types im Projekt.
-> Zuletzt aktualisiert: 2026-02-27 (MCP Tools Management)
+> Zuletzt aktualisiert: 2026-03-01 (Voice Call Conversational Flow)
 
 ## Modelle-Übersicht
 
@@ -11,6 +11,7 @@
 | SkillSummary | ui/src/shared/types/team.protocol.ts | Interface | Dev-Team Visualization (2026-02-26) |
 | SkillDetail | ui/src/shared/types/team.protocol.ts | Interface | Dev-Team Visualization (2026-02-26) |
 | McpServerSummary | ui/src/shared/types/team.protocol.ts | Interface | MCP Tools Management (2026-02-27) |
+| voice.protocol.ts | ui/src/shared/types/voice.protocol.ts | Shared Types | Voice Call Conversational Flow (2026-03-01) |
 
 ---
 
@@ -130,6 +131,34 @@ interface McpConfigResponse {
 - Wird von McpConfigReaderService erzeugt
 - Wird von aos-mcp-server-card und team-view.ts konsumiert
 - mcpTools in SkillSummary/SkillDetail referenziert Server-Namen
+
+---
+
+### voice.protocol.ts
+
+**Pfad:** `ui/src/shared/types/voice.protocol.ts`
+**Typ:** Shared Protocol Types (WebSocket)
+**Erstellt:** Voice Call Conversational Flow (2026-03-01)
+
+**Beschreibung:** TypeScript-Interfaces fuer alle voice:* WebSocket-Messages zwischen Frontend und Backend. Definiert den Vertrag fuer Voice Call Kommunikation.
+
+**Message Types:**
+| Message | Direction | Description |
+|---------|-----------|-------------|
+| voice:call:start | Client -> Server | Voice Call starten |
+| voice:call:end | Client -> Server | Voice Call beenden |
+| voice:audio:chunk | Client -> Server | Audio-Chunk senden |
+| voice:stt:interim | Server -> Client | Zwischenergebnis STT |
+| voice:stt:final | Server -> Client | Endergebnis STT |
+| voice:tts:chunk | Server -> Client | TTS Audio-Chunk |
+| voice:tts:end | Server -> Client | TTS-Ausgabe beendet |
+| voice:agent:action | Server -> Client | Agent-Aktion (Tool-Call) |
+| voice:text:input | Client -> Server | Text-Input (Fallback-Modus) |
+
+**Notes:**
+- Folgt dem gleichen Pattern wie file.protocol.ts und team.protocol.ts
+- Responses folgen dem Pattern `voice:{category}:{action}`
+- Shared zwischen Frontend und Backend (ui/src/shared/types/)
 
 ---
 

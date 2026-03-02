@@ -105,19 +105,19 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Code implementiert und folgt Style Guide
-- [ ] AudioPlaybackService (Frontend) spielt empfangene Audio-Chunks via AudioContext ab
-- [ ] VoiceCallService (Backend) sendet Text-Chunks an ElevenLabsAdapter und streamt Audio zurueck
-- [ ] Echtzeit-Streaming: Sprachausgabe beginnt bevor vollstaendige Antwort generiert ist
-- [ ] Barge-in: Agent-Audio stoppt wenn User zu sprechen beginnt
-- [ ] Fallback bei TTS-Fehler: Nur Text-Anzeige im Transkript
-- [ ] voice:tts:chunk Messages werden korrekt ans Frontend gestreamt
-- [ ] Backend kompiliert fehlerfrei (`cd ui && npm run build:backend`)
-- [ ] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
-- [ ] Keine Linting-Fehler (`cd ui && npm run lint`)
-- [ ] **Integration hergestellt: VoiceCallService -> ElevenLabsAdapter -> WS -> AudioPlaybackService**
-  - [ ] Import/Aufruf existiert in Code
-  - [ ] Verbindung ist funktional (nicht nur Stub)
+- [x] Code implementiert und folgt Style Guide
+- [x] AudioPlaybackService (Frontend) spielt empfangene Audio-Chunks via AudioContext ab
+- [x] VoiceCallService (Backend) sendet Text-Chunks an ElevenLabsAdapter und streamt Audio zurueck
+- [x] Echtzeit-Streaming: Sprachausgabe beginnt bevor vollstaendige Antwort generiert ist
+- [x] Barge-in: Agent-Audio stoppt wenn User zu sprechen beginnt
+- [x] Fallback bei TTS-Fehler: Nur Text-Anzeige im Transkript
+- [x] voice:tts:chunk Messages werden korrekt ans Frontend gestreamt
+- [x] Backend kompiliert fehlerfrei (`cd ui && npm run build:backend`)
+- [x] Frontend kompiliert fehlerfrei (`cd ui/frontend && npm run build`)
+- [x] Keine Linting-Fehler (`cd ui && npm run lint`)
+- [x] **Integration hergestellt: VoiceCallService -> ElevenLabsAdapter -> WS -> AudioPlaybackService**
+  - [x] Import/Aufruf existiert in Code
+  - [x] Verbindung ist funktional (nicht nur Stub)
 
 ---
 

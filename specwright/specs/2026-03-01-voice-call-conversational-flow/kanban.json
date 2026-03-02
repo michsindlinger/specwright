@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-03-01-voice-call-conversational-flow",
     "name": "Voice Call Conversational Flow",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-03-01T00:00:00Z"
   },
-
   "resumeContext": {
-    "currentPhase": "1-kanban-setup",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "complete",
+    "nextPhase": "story-complete",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/voice-call-conversational-flow",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Kanban board created",
-    "nextAction": "Run /execute-tasks 2026-03-01-voice-call-conversational-flow",
-    "progressIndex": 0,
-    "totalStories": 14
+    "lastAction": "PR created - https://github.com/michsindlinger/specwright/pull/20",
+    "nextAction": "All stories complete",
+    "progressIndex": 14,
+    "totalStories": 14,
+    "gitStrategy": "branch"
   },
-
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
-    "completedAt": null,
+    "status": "completed",
+    "startedAt": "2026-03-01T20:09:23.260Z",
+    "completedAt": "2026-03-01T21:48:27.188Z",
     "model": null
   },
-
   "stories": [
     {
       "id": "VCF-001",
@@ -43,22 +40,37 @@
         "complexity": "S"
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-001-voice-configuration-api-key-management.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T19:57:15.546Z",
+        "completedAt": "2026-03-01T20:08:08.325Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/voice.protocol.ts",
+          "ui/src/server/voice-config.ts",
+          "ui/src/server/websocket.ts",
+          "ui/frontend/src/views/settings-view.ts",
+          "specwright/specs/2026-03-01-voice-call-conversational-flow/integration-context.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "91955d8",
+            "message": "feat: VCF-001 Voice Configuration & API Key Management",
+            "timestamp": "2026-03-01T20:30:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "VCF-002",
@@ -70,23 +82,42 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["VCF-001"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-001"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-audio-adapters-setup.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T20:09:23.260Z",
+        "completedAt": "2026-03-01T20:14:37.114Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/services/deepgram.adapter.ts",
+          "ui/src/server/services/elevenlabs.adapter.ts",
+          "ui/package.json",
+          "ui/package-lock.json",
+          "specwright/specs/2026-03-01-voice-call-conversational-flow/stories/story-002-audio-adapters-setup.md",
+          "specwright/specs/2026-03-01-voice-call-conversational-flow/integration-context.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "707d41c",
+            "message": "feat: VCF-002 Audio Adapters Setup",
+            "timestamp": "2026-03-01T21:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-003",
@@ -98,23 +129,42 @@
         "effort": 5,
         "complexity": "M"
       },
-      "dependencies": ["VCF-002"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-002"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-stt-pipeline.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T20:15:44.834Z",
+        "completedAt": "2026-03-01T20:22:15.153Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/services/audio-capture.service.ts",
+          "ui/src/server/services/voice-call.service.ts",
+          "ui/src/server/websocket.ts",
+          "ui/frontend/src/gateway.ts",
+          "specwright/specs/2026-03-01-voice-call-conversational-flow/stories/story-003-stt-pipeline.md",
+          "specwright/specs/2026-03-01-voice-call-conversational-flow/integration-context.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "69e40af",
+            "message": "feat: VCF-003 STT Pipeline",
+            "timestamp": "2026-03-01T22:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-004",
@@ -126,23 +176,40 @@
         "effort": 5,
         "complexity": "M"
       },
-      "dependencies": ["VCF-002"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-002"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-004-tts-pipeline.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T20:23:19.648Z",
+        "completedAt": "2026-03-01T20:32:26.838Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/services/audio-playback.service.ts",
+          "ui/src/server/services/voice-call.service.ts",
+          "ui/src/server/services/elevenlabs.adapter.ts",
+          "ui/src/server/websocket.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "9499ee4",
+            "message": "feat: VCF-004 TTS Pipeline",
+            "timestamp": "2026-03-01T23:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-005",
@@ -154,23 +221,39 @@
         "effort": 5,
         "complexity": "M"
       },
-      "dependencies": ["VCF-003", "VCF-004"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-003",
+        "VCF-004"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-005-agent-conversation-engine.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T20:37:22.875Z",
+        "completedAt": "2026-03-01T20:41:42.345Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/services/voice-call.service.ts",
+          "ui/src/server/websocket.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "b2130df",
+            "message": "feat: VCF-005 Agent Conversation Engine",
+            "timestamp": "2026-03-02T00:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-006",
@@ -182,23 +265,39 @@
         "effort": 5,
         "complexity": "M"
       },
-      "dependencies": ["VCF-005"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-005"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-006-voice-call-view-navigation.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T20:42:50.110Z",
+        "completedAt": "2026-03-01T20:47:13.741Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/views/voice-call-view.ts",
+          "ui/frontend/src/types/route.types.ts",
+          "ui/frontend/src/app.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "bccb742",
+            "message": "feat: VCF-006 Voice Call View & Navigation",
+            "timestamp": "2026-03-02T01:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-007",
@@ -210,23 +309,41 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["VCF-006"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-006"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-007-audio-visualizer-call-controls.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T20:48:15.718Z",
+        "completedAt": "2026-03-01T20:58:21.962Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/voice/audio-visualizer.ts",
+          "ui/frontend/src/components/voice/call-controls.ts",
+          "ui/frontend/src/views/voice-call-view.ts",
+          "ui/frontend/src/services/audio-capture.service.ts",
+          "ui/frontend/src/services/audio-playback.service.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "00143d9",
+            "message": "feat: VCF-007 Audio Visualizer & Call Controls",
+            "timestamp": "2026-03-02T02:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-008",
@@ -238,23 +355,39 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["VCF-006"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-006"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-008-live-action-log-transcript-ui.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T21:00:43.639Z",
+        "completedAt": "2026-03-01T21:06:35.193Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/voice/action-log.ts",
+          "ui/frontend/src/components/voice/call-transcript.ts",
+          "ui/frontend/src/views/voice-call-view.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "58faa6f",
+            "message": "feat: VCF-008 Live Action Log & Transcript UI",
+            "timestamp": "2026-03-02T03:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-009",
@@ -266,23 +399,38 @@
         "effort": 2,
         "complexity": "XS"
       },
-      "dependencies": ["VCF-006"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-006"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-009-team-card-call-integration.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T21:08:29.244Z",
+        "completedAt": "2026-03-01T21:12:01.682Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/team/aos-team-card.ts",
+          "ui/frontend/src/views/team-view.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "dcec443",
+            "message": "feat: VCF-009 Team Card Call Integration",
+            "timestamp": "2026-03-02T04:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-010",
@@ -294,23 +442,40 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["VCF-007"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-007"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-010-text-fallback-input-mode-switching.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T21:13:56.453Z",
+        "completedAt": "2026-03-01T21:19:29.270Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/voice/call-controls.ts",
+          "ui/frontend/src/views/voice-call-view.ts",
+          "ui/src/server/services/voice-call.service.ts",
+          "ui/src/server/websocket.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "f1c7f7c",
+            "message": "feat: VCF-010 Text Fallback & Input Mode Switching",
+            "timestamp": "2026-03-02T05:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-011",
@@ -322,23 +487,39 @@
         "effort": 3,
         "complexity": "S"
       },
-      "dependencies": ["VCF-005"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-005"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-011-transcript-storage-voice-personas.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T21:21:55.019Z",
+        "completedAt": "2026-03-01T21:27:07.892Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/services/transcript.service.ts",
+          "ui/src/server/services/voice-call.service.ts",
+          "ui/src/server/voice-config.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "e392290",
+            "message": "feat: VCF-011 Transcript Storage & Voice Personas",
+            "timestamp": "2026-03-02T06:00:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-997",
@@ -350,23 +531,49 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["VCF-001", "VCF-002", "VCF-003", "VCF-004", "VCF-005", "VCF-006", "VCF-007", "VCF-008", "VCF-009", "VCF-010", "VCF-011"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-001",
+        "VCF-002",
+        "VCF-003",
+        "VCF-004",
+        "VCF-005",
+        "VCF-006",
+        "VCF-007",
+        "VCF-008",
+        "VCF-009",
+        "VCF-010",
+        "VCF-011"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T21:28:42.946Z",
+        "completedAt": "2026-03-01T21:36:10.798Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-03-01-voice-call-conversational-flow/review-report.md",
+          "specwright/specs/2026-03-01-voice-call-conversational-flow/stories/story-997-code-review.md",
+          "ui/frontend/src/views/voice-call-view.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "79c4775",
+            "message": "feat: VCF-997 Code Review completed",
+            "timestamp": "2026-03-01T22:35:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "VCF-998",
@@ -378,23 +585,37 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["VCF-997"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-997"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-998-integration-validation.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T21:36:59.883Z",
+        "completedAt": "2026-03-01T21:41:42.312Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-03-01-voice-call-conversational-flow/stories/story-998-integration-validation.md",
+          "specwright/specs/2026-03-01-voice-call-conversational-flow/spec.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "c358088",
+            "message": "feat: VCF-998 Integration Validation completed",
+            "timestamp": "2026-03-01T22:45:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "VCF-999",
@@ -406,87 +627,120 @@
         "effort": 1,
         "complexity": "S"
       },
-      "dependencies": ["VCF-998"],
-      "status": "ready",
+      "dependencies": [
+        "VCF-998"
+      ],
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-999-finalize-pr.md",
       "timing": {
         "createdAt": "2026-03-01T00:00:00Z",
-        "updatedAt": "2026-03-01T00:00:00Z"
+        "updatedAt": "2026-03-01T00:00:00Z",
+        "startedAt": "2026-03-01T21:42:35.297Z",
+        "completedAt": "2026-03-01T21:48:27.188Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/knowledge/knowledge-index.md",
+          "specwright/knowledge/ui-components.md",
+          "specwright/knowledge/shared-services.md",
+          "specwright/knowledge/data-models.md",
+          "specwright/product/roadmap.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "88d073e",
+            "message": "docs: Update Project Knowledge from Voice Call Conversational Flow",
+            "timestamp": "2026-03-01T23:00:00Z"
+          },
+          {
+            "hash": "1999bbb",
+            "message": "docs: Update roadmap - Voice Agent MVP completed",
+            "timestamp": "2026-03-01T23:05:00Z"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     }
   ],
-
   "boardStatus": {
     "total": 14,
-    "ready": 14,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 14,
     "blocked": 0
   },
-
   "statistics": {
-    "totalEffort": 43,
-    "completedEffort": 0,
-    "remainingEffort": 43,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 19,
-      "backend": 8,
-      "full-stack": 13,
-      "system": 3
+      "undefined": 14
     },
     "byPriority": {
-      "critical": 15,
-      "high": 22,
-      "medium": 6
+      "undefined": 14
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "name": "Infrastructure & Configuration",
-        "stories": ["VCF-001", "VCF-002"],
+        "stories": [
+          "VCF-001",
+          "VCF-002"
+        ],
         "parallel": false
       },
       {
         "name": "Core Voice Pipeline",
-        "stories": ["VCF-003", "VCF-004", "VCF-005"],
+        "stories": [
+          "VCF-003",
+          "VCF-004",
+          "VCF-005"
+        ],
         "parallel": true,
         "note": "VCF-003 and VCF-004 can run in parallel, VCF-005 depends on both"
       },
       {
         "name": "Call UI Components",
-        "stories": ["VCF-006", "VCF-007", "VCF-008", "VCF-009"],
+        "stories": [
+          "VCF-006",
+          "VCF-007",
+          "VCF-008",
+          "VCF-009"
+        ],
         "parallel": true,
         "note": "VCF-007/008/009 can run in parallel after VCF-006"
       },
       {
         "name": "Integration & Polish",
-        "stories": ["VCF-010", "VCF-011"],
+        "stories": [
+          "VCF-010",
+          "VCF-011"
+        ],
         "parallel": true
       },
       {
         "name": "System Stories",
-        "stories": ["VCF-997", "VCF-998", "VCF-999"],
+        "stories": [
+          "VCF-997",
+          "VCF-998",
+          "VCF-999"
+        ],
         "parallel": false
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-03-01T00:00:00Z",
@@ -499,6 +753,270 @@
       "action": "technical_refinement",
       "storyId": null,
       "details": "Technical refinement completed for all 11 regular stories (WAS/WIE/WO/DoR/DoD). All dorStatus set to ready."
+    },
+    {
+      "timestamp": "2026-03-01T19:57:15.546Z",
+      "action": "status_changed",
+      "storyId": "VCF-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T19:57:15.704Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T19:57:50.771Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: 3-execute-story"
+    },
+    {
+      "timestamp": "2026-03-01T20:08:08.326Z",
+      "action": "status_changed",
+      "storyId": "VCF-001",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T20:08:21.288Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T20:09:23.262Z",
+      "action": "status_changed",
+      "storyId": "VCF-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T20:14:37.114Z",
+      "action": "status_changed",
+      "storyId": "VCF-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T20:14:49.647Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T20:15:44.836Z",
+      "action": "status_changed",
+      "storyId": "VCF-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T20:22:15.154Z",
+      "action": "status_changed",
+      "storyId": "VCF-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T20:22:30.029Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T20:23:19.650Z",
+      "action": "status_changed",
+      "storyId": "VCF-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T20:32:26.838Z",
+      "action": "status_changed",
+      "storyId": "VCF-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T20:32:39.885Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T20:37:22.881Z",
+      "action": "status_changed",
+      "storyId": "VCF-005",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T20:41:42.345Z",
+      "action": "status_changed",
+      "storyId": "VCF-005",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T20:41:58.100Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T20:42:50.114Z",
+      "action": "status_changed",
+      "storyId": "VCF-006",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T20:47:13.741Z",
+      "action": "status_changed",
+      "storyId": "VCF-006",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T20:47:29.203Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T20:48:15.719Z",
+      "action": "status_changed",
+      "storyId": "VCF-007",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T20:58:21.962Z",
+      "action": "status_changed",
+      "storyId": "VCF-007",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T20:59:48.600Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T21:00:43.643Z",
+      "action": "status_changed",
+      "storyId": "VCF-008",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T21:06:35.194Z",
+      "action": "status_changed",
+      "storyId": "VCF-008",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T21:06:50.585Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T21:08:29.246Z",
+      "action": "status_changed",
+      "storyId": "VCF-009",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T21:12:01.682Z",
+      "action": "status_changed",
+      "storyId": "VCF-009",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T21:13:06.747Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T21:13:56.454Z",
+      "action": "status_changed",
+      "storyId": "VCF-010",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T21:19:29.271Z",
+      "action": "status_changed",
+      "storyId": "VCF-010",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T21:20:58.636Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T21:21:55.021Z",
+      "action": "status_changed",
+      "storyId": "VCF-011",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T21:27:07.893Z",
+      "action": "status_changed",
+      "storyId": "VCF-011",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T21:27:22.318Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T21:28:42.947Z",
+      "action": "status_changed",
+      "storyId": "VCF-997",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T21:36:10.799Z",
+      "action": "status_changed",
+      "storyId": "VCF-997",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T21:36:26.249Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T21:36:59.888Z",
+      "action": "status_changed",
+      "storyId": "VCF-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T21:41:42.312Z",
+      "action": "status_changed",
+      "storyId": "VCF-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T21:41:57.835Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/voice-call-conversational-flow"
+    },
+    {
+      "timestamp": "2026-03-01T21:42:35.299Z",
+      "action": "status_changed",
+      "storyId": "VCF-999",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-01T21:48:27.188Z",
+      "action": "status_changed",
+      "storyId": "VCF-999",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-01T21:48:36.191Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: complete"
     }
   ]
 }

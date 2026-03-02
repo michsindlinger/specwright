@@ -153,7 +153,7 @@ Phase 0             Phase 1             Phase 2             Phase 3
 
 ## Phase 2: Voice Agent Integration
 
-> Status: NOT_STARTED
+> Status: IN_PROGRESS
 > Goal: Voice-basierte Interaktion mit dem Agent Team - "Sprechen wie im echten Team"
 > Success Criteria: Funktionierende Audio-Calls mit Agents, natürliche Konversation
 
@@ -161,9 +161,9 @@ Phase 0             Phase 1             Phase 2             Phase 3
 
 | Feature | Description | Effort | Priority | Status |
 |---------|-------------|--------|----------|--------|
-| Audio Input | Spracheingabe für Interaktion mit Agents (STT) | `L` | P0 | [ ] |
-| Audio Output | Sprachausgabe der Agent-Antworten (TTS) | `L` | P0 | [ ] |
-| Conversational Flow | Natürliche Konversation statt Command-basierter Interaktion | `XL` | P0 | [ ] |
+| Audio Input | Spracheingabe für Interaktion mit Agents (STT) | `L` | P0 | [x] |
+| Audio Output | Sprachausgabe der Agent-Antworten (TTS) | `L` | P0 | [x] |
+| Conversational Flow | Natürliche Konversation statt Command-basierter Interaktion | `XL` | P0 | [x] |
 | Multi-Agent Calls | "Standup" mit mehreren Agents gleichzeitig | `XL` | P1 | [ ] |
 | Voice Commands | Slash Commands per Sprache auslösen | `M` | P1 | [ ] |
 
@@ -171,10 +171,10 @@ Phase 0             Phase 1             Phase 2             Phase 3
 
 | Task | Description | Effort | Dependency |
 |------|-------------|--------|------------|
-| STT Integration | Speech-to-Text API Integration (Whisper, Deepgram) | `M` | None |
-| TTS Integration | Text-to-Speech mit natürlicher Stimme | `M` | None |
-| Audio Protocol | Real-time Audio-Streaming zwischen User und Agents | `L` | STT + TTS |
-| Agent Personas | Distinkte Stimm-Personas für verschiedene Agent-Rollen | `M` | TTS |
+| STT Integration | Speech-to-Text API Integration (Deepgram Nova-3) | `M` | None | [x] |
+| TTS Integration | Text-to-Speech mit natürlicher Stimme (ElevenLabs) | `M` | None | [x] |
+| Audio Protocol | Real-time Audio-Streaming zwischen User und Agents | `L` | STT + TTS | [x] |
+| Agent Personas | Distinkte Stimm-Personas für verschiedene Agent-Rollen | `M` | TTS | [x] |
 
 ### Dependencies
 
@@ -240,7 +240,7 @@ Phase 0             Phase 1             Phase 2             Phase 3
 | v3.0 Release | 2026-02-14 | All core features, migration complete | [x] |
 | Public Beta | Q1 2026 | Repository public, examples, docs | [ ] |
 | 1.000 Stars | Q2 2026 | Community engagement | [ ] |
-| Voice Agent MVP | Q3 2026 | Audio input/output functional | [ ] |
+| Voice Agent MVP | Q3 2026 | Audio input/output functional | [x] |
 | Enterprise Pilot | Q4 2026 | First enterprise team uses Specwright | [ ] |
 
 ---
@@ -250,6 +250,7 @@ Phase 0             Phase 1             Phase 2             Phase 3
 | Date | Change | Reason |
 |------|--------|--------|
 | 2026-02-14 | Initial roadmap created | v3.0 Release, Product Brief creation |
+| 2026-03-01 | Voice Agent MVP completed | Voice Call Conversational Flow spec implemented (PR #20) |
 
 ---
 

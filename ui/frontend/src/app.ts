@@ -8,6 +8,7 @@ import './views/settings-view.js';
 import './views/not-found-view.js';
 import './views/aos-getting-started-view.js';
 import './views/team-view.js';
+import './views/voice-call-view.js';
 import './components/model-selector.js';
 import './components/toast-notification.js';
 import './components/loading-spinner.js';
@@ -657,6 +658,7 @@ export class AosApp extends LitElement {
       'getting-started': 'Getting Started',
       chat: 'Chat',
       settings: 'Settings',
+      call: 'Voice Call',
       'not-found': 'Page Not Found',
     };
     return titles[this.currentRoute];
@@ -1772,6 +1774,8 @@ export class AosApp extends LitElement {
         return html`<aos-chat-view></aos-chat-view>`;
       case 'settings':
         return html`<aos-settings-view></aos-settings-view>`;
+      case 'call':
+        return html`<aos-voice-call-view></aos-voice-call-view>`;
       default:
         return html`<aos-not-found-view></aos-not-found-view>`;
     }
