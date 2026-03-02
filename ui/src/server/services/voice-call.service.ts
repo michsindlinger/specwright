@@ -26,12 +26,12 @@
  */
 
 import { EventEmitter } from 'events';
-import { spawn, ChildProcess } from 'child_process';
+import { query as claudeQuery } from '@anthropic-ai/claude-agent-sdk';
 import { DeepgramAdapter } from './deepgram.adapter.js';
 import type { DeepgramTranscriptEvent } from './deepgram.adapter.js';
 import { ElevenLabsAdapter } from './elevenlabs.adapter.js';
 import { loadVoiceConfig, getPersonaVoiceId } from '../voice-config.js';
-import { getProviderCommand, getDefaultSelection } from '../model-config.js';
+import { getDefaultSelection } from '../model-config.js';
 import { saveTranscript } from './transcript.service.js';
 import type { TranscriptMessage, TranscriptAction } from './transcript.service.js';
 
@@ -68,10 +68,13 @@ interface ManagedVoiceSession extends VoiceCallSession {
   conversationHistory: VoiceConversationMessage[];
   projectPath: string;
   systemPrompt: string;
-  claudeProcess: ChildProcess | null;
+  llmAbortController: AbortController | null;
   isProcessing: boolean;
   agentId?: string;
   agentName?: string;
+  // Debounce: accumulate final transcripts before triggering LLM
+  transcriptDebounceTimer: ReturnType<typeof setTimeout> | null;
+  transcriptBuffer: string;
   // VCF-011: Transcript collection
   transcriptMessages: TranscriptMessage[];
   transcriptActions: TranscriptAction[];
@@ -86,27 +89,6 @@ VOICE RESPONSE RULES:
 - When performing actions (creating files, modifying code, etc.), briefly describe what you are doing.
 - Acknowledge requests before executing them.
 - If you encounter an error, explain it simply and suggest next steps.`;
-
-/**
- * Spawns a process using the user's login shell to ensure OAuth credentials
- * and shell profile configurations are available (needed for Claude Max).
- */
-function spawnWithLoginShell(
-  command: string,
-  args: string[],
-  options: Parameters<typeof spawn>[2]
-): ChildProcess {
-  const userShell = process.env.SHELL || '/bin/zsh';
-  const fullCommand = [command, ...args]
-    .map(arg => {
-      if (arg.includes("'") || arg.includes(' ') || arg.includes('"') || arg.includes('$') || arg.includes('\\')) {
-        return `'${arg.replace(/'/g, "'\\''")}'`;
-      }
-      return arg;
-    })
-    .join(' ');
-  return spawn(userShell, ['-l', '-c', fullCommand], options);
-}
 
 // ElevenLabs default voice (Rachel - multilingual)
 const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
@@ -142,10 +124,12 @@ export class VoiceCallService extends EventEmitter {
       conversationHistory: [],
       projectPath: options?.projectPath || process.cwd(),
       systemPrompt: options?.systemPrompt || DEFAULT_VOICE_SYSTEM_PROMPT,
-      claudeProcess: null,
+      llmAbortController: null,
       isProcessing: false,
       agentId: options?.agentId,
       agentName: options?.agentName,
+      transcriptDebounceTimer: null,
+      transcriptBuffer: '',
       // VCF-011: Transcript collection
       transcriptMessages: [],
       transcriptActions: [],
@@ -200,10 +184,13 @@ export class VoiceCallService extends EventEmitter {
           apiKey: config.elevenLabsApiKey,
         });
         this.attachElevenLabsListeners(session);
+        console.log(`[VoiceCallService] ElevenLabs adapter created for ${callId} (voiceId: ${session.ttsVoiceId})`);
       } catch (err) {
         console.warn(`[VoiceCallService] ElevenLabs setup failed, TTS disabled:`, err);
         session.elevenlabsAdapter = null;
       }
+    } else {
+      console.warn(`[VoiceCallService] No ElevenLabs API key configured, TTS disabled`);
     }
   }
 
@@ -215,10 +202,16 @@ export class VoiceCallService extends EventEmitter {
     const session = this.sessions.get(callId);
     if (!session) return;
 
-    // VCF-005: Kill Claude process if running
-    if (session.claudeProcess) {
-      session.claudeProcess.kill();
-      session.claudeProcess = null;
+    // Clear transcript debounce timer
+    if (session.transcriptDebounceTimer) {
+      clearTimeout(session.transcriptDebounceTimer);
+      session.transcriptDebounceTimer = null;
+    }
+
+    // VCF-005: Abort LLM call if running
+    if (session.llmAbortController) {
+      session.llmAbortController.abort();
+      session.llmAbortController = null;
       session.isProcessing = false;
     }
 
@@ -269,18 +262,16 @@ export class VoiceCallService extends EventEmitter {
 
   /**
    * Handle an incoming audio chunk from the client.
-   * Routes to DeepgramAdapter for STT. If TTS is active, triggers barge-in.
+   * Routes to DeepgramAdapter for STT processing.
+   * Note: Barge-in is NOT triggered here on raw audio chunks because
+   * the mic sends data continuously (including silence). Barge-in is
+   * handled in the Deepgram transcript handler when actual speech is detected.
    * @param callId - Call identifier
    * @param audioBase64 - Base64-encoded PCM audio data
    */
   handleAudioChunk(callId: string, audioBase64: string): void {
     const session = this.sessions.get(callId);
     if (!session || session.state !== 'active') return;
-
-    // Barge-in: if TTS is playing and user starts speaking, stop TTS
-    if (session.ttsActive) {
-      this.stopTts(callId);
-    }
 
     if (!session.deepgramAdapter || !session.deepgramAdapter.isConnected) return;
 
@@ -333,10 +324,14 @@ export class VoiceCallService extends EventEmitter {
     const session = this.sessions.get(callId);
     if (!session || session.state !== 'active') return;
 
+    // Always emit text response so frontend can show it in transcript
+    this.emit('agent.response', callId, text);
+
     if (!session.elevenlabsAdapter) {
-      this.emit('tts.fallback', callId, text);
+      console.warn(`[VoiceCallService] TTS skipped: elevenlabsAdapter is null for ${callId}`);
       return;
     }
+    console.log(`[VoiceCallService] TTS: processing "${text.substring(0, 50)}..." for ${callId}`);
 
     const sentences = this.splitIntoSentences(text);
     if (sentences.length === 0) return;
@@ -428,18 +423,22 @@ export class VoiceCallService extends EventEmitter {
    * emit complete sentence audio as a single tts.chunk event.
    */
   private async processTtsQueue(session: ManagedVoiceSession): Promise<void> {
+    console.log(`[VoiceCallService] TTS queue started: ${session.ttsSentenceQueue.length} sentences for ${session.callId}`);
     while (session.ttsSentenceQueue.length > 0 && session.ttsActive) {
       const sentence = session.ttsSentenceQueue.shift()!;
       session.ttsCurrentAudioChunks = [];
 
       if (!session.elevenlabsAdapter) break;
 
+      console.log(`[VoiceCallService] TTS streaming sentence: "${sentence.substring(0, 50)}..." (voiceId: ${session.ttsVoiceId})`);
       // Stream the sentence - audioChunk events are collected by the listener
       await session.elevenlabsAdapter.stream(session.ttsVoiceId, sentence);
 
       // After stream completes, emit accumulated audio as one chunk
+      console.log(`[VoiceCallService] TTS stream complete: ${session.ttsCurrentAudioChunks.length} chunks collected`);
       if (session.ttsActive && session.ttsCurrentAudioChunks.length > 0) {
         const fullAudio = Buffer.concat(session.ttsCurrentAudioChunks);
+        console.log(`[VoiceCallService] TTS emitting audio: ${fullAudio.length} bytes for ${session.callId}`);
         this.emit('tts.chunk', session.callId, fullAudio.toString('base64'));
       }
     }
@@ -479,21 +478,48 @@ export class VoiceCallService extends EventEmitter {
         confidence: event.confidence,
       });
 
-      // VCF-011: Collect final user transcripts
-      if (event.isFinal && event.text.trim()) {
-        session.transcriptMessages.push({
-          role: 'user',
-          text: event.text.trim(),
-          timestamp: new Date().toISOString(),
-        });
+      // Barge-in: if TTS is active and Deepgram detects actual speech, stop TTS
+      if (session.ttsActive && event.text.trim()) {
+        console.log(`[VoiceCallService] Barge-in triggered by speech: "${event.text.trim().substring(0, 30)}..."`);
+        this.stopTts(session.callId);
       }
 
-      // VCF-005: Auto-trigger LLM conversation on final transcript
+      // VCF-005: Debounced LLM trigger - accumulate final transcripts
+      // before sending to avoid splitting mid-sentence pauses
       if (event.isFinal && event.text.trim()) {
-        this.processTranscript(session, event.text).catch(err => {
-          console.error(`[VoiceCallService] LLM error for call ${session.callId}:`, err);
-          this.emit('error', session.callId, err instanceof Error ? err : new Error(String(err)));
-        });
+        // Accumulate text in buffer
+        if (session.transcriptBuffer) {
+          session.transcriptBuffer += ' ' + event.text.trim();
+        } else {
+          session.transcriptBuffer = event.text.trim();
+        }
+
+        // Clear existing timer
+        if (session.transcriptDebounceTimer) {
+          clearTimeout(session.transcriptDebounceTimer);
+        }
+
+        // Wait 1.5s for more speech before triggering LLM
+        session.transcriptDebounceTimer = setTimeout(() => {
+          session.transcriptDebounceTimer = null;
+          const fullText = session.transcriptBuffer;
+          session.transcriptBuffer = '';
+
+          if (!fullText || session.state !== 'active') return;
+
+          // VCF-011: Collect user transcript as single message
+          session.transcriptMessages.push({
+            role: 'user',
+            text: fullText,
+            timestamp: new Date().toISOString(),
+          });
+
+          console.log(`[VoiceCallService] Debounced transcript: "${fullText}"`);
+          this.processTranscript(session, fullText).catch(err => {
+            console.error(`[VoiceCallService] LLM error for call ${session.callId}:`, err);
+            this.emit('error', session.callId, err instanceof Error ? err : new Error(String(err)));
+          });
+        }, 1500);
       }
     });
 
@@ -524,9 +550,11 @@ export class VoiceCallService extends EventEmitter {
       if (session.ttsActive) {
         session.ttsActive = false;
         session.ttsSentenceQueue = [];
-        // Emit fallback: send remaining text as text-only
-        this.emit('error', session.callId, err);
       }
+      // TTS failure is non-fatal: disable TTS and continue in text-only mode
+      console.warn(`[VoiceCallService] TTS disabled for ${session.callId}, falling back to text-only`);
+      session.elevenlabsAdapter?.removeAllListeners();
+      session.elevenlabsAdapter = null;
     });
   }
 
@@ -552,129 +580,69 @@ export class VoiceCallService extends EventEmitter {
 
     const prompt = this.buildConversationPrompt(session, userText);
 
-    const { providerId, modelId } = getDefaultSelection();
-    const providerCommand = getProviderCommand(providerId, modelId);
+    const { modelId } = getDefaultSelection();
 
-    if (!providerCommand) {
-      session.isProcessing = false;
-      this.emit('error', session.callId, new Error('No LLM provider configured'));
-      return;
-    }
+    console.log(`[VoiceCallService] Starting LLM call for ${session.callId} (model: ${modelId})`);
 
-    const { command, args: modelArgs } = providerCommand;
-    const cliArgs = [
-      ...modelArgs,
-      '--print',
-      '--verbose',
-      '--output-format', 'stream-json',
-      prompt,
-    ];
-
-    console.log(`[VoiceCallService] Starting LLM call for ${session.callId} (${providerId}/${modelId})`);
-
-    // Remove ANTHROPIC_API_KEY to use Claude Max OAuth instead of API key auth
-    const { ANTHROPIC_API_KEY: _removed, ...envWithoutApiKey } = process.env;
+    // Clean env: remove ANTHROPIC_API_KEY (invalid OAuth token) and CLAUDECODE
+    // so the Agent SDK uses stored OAuth credentials from `claude auth login`
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.CLAUDECODE;
+    delete process.env.CLAUDE_CODE;
 
     try {
-      const claudeProcess = spawnWithLoginShell(command, cliArgs, {
-        cwd: session.projectPath,
-        env: { ...envWithoutApiKey },
-        stdio: ['pipe', 'pipe', 'pipe'],
+      const sdkSession = await claudeQuery({
+        prompt,
+        options: {
+          model: modelId,
+          maxTurns: 1,
+          cwd: session.projectPath,
+        },
       });
-
-      session.claudeProcess = claudeProcess;
-      claudeProcess.stdin?.end();
 
       let textBuffer = '';
       let fullContent = '';
-      let lineBuffer = '';
 
-      await new Promise<void>((resolve, reject) => {
-        claudeProcess.stdout?.on('data', (data: Buffer) => {
-          lineBuffer += data.toString();
-          const lines = lineBuffer.split('\n');
-          lineBuffer = lines.pop() || '';
+      for await (const event of sdkSession) {
+        if (session.state !== 'active') break;
 
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            try {
-              const event = JSON.parse(line);
-              this.handleVoiceClaudeEvent(session, event, (text) => {
-                textBuffer += text;
-                fullContent += text;
-                // Flush complete sentences to TTS in real-time
-                const { sentences, remaining } = this.extractCompleteSentences(textBuffer);
-                for (const sentence of sentences) {
-                  this.handleAgentResponse(session.callId, sentence);
-                }
-                textBuffer = remaining;
-              });
-            } catch {
-              // Non-JSON output, treat as text
-              if (line.trim()) {
-                textBuffer += line + ' ';
-                fullContent += line + ' ';
-              }
+        this.handleVoiceClaudeEvent(
+          session,
+          event as Record<string, unknown>,
+          (text) => {
+            textBuffer += text;
+            fullContent += text;
+            // Flush complete sentences to TTS in real-time
+            const { sentences, remaining } = this.extractCompleteSentences(textBuffer);
+            for (const sentence of sentences) {
+              this.handleAgentResponse(session.callId, sentence);
             }
+            textBuffer = remaining;
           }
+        );
+      }
+
+      // Flush remaining text
+      if (textBuffer.trim()) {
+        this.handleAgentResponse(session.callId, textBuffer.trim());
+      }
+
+      // Save assistant response to conversation history
+      if (fullContent) {
+        session.conversationHistory.push({ role: 'assistant', content: fullContent });
+
+        // VCF-011: Collect agent response for transcript
+        session.transcriptMessages.push({
+          role: 'agent',
+          text: fullContent,
+          timestamp: new Date().toISOString(),
         });
+      }
 
-        claudeProcess.stderr?.on('data', (data: Buffer) => {
-          console.error(`[VoiceCallService] Claude stderr: ${data.toString().substring(0, 200)}`);
-        });
-
-        claudeProcess.on('close', (code) => {
-          // Process remaining line buffer
-          if (lineBuffer.trim()) {
-            try {
-              const event = JSON.parse(lineBuffer);
-              this.handleVoiceClaudeEvent(session, event, (text) => {
-                textBuffer += text;
-                fullContent += text;
-              });
-            } catch {
-              if (lineBuffer.trim()) {
-                fullContent += lineBuffer;
-                textBuffer += lineBuffer;
-              }
-            }
-          }
-
-          // Flush remaining text to TTS
-          if (textBuffer.trim()) {
-            this.handleAgentResponse(session.callId, textBuffer.trim());
-          }
-
-          // Save assistant response to conversation history
-          if (fullContent) {
-            session.conversationHistory.push({ role: 'assistant', content: fullContent });
-
-            // VCF-011: Collect agent response for transcript
-            session.transcriptMessages.push({
-              role: 'agent',
-              text: fullContent,
-              timestamp: new Date().toISOString(),
-            });
-          }
-
-          session.claudeProcess = null;
-          session.isProcessing = false;
-
-          console.log(`[VoiceCallService] LLM call complete for ${session.callId} (code: ${code})`);
-
-          if (code === 0) resolve();
-          else reject(new Error(`Claude CLI exited with code ${code}`));
-        });
-
-        claudeProcess.on('error', (err) => {
-          session.claudeProcess = null;
-          session.isProcessing = false;
-          reject(err);
-        });
-      });
+      session.isProcessing = false;
+      console.log(`[VoiceCallService] LLM call complete for ${session.callId} (${fullContent.length} chars)`);
     } catch (err) {
       session.isProcessing = false;
-      session.claudeProcess = null;
       const error = err instanceof Error ? err : new Error(String(err));
       console.error(`[VoiceCallService] LLM error for call ${session.callId}:`, error.message);
       this.emit('error', session.callId, error);

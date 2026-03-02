@@ -94,6 +94,9 @@ export class DeepgramAdapter extends EventEmitter {
         utterance_end_ms: this.options.utteranceEndMs,
         endpointing: this.options.endpointing,
         vad_events: true,
+        encoding: 'linear16',
+        sample_rate: 16000,
+        channels: 1,
       });
 
       this.attachListeners();

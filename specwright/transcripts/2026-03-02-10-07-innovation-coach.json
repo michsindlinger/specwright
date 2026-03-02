@@ -1,0 +1,42 @@
+{
+  "sessionId": "call-1772442472092-j2o2j",
+  "skillId": "innovation-coach",
+  "agentName": "innovation-coach",
+  "startTime": "2026-03-02T09:07:52.093Z",
+  "endTime": "2026-03-02T09:08:44.672Z",
+  "messages": [
+    {
+      "role": "user",
+      "text": "Hi, wie geht's dir?",
+      "timestamp": "2026-03-02T09:07:58.775Z"
+    },
+    {
+      "role": "agent",
+      "text": "Hallo! Mir geht's super, danke der Nachfrage! Ich bin dein Innovation Coach und freue mich, mit dir zu arbeiten. Wie kann ich dir heute helfen? Hast du eine Idee, an der du arbeitest, oder möchtest du über ein Innovationsprojekt sprechen?",
+      "timestamp": "2026-03-02T09:08:04.031Z"
+    },
+    {
+      "role": "user",
+      "text": "Kannst du meine Spezifikation einsehen, die wir definiert haben?",
+      "timestamp": "2026-03-02T09:08:25.394Z"
+    },
+    {
+      "role": "agent",
+      "text": "Klar, ich schaue mir deine Spezifikation an. Einen Moment bitte, ich durchsuche das Projekt nach Spezifikationsdateien.",
+      "timestamp": "2026-03-02T09:08:30.201Z"
+    }
+  ],
+  "actions": [
+    {
+      "toolId": "toolu_015Xy7jo3jadAKdHEsjmuFTf",
+      "toolName": "Glob",
+      "timestamp": "2026-03-02T09:08:29.233Z"
+    },
+    {
+      "toolId": "toolu_01SkCabKhnsH2aCpFDzAAaia",
+      "toolName": "Glob",
+      "timestamp": "2026-03-02T09:08:29.253Z",
+      "output": "No files found"
+    }
+  ]
+}

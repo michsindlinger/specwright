@@ -4036,9 +4036,9 @@ export class WebSocketHandler {
       this.broadcast(message);
     });
 
-    this.voiceCallService.on('tts.fallback', (callId: string, text: string) => {
+    this.voiceCallService.on('agent.response', (callId: string, text: string) => {
       const message: WebSocketMessage = {
-        type: 'voice:response:text',
+        type: 'voice:agent:response',
         callId,
         text,
         timestamp: new Date().toISOString(),

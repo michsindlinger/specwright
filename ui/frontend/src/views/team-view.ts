@@ -432,6 +432,7 @@ export class AosTeamView extends LitElement {
               .skill=${skill}
               .availableMcpTools=${this.availableMcpToolNames}
               @card-click=${this.handleCardClick}
+              @call-click=${this.handleCallClick}
               @edit-click=${this.handleEditClick}
               @delete-click=${this.handleDeleteClick}
             ></aos-team-card>

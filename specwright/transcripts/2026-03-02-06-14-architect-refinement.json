@@ -1,0 +1,20 @@
+{
+  "sessionId": "call-1772428484576-e8frc",
+  "skillId": "architect-refinement",
+  "agentName": "architect-refinement",
+  "startTime": "2026-03-02T05:14:44.577Z",
+  "endTime": "2026-03-02T05:15:15.200Z",
+  "messages": [
+    {
+      "role": "user",
+      "text": "Hallo, Test, kannst Du mich hören? Wie geht's dir denn?",
+      "timestamp": "2026-03-02T05:14:49.313Z"
+    },
+    {
+      "role": "agent",
+      "text": "\n\nJa, ich kann dich hören! Mir geht's gut, danke der Nachfrage. Ich bin bereit und stehe dir als Architect für technische Refinements und Architekturentscheidungen zur Verfügung. Was hast du heute auf dem Plan?",
+      "timestamp": "2026-03-02T05:14:56.830Z"
+    }
+  ],
+  "actions": []
+}
