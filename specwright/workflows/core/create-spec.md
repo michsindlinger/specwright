@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.7
+version: 3.7.1
 encoding: UTF-8
 ---
 
@@ -36,8 +36,8 @@ Create detailed feature specifications: Main agent gathers fachliche requirement
 
 **v3.6 Changes (Context Window Optimization):**
 - **NEW: Phase Detection** - Resume support via optional spec folder path argument
-  - `/create-spec` (no argument) → Starts fresh from Step 1
-  - `/create-spec specwright/specs/YYYY-MM-DD-name/` → Auto-detects phase and resumes
+  - `/specwright:create-spec` (no argument) → Starts fresh from Step 1
+  - `/specwright:create-spec specwright/specs/YYYY-MM-DD-name/` → Auto-detects phase and resumes
 - **NEW: Phase Completion Messages** - After each major phase, user is informed they can `/clear` and resume
   - Phase 1 complete → After requirements clarification approved (Step 2.3)
   - Phase 2 complete → After stories generated from plan (Step 2.6)
@@ -115,14 +115,14 @@ This workflow supports resuming from a previous session to prevent context windo
 The user can provide a spec folder path as argument to resume where they left off.
 
 **Usage:**
-- Fresh start: `/create-spec` (no argument)
-- Resume: `/create-spec specwright/specs/YYYY-MM-DD-spec-name/`
+- Fresh start: `/specwright:create-spec` (no argument)
+- Resume: `/specwright:create-spec specwright/specs/YYYY-MM-DD-spec-name/`
 
 <detection_logic>
   IF $ARGUMENTS contains a path to a spec folder:
 
     1. VALIDATE folder exists:
-       - IF folder does NOT exist: ERROR "Spec folder not found: [path]. Start fresh with /create-spec (without path)."
+       - IF folder does NOT exist: ERROR "Spec folder not found: [path]. Start fresh with /specwright:create-spec (without path)."
 
     2. STORE spec folder path for use in subsequent steps (skip folder creation in Step 2.2)
 
@@ -136,7 +136,7 @@ The user can provide a spec folder path as argument to resume where they left of
     4. DETERMINE resume point:
 
        a. IF CHECK_A = false (no clarification):
-          → ERROR: "No requirements-clarification.md found in [path]. Start fresh with /create-spec (without path)."
+          → ERROR: "No requirements-clarification.md found in [path]. Start fresh with /specwright:create-spec (without path)."
 
        b. IF CHECK_A = true AND CHECK_B = false (clarification exists, no plan):
           → INFORM user:
@@ -431,7 +431,7 @@ Before generating user stories, create a summary document for user approval.
            ```
            To resume with a fresh context:
            1. Run /clear
-           2. Then run: /create-spec specwright/specs/[YYYY-MM-DD-spec-name]/
+           2. Then run: /specwright:create-spec specwright/specs/[YYYY-MM-DD-spec-name]/
 
            The workflow will automatically detect Phase 1 is complete and continue with the Implementation Plan.
            ```
@@ -948,7 +948,7 @@ Before generating user stories, create a summary document for user approval.
          ```
          To resume with a fresh context:
          1. Run /clear
-         2. Then run: /create-spec specwright/specs/[YYYY-MM-DD-spec-name]/
+         2. Then run: /specwright:create-spec specwright/specs/[YYYY-MM-DD-spec-name]/
 
          The workflow will automatically detect Phase 2 is complete and continue with Technical Refinement.
          ```
