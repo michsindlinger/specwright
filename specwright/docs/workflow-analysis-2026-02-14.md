@@ -308,7 +308,7 @@ Dieses Workflow ist das **Referenz-Workflow** für das neue Pattern:
 | estimate-spec | v2.0 | ✅ Portiert+Migriert | estimation-specialist Delegation beibehalten |
 | validate-estimation | v2.0 | ✅ Portiert+Migriert | Main Agent (war bereits kompatibel) |
 | extract-design | v2.0 | ✅ Neu erstellt | Standalone Design-Extraktion + Skill |
-| brainstorm-upselling-ideas | v2.0 | ✅ Portiert+Migriert | Interaktiver Brainstorm, Main Agent |
+| brainstorm-growth-ideas | v2.1 | ✅ Portiert+Migriert | Interaktiver Brainstorm, Main Agent |
 | create-instagram-account | v2.0 | ✅ Portiert+Migriert | Marketing-Workflow, Main Agent |
 | create-content-plan | v2.0 | ✅ Portiert+Migriert | Marketing-Workflow, Main Agent |
 
@@ -453,10 +453,10 @@ Dieses Workflow ist das **Referenz-Workflow** für das neue Pattern:
     - file-creator (Utility) für Dateierstellung
     - 5-Step Workflow für Design-System-Extraktion aus URLs
 
-22. ✅ **brainstorm-upselling-ideas v2.0** - Neuer Workflow (portiert aus agent-os-extended)
+22. ✅ **brainstorm-growth-ideas v2.1** - Neuer Workflow (portiert aus agent-os-extended)
     - Step 1: Main Agent (war: context-fetcher)
     - Step 6: file-creator (Utility)
-    - 7-Step interaktiver Upselling-Brainstorm
+    - 7-Step interaktiver Growth-Brainstorm
     - CRITICAL: Dokumentation erst NACH User-Bestätigung
 
 23. ✅ **create-instagram-account v2.0** - Neuer Marketing-Workflow (portiert aus agent-os-extended)

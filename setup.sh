@@ -190,8 +190,8 @@ download_file "$REPO_URL/specwright/workflows/core/update-changelog.md" "specwri
 # Design extraction
 download_file "$REPO_URL/specwright/workflows/core/extract-design.md" "specwright/workflows/core/extract-design.md" "workflows"
 
-# Upselling brainstorming
-download_file "$REPO_URL/specwright/workflows/core/brainstorm-upselling-ideas.md" "specwright/workflows/core/brainstorm-upselling-ideas.md" "workflows"
+# Growth brainstorming
+download_file "$REPO_URL/specwright/workflows/core/brainstorm-growth-ideas.md" "specwright/workflows/core/brainstorm-growth-ideas.md" "workflows"
 
 # Marketing workflows
 download_file "$REPO_URL/specwright/workflows/marketing/create-instagram-account.md" "specwright/workflows/marketing/create-instagram-account.md" "workflows"

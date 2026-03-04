@@ -95,7 +95,7 @@ command_files=(
 
     # Brainstorming
     "start-brainstorming.md"
-    "brainstorm-upselling-ideas.md"
+    "brainstorm-growth-ideas.md"
 
     # Validation
     "validate-market.md"
@@ -233,7 +233,7 @@ echo "    /update-changelog         -> Generate bilingual changelog"
 echo ""
 echo "  Brainstorming:"
 echo "    /start-brainstorming      -> Interactive idea exploration"
-echo "    /brainstorm-upselling-ideas -> Brainstorm upselling opportunities"
+echo "    /brainstorm-growth-ideas    -> Brainstorm growth opportunities"
 echo "    /transfer-and-create-spec -> Convert brainstorming to spec"
 echo "    /transfer-and-create-bug  -> Convert brainstorming to bug report"
 echo "    /transfer-and-plan-product -> Convert brainstorming to product plan"

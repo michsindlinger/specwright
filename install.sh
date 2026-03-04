@@ -831,8 +831,8 @@ install_project() {
     download_file "$REPO_URL/specwright/workflows/core/update-changelog.md" "specwright/workflows/core/update-changelog.md" "workflow"
     # Design extraction
     download_file "$REPO_URL/specwright/workflows/core/extract-design.md" "specwright/workflows/core/extract-design.md" "workflow"
-    # Upselling
-    download_file "$REPO_URL/specwright/workflows/core/brainstorm-upselling-ideas.md" "specwright/workflows/core/brainstorm-upselling-ideas.md" "workflow"
+    # Growth brainstorming
+    download_file "$REPO_URL/specwright/workflows/core/brainstorm-growth-ideas.md" "specwright/workflows/core/brainstorm-growth-ideas.md" "workflow"
     substep_done
 
     # Marketing workflows (2)
@@ -1178,7 +1178,7 @@ install_claude_code() {
         retroactive-doc.md retroactive-spec.md document-feature.md
         build-development-team.md create-project-agents.md assign-skills-to-agent.md add-skill.md
         add-learning.md add-domain.md add-team-member.md
-        start-brainstorming.md brainstorm-upselling-ideas.md
+        start-brainstorming.md brainstorm-growth-ideas.md
         validate-market.md validate-market-for-existing.md
         transfer-and-create-spec.md transfer-and-create-bug.md transfer-and-plan-product.md
         analyze-product.md analyze-feasibility.md analyze-blockers.md

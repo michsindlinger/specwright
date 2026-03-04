@@ -171,7 +171,7 @@ specwright/                          # Repository root
 
 # Brainstorming
 /start-brainstorming     # Interactive idea exploration
-/brainstorm-upselling-ideas  # Brainstorm upselling opportunities
+/brainstorm-growth-ideas      # Brainstorm growth opportunities
 /transfer-and-create-spec  # Convert brainstorming to spec
 /transfer-and-create-bug   # Convert brainstorming to bug
 /transfer-and-plan-product # Convert brainstorming to product plan

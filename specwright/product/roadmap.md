@@ -83,7 +83,7 @@ Phase 0             Phase 1             Phase 2             Phase 3
 - [x] Transfer to Spec (`/transfer-and-create-spec`) - Brainstorming zu Spec konvertieren
 - [x] Transfer to Bug (`/transfer-and-create-bug`) - Brainstorming zu Bug konvertieren
 - [x] Transfer to Product (`/transfer-and-plan-product`) - Brainstorming zu Product Plan konvertieren
-- [x] Upselling Ideas (`/brainstorm-upselling-ideas`) - Upselling-Möglichkeiten erkunden
+- [x] Growth Ideas (`/brainstorm-growth-ideas`) - Growth-Möglichkeiten erkunden
 
 ### Documentation & Feedback
 
