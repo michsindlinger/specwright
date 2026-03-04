@@ -54,7 +54,7 @@ download_file() {
 }
 
 # ===============================================================
-# COMMANDS - Core Commands (21)
+# COMMANDS - Core Commands (37)
 # ===============================================================
 
 echo ""
@@ -123,6 +123,9 @@ command_files=(
     # Marketing
     "create-instagram-account.md"
     "create-content-plan.md"
+
+    # Memory
+    "save-memory.md"
 )
 
 for file in "${command_files[@]}"; do
@@ -137,8 +140,10 @@ echo ""
 echo "=== Installing Skills ==="
 
 mkdir -p .claude/skills/review-implementation-plan
+mkdir -p .claude/skills/save-memory
 
 download_file "$REPO_URL/.claude/skills/review-implementation-plan/SKILL.md" ".claude/skills/review-implementation-plan/SKILL.md"
+download_file "$REPO_URL/specwright/templates/skills/save-memory/SKILL.md" ".claude/skills/save-memory/SKILL.md"
 
 # ===============================================================
 # AGENTS - Utility Agents
@@ -176,8 +181,8 @@ echo ""
 echo "Installed Structure:"
 echo ""
 echo "  .claude/"
-echo "    ├── commands/specwright/   (34 commands)"
-echo "    ├── skills/              (1 user-invocable skill)"
+echo "    ├── commands/specwright/   (37 commands)"
+echo "    ├── skills/              (2 user-invocable skills)"
 echo "    └── agents/              (13 utility agents)"
 echo ""
 echo "Available Commands:"
@@ -247,6 +252,9 @@ echo "    /add-skill                -> Create custom skills"
 echo ""
 echo "  Plan Review:"
 echo "    /review-implementation-plan -> Review implementation plans"
+echo ""
+echo "  Memory:"
+echo "    /save-memory                -> Save session knowledge to Memory DB"
 echo ""
 # ===============================================================
 # UI SKILLS (optional, with --with-ui flag)

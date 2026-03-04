@@ -14,6 +14,15 @@
  * - kanban_complete_story: Mark story as done with implementation data
  * - kanban_update_phase: Update resume context and execution phase
  * - kanban_set_git_strategy: Set git strategy info
+ * - kanban_get_next_task: Get next ready story with context
+ * - kanban_add_item: Add story/bug/fix to kanban
+ * - backlog_add_item: Add item to global backlog
+ * - backlog_start_item: Mark backlog item as in_progress
+ * - backlog_complete_item: Mark backlog item as done
+ * - memory_store: Store a memory entry with upsert logic
+ * - memory_search: Full-text search across memory entries
+ * - memory_recall: Recall memory entries by ID, topic, or tag
+ * - memory_list_tags: List all available memory tags
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -38,6 +47,7 @@ import {
   type FixItemData,
   type TodoItemData
 } from './item-templates.js';
+import { memoryStore, memorySearch, memoryRecall, memoryListTags } from './memory-store.js';
 
 // ============================================================================
 // Kanban JSON v1.0 TypeScript Interfaces
@@ -496,6 +506,69 @@ const TOOLS: Tool[] = [
       },
       required: ['executionId', 'itemId']
     }
+  },
+  // ============================================================================
+  // Memory Tools
+  // ============================================================================
+  {
+    name: 'memory_store',
+    description: 'Store a memory entry with upsert logic. Same topic + tag + date = summary replaced, details appended. Requires at least one tag.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'Topic title for the memory entry' },
+        summary: { type: 'string', description: 'Summary of the knowledge (1-2 sentences)' },
+        details: { type: 'string', description: 'Optional detailed information, examples, or code snippets' },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Tags for categorization (at least one required). Auto-creates new tags if needed.'
+        },
+        project_id: { type: 'string', description: 'Optional project ID for project-specific knowledge. Null = global knowledge.' },
+        source: { type: 'string', description: 'Optional source identifier (e.g., "save-memory-skill", "code-review")' }
+      },
+      required: ['topic', 'summary', 'tags']
+    }
+  },
+  {
+    name: 'memory_search',
+    description: 'Full-text search across memory entries using FTS5. Returns ranked results matching the query.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'FTS5 search query (supports AND, OR, NOT, phrase matching with quotes)' },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional tag filter - only return entries with these tags'
+        },
+        project_id: { type: 'string', description: 'Optional project filter. Also includes global (null project_id) entries.' },
+        limit: { type: 'number', description: 'Max results to return (default: 20)' }
+      },
+      required: ['query']
+    }
+  },
+  {
+    name: 'memory_recall',
+    description: 'Recall memory entries by ID, topic, or tag. Returns entries sorted by last update.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Recall a specific entry by ID' },
+        topic: { type: 'string', description: 'Filter by topic (partial match with LIKE)' },
+        tag: { type: 'string', description: 'Filter by tag name (exact match)' },
+        project_id: { type: 'string', description: 'Optional project filter' },
+        limit: { type: 'number', description: 'Max results to return (default: 20)' }
+      }
+    }
+  },
+  {
+    name: 'memory_list_tags',
+    description: 'List all available memory tags with entry counts. Use to discover existing tags before storing or searching.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
   }
 ];
 
@@ -602,6 +675,56 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           itemId: string;
           filesModified?: string[];
         });
+
+      // ====================================================================
+      // Memory Tools (no kanban-lock needed, SQLite WAL handles concurrency)
+      // ====================================================================
+
+      case 'memory_store': {
+        const result = memoryStore(args as {
+          topic: string;
+          summary: string;
+          details?: string | null;
+          tags: string[];
+          project_id?: string | null;
+          source?: string | null;
+        });
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }]
+        };
+      }
+
+      case 'memory_search': {
+        const results = memorySearch(args as {
+          query: string;
+          tags?: string[];
+          project_id?: string | null;
+          limit?: number;
+        });
+        return {
+          content: [{ type: 'text', text: JSON.stringify(results) }]
+        };
+      }
+
+      case 'memory_recall': {
+        const results = memoryRecall(args as {
+          id?: number;
+          topic?: string;
+          tag?: string;
+          project_id?: string | null;
+          limit?: number;
+        });
+        return {
+          content: [{ type: 'text', text: JSON.stringify(results) }]
+        };
+      }
+
+      case 'memory_list_tags': {
+        const tags = memoryListTags();
+        return {
+          content: [{ type: 'text', text: JSON.stringify(tags) }]
+        };
+      }
 
       default:
         throw new Error(`Unknown tool: ${name}`);

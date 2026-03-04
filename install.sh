@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.8.0"
+FRAMEWORK_VERSION="3.9.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -297,7 +297,7 @@ display_plan() {
     print_plan_item "$INSTALL_MARKET_VALIDATION_GLOBAL" "Market validation (global)" "templates, agents, commands"
     print_plan_item "$INSTALL_PROJECT" "Project setup" "workflows, standards, config"
     print_plan_item "$INSTALL_MCP" "MCP server" "kanban server"
-    print_plan_item "$INSTALL_CLAUDE_CODE" "Claude Code commands & agents" "36 commands, 13 agents"
+    print_plan_item "$INSTALL_CLAUDE_CODE" "Claude Code commands & agents" "37 commands, 13 agents, 2 skills"
     print_plan_item "$INSTALL_MARKET_VALIDATION_PROJECT" "Market validation (project)" "project directories"
 
     if [[ "$FLAG_OVERWRITE" == true ]]; then
@@ -1165,10 +1165,11 @@ install_claude_code() {
         mkdir -p .claude/commands/specwright
         mkdir -p .claude/agents
         mkdir -p .claude/skills/review-implementation-plan
+        mkdir -p .claude/skills/save-memory
     fi
 
-    # Commands (36)
-    substep "Commands" "36"
+    # Commands (37)
+    substep "Commands" "37"
     local command_files=(
         plan-product.md plan-platform.md
         create-spec.md change-spec.md
@@ -1186,6 +1187,7 @@ install_claude_code() {
         extract-design.md
         create-instagram-account.md create-content-plan.md
         check-update.md
+        save-memory.md
     )
     for f in "${command_files[@]}"; do
         download_file "$REPO_URL/.claude/commands/specwright/$f" ".claude/commands/specwright/$f" "command"
@@ -1206,9 +1208,10 @@ install_claude_code() {
     done
     substep_done
 
-    # Skills (1)
-    substep "Skills" "1"
+    # Skills (2)
+    substep "Skills" "2"
     download_file "$REPO_URL/.claude/skills/review-implementation-plan/SKILL.md" ".claude/skills/review-implementation-plan/SKILL.md" "command"
+    download_file "$REPO_URL/specwright/templates/skills/save-memory/SKILL.md" ".claude/skills/save-memory/SKILL.md" "command"
     substep_done
 
 }
