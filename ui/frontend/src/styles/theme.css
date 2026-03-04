@@ -1557,6 +1557,30 @@ aos-spec-card {
   gap: var(--spacing-xs);
 }
 
+.spec-copy-path-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: opacity 0.2s, background-color 0.2s, color 0.2s;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.spec-copy-path-btn:hover {
+  opacity: 1;
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.spec-copy-path-btn.copy-path--copied {
+  opacity: 1;
+  color: var(--color-accent-success);
+}
+
 .spec-delete-btn, .spec-delete-btn-list {
   background: transparent;
   border: none;

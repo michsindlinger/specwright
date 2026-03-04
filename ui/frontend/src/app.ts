@@ -93,6 +93,9 @@ export class AosApp extends LitElement {
   @state()
   private activeTerminalSessionId: string | null = null;
 
+  /** Remember last active terminal session per project */
+  private lastActiveSessionByProject = new Map<string, string>();
+
   @state()
   private gitStatus: GitStatusData | null = null;
 
@@ -684,6 +687,12 @@ export class AosApp extends LitElement {
       return; // Don't switch UI if backend failed
     }
 
+    // Remember last active terminal session for the project we're leaving
+    const previousProject = this.openProjects.find(p => p.id === this.activeProjectId);
+    if (previousProject && this.activeTerminalSessionId) {
+      this.lastActiveSessionByProject.set(previousProject.id, this.activeTerminalSessionId);
+    }
+
     // Now update UI after backend is ready
     this.activeProjectId = projectId;
     this.updateContextProvider();
@@ -699,11 +708,10 @@ export class AosApp extends LitElement {
     // (projectTerminalSessions will now filter by new project path)
     const newProjectSessions = this.terminalSessions.filter(s => s.projectPath === project.path);
     if (newProjectSessions.length > 0) {
-      // Check if current active session is in the new project
-      const currentInNewProject = newProjectSessions.some(s => s.id === this.activeTerminalSessionId);
-      if (!currentInNewProject) {
-        this.activeTerminalSessionId = newProjectSessions[0].id;
-      }
+      // Restore previously active session for this project, or fall back to first
+      const remembered = this.lastActiveSessionByProject.get(projectId);
+      const rememberedExists = remembered && newProjectSessions.some(s => s.id === remembered);
+      this.activeTerminalSessionId = rememberedExists ? remembered : newProjectSessions[0].id;
     } else {
       // No sessions for this project, clear active
       this.activeTerminalSessionId = null;
