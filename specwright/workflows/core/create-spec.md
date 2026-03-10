@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.7.1
+version: 3.8.0
 encoding: UTF-8
 ---
 
@@ -383,6 +383,9 @@ Before generating user stories, create a summary document for user approval.
      </clarification_template>
 
   4. PRESENT clarification document to user
+  5. OPEN document preview via MCP tool `document_preview_open`:
+     - filePath: "specwright/specs/[YYYY-MM-DD-spec-name]/requirements-clarification.md"
+     - This shows the clarification document in the sidebar so the user can review it while answering
 </mandatory_actions>
 
 </substep>
@@ -414,6 +417,7 @@ Before generating user stories, create a summary document for user approval.
 
   2. BASED on user choice:
      - If "Approve":
+       - CLOSE document preview via MCP tool `document_preview_close`
        - ASK user via AskUserQuestion:
          ```
          Phase 1 complete! Requirements clarification approved.
@@ -641,8 +645,11 @@ Before generating user stories, create a summary document for user approval.
 #### Step 2.5.2 - User Review (mit Editor-Option)
 
 1. PRESENT den Implementation Plan dem User
+2. OPEN document preview via MCP tool `document_preview_open`:
+   - filePath: "specwright/specs/[spec-name]/implementation-plan.md"
+   - This shows the implementation plan in the sidebar so the user can review it while answering
 
-2. ASK user via AskUserQuestion:
+3. ASK user via AskUserQuestion:
    ```
    Question: "Der Plan-Agent hat einen Implementation Plan erstellt. Der Plan enthält
               Self-Review und Minimalinvasiv-Optimierungen."
@@ -665,9 +672,10 @@ Before generating user stories, create a summary document for user approval.
       → Zurück zu Step 2.1
    ```
 
-3. BASED on user choice:
+4. BASED on user choice:
    - If "Plan genehmigen":
      - Set Status: APPROVED
+     - CLOSE document preview via MCP tool `document_preview_close`
      - Proceed to Step 2.6
 
    - If "Im Editor öffnen":

@@ -56,7 +56,7 @@ export class AosDocumentPreviewPanel extends LitElement {
         top: 0;
         left: 0;
         bottom: 0;
-        width: 400px;
+        width: 600px;
         background: var(--color-bg-secondary, #1e1e1e);
         border-right: 1px solid var(--color-border, #404040);
         z-index: 1000;
