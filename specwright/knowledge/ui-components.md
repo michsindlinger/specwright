@@ -1,7 +1,7 @@
 # UI Components
 
 > Verfügbare UI-Komponenten im Projekt.
-> Zuletzt aktualisiert: 2026-03-01 (Voice Call Conversational Flow)
+> Zuletzt aktualisiert: 2026-03-10 (Document Preview Panel)
 
 ## Komponenten-Übersicht
 
@@ -24,6 +24,7 @@
 | aos-call-controls | ui/frontend/src/components/voice/call-controls.ts | callState, isMuted, inputMode | Voice Call Conversational Flow (2026-03-01) |
 | aos-action-log | ui/frontend/src/components/voice/action-log.ts | actions | Voice Call Conversational Flow (2026-03-01) |
 | aos-call-transcript | ui/frontend/src/components/voice/call-transcript.ts | entries | Voice Call Conversational Flow (2026-03-01) |
+| aos-document-preview-panel | ui/frontend/src/components/document-preview/aos-document-preview-panel.ts | isOpen, content, filePath | Document Preview Panel (2026-03-10) |
 
 ---
 
@@ -567,6 +568,53 @@ panel.openFile('src/app.ts', 'app.ts');
 - Farbcodierung: User vs Agent Beitraege
 - Auto-Scroll zum neuesten Eintrag
 - Light DOM Pattern
+
+---
+
+### aos-document-preview-panel
+
+**Pfad:** `ui/frontend/src/components/document-preview/aos-document-preview-panel.ts`
+**Erstellt:** Document Preview Panel (2026-03-10)
+
+**Beschreibung:** Overlay Side-Panel von links mit Markdown-Viewer (aos-docs-viewer) und CodeMirror-Editor (aos-file-editor). Öffnet/schließt sich via MCP-Tool-generierte Preview-Requests über WebSocket.
+
+**Props:**
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| isOpen | boolean | false | Panel sichtbar/versteckt |
+| content | string | '' | Markdown-Inhalt zur Anzeige |
+| filePath | string | '' | Pfad zur Datei (für Save-Operation) |
+
+**Events:**
+| Event | Detail | Description |
+|-------|--------|-------------|
+| panel-close | - | Panel soll geschlossen werden |
+
+**Gateway Messages:**
+| Message | Direction | Description |
+|---------|-----------|-------------|
+| document-preview.open | Incoming | Öffnet Panel mit filePath + content |
+| document-preview.close | Incoming | Schließt Panel |
+| document-preview.save | Outgoing | Speichert editierten Inhalt |
+| document-preview.save.response | Incoming | Save-Bestätigung |
+
+**Usage Example:**
+```html
+<aos-document-preview-panel
+  .isOpen=${this.previewOpen}
+  .content=${this.previewContent}
+  .filePath=${this.previewFilePath}
+  @panel-close=${this._handlePreviewClose}
+></aos-document-preview-panel>
+```
+
+**Notes:**
+- Light DOM Pattern
+- Slide-in von links mit CSS-Transition (folgt aos-file-tree-sidebar Pattern)
+- z-index 1000
+- View/Edit Mode Toggle
+- Unsaved Changes Warning bei Content-Switch
+- Save via WebSocket (document-preview.save)
 
 ---
 

@@ -14,11 +14,11 @@
     "nextPhase": "1-kanban-setup",
     "worktreePath": null,
     "gitBranch": "feature/document-preview-panel",
-    "currentStory": "DPP-998",
+    "currentStory": "DPP-999",
     "currentStoryPhase": "implementing",
-    "lastAction": "Started DPP-998",
-    "nextAction": "Implement Integration Validation",
-    "progressIndex": 5,
+    "lastAction": "Started DPP-999",
+    "nextAction": "Implement Finalize PR",
+    "progressIndex": 6,
     "totalStories": 7,
     "gitStrategy": "branch"
   },
@@ -259,24 +259,33 @@
       "dependencies": [
         "DPP-997"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": null,
       "timing": {
         "createdAt": "2026-03-09T00:00:00.000Z",
         "updatedAt": "2026-03-09T00:00:00.000Z",
-        "startedAt": "2026-03-10T15:11:13.977Z"
+        "startedAt": "2026-03-10T15:11:13.977Z",
+        "completedAt": "2026-03-10T15:14:03.508Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-03-09-document-preview-panel/kanban.json"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "36016902054099ed88f7079e1ffe1fc7565d9cd4",
+            "message": "feat: DPP-998 Integration Validation completed",
+            "timestamp": "2026-03-10T16:13:59+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -293,12 +302,13 @@
       "dependencies": [
         "DPP-998"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": null,
       "timing": {
         "createdAt": "2026-03-09T00:00:00.000Z",
-        "updatedAt": "2026-03-09T00:00:00.000Z"
+        "updatedAt": "2026-03-09T00:00:00.000Z",
+        "startedAt": "2026-03-10T15:15:23.837Z"
       },
       "implementation": {
         "filesModified": [],
@@ -308,16 +318,18 @@
       "verification": {
         "dorChecked": true,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     }
   ],
   "boardStatus": {
     "total": 7,
-    "ready": 1,
+    "ready": 0,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 5,
+    "done": 6,
     "blocked": 0
   },
   "statistics": {
@@ -475,6 +487,24 @@
       "timestamp": "2026-03-10T15:11:13.980Z",
       "action": "status_changed",
       "storyId": "DPP-998",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-10T15:14:03.508Z",
+      "action": "status_changed",
+      "storyId": "DPP-998",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-10T15:14:18.107Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/document-preview-panel"
+    },
+    {
+      "timestamp": "2026-03-10T15:15:23.840Z",
+      "action": "status_changed",
+      "storyId": "DPP-999",
       "details": "Story started: ready → in_progress"
     }
   ]
