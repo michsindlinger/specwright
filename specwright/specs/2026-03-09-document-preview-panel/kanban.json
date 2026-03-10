@@ -1,0 +1,306 @@
+{
+  "$schema": "../../templates/schemas/spec-kanban-schema.json",
+  "version": "1.0",
+
+  "spec": {
+    "id": "2026-03-09-document-preview-panel",
+    "name": "Document Preview Panel",
+    "prefix": "DPP",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-03-09T00:00:00.000Z"
+  },
+
+  "resumeContext": {
+    "currentPhase": "0-spec-complete",
+    "nextPhase": "1-kanban-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Technical refinement completed for all 4 stories (DoR ready)",
+    "nextAction": "Run /execute-tasks 2026-03-09-document-preview-panel",
+    "progressIndex": 0,
+    "totalStories": 7
+  },
+
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+
+  "stories": [
+    {
+      "id": "DPP-001",
+      "title": "MCP-Tools: Document Preview Open & Close",
+      "slug": "mcp-tools-document-preview",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S",
+        "points": 2
+      },
+      "dependencies": [],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-001-mcp-tools-document-preview.md",
+      "timing": {
+        "createdAt": "2026-03-09T00:00:00.000Z",
+        "updatedAt": "2026-03-09T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "DPP-002",
+      "title": "Backend Preview-Watcher und WebSocket-Integration",
+      "slug": "backend-preview-watcher",
+      "classification": {
+        "type": "backend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S",
+        "points": 3
+      },
+      "dependencies": ["DPP-001"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-002-backend-preview-watcher.md",
+      "timing": {
+        "createdAt": "2026-03-09T00:00:00.000Z",
+        "updatedAt": "2026-03-09T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "DPP-003",
+      "title": "Frontend: Document Preview Panel Komponente",
+      "slug": "frontend-document-preview-panel",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "M",
+        "complexity": "M",
+        "points": 3
+      },
+      "dependencies": ["DPP-002"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-003-frontend-document-preview-panel.md",
+      "timing": {
+        "createdAt": "2026-03-09T00:00:00.000Z",
+        "updatedAt": "2026-03-09T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "DPP-004",
+      "title": "App-Integration des Document Preview Panels",
+      "slug": "app-integration",
+      "classification": {
+        "type": "frontend",
+        "priority": "high",
+        "effort": "S",
+        "complexity": "S",
+        "points": 2
+      },
+      "dependencies": ["DPP-003"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": "stories/story-004-app-integration.md",
+      "timing": {
+        "createdAt": "2026-03-09T00:00:00.000Z",
+        "updatedAt": "2026-03-09T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "DPP-997",
+      "title": "Code Review",
+      "slug": "code-review",
+      "classification": {
+        "type": "system",
+        "priority": "medium",
+        "effort": "S",
+        "complexity": "S",
+        "points": 0
+      },
+      "dependencies": ["DPP-004"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": null,
+      "timing": {
+        "createdAt": "2026-03-09T00:00:00.000Z",
+        "updatedAt": "2026-03-09T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "DPP-998",
+      "title": "Integration Validation",
+      "slug": "integration-validation",
+      "classification": {
+        "type": "system",
+        "priority": "medium",
+        "effort": "S",
+        "complexity": "S",
+        "points": 0
+      },
+      "dependencies": ["DPP-997"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": null,
+      "timing": {
+        "createdAt": "2026-03-09T00:00:00.000Z",
+        "updatedAt": "2026-03-09T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    },
+    {
+      "id": "DPP-999",
+      "title": "Finalize PR",
+      "slug": "finalize-pr",
+      "classification": {
+        "type": "system",
+        "priority": "medium",
+        "effort": "S",
+        "complexity": "S",
+        "points": 0
+      },
+      "dependencies": ["DPP-998"],
+      "status": "ready",
+      "dorStatus": "ready",
+      "storyFile": null,
+      "timing": {
+        "createdAt": "2026-03-09T00:00:00.000Z",
+        "updatedAt": "2026-03-09T00:00:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "testsAdded": [],
+        "commits": []
+      },
+      "verification": {
+        "dorChecked": true,
+        "dodChecked": false
+      }
+    }
+  ],
+
+  "boardStatus": {
+    "total": 7,
+    "ready": 7,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 0
+  },
+
+  "statistics": {
+    "totalEffort": 10,
+    "completedEffort": 0,
+    "remainingEffort": 10,
+    "progressPercent": 0,
+    "byType": {
+      "frontend": 5,
+      "backend": 5,
+      "devops": 0,
+      "test": 0,
+      "docs": 0,
+      "integration": 0
+    },
+    "byPriority": {
+      "critical": 0,
+      "high": 10,
+      "medium": 0,
+      "low": 0
+    }
+  },
+
+  "executionPlan": {
+    "strategy": "dependency-aware",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "MCP & Backend",
+        "stories": ["DPP-001", "DPP-002"]
+      },
+      {
+        "phase": 2,
+        "name": "Frontend",
+        "stories": ["DPP-003", "DPP-004"]
+      },
+      {
+        "phase": 3,
+        "name": "System Stories",
+        "stories": ["DPP-997", "DPP-998", "DPP-999"]
+      }
+    ]
+  },
+
+  "changeLog": [
+    {
+      "timestamp": "2026-03-09T00:00:00.000Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Kanban initialized with 7 stories from /create-spec"
+    },
+    {
+      "timestamp": "2026-03-09T22:30:00.000Z",
+      "action": "technical_refinement",
+      "storyId": null,
+      "details": "Technical refinement completed for DPP-001 to DPP-004. All DoR checks passed. WAS/WIE/WO, Completion Checks, and Integration DoD filled."
+    }
+  ]
+}

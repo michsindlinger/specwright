@@ -1,0 +1,20 @@
+{
+  "sessionId": "call-1772449525937-bj4rj",
+  "skillId": "innovation-coach",
+  "agentName": "innovation-coach",
+  "startTime": "2026-03-02T11:05:25.937Z",
+  "endTime": "2026-03-02T11:06:16.876Z",
+  "messages": [
+    {
+      "role": "user",
+      "text": "Geht's dir denn heute?",
+      "timestamp": "2026-03-02T11:05:33.271Z"
+    },
+    {
+      "role": "agent",
+      "text": "Mir geht's gut, danke der Nachfrage! Und dir? Wie kann ich dir heute helfen? Hast du eine Idee, an der du arbeiten möchtest, oder brauchst du Inspiration für ein neues Projekt?",
+      "timestamp": "2026-03-02T11:05:37.836Z"
+    }
+  ],
+  "actions": []
+}
