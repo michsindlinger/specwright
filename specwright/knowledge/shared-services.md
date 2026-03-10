@@ -1,7 +1,7 @@
 # Shared Services
 
 > Verfügbare Services, Hooks und Utilities im Projekt.
-> Zuletzt aktualisiert: 2026-03-01 (Voice Call Conversational Flow)
+> Zuletzt aktualisiert: 2026-03-10 (Document Preview Panel)
 
 ## Services-Übersicht
 
@@ -20,6 +20,8 @@
 | VoiceCallService | ui/src/server/services/voice-call.service.ts | Service | Voice Call Conversational Flow (2026-03-01) |
 | AudioPlaybackService | ui/frontend/src/services/audio-playback.service.ts | Service | Voice Call Conversational Flow (2026-03-01) |
 | TranscriptService | ui/src/server/services/transcript.service.ts | Service | Voice Call Conversational Flow (2026-03-01) |
+| PreviewWatcher | ui/src/server/services/preview-watcher.service.ts | Service | Document Preview Panel (2026-03-10) |
+| DocumentPreviewHandler | ui/src/server/handlers/document-preview.handler.ts | Handler | Document Preview Panel (2026-03-10) |
 
 ---
 
@@ -267,6 +269,54 @@
 - JSON-basierte Speicherung
 - Wird von VoiceCallService aufgerufen
 - Transkripte werden pro Call gespeichert
+
+---
+
+### PreviewWatcher
+
+**Pfad:** `ui/src/server/services/preview-watcher.service.ts`
+**Typ:** Service
+**Erstellt:** Document Preview Panel (2026-03-10)
+
+**Beschreibung:** Filewatcher fuer `/tmp/` der `specwright-preview-*.json` Dateien erkennt und via WebSocket an die passenden Frontend-Clients broadcastet. Wird von MCP-Tools (document_preview_open/close) getriggert.
+
+**Methoden:**
+| Methode | Parameter | Return | Beschreibung |
+|---------|-----------|--------|--------------|
+| init | () | void | Startet den Filewatcher und räumt stale Files auf |
+| stop | () | void | Stoppt den Filewatcher |
+
+**Notes:**
+- Überwacht `/tmp/` mit `fs.watch` auf `specwright-preview-*.json` Pattern
+- Startup-Cleanup: Entfernt stale Preview-Dateien
+- Debouncing: Verhindert doppelte Verarbeitung
+- Broadcast: Nutzt `webSocketManager.sendToProject()` für projektspezifische Zustellung
+
+---
+
+### DocumentPreviewHandler
+
+**Pfad:** `ui/src/server/handlers/document-preview.handler.ts`
+**Typ:** WebSocket Message Handler
+**Erstellt:** Document Preview Panel (2026-03-10)
+
+**Beschreibung:** WebSocket-Handler fuer Document-Preview Save-Operationen. Folgt dem bestehenden Handler-Pattern (FileHandler, AttachmentHandler).
+
+**Handled Messages:**
+| Message Type | Description |
+|-------------|-------------|
+| document-preview.save | Dateiinhalt speichern (filePath + content) |
+
+**Response Messages:**
+| Message Type | Description |
+|-------------|-------------|
+| document-preview.save.response | Bestätigung/Fehler an anfragenden Client |
+| document-preview.saved | Broadcast an alle Projekt-Clients |
+
+**Notes:**
+- Validierung: filePath und content sind Pflichtfelder
+- Prüft Datei-Existenz vor dem Schreiben
+- Broadcast: Alle Projekt-Clients werden über Save informiert
 
 ---
 

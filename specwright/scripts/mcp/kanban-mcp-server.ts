@@ -23,6 +23,8 @@
  * - memory_search: Full-text search across memory entries
  * - memory_recall: Recall memory entries by ID, topic, or tag
  * - memory_list_tags: List all available memory tags
+ * - document_preview_open: Open a document in the preview panel
+ * - document_preview_close: Close the document preview panel
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -35,6 +37,7 @@ import {
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
 import { existsSync } from 'fs';
+import { createHash } from 'crypto';
 import { withKanbanLock } from './kanban-lock.js';
 import { parseStoryFile } from './story-parser.js';
 import {
@@ -569,6 +572,28 @@ const TOOLS: Tool[] = [
       type: 'object',
       properties: {}
     }
+  },
+  {
+    name: 'document_preview_open',
+    description: 'Open a document in the preview panel. Creates a preview request JSON file in /tmp/ for the UI to pick up.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: {
+          type: 'string',
+          description: 'Path to the document file to preview (relative to project root or absolute)'
+        }
+      },
+      required: ['filePath']
+    }
+  },
+  {
+    name: 'document_preview_close',
+    description: 'Close the document preview panel. Creates a close request JSON file in /tmp/ for the UI to pick up.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
   }
 ];
 
@@ -723,6 +748,51 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const tags = memoryListTags();
         return {
           content: [{ type: 'text', text: JSON.stringify(tags) }]
+        };
+      }
+
+      case 'document_preview_open': {
+        const { filePath } = args as { filePath: string };
+        const projectHash = createHash('md5').update(cwd).digest('hex').slice(0, 8);
+        const resolvedPath = filePath.startsWith('/') ? filePath : join(cwd, filePath);
+
+        if (!existsSync(resolvedPath)) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'File not found', filePath: resolvedPath }) }],
+            isError: true
+          };
+        }
+
+        const previewRequest = {
+          action: 'open' as const,
+          filePath: resolvedPath,
+          projectPath: cwd,
+          timestamp: new Date().toISOString()
+        };
+
+        const previewFile = `/tmp/specwright-preview-${projectHash}.json`;
+        await writeFile(previewFile, JSON.stringify(previewRequest, null, 2));
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, previewFile, filePath: resolvedPath }) }]
+        };
+      }
+
+      case 'document_preview_close': {
+        const projectHash = createHash('md5').update(cwd).digest('hex').slice(0, 8);
+
+        const closeRequest = {
+          action: 'close' as const,
+          filePath: null,
+          projectPath: cwd,
+          timestamp: new Date().toISOString()
+        };
+
+        const previewFile = `/tmp/specwright-preview-${projectHash}.json`;
+        await writeFile(previewFile, JSON.stringify(closeRequest, null, 2));
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, previewFile }) }]
         };
       }
 
