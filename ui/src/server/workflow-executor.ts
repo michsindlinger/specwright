@@ -10,6 +10,7 @@ import { withKanbanLock } from './utils/kanban-lock.js';
 import { getCliCommandForModel } from './model-config.js';
 import { getBaseBranch } from './general-config.js';
 import { queueHandler } from './handlers/queue.handler.js';
+import { queueService } from './services/queue.service.js';
 import { resolveCommandDir, projectDir } from './utils/project-dirs.js';
 import { gitService } from './services/git.service.js';
 
@@ -488,7 +489,8 @@ export class WorkflowExecutor {
     projectPath: string,
     gitStrategy: GitStrategy = 'branch',
     model: ModelSelection = 'opus',  // MSK-003-FIX: Accept model from caller
-    autoMode: boolean = false  // Whether auto-mode is enabled (controls auto-continue behavior)
+    autoMode: boolean = false,  // Whether auto-mode is enabled (controls auto-continue behavior)
+    chainFromBranch?: string  // Branch chaining: create new branch from this branch instead of baseBranch
   ): Promise<string> {
     console.log('[Workflow] startStoryExecution called:', { specId, storyId, projectPath, gitStrategy, model, autoMode });
     const executionId = crypto.randomUUID();
@@ -626,6 +628,33 @@ export class WorkflowExecutor {
       branchName = `feature/${featureName}`;
 
       try {
+        // Branch chaining: determine base branch
+        // When chainFromBranch is set (queue mode), branch from previous spec's branch
+        // Otherwise branch from baseBranch (main)
+        const baseBranch = chainFromBranch || getBaseBranch(projectPath);
+
+        if (chainFromBranch) {
+          console.log(`[Workflow] Branch chaining: using ${chainFromBranch} as base (previous spec in queue)`);
+        }
+
+        // Ensure we're on the correct base branch before creating feature branch
+        try {
+          execSync(`git checkout ${baseBranch}`, { cwd: projectPath, stdio: 'pipe' });
+          console.log(`[Workflow] Checked out base branch: ${baseBranch}`);
+        } catch (checkoutError) {
+          console.warn(`[Workflow] Failed to checkout ${baseBranch}, continuing from current branch:`, checkoutError instanceof Error ? checkoutError.message : checkoutError);
+        }
+
+        // Pull latest only when branching from main/baseBranch (not when chaining)
+        if (!chainFromBranch) {
+          try {
+            execSync('git pull', { cwd: projectPath, stdio: 'pipe' });
+            console.log(`[Workflow] Pulled latest ${baseBranch}`);
+          } catch {
+            console.warn(`[Workflow] Pull failed, continuing with local ${baseBranch}`);
+          }
+        }
+
         // Check if branch exists
         let branchExists = false;
         try {
@@ -640,9 +669,16 @@ export class WorkflowExecutor {
           console.log(`[Workflow] Checking out existing branch: ${branchName}`);
           execSync(`git checkout ${branchName}`, { cwd: projectPath, stdio: 'pipe' });
         } else {
-          // Create new branch
-          console.log(`[Workflow] Creating new branch: ${branchName}`);
-          execSync(`git checkout -b ${branchName}`, { cwd: projectPath, stdio: 'pipe' });
+          // Create new branch from base
+          console.log(`[Workflow] Creating new branch: ${branchName} from ${baseBranch}`);
+          execSync(`git checkout -b ${branchName} ${baseBranch}`, { cwd: projectPath, stdio: 'pipe' });
+        }
+
+        // Store branch name on queue item for chaining
+        const queueItem = queueService.getItemBySpecId(projectPath, specId);
+        if (queueItem) {
+          queueService.setBranchName(queueItem.id, branchName);
+          console.log(`[Workflow] Stored branch name ${branchName} on queue item ${queueItem.id}`);
         }
 
         // Update kanban board with git strategy info
@@ -1053,9 +1089,13 @@ export class WorkflowExecutor {
 
         // Handle queue progression if needed
         if (isQueueRunning && queueItem) {
+          // Branch chaining: get completed spec's branch for next spec
+          const completedBranch = queueItem.branchName;
           const nextQueueItem = queueHandler.handleSpecComplete(projectPath, specId, true);
           if (nextQueueItem) {
-            console.log(`[Workflow] Spec complete, moving to next queue item: ${nextQueueItem.specId}`);
+            // Determine chain branch: only chain when both specs use 'branch' strategy
+            const chainBranch = (completedBranch && nextQueueItem.gitStrategy === 'branch') ? completedBranch : undefined;
+            console.log(`[Workflow] Spec complete, moving to next queue item: ${nextQueueItem.specId}${chainBranch ? ` (chaining from ${chainBranch})` : ''}`);
             this.sendToClient(client, {
               type: 'workflow.spec-complete',
               specId,
@@ -1068,7 +1108,7 @@ export class WorkflowExecutor {
             const nextKanban = await specsReader.getKanbanBoard(nextQueueItem.projectPath, nextQueueItem.specId);
             const firstStory = nextKanban.stories.find(s => s.status === 'backlog');
             if (firstStory) {
-              await this.startStoryExecution(client, nextQueueItem.specId, firstStory.id, nextQueueItem.projectPath, nextQueueItem.gitStrategy || 'branch', firstStory.model || 'opus', true);
+              await this.startStoryExecution(client, nextQueueItem.specId, firstStory.id, nextQueueItem.projectPath, nextQueueItem.gitStrategy || 'branch', firstStory.model || 'opus', true, chainBranch);
             } else {
               queueHandler.handleSpecComplete(nextQueueItem.projectPath, nextQueueItem.specId, true);
             }
@@ -1153,11 +1193,16 @@ export class WorkflowExecutor {
 
         // Only continue to NEXT SPEC if queue is running
         if (isQueueRunning && queueItem) {
+          // Branch chaining: get completed spec's branch for next spec
+          const completedBranch = queueItem.branchName;
+
           // Mark spec as complete in queue
           const nextQueueItem = queueHandler.handleSpecComplete(projectPath, specId, true);
 
           if (nextQueueItem) {
-            console.log(`[Workflow] Auto-continuing to next spec in queue: ${nextQueueItem.specId}`);
+            // Determine chain branch: only chain when both specs use 'branch' strategy
+            const chainBranch = (completedBranch && nextQueueItem.gitStrategy === 'branch') ? completedBranch : undefined;
+            console.log(`[Workflow] Auto-continuing to next spec in queue: ${nextQueueItem.specId}${chainBranch ? ` (chaining from ${chainBranch})` : ''}`);
 
             // Notify client about spec completion and next spec
             this.sendToClient(client, {
@@ -1183,7 +1228,8 @@ export class WorkflowExecutor {
                 nextQueueItem.projectPath,
                 nextQueueItem.gitStrategy || 'branch',
                 firstStory.model || 'opus',
-                true  // queue-continued stories always have autoMode enabled
+                true,  // queue-continued stories always have autoMode enabled
+                chainBranch
               );
             } else {
               console.log(`[Workflow] No backlog stories found for next spec ${nextQueueItem.specId}`);

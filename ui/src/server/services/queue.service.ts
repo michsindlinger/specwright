@@ -17,6 +17,7 @@ export interface QueueItem {
   addedAt: string;
   startedAt?: string;
   completedAt?: string;
+  branchName?: string; // Branch name created for this spec (set during execution)
 }
 
 export interface QueueState {
@@ -202,6 +203,35 @@ export class QueueService {
     return this.queue.items.find(
       item => item.specId === specId && item.projectPath === projectPath
     ) || null;
+  }
+
+  /**
+   * Set the branch name for a queue item.
+   * Called when a spec's feature branch is created during execution.
+   */
+  public setBranchName(queueItemId: string, branchName: string): void {
+    const item = this.queue.items.find(i => i.id === queueItemId);
+    if (item) {
+      item.branchName = branchName;
+    }
+  }
+
+  /**
+   * Get the most recently completed item's branch name for branch chaining.
+   * Looks backwards from the given queue item to find the previous done item with a branch.
+   */
+  public getPreviousBranchName(queueItemId: string): string | undefined {
+    const currentIndex = this.queue.items.findIndex(i => i.id === queueItemId);
+    if (currentIndex <= 0) return undefined;
+
+    // Walk backwards to find the most recent completed item with a branch
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const item = this.queue.items[i];
+      if (item.status === 'done' && item.branchName && item.gitStrategy === 'branch') {
+        return item.branchName;
+      }
+    }
+    return undefined;
   }
 
   /**

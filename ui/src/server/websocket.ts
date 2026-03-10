@@ -3385,12 +3385,17 @@ export class WebSocketHandler {
           // All stories in this spec are done - advance to next spec
           console.log(`[WebSocket] Spec ${specId} complete, checking for next spec in queue`);
 
+          // Branch chaining: get completed spec's branch before marking complete
+          const completedBranch = currentQueueItem?.branchName;
+
           const nextItem = queueHandler.handleSpecComplete(resolvedProjectPath, specId, true);
 
           if (nextItem) {
+            // Determine chain branch: only chain when both specs use 'branch' strategy
+            const chainBranch = (completedBranch && nextItem.gitStrategy === 'branch') ? completedBranch : undefined;
             // Start next spec - use the next item's projectPath
-            console.log(`[WebSocket] Starting next spec: ${nextItem.specId} (project: ${nextItem.projectPath})`);
-            await this.triggerSpecExecution(client, nextItem.projectPath, nextItem);
+            console.log(`[WebSocket] Starting next spec: ${nextItem.specId} (project: ${nextItem.projectPath})${chainBranch ? ` (chaining from ${chainBranch})` : ''}`);
+            await this.triggerSpecExecution(client, nextItem.projectPath, nextItem, chainBranch);
           } else {
             console.log('[WebSocket] Queue execution complete');
           }
@@ -3425,7 +3430,8 @@ export class WebSocketHandler {
   private async triggerSpecExecution(
     client: WebSocketClient,
     projectPath: string,
-    queueItem: { specId: string; specName: string; gitStrategy?: 'branch' | 'worktree' | 'current-branch'; itemType?: 'spec' | 'backlog' }
+    queueItem: { specId: string; specName: string; gitStrategy?: 'branch' | 'worktree' | 'current-branch'; itemType?: 'spec' | 'backlog' },
+    chainFromBranch?: string
   ): Promise<void> {
     // Route to backlog execution if itemType is 'backlog'
     if (queueItem.itemType === 'backlog') {
@@ -3445,6 +3451,9 @@ export class WebSocketHandler {
 
       if (firstStory) {
         // Start the workflow using existing infrastructure
+        if (chainFromBranch) {
+          console.log(`[WebSocket] Branch chaining: ${queueItem.specId} will branch from ${chainFromBranch}`);
+        }
         const executionId = await this.workflowExecutor.startStoryExecution(
           client,
           queueItem.specId,
@@ -3452,7 +3461,8 @@ export class WebSocketHandler {
           projectPath,
           queueItem.gitStrategy || 'branch',
           firstStory.model || 'opus',
-          true  // queue stories always auto-continue
+          true,  // queue stories always auto-continue
+          chainFromBranch
         );
 
         // MPRO-005: Mark workflow active
