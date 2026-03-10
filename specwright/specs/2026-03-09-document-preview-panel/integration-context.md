@@ -6,6 +6,7 @@
 |----------|---------|---------------------|
 | DPP-001 | MCP-Tools document_preview_open & close | specwright/scripts/mcp/kanban-mcp-server.ts |
 | DPP-002 | Backend Preview-Watcher and WebSocket integration | ui/src/server/services/preview-watcher.service.ts, ui/src/server/handlers/document-preview.handler.ts, ui/src/server/websocket.ts |
+| DPP-003 | Frontend Document Preview Panel component | ui/frontend/src/components/document-preview/aos-document-preview-panel.ts |
 
 ## New Exports & APIs
 
@@ -20,6 +21,9 @@
 
 **Handlers:**
 - `DocumentPreviewHandler` (`ui/src/server/handlers/document-preview.handler.ts`) - Handles `document-preview.save` WebSocket messages. Writes updated content to file on disk. Singleton: `documentPreviewHandler`.
+
+**UI Components:**
+- `AosDocumentPreviewPanel` (`ui/frontend/src/components/document-preview/aos-document-preview-panel.ts`) - Overlay side-panel from left. Properties: `isOpen` (Boolean), `content` (String), `filePath` (String). Events: `close`. Uses `aos-docs-viewer` (embedded) for Markdown rendering and `aos-file-editor` for editing. Sends `document-preview.save` via gateway. Listens for `document-preview.save.response` and `document-preview.error`.
 
 **WebSocket Message Types (new):**
 - `document-preview.open` (server → client) - Carries `{ filePath, content }` of the opened document
@@ -38,6 +42,11 @@
 - Non-existent files return `document-preview.error` message to clients
 - PreviewWatcher has a 50ms debounce to ensure files are fully written before reading
 - Startup cleanup removes stale `/tmp/specwright-preview-*` files from previous crashes
+- Panel component follows Light DOM pattern (createRenderRoot + ensureStyles) like aos-file-tree-sidebar
+- Panel slides in from left with position:fixed, transform:translateX, z-index:1000
+- Panel width: 400px (no resize in v1)
+- Unsaved changes warning via confirm() dialog before content switch or close
+- app.ts must pass isOpen/content/filePath as properties and listen for @close event (DPP-004)
 
 ## File Change Summary
 
@@ -47,3 +56,4 @@
 | ui/src/server/services/preview-watcher.service.ts | Created | DPP-002 |
 | ui/src/server/handlers/document-preview.handler.ts | Created | DPP-002 |
 | ui/src/server/websocket.ts | Modified | DPP-002 |
+| ui/frontend/src/components/document-preview/aos-document-preview-panel.ts | Created | DPP-003 |
