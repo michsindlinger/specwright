@@ -11,7 +11,7 @@ const REPO_URL = 'https://raw.githubusercontent.com/michsindlinger/specwright/ma
 let cachedLatestVersion: string | null = null;
 let cachedChangelog: string | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 interface VersionResponse {
   installedVersion: string | null;
