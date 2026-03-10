@@ -1,7 +1,6 @@
 {
   "$schema": "../../templates/schemas/spec-kanban-schema.json",
   "version": "1.0",
-
   "spec": {
     "id": "2026-03-09-document-preview-panel",
     "name": "Document Preview Panel",
@@ -10,27 +9,25 @@
     "specLiteFile": "spec-lite.md",
     "createdAt": "2026-03-09T00:00:00.000Z"
   },
-
   "resumeContext": {
     "currentPhase": "0-spec-complete",
     "nextPhase": "1-kanban-setup",
     "worktreePath": null,
-    "gitBranch": null,
+    "gitBranch": "feature/document-preview-panel",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Technical refinement completed for all 4 stories (DoR ready)",
-    "nextAction": "Run /execute-tasks 2026-03-09-document-preview-panel",
-    "progressIndex": 0,
-    "totalStories": 7
+    "lastAction": "Completed DPP-001",
+    "nextAction": "Execute next story: DPP-002",
+    "progressIndex": 1,
+    "totalStories": 7,
+    "gitStrategy": "branch"
   },
-
   "execution": {
     "status": "not_started",
     "startedAt": null,
     "completedAt": null,
     "model": null
   },
-
   "stories": [
     {
       "id": "DPP-001",
@@ -44,22 +41,33 @@
         "points": 2
       },
       "dependencies": [],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-001-mcp-tools-document-preview.md",
       "timing": {
         "createdAt": "2026-03-09T00:00:00.000Z",
-        "updatedAt": "2026-03-09T00:00:00.000Z"
+        "updatedAt": "2026-03-09T00:00:00.000Z",
+        "startedAt": "2026-03-10T14:35:22.583Z",
+        "completedAt": "2026-03-10T14:39:34.906Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/scripts/mcp/kanban-mcp-server.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "fc032835d8f61f85c8eac404764627c93d7177fd",
+            "message": "feat: DPP-001 MCP-Tools Document Preview Open & Close",
+            "timestamp": "2026-03-10T15:39:28+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done"
     },
     {
       "id": "DPP-002",
@@ -72,7 +80,9 @@
         "complexity": "S",
         "points": 3
       },
-      "dependencies": ["DPP-001"],
+      "dependencies": [
+        "DPP-001"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-backend-preview-watcher.md",
@@ -101,7 +111,9 @@
         "complexity": "M",
         "points": 3
       },
-      "dependencies": ["DPP-002"],
+      "dependencies": [
+        "DPP-002"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-frontend-document-preview-panel.md",
@@ -130,7 +142,9 @@
         "complexity": "S",
         "points": 2
       },
-      "dependencies": ["DPP-003"],
+      "dependencies": [
+        "DPP-003"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": "stories/story-004-app-integration.md",
@@ -159,7 +173,9 @@
         "complexity": "S",
         "points": 0
       },
-      "dependencies": ["DPP-004"],
+      "dependencies": [
+        "DPP-004"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": null,
@@ -188,7 +204,9 @@
         "complexity": "S",
         "points": 0
       },
-      "dependencies": ["DPP-997"],
+      "dependencies": [
+        "DPP-997"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": null,
@@ -217,7 +235,9 @@
         "complexity": "S",
         "points": 0
       },
-      "dependencies": ["DPP-998"],
+      "dependencies": [
+        "DPP-998"
+      ],
       "status": "ready",
       "dorStatus": "ready",
       "storyFile": null,
@@ -236,59 +256,57 @@
       }
     }
   ],
-
   "boardStatus": {
     "total": 7,
-    "ready": 7,
+    "ready": 6,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 0
   },
-
   "statistics": {
-    "totalEffort": 10,
-    "completedEffort": 0,
-    "remainingEffort": 10,
+    "totalEffort": null,
+    "completedEffort": null,
+    "remainingEffort": null,
     "progressPercent": 0,
     "byType": {
-      "frontend": 5,
-      "backend": 5,
-      "devops": 0,
-      "test": 0,
-      "docs": 0,
-      "integration": 0
+      "undefined": 7
     },
     "byPriority": {
-      "critical": 0,
-      "high": 10,
-      "medium": 0,
-      "low": 0
+      "undefined": 7
     }
   },
-
   "executionPlan": {
     "strategy": "dependency-aware",
     "phases": [
       {
         "phase": 1,
         "name": "MCP & Backend",
-        "stories": ["DPP-001", "DPP-002"]
+        "stories": [
+          "DPP-001",
+          "DPP-002"
+        ]
       },
       {
         "phase": 2,
         "name": "Frontend",
-        "stories": ["DPP-003", "DPP-004"]
+        "stories": [
+          "DPP-003",
+          "DPP-004"
+        ]
       },
       {
         "phase": 3,
         "name": "System Stories",
-        "stories": ["DPP-997", "DPP-998", "DPP-999"]
+        "stories": [
+          "DPP-997",
+          "DPP-998",
+          "DPP-999"
+        ]
       }
     ]
   },
-
   "changeLog": [
     {
       "timestamp": "2026-03-09T00:00:00.000Z",
@@ -301,6 +319,24 @@
       "action": "technical_refinement",
       "storyId": null,
       "details": "Technical refinement completed for DPP-001 to DPP-004. All DoR checks passed. WAS/WIE/WO, Completion Checks, and Integration DoD filled."
+    },
+    {
+      "timestamp": "2026-03-10T14:35:22.583Z",
+      "action": "status_changed",
+      "storyId": "DPP-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-03-10T14:35:22.743Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/document-preview-panel"
+    },
+    {
+      "timestamp": "2026-03-10T14:39:34.909Z",
+      "action": "status_changed",
+      "storyId": "DPP-001",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }
