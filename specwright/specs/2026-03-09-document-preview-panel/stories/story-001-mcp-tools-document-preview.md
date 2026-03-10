@@ -71,15 +71,15 @@ Scenario: Dokument existiert nicht
 > Wird vom Architect ausgefuellt.
 
 ### Datei-Pruefungen
-- [ ] FILE_EXISTS: specwright/scripts/mcp/kanban-mcp-server.ts
+- [x] FILE_EXISTS: specwright/scripts/mcp/kanban-mcp-server.ts
 
 ### Inhalt-Pruefungen
-- [ ] CONTAINS: `document_preview_open` in specwright/scripts/mcp/kanban-mcp-server.ts
-- [ ] CONTAINS: `document_preview_close` in specwright/scripts/mcp/kanban-mcp-server.ts
-- [ ] CONTAINS: `inputSchema` fuer beide Tools mit `filePath` Property
+- [x] CONTAINS: `document_preview_open` in specwright/scripts/mcp/kanban-mcp-server.ts
+- [x] CONTAINS: `document_preview_close` in specwright/scripts/mcp/kanban-mcp-server.ts
+- [x] CONTAINS: `inputSchema` fuer beide Tools mit `filePath` Property
 
 ### Funktions-Pruefungen
-- [ ] BUILD_PASS: `cd ui && npx tsc --noEmit` (TypeScript compiles)
+- [x] BUILD_PASS: `cd ui && npx tsc --noEmit` (TypeScript compiles)
 
 ---
 
@@ -120,20 +120,20 @@ Keine externen MCP-Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Security/Performance Anforderungen erfuellt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Security/Performance Anforderungen erfuellt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Unit Tests geschrieben und bestanden
-- [ ] Integration Tests geschrieben und bestanden
-- [ ] Code Review durchgefuehrt und genehmigt
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Unit Tests geschrieben und bestanden
+- [x] Integration Tests geschrieben und bestanden
+- [x] Code Review durchgefuehrt und genehmigt
 
 #### Dokumentation
-- [ ] Dokumentation aktualisiert
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Dokumentation aktualisiert
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 
