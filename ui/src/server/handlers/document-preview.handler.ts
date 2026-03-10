@@ -76,7 +76,8 @@ export class DocumentPreviewHandler {
 
   private sendError(client: WebSocketClient, message: string): void {
     const response: WebSocketMessage = {
-      type: 'document-preview.save.error',
+      type: 'document-preview.save.response',
+      success: false,
       message,
       timestamp: new Date().toISOString(),
     };

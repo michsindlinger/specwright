@@ -14,11 +14,11 @@
     "nextPhase": "1-kanban-setup",
     "worktreePath": null,
     "gitBranch": "feature/document-preview-panel",
-    "currentStory": "DPP-002",
+    "currentStory": "DPP-997",
     "currentStoryPhase": "implementing",
-    "lastAction": "Started DPP-002",
-    "nextAction": "Implement Backend Preview-Watcher und WebSocket-Integration",
-    "progressIndex": 1,
+    "lastAction": "Started DPP-997",
+    "nextAction": "Implement Code Review",
+    "progressIndex": 4,
     "totalStories": 7,
     "gitStrategy": "branch"
   },
@@ -83,24 +83,35 @@
       "dependencies": [
         "DPP-001"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-backend-preview-watcher.md",
       "timing": {
         "createdAt": "2026-03-09T00:00:00.000Z",
         "updatedAt": "2026-03-09T00:00:00.000Z",
-        "startedAt": "2026-03-10T14:43:01.605Z"
+        "startedAt": "2026-03-10T14:43:01.605Z",
+        "completedAt": "2026-03-10T14:50:29.090Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/services/preview-watcher.service.ts",
+          "ui/src/server/handlers/document-preview.handler.ts",
+          "ui/src/server/websocket.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "32965ff",
+            "message": "feat: DPP-002 Backend Preview-Watcher und WebSocket-Integration",
+            "timestamp": "2026-03-10T15:50:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -117,22 +128,35 @@
       "dependencies": [
         "DPP-002"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-frontend-document-preview-panel.md",
       "timing": {
         "createdAt": "2026-03-09T00:00:00.000Z",
-        "updatedAt": "2026-03-09T00:00:00.000Z"
+        "updatedAt": "2026-03-09T00:00:00.000Z",
+        "startedAt": "2026-03-10T14:54:09.359Z",
+        "completedAt": "2026-03-10T14:58:36.164Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/document-preview/aos-document-preview-panel.ts",
+          "specwright/specs/2026-03-09-document-preview-panel/integration-context.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "eaba61bde61c6898eb0fce7259ea2a3a7d65aff3",
+            "message": "feat: DPP-003 Frontend Document Preview Panel Komponente",
+            "timestamp": "2026-03-10T15:58:20+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "DPP-004",
@@ -148,22 +172,29 @@
       "dependencies": [
         "DPP-003"
       ],
-      "status": "ready",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-004-app-integration.md",
       "timing": {
         "createdAt": "2026-03-09T00:00:00.000Z",
-        "updatedAt": "2026-03-09T00:00:00.000Z"
+        "updatedAt": "2026-03-09T00:00:00.000Z",
+        "startedAt": "2026-03-10T15:00:11.059Z",
+        "completedAt": "2026-03-10T15:03:16.692Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/app.ts",
+          "specwright/specs/2026-03-09-document-preview-panel/integration-context.md"
+        ],
         "testsAdded": [],
         "commits": []
       },
       "verification": {
         "dorChecked": true,
-        "dodChecked": false
-      }
+        "dodChecked": true
+      },
+      "phase": "done",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "DPP-997",
@@ -179,12 +210,13 @@
       "dependencies": [
         "DPP-004"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": null,
       "timing": {
         "createdAt": "2026-03-09T00:00:00.000Z",
-        "updatedAt": "2026-03-09T00:00:00.000Z"
+        "updatedAt": "2026-03-09T00:00:00.000Z",
+        "startedAt": "2026-03-10T15:04:50.633Z"
       },
       "implementation": {
         "filesModified": [],
@@ -194,7 +226,9 @@
       "verification": {
         "dorChecked": true,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "DPP-998",
@@ -261,11 +295,11 @@
   ],
   "boardStatus": {
     "total": 7,
-    "ready": 5,
+    "ready": 2,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
+    "done": 4,
     "blocked": 0
   },
   "statistics": {
@@ -351,6 +385,60 @@
       "timestamp": "2026-03-10T14:43:01.606Z",
       "action": "status_changed",
       "storyId": "DPP-002",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-10T14:50:29.090Z",
+      "action": "status_changed",
+      "storyId": "DPP-002",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-10T14:50:47.973Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/document-preview-panel"
+    },
+    {
+      "timestamp": "2026-03-10T14:54:09.363Z",
+      "action": "status_changed",
+      "storyId": "DPP-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-10T14:58:36.164Z",
+      "action": "status_changed",
+      "storyId": "DPP-003",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-10T14:58:53.604Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/document-preview-panel"
+    },
+    {
+      "timestamp": "2026-03-10T15:00:11.061Z",
+      "action": "status_changed",
+      "storyId": "DPP-004",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-10T15:03:16.693Z",
+      "action": "status_changed",
+      "storyId": "DPP-004",
+      "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-10T15:03:27.764Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/document-preview-panel"
+    },
+    {
+      "timestamp": "2026-03-10T15:04:50.635Z",
+      "action": "status_changed",
+      "storyId": "DPP-997",
       "details": "Story started: ready → in_progress"
     }
   ]

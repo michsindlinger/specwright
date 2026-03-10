@@ -9,6 +9,7 @@
 **Type**: Frontend
 **Estimated Effort**: S
 **Dependencies**: DPP-003
+**Status**: Done
 
 **Integration:** Gateway Events → app.ts State → aos-document-preview-panel
 
@@ -126,20 +127,20 @@ Keine externen MCP-Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Security/Performance Anforderungen erfuellt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Security/Performance Anforderungen erfuellt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Unit Tests geschrieben und bestanden
-- [ ] Integration Tests geschrieben und bestanden
-- [ ] Code Review durchgefuehrt und genehmigt
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Unit Tests geschrieben und bestanden
+- [x] Integration Tests geschrieben und bestanden
+- [x] Code Review durchgefuehrt und genehmigt
 
 #### Dokumentation
-- [ ] Dokumentation aktualisiert
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Dokumentation aktualisiert
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 
@@ -199,12 +200,12 @@ Keine externen MCP-Tools erforderlich.
 
 ### Integration DoD (Verbindung: Gateway Events → app.ts State → Panel)
 
-- [ ] **Integration hergestellt: Gateway → app.ts → aos-document-preview-panel**
-  - [ ] `gateway.on('document-preview.open', handler)` registriert
-  - [ ] `gateway.on('document-preview.close', handler)` registriert
-  - [ ] Panel rendert mit Property-Bindings (isOpen, content, filePath)
-  - [ ] Verbindung ist funktional (nicht nur Stub)
-  - [ ] Validierung: WS Message `document-preview.open` → Panel wird sichtbar
+- [x] **Integration hergestellt: Gateway → app.ts → aos-document-preview-panel**
+  - [x] `gateway.on('document-preview.open', handler)` registriert
+  - [x] `gateway.on('document-preview.close', handler)` registriert
+  - [x] Panel rendert mit Property-Bindings (isOpen, content, filePath)
+  - [x] Verbindung ist funktional (nicht nur Stub)
+  - [x] Validierung: WS Message `document-preview.open` → Panel wird sichtbar
 
 ---
 

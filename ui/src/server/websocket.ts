@@ -1324,6 +1324,8 @@ export class WebSocketHandler {
       client.close();
     });
     this.wss.close();
+    // DPP-002: Clean up PreviewWatcher
+    this.previewWatcher.stop();
     // MPRO-005: Clean up WebSocketManager
     webSocketManager.shutdown();
   }

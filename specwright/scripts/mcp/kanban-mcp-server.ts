@@ -36,7 +36,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { createHash } from 'crypto';
 import { withKanbanLock } from './kanban-lock.js';
 import { parseStoryFile } from './story-parser.js';
@@ -771,7 +771,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const previewFile = `/tmp/specwright-preview-${projectHash}.json`;
-        writeFileSync(previewFile, JSON.stringify(previewRequest, null, 2));
+        await writeFile(previewFile, JSON.stringify(previewRequest, null, 2));
 
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: true, previewFile, filePath: resolvedPath }) }]
@@ -789,7 +789,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const previewFile = `/tmp/specwright-preview-${projectHash}.json`;
-        writeFileSync(previewFile, JSON.stringify(closeRequest, null, 2));
+        await writeFile(previewFile, JSON.stringify(closeRequest, null, 2));
 
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: true, previewFile }) }]

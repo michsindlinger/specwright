@@ -19,6 +19,7 @@ import './components/aos-quick-todo-modal.js';
 import './components/terminal/aos-cloud-terminal-sidebar.js';
 import './components/file-editor/aos-file-tree-sidebar.js';
 import './components/file-editor/aos-file-editor-panel.js';
+import './components/document-preview/aos-document-preview-panel.js';
 import type { AosFileEditorPanel } from './components/file-editor/aos-file-editor-panel.js';
 import './components/git/aos-git-status-bar.js';
 import './components/git/aos-git-commit-dialog.js';
@@ -86,6 +87,15 @@ export class AosApp extends LitElement {
 
   @state()
   private isFileTreeOpen = false;
+
+  @state()
+  private isDocumentPreviewOpen = false;
+
+  @state()
+  private documentPreviewContent = '';
+
+  @state()
+  private documentPreviewFilePath = '';
 
   @state()
   private terminalSessions: TerminalSession[] = [];
@@ -202,6 +212,10 @@ export class AosApp extends LitElement {
 
   private boundRouteChangeHandler = (route: import('./types/route.types.js').ParsedRoute) => {
     this.currentRoute = route.view;
+    // DPP-004: Close document preview panel when navigating away from chat/workflow
+    if (route.view !== 'chat' && this.isDocumentPreviewOpen) {
+      this._handleDocumentPreviewClose();
+    }
   };
   private boundContextMenuHandler = (e: Event) =>
     this.handleContextMenu(e as MouseEvent);
@@ -426,6 +440,17 @@ export class AosApp extends LitElement {
   private boundQueueCompleteHandler: MessageHandler = () => {
     this.isQueueRunning = false;
   };
+  // DPP-004: Document Preview handlers
+  private boundDocumentPreviewOpenHandler: MessageHandler = (msg) => {
+    this.isDocumentPreviewOpen = true;
+    this.documentPreviewContent = msg.content as string;
+    this.documentPreviewFilePath = msg.filePath as string;
+  };
+  private boundDocumentPreviewCloseHandler: MessageHandler = () => {
+    this.isDocumentPreviewOpen = false;
+    this.documentPreviewContent = '';
+    this.documentPreviewFilePath = '';
+  };
   // WSM-002: Handler for cloud-terminal:closed (setup session re-validation)
   private boundCloudTerminalClosedHandler: MessageHandler = (msg) => {
     this._handleCloudTerminalClosed(msg);
@@ -456,6 +481,9 @@ export class AosApp extends LitElement {
     gateway.on('gateway.error', this.boundErrorHandler);
     gateway.on('model.providers.list', this.boundModelProvidersHandler);
     gateway.on('cloud-terminal:list-response', this.boundCloudTerminalListHandler);
+    // DPP-004: Document Preview handlers
+    gateway.on('document-preview.open', this.boundDocumentPreviewOpenHandler);
+    gateway.on('document-preview.close', this.boundDocumentPreviewCloseHandler);
     // WSM-002: Listen for terminal close events (setup session re-validation)
     gateway.on('cloud-terminal:closed', this.boundCloudTerminalClosedHandler);
     gateway.on('git:status:response', this.boundGitStatusHandler);
@@ -518,6 +546,9 @@ export class AosApp extends LitElement {
     gateway.off('gateway.error', this.boundErrorHandler);
     gateway.off('model.providers.list', this.boundModelProvidersHandler);
     gateway.off('cloud-terminal:list-response', this.boundCloudTerminalListHandler);
+    // DPP-004: Remove Document Preview listeners
+    gateway.off('document-preview.open', this.boundDocumentPreviewOpenHandler);
+    gateway.off('document-preview.close', this.boundDocumentPreviewCloseHandler);
     // WSM-002: Remove terminal close listener
     gateway.off('cloud-terminal:closed', this.boundCloudTerminalClosedHandler);
     gateway.off('git:status:response', this.boundGitStatusHandler);
@@ -697,6 +728,9 @@ export class AosApp extends LitElement {
     this.activeProjectId = projectId;
     this.updateContextProvider();
 
+    // DPP-004: Reset document preview panel on project switch
+    this._handleDocumentPreviewClose();
+
     // Load git status for new project
     this._loadGitStatus();
 
@@ -769,6 +803,14 @@ export class AosApp extends LitElement {
     const { itemId } = e.detail;
     this.showQuickTodoModal = false;
     this.showToast(`Quick-To-Do erstellt (${itemId})`, 'success');
+  }
+
+  // --- Document Preview Panel Event Handlers ---
+
+  private _handleDocumentPreviewClose(): void {
+    this.isDocumentPreviewOpen = false;
+    this.documentPreviewContent = '';
+    this.documentPreviewFilePath = '';
   }
 
   // --- File Tree Sidebar Event Handlers ---
@@ -1954,6 +1996,12 @@ export class AosApp extends LitElement {
         @sidebar-close=${this._handleFileTreeClose}
         @file-open=${this._handleFileTreeFileOpen}
       ></aos-file-tree-sidebar>
+      <aos-document-preview-panel
+        .isOpen=${this.isDocumentPreviewOpen}
+        .content=${this.documentPreviewContent}
+        .filePath=${this.documentPreviewFilePath}
+        @close=${this._handleDocumentPreviewClose}
+      ></aos-document-preview-panel>
       <aos-cloud-terminal-sidebar
         .isOpen=${this.isTerminalSidebarOpen}
         .sessions=${this.projectTerminalSessions}

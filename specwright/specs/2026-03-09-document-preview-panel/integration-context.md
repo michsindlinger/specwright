@@ -7,6 +7,7 @@
 | DPP-001 | MCP-Tools document_preview_open & close | specwright/scripts/mcp/kanban-mcp-server.ts |
 | DPP-002 | Backend Preview-Watcher and WebSocket integration | ui/src/server/services/preview-watcher.service.ts, ui/src/server/handlers/document-preview.handler.ts, ui/src/server/websocket.ts |
 | DPP-003 | Frontend Document Preview Panel component | ui/frontend/src/components/document-preview/aos-document-preview-panel.ts |
+| DPP-004 | App-Integration: Gateway handlers, state management, render integration | ui/frontend/src/app.ts |
 
 ## New Exports & APIs
 
@@ -46,7 +47,8 @@
 - Panel slides in from left with position:fixed, transform:translateX, z-index:1000
 - Panel width: 400px (no resize in v1)
 - Unsaved changes warning via confirm() dialog before content switch or close
-- app.ts must pass isOpen/content/filePath as properties and listen for @close event (DPP-004)
+- app.ts passes isOpen/content/filePath as properties and listens for @close event (DPP-004)
+- Panel state resets on project switch and route change (away from chat) (DPP-004)
 
 ## File Change Summary
 
@@ -57,3 +59,4 @@
 | ui/src/server/handlers/document-preview.handler.ts | Created | DPP-002 |
 | ui/src/server/websocket.ts | Modified | DPP-002 |
 | ui/frontend/src/components/document-preview/aos-document-preview-panel.ts | Created | DPP-003 |
+| ui/frontend/src/app.ts | Modified | DPP-004 |
