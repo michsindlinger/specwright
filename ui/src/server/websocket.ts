@@ -16,6 +16,8 @@ import { queueHandler } from './handlers/queue.handler.js';
 import { gitHandler } from './handlers/git.handler.js';
 import { attachmentHandler } from './handlers/attachment.handler.js';
 import { fileHandler } from './handlers/file.handler.js';
+import { documentPreviewHandler } from './handlers/document-preview.handler.js';
+import { PreviewWatcher } from './services/preview-watcher.service.js';
 import {
   getAllProviders,
   getDefaultSelection,
@@ -73,6 +75,7 @@ export class WebSocketHandler {
   private fileHandler;
   private cloudTerminalManager: CloudTerminalManager;
   private voiceCallService: VoiceCallService;
+  private previewWatcher: PreviewWatcher;
 
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server });
@@ -87,6 +90,8 @@ export class WebSocketHandler {
     this.fileHandler = fileHandler;
     this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager());
     this.voiceCallService = new VoiceCallService();
+    this.previewWatcher = new PreviewWatcher();
+    this.previewWatcher.init();
     this.setupConnectionHandler();
     this.startHeartbeat();
     this.setupCloudTerminalListeners();
@@ -496,6 +501,10 @@ export class WebSocketHandler {
           break;
         case 'voice:agent:response':
           this.handleVoiceAgentResponse(client, message);
+          break;
+        // Document Preview Messages (DPP-002)
+        case 'document-preview.save':
+          this.handleDocumentPreviewSave(client, message);
           break;
         default: {
           const response: WebSocketMessage = {
@@ -3783,6 +3792,24 @@ export class WebSocketHandler {
       timestamp: new Date().toISOString()
     };
     client.send(JSON.stringify(errorResponse));
+  }
+
+  // ============================================================================
+  // Document Preview Handlers (DPP-002)
+  // ============================================================================
+
+  private handleDocumentPreviewSave(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      const errorResponse: WebSocketMessage = {
+        type: 'document-preview.save.error',
+        message: 'No project selected',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+    documentPreviewHandler.handleSave(client, message, projectPath);
   }
 
   // ============================================================================

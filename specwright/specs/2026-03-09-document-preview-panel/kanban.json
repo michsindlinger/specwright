@@ -14,17 +14,17 @@
     "nextPhase": "1-kanban-setup",
     "worktreePath": null,
     "gitBranch": "feature/document-preview-panel",
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Completed DPP-001",
-    "nextAction": "Execute next story: DPP-002",
+    "currentStory": "DPP-002",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started DPP-002",
+    "nextAction": "Implement Backend Preview-Watcher und WebSocket-Integration",
     "progressIndex": 1,
     "totalStories": 7,
     "gitStrategy": "branch"
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-03-10T14:43:01.605Z",
     "completedAt": null,
     "model": null
   },
@@ -83,12 +83,13 @@
       "dependencies": [
         "DPP-001"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-002-backend-preview-watcher.md",
       "timing": {
         "createdAt": "2026-03-09T00:00:00.000Z",
-        "updatedAt": "2026-03-09T00:00:00.000Z"
+        "updatedAt": "2026-03-09T00:00:00.000Z",
+        "startedAt": "2026-03-10T14:43:01.605Z"
       },
       "implementation": {
         "filesModified": [],
@@ -98,7 +99,9 @@
       "verification": {
         "dorChecked": true,
         "dodChecked": false
-      }
+      },
+      "phase": "in_progress",
+      "model": "claude-opus-4-6"
     },
     {
       "id": "DPP-003",
@@ -258,8 +261,8 @@
   ],
   "boardStatus": {
     "total": 7,
-    "ready": 6,
-    "inProgress": 0,
+    "ready": 5,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
     "done": 1,
@@ -337,6 +340,18 @@
       "action": "status_changed",
       "storyId": "DPP-001",
       "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-10T14:40:22.418Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/document-preview-panel"
+    },
+    {
+      "timestamp": "2026-03-10T14:43:01.606Z",
+      "action": "status_changed",
+      "storyId": "DPP-002",
+      "details": "Story started: ready → in_progress"
     }
   ]
 }

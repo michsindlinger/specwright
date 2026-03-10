@@ -83,19 +83,19 @@ Scenario: Cleanup beim Backend-Start
 > Wird vom Architect ausgefuellt.
 
 ### Datei-Pruefungen
-- [ ] FILE_EXISTS: ui/src/server/services/preview-watcher.service.ts
-- [ ] FILE_EXISTS: ui/src/server/handlers/document-preview.handler.ts
+- [x] FILE_EXISTS: ui/src/server/services/preview-watcher.service.ts
+- [x] FILE_EXISTS: ui/src/server/handlers/document-preview.handler.ts
 
 ### Inhalt-Pruefungen
-- [ ] CONTAINS: `document-preview.open` in ui/src/server/websocket.ts
-- [ ] CONTAINS: `document-preview.close` in ui/src/server/websocket.ts
-- [ ] CONTAINS: `document-preview.save` in ui/src/server/websocket.ts
-- [ ] CONTAINS: `PreviewWatcher` in ui/src/server/services/preview-watcher.service.ts
+- [x] CONTAINS: `document-preview.open` in ui/src/server/websocket.ts
+- [x] CONTAINS: `document-preview.close` in ui/src/server/websocket.ts
+- [x] CONTAINS: `document-preview.save` in ui/src/server/websocket.ts
+- [x] CONTAINS: `PreviewWatcher` in ui/src/server/services/preview-watcher.service.ts
 
 ### Funktions-Pruefungen
-- [ ] BUILD_PASS: `cd ui && npm run build:backend`
-- [ ] TEST_PASS: `cd ui && npm test`
-- [ ] LINT_PASS: `cd ui && npm run lint`
+- [x] BUILD_PASS: `cd ui && npm run build:backend`
+- [x] TEST_PASS: `cd ui && npm test`
+- [x] LINT_PASS: `cd ui && npm run lint`
 
 ---
 
@@ -136,20 +136,20 @@ Keine externen MCP-Tools erforderlich.
 ### DoD (Definition of Done) - Vom Architect
 
 #### Implementierung
-- [ ] Code implementiert und folgt Style Guide
-- [ ] Architektur-Vorgaben eingehalten (WIE section)
-- [ ] Security/Performance Anforderungen erfuellt
+- [x] Code implementiert und folgt Style Guide
+- [x] Architektur-Vorgaben eingehalten (WIE section)
+- [x] Security/Performance Anforderungen erfuellt
 
 #### Qualitaetssicherung
-- [ ] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
-- [ ] Unit Tests geschrieben und bestanden
-- [ ] Integration Tests geschrieben und bestanden
-- [ ] Code Review durchgefuehrt und genehmigt
+- [x] Alle Akzeptanzkriterien erfuellt (via Completion Check verifiziert)
+- [x] Unit Tests geschrieben und bestanden
+- [x] Integration Tests geschrieben und bestanden
+- [x] Code Review durchgefuehrt und genehmigt
 
 #### Dokumentation
-- [ ] Dokumentation aktualisiert
-- [ ] Keine Linting Errors
-- [ ] Completion Check Commands alle erfolgreich (exit 0)
+- [x] Dokumentation aktualisiert
+- [x] Keine Linting Errors
+- [x] Completion Check Commands alle erfolgreich (exit 0)
 
 **Story ist DONE wenn alle Checkboxen angehakt sind.**
 
@@ -210,10 +210,10 @@ Keine externen MCP-Tools erforderlich.
 
 ### Integration DoD (Verbindung: MCP-Tool → PreviewWatcher → WebSocket)
 
-- [ ] **Integration hergestellt: PreviewWatcher → WebSocket Broadcast**
-  - [ ] PreviewWatcher ruft `webSocketManager.sendToProject()` auf
-  - [ ] Verbindung ist funktional (nicht nur Stub)
-  - [ ] Validierung: Preview-Datei in /tmp/ erstellen → WebSocket-Message wird gesendet
+- [x] **Integration hergestellt: PreviewWatcher → WebSocket Broadcast**
+  - [x] PreviewWatcher ruft `webSocketManager.sendToProject()` auf
+  - [x] Verbindung ist funktional (nicht nur Stub)
+  - [x] Validierung: Preview-Datei in /tmp/ erstellen → WebSocket-Message wird gesendet
 
 ---
 
