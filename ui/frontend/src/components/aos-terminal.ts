@@ -253,15 +253,24 @@ export class AosTerminal extends LitElement {
     this.fitAddon.fit();
 
     // Shift+Enter → send newline to PTY (cloud mode only)
+    // attachCustomKeyEventHandler is called for ALL event types: keydown, keypress, keyup.
+    // We must return false for ALL of them to fully block xterm from processing
+    // Shift+Enter. Previously, only keydown was blocked, but the keypress event
+    // leaked through, causing xterm to also send '\r' (Enter/submit) to the PTY.
+    // We also call preventDefault() to stop the browser from inserting into the
+    // hidden textarea, which could trigger additional input events.
     this.terminal.attachCustomKeyEventHandler((event) => {
-      if (this.cloudMode && event.key === 'Enter' && event.shiftKey && event.type === 'keydown') {
-        gateway.send({
-          type: 'cloud-terminal:input',
-          sessionId: this.terminalSessionId,
-          data: '\n',
-          timestamp: new Date().toISOString(),
-        });
-        return false; // Prevent xterm default handling
+      if (this.cloudMode && event.key === 'Enter' && event.shiftKey) {
+        if (event.type === 'keydown') {
+          event.preventDefault();
+          gateway.send({
+            type: 'cloud-terminal:input',
+            sessionId: this.terminalSessionId,
+            data: '\n',
+            timestamp: new Date().toISOString(),
+          });
+        }
+        return false; // Block ALL Shift+Enter events (keydown, keypress, keyup)
       }
       return true; // Let xterm handle all other keys
     });
