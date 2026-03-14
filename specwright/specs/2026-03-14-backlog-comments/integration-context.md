@@ -15,6 +15,7 @@
 | BLC-003 | Comment Thread frontend component + Gateway methods | `ui/frontend/src/components/comments/aos-comment-thread.ts`, `ui/frontend/src/gateway.ts` |
 | BLC-004 | Image upload + drag & drop added to aos-comment-thread | `ui/frontend/src/components/comments/aos-comment-thread.ts` |
 | BLC-005 | commentCount badge added to story card | `ui/frontend/src/components/story-card.ts` |
+| BLC-006 | aos-comment-thread embedded in backlog detail view; comment-open event handled | `ui/frontend/src/views/dashboard-view.ts` |
 
 ---
 
@@ -59,6 +60,7 @@ _None yet_
 - **Image validation:** Comments accept image/* types only (PNG, JPG, GIF, WebP); uses `validateFile()` from `image-upload.utils.ts` for size (5MB) and count (5 max) checks
 - `commentCount` is loaded in parallel with `attachmentCount` via `Promise.all` in `getKanbanBoard()`
 - **Comment badge (BLC-005):** `StoryInfo.commentCount?: number` property on story card; renders chat-bubble icon + count badge when `commentCount > 0`; icon-only (hover-visible) when 0; dispatches `comment-open` CustomEvent with `detail: { itemId }` on click
+- **Detail view integration (BLC-006):** `<aos-comment-thread .itemId=${backlogStoryId}>` embedded in `renderBacklogStoryDetail()` below `<aos-docs-viewer>`; `@comment-open` handler on `aos-kanban-board` navigates to detail view via `gateway.send({ type: 'backlog.story-detail', storyId: e.detail.itemId })`
 
 ---
 
@@ -75,3 +77,4 @@ _None yet_
 | `ui/frontend/src/gateway.ts` | Modified (5 Comment methods) | BLC-003 |
 | `ui/frontend/src/components/comments/aos-comment-thread.ts` | Modified (image upload, drag & drop) | BLC-004 |
 | `ui/frontend/src/components/story-card.ts` | Modified (commentCount property, comment badge, comment-open event) | BLC-005 |
+| `ui/frontend/src/views/dashboard-view.ts` | Modified (aos-comment-thread import + embed, comment-open handler) | BLC-006 |
