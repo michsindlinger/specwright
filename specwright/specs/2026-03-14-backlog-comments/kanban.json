@@ -10,7 +10,7 @@
     "createdAt": "2026-03-14T10:00:00Z"
   },
   "resumeContext": {
-    "currentPhase": "2-complete",
+    "currentPhase": "story-complete",
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/backlog-comments",
@@ -18,7 +18,7 @@
     "currentStoryPhase": null,
     "lastAction": "Completed BLC-002",
     "nextAction": "Execute next story: BLC-001",
-    "progressIndex": 1,
+    "progressIndex": 2,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -80,7 +80,7 @@
         "createdAt": "2026-03-14T10:00:00Z",
         "updatedAt": "2026-03-14T10:00:00Z",
         "startedAt": "2026-03-14T14:58:31.968Z",
-        "completedAt": "2026-03-14T15:03:46.565Z"
+        "completedAt": "2026-03-14T15:05:04.227Z"
       },
       "implementation": {
         "filesModified": [
@@ -485,6 +485,12 @@
       "action": "status_changed",
       "storyId": "BLC-002",
       "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-14T15:05:04.228Z",
+      "action": "status_changed",
+      "storyId": "BLC-002",
+      "details": "Story completed: done → done"
     }
   ]
 }
