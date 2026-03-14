@@ -14,6 +14,7 @@
 | BLC-002 | commentCount added to BacklogReader | `ui/src/server/backlog-reader.ts` |
 | BLC-003 | Comment Thread frontend component + Gateway methods | `ui/frontend/src/components/comments/aos-comment-thread.ts`, `ui/frontend/src/gateway.ts` |
 | BLC-004 | Image upload + drag & drop added to aos-comment-thread | `ui/frontend/src/components/comments/aos-comment-thread.ts` |
+| BLC-005 | commentCount badge added to story card | `ui/frontend/src/components/story-card.ts` |
 
 ---
 
@@ -57,6 +58,7 @@ _None yet_
 - **Image upload (BLC-004):** Images staged as DataURLs before submit; uploaded server-side via `gateway.sendCommentImageUpload()` (naming: `cmt-img-{timestamp}.{ext}`); DataURL embedded as Markdown `![image.ext](data:...)` in comment text for inline display
 - **Image validation:** Comments accept image/* types only (PNG, JPG, GIF, WebP); uses `validateFile()` from `image-upload.utils.ts` for size (5MB) and count (5 max) checks
 - `commentCount` is loaded in parallel with `attachmentCount` via `Promise.all` in `getKanbanBoard()`
+- **Comment badge (BLC-005):** `StoryInfo.commentCount?: number` property on story card; renders chat-bubble icon + count badge when `commentCount > 0`; icon-only (hover-visible) when 0; dispatches `comment-open` CustomEvent with `detail: { itemId }` on click
 
 ---
 
@@ -72,3 +74,4 @@ _None yet_
 | `ui/frontend/src/components/comments/aos-comment-thread.ts` | Created | BLC-003 |
 | `ui/frontend/src/gateway.ts` | Modified (5 Comment methods) | BLC-003 |
 | `ui/frontend/src/components/comments/aos-comment-thread.ts` | Modified (image upload, drag & drop) | BLC-004 |
+| `ui/frontend/src/components/story-card.ts` | Modified (commentCount property, comment badge, comment-open event) | BLC-005 |
