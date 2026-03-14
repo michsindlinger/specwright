@@ -13,6 +13,7 @@
 | BLC-001 | Comment Protocol + Handler + WebSocket registration | `ui/src/shared/types/comment.protocol.ts`, `ui/src/server/handlers/comment.handler.ts`, `ui/src/server/websocket.ts` |
 | BLC-002 | commentCount added to BacklogReader | `ui/src/server/backlog-reader.ts` |
 | BLC-003 | Comment Thread frontend component + Gateway methods | `ui/frontend/src/components/comments/aos-comment-thread.ts`, `ui/frontend/src/gateway.ts` |
+| BLC-004 | Image upload + drag & drop added to aos-comment-thread | `ui/frontend/src/components/comments/aos-comment-thread.ts` |
 
 ---
 
@@ -30,8 +31,8 @@
 _None yet_
 
 ### Hooks / Utilities
-<!-- New hooks, helpers, utilities -->
-_None yet_
+- `ui/frontend/src/utils/image-upload.utils.ts` → `validateFile(file, currentCount)` - validates size (5MB) and count; returns error string or null
+- `ui/frontend/src/utils/image-upload.utils.ts` → `readFileAsDataUrl(file)` - reads File as data URL Promise
 
 ### Services
 - `ui/src/server/handlers/comment.handler.ts` → `commentHandler.handleCreate/List/Update/Delete/UploadImage(client, message, projectPath)` - Comment CRUD handler singleton
@@ -53,6 +54,8 @@ _None yet_
 - **Frontend Gateway methods (BLC-003):** `gateway.sendCommentCreate(itemId, text)`, `gateway.requestCommentList(itemId)`, `gateway.sendCommentUpdate(itemId, commentId, text)`, `gateway.sendCommentDelete(itemId, commentId)`, `gateway.sendCommentImageUpload(itemId, data, filename, mimeType)`
 - **Comment response types:** `comment:list:response` → `{ data: { comments: Comment[], count } }`, `comment:create:response` → `{ data: { comment: Comment, count } }`
 - `getCommentCount(projectPath, itemId)` reads from `{projectDir}/backlog/items/attachments/{itemId}/comments.json` — returns array length or 0 if missing/invalid
+- **Image upload (BLC-004):** Images staged as DataURLs before submit; uploaded server-side via `gateway.sendCommentImageUpload()` (naming: `cmt-img-{timestamp}.{ext}`); DataURL embedded as Markdown `![image.ext](data:...)` in comment text for inline display
+- **Image validation:** Comments accept image/* types only (PNG, JPG, GIF, WebP); uses `validateFile()` from `image-upload.utils.ts` for size (5MB) and count (5 max) checks
 - `commentCount` is loaded in parallel with `attachmentCount` via `Promise.all` in `getKanbanBoard()`
 
 ---
@@ -68,3 +71,4 @@ _None yet_
 | `ui/src/server/backlog-reader.ts` | Modified | BLC-002 |
 | `ui/frontend/src/components/comments/aos-comment-thread.ts` | Created | BLC-003 |
 | `ui/frontend/src/gateway.ts` | Modified (5 Comment methods) | BLC-003 |
+| `ui/frontend/src/components/comments/aos-comment-thread.ts` | Modified (image upload, drag & drop) | BLC-004 |
