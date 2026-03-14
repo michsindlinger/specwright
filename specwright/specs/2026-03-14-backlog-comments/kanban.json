@@ -14,10 +14,10 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/backlog-comments",
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Completed BLC-005",
-    "nextAction": "Execute next story: BLC-006",
+    "currentStory": "BLC-006",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started BLC-006",
+    "nextAction": "Implement Detail View Integration",
     "progressIndex": 6,
     "totalStories": 9,
     "gitStrategy": "branch"
@@ -260,12 +260,13 @@
         "BLC-003",
         "BLC-005"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-006-detail-view-integration.md",
       "timing": {
         "createdAt": "2026-03-14T10:00:00Z",
-        "updatedAt": "2026-03-14T10:00:00Z"
+        "updatedAt": "2026-03-14T10:00:00Z",
+        "startedAt": "2026-03-14T19:53:49.013Z"
       },
       "implementation": {
         "filesModified": [],
@@ -276,7 +277,8 @@
         "dorChecked": false,
         "dodChecked": false
       },
-      "model": "sonnet"
+      "model": "claude-sonnet-4-6",
+      "phase": "in_progress"
     },
     {
       "id": "BLC-997",
@@ -377,8 +379,8 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 4,
-    "inProgress": 0,
+    "ready": 3,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
     "done": 5,
@@ -619,6 +621,18 @@
       "action": "status_changed",
       "storyId": "BLC-005",
       "details": "Story completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-03-14T19:52:28.594Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/backlog-comments"
+    },
+    {
+      "timestamp": "2026-03-14T19:53:49.013Z",
+      "action": "status_changed",
+      "storyId": "BLC-006",
+      "details": "Story started: ready → in_progress"
     }
   ]
 }

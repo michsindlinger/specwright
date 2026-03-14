@@ -8,6 +8,7 @@ import '../components/spec-card.js';
 import '../components/kanban-board.js';
 import '../components/docs/aos-docs-panel.js';
 import '../components/aos-create-spec-modal.js';
+import '../components/comments/aos-comment-thread.js';
 import type { SpecInfo } from '../components/spec-card.js';
 import type { KanbanBoard, StoryInfo, AutoModeProgress, KanbanStatus } from '../components/kanban-board.js';
 import type { ProviderInfo } from '../components/story-card.js';
@@ -1998,6 +1999,11 @@ export class AosDashboardView extends LitElement {
           const storyId = e.detail.storyId as string;
           gateway.send({ type: 'backlog.story-detail', storyId });
         }}
+        @comment-open=${(e: CustomEvent) => {
+          // Comment badge click: open detail view for the item
+          const storyId = e.detail.itemId as string;
+          gateway.send({ type: 'backlog.story-detail', storyId });
+        }}
         @story-move=${(e: CustomEvent) => {
           // Handle story status changes via backend
           const { storyId, toStatus } = e.detail;
@@ -2129,6 +2135,9 @@ export class AosDashboardView extends LitElement {
               .editable=${true}
               @save-requested=${this.handleBacklogStorySave}
             ></aos-docs-viewer>
+            <aos-comment-thread
+              .itemId=${this.backlogStoryId || ''}
+            ></aos-comment-thread>
           </div>
         </div>
       </div>

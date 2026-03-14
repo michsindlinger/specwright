@@ -104,21 +104,21 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] `<aos-comment-thread>` in `renderBacklogStoryDetail()` eingebettet unterhalb von `<aos-docs-viewer>`
-- [ ] Import von `aos-comment-thread.js` in `dashboard-view.ts`
-- [ ] `itemId` Property korrekt an Komponente übergeben
-- [ ] Comment-Thread lädt automatisch Kommentare beim Öffnen der Detail-Ansicht
-- [ ] `comment-open` Event von Story Card öffnet Detail-Ansicht (falls nicht bereits implementiert)
-- [ ] Frontend Build erfolgreich (`cd ui/frontend && npm run build`)
-- [ ] Lint fehlerfrei (`cd ui && npm run lint`)
+- [x] `<aos-comment-thread>` in `renderBacklogStoryDetail()` eingebettet unterhalb von `<aos-docs-viewer>`
+- [x] Import von `aos-comment-thread.js` in `dashboard-view.ts`
+- [x] `itemId` Property korrekt an Komponente übergeben
+- [x] Comment-Thread lädt automatisch Kommentare beim Öffnen der Detail-Ansicht
+- [x] `comment-open` Event von Story Card öffnet Detail-Ansicht (falls nicht bereits implementiert)
+- [x] Frontend Build erfolgreich (`cd ui/frontend && npm run build`)
+- [x] Lint fehlerfrei (`cd ui && npm run lint`)
 
 **Integration DoD:**
-- [ ] **Integration: aos-comment-thread.ts → dashboard-view.ts**
-  - [ ] Komponente eingebettet und korrekt verbunden
-  - [ ] Validierung: `grep -q "aos-comment-thread" ui/frontend/src/views/dashboard-view.ts`
-- [ ] **Integration: story-card.ts (comment-open) → dashboard-view.ts**
-  - [ ] Event-Handler navigiert zur Detail-Ansicht
-  - [ ] Validierung: `grep -q "comment-open\|commentOpen" ui/frontend/src/views/dashboard-view.ts`
+- [x] **Integration: aos-comment-thread.ts → dashboard-view.ts**
+  - [x] Komponente eingebettet und korrekt verbunden
+  - [x] Validierung: `grep -q "aos-comment-thread" ui/frontend/src/views/dashboard-view.ts`
+- [x] **Integration: story-card.ts (comment-open) → dashboard-view.ts**
+  - [x] Event-Handler navigiert zur Detail-Ansicht
+  - [x] Validierung: `grep -q "comment-open\|commentOpen" ui/frontend/src/views/dashboard-view.ts`
 
 ---
 
