@@ -1,7 +1,7 @@
 # Shared Services
 
 > Verfügbare Services, Hooks und Utilities im Projekt.
-> Zuletzt aktualisiert: 2026-03-10 (Document Preview Panel)
+> Zuletzt aktualisiert: 2026-03-14 (Backlog Item Comments)
 
 ## Services-Übersicht
 
@@ -22,6 +22,7 @@
 | TranscriptService | ui/src/server/services/transcript.service.ts | Service | Voice Call Conversational Flow (2026-03-01) |
 | PreviewWatcher | ui/src/server/services/preview-watcher.service.ts | Service | Document Preview Panel (2026-03-10) |
 | DocumentPreviewHandler | ui/src/server/handlers/document-preview.handler.ts | Handler | Document Preview Panel (2026-03-10) |
+| CommentHandler | ui/src/server/handlers/comment.handler.ts | Handler (Singleton) | Backlog Item Comments (2026-03-14) |
 
 ---
 
@@ -317,6 +318,42 @@
 - Validierung: filePath und content sind Pflichtfelder
 - Prüft Datei-Existenz vor dem Schreiben
 - Broadcast: Alle Projekt-Clients werden über Save informiert
+
+---
+
+### CommentHandler
+
+**Pfad:** `ui/src/server/handlers/comment.handler.ts`
+**Typ:** WebSocket Message Handler (Singleton)
+**Erstellt:** Backlog Item Comments (2026-03-14)
+
+**Beschreibung:** WebSocket-Handler für Comment CRUD-Operationen auf Backlog-Items. Speichert Kommentare in `{projectDir}/backlog/items/attachments/{itemId}/comments.json`. Nutzt `withKanbanLock` für atomare Read-Modify-Write-Operationen und delegiert Bild-Uploads an `attachmentStorageService`.
+
+**Methoden:**
+| Methode | Parameter | Return | Beschreibung |
+|---------|-----------|--------|--------------|
+| handleCreate | (client, message, projectPath) | Promise<void> | Neuen Kommentar erstellen |
+| handleList | (client, message, projectPath) | Promise<void> | Alle Kommentare für ein Item laden |
+| handleUpdate | (client, message, projectPath) | Promise<void> | Kommentar-Text aktualisieren, setzt editedAt |
+| handleDelete | (client, message, projectPath) | Promise<void> | Kommentar löschen, bereinigt zugehörige Bilder |
+| handleUploadImage | (client, message, projectPath) | Promise<void> | Bild-Upload via attachmentStorageService |
+
+**Handled Messages:**
+| Message Type | Description |
+|-------------|-------------|
+| comment:create | Neuen Kommentar erstellen |
+| comment:list | Alle Kommentare eines Items laden |
+| comment:update | Kommentar bearbeiten |
+| comment:delete | Kommentar löschen |
+| comment:upload-image | Bild hochladen (Base64) |
+
+**Notes:**
+- Singleton-Export: `commentHandler`
+- Path-Traversal-Schutz via `sanitizeItemId()` – alle itemId-Inputs werden validiert
+- Nutzt `withKanbanLock` für atomare JSON-Operationen (kein Race-Condition-Risiko)
+- Kommentar-IDs: `cmt-{timestamp}` Format
+- Folgt dem gleichen Pattern wie `FileHandler`, `AttachmentHandler`, `DocumentPreviewHandler`
+- Registrierung in `websocket.ts` via `case 'comment:...'` Switch
 
 ---
 

@@ -1,7 +1,7 @@
 # Data Models
 
 > Verfügbare Datenmodelle, Schemas und Types im Projekt.
-> Zuletzt aktualisiert: 2026-03-01 (Voice Call Conversational Flow)
+> Zuletzt aktualisiert: 2026-03-14 (Backlog Item Comments)
 
 ## Modelle-Übersicht
 
@@ -12,6 +12,7 @@
 | SkillDetail | ui/src/shared/types/team.protocol.ts | Interface | Dev-Team Visualization (2026-02-26) |
 | McpServerSummary | ui/src/shared/types/team.protocol.ts | Interface | MCP Tools Management (2026-02-27) |
 | voice.protocol.ts | ui/src/shared/types/voice.protocol.ts | Shared Types | Voice Call Conversational Flow (2026-03-01) |
+| comment.protocol.ts | ui/src/shared/types/comment.protocol.ts | Shared Types | Backlog Item Comments (2026-03-14) |
 
 ---
 
@@ -158,6 +159,60 @@ interface McpConfigResponse {
 **Notes:**
 - Folgt dem gleichen Pattern wie file.protocol.ts und team.protocol.ts
 - Responses folgen dem Pattern `voice:{category}:{action}`
+- Shared zwischen Frontend und Backend (ui/src/shared/types/)
+
+---
+
+### comment.protocol.ts
+
+**Pfad:** `ui/src/shared/types/comment.protocol.ts`
+**Typ:** Shared Protocol Types (WebSocket)
+**Erstellt:** Backlog Item Comments (2026-03-14)
+
+**Beschreibung:** TypeScript-Interfaces und -Types für alle comment:* WebSocket-Messages zwischen Frontend und Backend. Definiert den Vertrag für Comment CRUD-Operationen auf Backlog-Items inkl. Bild-Upload.
+
+**Message Types:**
+| Message | Direction | Description |
+|---------|-----------|-------------|
+| comment:create | Client → Server | Neuen Kommentar erstellen |
+| comment:list | Client → Server | Alle Kommentare eines Items laden |
+| comment:update | Client → Server | Kommentar bearbeiten |
+| comment:delete | Client → Server | Kommentar löschen |
+| comment:upload-image | Client → Server | Bild hochladen (Base64) |
+| comment:create:response | Server → Client | Erstellter Kommentar + count |
+| comment:list:response | Server → Client | Alle Kommentare + count |
+| comment:update:response | Server → Client | Aktualisierter Kommentar |
+| comment:delete:response | Server → Client | Gelöschte commentId + count |
+| comment:upload-image:response | Server → Client | Filename, path, size, mimeType |
+| comment:error | Server → Client | Fehler-Response mit code + operation |
+
+**Key Interfaces:**
+```typescript
+interface Comment {
+  id: string;           // cmt-{timestamp}
+  author: string;
+  text: string;         // Markdown supported
+  createdAt: string;    // ISO 8601
+  editedAt?: string;    // Set when updated
+  imageFilename?: string;
+}
+
+// Error codes
+const COMMENT_ERROR_CODES = {
+  ITEM_NOT_FOUND, COMMENT_NOT_FOUND, PATH_TRAVERSAL,
+  STORAGE_ERROR, FILE_TOO_LARGE, INVALID_FILE_TYPE, OPERATION_FAILED
+}
+
+// Config
+const COMMENT_CONFIG = {
+  MAX_IMAGE_SIZE_BYTES: 5 * 1024 * 1024,  // 5 MB
+  ALLOWED_IMAGE_TYPES: Set<string>         // png, jpeg, jpg, gif, webp
+}
+```
+
+**Notes:**
+- Folgt dem gleichen Pattern wie `file.protocol.ts` und `voice.protocol.ts`
+- Union-Types: `CommentClientMessage`, `CommentServerMessage`, `CommentMessage`
 - Shared zwischen Frontend und Backend (ui/src/shared/types/)
 
 ---

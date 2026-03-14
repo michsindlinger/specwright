@@ -1,7 +1,7 @@
 # UI Components
 
 > Verfügbare UI-Komponenten im Projekt.
-> Zuletzt aktualisiert: 2026-03-10 (Document Preview Panel)
+> Zuletzt aktualisiert: 2026-03-14 (Backlog Item Comments)
 
 ## Komponenten-Übersicht
 
@@ -25,6 +25,7 @@
 | aos-action-log | ui/frontend/src/components/voice/action-log.ts | actions | Voice Call Conversational Flow (2026-03-01) |
 | aos-call-transcript | ui/frontend/src/components/voice/call-transcript.ts | entries | Voice Call Conversational Flow (2026-03-01) |
 | aos-document-preview-panel | ui/frontend/src/components/document-preview/aos-document-preview-panel.ts | isOpen, content, filePath | Document Preview Panel (2026-03-10) |
+| aos-comment-thread | ui/frontend/src/components/comments/aos-comment-thread.ts | itemId | Backlog Item Comments (2026-03-14) |
 
 ---
 
@@ -615,6 +616,50 @@ panel.openFile('src/app.ts', 'app.ts');
 - View/Edit Mode Toggle
 - Unsaved Changes Warning bei Content-Switch
 - Save via WebSocket (document-preview.save)
+
+---
+
+### aos-comment-thread
+
+**Pfad:** `ui/frontend/src/components/comments/aos-comment-thread.ts`
+**Erstellt:** Backlog Item Comments (2026-03-14)
+
+**Beschreibung:** Wiederverwendbare Kommentar-Thread-Komponente für Backlog-Items. Zeigt chronologische Kommentarliste mit Markdown-Rendering, Inline-Editieren, Löschen und Bild-Upload via Drag & Drop oder Button. Kommuniziert via Gateway WebSocket-Messages.
+
+**Props:**
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| itemId | string | '' | Backlog-Item-ID, deren Kommentare angezeigt werden |
+
+**Events:**
+| Event | Detail | Description |
+|-------|--------|-------------|
+| show-toast | { message, type } | User-Benachrichtigungen (success/error/info/warning) |
+
+**Gateway Messages:**
+| Message | Direction | Description |
+|---------|-----------|-------------|
+| comment:list | Client → Server | Kommentare laden (auto beim Connect wenn itemId gesetzt) |
+| comment:create | Client → Server | Neuen Kommentar erstellen |
+| comment:update | Client → Server | Kommentar bearbeiten |
+| comment:delete | Client → Server | Kommentar löschen |
+| comment:upload-image | Client → Server | Bild hochladen (Base64) |
+
+**Usage Example:**
+```html
+<aos-comment-thread
+  .itemId=${'TODO-001'}
+></aos-comment-thread>
+```
+
+**Notes:**
+- Shadow DOM (kein Light DOM) — eigenständiges Styling mit CSS-Variablen aus theme.css
+- Markdown-Rendering via `renderMarkdown()` Util (unsafeHTML)
+- Bild-Upload: Bilder werden als Base64-DataURL in den Kommentartext eingebettet UND server-seitig gespeichert
+- Drag & Drop auf den Input-Bereich für Bild-Upload
+- Strg+Enter zum Senden
+- Kommentar-Aktionen (Edit/Delete) erst bei Hover sichtbar
+- Automatischer Scroll nach unten bei neuem Kommentar
 
 ---
 
