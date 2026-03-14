@@ -33,6 +33,7 @@ export interface StoryInfo {
   workflowStatus?: WorkflowStatus;
   workflowError?: string;
   attachmentCount?: number; // SCA-004: Number of attachments on this story
+  commentCount?: number; // BLC-005: Number of comments on this story
   assignedToBot?: boolean; // Backlog item assignment
 }
 
@@ -210,6 +211,40 @@ export class AosStoryCard extends LitElement {
     }
 
     .attachment-count {
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-left: 0.15rem;
+      color: var(--primary-color, #3b82f6);
+    }
+
+    .comment-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      padding: 0.15rem;
+      border-radius: 3px;
+      cursor: pointer;
+      color: var(--text-color-secondary, #a3a3a3);
+      opacity: 0;
+      transition: opacity 0.2s, color 0.2s;
+      margin-left: 0.25rem;
+    }
+
+    .story-card:hover .comment-btn {
+      opacity: 1;
+    }
+
+    .comment-btn:hover {
+      color: var(--primary-color, #3b82f6);
+    }
+
+    .comment-btn.has-comments {
+      opacity: 1;
+    }
+
+    .comment-count {
       font-size: 0.7rem;
       font-weight: 600;
       margin-left: 0.15rem;
@@ -563,6 +598,17 @@ export class AosStoryCard extends LitElement {
     );
   }
 
+  private handleCommentClick(e: Event): void {
+    e.stopPropagation();
+    this.dispatchEvent(
+      new CustomEvent('comment-open', {
+        detail: { itemId: this.story.id },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
   private getTypeIcon(): string {
     const type = (this.story.type || '').toLowerCase();
     if (type.includes('bug') || type.includes('fix')) return '🐛';
@@ -650,6 +696,19 @@ export class AosStoryCard extends LitElement {
             </svg>
             ${(this.story.attachmentCount ?? 0) > 0
               ? html`<span class="attachment-count">${this.story.attachmentCount}</span>`
+              : ''}
+          </button>
+          <!-- BLC-005: Comment button -->
+          <button
+            class="comment-btn ${(this.story.commentCount ?? 0) > 0 ? 'has-comments' : ''}"
+            title="Comments"
+            @click=${this.handleCommentClick}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            ${(this.story.commentCount ?? 0) > 0
+              ? html`<span class="comment-count">${this.story.commentCount}</span>`
               : ''}
           </button>
           ${this.isBacklogMode ? html`

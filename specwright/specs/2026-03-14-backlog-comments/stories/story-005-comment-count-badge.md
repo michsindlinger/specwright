@@ -4,6 +4,7 @@
 > Spec: Backlog Item Comments
 > Created: 2026-03-14
 > Last Updated: 2026-03-14
+**Status:** Done
 
 **Priority**: Medium
 **Type**: Frontend
@@ -97,19 +98,19 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] `StoryInfo` Interface in `story-card.ts` um `commentCount?: number` erweitert
-- [ ] Comment-Icon (Chat-Bubble/MessageCircle) neben Attachment-Icon auf Story Card gerendert
-- [ ] Comment-Count Badge (Zahl) angezeigt wenn commentCount > 0
-- [ ] Icon-only (ohne Zahl) bei commentCount === 0, sichtbar nur bei Hover
-- [ ] Klick auf Comment-Icon dispatcht `comment-open` CustomEvent
-- [ ] CSS-Styling konsistent mit bestehendem Attachment-Button
-- [ ] Frontend Build erfolgreich (`cd ui/frontend && npm run build`)
-- [ ] Lint fehlerfrei (`cd ui && npm run lint`)
+- [x] `StoryInfo` Interface in `story-card.ts` um `commentCount?: number` erweitert
+- [x] Comment-Icon (Chat-Bubble/MessageCircle) neben Attachment-Icon auf Story Card gerendert
+- [x] Comment-Count Badge (Zahl) angezeigt wenn commentCount > 0
+- [x] Icon-only (ohne Zahl) bei commentCount === 0, sichtbar nur bei Hover
+- [x] Klick auf Comment-Icon dispatcht `comment-open` CustomEvent
+- [x] CSS-Styling konsistent mit bestehendem Attachment-Button
+- [x] Frontend Build erfolgreich (`cd ui/frontend && npm run build`)
+- [x] Lint fehlerfrei (`cd ui && npm run lint`)
 
 **Integration DoD:**
-- [ ] **Integration: backlog-reader.ts → story-card.ts (commentCount Property)**
-  - [ ] commentCount wird vom Backend geliefert und in StoryInfo genutzt
-  - [ ] Validierung: `grep -q "commentCount" ui/frontend/src/components/story-card.ts`
+- [x] **Integration: backlog-reader.ts → story-card.ts (commentCount Property)**
+  - [x] commentCount wird vom Backend geliefert und in StoryInfo genutzt
+  - [x] Validierung: `grep -q "commentCount" ui/frontend/src/components/story-card.ts`
 
 ---
 
