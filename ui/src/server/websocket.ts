@@ -2390,9 +2390,19 @@ export class WebSocketHandler {
       }
 
       // Read the story file content (support both 'file' and legacy 'storyFile' field)
+      // Done items may have been moved from items/ to done/ by execute-tasks workflow
       const fileRef = item.file || item.storyFile;
-      const storyFilePath = projectDir(projectPath, 'backlog', fileRef || '');
-      let storyContent = await fs.readFile(storyFilePath, 'utf-8');
+      let storyFilePath = projectDir(projectPath, 'backlog', fileRef || '');
+      let storyContent: string;
+      try {
+        storyContent = await fs.readFile(storyFilePath, 'utf-8');
+      } catch {
+        // Fallback: if file not found in items/, try done/ directory
+        const fileName = (fileRef || '').replace(/^items\//, '');
+        const doneFallbackPath = projectDir(projectPath, 'backlog', 'done', fileName);
+        storyFilePath = doneFallbackPath;
+        storyContent = await fs.readFile(doneFallbackPath, 'utf-8');
+      }
 
       // Transform relative attachment paths to API URLs (images and file links)
       const encodedPath = encodeURIComponent(projectPath);

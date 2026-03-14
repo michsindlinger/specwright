@@ -92,6 +92,18 @@ Execute ONE backlog story. Simpler than spec execution (no git worktree, no inte
   - DoD Checklist
   - Domain reference (if specified)
 
+  READ: Comments from {projectDir}/backlog/items/attachments/{SELECTED_ITEM.id}/comments.json
+  (File may not exist - skip gracefully if absent)
+
+  IF comments exist:
+    PRESENT as supplementary context:
+    ---
+    ## User Comments on This Item
+    (Each comment: author, date, text)
+    ---
+    Treat these as additional requirements or guidance for implementation.
+    You may respond to comments using the `backlog_add_comment` MCP tool.
+
   NOTE: Skills load automatically when you edit matching files.
 </step>
 

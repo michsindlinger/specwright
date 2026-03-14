@@ -19,6 +19,7 @@
  * - backlog_add_item: Add item to global backlog
  * - backlog_start_item: Mark backlog item as in_progress
  * - backlog_complete_item: Mark backlog item as done
+ * - backlog_add_comment: Add a bot comment to a backlog item
  * - memory_store: Store a memory entry with upsert logic
  * - memory_search: Full-text search across memory entries
  * - memory_recall: Recall memory entries by ID, topic, or tag
@@ -510,6 +511,18 @@ const TOOLS: Tool[] = [
       required: ['executionId', 'itemId']
     }
   },
+  {
+    name: 'backlog_add_comment',
+    description: 'Add a bot comment to a backlog item. Creates or appends to comments.json in the item attachments directory. Author is hardcoded to "bot" for security.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        itemId: { type: 'string', description: 'Backlog item ID (e.g., "TODO-001")' },
+        text: { type: 'string', description: 'Comment text (Markdown supported)' }
+      },
+      required: ['itemId', 'text']
+    }
+  },
   // ============================================================================
   // Memory Tools
   // ============================================================================
@@ -699,6 +712,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           executionId: string;
           itemId: string;
           filesModified?: string[];
+        });
+
+      case 'backlog_add_comment':
+        return await handleBacklogAddComment(cwd, args as {
+          itemId: string;
+          text: string;
         });
 
       // ====================================================================
@@ -1771,6 +1790,98 @@ async function handleBacklogCompleteItem(
             status: item.executionStatus
           },
           remaining: remainingItems
+        }, null, 2)
+      }]
+    };
+  });
+}
+
+// ============================================================================
+// Backlog Add Comment
+// ============================================================================
+
+async function handleBacklogAddComment(
+  projectPath: string,
+  args: {
+    itemId: string;
+    text: string;
+  }
+) {
+  // Validate inputs
+  if (!projectPath || typeof projectPath !== 'string') {
+    throw new Error(`Invalid project path: ${projectPath}`);
+  }
+  if (!args.itemId || typeof args.itemId !== 'string') {
+    throw new Error('itemId is required');
+  }
+  if (!args.text || typeof args.text !== 'string') {
+    throw new Error('text is required');
+  }
+
+  // Sanitize itemId (prevent path traversal) - same as comment.handler.ts
+  const itemId = args.itemId;
+  if (
+    itemId.includes('..') ||
+    itemId.includes('/') ||
+    itemId.includes('\\') ||
+    itemId.includes('\0')
+  ) {
+    throw new Error(`Invalid itemId: contains forbidden characters`);
+  }
+
+  // Dual-path support: fall back to agent-os/ for non-migrated projects
+  let backlogDir = join(projectPath, 'specwright', 'backlog');
+  if (!existsSync(backlogDir)) {
+    const legacyDir = join(projectPath, 'agent-os', 'backlog');
+    if (existsSync(legacyDir)) {
+      backlogDir = legacyDir;
+      console.error(`[DualPath] Using legacy backlog path: ${legacyDir}`);
+    }
+  }
+
+  const commentsDir = join(backlogDir, 'items', 'attachments', itemId);
+
+  return await withKanbanLock(commentsDir, async () => {
+    // Ensure attachments directory exists
+    await mkdir(commentsDir, { recursive: true });
+
+    const commentsPath = join(commentsDir, 'comments.json');
+
+    // Read existing comments or start fresh
+    let comments: Array<{
+      id: string;
+      author: string;
+      text: string;
+      createdAt: string;
+    }> = [];
+
+    try {
+      const content = await readFile(commentsPath, 'utf-8');
+      comments = JSON.parse(content);
+    } catch {
+      // File doesn't exist yet - start with empty array
+    }
+
+    // Create new comment with hardcoded bot author
+    const comment = {
+      id: `cmt-${Date.now()}`,
+      author: 'bot',
+      text: args.text,
+      createdAt: new Date().toISOString()
+    };
+
+    comments.push(comment);
+    await writeFile(commentsPath, JSON.stringify(comments, null, 2), 'utf-8');
+
+    console.error(`[BacklogAddComment] Added bot comment to ${itemId}: ${comments.length} total`);
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: true,
+          comment,
+          count: comments.length
         }, null, 2)
       }]
     };

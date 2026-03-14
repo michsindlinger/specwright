@@ -340,38 +340,41 @@ export class AosCommentThread extends LitElement {
 
   private renderComment(comment: Comment) {
     const isEditing = this.editingCommentId === comment.id;
+    const isBot = comment.author !== 'user';
     return html`
-      <div class="comment">
+      <div class="comment ${isBot ? 'comment--bot' : ''}">
         <div class="comment__header">
-          <span class="comment__author">${comment.author}</span>
+          <span class="comment__author ${isBot ? 'comment__author--bot' : ''}">${comment.author}</span>
           <span class="comment__date">${this.formatDate(comment.createdAt)}</span>
           ${comment.editedAt ? html`<span class="comment__edited">bearbeitet</span>` : nothing}
-          <div class="comment__actions">
-            <button
-              class="comment__action-btn"
-              @click=${() => this.handleEditClick(comment)}
-              title="Bearbeiten"
-              aria-label="Kommentar bearbeiten"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
-            <button
-              class="comment__action-btn comment__action-btn--delete"
-              @click=${() => this.handleDelete(comment.id)}
-              title="Löschen"
-              aria-label="Kommentar löschen"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6M14 11v6"/>
-                <path d="M9 6V4h6v2"/>
-              </svg>
-            </button>
-          </div>
+          ${!isBot ? html`
+            <div class="comment__actions">
+              <button
+                class="comment__action-btn"
+                @click=${() => this.handleEditClick(comment)}
+                title="Bearbeiten"
+                aria-label="Kommentar bearbeiten"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button
+                class="comment__action-btn comment__action-btn--delete"
+                @click=${() => this.handleDelete(comment.id)}
+                title="Löschen"
+                aria-label="Kommentar löschen"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                  <path d="M9 6V4h6v2"/>
+                </svg>
+              </button>
+            </div>
+          ` : nothing}
         </div>
 
         <div class="comment__body">
@@ -577,6 +580,15 @@ export class AosCommentThread extends LitElement {
       background: rgba(34, 197, 94, 0.1);
       padding: 2px 8px;
       border-radius: var(--radius-full, 9999px);
+    }
+
+    .comment__author--bot {
+      color: var(--color-accent-info, #3b82f6);
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .comment--bot {
+      border-left: 3px solid var(--color-accent-info, #3b82f6);
     }
 
     .comment__date {
