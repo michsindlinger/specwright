@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { gateway, WebSocketMessage } from '../../gateway.js';
 import { renderMarkdown } from '../../utils/markdown-renderer.js';
+import { validateFile, readFileAsDataUrl } from '../../utils/image-upload.utils.js';
 
 /**
  * Comment data structure from backend (see comment.protocol.ts)
@@ -17,9 +18,18 @@ interface Comment {
 }
 
 /**
+ * Staged image waiting to be attached to the next comment.
+ */
+interface StagedCommentImage {
+  id: string;
+  file: File;
+  dataUrl: string;
+}
+
+/**
  * Reusable comment thread component for Backlog items.
  * Displays a chronological list of comments with Markdown rendering,
- * inline editing, and delete actions.
+ * inline editing, delete actions, and image upload via drag & drop or button.
  *
  * @fires show-toast - Dispatched for user notifications
  */
@@ -67,12 +77,25 @@ export class AosCommentThread extends LitElement {
   private isLoading = false;
 
   /**
+   * Images staged for the next comment submission.
+   */
+  @state()
+  private stagedImages: StagedCommentImage[] = [];
+
+  /**
+   * Whether a drag is currently over the comment input area.
+   */
+  @state()
+  private isDragging = false;
+
+  /**
    * Gateway message handlers (kept for cleanup in disconnectedCallback).
    */
   private listHandler: ((msg: WebSocketMessage) => void) | null = null;
   private createHandler: ((msg: WebSocketMessage) => void) | null = null;
   private updateHandler: ((msg: WebSocketMessage) => void) | null = null;
   private deleteHandler: ((msg: WebSocketMessage) => void) | null = null;
+  private uploadHandler: ((msg: WebSocketMessage) => void) | null = null;
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -131,10 +154,17 @@ export class AosCommentThread extends LitElement {
       }
     };
 
+    // Image upload confirmation - images stored server-side;
+    // inline display is handled via staged DataURLs embedded in comment text.
+    this.uploadHandler = (_msg: WebSocketMessage) => {
+      // fire-and-forget: server-side storage confirmed
+    };
+
     gateway.on('comment:list:response', this.listHandler);
     gateway.on('comment:create:response', this.createHandler);
     gateway.on('comment:update:response', this.updateHandler);
     gateway.on('comment:delete:response', this.deleteHandler);
+    gateway.on('comment:upload-image:response', this.uploadHandler);
   }
 
   private unregisterHandlers(): void {
@@ -142,6 +172,7 @@ export class AosCommentThread extends LitElement {
     if (this.createHandler) gateway.off('comment:create:response', this.createHandler);
     if (this.updateHandler) gateway.off('comment:update:response', this.updateHandler);
     if (this.deleteHandler) gateway.off('comment:delete:response', this.deleteHandler);
+    if (this.uploadHandler) gateway.off('comment:upload-image:response', this.uploadHandler);
   }
 
   private loadComments(): void {
@@ -168,10 +199,97 @@ export class AosCommentThread extends LitElement {
 
   private handleSubmit(): void {
     const text = this.newText.trim();
-    if (!text || this.isSubmitting) return;
+    const hasStagedImages = this.stagedImages.length > 0;
+    if ((!text && !hasStagedImages) || this.isSubmitting) return;
+
     this.isSubmitting = true;
-    gateway.sendCommentCreate(this.itemId, text);
+
+    // Upload staged images to server (fire-and-forget for server-side storage).
+    // Uses cmt-img-{timestamp}.{ext} naming to avoid collision with regular attachments.
+    for (const staged of this.stagedImages) {
+      const base64Data = staged.dataUrl.split(',')[1] ?? '';
+      const ext = staged.file.type.split('/')[1] ?? 'png';
+      const filename = `cmt-img-${Date.now()}.${ext}`;
+      gateway.sendCommentImageUpload(this.itemId, base64Data, filename, staged.file.type);
+    }
+
+    // Build comment text: typed text + DataURL images as Markdown for inline display.
+    let finalText = text;
+    for (const staged of this.stagedImages) {
+      const ext = staged.file.type.split('/')[1] ?? 'png';
+      const imageMarkdown = `![image.${ext}](${staged.dataUrl})`;
+      finalText = finalText ? `${finalText}\n\n${imageMarkdown}` : imageMarkdown;
+    }
+
+    this.stagedImages = [];
+    gateway.sendCommentCreate(this.itemId, finalText);
   }
+
+  // ── Drag & Drop / Image Upload ────────────────────────────────────────────
+
+  private handleDragOver(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDragging = true;
+  }
+
+  private handleDragLeave(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDragging = false;
+  }
+
+  private handleDrop(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDragging = false;
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      void this.addStagedImages(Array.from(files));
+    }
+  }
+
+  private handleFileInputChange(e: Event): void {
+    const target = e.target as HTMLInputElement;
+    if (target.files) {
+      void this.addStagedImages(Array.from(target.files));
+    }
+    target.value = '';
+  }
+
+  private triggerImagePicker(): void {
+    const input = this.shadowRoot?.querySelector<HTMLInputElement>('.image-upload__input');
+    input?.click();
+  }
+
+  private async addStagedImages(files: File[]): Promise<void> {
+    for (const file of files) {
+      // Comments only accept image types
+      if (!file.type.startsWith('image/')) {
+        this.showToast('Nur Bilddateien erlaubt (PNG, JPG, GIF, WebP)', 'error');
+        continue;
+      }
+      // Validate size and count using shared utility
+      const validationError = validateFile(file, this.stagedImages.length);
+      if (validationError) {
+        this.showToast(validationError, 'error');
+        continue;
+      }
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const id = `staged-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        this.stagedImages = [...this.stagedImages, { id, file, dataUrl }];
+      } catch {
+        this.showToast(`"${file.name}" konnte nicht gelesen werden`, 'error');
+      }
+    }
+  }
+
+  private removeStagedImage(id: string): void {
+    this.stagedImages = this.stagedImages.filter(img => img.id !== id);
+  }
+
+  // ── Comment interactions ──────────────────────────────────────────────────
 
   private handleEditClick(comment: Comment): void {
     this.editingCommentId = comment.id;
@@ -285,6 +403,7 @@ export class AosCommentThread extends LitElement {
   }
 
   override render() {
+    const canSubmit = !!(this.newText.trim() || this.stagedImages.length > 0);
     return html`
       <div class="comment-thread">
         <!-- Comment list (oldest first, auto-scroll to bottom) -->
@@ -300,8 +419,42 @@ export class AosCommentThread extends LitElement {
               : this.comments.map(c => this.renderComment(c))}
         </div>
 
-        <!-- New comment input -->
-        <div class="comment-input">
+        <!-- New comment input with drag & drop support -->
+        <div
+          class="comment-input ${this.isDragging ? 'comment-input--dragging' : ''}"
+          @dragover=${this.handleDragOver}
+          @dragleave=${this.handleDragLeave}
+          @drop=${this.handleDrop}
+        >
+          <!-- Staged image previews -->
+          ${this.stagedImages.length > 0
+            ? html`
+                <div class="staged-images">
+                  ${this.stagedImages.map(img => html`
+                    <div class="staged-image">
+                      <img
+                        class="staged-image__preview"
+                        src="${img.dataUrl}"
+                        alt="${img.file.name}"
+                        title="${img.file.name}"
+                      />
+                      <button
+                        class="staged-image__remove"
+                        @click=${() => this.removeStagedImage(img.id)}
+                        title="Bild entfernen"
+                        aria-label="Bild entfernen"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                          <line x1="18" y1="6" x2="6" y2="18"/>
+                          <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
+                    </div>
+                  `)}
+                </div>
+              `
+            : nothing}
+
           <textarea
             class="comment-input__textarea"
             placeholder="Kommentar schreiben... (Markdown unterstützt, Strg+Enter zum Senden)"
@@ -310,15 +463,44 @@ export class AosCommentThread extends LitElement {
             @keydown=${this.handleKeyDown}
             ?disabled=${this.isSubmitting}
           ></textarea>
+
           <div class="comment-input__actions">
+            <!-- Image upload button -->
+            <button
+              class="comment-input__image-btn"
+              @click=${this.triggerImagePicker}
+              ?disabled=${this.isSubmitting}
+              title="Bild hinzufügen (oder Bild hierher ziehen)"
+              aria-label="Bild hochladen"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </button>
+            <!-- Hidden file input for image selection -->
+            <input
+              class="image-upload__input"
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              multiple
+              @change=${this.handleFileInputChange}
+              style="display: none"
+            />
             <button
               class="comment-input__submit"
               @click=${this.handleSubmit}
-              ?disabled=${!this.newText.trim() || this.isSubmitting}
+              ?disabled=${!canSubmit || this.isSubmitting}
             >
               ${this.isSubmitting ? 'Wird gesendet...' : 'Kommentar senden'}
             </button>
           </div>
+
+          <!-- Drag overlay -->
+          ${this.isDragging
+            ? html`<div class="comment-input__drop-overlay">Bild hier ablegen</div>`
+            : nothing}
         </div>
       </div>
     `;
@@ -460,6 +642,14 @@ export class AosCommentThread extends LitElement {
       margin-bottom: 0;
     }
 
+    /* Constrain inline images rendered from Markdown */
+    .comment__text img {
+      max-width: 100%;
+      border-radius: var(--radius-sm, 0.25rem);
+      margin-top: var(--spacing-xs, 0.25rem);
+      display: block;
+    }
+
     /* ── Inline Edit Mode ─────────────────────────────── */
 
     .comment__edit-textarea {
@@ -530,7 +720,81 @@ export class AosCommentThread extends LitElement {
       display: flex;
       flex-direction: column;
       gap: var(--spacing-sm, 0.5rem);
+      position: relative;
+      border-radius: var(--radius-md, 0.5rem);
+      transition: border-color var(--transition-fast, 150ms ease);
     }
+
+    .comment-input--dragging {
+      outline: 2px dashed var(--color-accent-primary, #22c55e);
+      outline-offset: 2px;
+      background: rgba(34, 197, 94, 0.04);
+    }
+
+    .comment-input__drop-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: var(--radius-md, 0.5rem);
+      color: var(--color-accent-primary, #22c55e);
+      font-size: var(--font-size-md, 1rem);
+      font-weight: var(--font-weight-medium, 500);
+      pointer-events: none;
+      z-index: 10;
+      gap: var(--spacing-sm, 0.5rem);
+    }
+
+    /* ── Staged Image Previews ────────────────────────── */
+
+    .staged-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-xs, 0.25rem);
+      padding: var(--spacing-xs, 0.25rem) 0;
+    }
+
+    .staged-image {
+      position: relative;
+      width: 64px;
+      height: 64px;
+      border-radius: var(--radius-sm, 0.25rem);
+      overflow: hidden;
+      border: 1px solid var(--color-border, #333333);
+      flex-shrink: 0;
+    }
+
+    .staged-image__preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .staged-image__remove {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      background: rgba(0, 0, 0, 0.7);
+      border: none;
+      border-radius: var(--radius-full, 9999px);
+      color: var(--color-text-primary, #ffffff);
+      cursor: pointer;
+      transition: background var(--transition-fast, 150ms ease);
+    }
+
+    .staged-image__remove:hover {
+      background: var(--color-accent-error, #ef4444);
+    }
+
+    /* ── Textarea ─────────────────────────────────────── */
 
     .comment-input__textarea {
       width: 100%;
@@ -557,12 +821,46 @@ export class AosCommentThread extends LitElement {
       cursor: not-allowed;
     }
 
+    /* ── Actions Bar ──────────────────────────────────── */
+
     .comment-input__actions {
       display: flex;
-      justify-content: flex-end;
+      align-items: center;
+      gap: var(--spacing-xs, 0.25rem);
     }
 
+    /* ── Image Upload Button ──────────────────────────── */
+
+    .comment-input__image-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      background: transparent;
+      border: 1px solid var(--color-border, #333333);
+      border-radius: var(--radius-sm, 0.25rem);
+      color: var(--color-text-muted, #737373);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all var(--transition-fast, 150ms ease);
+    }
+
+    .comment-input__image-btn:hover:not(:disabled) {
+      border-color: var(--color-accent-primary, #22c55e);
+      color: var(--color-accent-primary, #22c55e);
+    }
+
+    .comment-input__image-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ── Submit Button ────────────────────────────────── */
+
     .comment-input__submit {
+      margin-left: auto;
       padding: var(--spacing-sm, 0.5rem) var(--spacing-lg, 1.5rem);
       background: var(--color-accent-primary, #22c55e);
       border: none;

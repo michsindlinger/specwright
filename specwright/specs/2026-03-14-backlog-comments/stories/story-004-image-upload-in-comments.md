@@ -118,23 +118,23 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] Bild-Upload per Upload-Button im Eingabebereich implementiert
-- [ ] Drag & Drop auf den Eingabebereich implementiert
-- [ ] Bild-Vorschau im Eingabebereich vor Absenden angezeigt (staged images)
-- [ ] Mehrere Bilder pro Kommentar möglich
-- [ ] File-Validierung: Maximale Dateigröße (5MB), erlaubte MIME-Types
-- [ ] Bilder werden nach Absenden im Kommentar inline angezeigt
-- [ ] Fehlermeldungen bei ungültigen Dateien (Toast-Notification)
-- [ ] Frontend Build erfolgreich (`cd ui/frontend && npm run build`)
-- [ ] Lint fehlerfrei (`cd ui && npm run lint`)
+- [x] Bild-Upload per Upload-Button im Eingabebereich implementiert
+- [x] Drag & Drop auf den Eingabebereich implementiert
+- [x] Bild-Vorschau im Eingabebereich vor Absenden angezeigt (staged images)
+- [x] Mehrere Bilder pro Kommentar möglich
+- [x] File-Validierung: Maximale Dateigröße (5MB), erlaubte MIME-Types
+- [x] Bilder werden nach Absenden im Kommentar inline angezeigt
+- [x] Fehlermeldungen bei ungültigen Dateien (Toast-Notification)
+- [x] Frontend Build erfolgreich (`cd ui/frontend && npm run build`)
+- [x] Lint fehlerfrei (`cd ui && npm run lint`)
 
 **Integration DoD:**
-- [ ] **Integration: image-upload.utils.ts → aos-comment-thread.ts**
-  - [ ] Wiederverwendung von validateFile() und readFileAsDataUrl()
-  - [ ] Validierung: `grep -q "validateFile\|readFileAsDataUrl" ui/frontend/src/components/comments/aos-comment-thread.ts`
-- [ ] **Integration: aos-comment-thread.ts → gateway (comment:upload-image)**
-  - [ ] Upload via Gateway-Methode sendCommentImageUpload
-  - [ ] Validierung: `grep -q "sendCommentImageUpload\|comment.*upload" ui/frontend/src/components/comments/aos-comment-thread.ts`
+- [x] **Integration: image-upload.utils.ts → aos-comment-thread.ts**
+  - [x] Wiederverwendung von validateFile() und readFileAsDataUrl()
+  - [x] Validierung: `grep -q "validateFile\|readFileAsDataUrl" ui/frontend/src/components/comments/aos-comment-thread.ts`
+- [x] **Integration: aos-comment-thread.ts → gateway (comment:upload-image)**
+  - [x] Upload via Gateway-Methode sendCommentImageUpload
+  - [x] Validierung: `grep -q "sendCommentImageUpload\|comment.*upload" ui/frontend/src/components/comments/aos-comment-thread.ts`
 
 ---
 
