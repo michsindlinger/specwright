@@ -823,6 +823,99 @@ export class Gateway {
     });
   }
 
+  // ============================================================================
+  // Comment Methods (BLC-003)
+  // Comment CRUD operations for Backlog items via WebSocket.
+  // Types defined in: comment.protocol (ui/src/shared/types/comment.protocol.ts)
+  //
+  // Incoming Messages (received via on() handlers):
+  // - comment:create:response: { data: { comment: Comment, count: number } }
+  // - comment:list:response: { data: { comments: Comment[], count: number } }
+  // - comment:update:response: { data: { comment: Comment } }
+  // - comment:delete:response: { data: { commentId: string, count: number } }
+  // - comment:upload-image:response: { data: { filename, path, size, mimeType } }
+  // - comment:error: { code, message, operation }
+  // ============================================================================
+
+  /**
+   * Create a new comment on a Backlog item.
+   * @param itemId - Backlog item ID
+   * @param text - Comment text (Markdown supported)
+   */
+  public sendCommentCreate(itemId: string, text: string): void {
+    this.send({
+      type: 'comment:create',
+      itemId,
+      text,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Request the list of comments for a Backlog item.
+   * @param itemId - Backlog item ID
+   */
+  public requestCommentList(itemId: string): void {
+    this.send({
+      type: 'comment:list',
+      itemId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Update an existing comment.
+   * @param itemId - Backlog item ID
+   * @param commentId - ID of the comment to update (format: cmt-{timestamp})
+   * @param text - New comment text
+   */
+  public sendCommentUpdate(itemId: string, commentId: string, text: string): void {
+    this.send({
+      type: 'comment:update',
+      itemId,
+      commentId,
+      text,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Delete a comment.
+   * @param itemId - Backlog item ID
+   * @param commentId - ID of the comment to delete
+   */
+  public sendCommentDelete(itemId: string, commentId: string): void {
+    this.send({
+      type: 'comment:delete',
+      itemId,
+      commentId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Upload an image to attach to a comment (used by BLC-004).
+   * @param itemId - Backlog item ID
+   * @param data - Base64-encoded image data
+   * @param filename - Original filename
+   * @param mimeType - MIME type of the image
+   */
+  public sendCommentImageUpload(
+    itemId: string,
+    data: string,
+    filename: string,
+    mimeType: string
+  ): void {
+    this.send({
+      type: 'comment:upload-image',
+      itemId,
+      data,
+      filename,
+      mimeType,
+      timestamp: new Date().toISOString()
+    });
+  }
+
 }
 
 export const gateway = new Gateway();
