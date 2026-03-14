@@ -29,6 +29,7 @@ export interface BacklogStoryInfo {
   dependencies: string[];
   file?: string;
   attachmentCount?: number;
+  commentCount?: number;
   assignedToBot?: boolean;
 }
 
@@ -241,11 +242,12 @@ export class BacklogReader {
       result.stories = Array.from(storiesMap.values());
       result.hasKanbanFile = true; // backlog-index.json exists
 
-      // Load attachment counts for all stories
+      // Load attachment and comment counts for all stories
       await Promise.all(result.stories.map(async (story) => {
         story.attachmentCount = await attachmentStorageService.count(
           projectPath, 'backlog', undefined, undefined, story.id
         );
+        story.commentCount = await this.getCommentCount(projectPath, story.id);
       }));
 
       // Sort: in_progress first, then in_review, then blocked, then backlog, then done (UKB-003: extended)
@@ -325,11 +327,12 @@ export class BacklogReader {
 
     result.stories = Array.from(storiesMap.values());
 
-    // Load attachment counts for all stories
+    // Load attachment and comment counts for all stories
     await Promise.all(result.stories.map(async (story) => {
       story.attachmentCount = await attachmentStorageService.count(
         projectPath, 'backlog', undefined, undefined, story.id
       );
+      story.commentCount = await this.getCommentCount(projectPath, story.id);
     }));
 
     // Sort: in_progress first, then in_review, then blocked, then backlog, then done (UKB-003: extended)
@@ -412,6 +415,17 @@ export class BacklogReader {
     }
 
     return statusMap;
+  }
+
+  private async getCommentCount(projectPath: string, itemId: string): Promise<number> {
+    const commentsPath = join(projectDir(projectPath, 'backlog'), 'items', 'attachments', itemId, 'comments.json');
+    try {
+      const content = await fs.readFile(commentsPath, 'utf-8');
+      const comments = JSON.parse(content);
+      return Array.isArray(comments) ? comments.length : 0;
+    } catch {
+      return 0;
+    }
   }
 
   private async parseBacklogFile(backlogPath: string, filename: string): Promise<BacklogItem | null> {

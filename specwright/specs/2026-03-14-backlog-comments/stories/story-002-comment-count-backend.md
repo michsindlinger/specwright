@@ -94,18 +94,18 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] `commentCount` Berechnung in `backlog-reader.ts` implementiert (analog `attachmentCount`)
-- [ ] `BacklogStoryInfo` Interface um `commentCount?: number` erweitert
-- [ ] `comments.json` wird gelesen und Array-Länge als Count zurückgegeben
-- [ ] Fehlende/leere `comments.json` gibt Count 0 zurück
-- [ ] Backend Build erfolgreich (`cd ui && npm run build:backend`)
-- [ ] Lint fehlerfrei (`cd ui && npm run lint`)
-- [ ] Alle Akzeptanzkriterien erfüllt
+- [x] `commentCount` Berechnung in `backlog-reader.ts` implementiert (analog `attachmentCount`)
+- [x] `BacklogStoryInfo` Interface um `commentCount?: number` erweitert
+- [x] `comments.json` wird gelesen und Array-Länge als Count zurückgegeben
+- [x] Fehlende/leere `comments.json` gibt Count 0 zurück
+- [x] Backend Build erfolgreich (`cd ui && npm run build:backend`)
+- [x] Lint fehlerfrei (`cd ui && npm run lint`)
+- [x] Alle Akzeptanzkriterien erfüllt
 
 **Integration DoD:**
-- [ ] **Integration: backlog-reader.ts → comments.json (Dateisystem)**
-  - [ ] Liest `comments.json` aus Attachment-Verzeichnis
-  - [ ] Validierung: `grep -q "commentCount" ui/src/server/backlog-reader.ts`
+- [x] **Integration: backlog-reader.ts → comments.json (Dateisystem)**
+  - [x] Liest `comments.json` aus Attachment-Verzeichnis
+  - [x] Validierung: `grep -q "commentCount" ui/src/server/backlog-reader.ts`
 
 ---
 
