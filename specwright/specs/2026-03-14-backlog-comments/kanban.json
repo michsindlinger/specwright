@@ -16,15 +16,15 @@
     "gitBranch": "feature/backlog-comments",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed BLC-002",
-    "nextAction": "Execute next story: BLC-001",
-    "progressIndex": 2,
+    "lastAction": "Completed BLC-001",
+    "nextAction": "Execute next story: BLC-003",
+    "progressIndex": 3,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-03-14T19:26:54.194Z",
     "completedAt": null,
     "model": null
   },
@@ -40,25 +40,38 @@
         "complexity": "M"
       },
       "dependencies": [],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-001-comment-protocol-and-server-handler.md",
       "timing": {
         "createdAt": "2026-03-14T10:00:00Z",
         "updatedAt": "2026-03-14T10:00:00Z",
-        "startedAt": "2026-03-14T14:54:54.514Z"
+        "startedAt": "2026-03-14T14:54:54.514Z",
+        "completedAt": "2026-03-14T19:28:00.868Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/shared/types/comment.protocol.ts",
+          "ui/src/server/handlers/comment.handler.ts",
+          "ui/src/server/websocket.ts",
+          "ui/tests/unit/comment.handler.test.ts",
+          "specwright/specs/2026-03-14-backlog-comments/stories/story-001-comment-protocol-and-server-handler.md"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "480cb368870e9f83cc6ceb405beca3fb17f7a9c6",
+            "message": "feat: BLC-001 Comment Protocol & Server Handler",
+            "timestamp": "2026-03-14T20:27:43+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
       "model": "sonnet",
-      "phase": "in_progress"
+      "phase": "done"
     },
     {
       "id": "BLC-002",
@@ -116,12 +129,13 @@
       "dependencies": [
         "BLC-001"
       ],
-      "status": "ready",
+      "status": "in_progress",
       "dorStatus": "ready",
       "storyFile": "stories/story-003-comment-thread-component.md",
       "timing": {
         "createdAt": "2026-03-14T10:00:00Z",
-        "updatedAt": "2026-03-14T10:00:00Z"
+        "updatedAt": "2026-03-14T10:00:00Z",
+        "startedAt": "2026-03-14T19:26:54.194Z"
       },
       "implementation": {
         "filesModified": [],
@@ -132,7 +146,8 @@
         "dorChecked": false,
         "dodChecked": false
       },
-      "model": "sonnet"
+      "model": "sonnet",
+      "phase": "in_progress"
     },
     {
       "id": "BLC-004",
@@ -327,11 +342,11 @@
   ],
   "boardStatus": {
     "total": 9,
-    "ready": 7,
+    "ready": 6,
     "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
+    "done": 2,
     "blocked": 0
   },
   "statistics": {
@@ -491,6 +506,30 @@
       "action": "status_changed",
       "storyId": "BLC-002",
       "details": "Story completed: done → done"
+    },
+    {
+      "timestamp": "2026-03-14T15:05:38.441Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/backlog-comments"
+    },
+    {
+      "timestamp": "2026-03-14T15:06:27.950Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/backlog-comments"
+    },
+    {
+      "timestamp": "2026-03-14T19:26:54.195Z",
+      "action": "status_changed",
+      "storyId": "BLC-003",
+      "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-14T19:28:00.871Z",
+      "action": "status_changed",
+      "storyId": "BLC-001",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }
