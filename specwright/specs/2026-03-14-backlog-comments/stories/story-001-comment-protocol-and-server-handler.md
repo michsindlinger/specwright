@@ -9,6 +9,7 @@
 **Type**: Backend
 **Estimated Effort**: M
 **Dependencies**: None
+**Status**: Done
 
 ---
 
@@ -128,28 +129,28 @@ Keine MCP Tools erforderlich.
 
 ### DoD (Definition of Done) - Vom Architect
 
-- [ ] `comment.protocol.ts` mit Comment Interface, Message Types, Config, Error Codes implementiert
-- [ ] `comment.handler.ts` als Singleton mit CRUD-Methoden (create, list, update, delete, upload-image)
-- [ ] Handler in `websocket.ts` registriert (5 case-Statements + 5 Wrapper-Methoden)
-- [ ] JSON-Locking via `withKanbanLock()` für alle Schreiboperationen
-- [ ] Path-Traversal-Schutz implementiert
-- [ ] Unit Tests für Comment Handler geschrieben und bestanden
-- [ ] Backend Build erfolgreich (`cd ui && npm run build:backend`)
-- [ ] Lint fehlerfrei (`cd ui && npm run lint`)
-- [ ] Alle Akzeptanzkriterien erfüllt
+- [x] `comment.protocol.ts` mit Comment Interface, Message Types, Config, Error Codes implementiert
+- [x] `comment.handler.ts` als Singleton mit CRUD-Methoden (create, list, update, delete, upload-image)
+- [x] Handler in `websocket.ts` registriert (5 case-Statements + 5 Wrapper-Methoden)
+- [x] JSON-Locking via `withKanbanLock()` für alle Schreiboperationen
+- [x] Path-Traversal-Schutz implementiert
+- [x] Unit Tests für Comment Handler geschrieben und bestanden
+- [x] Backend Build erfolgreich (`cd ui && npm run build:backend`)
+- [x] Lint fehlerfrei (`cd ui && npm run lint`)
+- [x] Alle Akzeptanzkriterien erfüllt
 
 **Integration DoD:**
-- [ ] **Integration: comment.protocol.ts → comment.handler.ts**
-  - [ ] Import existiert
-  - [ ] Validierung: `grep -q "from.*comment.protocol" ui/src/server/handlers/comment.handler.ts`
-- [ ] **Integration: comment.handler.ts → websocket.ts**
-  - [ ] Import + 5 case-Statements registriert
-  - [ ] Validierung: `grep -q "commentHandler\|comment.handler" ui/src/server/websocket.ts`
-- [ ] **Integration: comment.handler.ts → attachment-storage.service.ts**
-  - [ ] Bild-Upload via bestehendem Service
-  - [ ] Validierung: `grep -q "attachmentStorageService\|attachment-storage" ui/src/server/handlers/comment.handler.ts`
-- [ ] **Integration: comment.handler.ts → kanban-lock.ts**
-  - [ ] Validierung: `grep -q "withKanbanLock" ui/src/server/handlers/comment.handler.ts`
+- [x] **Integration: comment.protocol.ts → comment.handler.ts**
+  - [x] Import existiert
+  - [x] Validierung: `grep -q "from.*comment.protocol" ui/src/server/handlers/comment.handler.ts`
+- [x] **Integration: comment.handler.ts → websocket.ts**
+  - [x] Import + 5 case-Statements registriert
+  - [x] Validierung: `grep -q "commentHandler\|comment.handler" ui/src/server/websocket.ts`
+- [x] **Integration: comment.handler.ts → attachment-storage.service.ts**
+  - [x] Bild-Upload via bestehendem Service
+  - [x] Validierung: `grep -q "attachmentStorageService\|attachment-storage" ui/src/server/handlers/comment.handler.ts`
+- [x] **Integration: comment.handler.ts → kanban-lock.ts**
+  - [x] Validierung: `grep -q "withKanbanLock" ui/src/server/handlers/comment.handler.ts`
 
 ---
 

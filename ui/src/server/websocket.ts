@@ -15,6 +15,7 @@ import { ImageStorageService, type ImageInfo } from './image-storage.js';
 import { queueHandler } from './handlers/queue.handler.js';
 import { gitHandler } from './handlers/git.handler.js';
 import { attachmentHandler } from './handlers/attachment.handler.js';
+import { commentHandler } from './handlers/comment.handler.js';
 import { fileHandler } from './handlers/file.handler.js';
 import { documentPreviewHandler } from './handlers/document-preview.handler.js';
 import { PreviewWatcher } from './services/preview-watcher.service.js';
@@ -72,6 +73,7 @@ export class WebSocketHandler {
   private backlogReader: BacklogReader;
   private imageStorageService: ImageStorageService;
   private attachmentHandler;
+  private commentHandler;
   private fileHandler;
   private cloudTerminalManager: CloudTerminalManager;
   private voiceCallService: VoiceCallService;
@@ -87,6 +89,7 @@ export class WebSocketHandler {
     this.backlogReader = new BacklogReader();
     this.imageStorageService = new ImageStorageService();
     this.attachmentHandler = attachmentHandler;
+    this.commentHandler = commentHandler;
     this.fileHandler = fileHandler;
     this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager());
     this.voiceCallService = new VoiceCallService();
@@ -422,6 +425,22 @@ export class WebSocketHandler {
           break;
         case 'attachment:read':
           this.handleAttachmentRead(client, message);
+          break;
+        // Comment Messages (BLC-001)
+        case 'comment:create':
+          this.handleCommentCreate(client, message);
+          break;
+        case 'comment:list':
+          this.handleCommentList(client, message);
+          break;
+        case 'comment:update':
+          this.handleCommentUpdate(client, message);
+          break;
+        case 'comment:delete':
+          this.handleCommentDelete(client, message);
+          break;
+        case 'comment:upload-image':
+          this.handleCommentUploadImage(client, message);
           break;
         // File Editor Messages (FE-001)
         case 'files:list':
@@ -3719,6 +3738,84 @@ export class WebSocketHandler {
   private sendAttachmentNoProjectError(client: WebSocketClient, operation: string): void {
     const errorResponse: WebSocketMessage = {
       type: 'attachment:error',
+      code: 'NO_PROJECT',
+      message: 'No project selected',
+      operation,
+      timestamp: new Date().toISOString()
+    };
+    client.send(JSON.stringify(errorResponse));
+  }
+
+  // ============================================================================
+  // Comment Handlers (BLC-001)
+  // ============================================================================
+
+  /**
+   * BLC-001: Handle comment:create message.
+   */
+  private handleCommentCreate(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendCommentNoProjectError(client, 'create');
+      return;
+    }
+    this.commentHandler.handleCreate(client, message, projectPath);
+  }
+
+  /**
+   * BLC-001: Handle comment:list message.
+   */
+  private handleCommentList(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendCommentNoProjectError(client, 'list');
+      return;
+    }
+    this.commentHandler.handleList(client, message, projectPath);
+  }
+
+  /**
+   * BLC-001: Handle comment:update message.
+   */
+  private handleCommentUpdate(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendCommentNoProjectError(client, 'update');
+      return;
+    }
+    this.commentHandler.handleUpdate(client, message, projectPath);
+  }
+
+  /**
+   * BLC-001: Handle comment:delete message.
+   */
+  private handleCommentDelete(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendCommentNoProjectError(client, 'delete');
+      return;
+    }
+    this.commentHandler.handleDelete(client, message, projectPath);
+  }
+
+  /**
+   * BLC-001: Handle comment:upload-image message.
+   */
+  private handleCommentUploadImage(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendCommentNoProjectError(client, 'upload-image');
+      return;
+    }
+    this.commentHandler.handleUploadImage(client, message, projectPath);
+  }
+
+  /**
+   * BLC-001: Send comment error for missing project.
+   */
+  private sendCommentNoProjectError(client: WebSocketClient, operation: string): void {
+    const errorResponse: WebSocketMessage = {
+      type: 'comment:error',
       code: 'NO_PROJECT',
       message: 'No project selected',
       operation,
