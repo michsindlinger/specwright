@@ -47,12 +47,12 @@ Scenario: Vollständiger Code-Review des Feature-Branches
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] Git Diff analysiert (main...HEAD)
-- [ ] Alle geänderten Dateien reviewt
-- [ ] Probleme identifiziert und kategorisiert
-- [ ] review-report.md erstellt
-- [ ] Alle Critical/Major Issues automatisch behoben ODER als Bug-Ticket erstellt
-- [ ] Re-Review nach Fixes bestanden (falls Fixes durchgeführt)
+- [x] Git Diff analysiert (main...HEAD)
+- [x] Alle geänderten Dateien reviewt
+- [x] Probleme identifiziert und kategorisiert
+- [x] review-report.md erstellt
+- [x] Alle Critical/Major Issues automatisch behoben ODER als Bug-Ticket erstellt
+- [x] Re-Review nach Fixes bestanden (falls Fixes durchgeführt)
 
 ## Technisches Refinement
 

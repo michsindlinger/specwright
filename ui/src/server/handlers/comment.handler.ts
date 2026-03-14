@@ -267,7 +267,7 @@ export class CommentHandler {
       return;
     }
 
-    if (!COMMENT_CONFIG.ALLOWED_IMAGE_TYPES.has(mimeType as Parameters<typeof COMMENT_CONFIG.ALLOWED_IMAGE_TYPES.has>[0])) {
+    if (!COMMENT_CONFIG.ALLOWED_IMAGE_TYPES.has(mimeType)) {
       this.sendError(client, 'upload-image', COMMENT_ERROR_CODES.INVALID_FILE_TYPE, 'Image type not supported');
       return;
     }
