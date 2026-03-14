@@ -14,11 +14,11 @@
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "feature/backlog-comments",
-    "currentStory": "BLC-997",
-    "currentStoryPhase": "implementing",
-    "lastAction": "Started BLC-997",
-    "nextAction": "Implement Code Review",
-    "progressIndex": 7,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed BLC-997",
+    "nextAction": "Execute next story: BLC-998",
+    "progressIndex": 8,
     "totalStories": 9,
     "gitStrategy": "branch"
   },
@@ -308,24 +308,35 @@
         "BLC-005",
         "BLC-006"
       ],
-      "status": "in_progress",
+      "status": "done",
       "dorStatus": "ready",
       "storyFile": "stories/story-997-code-review.md",
       "timing": {
         "createdAt": "2026-03-14T10:00:00Z",
         "updatedAt": "2026-03-14T10:00:00Z",
-        "startedAt": "2026-03-14T19:58:48.537Z"
+        "startedAt": "2026-03-14T19:58:48.537Z",
+        "completedAt": "2026-03-14T20:03:08.639Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-03-14-backlog-comments/review-report.md",
+          "specwright/specs/2026-03-14-backlog-comments/stories/story-997-code-review.md",
+          "ui/src/server/handlers/comment.handler.ts"
+        ],
         "testsAdded": [],
-        "commits": []
+        "commits": [
+          {
+            "hash": "77b1ea8",
+            "message": "feat: BLC-997 Code Review completed",
+            "timestamp": "2026-03-14T22:02:00+01:00"
+          }
+        ]
       },
       "verification": {
         "dorChecked": false,
-        "dodChecked": false
+        "dodChecked": true
       },
-      "phase": "in_progress",
+      "phase": "done",
       "model": "claude-opus-4-6"
     },
     {
@@ -393,10 +404,10 @@
   "boardStatus": {
     "total": 9,
     "ready": 2,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 6,
+    "done": 7,
     "blocked": 0
   },
   "statistics": {
@@ -664,6 +675,12 @@
       "action": "status_changed",
       "storyId": "BLC-997",
       "details": "Story started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-03-14T20:03:08.639Z",
+      "action": "status_changed",
+      "storyId": "BLC-997",
+      "details": "Story completed: in_progress → done"
     }
   ]
 }
