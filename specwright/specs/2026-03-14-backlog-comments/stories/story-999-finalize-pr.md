@@ -5,6 +5,7 @@
 > Created: 2026-03-14
 > Last Updated: 2026-03-14
 
+**Status**: Done
 **Priority**: High
 **Type**: System/Finalization
 **Estimated Effort**: S
@@ -31,13 +32,13 @@ Feature: Finalize Pull Request
 
 ## DoD (Definition of Done) - System Story
 
-- [ ] user-todos.md finalisiert (wenn vorhanden)
-- [ ] Project Knowledge aktualisiert (wenn "Creates Reusable" Stories vorhanden)
-- [ ] Alle Änderungen committed
-- [ ] Pull Request erstellt
-- [ ] PR URL dokumentiert
-- [ ] Worktree aufgeräumt (wenn verwendet)
-- [ ] Kanban-Board auf "complete" gesetzt
+- [x] user-todos.md finalisiert (wenn vorhanden) — nicht vorhanden, kein Handlungsbedarf
+- [x] Project Knowledge aktualisiert — 3 neue Artefakte: aos-comment-thread, CommentHandler, comment.protocol.ts
+- [x] Alle Änderungen committed
+- [x] Pull Request erstellt
+- [x] PR URL dokumentiert — https://github.com/michsindlinger/specwright/pull/22
+- [x] Worktree aufgeräumt (wenn verwendet) — Branch-Strategie, kein Worktree
+- [x] Kanban-Board auf "complete" gesetzt
 
 ## Technisches Refinement
 
