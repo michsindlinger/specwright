@@ -6,9 +6,10 @@
  * All operations return structured typed responses.
  */
 
-import { execFile } from 'child_process';
+import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify } from 'util';
 import { resolve } from 'path';
+import { existsSync } from 'fs';
 import { unlink } from 'fs/promises';
 import type {
   GitStatusData,
@@ -356,14 +357,151 @@ export class GitService {
   }
 
   /**
-   * Generate a commit message based on the changes in the specified files.
-   * Analyzes file statuses (added/modified/deleted) and directory structure
-   * to produce a conventional commit message.
+   * Resolve the absolute path to the claude CLI binary.
+   * Checks common installation locations when not found in PATH.
+   */
+  private resolveClaudePath(): string {
+    try {
+      return execFileSync('which', ['claude'], { encoding: 'utf8' }).trim();
+    } catch {
+      // Fallback: check common installation paths
+      const home = process.env.HOME || process.env.USERPROFILE || '';
+      const candidates = [
+        resolve(home, '.local/bin/claude'),
+        '/usr/local/bin/claude',
+        '/opt/homebrew/bin/claude',
+      ];
+      for (const candidate of candidates) {
+        if (existsSync(candidate)) return candidate;
+      }
+      throw new Error('claude CLI not found in PATH or common locations');
+    }
+  }
+
+  /**
+   * Execute claude CLI in print mode.
+   * Strips ANTHROPIC_API_KEY from env so the Max subscription is used.
+   */
+  private execClaude(prompt: string, cwd: string, timeoutMs = 60000): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const env = { ...process.env };
+      delete env.ANTHROPIC_API_KEY;
+      delete env.CLAUDECODE;
+
+      let claudePath: string;
+      try {
+        claudePath = this.resolveClaudePath();
+      } catch (err) {
+        reject(err);
+        return;
+      }
+
+      const child = spawn(claudePath, ['-p'], { cwd, env });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', (data: Buffer) => { stdout += data.toString(); });
+      child.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
+
+      const timer = setTimeout(() => {
+        child.kill();
+        reject(new Error('claude timed out'));
+      }, timeoutMs);
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        if (code === 0) {
+          resolve(stdout.trim());
+        } else {
+          reject(new Error(`claude exited with code ${code}: ${stderr}`));
+        }
+      });
+
+      child.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+
+      child.stdin.write(prompt);
+      child.stdin.end();
+    });
+  }
+
+  /**
+   * Generate a commit message using Claude Code in print mode.
+   * Collects the git diff for selected files and asks the LLM for a
+   * conventional commit message. Falls back to a deterministic message
+   * if claude CLI is unavailable or fails.
    */
   async generateCommitMessage(projectPath: string, files: string[]): Promise<GitGenerateCommitMessageResult> {
     await this.ensureGitRepo(projectPath, 'generateCommitMessage');
+    console.log('[GitService] generateCommitMessage called, attempting LLM generation...');
 
-    // Get file statuses via porcelain format
+    try {
+      // Collect diff for tracked files (unstaged changes)
+      const { stdout: diffOutput } = await this.execGit(
+        ['diff', '--', ...files],
+        projectPath,
+      );
+
+      // Collect diff for staged changes
+      const { stdout: cachedDiffOutput } = await this.execGit(
+        ['diff', '--cached', '--', ...files],
+        projectPath,
+      );
+
+      // Identify untracked files
+      const { stdout: statusOutput } = await this.execGit(
+        ['status', '--porcelain', '--', ...files],
+        projectPath,
+      );
+
+      const untrackedFiles = statusOutput
+        .split('\n')
+        .filter(l => l.startsWith('??'))
+        .map(l => l.substring(3).trim());
+
+      let diffContent = '';
+      if (cachedDiffOutput) diffContent += cachedDiffOutput;
+      if (diffOutput) diffContent += diffOutput;
+      if (untrackedFiles.length > 0) {
+        diffContent += `\nNew files:\n${untrackedFiles.join('\n')}`;
+      }
+
+      // Truncate if excessively long
+      const maxDiffLength = 20000;
+      if (diffContent.length > maxDiffLength) {
+        diffContent = diffContent.substring(0, maxDiffLength) + '\n\n[diff truncated]';
+      }
+
+      const prompt = [
+        'Generate a concise git commit message for the following changes.',
+        'Rules:',
+        '- Use conventional commit format: type(scope): description',
+        '- Valid types: feat, fix, chore, refactor, test, docs, style, perf',
+        '- Scope should reflect the main area of change',
+        '- Description in imperative tense, lowercase, no period',
+        '- Output ONLY the commit message, nothing else',
+        '- No markdown, no backticks, no explanation',
+        '',
+        diffContent,
+      ].join('\n');
+
+      const message = await this.execClaude(prompt, projectPath);
+      return { message };
+    } catch (error) {
+      // Log the error so we can diagnose why LLM generation failed
+      console.warn('[GitService] LLM commit message generation failed, using deterministic fallback:', (error as Error).message);
+      return this.generateCommitMessageDeterministic(projectPath, files);
+    }
+  }
+
+  /**
+   * Deterministic fallback for commit message generation.
+   * Used when claude CLI is unavailable.
+   */
+  private async generateCommitMessageDeterministic(projectPath: string, files: string[]): Promise<GitGenerateCommitMessageResult> {
     const { stdout: statusOutput } = await this.execGit(
       ['status', '--porcelain', '--', ...files],
       projectPath,
@@ -384,7 +522,6 @@ export class GitService {
     const modifiedCount = fileStatuses.filter(f => f.status === 'modified').length;
     const deletedCount = fileStatuses.filter(f => f.status === 'deleted').length;
 
-    // Determine commit type
     let type: string;
     const allTests = files.every(f => f.includes('test') || f.includes('spec'));
     const allDocs = files.every(f => f.endsWith('.md') || f.endsWith('.txt'));
@@ -401,7 +538,6 @@ export class GitService {
       type = 'chore';
     }
 
-    // Determine scope from common parent directory
     const parentDirs = files.map(f => {
       const parts = f.split('/');
       return parts.length > 1 ? parts[parts.length - 2] : '';
@@ -416,7 +552,6 @@ export class GitService {
       scope = [...dirCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
     }
 
-    // Build description
     let description: string;
     if (files.length === 1) {
       const fileName = files[0].split('/').pop() || files[0];

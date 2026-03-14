@@ -15,6 +15,16 @@ export function buildSpecFilePath(specId: string, relativePath: string): string 
 }
 
 /**
+ * Builds the full relative path for a file within the backlog folder.
+ *
+ * @param filename - The filename (e.g., "bug-2026-01-31-001-title.md")
+ * @returns The full relative path (e.g., "specwright/backlog/bug-2026-01-31-001-title.md")
+ */
+export function buildBacklogFilePath(filename: string): string {
+  return `specwright/backlog/${filename}`;
+}
+
+/**
  * Copies a path string to the clipboard and provides visual feedback on the button.
  * Adds a "copy-path--copied" CSS class for 2 seconds.
  *

@@ -27,6 +27,7 @@ export interface BacklogStoryInfo {
   // UKB-003: Added for StoryInfo compatibility
   dorComplete: boolean;
   dependencies: string[];
+  file?: string;
   attachmentCount?: number;
   assignedToBot?: boolean;
 }
@@ -232,6 +233,7 @@ export class BacklogReader {
           // UKB-003: Added for StoryInfo compatibility
           dorComplete: true, // Backlog items don't have DoR concept, always true
           dependencies: [], // Backlog items don't have dependencies
+          file: item.file || item.storyFile,
           assignedToBot: item.assignedToBot?.assigned ?? false,
         });
       }
@@ -294,7 +296,8 @@ export class BacklogReader {
         model: 'opus', // Default model
         // UKB-003: Added for StoryInfo compatibility
         dorComplete: true, // Backlog items don't have DoR concept, always true
-        dependencies: [] // Backlog items don't have dependencies
+        dependencies: [], // Backlog items don't have dependencies
+        file: item.filename,
       });
     }
 

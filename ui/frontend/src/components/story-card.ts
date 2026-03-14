@@ -2,7 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './story-status-badge.js';
 import type { StoryStatus } from './story-status-badge.js';
-import { buildSpecFilePath, copyPathToClipboard } from '../utils/copy-path.js';
+import { buildSpecFilePath, buildBacklogFilePath, copyPathToClipboard } from '../utils/copy-path.js';
 
 export type WorkflowStatus = 'idle' | 'working' | 'success' | 'error';
 export type ModelSelection = string; // Dynamic model ID (e.g., 'opus', 'sonnet', 'glm-5')
@@ -474,8 +474,15 @@ export class AosStoryCard extends LitElement {
 
   private async handleCopyPath(e: Event): Promise<void> {
     e.stopPropagation();
-    if (!this.story.file || !this.specId) return;
-    const path = buildSpecFilePath(this.specId, this.story.file);
+    let path: string;
+    if (this.isBacklogMode) {
+      path = this.story.file
+        ? buildBacklogFilePath(this.story.file)
+        : this.story.id;
+    } else {
+      if (!this.story.file) return;
+      path = buildSpecFilePath(this.specId, this.story.file);
+    }
     const button = e.currentTarget as HTMLElement;
     this.copied = true;
     await copyPathToClipboard(path, button);
@@ -620,10 +627,10 @@ export class AosStoryCard extends LitElement {
       >
         <div class="story-header">
           <span class="story-id">${this.story.id}</span>
-          ${this.story.file ? html`
+          ${this.story.file || this.isBacklogMode ? html`
             <button
               class="copy-path-btn ${this.copied ? 'copied' : ''}"
-              title="Copy file path"
+              title="${this.isBacklogMode ? 'Copy item ID' : 'Copy file path'}"
               @click=${this.handleCopyPath}
             >
               ${this.copied

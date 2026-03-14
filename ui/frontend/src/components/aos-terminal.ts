@@ -252,14 +252,29 @@ export class AosTerminal extends LitElement {
     // Fit terminal to container
     this.fitAddon.fit();
 
-    // Shift+Enter → send newline to PTY (cloud mode only)
+    // Custom key event handler for terminal shortcuts.
     // attachCustomKeyEventHandler is called for ALL event types: keydown, keypress, keyup.
-    // We must return false for ALL of them to fully block xterm from processing
-    // Shift+Enter. Previously, only keydown was blocked, but the keypress event
-    // leaked through, causing xterm to also send '\r' (Enter/submit) to the PTY.
-    // We also call preventDefault() to stop the browser from inserting into the
-    // hidden textarea, which could trigger additional input events.
+    // Returning false blocks xterm from processing the event.
     this.terminal.attachCustomKeyEventHandler((event) => {
+      // Intercept Cmd/Ctrl+C to clean up selection before copying.
+      // xterm.js handles copy internally on a hidden textarea, so a normal
+      // 'copy' event listener on the container never fires. We bypass xterm's
+      // copy entirely by writing to the clipboard API ourselves.
+      if (event.key === 'c' && (event.metaKey || event.ctrlKey) && !event.shiftKey && event.type === 'keydown') {
+        if (this.terminal?.hasSelection()) {
+          const cleaned = this._cleanSelection();
+          if (cleaned) {
+            navigator.clipboard.writeText(cleaned);
+            this.terminal.clearSelection();
+            return false; // Block xterm's copy
+          }
+        }
+        // No selection → let xterm handle (sends SIGINT / \x03)
+      }
+
+      // Shift+Enter → send newline to PTY (cloud mode only)
+      // Must return false for ALL event types (keydown, keypress, keyup) to fully
+      // block xterm. Previously only keydown was blocked, but keypress leaked through.
       if (this.cloudMode && event.key === 'Enter' && event.shiftKey) {
         if (event.type === 'keydown') {
           event.preventDefault();
@@ -270,8 +285,9 @@ export class AosTerminal extends LitElement {
             timestamp: new Date().toISOString(),
           });
         }
-        return false; // Block ALL Shift+Enter events (keydown, keypress, keyup)
+        return false; // Block ALL Shift+Enter events
       }
+
       return true; // Let xterm handle all other keys
     });
 
@@ -380,6 +396,46 @@ export class AosTerminal extends LitElement {
    * - Explicit input prompts (Enter X:, Password:, etc.)
    * - Yes/No confirmation prompts
    */
+  /**
+   * Clean terminal selection for clipboard:
+   * 1. Trim trailing whitespace that xterm.js pads to fill each row
+   * 2. Rejoin visually-wrapped lines into their original logical lines
+   *    using the buffer's isWrapped flag
+   */
+  private _cleanSelection(): string {
+    if (!this.terminal) return '';
+    const selection = this.terminal.getSelection();
+    if (!selection) return '';
+
+    const selPos = this.terminal.getSelectionPosition();
+    if (!selPos) {
+      return selection.split('\n').map(line => line.trimEnd()).join('\n');
+    }
+
+    const buffer = this.terminal.buffer.active;
+    const visualLines = selection.split('\n');
+    const logicalLines: string[] = [];
+    let currentLine = '';
+
+    for (let i = 0; i < visualLines.length; i++) {
+      const bufferRow = selPos.start.y + i;
+      const bufferLine = buffer.getLine(bufferRow);
+      const isWrapped = bufferLine?.isWrapped ?? false;
+
+      if (i === 0 || !isWrapped) {
+        if (i > 0) {
+          logicalLines.push(currentLine.trimEnd());
+        }
+        currentLine = visualLines[i];
+      } else {
+        currentLine += visualLines[i];
+      }
+    }
+    logicalLines.push(currentLine.trimEnd());
+
+    return logicalLines.join('\n');
+  }
+
   private _detectInputNeeded(data: string): void {
     // Strip ANSI escape codes for pattern matching
     // eslint-disable-next-line no-control-regex
