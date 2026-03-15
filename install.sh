@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.12.0"
+FRAMEWORK_VERSION="3.13.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -1002,6 +1002,26 @@ INSERT OR IGNORE INTO memory_tags (name, description) VALUES ('dependency', 'Ext
 INSERT OR IGNORE INTO memory_tags (name, description) VALUES ('workflow', 'Development workflows and processes');
 INSERT OR IGNORE INTO memory_tags (name, description) VALUES ('domain', 'Domain-specific business logic');
 SQLEOF
+
+    # v2 schema migration (each ALTER TABLE in its own call to suppress duplicate column errors)
+    sqlite3 "$db_path" "ALTER TABLE memory_entries ADD COLUMN importance TEXT DEFAULT 'operational';" 2>/dev/null || true
+    sqlite3 "$db_path" "ALTER TABLE memory_entries ADD COLUMN archived_at TEXT DEFAULT NULL;" 2>/dev/null || true
+    sqlite3 "$db_path" "ALTER TABLE memory_entries ADD COLUMN access_count INTEGER DEFAULT 0;" 2>/dev/null || true
+    sqlite3 "$db_path" "ALTER TABLE memory_entries ADD COLUMN last_accessed_at TEXT DEFAULT NULL;" 2>/dev/null || true
+
+    sqlite3 "$db_path" << 'SQLV2'
+CREATE TABLE IF NOT EXISTS memory_relations (
+  source_id INTEGER NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
+  target_id INTEGER NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
+  relation_type TEXT NOT NULL DEFAULT 'related',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (source_id, target_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_entries_archived ON memory_entries(archived_at);
+CREATE INDEX IF NOT EXISTS idx_memory_entries_importance ON memory_entries(importance);
+CREATE INDEX IF NOT EXISTS idx_memory_relations_target ON memory_relations(target_id);
+SQLV2
 }
 
 install_mcp() {
@@ -1166,10 +1186,12 @@ install_claude_code() {
         mkdir -p .claude/agents
         mkdir -p .claude/skills/review-implementation-plan
         mkdir -p .claude/skills/save-memory
+        mkdir -p .claude/skills/recall-memory
+        mkdir -p .claude/skills/manage-memory
     fi
 
-    # Commands (37)
-    substep "Commands" "37"
+    # Commands (39)
+    substep "Commands" "39"
     local command_files=(
         plan-product.md plan-platform.md
         create-spec.md change-spec.md
@@ -1188,6 +1210,8 @@ install_claude_code() {
         create-instagram-account.md create-content-plan.md
         check-update.md
         save-memory.md
+        recall-memory.md
+        manage-memory.md
     )
     for f in "${command_files[@]}"; do
         download_file "$REPO_URL/.claude/commands/specwright/$f" ".claude/commands/specwright/$f" "command"
@@ -1208,10 +1232,12 @@ install_claude_code() {
     done
     substep_done
 
-    # Skills (2)
-    substep "Skills" "2"
+    # Skills (4)
+    substep "Skills" "4"
     download_file "$REPO_URL/.claude/skills/review-implementation-plan/SKILL.md" ".claude/skills/review-implementation-plan/SKILL.md" "command"
     download_file "$REPO_URL/specwright/templates/skills/save-memory/SKILL.md" ".claude/skills/save-memory/SKILL.md" "command"
+    download_file "$REPO_URL/specwright/templates/skills/recall-memory/SKILL.md" ".claude/skills/recall-memory/SKILL.md" "command"
+    download_file "$REPO_URL/specwright/templates/skills/manage-memory/SKILL.md" ".claude/skills/manage-memory/SKILL.md" "command"
     substep_done
 
 }

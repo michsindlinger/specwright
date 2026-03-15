@@ -126,6 +126,8 @@ command_files=(
 
     # Memory
     "save-memory.md"
+    "recall-memory.md"
+    "manage-memory.md"
 )
 
 for file in "${command_files[@]}"; do
@@ -141,9 +143,13 @@ echo "=== Installing Skills ==="
 
 mkdir -p .claude/skills/review-implementation-plan
 mkdir -p .claude/skills/save-memory
+mkdir -p .claude/skills/recall-memory
+mkdir -p .claude/skills/manage-memory
 
 download_file "$REPO_URL/.claude/skills/review-implementation-plan/SKILL.md" ".claude/skills/review-implementation-plan/SKILL.md"
 download_file "$REPO_URL/specwright/templates/skills/save-memory/SKILL.md" ".claude/skills/save-memory/SKILL.md"
+download_file "$REPO_URL/specwright/templates/skills/recall-memory/SKILL.md" ".claude/skills/recall-memory/SKILL.md"
+download_file "$REPO_URL/specwright/templates/skills/manage-memory/SKILL.md" ".claude/skills/manage-memory/SKILL.md"
 
 # ===============================================================
 # AGENTS - Utility Agents
@@ -255,6 +261,8 @@ echo "    /review-implementation-plan -> Review implementation plans"
 echo ""
 echo "  Memory:"
 echo "    /save-memory                -> Save session knowledge to Memory DB"
+echo "    /recall-memory              -> Browse and recall stored memories"
+echo "    /manage-memory              -> Housekeeping: archive, update, delete memories"
 echo ""
 # ===============================================================
 # UI SKILLS (optional, with --with-ui flag)

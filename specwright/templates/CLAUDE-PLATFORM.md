@@ -133,6 +133,33 @@ Check `specwright/product/roadmap/platform-roadmap.md` for phase ordering.
 5. **Documentation:**
    - `/retroactive-doc` → Documents existing features
 
+6. **Memory (Cross-Session Knowledge):**
+   - `/save-memory` → Save session knowledge to persistent Memory DB
+   - `/recall-memory` → Browse, search, and recall stored memories
+   - `/manage-memory` → Housekeeping: archive, update, delete memories
+
+## Memory System
+
+Specwright includes a persistent Memory DB (`~/.specwright/memory.db`) for cross-session knowledge retention.
+
+**When to use:**
+- End of productive session: `/save-memory` to persist decisions, patterns, learnings
+- Start of new session: `/recall-memory` to load relevant context from previous work
+- Periodically: `/manage-memory` to archive stale entries and maintain memory health
+
+**Importance Levels:**
+- `strategic` — Long-lived: architecture decisions, domain knowledge, business rules
+- `operational` — Medium-term: project decisions, current patterns (default)
+- `tactical` — Short-lived: debugging notes, session-specific findings
+
+**MCP Tools (available directly):**
+- `memory_store` — Save with upsert logic + importance level
+- `memory_search` — Full-text search (FTS5)
+- `memory_recall` — Browse by ID/topic/tag, `format: 'context'` for compact LLM injection
+- `memory_update` — Partial update of existing entries
+- `memory_delete` — Archive (soft) or permanent delete
+- `memory_stats` — System health overview
+
 **Directory Structure:**
 ```
 specwright/

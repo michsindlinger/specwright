@@ -184,6 +184,11 @@ specwright/                          # Repository root
 # Market Validation
 /validate-market         # Validate new product ideas
 /validate-market-for-existing  # Validate existing products
+
+# Memory (Cross-Session Knowledge)
+/save-memory             # Save session knowledge to Memory DB
+/recall-memory           # Browse and recall stored memories
+/manage-memory           # Housekeeping: archive, update, delete memories
 ```
 
 ## Quality Requirements

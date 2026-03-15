@@ -24,6 +24,9 @@
  * - memory_search: Full-text search across memory entries
  * - memory_recall: Recall memory entries by ID, topic, or tag
  * - memory_list_tags: List all available memory tags
+ * - memory_update: Update an existing memory entry
+ * - memory_delete: Archive or permanently delete a memory entry
+ * - memory_stats: Memory system statistics for housekeeping
  * - document_preview_open: Open a document in the preview panel
  * - document_preview_close: Close the document preview panel
  */
@@ -51,7 +54,11 @@ import {
   type FixItemData,
   type TodoItemData
 } from './item-templates.js';
-import { memoryStore, memorySearch, memoryRecall, memoryListTags } from './memory-store.js';
+import {
+  memoryStore, memorySearch, memoryRecall, memoryListTags,
+  memoryUpdate, memoryDelete, memoryStats, memoryContextSummary,
+  type MemoryUpdateArgs, type MemoryDeleteArgs,
+} from './memory-store.js';
 
 // ============================================================================
 // Kanban JSON v1.0 TypeScript Interfaces
@@ -541,7 +548,8 @@ const TOOLS: Tool[] = [
           description: 'Tags for categorization (at least one required). Auto-creates new tags if needed.'
         },
         project_id: { type: 'string', description: 'Optional project ID for project-specific knowledge. Null = global knowledge.' },
-        source: { type: 'string', description: 'Optional source identifier (e.g., "save-memory-skill", "code-review")' }
+        source: { type: 'string', description: 'Optional source identifier (e.g., "save-memory-skill", "code-review")' },
+        importance: { type: 'string', enum: ['tactical', 'operational', 'strategic'], description: 'Importance level (default: operational). tactical=short-lived, operational=medium-term, strategic=long-lived.' }
       },
       required: ['topic', 'summary', 'tags']
     }
@@ -559,7 +567,9 @@ const TOOLS: Tool[] = [
           description: 'Optional tag filter - only return entries with these tags'
         },
         project_id: { type: 'string', description: 'Optional project filter. Also includes global (null project_id) entries.' },
-        limit: { type: 'number', description: 'Max results to return (default: 20)' }
+        limit: { type: 'number', description: 'Max results to return (default: 20)' },
+        include_archived: { type: 'boolean', description: 'Include archived entries (default: false)' },
+        importance: { type: 'string', enum: ['tactical', 'operational', 'strategic'], description: 'Filter by importance level' }
       },
       required: ['query']
     }
@@ -574,13 +584,54 @@ const TOOLS: Tool[] = [
         topic: { type: 'string', description: 'Filter by topic (partial match with LIKE)' },
         tag: { type: 'string', description: 'Filter by tag name (exact match)' },
         project_id: { type: 'string', description: 'Optional project filter' },
-        limit: { type: 'number', description: 'Max results to return (default: 20)' }
+        limit: { type: 'number', description: 'Max results to return (default: 20)' },
+        include_archived: { type: 'boolean', description: 'Include archived entries (default: false)' },
+        importance: { type: 'string', enum: ['tactical', 'operational', 'strategic'], description: 'Filter by importance level' },
+        format: { type: 'string', enum: ['json', 'context'], description: 'Output format. json=structured data (default), context=compact markdown for LLM injection' }
       }
     }
   },
   {
     name: 'memory_list_tags',
     description: 'List all available memory tags with entry counts. Use to discover existing tags before storing or searching.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+  {
+    name: 'memory_update',
+    description: 'Update an existing memory entry. Only provided fields are modified. Tags are fully replaced if provided.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'ID of the memory entry to update' },
+        topic: { type: 'string' },
+        summary: { type: 'string' },
+        details: { type: 'string', description: 'Replaces existing details (not append)' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Replaces ALL existing tags' },
+        importance: { type: 'string', enum: ['tactical', 'operational', 'strategic'] },
+        project_id: { type: 'string' },
+        related_to: { type: 'array', items: { type: 'number' }, description: 'Entry IDs to link as related' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'memory_delete',
+    description: 'Archive or permanently delete a memory entry. Default: archive (recoverable). permanent=true for hard delete.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'ID of the entry to delete/archive' },
+        permanent: { type: 'boolean', description: 'true = permanent delete, false/omit = archive (default)' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'memory_stats',
+    description: 'Memory system statistics: counts by importance/tag, most accessed, stale entries. For housekeeping.',
     inputSchema: {
       type: 'object',
       properties: {}
@@ -732,6 +783,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           tags: string[];
           project_id?: string | null;
           source?: string | null;
+          importance?: 'tactical' | 'operational' | 'strategic';
         });
         return {
           content: [{ type: 'text', text: JSON.stringify(result) }]
@@ -744,6 +796,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           tags?: string[];
           project_id?: string | null;
           limit?: number;
+          include_archived?: boolean;
+          importance?: string;
         });
         return {
           content: [{ type: 'text', text: JSON.stringify(results) }]
@@ -751,13 +805,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'memory_recall': {
-        const results = memoryRecall(args as {
+        const recallArgs = args as {
           id?: number;
           topic?: string;
           tag?: string;
           project_id?: string | null;
           limit?: number;
-        });
+          include_archived?: boolean;
+          importance?: string;
+          format?: 'json' | 'context';
+        };
+        if (recallArgs.format === 'context') {
+          const contextText = memoryContextSummary({
+            project_id: recallArgs.project_id ?? undefined,
+            tags: recallArgs.tag ? [recallArgs.tag] : undefined,
+            limit: recallArgs.limit,
+          });
+          return {
+            content: [{ type: 'text', text: contextText }]
+          };
+        }
+        const results = memoryRecall(recallArgs);
         return {
           content: [{ type: 'text', text: JSON.stringify(results) }]
         };
@@ -767,6 +835,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const tags = memoryListTags();
         return {
           content: [{ type: 'text', text: JSON.stringify(tags) }]
+        };
+      }
+
+      case 'memory_update': {
+        const result = memoryUpdate(args as MemoryUpdateArgs);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }]
+        };
+      }
+
+      case 'memory_delete': {
+        const result = memoryDelete(args as MemoryDeleteArgs);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }]
+        };
+      }
+
+      case 'memory_stats': {
+        const result = memoryStats();
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
         };
       }
 

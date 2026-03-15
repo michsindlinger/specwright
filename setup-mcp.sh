@@ -227,6 +227,27 @@ INSERT OR IGNORE INTO memory_tags (name, description) VALUES ('dependency', 'Ext
 INSERT OR IGNORE INTO memory_tags (name, description) VALUES ('workflow', 'Development workflows and processes');
 INSERT OR IGNORE INTO memory_tags (name, description) VALUES ('domain', 'Domain-specific business logic');
 MEMSQL
+
+        # v2 schema migration (each ALTER TABLE separately to suppress duplicate column errors)
+        sqlite3 "$db_path" "ALTER TABLE memory_entries ADD COLUMN importance TEXT DEFAULT 'operational';" 2>/dev/null || true
+        sqlite3 "$db_path" "ALTER TABLE memory_entries ADD COLUMN archived_at TEXT DEFAULT NULL;" 2>/dev/null || true
+        sqlite3 "$db_path" "ALTER TABLE memory_entries ADD COLUMN access_count INTEGER DEFAULT 0;" 2>/dev/null || true
+        sqlite3 "$db_path" "ALTER TABLE memory_entries ADD COLUMN last_accessed_at TEXT DEFAULT NULL;" 2>/dev/null || true
+
+        sqlite3 "$db_path" <<'MEMSQLV2'
+CREATE TABLE IF NOT EXISTS memory_relations (
+  source_id INTEGER NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
+  target_id INTEGER NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
+  relation_type TEXT NOT NULL DEFAULT 'related',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (source_id, target_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_entries_archived ON memory_entries(archived_at);
+CREATE INDEX IF NOT EXISTS idx_memory_entries_importance ON memory_entries(importance);
+CREATE INDEX IF NOT EXISTS idx_memory_relations_target ON memory_relations(target_id);
+MEMSQLV2
+
         echo "   ✅ Memory DB created via sqlite3 CLI"
     else
         echo "   ⚠️  sqlite3 not found, memory DB will be created on first use"
@@ -275,6 +296,9 @@ echo "   • memory_store - Store knowledge with upsert logic"
 echo "   • memory_search - Full-text search across memories"
 echo "   • memory_recall - Recall by ID, topic, or tag"
 echo "   • memory_list_tags - List available tags"
+echo "   • memory_update - Update existing memory entries"
+echo "   • memory_delete - Archive or permanently delete entries"
+echo "   • memory_stats - Memory system statistics"
 echo ""
 echo "🎯 Purpose: Prevents JSON corruption from race conditions when"
 echo "   multiple Claude sessions or the web UI access kanban.json simultaneously."

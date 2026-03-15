@@ -3,7 +3,8 @@
  *
  * Persistent knowledge storage using SQLite with FTS5 full-text search.
  * Provides CRUD operations for memory entries with tag-based organization,
- * upsert logic (summary replace + details append), and full-text search.
+ * upsert logic (summary replace + details append), full-text search,
+ * importance levels, archiving, access tracking, and relations.
  *
  * DB location: ~/.specwright/memory.db
  */
@@ -17,6 +18,8 @@ import { existsSync, mkdirSync } from 'fs';
 // TypeScript Interfaces
 // ============================================================================
 
+export type ImportanceLevel = 'tactical' | 'operational' | 'strategic';
+
 export interface MemoryEntry {
   id: number;
   project_id: string | null;
@@ -24,6 +27,10 @@ export interface MemoryEntry {
   summary: string;
   details: string | null;
   source: string | null;
+  importance: ImportanceLevel;
+  archived_at: string | null;
+  access_count: number;
+  last_accessed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +49,7 @@ export interface MemoryStoreArgs {
   tags: string[];
   project_id?: string | null;
   source?: string | null;
+  importance?: ImportanceLevel;
 }
 
 export interface MemorySearchArgs {
@@ -49,6 +57,8 @@ export interface MemorySearchArgs {
   tags?: string[];
   project_id?: string | null;
   limit?: number;
+  include_archived?: boolean;
+  importance?: string;
 }
 
 export interface MemoryRecallArgs {
@@ -57,6 +67,34 @@ export interface MemoryRecallArgs {
   tag?: string;
   project_id?: string | null;
   limit?: number;
+  include_archived?: boolean;
+  importance?: string;
+}
+
+export interface MemoryUpdateArgs {
+  id: number;
+  topic?: string;
+  summary?: string;
+  details?: string;
+  tags?: string[];
+  importance?: ImportanceLevel;
+  project_id?: string | null;
+  related_to?: number[];
+}
+
+export interface MemoryDeleteArgs {
+  id: number;
+  permanent?: boolean;
+}
+
+export interface MemoryStatsResult {
+  total_entries: number;
+  active_entries: number;
+  archived_entries: number;
+  by_importance: { tactical: number; operational: number; strategic: number };
+  by_tag: Array<{ tag: string; count: number }>;
+  most_accessed: Array<{ id: number; topic: string; access_count: number }>;
+  stale_entries: number;
 }
 
 export interface MemorySearchResult {
@@ -66,10 +104,15 @@ export interface MemorySearchResult {
   summary: string;
   details: string | null;
   source: string | null;
+  importance: ImportanceLevel;
+  archived_at: string | null;
+  access_count: number;
+  last_accessed_at: string | null;
   tags: string[];
   created_at: string;
   updated_at: string;
   rank?: number;
+  related_entries?: Array<{ id: number; topic: string; relation_type: string }>;
 }
 
 // ============================================================================
@@ -137,6 +180,35 @@ function initSchema(database: Database.Database): void {
       ON memory_entries(created_at);
   `);
 
+  // v2 schema migration: new columns (idempotent via try/catch)
+  const alterStatements = [
+    "ALTER TABLE memory_entries ADD COLUMN importance TEXT DEFAULT 'operational'",
+    'ALTER TABLE memory_entries ADD COLUMN archived_at TEXT DEFAULT NULL',
+    'ALTER TABLE memory_entries ADD COLUMN access_count INTEGER DEFAULT 0',
+    'ALTER TABLE memory_entries ADD COLUMN last_accessed_at TEXT DEFAULT NULL',
+  ];
+  for (const stmt of alterStatements) {
+    try { database.exec(stmt); } catch { /* column already exists */ }
+  }
+
+  // v2 schema: memory_relations table
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS memory_relations (
+      source_id INTEGER NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
+      target_id INTEGER NOT NULL REFERENCES memory_entries(id) ON DELETE CASCADE,
+      relation_type TEXT NOT NULL DEFAULT 'related',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (source_id, target_id)
+    );
+  `);
+
+  // v2 indexes
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_memory_entries_archived ON memory_entries(archived_at);
+    CREATE INDEX IF NOT EXISTS idx_memory_entries_importance ON memory_entries(importance);
+    CREATE INDEX IF NOT EXISTS idx_memory_relations_target ON memory_relations(target_id);
+  `);
+
   // FTS5 virtual table for full-text search (content-sync with memory_entries)
   // Use IF NOT EXISTS via checking sqlite_master
   const ftsExists = database.prepare(
@@ -177,6 +249,18 @@ function initSchema(database: Database.Database): void {
 }
 
 // ============================================================================
+// Importance Validation
+// ============================================================================
+
+const VALID_IMPORTANCE: ImportanceLevel[] = ['tactical', 'operational', 'strategic'];
+
+function validateImportance(value: string | undefined): ImportanceLevel {
+  if (!value) return 'operational';
+  if (VALID_IMPORTANCE.includes(value as ImportanceLevel)) return value as ImportanceLevel;
+  throw new Error(`Invalid importance level: "${value}". Must be one of: ${VALID_IMPORTANCE.join(', ')}`);
+}
+
+// ============================================================================
 // Exported Functions
 // ============================================================================
 
@@ -198,7 +282,12 @@ export function initMemoryDb(): { success: boolean; path: string } {
  */
 export function memoryStore(args: MemoryStoreArgs): MemorySearchResult {
   const database = getDb();
-  const { topic, summary, details, tags, project_id = null, source = null } = args;
+  const {
+    topic, summary, details, tags,
+    project_id = null, source = null,
+    importance: rawImportance
+  } = args;
+  const importance = validateImportance(rawImportance);
 
   // Resolve tag IDs (create if not existing)
   const tagIds = resolveTagIds(database, tags);
@@ -232,9 +321,9 @@ export function memoryStore(args: MemoryStoreArgs): MemorySearchResult {
 
     database.prepare(`
       UPDATE memory_entries
-      SET summary = ?, details = ?, source = ?, updated_at = datetime('now')
+      SET summary = ?, details = ?, source = ?, importance = ?, updated_at = datetime('now')
       WHERE id = ?
-    `).run(summary, newDetails, source, existingEntry.id);
+    `).run(summary, newDetails, source, importance, existingEntry.id);
 
     entryId = existingEntry.id;
 
@@ -248,9 +337,9 @@ export function memoryStore(args: MemoryStoreArgs): MemorySearchResult {
   } else {
     // Insert new entry
     const result = database.prepare(`
-      INSERT INTO memory_entries (project_id, topic, summary, details, source)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(project_id, topic, summary, details ?? null, source);
+      INSERT INTO memory_entries (project_id, topic, summary, details, source, importance)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(project_id, topic, summary, details ?? null, source, importance);
 
     entryId = Number(result.lastInsertRowid);
 
@@ -275,7 +364,10 @@ export function memoryStore(args: MemoryStoreArgs): MemorySearchResult {
  */
 export function memorySearch(args: MemorySearchArgs): MemorySearchResult[] {
   const database = getDb();
-  const { query, tags, project_id, limit = 20 } = args;
+  const {
+    query, tags, project_id, limit = 20,
+    include_archived = false, importance
+  } = args;
 
   let sql: string;
   const params: unknown[] = [];
@@ -284,7 +376,8 @@ export function memorySearch(args: MemorySearchArgs): MemorySearchResult[] {
     // Search with tag filter
     sql = `
       SELECT DISTINCT e.id, e.project_id, e.topic, e.summary, e.details,
-             e.source, e.created_at, e.updated_at, f.rank
+             e.source, e.importance, e.archived_at, e.access_count,
+             e.last_accessed_at, e.created_at, e.updated_at, f.rank
       FROM memory_fts f
       JOIN memory_entries e ON e.id = f.rowid
       JOIN memory_entry_tags et ON et.entry_id = e.id
@@ -293,6 +386,15 @@ export function memorySearch(args: MemorySearchArgs): MemorySearchResult[] {
         AND t.name IN (${tags.map(() => '?').join(',')})
     `;
     params.push(query, ...tags);
+
+    if (!include_archived) {
+      sql += ' AND e.archived_at IS NULL';
+    }
+
+    if (importance) {
+      sql += ' AND e.importance = ?';
+      params.push(importance);
+    }
 
     if (project_id !== undefined) {
       sql += ' AND (e.project_id IS ? OR e.project_id IS NULL)';
@@ -305,12 +407,22 @@ export function memorySearch(args: MemorySearchArgs): MemorySearchResult[] {
     // Search without tag filter
     sql = `
       SELECT e.id, e.project_id, e.topic, e.summary, e.details,
-             e.source, e.created_at, e.updated_at, f.rank
+             e.source, e.importance, e.archived_at, e.access_count,
+             e.last_accessed_at, e.created_at, e.updated_at, f.rank
       FROM memory_fts f
       JOIN memory_entries e ON e.id = f.rowid
       WHERE memory_fts MATCH ?
     `;
     params.push(query);
+
+    if (!include_archived) {
+      sql += ' AND e.archived_at IS NULL';
+    }
+
+    if (importance) {
+      sql += ' AND e.importance = ?';
+      params.push(importance);
+    }
 
     if (project_id !== undefined) {
       sql += ' AND (e.project_id IS ? OR e.project_id IS NULL)';
@@ -326,10 +438,15 @@ export function memorySearch(args: MemorySearchArgs): MemorySearchResult[] {
       MemoryEntry & { rank: number }
     >;
 
-    return rows.map((row) => ({
+    const results = rows.map((row) => ({
       ...row,
       tags: getTagsForEntry(database, row.id),
     }));
+
+    // Track access for returned entries
+    trackAccess(database, results.map((r) => r.id));
+
+    return results;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('fts5')) {
@@ -346,10 +463,14 @@ export function memorySearch(args: MemorySearchArgs): MemorySearchResult[] {
  */
 export function memoryRecall(args: MemoryRecallArgs): MemorySearchResult[] {
   const database = getDb();
-  const { id, topic, tag, project_id, limit = 20 } = args;
+  const {
+    id, topic, tag, project_id, limit = 20,
+    include_archived = false, importance
+  } = args;
 
   if (id) {
     const entry = getEntryWithTags(database, id);
+    if (entry) trackAccess(database, [entry.id]);
     return entry ? [entry] : [];
   }
 
@@ -359,7 +480,8 @@ export function memoryRecall(args: MemoryRecallArgs): MemorySearchResult[] {
   if (topic && tag) {
     sql = `
       SELECT DISTINCT e.id, e.project_id, e.topic, e.summary, e.details,
-             e.source, e.created_at, e.updated_at
+             e.source, e.importance, e.archived_at, e.access_count,
+             e.last_accessed_at, e.created_at, e.updated_at
       FROM memory_entries e
       JOIN memory_entry_tags et ON et.entry_id = e.id
       JOIN memory_tags t ON t.id = et.tag_id
@@ -369,7 +491,8 @@ export function memoryRecall(args: MemoryRecallArgs): MemorySearchResult[] {
   } else if (topic) {
     sql = `
       SELECT e.id, e.project_id, e.topic, e.summary, e.details,
-             e.source, e.created_at, e.updated_at
+             e.source, e.importance, e.archived_at, e.access_count,
+             e.last_accessed_at, e.created_at, e.updated_at
       FROM memory_entries e
       WHERE e.topic LIKE ?
     `;
@@ -377,7 +500,8 @@ export function memoryRecall(args: MemoryRecallArgs): MemorySearchResult[] {
   } else if (tag) {
     sql = `
       SELECT DISTINCT e.id, e.project_id, e.topic, e.summary, e.details,
-             e.source, e.created_at, e.updated_at
+             e.source, e.importance, e.archived_at, e.access_count,
+             e.last_accessed_at, e.created_at, e.updated_at
       FROM memory_entries e
       JOIN memory_entry_tags et ON et.entry_id = e.id
       JOIN memory_tags t ON t.id = et.tag_id
@@ -388,13 +512,25 @@ export function memoryRecall(args: MemoryRecallArgs): MemorySearchResult[] {
     // No filters - return recent entries
     sql = `
       SELECT e.id, e.project_id, e.topic, e.summary, e.details,
-             e.source, e.created_at, e.updated_at
+             e.source, e.importance, e.archived_at, e.access_count,
+             e.last_accessed_at, e.created_at, e.updated_at
       FROM memory_entries e
     `;
   }
 
-  if (project_id !== undefined) {
+  if (!include_archived) {
     sql += params.length > 0 ? ' AND' : ' WHERE';
+    sql += ' e.archived_at IS NULL';
+  }
+
+  if (importance) {
+    sql += (params.length > 0 || !include_archived) ? ' AND' : ' WHERE';
+    sql += ' e.importance = ?';
+    params.push(importance);
+  }
+
+  if (project_id !== undefined) {
+    sql += (params.length > 0 || !include_archived || importance) ? ' AND' : ' WHERE';
     sql += ' (e.project_id IS ? OR e.project_id IS NULL)';
     params.push(project_id);
   }
@@ -404,10 +540,296 @@ export function memoryRecall(args: MemoryRecallArgs): MemorySearchResult[] {
 
   const rows = database.prepare(sql).all(...params) as MemoryEntry[];
 
-  return rows.map((row) => ({
+  const results = rows.map((row) => ({
     ...row,
     tags: getTagsForEntry(database, row.id),
   }));
+
+  // Track access for returned entries
+  trackAccess(database, results.map((r) => r.id));
+
+  return results;
+}
+
+/**
+ * Update an existing memory entry. Only provided fields are modified.
+ */
+export function memoryUpdate(args: MemoryUpdateArgs): MemorySearchResult {
+  const database = getDb();
+  const { id, topic, summary, details, tags, importance: rawImportance, project_id, related_to } = args;
+
+  // Verify entry exists
+  const existing = database.prepare('SELECT id FROM memory_entries WHERE id = ?').get(id) as { id: number } | undefined;
+  if (!existing) {
+    throw new Error(`Memory entry not found: id=${id}`);
+  }
+
+  // Build dynamic UPDATE
+  const setClauses: string[] = [];
+  const updateParams: unknown[] = [];
+
+  if (topic !== undefined) {
+    setClauses.push('topic = ?');
+    updateParams.push(topic);
+  }
+  if (summary !== undefined) {
+    setClauses.push('summary = ?');
+    updateParams.push(summary);
+  }
+  if (details !== undefined) {
+    setClauses.push('details = ?');
+    updateParams.push(details);
+  }
+  if (rawImportance !== undefined) {
+    const importance = validateImportance(rawImportance);
+    setClauses.push('importance = ?');
+    updateParams.push(importance);
+  }
+  if (project_id !== undefined) {
+    setClauses.push('project_id = ?');
+    updateParams.push(project_id);
+  }
+
+  if (setClauses.length > 0) {
+    setClauses.push("updated_at = datetime('now')");
+    updateParams.push(id);
+    database.prepare(
+      `UPDATE memory_entries SET ${setClauses.join(', ')} WHERE id = ?`
+    ).run(...updateParams);
+  }
+
+  // Replace tags if provided
+  if (tags !== undefined) {
+    const tagIds = resolveTagIds(database, tags);
+    database.prepare('DELETE FROM memory_entry_tags WHERE entry_id = ?').run(id);
+    for (const tagId of tagIds) {
+      database.prepare(
+        'INSERT INTO memory_entry_tags (entry_id, tag_id) VALUES (?, ?)'
+      ).run(id, tagId);
+    }
+  }
+
+  // Create relations if provided
+  if (related_to && related_to.length > 0) {
+    for (const targetId of related_to) {
+      // Verify target exists
+      const target = database.prepare('SELECT id FROM memory_entries WHERE id = ?').get(targetId);
+      if (target) {
+        database.prepare(
+          "INSERT OR IGNORE INTO memory_relations (source_id, target_id, relation_type) VALUES (?, ?, 'related')"
+        ).run(id, targetId);
+      }
+    }
+  }
+
+  const result = getEntryWithTags(database, id);
+  if (!result) {
+    throw new Error(`Failed to retrieve entry after update: id=${id}`);
+  }
+  return result;
+}
+
+/**
+ * Archive or permanently delete a memory entry.
+ */
+export function memoryDelete(args: MemoryDeleteArgs): { success: boolean; action: 'archived' | 'deleted' } {
+  const database = getDb();
+  const { id, permanent = false } = args;
+
+  // Verify entry exists
+  const existing = database.prepare('SELECT id FROM memory_entries WHERE id = ?').get(id) as { id: number } | undefined;
+  if (!existing) {
+    throw new Error(`Memory entry not found: id=${id}`);
+  }
+
+  if (permanent) {
+    // Hard delete - CASCADE handles entry_tags and relations
+    database.prepare('DELETE FROM memory_entries WHERE id = ?').run(id);
+    return { success: true, action: 'deleted' };
+  } else {
+    // Soft delete - set archived_at
+    database.prepare(
+      "UPDATE memory_entries SET archived_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
+    ).run(id);
+    return { success: true, action: 'archived' };
+  }
+}
+
+/**
+ * Get memory system statistics for housekeeping.
+ */
+export function memoryStats(): MemoryStatsResult {
+  const database = getDb();
+
+  const totalRow = database.prepare(
+    'SELECT COUNT(*) AS count FROM memory_entries'
+  ).get() as { count: number };
+
+  const activeRow = database.prepare(
+    'SELECT COUNT(*) AS count FROM memory_entries WHERE archived_at IS NULL'
+  ).get() as { count: number };
+
+  const archivedRow = database.prepare(
+    'SELECT COUNT(*) AS count FROM memory_entries WHERE archived_at IS NOT NULL'
+  ).get() as { count: number };
+
+  // By importance
+  const importanceRows = database.prepare(`
+    SELECT COALESCE(importance, 'operational') AS importance, COUNT(*) AS count
+    FROM memory_entries WHERE archived_at IS NULL
+    GROUP BY importance
+  `).all() as Array<{ importance: string; count: number }>;
+
+  const byImportance = { tactical: 0, operational: 0, strategic: 0 };
+  for (const row of importanceRows) {
+    if (row.importance in byImportance) {
+      byImportance[row.importance as ImportanceLevel] = row.count;
+    }
+  }
+
+  // By tag (active entries only)
+  const byTag = database.prepare(`
+    SELECT t.name AS tag, COUNT(DISTINCT et.entry_id) AS count
+    FROM memory_tags t
+    JOIN memory_entry_tags et ON et.tag_id = t.id
+    JOIN memory_entries e ON e.id = et.entry_id
+    WHERE e.archived_at IS NULL
+    GROUP BY t.name
+    ORDER BY count DESC
+  `).all() as Array<{ tag: string; count: number }>;
+
+  // Most accessed (top 10, active only)
+  const mostAccessed = database.prepare(`
+    SELECT id, topic, access_count
+    FROM memory_entries
+    WHERE archived_at IS NULL AND access_count > 0
+    ORDER BY access_count DESC
+    LIMIT 10
+  `).all() as Array<{ id: number; topic: string; access_count: number }>;
+
+  // Stale entries: active, not accessed in 30+ days (or never accessed and created 30+ days ago)
+  const staleRow = database.prepare(`
+    SELECT COUNT(*) AS count
+    FROM memory_entries
+    WHERE archived_at IS NULL
+      AND (
+        (last_accessed_at IS NOT NULL AND last_accessed_at < datetime('now', '-30 days'))
+        OR (last_accessed_at IS NULL AND created_at < datetime('now', '-30 days'))
+      )
+  `).get() as { count: number };
+
+  return {
+    total_entries: totalRow.count,
+    active_entries: activeRow.count,
+    archived_entries: archivedRow.count,
+    by_importance: byImportance,
+    by_tag: byTag,
+    most_accessed: mostAccessed,
+    stale_entries: staleRow.count,
+  };
+}
+
+/**
+ * Generate a compact context summary for LLM injection.
+ * Groups by importance: Strategic first, then Operational, then Tactical.
+ */
+export function memoryContextSummary(args: {
+  project_id?: string;
+  tags?: string[];
+  limit?: number;
+}): string {
+  const database = getDb();
+  const { project_id, tags, limit = 50 } = args;
+
+  let sql: string;
+  const params: unknown[] = [];
+
+  if (tags && tags.length > 0) {
+    sql = `
+      SELECT DISTINCT e.id, e.topic, e.summary, e.importance,
+             GROUP_CONCAT(t2.name, ', ') AS tag_list
+      FROM memory_entries e
+      JOIN memory_entry_tags et ON et.entry_id = e.id
+      JOIN memory_tags t ON t.id = et.tag_id
+      LEFT JOIN memory_entry_tags et2 ON et2.entry_id = e.id
+      LEFT JOIN memory_tags t2 ON t2.id = et2.tag_id
+      WHERE e.archived_at IS NULL
+        AND t.name IN (${tags.map(() => '?').join(',')})
+    `;
+    params.push(...tags);
+  } else {
+    sql = `
+      SELECT e.id, e.topic, e.summary, e.importance,
+             GROUP_CONCAT(t2.name, ', ') AS tag_list
+      FROM memory_entries e
+      LEFT JOIN memory_entry_tags et2 ON et2.entry_id = e.id
+      LEFT JOIN memory_tags t2 ON t2.id = et2.tag_id
+      WHERE e.archived_at IS NULL
+    `;
+  }
+
+  if (project_id !== undefined) {
+    sql += ' AND (e.project_id IS ? OR e.project_id IS NULL)';
+    params.push(project_id);
+  }
+
+  sql += ' GROUP BY e.id ORDER BY CASE e.importance';
+  sql += "   WHEN 'strategic' THEN 1";
+  sql += "   WHEN 'operational' THEN 2";
+  sql += "   WHEN 'tactical' THEN 3";
+  sql += '   ELSE 4 END, e.updated_at DESC';
+  sql += ' LIMIT ?';
+  params.push(limit);
+
+  const rows = database.prepare(sql).all(...params) as Array<{
+    id: number;
+    topic: string;
+    summary: string;
+    importance: string;
+    tag_list: string | null;
+  }>;
+
+  // Track access
+  trackAccess(database, rows.map((r) => r.id));
+
+  // Build markdown grouped by importance
+  const groups: Record<string, typeof rows> = {
+    strategic: [],
+    operational: [],
+    tactical: [],
+  };
+  for (const row of rows) {
+    const key = row.importance || 'operational';
+    if (groups[key]) groups[key].push(row);
+    else groups.operational.push(row);
+  }
+
+  const lines: string[] = ['# Memory Context'];
+
+  if (groups.strategic.length > 0) {
+    lines.push('', '## Strategic');
+    for (const r of groups.strategic) {
+      lines.push(`- **${r.topic}** (${r.tag_list || 'untagged'}): ${r.summary}`);
+    }
+  }
+  if (groups.operational.length > 0) {
+    lines.push('', '## Operational');
+    for (const r of groups.operational) {
+      lines.push(`- **${r.topic}** (${r.tag_list || 'untagged'}): ${r.summary}`);
+    }
+  }
+  if (groups.tactical.length > 0) {
+    lines.push('', '## Tactical');
+    for (const r of groups.tactical) {
+      lines.push(`- **${r.topic}** (${r.tag_list || 'untagged'}): ${r.summary}`);
+    }
+  }
+
+  if (rows.length === 0) {
+    lines.push('', '_No memory entries found._');
+  }
+
+  return lines.join('\n');
 }
 
 /**
@@ -513,7 +935,24 @@ function getTagsForEntry(database: Database.Database, entryId: number): string[]
 }
 
 /**
- * Get a single entry with its tags. Returns null if entry doesn't exist.
+ * Get related entries for a specific entry.
+ */
+function getRelatedEntries(database: Database.Database, entryId: number): Array<{ id: number; topic: string; relation_type: string }> {
+  return database.prepare(`
+    SELECT e.id, e.topic, r.relation_type
+    FROM memory_relations r
+    JOIN memory_entries e ON e.id = r.target_id
+    WHERE r.source_id = ?
+    UNION
+    SELECT e.id, e.topic, r.relation_type
+    FROM memory_relations r
+    JOIN memory_entries e ON e.id = r.source_id
+    WHERE r.target_id = ?
+  `).all(entryId, entryId) as Array<{ id: number; topic: string; relation_type: string }>;
+}
+
+/**
+ * Get a single entry with its tags and related entries.
  */
 function getEntryWithTags(database: Database.Database, entryId: number): MemorySearchResult | null {
   const entry = database.prepare(
@@ -522,10 +961,26 @@ function getEntryWithTags(database: Database.Database, entryId: number): MemoryS
 
   if (!entry) return null;
 
+  const related = getRelatedEntries(database, entryId);
+
   return {
     ...entry,
     tags: getTagsForEntry(database, entryId),
+    related_entries: related.length > 0 ? related : undefined,
   };
+}
+
+/**
+ * Track access for a list of entry IDs (increment access_count, update last_accessed_at).
+ */
+function trackAccess(database: Database.Database, ids: number[]): void {
+  if (ids.length === 0) return;
+  const stmt = database.prepare(
+    "UPDATE memory_entries SET access_count = access_count + 1, last_accessed_at = datetime('now') WHERE id = ?"
+  );
+  for (const id of ids) {
+    stmt.run(id);
+  }
 }
 
 /**
