@@ -1031,7 +1031,7 @@ async function handleKanbanCreate(
         status: 'not_started',
         startedAt: null,
         completedAt: null,
-        model: null
+        model: 'claude-opus-4-6'
       },
       stories,
       boardStatus,
