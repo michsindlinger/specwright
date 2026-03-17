@@ -527,8 +527,6 @@ export class AosCommentThread extends LitElement {
       display: flex;
       flex-direction: column;
       gap: var(--spacing-sm, 0.5rem);
-      max-height: 400px;
-      overflow-y: auto;
     }
 
     .comment-list__empty {

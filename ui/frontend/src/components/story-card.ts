@@ -676,7 +676,7 @@ export class AosStoryCard extends LitElement {
           ${this.story.file || this.isBacklogMode ? html`
             <button
               class="copy-path-btn ${this.copied ? 'copied' : ''}"
-              title="${this.isBacklogMode ? 'Copy item ID' : 'Copy file path'}"
+              title="Copy file path"
               @click=${this.handleCopyPath}
             >
               ${this.copied

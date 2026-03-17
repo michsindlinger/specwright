@@ -234,13 +234,20 @@ export class BacklogReader {
           // UKB-003: Added for StoryInfo compatibility
           dorComplete: true, // Backlog items don't have DoR concept, always true
           dependencies: [], // Backlog items don't have dependencies
-          file: item.file || item.storyFile,
+          file: item.file || item.storyFile || undefined,
           assignedToBot: item.assignedToBot?.assigned ?? false,
         });
       }
 
       result.stories = Array.from(storiesMap.values());
       result.hasKanbanFile = true; // backlog-index.json exists
+
+      // Resolve missing file paths by scanning filesystem
+      await Promise.all(result.stories.map(async (story) => {
+        if (!story.file) {
+          story.file = await this.resolveBacklogFile(backlogPath, story.id);
+        }
+      }));
 
       // Load attachment and comment counts for all stories
       await Promise.all(result.stories.map(async (story) => {
@@ -415,6 +422,45 @@ export class BacklogReader {
     }
 
     return statusMap;
+  }
+
+  /**
+   * Resolve the file path for a backlog item by scanning the filesystem.
+   * Searches items/ and done/ directories for a file matching the item's ID number.
+   */
+  private async resolveBacklogFile(backlogPath: string, itemId: string): Promise<string | undefined> {
+    // Extract number from item ID (e.g., TODO-001 → 001, BUG-005 → 005)
+    const numMatch = itemId.match(/(\d+)$/);
+    if (!numMatch) return undefined;
+    const num = numMatch[1];
+
+    // Search items/ directory
+    const itemsDir = join(backlogPath, 'items');
+    try {
+      const files = await fs.readdir(itemsDir);
+      const match = files.find(f => {
+        const fileNumMatch = f.match(/-(\d{3})-/);
+        return fileNumMatch && fileNumMatch[1] === num;
+      });
+      if (match) return `items/${match}`;
+    } catch {
+      // items/ directory doesn't exist
+    }
+
+    // Search done/ directory
+    const doneDir = join(backlogPath, 'done');
+    try {
+      const files = await fs.readdir(doneDir);
+      const match = files.find(f => {
+        const fileNumMatch = f.match(/-(\d{3})-/);
+        return fileNumMatch && fileNumMatch[1] === num;
+      });
+      if (match) return `done/${match}`;
+    } catch {
+      // done/ directory doesn't exist
+    }
+
+    return undefined;
   }
 
   private async getCommentCount(projectPath: string, itemId: string): Promise<number> {
