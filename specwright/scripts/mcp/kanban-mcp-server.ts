@@ -74,6 +74,7 @@ interface KanbanJsonSpec {
   specFile: string;
   specLiteFile?: string;
   createdAt: string;
+  specTier?: 'S' | 'M' | 'L';
 }
 
 interface KanbanJsonResumeContext {
@@ -315,6 +316,7 @@ const TOOLS: Tool[] = [
         specId: { type: 'string', description: 'Spec ID' },
         specName: { type: 'string', description: 'Human-readable spec name' },
         specPrefix: { type: 'string', description: 'Story ID prefix (e.g., "AUTH")' },
+        specTier: { type: 'string', enum: ['S', 'M', 'L'], description: 'Spec tier for adaptive doc depth (default: M)' },
         stories: {
           type: 'array',
           description: 'Array of story objects',
@@ -696,6 +698,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           specId: string;
           specName: string;
           specPrefix: string;
+          specTier?: 'S' | 'M' | 'L';
           stories: Array<{
             id: string;
             title: string;
@@ -938,6 +941,7 @@ async function handleKanbanCreate(
     specId: string;
     specName: string;
     specPrefix: string;
+    specTier?: 'S' | 'M' | 'L';
     stories: Array<{
       id: string;
       title: string;
@@ -1012,7 +1016,8 @@ async function handleKanbanCreate(
         prefix: args.specPrefix,
         specFile: 'spec.md',
         specLiteFile: 'spec-lite.md',
-        createdAt: now
+        createdAt: now,
+        specTier: args.specTier || 'M'
       },
       resumeContext: {
         currentPhase: '1-complete',
@@ -1389,7 +1394,8 @@ async function handleKanbanGetNextTask(specPath: string) {
       gitBranch: kanban.resumeContext.gitBranch,
       worktreePath: kanban.resumeContext.worktreePath,
       progressIndex: kanban.resumeContext.progressIndex,
-      totalStories: kanban.resumeContext.totalStories
+      totalStories: kanban.resumeContext.totalStories,
+      specTier: kanban.spec.specTier || 'M'
     },
     boardSummary: {
       total: kanban.boardStatus.total,

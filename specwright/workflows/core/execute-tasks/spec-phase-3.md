@@ -1,9 +1,17 @@
 ---
-description: Spec Phase 3 - Execute one user story (JSON v5.0)
-version: 5.0
+description: Spec Phase 3 - Execute one user story (JSON v5.1)
+version: 5.1
 ---
 
 # Spec Phase 3: Execute Story (Direct Execution)
+
+## What's New in v5.1
+
+**Tier-Aware Execution:**
+- Reads `spec.specTier` from kanban.json via `resumeInfo.specTier` (default "M")
+- S-Spec + single-layer: Skips story-998 (Integration Validation) or runs simplified mode
+- S-Spec: Skips integration-context.md updates after story completion
+- M/L: No behavior changes
 
 ## What's New in v5.0
 
@@ -217,6 +225,21 @@ maintaining full context throughout the story.
 
     ELSE IF story ID matches "story-998*" OR story ID matches "*-998*":
       SET: SYSTEM_STORY_TYPE = "integration-validation"
+
+      **Tier-Aware Detection (v5.1):**
+      READ: specTier from resumeInfo (from kanban_get_next_task response, default "M")
+      CHECK: Any story has Integration Type = "Full-stack"?
+
+      IF specTier = "S" AND no Full-stack stories:
+        LOG: "S-Spec single-layer: story-998 skipped - marking as done"
+        MARK: story-998 as Done (via kanban_complete_story with empty filesModified/commits)
+        PROCEED: To next story (story-999)
+        GOTO: phase_complete
+
+      IF specTier = "S" AND has Full-stack stories:
+        LOG: "S-Spec Full-stack: story-998 running in simplified mode (smoke tests only)"
+        SET: SIMPLIFIED_998 = true
+
       GOTO: execute_system_story_998
 
     ELSE IF story ID matches "story-999*" OR story ID matches "*-999*":
@@ -472,7 +495,7 @@ maintaining full context throughout the story.
 </step>
 
 <step name="execute_system_story_998">
-  ### Execute System Story 998: Integration Validation (v4.0)
+  ### Execute System Story 998: Integration Validation (v5.1 - Tier-Aware)
 
   **Purpose:** Integration Tests aus spec.md ausführen
 
@@ -481,17 +504,33 @@ maintaining full context throughout the story.
        - MOVE: story-998 to "In Progress"
        - UPDATE resumeContext
 
-    2. LOAD: Integration Requirements from spec.md
+    2. **CHECK: Simplified Mode (v5.1)**
+       IF SIMPLIFIED_998 = true (S-Spec Full-stack):
+         LOG: "S-Spec simplified integration validation: lint + build + test only"
+         RUN: Basic smoke tests:
+         ```bash
+         # Lint check
+         [LINT_COMMAND]
+         # Build check
+         [BUILD_COMMAND]
+         # Test suite
+         [TEST_COMMAND]
+         ```
+         IF all pass: GOTO step 8 (mark done)
+         IF any fail: GOTO step 7 (handle failures)
+         SKIP: Steps 2-6 below
+
+    3. LOAD: Integration Requirements from spec.md
        READ: specwright/specs/{SELECTED_SPEC}/spec.md
        EXTRACT: "## Integration Requirements" section
 
-    3. CHECK: MCP tools available
+    4. CHECK: MCP tools available
        ```bash
        claude mcp list
        ```
        NOTE: Tests requiring unavailable MCP tools will be skipped
 
-    4. DETECT: Integration Type
+    5. DETECT: Integration Type
        | Integration Type | Action |
        |------------------|--------|
        | Backend-only | API + DB integration tests |
@@ -499,7 +538,7 @@ maintaining full context throughout the story.
        | Full-stack | All tests + E2E |
        | Not defined | Basic smoke tests |
 
-    5. RUN: Integration Tests
+    6. RUN: Integration Tests
        FOR EACH test command in Integration Requirements:
          RUN: Test command
          RECORD: Result (PASSED / FAILED / SKIPPED)
@@ -1116,9 +1155,16 @@ maintaining full context throughout the story.
 </step>
 
 <step name="update_integration_context">
-  ### Update Integration Context (v3.1)
+  ### Update Integration Context (v5.1 - Tier-Aware)
 
   **CRITICAL: Update context for next story session.**
+
+  **Tier-Aware (v5.1):**
+  READ: specTier from kanban.json → spec.specTier (default "M")
+  IF specTier = "S" AND no Full-stack stories:
+    LOG: "S-Spec single-layer: integration-context.md update skipped"
+    SKIP: This step entirely
+    GOTO: story_commit
 
   READ: specwright/specs/{SELECTED_SPEC}/integration-context.md
 

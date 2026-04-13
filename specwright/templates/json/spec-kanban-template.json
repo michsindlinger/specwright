@@ -8,7 +8,8 @@
     "prefix": "{{SPEC_PREFIX}}",
     "specFile": "spec.md",
     "specLiteFile": "spec-lite.md",
-    "createdAt": "{{CREATED_AT}}"
+    "createdAt": "{{CREATED_AT}}",
+    "specTier": "{{SPEC_TIER}}"
   },
 
   "resumeContext": {
@@ -16,6 +17,7 @@
     "nextPhase": "2-worktree-setup",
     "worktreePath": null,
     "gitBranch": null,
+    "gitStrategy": null,
     "currentStory": null,
     "currentStoryPhase": null,
     "lastAction": "Kanban board created",

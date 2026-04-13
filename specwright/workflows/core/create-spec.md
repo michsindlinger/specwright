@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.8.0
+version: 3.9.0
 encoding: UTF-8
 ---
 
@@ -11,6 +11,15 @@ encoding: UTF-8
 ## Overview
 
 Create detailed feature specifications: Main agent gathers fachliche requirements (PO role), then adds technical refinement guided by architect-refinement skill.
+
+**v3.9 Changes (Adaptive Documentation Depth):**
+- **NEW: Spec Tier System** - Adaptive doc depth based on feature size: S (1-2 stories), M (3-5), L (6+)
+- **NEW: Step 2.3.1 Down-Sizing Detection** - Advisory scoring after requirements clarification
+- **NEW: Tier Classification in Step 2.6** - Automatic tier assignment after story generation
+- **ENHANCED: Conditional Steps** - S-Spec skips implementation plan, simplifies DoR, conditionally skips story-998
+- **ENHANCED: System Stories** - story-998 conditionally skipped for S-Spec single-layer features
+- **ENHANCED: L-Spec** - cross-cutting-decisions.md becomes mandatory, sub-spec splitting advisory for >8 stories
+- **BENEFIT:** ~15-25% token savings for S-Specs, no behavior change for existing M-Specs
 
 **v3.1 Changes:**
 - **NEW: Project Knowledge Integration** - Load existing project artifacts at spec creation
@@ -132,6 +141,7 @@ The user can provide a spec folder path as argument to resume where they left of
        CHECK_B: [spec-folder]/implementation-plan.md
        CHECK_C: [spec-folder]/stories/ (directory exists and contains .md files)
        CHECK_D: First story file has filled "WAS:" section (technical refinement done)
+       CHECK_E: [spec-folder]/kanban.json → read `spec.specTier` (if exists)
 
     4. DETERMINE resume point:
 
@@ -139,14 +149,25 @@ The user can provide a spec folder path as argument to resume where they left of
           → ERROR: "No requirements-clarification.md found in [path]. Start fresh with /specwright:create-spec (without path)."
 
        b. IF CHECK_A = true AND CHECK_B = false (clarification exists, no plan):
-          → INFORM user:
-            ```
-            Resuming from Phase 2 (Implementation Plan).
-            Phase 1 (PO Requirements) was completed in a previous session.
-            Loading: requirements-clarification.md
-            ```
-          → READ: [spec-folder]/requirements-clarification.md
-          → JUMP TO: Step 2.5 (Implementation Plan)
+          → READ CHECK_E: If kanban.json exists, read spec.specTier
+          → IF specTier = "S" (S-Spec skips implementation plan):
+            → INFORM user:
+              ```
+              Resuming S-Spec (Implementation Plan skipped for S-Specs).
+              Phase 1 (PO Requirements) was completed in a previous session.
+              Loading: requirements-clarification.md
+              ```
+            → READ: [spec-folder]/requirements-clarification.md
+            → JUMP TO: Step 2.6 (Generate Stories directly from Clarification)
+          → ELSE:
+            → INFORM user:
+              ```
+              Resuming from Phase 2 (Implementation Plan).
+              Phase 1 (PO Requirements) was completed in a previous session.
+              Loading: requirements-clarification.md
+              ```
+            → READ: [spec-folder]/requirements-clarification.md
+            → JUMP TO: Step 2.5 (Implementation Plan)
 
        c. IF CHECK_A = true AND CHECK_B = true AND CHECK_C = true AND CHECK_D = false
           (plan + stories exist, but stories not yet refined):
@@ -446,9 +467,107 @@ Before generating user stories, create a summary document for user approval.
 
 </substep>
 
+<substep number="2.3.1" name="down_sizing_detection">
+
+### Step 2.3.1: Down-Sizing Detection (v3.9 - Advisory)
+
+**Purpose:** Analyze approved requirements to detect if the feature is small enough for /add-todo
+or an S-Spec, preventing unnecessary overhead for simple features.
+
+⚠️ **This is ADVISORY only - the user always decides.**
+
+<mandatory_actions>
+  1. ANALYZE the approved requirements-clarification.md:
+
+     EXTRACT metrics:
+     - proposed_stories: Count of items in "Proposed User Stories" section
+     - func_reqs: Count of items in "Functional Requirements" section
+     - affected_areas: Count of items in "Affected Areas & Dependencies" section
+     - is_single_layer: true if all affected areas are in same layer (Frontend-only OR Backend-only)
+
+  2. CALCULATE Advisory Score:
+     ```
+     Score = 0
+     IF proposed_stories <= 2:    Score += 3
+     IF func_reqs <= 3:           Score += 2
+     IF affected_areas <= 1:      Score += 2
+     IF is_single_layer:          Score += 1
+     ```
+
+  3. APPLY decision:
+
+     **IF Score 0-3 (APPROPRIATE for /create-spec):**
+       LOG: "Feature size appropriate for /create-spec - continuing"
+       PROCEED: To Step 2.5 (Implementation Plan) - or Step 2.6 if S-Spec
+
+     **IF Score 4-6 (MODERATE - Advisory):**
+       INFORM user:
+       ```
+       Advisory: This feature appears relatively small based on the requirements analysis.
+
+       Metrics:
+       - Proposed stories: [N]
+       - Functional requirements: [N]
+       - Affected areas: [N]
+       - Single layer: [yes/no]
+       - Advisory Score: [N]/8
+
+       You have 3 options:
+       ```
+
+       ASK user via AskUserQuestion:
+       Options:
+       1. "Switch to /add-todo" - Lightweight task, minimal overhead
+       2. "Continue as S-Spec" - Spec with simplified process (no implementation plan, simplified DoR)
+       3. "Continue as full M-Spec" - Standard /create-spec process
+
+       IF "Switch to /add-todo":
+         INFORM: "Switching to /add-todo. The task description will be used as starting point."
+         INVOKE: /add-todo with feature description
+         STOP: This workflow
+
+       IF "Continue as S-Spec":
+         SET: SPEC_TIER = "S"
+         LOG: "S-Spec: Implementation Plan will be skipped, DoR simplified"
+         PROCEED: To Step 2.6 (skip Step 2.5)
+
+       IF "Continue as full M-Spec":
+         SET: SPEC_TIER = "M"
+         PROCEED: To Step 2.5 (Implementation Plan)
+
+     **IF Score 7+ (STRONG recommendation for /add-todo):**
+       INFORM user:
+       ```
+       Strong Advisory: This feature is very small and would benefit from /add-todo instead.
+
+       Metrics:
+       - Proposed stories: [N]
+       - Functional requirements: [N]
+       - Affected areas: [N]
+       - Advisory Score: [N]/8
+
+       /add-todo saves significant overhead for small tasks.
+       ```
+
+       ASK user via AskUserQuestion:
+       Options:
+       1. "Switch to /add-todo (Recommended)" - Lightweight task
+       2. "Continue as S-Spec" - Minimal spec process
+       3. "Continue as full M-Spec" - Standard process
+
+       HANDLE: Same as Score 4-6 options above
+
+</mandatory_actions>
+
+</substep>
+
 <substep number="2.5" name="implementation_plan">
 
 ### Step 2.5: Implementation Plan (Kollegen-Methode mit Plan-Agenten)
+
+⚠️ **CONDITIONAL (v3.9):** This step is SKIPPED for S-Specs.
+- IF SPEC_TIER = "S": LOG "S-Spec: Implementation Plan skipped" → JUMP TO Step 2.6
+- IF SPEC_TIER = "M" or "L" or not set: Continue with this step
 
 **Ziel:** Lückenlosen Implementierungsplan erstellen, kritisch reviewen, und minimalinvasiv optimieren - BEVOR Stories geschrieben werden.
 
@@ -852,12 +971,66 @@ Before generating user stories, create a summary document for user approval.
        * List of story files
        * Blocked Stories section (initially empty)
 
-  8. CREATE kanban.json (Single Source of Truth for /execute-tasks):
+  8. **SPEC TIER CLASSIFICATION (v3.9):**
+
+     CALCULATE business_story_count:
+     - COUNT all stories generated above
+     - SUBTRACT system stories (997, 998, 999) from count
+
+     CLASSIFY Spec Tier:
+     - IF business_story_count <= 2: SPEC_TIER = "S"
+     - IF business_story_count >= 3 AND <= 5: SPEC_TIER = "M"
+     - IF business_story_count >= 6: SPEC_TIER = "L"
+
+     NOTE: If SPEC_TIER was already set in Step 2.3.1, validate consistency:
+     - If user chose "S-Spec" but stories > 2: WARN and ask user to confirm or upgrade to M
+     - If not set yet: Use calculated tier
+
+     INFORM user:
+     ```
+     Spec Tier: [S/M/L] ([business_story_count] business stories)
+
+     What this means:
+     - S-Spec: Simplified DoR (4 checks), story-998 conditional, no story-index.md
+     - M-Spec: Standard process (no changes)
+     - L-Spec: cross-cutting-decisions.md mandatory, sub-spec splitting advisory if >8 stories
+     ```
+
+     ASK user if they want to override (up or down):
+     - "Keep [TIER]" (default)
+     - "Override to [other tier]"
+
+     **L-Spec Advisory (>8 stories):**
+     IF business_story_count > 8 AND SPEC_TIER = "L":
+       INFORM user:
+       ```
+       Advisory: This spec has [N] stories. Consider splitting into sub-specs
+       for better context efficiency during execution. Each sub-spec can be
+       executed independently with /execute-tasks.
+       ```
+
+  8.1 **CONDITIONAL ARTIFACTS (v3.9):**
+
+     **story-index.md:**
+     - S-Spec: SKIP story-index.md creation (only 1-2 stories, kanban.json is sufficient)
+     - M/L-Spec: Create as usual (see point 7 above)
+
+     **spec.md:**
+     - S-Spec: Simplified spec.md (Overview + Scope only, no Multi-Phase Roadmap)
+     - M/L-Spec: Full spec.md as usual
+
+     **cross-cutting-decisions.md:**
+     - S-Spec: SKIP (not needed for 1-2 stories)
+     - M-Spec: Optional (as before)
+     - L-Spec: MANDATORY (must be created even if no obvious cross-cutting concerns)
+
+  8.2 CREATE kanban.json (Single Source of Truth for /execute-tasks):
      - Use template: specwright/templates/json/spec-kanban-template.json
      - Fill with:
        * spec.id = folder name (YYYY-MM-DD-spec-name)
        * spec.name = human-readable name
        * spec.prefix = derived from spec name (e.g., "WSD" from "Workflow Specific Documents")
+       * spec.specTier = SPEC_TIER (S/M/L)
        * stories[] = array of story objects with:
          - id: PREFIX-NNN (e.g., WSD-001)
          - title: story title
@@ -874,6 +1047,10 @@ Before generating user stories, create a summary document for user approval.
        * statistics = calculated (totalEffort, byType, byPriority)
        * executionPlan.phases = derived from implementation-plan.md phases
        * changeLog = initial entry "Kanban created from /create-spec"
+
+     REPLACE placeholders:
+       - {{SPEC_TIER}} → SPEC_TIER value (S/M/L)
+       - Other placeholders as before
 
      TEMPLATE LOOKUP (hybrid):
        1. TRY READ: specwright/templates/json/spec-kanban-template.json
@@ -1058,6 +1235,17 @@ Main agent does technical refinement guided by architect-refinement skill.
      d. FILL IN the following sections:
 
         **DoR (Definition of Ready):**
+
+        **v3.9: DoR is tier-aware. Read SPEC_TIER from kanban.json (default "M").**
+
+        **S-Spec DoR (simplified - 4 checkboxes):**
+        - [x] Fachliche Requirements klar
+        - [x] Technischer Ansatz definiert (WAS/WIE/WO)
+        - [x] Betroffene Dateien identifiziert
+        - [x] Story passend dimensioniert
+        SKIP: Full-Stack Konsistenz checks (unless Integration Type = "Full-stack")
+
+        **M/L-Spec DoR (standard - full checkboxes):**
         - Mark ALL checkboxes as [x] complete when done
         - Fachliche requirements clear
         - Technical approach defined
@@ -1065,7 +1253,7 @@ Main agent does technical refinement guided by architect-refinement skill.
         - Affected components known
         - Required MCP Tools documented (if applicable)
         - Story is appropriately sized (max 5 files, 400 LOC)
-        - **Full-Stack Konsistenz (NEU):**
+        - **Full-Stack Konsistenz:**
           - [x] Alle betroffenen Layer identifiziert
           - [x] Integration Type bestimmt
           - [x] Kritische Integration Points dokumentiert (wenn Full-stack)
@@ -1239,7 +1427,12 @@ Main agent does technical refinement guided by architect-refinement skill.
      - Security patterns?
      - Performance requirements?
 
-     If YES, create:
+     **Tier-aware rules (v3.9):**
+     - S-Spec: SKIP cross-cutting-decisions.md
+     - M-Spec: Create IF cross-cutting concerns identified (optional, as before)
+     - L-Spec: MANDATORY - always create cross-cutting-decisions.md
+
+     If YES (or L-Spec), create:
      specwright/specs/[spec-name]/sub-specs/cross-cutting-decisions.md
 
      Include:
@@ -1248,15 +1441,18 @@ Main agent does technical refinement guided by architect-refinement skill.
      - Performance requirements
      - Security patterns
 
-  5. ⚠️ **SYSTEM STORIES REQUIREMENT** (v3.0 - CRITICAL for ALL specs):
+  5. ⚠️ **SYSTEM STORIES REQUIREMENT** (v3.0, updated v3.9 for Tier-Awareness):
 
-     **ALWAYS create these 3 system stories at the END of EVERY spec:**
+     **Create system stories at the END of EVERY spec (tier-aware):**
 
      These stories are executed AFTER all regular stories are done.
 
+     READ: SPEC_TIER from kanban.json (default "M")
+     READ: Integration Type from stories (any "Full-stack" story?)
+
      <system_story_generation>
 
-       ### story-997: Code Review
+       ### story-997: Code Review (ALWAYS created - all tiers)
 
        CREATE: specwright/specs/[SPEC_NAME]/stories/story-997-code-review.md
 
@@ -1275,26 +1471,35 @@ Main agent does technical refinement guided by architect-refinement skill.
 
        ---
 
-       ### story-998: Integration Validation
+       ### story-998: Integration Validation (CONDITIONAL - v3.9)
 
-       CREATE: specwright/specs/[SPEC_NAME]/stories/story-998-integration-validation.md
+       **Tier-aware creation rules:**
+       - S-Spec + Single-Layer (no Full-stack stories): SKIP story-998
+         - LOG: "S-Spec single-layer: story-998 (Integration Validation) skipped"
+       - S-Spec + Full-stack (at least one Full-stack story): CREATE (simplified)
+         - Simplified: Only smoke tests (lint + build + basic test run)
+         - No full E2E or component integration tests
+       - M/L-Spec: CREATE as usual (full Integration Validation)
 
-       **TEMPLATE LOOKUP (Hybrid):**
-       1. Local: specwright/templates/docs/system-story-998-integration-validation-template.md
-       2. Global: ~/.specwright/templates/docs/system-story-998-integration-validation-template.md
+       IF creating story-998:
+         CREATE: specwright/specs/[SPEC_NAME]/stories/story-998-integration-validation.md
 
-       FILL placeholders:
-       - [SPEC_PREFIX] → Spec prefix
-       - [SPEC_NAME] → Full spec name
-       - [CREATED_DATE] → Current date
+         **TEMPLATE LOOKUP (Hybrid):**
+         1. Local: specwright/templates/docs/system-story-998-integration-validation-template.md
+         2. Global: ~/.specwright/templates/docs/system-story-998-integration-validation-template.md
 
-       **Purpose:** Integration Tests aus spec.md ausführen
-       **Type:** System/Integration
-       **Dependencies:** story-997
+         FILL placeholders:
+         - [SPEC_PREFIX] → Spec prefix
+         - [SPEC_NAME] → Full spec name
+         - [CREATED_DATE] → Current date
+
+         **Purpose:** Integration Tests aus spec.md ausführen
+         **Type:** System/Integration
+         **Dependencies:** story-997
 
        ---
 
-       ### story-999: Finalize PR
+       ### story-999: Finalize PR (ALWAYS created - all tiers)
 
        CREATE: specwright/specs/[SPEC_NAME]/stories/story-999-finalize-pr.md
 
@@ -1309,19 +1514,23 @@ Main agent does technical refinement guided by architect-refinement skill.
 
        **Purpose:** User-Todos, PR, Worktree Cleanup
        **Type:** System/Finalization
-       **Dependencies:** story-998
+       **Dependencies:**
+       - IF story-998 was created: story-998
+       - IF story-998 was SKIPPED: story-997 (direct dependency)
 
      </system_story_generation>
 
-     UPDATE story-index.md to include all 3 system stories:
+     UPDATE story-index.md (if created - M/L specs) to include system stories:
      - Mark them as "System" type
-     - Set dependencies correctly (997 → 998 → 999)
+     - Set dependencies correctly:
+       - If story-998 exists: 997 → 998 → 999
+       - If story-998 skipped: 997 → 999
      - Note: They execute AFTER all regular stories
 
      **IMPORTANT:**
-     - System stories are ALWAYS created, even for single-story specs
+     - story-997 and story-999 are ALWAYS created (all tiers)
+     - story-998 is conditional: SKIPPED for S-Spec single-layer features
      - They ensure consistent quality and process for ALL specs
-     - System Stories are required for all specs
 
   Templates (hybrid lookup):
   - story-template.md (for structure reference)

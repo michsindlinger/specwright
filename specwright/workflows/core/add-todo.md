@@ -2,7 +2,7 @@
 description: Add quick task to backlog with lightweight PO + Architect refinement
 globs:
 alwaysApply: false
-version: 2.0
+version: 2.1
 encoding: UTF-8
 ---
 
@@ -11,6 +11,12 @@ encoding: UTF-8
 ## Overview
 
 Add a lightweight task to the backlog without full spec creation. Uses same story template as create-spec but with minimal overhead.
+
+**v2.1 Changes (Gradient Scoring):**
+- **ENHANCED: Step 4.5** - Replaces binary pass/fail validation with Gradient Scoring (like /add-bug)
+- **NEW: Complexity Score** - Multi-factor scoring: files, layers, complexity, integration points, dependencies
+- **NEW: 3-tier decision** - SIMPLE (proceed), MODERATE (advisory with S-Spec option), COMPLEX (strong /create-spec recommendation)
+- **NEW: S-Spec option** - Moderate tasks can choose S-Spec as middle ground between /add-todo and full /create-spec
 
 **v2.0 Changes (JSON Migration):**
 - **BREAKING: JSON statt Markdown** - backlog.json als Single Source of Truth
@@ -338,176 +344,202 @@ Main agent does technical refinement guided by architect-refinement skill.
 
 <step number="4.5" name="story_size_validation">
 
-### Step 4.5: Story Size Validation
+### Step 4.5: Story Size Validation (v2.1 - Gradient Scoring)
 
-Validate that the task complies with size guidelines for single-session execution.
+Validate task complexity using gradient scoring (inspired by /add-bug pattern).
+Replaces binary pass/fail with multi-factor scoring and tiered recommendations.
 
 <validation_process>
   READ: The story file from specwright/backlog/user-story-[...].md
 
   <extract_metrics>
     ANALYZE: WO (Where) field
-      COUNT: Number of file paths mentioned
+      COUNT: Number of file paths mentioned → affected_files
       EXTRACT: File paths list
 
     ANALYZE: Geschätzte Komplexität field
-      EXTRACT: Complexity rating (XS/S/M/L/XL)
+      EXTRACT: Complexity rating (XS/S/M/L/XL) → complexity_rating
 
-    ANALYZE: WAS (What) field
-      ESTIMATE: Lines of code based on components mentioned
-      HEURISTIC:
-        - Each new file/component ~100-150 lines
-        - Each modified file ~50-100 lines
-        - Tests ~50-100 lines per test file
+    ANALYZE: "Betroffene Layer & Komponenten" section
+      EXTRACT: Integration Type → is_cross_layer (true if Full-stack or Multi-layer)
+      COUNT: Critical Integration Points → integration_points
+
+    CHECK: External dependencies
+      EXTRACT: New external dependencies mentioned → new_external_dependency (boolean)
+
+    CHECK: Database changes
+      EXTRACT: Database/migration mentioned in WAS/WO → database_migration_needed (boolean)
   </extract_metrics>
 
-  <check_thresholds>
-    CHECK: Number of files
-      IF files > 5:
-        FLAG: Task as "Too Large - File Count"
-        SEVERITY: High
+  <calculate_complexity_score>
+    CALCULATE Complexity Score:
+    ```
+    Complexity Indicators:
+    - affected_files > 5:         +3 points
+    - affected_files > 3:         +1 point
+    - cross_layer (Full-stack):   +2 points
+    - complexity_rating >= M:     +2 points
+    - complexity_rating >= L:     +4 points (replaces M bonus)
+    - integration_points > 2:     +1 point
+    - new_external_dependency:    +1 point
+    - database_migration_needed:  +1 point
+    ```
 
-    CHECK: Complexity rating
-      IF complexity in [M, L, XL]:
-        FLAG: Task as "Too Complex for /add-todo"
-        SEVERITY: High
-
-    CHECK: Estimated LOC
-      IF estimated_loc > 400:
-        FLAG: Task as "Too Large - Code Volume"
-        SEVERITY: High
-      ELSE IF estimated_loc > 300:
-        FLAG: Task as "Watch - Approaching Limit"
-        SEVERITY: Low
-
-    CHECK: Cross-layer detection (Enhanced)
-      EXTRACT: "Betroffene Layer & Komponenten" section
-      IF Integration Type = "Full-stack" OR "Multi-layer":
-        CHECK: WO section covers ALL layers from "Betroffene Komponenten" table
-        IF missing_layers detected:
-          FLAG: Task as "Incomplete Full-Stack Coverage"
-          SEVERITY: High
-          LIST: "Missing file paths for layers: [missing_layers]"
-          SUGGEST: "Add file paths for ALL affected layers to WO section"
-        ELSE:
-          FLAG: Task as "Full-Stack (Complete)"
-          SEVERITY: Medium
-          SUGGEST: "Multi-layer task - ensure ALL layers are implemented together"
-
-      CHECK: Integration Points validation
-        IF Critical Integration Points defined:
-          VERIFY: Each integration point has:
-            - Source file in WO
-            - Target file in WO
-          IF missing connection files:
-            FLAG: Task as "Missing Integration Files"
-            SEVERITY: High
-            LIST: "Integration points missing file coverage: [points]"
-  </check_thresholds>
+    TOTAL = sum of all applicable points
+    LOG: "Complexity Score: {TOTAL} (files:{affected_files}, complexity:{complexity_rating}, cross-layer:{is_cross_layer})"
+  </calculate_complexity_score>
 </validation_process>
 
 <decision_tree>
-  IF no flags raised OR only low severity:
-    LOG: "✅ Task passes size validation - appropriate for /add-todo"
-    PROCEED: To Step 5 (Update Story Index)
 
-  ELSE (task flagged with Medium/High severity):
-    GENERATE: Validation Report
+  **IF Score 0-2 (SIMPLE):**
 
-    <validation_report_format>
-      ⚠️ Task Size Validation - Issues Detected
+    LOG: "Score {TOTAL}/12 → SIMPLE: Task appropriate for /add-todo"
+    PROCEED: To Step 5 (Update Backlog JSON)
 
-      **Task:** [Story Title]
-      **File:** [Story file path]
+  ---
 
-      **Metrics:**
-      - Files: [count] (max recommended: 5) [✅/❌]
-      - Complexity: [rating] (max recommended: S) [✅/❌]
-      - Est. LOC: ~[count] (max recommended: 400) [✅/❌]
-      - Cross-layer: [Yes/No] [✅/⚠️]
+  **IF Score 3-4 (MODERATE):**
 
-      **Issue:** [Description of what exceeds guidelines]
+    INFORM user:
+    ```
+    Complexity Advisory: This task has moderate complexity.
 
-      **Why this matters:**
-      - /add-todo is designed for quick, small tasks
-      - Larger tasks benefit from full specification process
-      - Full specs provide better planning, dependencies, and integration stories
+    Metrics:
+    - Files: [affected_files]
+    - Complexity: [complexity_rating]
+    - Cross-layer: [yes/no]
+    - Integration points: [N]
+    - Complexity Score: [TOTAL]/12
 
-      **Recommendation:** Use /create-spec instead for:
-      - Better requirements clarification
-      - Proper story splitting
-      - Dependency mapping
-      - Integration story generation
-    </validation_report_format>
-
-    PRESENT: Validation Report to user
+    This task is within /add-todo limits but has some complexity factors.
+    Consider whether a lightweight spec would provide better structure.
+    ```
 
     ASK user via AskUserQuestion:
-    "This task exceeds /add-todo size guidelines. How would you like to proceed?
+    "Task has moderate complexity (Score: {TOTAL}). How would you like to proceed?
+
+    Options:
+    1. Continue as Todo
+       → Proceed with current /add-todo process
+       → Suitable if you're confident about the approach
+
+    2. Switch to /create-spec S-Spec
+       → Lightweight spec with simplified process
+       → No implementation plan, simplified DoR
+       → Better structure than todo, less overhead than full spec
+
+    3. Reduce scope
+       → Edit the story to narrow focus
+       → Re-run validation after edits"
+
+    WAIT for user choice
+
+    IF choice = "Continue as Todo":
+      LOG: "Moderate complexity - user chose to continue as todo"
+      PROCEED: To Step 5
+
+    ELSE IF choice = "Switch to /create-spec S-Spec":
+      INFORM: "Switching to /create-spec as S-Spec.
+               The task description will be used as starting point."
+      DELETE: The backlog story file (optional cleanup)
+      INVOKE: /create-spec with task description
+      STOP: This workflow
+
+    ELSE IF choice = "Reduce scope":
+      INFORM: "Please edit the story file: specwright/backlog/[story-file].md"
+      INFORM: "Reduce the scope by:
+               - Fewer files in WO section
+               - Smaller complexity rating
+               - Narrower focus on core functionality"
+      PAUSE: Wait for user to edit
+      ASK: "Ready to re-validate? (yes/no)"
+      IF yes:
+        REPEAT: Step 4.5 (this validation step)
+      ELSE:
+        PROCEED: To Step 5 with warning flag
+
+  ---
+
+  **IF Score 5+ (COMPLEX):**
+
+    INFORM user:
+    ```
+    Complexity Warning: This task exceeds /add-todo guidelines.
+
+    Metrics:
+    - Files: [affected_files]
+    - Complexity: [complexity_rating]
+    - Cross-layer: [yes/no]
+    - Integration points: [N]
+    - New dependencies: [yes/no]
+    - DB migration: [yes/no]
+    - Complexity Score: [TOTAL]/12
+
+    Why this matters:
+    - /add-todo is designed for quick, small tasks
+    - Complex tasks benefit from proper planning and story splitting
+    - Full specs provide dependency mapping and integration stories
+    ```
+
+    ASK user via AskUserQuestion:
+    "Task exceeds /add-todo complexity guidelines (Score: {TOTAL}). How would you like to proceed?
 
     Options:
     1. Switch to /create-spec (Recommended)
        → Full specification with proper planning
-       → Story splitting if needed
+       → Story splitting and dependency mapping
        → Better context efficiency
 
-    2. Edit task to reduce scope
-       → Modify the story file manually
+    2. Reduce scope
+       → Edit the story to narrow focus
        → Re-run validation after edits
 
-    3. Proceed anyway
-       → Accept higher context usage
+    3. Proceed anyway (Not recommended)
+       → Accept higher token costs
        → Risk mid-execution context compaction
        → Continue with current task"
 
     WAIT for user choice
 
-    <user_choice_handling>
-      IF choice = "Switch to /create-spec":
-        INFORM: "Switching to /create-spec workflow.
-                 The task description will be used as starting point."
+    IF choice = "Switch to /create-spec":
+      INFORM: "Switching to /create-spec workflow.
+               The task description will be used as starting point."
+      DELETE: The backlog story file (optional cleanup)
+      INVOKE: /create-spec with task description
+      STOP: This workflow
 
-        DELETE: The backlog story file (optional cleanup)
+    ELSE IF choice = "Reduce scope":
+      INFORM: "Please edit the story file: specwright/backlog/[story-file].md"
+      PAUSE: Wait for user to edit
+      ASK: "Ready to re-validate? (yes/no)"
+      IF yes:
+        REPEAT: Step 4.5 (this validation step)
+      ELSE:
+        PROCEED: To Step 5 with warning flag
 
-        INVOKE: /create-spec with task description
-        STOP: This workflow
+    ELSE IF choice = "Proceed anyway":
+      WARN: "Proceeding with complex task despite recommendation.
+             - Expect higher token costs
+             - Mid-execution compaction possible
+             - Consider breaking into smaller tasks next time"
+      LOG: Validation bypassed by user (Score: {TOTAL})
+      PROCEED: To Step 5
 
-      ELSE IF choice = "Edit task to reduce scope":
-        INFORM: "Please edit the story file: specwright/backlog/[story-file].md"
-        INFORM: "Reduce the scope by:
-                 - Fewer files in WO section
-                 - Smaller complexity rating
-                 - Narrower focus on core functionality"
-        PAUSE: Wait for user to edit
-        ASK: "Ready to re-validate? (yes/no)"
-        IF yes:
-          REPEAT: Step 4.5 (this validation step)
-        ELSE:
-          PROCEED: To Step 5 with warning flag
-
-      ELSE IF choice = "Proceed anyway":
-        WARN: "⚠️ Proceeding with oversized task
-               - Expect higher token costs
-               - Mid-execution compaction possible
-               - Consider breaking into smaller tasks next time"
-        LOG: Validation bypassed by user
-        PROCEED: To Step 5
-    </user_choice_handling>
 </decision_tree>
 
 <instructions>
-  ACTION: Validate task against size guidelines
-  CHECK: File count, complexity, estimated LOC, cross-layer detection
-  THRESHOLD: Max 5 files, max S complexity, max 400 LOC
-  REPORT: Issues found with specific recommendations
-  OFFER: Three options (switch to create-spec, edit, proceed)
+  ACTION: Validate task using gradient complexity scoring
+  CALCULATE: Multi-factor score (files, complexity, layers, integrations, dependencies, migrations)
+  DECIDE: SIMPLE (0-2) → proceed | MODERATE (3-4) → advisory | COMPLEX (5+) → strong recommendation
+  OFFER: Tier-appropriate options including S-Spec as middle ground
   ENFORCE: Validation before adding to backlog
 </instructions>
 
 **Output:**
-- Validation report (if issues found)
+- Complexity Score with breakdown
 - User decision on how to proceed
-- Task either validated, edited, or escalated to /create-spec
+- Task either validated, escalated to S-Spec, or escalated to /create-spec
 
 </step>
 
@@ -649,7 +681,7 @@ Automatically commit all todo files so the working tree is clean before executio
   - [ ] Fachliche content complete (brief)
   - [ ] Technical refinement complete
   - [ ] All DoR checkboxes marked [x]
-  - [ ] **Story size validation passed (Step 4.5)**
+  - [ ] **Complexity scoring passed or user override (Step 4.5)**
   - [ ] **backlog.json updated with new item**
   - [ ] **statistics recalculated**
   - [ ] **changeLog entry added**
@@ -662,7 +694,12 @@ Automatically commit all todo files so the working tree is clean before executio
 Suggest /create-spec instead when:
 - Task requires multiple stories
 - Task needs clarification document
-- Estimated complexity > S
+- Complexity Score >= 5 (Step 4.5 Gradient Scoring)
 - Task affects >5 files
 - Task needs extensive requirements gathering
 - Task is a major feature
+
+**Gradient Scoring thresholds (v2.1):**
+- Score 0-2: Appropriate for /add-todo (proceed)
+- Score 3-4: Advisory - consider S-Spec as middle ground
+- Score 5+: Strong recommendation to use /create-spec

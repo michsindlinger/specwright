@@ -73,6 +73,12 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "specTier": {
+          "type": "string",
+          "enum": ["S", "M", "L"],
+          "default": "M",
+          "description": "Adaptive doc depth: S (1-2 stories), M (3-5), L (6+)"
         }
       }
     },
@@ -92,6 +98,11 @@
         },
         "gitBranch": {
           "type": ["string", "null"]
+        },
+        "gitStrategy": {
+          "type": ["string", "null"],
+          "enum": ["branch", "worktree", "current-branch", null],
+          "description": "Git strategy for execution: branch (feature branch), worktree (git worktree), current-branch (commit directly)"
         },
         "currentStory": {
           "type": ["string", "null"]

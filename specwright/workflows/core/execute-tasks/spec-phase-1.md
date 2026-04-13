@@ -1,9 +1,16 @@
 ---
-description: Spec Phase 1 - Initialize and create Kanban Board (JSON v4.0)
-version: 4.0
+description: Spec Phase 1 - Initialize and create Kanban Board (JSON v4.1)
+version: 4.1
 ---
 
 # Spec Phase 1: Initialize
+
+## What's New in v4.1
+
+**Tier-Aware Integration Context:**
+- Reads `spec.specTier` from kanban.json (default "M")
+- S-Spec + single-layer: Skips integration-context.md creation
+- M/L-Spec: Creates integration-context.md as before
 
 ## What's New in v4.0
 
@@ -131,6 +138,16 @@ Select specification and validate/create Kanban Board. One-time setup phase.
 </step>
 
 <step name="create_integration_context" subagent="file-creator">
+  ### Create Integration Context (Tier-Aware v4.1)
+
+  READ: specTier from kanban.json → spec.specTier (default "M")
+  CHECK: Any story with Integration Type = "Full-stack"?
+
+  IF specTier = "S" AND no Full-stack stories:
+    LOG: "S-Spec single-layer: integration-context.md creation skipped"
+    SKIP: This step entirely
+    GOTO: phase_complete
+
   USE: file-creator subagent
 
   PROMPT: "Create integration context file for spec execution.
