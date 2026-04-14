@@ -1,6 +1,6 @@
 ---
-description: Spec Phase 3 - Execute one user story (JSON v5.1)
-version: 5.1
+description: Spec Phase 3 - Execute one user story (JSON v5.2)
+version: 5.2
 ---
 
 # Spec Phase 3: Execute Story (Direct Execution)
@@ -124,6 +124,11 @@ maintaining full context throughout the story.
       "progressIndex": {N},
       "totalStories": {TOTAL}
     },
+    "specContext": {
+      "executiveSummary": "Ein integrierter File Editor...",
+      "componentConnections": "| Source | Target | Verbindungsart |...",
+      "currentPhase": "### Phase 2: Frontend Components\n**Ziel:** ..."
+    },
     "boardSummary": {
       "ready": {N}, "inProgress": {N}, "done": {N}
     }
@@ -132,6 +137,7 @@ maintaining full context throughout the story.
   VERIFY: Tool returns success=true
   SET: SELECTED_STORY = response.story
   SET: INTEGRATION_CONTEXT = response.integrationContext
+  SET: SPEC_CONTEXT = response.specContext
 
   LOG: "Loaded next task: {STORY_ID} - {TITLE} (Story {progressIndex+1}/{totalStories})"
 
@@ -140,15 +146,16 @@ maintaining full context throughout the story.
     STOP: Execution complete
 
   **Token Savings:**
-  - Old method: ~3300 tokens (kanban.json + story.md + integration.md reads + parsing)
-  - New method: ~450 tokens (1 tool call + compact JSON response)
-  - Saved: ~2850 tokens (86%) per story
+  - Old method: ~3300 tokens (kanban.json + story.md + integration.md + implementation-plan.md reads + parsing)
+  - New method: ~1100-1350 tokens (1 tool call + compact JSON response incl. spec context)
+  - Saved: ~2000-2200 tokens (60%+) per story
   - Parser: Regex (free, 95% cases) with Haiku fallback ($0.001, 5% cases)
 
   **What the tool does (server-side, zero Opus tokens):**
   - Reads kanban.json to find next ready story
   - Parses story .md file using layered parser (regex → Haiku fallback)
   - Reads and filters integration-context.md (only relevant completed stories)
+  - Extracts spec context from implementation-plan.md (summary, connections, phase)
   - Returns everything bundled as structured JSON
 </step>
 
@@ -793,6 +800,11 @@ maintaining full context throughout the story.
   - Completed stories and their exports
   - New components, services, hooks to reuse
 
+  AVAILABLE from SPEC_CONTEXT (if implementation-plan.md exists):
+  - executiveSummary: The big picture and "why" of this spec
+  - componentConnections: How all components connect to each other
+  - currentPhase: Scope and goals of the current execution phase
+
   NOTE: Skills load automatically when you edit files matching their glob patterns.
   No additional file reads needed - all data pre-parsed by MCP tool.
 </step>
@@ -810,16 +822,21 @@ maintaining full context throughout the story.
        - Which constraints to follow
        - Which files to create/modify
 
-    3. IMPLEMENT: The feature
+    3. CONSULT: SPEC_CONTEXT (if available)
+       - componentConnections: Which integrations must this story prepare or connect?
+       - executiveSummary: What is the overall goal this story contributes to?
+       - currentPhase: What is the scope of the current phase?
+
+    4. IMPLEMENT: The feature
        - Create/modify files as specified in WO section
        - Follow architecture patterns from WIE section
        - Skills load automatically when you edit matching files
 
-    4. RUN: Tests as you implement
+    5. RUN: Tests as you implement
        - Unit tests for new code
        - Ensure existing tests pass
 
-    5. VERIFY: Each acceptance criterion
+    6. VERIFY: Each acceptance criterion
        - Work through each Gherkin scenario
        - Ensure all are satisfied
 

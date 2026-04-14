@@ -1365,6 +1365,20 @@ async function handleKanbanGetNextTask(specPath: string) {
     console.log('[GetNextTask] No integration context found (this is OK for first story)');
   }
 
+  // Look up phase number for the current story
+  let storyPhaseNumber: number | null = null;
+  if (kanban.executionPlan?.phases) {
+    const matchingPhase = kanban.executionPlan.phases.find(
+      p => p.stories.includes(nextStory.id)
+    );
+    if (matchingPhase) {
+      storyPhaseNumber = matchingPhase.phase;
+    }
+  }
+
+  // Parse implementation-plan.md for spec context
+  const specContext = await parseImplementationPlan(specPath, storyPhaseNumber);
+
   // Build response with all context
   const response = {
     success: true,
@@ -1388,6 +1402,7 @@ async function handleKanbanGetNextTask(specPath: string) {
       dod: parsedStory.dod
     },
     integrationContext,
+    specContext,
     resumeInfo: {
       currentPhase: kanban.resumeContext.currentPhase,
       gitStrategy: kanban.resumeContext.gitStrategy,
@@ -1412,6 +1427,41 @@ async function handleKanbanGetNextTask(specPath: string) {
       text: JSON.stringify(response, null, 2)
     }]
   };
+}
+
+async function parseImplementationPlan(
+  specPath: string,
+  phaseNumber: number | null
+): Promise<{ executiveSummary: string; componentConnections: string; currentPhase: string | null } | null> {
+  try {
+    const planPath = join(specPath, 'implementation-plan.md');
+    const planContent = await readFile(planPath, 'utf-8');
+
+    // Extract Executive Summary
+    const summaryMatch = planContent.match(/## Executive Summary\n+([\s\S]*?)(?=\n## )/);
+    const executiveSummary = summaryMatch ? summaryMatch[1].trim() : '';
+
+    // Extract Component Connections (DE/EN, optional suffix like "(KRITISCH)")
+    const connectionsMatch = planContent.match(
+      /## (?:Komponenten-Verbindungen|Component Connections)(?:\s*\([^)]*\))?\n+([\s\S]*?)(?=\n## )/
+    );
+    const componentConnections = connectionsMatch ? connectionsMatch[1].trim() : '';
+
+    // Extract current phase (only if phaseNumber is known)
+    let currentPhase: string | null = null;
+    if (phaseNumber !== null) {
+      const phaseRegex = new RegExp(
+        `### Phase ${phaseNumber}:[^\\n]*\\n+([\\s\\S]*?)(?=\\n### Phase \\d|\\n## |$)`
+      );
+      const phaseMatch = planContent.match(phaseRegex);
+      currentPhase = phaseMatch ? phaseMatch[0].trim() : null;
+    }
+
+    return { executiveSummary, componentConnections, currentPhase };
+  } catch {
+    console.log('[GetNextTask] No implementation-plan.md found (this is OK)');
+    return null;
+  }
 }
 
 async function handleKanbanAddItem(
