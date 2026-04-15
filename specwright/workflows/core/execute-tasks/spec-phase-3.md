@@ -1,9 +1,16 @@
 ---
-description: Spec Phase 3 - Execute one user story (JSON v5.2)
-version: 5.2
+description: Spec Phase 3 - Execute one user story (JSON v5.3)
+version: 5.3
 ---
 
 # Spec Phase 3: Execute Story (Direct Execution)
+
+## What's New in v5.3
+
+**Single-Story Mode Support:**
+- `load_next_task`: Passes `TARGET_STORY_ID` to `kanban_get_next_task` when `SINGLE_STORY_MODE` is active
+- `update_integration_context`: Self-healing — creates `integration-context.md` with template if missing
+- Fixes: Auto-Mode stories running without enriched context (specContext, integrationContext)
 
 ## What's New in v5.1
 
@@ -81,11 +88,19 @@ maintaining full context throughout the story.
 
   **NEW: Single tool call replaces multiple file reads and parsing.**
 
-  CALL MCP TOOL: kanban_get_next_task
-  Input:
-  {
-    "specId": "{SELECTED_SPEC}"
-  }
+  IF SINGLE_STORY_MODE = true AND TARGET_STORY_ID is set:
+    CALL MCP TOOL: kanban_get_next_task
+    Input:
+    {
+      "specId": "{SELECTED_SPEC}",
+      "storyId": "{TARGET_STORY_ID}"
+    }
+  ELSE:
+    CALL MCP TOOL: kanban_get_next_task
+    Input:
+    {
+      "specId": "{SELECTED_SPEC}"
+    }
 
   RECEIVE: Complete task context in one structured response
   {
@@ -1182,6 +1197,37 @@ maintaining full context throughout the story.
     LOG: "S-Spec single-layer: integration-context.md update skipped"
     SKIP: This step entirely
     GOTO: story_commit
+
+  **Self-Healing: Ensure integration-context.md exists**
+  CHECK: Does specwright/specs/{SELECTED_SPEC}/integration-context.md exist?
+  IF NOT EXISTS:
+    CREATE: specwright/specs/{SELECTED_SPEC}/integration-context.md with initial template:
+    ```markdown
+    # Integration Context
+
+    ## Completed Stories
+
+    | Story | Summary | Key Files |
+    |-------|---------|-----------|
+
+    ## New Exports & APIs
+
+    ### Components
+    _None yet_
+
+    ### Services
+    _None yet_
+
+    ### Hooks / Utilities
+    _None yet_
+
+    ### Types / Interfaces
+    _None yet_
+
+    ## Integration Notes
+    _None yet_
+    ```
+    LOG: "Created missing integration-context.md (self-healing)"
 
   READ: specwright/specs/{SELECTED_SPEC}/integration-context.md
 

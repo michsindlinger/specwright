@@ -124,18 +124,27 @@ interface KanbanJsonStoryVerification {
 interface KanbanJsonStory {
   id: string;
   title: string;
-  file: string;
-  type: string;
-  priority: string;
-  effort: number;
+  file?: string;
+  storyFile?: string;
+  slug?: string;
+  classification?: {
+    type: string;
+    priority: string;
+    effort: string;
+    complexity?: string;
+  };
+  type?: string;
+  priority?: string;
+  effort?: number | string;
   status: KanbanJsonStatus;
-  phase: KanbanJsonPhase;
+  phase?: KanbanJsonPhase;
   dependencies: string[];
-  blockedBy: string[];
-  model: string | null;
-  timing: KanbanJsonStoryTiming;
-  implementation: KanbanJsonStoryImplementation;
-  verification: KanbanJsonStoryVerification;
+  blockedBy?: string[];
+  dorStatus?: string;
+  model?: string | null;
+  timing?: KanbanJsonStoryTiming;
+  implementation?: KanbanJsonStoryImplementation;
+  verification?: KanbanJsonStoryVerification;
 }
 
 interface KanbanJsonBoardStatus {
@@ -193,6 +202,35 @@ interface KanbanJsonV1 {
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/**
+ * Get the story file path from a kanban story entry.
+ * Supports both old format (file) and new format (storyFile).
+ */
+function getStoryFilePath(story: KanbanJsonStory): string | undefined {
+  return story.storyFile || story.file;
+}
+
+/**
+ * Get normalized story type from either flat or classified format.
+ */
+function getStoryType(story: KanbanJsonStory): string {
+  return story.type || story.classification?.type || 'unknown';
+}
+
+/**
+ * Get normalized story priority from either flat or classified format.
+ */
+function getStoryPriority(story: KanbanJsonStory): string {
+  return story.priority || story.classification?.priority || 'medium';
+}
+
+/**
+ * Get normalized story effort from either flat or classified format.
+ */
+function getStoryEffort(story: KanbanJsonStory): number | string {
+  return story.effort ?? story.classification?.effort ?? 0;
+}
 
 /**
  * Read kanban.json from spec directory
@@ -422,7 +460,8 @@ const TOOLS: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        specId: { type: 'string', description: 'Spec ID' }
+        specId: { type: 'string', description: 'Spec ID' },
+        storyId: { type: 'string', description: 'Optional: specific story ID to fetch instead of next ready story' }
       },
       required: ['specId']
     }
@@ -741,7 +780,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         });
 
       case 'kanban_get_next_task':
-        return await handleKanbanGetNextTask(specPath);
+        return await handleKanbanGetNextTask(specPath, (args as { storyId?: string }).storyId);
 
       case 'kanban_add_item':
         return await handleKanbanAddItem(specPath, args as {
@@ -1289,12 +1328,39 @@ async function handleKanbanSetGitStrategy(
   });
 }
 
-async function handleKanbanGetNextTask(specPath: string) {
+async function handleKanbanGetNextTask(specPath: string, storyId?: string) {
   // Read kanban to find next story
   const kanban = await readKanbanJson(specPath);
 
-  // Find next ready story (status = ready, not blocked)
-  const nextStory = kanban.stories.find(s => s.status === 'ready');
+  // Find story: specific by ID or next ready
+  let nextStory;
+  if (storyId) {
+    nextStory = kanban.stories.find(s => s.id === storyId);
+    if (nextStory && nextStory.status !== 'ready' && nextStory.status !== 'in_progress') {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: false,
+            message: `Story ${storyId} has status '${nextStory.status}' - cannot execute (must be 'ready' or 'in_progress')`
+          }, null, 2)
+        }]
+      };
+    }
+    if (!nextStory) {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: false,
+            message: `Story ${storyId} not found in kanban.json`
+          }, null, 2)
+        }]
+      };
+    }
+  } else {
+    nextStory = kanban.stories.find(s => s.status === 'ready');
+  }
 
   if (!nextStory) {
     return {
@@ -1309,7 +1375,19 @@ async function handleKanbanGetNextTask(specPath: string) {
   }
 
   // Parse story file to extract content
-  const storyFilePath = join(specPath, nextStory.file);
+  const storyFile = getStoryFilePath(nextStory);
+  if (!storyFile) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          message: `Story ${nextStory.id} has no file/storyFile field in kanban.json`
+        }, null, 2)
+      }]
+    };
+  }
+  const storyFilePath = join(specPath, storyFile);
   const parsedStory = await parseStoryFile(storyFilePath);
 
   // Read integration context if it exists
@@ -1385,9 +1463,9 @@ async function handleKanbanGetNextTask(specPath: string) {
     story: {
       id: nextStory.id,
       title: nextStory.title,
-      type: nextStory.type,
-      priority: nextStory.priority,
-      effort: nextStory.effort,
+      type: getStoryType(nextStory),
+      priority: getStoryPriority(nextStory),
+      effort: getStoryEffort(nextStory),
       dependencies: nextStory.dependencies,
       model: nextStory.model,
       // Parsed content from .md file
@@ -1420,6 +1498,32 @@ async function handleKanbanGetNextTask(specPath: string) {
       blocked: kanban.boardStatus.blocked
     }
   };
+
+  // Save debug info for auto-mode debugging (fire-and-forget)
+  try {
+    const debugFilePath = join(specPath, 'auto-mode-debug.json');
+    let debugData: { specId: string; sessions: Array<Record<string, unknown>> } = {
+      specId: kanban.spec?.id || specPath.split('/').pop() || 'unknown',
+      sessions: []
+    };
+    try {
+      if (existsSync(debugFilePath)) {
+        debugData = JSON.parse(await readFile(debugFilePath, 'utf-8'));
+      }
+    } catch { /* ignore parse errors */ }
+
+    debugData.sessions.push({
+      storyId: nextStory.id,
+      timestamp: new Date().toISOString(),
+      model: nextStory.model || 'default',
+      mcpResponse: response
+    });
+
+    await writeFile(debugFilePath, JSON.stringify(debugData, null, 2), 'utf-8');
+    console.log(`[GetNextTask] Debug info saved to ${debugFilePath}`);
+  } catch (debugErr) {
+    console.warn('[GetNextTask] Failed to save debug info:', debugErr);
+  }
 
   return {
     content: [{
@@ -1490,7 +1594,8 @@ async function handleKanbanAddItem(
     // Determine next story number and create file
     const existingNumbers = kanban.stories
       .map(s => {
-        const match = s.file.match(/story-(\d+)/);
+        const filePath = getStoryFilePath(s) || '';
+        const match = filePath.match(/story-(\d+)/);
         return match ? parseInt(match[1], 10) : 0;
       })
       .filter(n => n > 0);

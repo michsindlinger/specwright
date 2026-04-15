@@ -2,11 +2,19 @@
 description: Entry point for task execution - routes to appropriate phase
 globs:
 alwaysApply: false
-version: 4.1
+version: 4.2
 encoding: UTF-8
 ---
 
 # Task Execution Entry Point
+
+## What's New in v4.2
+
+**Spec Single-Story Mode:**
+- New `<spec_single_story>` section for Auto-Mode spec execution with `[spec-name] [story-id]`
+- Bypasses phase routing: runs Phase 1 without STOP, auto-sets Git Strategy, ensures integration-context.md
+- Mirrors existing `<backlog_single_story>` pattern for consistent behavior
+- Fixes: Auto-Mode stuck at `currentPhase = "1-kanban-setup"`, missing integration-context.md
 
 ## What's New in v4.1
 
@@ -125,7 +133,9 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
      ELSE IF parameter = [spec-name] [story-id]:
        SET: EXECUTION_MODE = "spec"
        SET: SELECTED_SPEC = [spec-name]
-       GOTO: Spec State Detection
+       SET: SINGLE_STORY_MODE = true
+       SET: TARGET_STORY_ID = [extracted story-id]
+       GOTO: Spec Single-Story Execution
 
      ELSE IF parameter = [spec-name]:
        SET: EXECUTION_MODE = "spec"
@@ -213,6 +223,106 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
   After Phase 2 completes for the target story, STOP.
   Do NOT continue to Phase 3 (daily summary) or other stories.
 </backlog_single_story>
+
+---
+
+## Spec Single-Story Execution
+
+<spec_single_story>
+  **Purpose:** Auto-Mode sends "[spec-name] [story-id]" to execute ONE specific story end-to-end.
+  This mode bypasses phase routing and ensures all prerequisites are met before story execution.
+
+  ### 1. Ensure Kanban is Initialized
+
+  ```bash
+  ls specwright/specs/${SELECTED_SPEC}/kanban.json 2>/dev/null
+  ```
+
+  IF NO kanban.json:
+    LOAD: @specwright/workflows/core/execute-tasks/spec-phase-1.md
+    EXECUTE: Phase 1 to create the kanban
+
+    **CRITICAL: DO NOT STOP after Phase 1.**
+    **In SINGLE_STORY_MODE, you MUST continue to step 2 immediately.**
+    **Ignore any "STOP" or "/clear" instructions from Phase 1.**
+
+  ELSE:
+    READ: specwright/specs/${SELECTED_SPEC}/kanban.json
+    EXTRACT: resumeContext.currentPhase
+
+    IF currentPhase = "1-kanban-setup":
+      LOAD: @specwright/workflows/core/execute-tasks/spec-phase-1.md
+      EXECUTE: Phase 1 to complete kanban setup
+
+      **CRITICAL: DO NOT STOP after Phase 1.**
+      **In SINGLE_STORY_MODE, you MUST continue to step 2 immediately.**
+      **Ignore any "STOP" or "/clear" instructions from Phase 1.**
+
+  ### 2. Ensure Git Strategy is Set
+
+  READ: specwright/specs/${SELECTED_SPEC}/kanban.json
+  EXTRACT: resumeContext.currentPhase
+
+  IF currentPhase = "1-complete":
+    **Auto-set Git Strategy for Single-Story Mode:**
+    CALL MCP TOOL: kanban_set_git_strategy
+    Input:
+    {
+      "specId": "{SELECTED_SPEC}",
+      "gitStrategy": "current-branch",
+      "gitBranch": "[current branch name]"
+    }
+
+  ### 3. Ensure Integration Context Exists
+
+  READ: specwright/specs/${SELECTED_SPEC}/kanban.json
+  EXTRACT: spec.specTier (default "M")
+
+  IF specTier != "S":
+    ```bash
+    ls specwright/specs/${SELECTED_SPEC}/integration-context.md 2>/dev/null
+    ```
+
+    IF NOT EXISTS:
+      CREATE: specwright/specs/${SELECTED_SPEC}/integration-context.md with initial template:
+      ```markdown
+      # Integration Context
+
+      ## Completed Stories
+
+      | Story | Summary | Key Files |
+      |-------|---------|-----------|
+
+      ## New Exports & APIs
+
+      ### Components
+      _None yet_
+
+      ### Services
+      _None yet_
+
+      ### Hooks / Utilities
+      _None yet_
+
+      ### Types / Interfaces
+      _None yet_
+
+      ## Integration Notes
+      _None yet_
+      ```
+
+      LOG: "Created missing integration-context.md for single-story execution"
+
+  ### 4. Execute the Target Story
+
+  LOAD: @specwright/workflows/core/execute-tasks/spec-phase-3.md
+  EXECUTE: Phase 3 with SINGLE_STORY_MODE = true and TARGET_STORY_ID
+
+  ### 5. End
+
+  After Phase 3 completes for the target story, STOP.
+  Do NOT continue to other stories or system stories.
+</spec_single_story>
 
 ---
 
