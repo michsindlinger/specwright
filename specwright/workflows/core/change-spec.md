@@ -521,6 +521,11 @@ STORE: Current date for changelog
      ```
 
   5. WRITE: Updated kanban.json
+
+  6. VALIDATE: Read kanban.json back and verify it parses as valid JSON.
+     If validation fails, re-read and re-write.
+     **NOTE: Prefer MCP tools (kanban_start_story, kanban_complete_story, kanban_update_phase)
+     over manual JSON writes whenever possible to avoid file corruption.**
 </mandatory_actions>
 
 </step>

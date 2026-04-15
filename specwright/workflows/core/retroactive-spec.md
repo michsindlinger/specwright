@@ -2,7 +2,7 @@
 description: Create specification for existing features via codebase analysis
 globs:
 alwaysApply: false
-version: 2.0
+version: 2.1
 encoding: UTF-8
 ---
 
@@ -429,28 +429,22 @@ Create spec.md, spec-lite.md, and kanban.json based on code analysis.
        [If any issues were noticed - optional]
      </code_references_template>
 
-  5. CREATE kanban.json from template:
-     - LOAD template: @specwright/templates/json/spec-kanban-template.json
-     - REPLACE placeholders:
-       - {{SPEC_ID}}: "retro-[feature-name]"
-       - {{SPEC_NAME}}: [FEATURE_NAME]
-       - {{SPEC_PREFIX}}: "RETRO"
-       - {{CREATED_AT}}: [CURRENT_DATE]
-       - {{TOTAL_STORIES}}: 0
-       - {{TOTAL_EFFORT}}: 0
-     - SET values for retroactive spec:
-       - resumeContext.currentPhase: "completed"
-       - resumeContext.nextPhase: null
-       - resumeContext.progressIndex: 0
-       - resumeContext.totalStories: 0
-       - boardStatus.total: 0
-       - boardStatus.ready: 0
-       - statistics.totalEffort: 0
-       - statistics.remainingEffort: 0
-       - execution.status: "completed"
-       - stories: []
-       - executionPlan.phases: []
-     - SAVE to: specwright/specs/YYYY-MM-DD-retro-[feature-name]/kanban.json
+  5. CREATE kanban.json via MCP tool:
+
+     **IMPORTANT: Use MCP tool `kanban_create` - NEVER write kanban.json manually via Write tool!**
+     Writing JSON manually risks file corruption.
+
+     CALL MCP tool `kanban_create` with:
+       - specId: "retro-[feature-name]"
+       - specName: [FEATURE_NAME]
+       - specPrefix: "RETRO"
+       - stories: [] (empty - retroactive specs have no stories initially)
+
+     Then CALL MCP tool `kanban_update_phase` with:
+       - specId: "retro-[feature-name]"
+       - currentPhase: "completed"
+       - executionStatus: "completed"
+       - lastAction: "Retroactive specification created"
 </mandatory_actions>
 
 </step>

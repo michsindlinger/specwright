@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.9.0
+version: 3.10.0
 encoding: UTF-8
 ---
 
@@ -11,6 +11,11 @@ encoding: UTF-8
 ## Overview
 
 Create detailed feature specifications: Main agent gathers fachliche requirements (PO role), then adds technical refinement guided by architect-refinement skill.
+
+**v3.10 Changes (MCP Kanban Create):**
+- **CHANGED: Step 8.2** - kanban.json creation via MCP `kanban_create` tool instead of manual Write tool
+- **FIX: JSON Corruption Prevention** - Eliminates recurring trailing bracket corruption in kanban.json
+- **ENHANCED: kanban_create MCP tool** - Now supports classification objects, slug, dorStatus, executionPlan phases
 
 **v3.9 Changes (Adaptive Documentation Depth):**
 - **NEW: Spec Tier System** - Adaptive doc depth based on feature size: S (1-2 stories), M (3-5), L (6+)
@@ -1025,38 +1030,37 @@ or an S-Spec, preventing unnecessary overhead for simple features.
      - L-Spec: MANDATORY (must be created even if no obvious cross-cutting concerns)
 
   8.2 CREATE kanban.json (Single Source of Truth for /execute-tasks):
-     - Use template: specwright/templates/json/spec-kanban-template.json
-     - Fill with:
-       * spec.id = folder name (YYYY-MM-DD-spec-name)
-       * spec.name = human-readable name
-       * spec.prefix = derived from spec name (e.g., "WSD" from "Workflow Specific Documents")
-       * spec.specTier = SPEC_TIER (S/M/L)
+
+     **IMPORTANT: Use MCP tool `kanban_create` - NEVER write kanban.json manually via Write tool!**
+     Writing JSON manually risks file corruption (trailing brackets, invalid syntax).
+     The MCP tool uses JSON.stringify which guarantees valid JSON output.
+
+     CALL MCP tool `kanban_create` with:
+       * specId = folder name (YYYY-MM-DD-spec-name)
+       * specName = human-readable name
+       * specPrefix = derived from spec name (e.g., "WSD" from "Workflow Specific Documents")
+       * specTier = SPEC_TIER (S/M/L)
        * stories[] = array of story objects with:
          - id: PREFIX-NNN (e.g., WSD-001)
          - title: story title
-         - slug: url-safe title
+         - slug: url-safe title (optional)
          - classification: { type, priority, effort, complexity }
+           (alternative: flat fields type, priority, effort)
          - dependencies: [] (initially empty)
          - status: "ready" (or "blocked" if missing DoR)
-         - dorStatus: "ready" or "incomplete"
-         - storyFile: relative path to story MD
-         - timing: { createdAt, updatedAt }
-         - implementation: { filesModified: [], testsAdded: [], commits: [] }
-         - verification: { dorChecked: false, dodChecked: false }
-       * boardStatus = calculated from stories
-       * statistics = calculated (totalEffort, byType, byPriority)
-       * executionPlan.phases = derived from implementation-plan.md phases
-       * changeLog = initial entry "Kanban created from /create-spec"
+         - dorStatus: "ready" or "incomplete" (optional)
+         - storyFile: relative path to story MD (e.g., "stories/story-001-slug.md")
+       * executionPlan (optional):
+         - strategy: "dependency-aware"
+         - phases: array of { phase, name, stories[], parallel?, note? }
+           derived from implementation-plan.md phases
 
-     REPLACE placeholders:
-       - {{SPEC_TIER}} → SPEC_TIER value (S/M/L)
-       - Other placeholders as before
-
-     TEMPLATE LOOKUP (hybrid):
-       1. TRY READ: specwright/templates/json/spec-kanban-template.json
-       2. IF file not found or error:
-          READ: ~/.specwright/templates/json/spec-kanban-template.json
-       3. IF still not found: Error - run setup-devteam-global.sh
+     The MCP tool automatically handles:
+       * boardStatus calculation from stories
+       * statistics calculation (totalEffort, byType, byPriority)
+       * changeLog initial entry
+       * resumeContext initialization
+       * timing, implementation, verification defaults per story
 
   Templates (hybrid lookup - MUST TRY BOTH):
   FOR EACH template needed (story-template.md, story-index-template.md, spec-kanban-template.json, etc.):

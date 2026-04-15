@@ -347,7 +347,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'kanban_create',
-    description: 'Initialize kanban.json from story files. Creates the full KanbanJsonV1 structure with boardStatus, statistics, and initial changeLog.',
+    description: 'Initialize kanban.json from story files. Creates the full KanbanJsonV1 structure with boardStatus, statistics, and initial changeLog. Supports both flat (type/priority/effort) and classified (classification object) story formats.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -357,20 +357,55 @@ const TOOLS: Tool[] = [
         specTier: { type: 'string', enum: ['S', 'M', 'L'], description: 'Spec tier for adaptive doc depth (default: M)' },
         stories: {
           type: 'array',
-          description: 'Array of story objects',
+          description: 'Array of story objects. Supports flat fields (type/priority/effort) or nested classification object.',
           items: {
             type: 'object',
             properties: {
               id: { type: 'string' },
               title: { type: 'string' },
-              file: { type: 'string' },
-              type: { type: 'string' },
-              priority: { type: 'string' },
-              effort: { type: 'number' },
+              file: { type: 'string', description: 'Story file path (alias: storyFile)' },
+              storyFile: { type: 'string', description: 'Story file path (alternative to file)' },
+              slug: { type: 'string', description: 'URL-safe title slug' },
+              type: { type: 'string', description: 'Story type (flat format)' },
+              priority: { type: 'string', description: 'Story priority (flat format)' },
+              effort: { type: 'number', description: 'Story effort (flat format)' },
+              classification: {
+                type: 'object',
+                description: 'Nested classification (alternative to flat type/priority/effort)',
+                properties: {
+                  type: { type: 'string' },
+                  priority: { type: 'string' },
+                  effort: { type: 'string' },
+                  complexity: { type: 'string' }
+                }
+              },
               status: { type: 'string', enum: ['ready', 'blocked'] },
-              dependencies: { type: 'array', items: { type: 'string' } }
+              dorStatus: { type: 'string', description: 'DoR status (ready/incomplete)' },
+              dependencies: { type: 'array', items: { type: 'string' } },
+              integration: { type: 'array', items: { type: 'string' }, description: 'Integration notes' }
             },
-            required: ['id', 'title', 'file', 'type', 'priority', 'effort', 'status', 'dependencies']
+            required: ['id', 'title', 'status', 'dependencies']
+          }
+        },
+        executionPlan: {
+          type: 'object',
+          description: 'Execution plan with phases',
+          properties: {
+            strategy: { type: 'string' },
+            phases: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  phase: { type: 'number' },
+                  name: { type: 'string' },
+                  stories: { type: 'array', items: { type: 'string' } },
+                  parallel: { type: 'boolean' },
+                  note: { type: 'string' }
+                },
+                required: ['phase', 'name', 'stories']
+              }
+            }
           }
         }
       },
@@ -741,13 +776,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           stories: Array<{
             id: string;
             title: string;
-            file: string;
-            type: string;
-            priority: string;
-            effort: number;
+            file?: string;
+            storyFile?: string;
+            slug?: string;
+            type?: string;
+            priority?: string;
+            effort?: number;
+            classification?: { type: string; priority: string; effort: string; complexity?: string };
             status: 'ready' | 'blocked';
+            dorStatus?: string;
             dependencies: string[];
+            integration?: string[];
           }>;
+          executionPlan?: {
+            strategy: string;
+            phases: Array<{ phase: number; name: string; stories: string[]; parallel?: boolean; note?: string }>;
+          };
         });
 
       case 'kanban_start_story':
@@ -984,46 +1028,75 @@ async function handleKanbanCreate(
     stories: Array<{
       id: string;
       title: string;
-      file: string;
-      type: string;
-      priority: string;
-      effort: number;
+      file?: string;
+      storyFile?: string;
+      slug?: string;
+      type?: string;
+      priority?: string;
+      effort?: number;
+      classification?: { type: string; priority: string; effort: string; complexity?: string };
       status: 'ready' | 'blocked';
+      dorStatus?: string;
       dependencies: string[];
+      integration?: string[];
     }>;
+    executionPlan?: {
+      strategy: string;
+      phases: Array<{ phase: number; name: string; stories: string[]; parallel?: boolean; note?: string }>;
+    };
   }
 ) {
   return await withKanbanLock(specPath, async () => {
     const now = new Date().toISOString();
 
     // Convert input stories to KanbanJsonStory format
-    const stories: KanbanJsonStory[] = args.stories.map(s => ({
-      id: s.id,
-      title: s.title,
-      file: s.file,
-      type: s.type,
-      priority: s.priority,
-      effort: s.effort,
-      status: s.status as KanbanJsonStatus,
-      phase: 'pending' as KanbanJsonPhase,
-      dependencies: s.dependencies,
-      blockedBy: [],
-      model: null,
-      timing: {
-        createdAt: now,
-        startedAt: null,
-        completedAt: null
-      },
-      implementation: {
-        filesModified: [],
-        commits: [],
-        notes: null
-      },
-      verification: {
-        dodChecked: false,
-        integrationVerified: false
+    // Supports both flat (type/priority/effort) and classified (classification object) formats
+    const stories: KanbanJsonStory[] = args.stories.map(s => {
+      const storyType = s.type || s.classification?.type || 'unknown';
+      const storyPriority = s.priority || s.classification?.priority || 'medium';
+      const storyEffort = s.effort ?? s.classification?.effort ?? 0;
+
+      const story: KanbanJsonStory = {
+        id: s.id,
+        title: s.title,
+        status: s.status as KanbanJsonStatus,
+        phase: 'pending' as KanbanJsonPhase,
+        dependencies: s.dependencies,
+        blockedBy: [],
+        model: null,
+        timing: {
+          createdAt: now,
+          startedAt: null,
+          completedAt: null
+        },
+        implementation: {
+          filesModified: [],
+          commits: [],
+          notes: null
+        },
+        verification: {
+          dodChecked: false,
+          integrationVerified: false
+        }
+      };
+
+      // Pass through classification or flat fields as provided
+      if (s.classification) {
+        story.classification = s.classification;
+      } else {
+        story.type = storyType;
+        story.priority = storyPriority;
+        story.effort = typeof storyEffort === 'string' ? storyEffort : storyEffort as number;
       }
-    }));
+
+      // Pass through optional fields
+      if (s.storyFile) story.storyFile = s.storyFile;
+      else if (s.file) story.file = s.file;
+      if (s.slug) story.slug = s.slug;
+      if (s.dorStatus) story.dorStatus = s.dorStatus;
+
+      return story;
+    });
 
     // Calculate board status
     const boardStatus: KanbanJsonBoardStatus = {
@@ -1036,14 +1109,20 @@ async function handleKanbanCreate(
       blocked: stories.filter(s => s.status === 'blocked').length
     };
 
-    // Calculate statistics
-    const totalEffort = stories.reduce((sum, s) => sum + s.effort, 0);
+    // Calculate statistics using normalized values
+    const effortValues = args.stories.map(s => {
+      const e = s.effort ?? s.classification?.effort ?? 0;
+      return typeof e === 'number' ? e : 0;
+    });
+    const totalEffort = effortValues.reduce((sum, e) => sum + e, 0);
     const byType: Record<string, number> = {};
     const byPriority: Record<string, number> = {};
 
-    for (const story of stories) {
-      byType[story.type] = (byType[story.type] || 0) + 1;
-      byPriority[story.priority] = (byPriority[story.priority] || 0) + 1;
+    for (const s of args.stories) {
+      const t = s.type || s.classification?.type || 'unknown';
+      const p = s.priority || s.classification?.priority || 'medium';
+      byType[t] = (byType[t] || 0) + 1;
+      byPriority[p] = (byPriority[p] || 0) + 1;
     }
 
     const kanban: KanbanJsonV1 = {
@@ -1087,7 +1166,17 @@ async function handleKanbanCreate(
         byType,
         byPriority
       },
-      executionPlan: {
+      executionPlan: args.executionPlan ? {
+        strategy: args.executionPlan.strategy,
+        phases: args.executionPlan.phases.map(p => ({
+          phase: p.phase,
+          name: p.name,
+          stories: p.stories,
+          description: p.note || '',
+          ...(p.parallel !== undefined ? { parallel: p.parallel } : {}),
+          ...(p.note ? { note: p.note } : {})
+        }))
+      } : {
         strategy: 'dependency-aware',
         phases: []
       },
