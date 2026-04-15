@@ -316,6 +316,13 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
   ### 4. Execute the Target Story
 
   LOAD: @specwright/workflows/core/execute-tasks/spec-phase-3.md
+
+  **CRITICAL: Follow Phase 3's `load_next_task` step EXACTLY.**
+  **You MUST call the MCP tool `kanban_get_next_task` with storyId = TARGET_STORY_ID.**
+  **DO NOT read story files directly — the MCP tool provides essential context
+  (spec overview, cross-cutting decisions, integration context, component connections)
+  that is NOT available from the story file alone.**
+
   EXECUTE: Phase 3 with SINGLE_STORY_MODE = true and TARGET_STORY_ID
 
   ### 5. End

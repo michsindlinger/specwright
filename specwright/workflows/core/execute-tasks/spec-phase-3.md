@@ -86,7 +86,16 @@ maintaining full context throughout the story.
 <step name="load_next_task">
   ### Load Next Task via Smart MCP Tool
 
-  **NEW: Single tool call replaces multiple file reads and parsing.**
+  **MANDATORY: You MUST call kanban_get_next_task BEFORE starting any implementation.**
+  **DO NOT read story files directly. DO NOT skip this step.**
+
+  The MCP tool returns critical context that is NOT available from the story file alone:
+  - `specContext`: Executive Summary, Component Connections, Current Phase from implementation-plan.md
+  - `specLite`: Project overview with tech stack, key constraints
+  - `crossCuttingDecisions`: Project-wide architectural rules (TypeScript strict, UI framework, i18n, etc.)
+  - `integrationContext`: What previous stories built, available exports and APIs
+  - `resumeInfo`: Git strategy, branch, spec tier
+  Without this context, you will miss architectural decisions and integration points.
 
   IF SINGLE_STORY_MODE = true AND TARGET_STORY_ID is set:
     CALL MCP TOOL: kanban_get_next_task
