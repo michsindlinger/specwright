@@ -144,6 +144,8 @@ maintaining full context throughout the story.
       "componentConnections": "| Source | Target | Verbindungsart |...",
       "currentPhase": "### Phase 2: Frontend Components\n**Ziel:** ..."
     },
+    "specLite": "# Spec Lite Summary\n...",
+    "crossCuttingDecisions": "# Cross-Cutting Decisions\n...",
     "boardSummary": {
       "ready": {N}, "inProgress": {N}, "done": {N}
     }
@@ -153,6 +155,8 @@ maintaining full context throughout the story.
   SET: SELECTED_STORY = response.story
   SET: INTEGRATION_CONTEXT = response.integrationContext
   SET: SPEC_CONTEXT = response.specContext
+  SET: SPEC_LITE = response.specLite
+  SET: CROSS_CUTTING = response.crossCuttingDecisions
 
   LOG: "Loaded next task: {STORY_ID} - {TITLE} (Story {progressIndex+1}/{totalStories})"
 

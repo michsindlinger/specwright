@@ -89,8 +89,8 @@ function regexParseStory(content: string): ParsedStory {
     }
   }
 
-  // Extract DoD checklist
-  const dodSection = content.match(/###\s+DoD[\s\S]*?(?=###|$)/i);
+  // Extract DoD checklist (stop at next h3 heading or --- separator, not h4+)
+  const dodSection = content.match(/###\s+DoD[\s\S]*?(?=\n### [^#]|\n---\n|$)/i);
   const dod: string[] = [];
   if (dodSection) {
     const checkItems = dodSection[0].matchAll(/- \[[ x]\]\s*(.+)/g);
@@ -99,8 +99,8 @@ function regexParseStory(content: string): ParsedStory {
     }
   }
 
-  // Extract DoR and check if complete
-  const dorSection = content.match(/###\s+DoR[\s\S]*?(?=###|$)/i);
+  // Extract DoR and check if complete (stop at next h3 heading or --- separator, not h4+)
+  const dorSection = content.match(/###\s+DoR[\s\S]*?(?=\n### [^#]|\n---\n|$)/i);
   let dorComplete = true;
   if (dorSection) {
     const uncheckedBoxes = dorSection[0].match(/- \[ \]/g);

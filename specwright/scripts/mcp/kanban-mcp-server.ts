@@ -1546,6 +1546,22 @@ async function handleKanbanGetNextTask(specPath: string, storyId?: string) {
   // Parse implementation-plan.md for spec context
   const specContext = await parseImplementationPlan(specPath, storyPhaseNumber);
 
+  // Read spec-lite.md for project overview context
+  let specLite: string | null = null;
+  try {
+    specLite = await readFile(join(specPath, 'spec-lite.md'), 'utf-8');
+  } catch {
+    console.log('[GetNextTask] No spec-lite.md found (optional)');
+  }
+
+  // Read cross-cutting-decisions.md for project-wide rules
+  let crossCuttingDecisions: string | null = null;
+  try {
+    crossCuttingDecisions = await readFile(join(specPath, 'cross-cutting-decisions.md'), 'utf-8');
+  } catch {
+    console.log('[GetNextTask] No cross-cutting-decisions.md found (optional)');
+  }
+
   // Build response with all context
   const response = {
     success: true,
@@ -1570,6 +1586,8 @@ async function handleKanbanGetNextTask(specPath: string, storyId?: string) {
     },
     integrationContext,
     specContext,
+    specLite,
+    crossCuttingDecisions,
     resumeInfo: {
       currentPhase: kanban.resumeContext.currentPhase,
       gitStrategy: kanban.resumeContext.gitStrategy,
