@@ -158,7 +158,9 @@ export class AutoModeCloudSession extends EventEmitter {
       model: this.currentModel,
     };
 
-    const command = this.buildExecuteCommand(storyId);
+    // Read spec context files (used for both prompt and debug)
+    const specContext = await this.readSpecContext();
+    const command = this.buildExecuteCommand(storyId, specContext);
 
     // Create session with initial prompt (passed as CLI argument)
     const session = this.config.cloudTerminalManager.createSession(
@@ -171,7 +173,7 @@ export class AutoModeCloudSession extends EventEmitter {
     );
 
     // Save debug info (fire-and-forget, non-blocking)
-    this.saveDebugInfo(storyId, session.sessionId).catch(err => {
+    this.saveDebugInfo(storyId, session.sessionId, specContext).catch(err => {
       console.warn('[AutoModeCloudSession] Failed to save debug info:', err);
     });
 
@@ -179,10 +181,62 @@ export class AutoModeCloudSession extends EventEmitter {
   }
 
   /**
-   * Build the execute-tasks command string.
+   * Read spec context files for embedding in the prompt.
    */
-  private buildExecuteCommand(storyId: string): string {
-    return `/${this.config.commandPrefix}:execute-tasks ${this.config.specId} ${storyId}`;
+  private async readSpecContext(): Promise<{
+    specLite: string | null;
+    crossCuttingDecisions: string | null;
+    integrationContext: string | null;
+  }> {
+    const specPath = projectDir(this.config.projectPath, 'specs', this.config.specId);
+
+    let specLite: string | null = null;
+    try {
+      specLite = await readFile(join(specPath, 'spec-lite.md'), 'utf-8');
+    } catch { /* optional */ }
+
+    let crossCuttingDecisions: string | null = null;
+    try {
+      crossCuttingDecisions = await readFile(join(specPath, 'cross-cutting-decisions.md'), 'utf-8');
+    } catch { /* optional */ }
+
+    let integrationContext: string | null = null;
+    try {
+      integrationContext = await readFile(join(specPath, 'integration-context.md'), 'utf-8');
+    } catch { /* optional */ }
+
+    return { specLite, crossCuttingDecisions, integrationContext };
+  }
+
+  /**
+   * Build the execute-tasks command string with embedded spec context.
+   * Prepends spec-lite, cross-cutting-decisions and integration-context
+   * to the slash command so Claude Code has the context regardless of
+   * whether it calls the MCP tool.
+   */
+  private buildExecuteCommand(storyId: string, specContext: {
+    specLite: string | null;
+    crossCuttingDecisions: string | null;
+    integrationContext: string | null;
+  }): string {
+    const baseCommand = `/${this.config.commandPrefix}:execute-tasks ${this.config.specId} ${storyId}`;
+    const contextParts: string[] = [];
+
+    if (specContext.specLite) {
+      contextParts.push(`<spec-context type="spec-lite">\n${specContext.specLite}\n</spec-context>`);
+    }
+    if (specContext.crossCuttingDecisions) {
+      contextParts.push(`<spec-context type="cross-cutting-decisions">\n${specContext.crossCuttingDecisions}\n</spec-context>`);
+    }
+    if (specContext.integrationContext) {
+      contextParts.push(`<spec-context type="integration-context">\n${specContext.integrationContext}\n</spec-context>`);
+    }
+
+    if (contextParts.length > 0) {
+      return `${contextParts.join('\n\n')}\n\n${baseCommand}`;
+    }
+
+    return baseCommand;
   }
 
   /**
@@ -190,12 +244,16 @@ export class AutoModeCloudSession extends EventEmitter {
    * Includes expanded slash command content and workflow files for debugging.
    * Fire-and-forget: errors are logged but do not affect execution.
    */
-  private async saveDebugInfo(storyId: string, sessionId: string): Promise<void> {
+  private async saveDebugInfo(storyId: string, sessionId: string, specContext: {
+    specLite: string | null;
+    crossCuttingDecisions: string | null;
+    integrationContext: string | null;
+  }): Promise<void> {
     const specPath = projectDir(this.config.projectPath, 'specs', this.config.specId);
     const debugFilePath = join(specPath, 'auto-mode-debug.json');
-    const command = this.buildExecuteCommand(storyId);
+    const baseCommand = `/${this.config.commandPrefix}:execute-tasks ${this.config.specId} ${storyId}`;
     const cliConfig = getCliCommandForModel(this.currentModel);
-    const fullCliArgs = [...cliConfig.args, command];
+    const fullCliArgs = [...cliConfig.args, this.buildExecuteCommand(storyId, specContext)];
 
     // Resolve paths for the expanded slash command content
     const cmdDir = resolveCommandDir(this.config.projectPath);
@@ -235,12 +293,17 @@ export class AutoModeCloudSession extends EventEmitter {
       storyId,
       timestamp: new Date().toISOString(),
       model: this.currentModel,
-      command,
+      command: baseCommand,
       cliCommand: cliConfig.command,
       cliArgs: fullCliArgs,
       projectPath: this.config.projectPath,
       sessionId,
       kanbanPhase,
+      embeddedContext: {
+        specLite: specContext.specLite ? '✓ included' : '✗ not found',
+        crossCuttingDecisions: specContext.crossCuttingDecisions ? '✓ included' : '✗ not found',
+        integrationContext: specContext.integrationContext ? '✓ included' : '✗ not found',
+      },
       expandedPrompt: {
         commandFile: {
           path: commandFilePath,
