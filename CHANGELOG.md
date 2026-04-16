@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.19.3 - 2026-04-16
+
+### Behoben
+- UI `_initializeKanbanBoard` legte ein Legacy `kanban-board.md` an, obwohl `kanban.json` (v4.0) vom Workflow erstellt werden sollte — Folge: UI-Fallback hat die JSON-Version verschattet, wenn /create-spec Step 8.2 (MCP `kanban_create`) nicht ausgeführt wurde. Die Methode prüft jetzt zuerst auf `kanban.json` und bricht ab, bevor ein MD-Fallback geschrieben wird.
+
 ## 3.1.0 - 2026-02-18
 
 ### Neu

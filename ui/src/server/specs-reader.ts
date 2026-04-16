@@ -1203,11 +1203,27 @@ export class SpecsReader {
 
   private async _initializeKanbanBoard(projectPath: string, specId: string): Promise<KanbanInitResult> {
     const specPath = projectDir(projectPath, 'specs', specId);
+    const kanbanJsonPath = join(specPath, 'kanban.json');
     const kanbanPath = join(specPath, 'kanban-board.md');
     const integrationContextPath = join(specPath, 'integration-context.md');
     const storiesPath = join(specPath, 'stories');
 
-    // Check if kanban board already exists
+    // Check if kanban.json already exists (v4.0 format - Single Source of Truth).
+    // Without this check, the MD fallback below would shadow an existing JSON kanban
+    // created by /create-spec (v3.10) or /execute-tasks spec-phase-1 (v4.0+).
+    try {
+      await fs.access(kanbanJsonPath);
+      return {
+        exists: true,
+        created: false,
+        path: kanbanJsonPath,
+        blockedCount: 0
+      };
+    } catch {
+      // kanban.json does not exist, continue to MD check
+    }
+
+    // Check if legacy kanban-board.md already exists
     try {
       await fs.access(kanbanPath);
       return {
