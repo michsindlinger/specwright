@@ -36,10 +36,10 @@ if [[ -z "$INSTALLED" && "$HAS_SPECWRIGHT_DIR" == "false" ]]; then
     exit 0
 fi
 
-# Fetch latest version from GitHub
-LATEST=$(curl -sSL --max-time 3 "$REPO_URL/VERSION" 2>/dev/null | tr -d '[:space:]')
+# Fetch latest version from GitHub (with -f so rate-limit pages don't leak through)
+LATEST=$(curl -sSLf --max-time 3 "$REPO_URL/VERSION" 2>/dev/null | tr -d '[:space:]')
 if [[ -z "$LATEST" ]]; then
-    echo -e "${YELLOW}GitHub nicht erreichbar. Versionspruefung uebersprungen.${RESET}"
+    echo -e "${YELLOW}GitHub nicht erreichbar oder rate-limited. Versionspruefung uebersprungen.${RESET}"
     exit 0
 fi
 
@@ -65,8 +65,8 @@ else
     echo -e "${YELLOW}Update verfuegbar: -> $LATEST${RESET}"
 fi
 
-# Show changelog for the latest version
-CHANGELOG=$(curl -sSL --max-time 3 "$REPO_URL/CHANGELOG.md" 2>/dev/null)
+# Show changelog for the latest version (best-effort, silent on failure)
+CHANGELOG=$(curl -sSLf --max-time 3 "$REPO_URL/CHANGELOG.md" 2>/dev/null)
 if [[ -n "$CHANGELOG" ]]; then
     echo ""
     echo "$CHANGELOG" | awk "/^## $LATEST/,/^## [0-9]/{if(/^## [0-9]/ && !/^## $LATEST/)exit; print}"
@@ -75,7 +75,36 @@ fi
 echo ""
 if [[ "$1" == "--update" ]]; then
     echo -e "${BOLD}Update wird installiert...${RESET}"
-    bash <(curl -sSL "$REPO_URL/install.sh") --yes --update
+
+    # Download install.sh to a temp file so we can verify it before executing.
+    # `-f` makes curl exit non-zero on HTTP 4xx/5xx (rate-limit, 404, etc.) instead
+    # of piping an error page into bash, which would produce confusing stack traces.
+    TMP_INSTALL=$(mktemp -t specwright-install.XXXXXX)
+    trap 'rm -f "$TMP_INSTALL"' EXIT
+
+    if ! curl -sSLf --max-time 30 "$REPO_URL/install.sh" -o "$TMP_INSTALL"; then
+        echo ""
+        echo -e "${YELLOW}Download von install.sh fehlgeschlagen.${RESET}"
+        echo -e "${DIM}Haeufigste Ursache: GitHub hat dich rate-limited (HTTP 429).${RESET}"
+        echo ""
+        echo "Workarounds:"
+        echo -e "  ${DIM}1) Ein paar Minuten warten und erneut versuchen${RESET}"
+        echo -e "  ${DIM}2) install.sh manuell herunterladen und lokal ausfuehren:${RESET}"
+        echo -e "     ${DIM}curl -sSLf -o /tmp/install.sh $REPO_URL/install.sh${RESET}"
+        echo -e "     ${DIM}bash /tmp/install.sh --yes --update${RESET}"
+        exit 1
+    fi
+
+    # Sanity check: install.sh should start with a shebang
+    if ! head -1 "$TMP_INSTALL" | grep -q '^#!'; then
+        echo ""
+        echo -e "${YELLOW}install.sh hat unerwartetes Format (kein Shebang am Anfang).${RESET}"
+        echo -e "${DIM}GitHub hat moeglicherweise eine Fehler-Seite zurueckgegeben. Erste Zeilen:${RESET}"
+        head -3 "$TMP_INSTALL" | sed 's/^/  /'
+        exit 1
+    fi
+
+    bash "$TMP_INSTALL" --yes --update
 else
     echo "Update installieren:"
     echo -e "  ${DIM}bash <(curl -sSL $REPO_URL/check-update.sh) --update${RESET}"

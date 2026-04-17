@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.20.0"
+FRAMEWORK_VERSION="3.20.1"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -372,8 +372,10 @@ download_file() {
     # Ensure parent directory exists
     mkdir -p "$(dirname "$dest")"
 
+    # `-f` so curl exits non-zero on HTTP 4xx/5xx (e.g. GitHub rate-limit 429)
+    # instead of silently writing an error page into $dest.
     if command -v curl &>/dev/null; then
-        curl -sSL "$url" -o "$dest" 2>/dev/null || {
+        curl -sSLf "$url" -o "$dest" 2>/dev/null || {
             FILES_FAILED=$((FILES_FAILED + 1))
             return 1
         }
