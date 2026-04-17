@@ -201,52 +201,34 @@ Execute ONE backlog story. Simpler than spec execution (no git worktree, no inte
   ```
 </step>
 
-<step name="story_commit">
-  ### Commit the Implementation (MANDATORY)
+<step name="verify_implementation_exists">
+  ### Pre-flight: Verify Implementation Changes Exist
 
-  **This step MUST run before `update_kanban_json_done` so a "done" status only exists when a real fix commit has been made.**
-
-  Run these bash commands inline (do NOT delegate — inline is more reliable in `--print` mode):
+  **Before touching any state tracking, confirm the implement step actually produced changes.**
 
   ```bash
-  # Stage everything that changed during implement + move_story_to_done
-  git add -A
-  # Commit with a meaningful fix/feat prefix
-  git commit -m "fix: {SELECTED_ITEM.id} {SELECTED_ITEM.title}"
+  # Are there any changes at all (staged, unstaged, or untracked)?
+  test -n "$(git status --porcelain)" && echo "HAS_CHANGES" || echo "NO_CHANGES"
   ```
 
-  Choose `fix:` for bugs, `feat:` for features/improvements/TODOs.
-
-  IF nothing to commit (`git diff --cached --quiet` returns 0):
+  IF output is `NO_CHANGES`:
     STOP the workflow. Output:
     ```
-    ⚠️  No implementation changes to commit for {SELECTED_ITEM.id}.
+    ⚠️  No implementation changes for {SELECTED_ITEM.id}.
     The fix did not happen. Do NOT mark the story as done.
     ```
-    Skip `update_kanban_json_done` — leave the story in progress so a human can inspect.
-</step>
+    Skip the remaining steps so the backend post-execution hook sees "no fix" and
+    keeps the story in `open`.
 
-<step name="verify_fix_commit">
-  ### Verify Fix Commit Exists
-
-  Before marking the story done, confirm a substantive commit exists:
-
-  ```bash
-  # Count commits on this branch that are NOT `chore:` status updates
-  git log $(git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD main 2>/dev/null || git merge-base HEAD develop)..HEAD --no-merges --pretty=format:%s | grep -vE "^chore:" | wc -l
-  ```
-
-  If the count is 0:
-    ABORT: Do NOT proceed to `update_kanban_json_done`.
-    Output: "Keine fix/feat Commits vorhanden — Story wird nicht als done markiert."
-
-  If the count is ≥ 1: proceed.
+  IF output is `HAS_CHANGES`: proceed.
 </step>
 
 <step name="update_kanban_json_done">
-  ### Mark Item Complete via MCP Tool
+  ### Mark Item Complete via MCP Tool (writes JSON tracking files)
 
-  **Precondition:** `story_commit` succeeded and `verify_fix_commit` passed.
+  **Order matters:** this step runs BEFORE `story_commit` so the MCP's writes to
+  `kanban-{TODAY}.json` and `backlog-index.json` land in the same fix commit as the
+  implementation — otherwise post-commit writes get stashed by the backend safety-net.
 
   CALL MCP TOOL: backlog_complete_item
   Input:
@@ -264,8 +246,45 @@ Execute ONE backlog story. Simpler than spec execution (no git worktree, no inte
 
   LOG: "Item {SELECTED_ITEM.id} completed via MCP tool. Remaining: {remaining}"
 
-  NOTE: The MCP tool atomically updates kanban-{TODAY}.json and backlog-index.json
-  (no git commit — that happens in the backend post-execution hook).
+  NOTE: The MCP tool writes files but does NOT commit. The next step (`story_commit`)
+  stages everything — implementation + moved story file + MCP's JSON updates —
+  into a single fix commit.
+</step>
+
+<step name="story_commit">
+  ### Commit Everything (MANDATORY)
+
+  Run these bash commands inline (do NOT delegate — inline is more reliable in `--print` mode):
+
+  ```bash
+  # Stage everything: implementation + move_story_to_done + update_kanban_json_done
+  git add -A
+  # Commit with a meaningful fix/feat prefix
+  git commit -m "fix: {SELECTED_ITEM.id} {SELECTED_ITEM.title}"
+  ```
+
+  Choose `fix:` for bugs, `feat:` for features/improvements/TODOs.
+
+  IF the commit fails because there is nothing to stage:
+    Output:
+    ```
+    ⚠️  Nothing to commit for {SELECTED_ITEM.id}. The MCP update ran but no code changed.
+    ```
+    Leave the workflow here; the backend safety-net will keep the story open.
+</step>
+
+<step name="verify_fix_commit">
+  ### Verify Fix Commit Exists
+
+  Final sanity check before ending the session:
+
+  ```bash
+  # Count commits on this branch that are NOT `chore:` status updates
+  git log $(git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD main 2>/dev/null || git merge-base HEAD develop)..HEAD --no-merges --pretty=format:%s | grep -vE "^chore:" | wc -l
+  ```
+
+  If the count is 0: the commit did not land — output a clear error.
+  If the count is ≥ 1: proceed to `session_end`.
 </step>
 
 <step name="session_end">
