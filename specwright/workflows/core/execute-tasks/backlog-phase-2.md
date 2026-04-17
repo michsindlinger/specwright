@@ -201,20 +201,59 @@ Execute ONE backlog story. Simpler than spec execution (no git worktree, no inte
   ```
 </step>
 
+<step name="story_commit">
+  ### Commit the Implementation (MANDATORY)
+
+  **This step MUST run before `update_kanban_json_done` so a "done" status only exists when a real fix commit has been made.**
+
+  Run these bash commands inline (do NOT delegate — inline is more reliable in `--print` mode):
+
+  ```bash
+  # Stage everything that changed during implement + move_story_to_done
+  git add -A
+  # Commit with a meaningful fix/feat prefix
+  git commit -m "fix: {SELECTED_ITEM.id} {SELECTED_ITEM.title}"
+  ```
+
+  Choose `fix:` for bugs, `feat:` for features/improvements/TODOs.
+
+  IF nothing to commit (`git diff --cached --quiet` returns 0):
+    STOP the workflow. Output:
+    ```
+    ⚠️  No implementation changes to commit for {SELECTED_ITEM.id}.
+    The fix did not happen. Do NOT mark the story as done.
+    ```
+    Skip `update_kanban_json_done` — leave the story in progress so a human can inspect.
+</step>
+
+<step name="verify_fix_commit">
+  ### Verify Fix Commit Exists
+
+  Before marking the story done, confirm a substantive commit exists:
+
+  ```bash
+  # Count commits on this branch that are NOT `chore:` status updates
+  git log $(git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD main 2>/dev/null || git merge-base HEAD develop)..HEAD --no-merges --pretty=format:%s | grep -vE "^chore:" | wc -l
+  ```
+
+  If the count is 0:
+    ABORT: Do NOT proceed to `update_kanban_json_done`.
+    Output: "Keine fix/feat Commits vorhanden — Story wird nicht als done markiert."
+
+  If the count is ≥ 1: proceed.
+</step>
+
 <step name="update_kanban_json_done">
   ### Mark Item Complete via MCP Tool
 
-  GET: Modified files (optional)
-  ```bash
-  git diff --name-only HEAD~1 2>/dev/null || echo ""
-  ```
+  **Precondition:** `story_commit` succeeded and `verify_fix_commit` passed.
 
   CALL MCP TOOL: backlog_complete_item
   Input:
   {
     "executionId": "kanban-{TODAY}",
     "itemId": "{SELECTED_ITEM.id}",
-    "filesModified": ["{modified_files if available}"]
+    "filesModified": []
   }
 
   VERIFY: Tool returns {
@@ -225,61 +264,21 @@ Execute ONE backlog story. Simpler than spec execution (no git worktree, no inte
 
   LOG: "Item {SELECTED_ITEM.id} completed via MCP tool. Remaining: {remaining}"
 
-  NOTE: The MCP tool automatically updates BOTH:
-
-  **Execution Kanban (kanban-{TODAY}.json):**
-  - item.executionStatus → done
-  - item.timing.completedAt
-  - resumeContext (currentItem → null, progressIndex +1, lastAction, nextAction)
-  - boardStatus counters (inProgress -1, done +1)
-  - changeLog entry
-
-  **Backlog Index (backlog-index.json):**
-  - item.status → done
-  - item.completedAt timestamp
-  - changeLog entry
-
-  All atomic with file lock (no corruption risk).
-</step>
-
-<step name="story_commit" subagent="git-workflow">
-  ### Commit Changes
-
-  USE: git-workflow subagent
-  "Commit backlog item {SELECTED_ITEM.id}:
-
-  **WORKING_DIR:** {PROJECT_ROOT}
-
-  - Message: fix/feat: {SELECTED_ITEM.id} {SELECTED_ITEM.title}
-  - Stage all changes including:
-    - Implementation files
-    - Moved item file in done/
-    - specwright/backlog/executions/kanban-{TODAY}.json
-    - specwright/backlog/backlog-index.json
-    - Any dos-and-donts.md updates
-  - Push to current branch"
+  NOTE: The MCP tool atomically updates kanban-{TODAY}.json and backlog-index.json
+  (no git commit — that happens in the backend post-execution hook).
 </step>
 
 <step name="session_end">
   ### End of Single-Item Execution
 
-  **CRITICAL INSTRUCTION:**
+  This workflow executes ONE backlog item per session. Output the completion message:
 
-  This workflow is designed for SINGLE-ITEM execution.
-  You MUST stop now and let the user decide whether to continue.
+  ```
+  ✅ Item complete: {SELECTED_ITEM.id}
+  ```
 
-  DO NOT:
-  - ❌ Load the next item
-  - ❌ Read the kanban again
-  - ❌ Continue to another step
-  - ❌ Auto-execute remaining items
-
-  REASON:
-  - Context preservation (each item starts fresh)
-  - User oversight (review each item's changes)
-  - Token efficiency (avoid context buildup)
-
-  **Your session ends here. Output the completion message and STOP.**
+  Then end the session normally. The backend orchestrates the next item.
+  Do not load or process additional items in this session.
 </step>
 
 ## Phase Completion
