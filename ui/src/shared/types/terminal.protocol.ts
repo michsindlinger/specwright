@@ -90,7 +90,10 @@ export interface SpawnPtyOptions {
   cols?: number;
   rows?: number;
 
-  /** Override inactivity timeout in ms (default: TERMINAL_BUFFER_LIMITS.INACTIVITY_TIMEOUT_MS) */
+  /**
+   * Override inactivity timeout in ms (default: TERMINAL_BUFFER_LIMITS.INACTIVITY_TIMEOUT_MS).
+   * Set to 0 to disable automatic cleanup — session lives until explicitly killed.
+   */
   inactivityTimeoutMs?: number;
 }
 

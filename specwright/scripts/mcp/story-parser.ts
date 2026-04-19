@@ -35,9 +35,14 @@ function regexParseStory(content: string): ParsedStory {
   }
   const title = titleMatch[1];
 
-  // Extract story ID from title or content
+  // Extract story ID from title or content. Supported formats:
+  //   1. "# Story MSK-001: Title"           — "Story" prefix, colon
+  //   2. "# MSK-001: Title" / "# MSK-001 Title" — ID inline at start of H1
+  //   3. "Story ID: MSK-001"                — quoted/standalone metadata line
+  //   4. "| **ID** | MSK-001 |"             — markdown-table metadata
   const storyIdMatch =
-    title.match(/Story\s+([A-Z0-9]+-\d+):/i) ||
+    title.match(/Story\s+([A-Z][A-Z0-9]*-\d+):/i) ||
+    title.match(/^([A-Z][A-Z0-9]*-\d+)\b/) ||
     content.match(/Story ID:\s*([A-Z0-9-]+)/i) ||
     content.match(/\|\s*\*\*ID\*\*\s*\|\s*([A-Z0-9-]+)\s*\|/i);
 
@@ -62,11 +67,22 @@ function regexParseStory(content: string): ParsedStory {
     scenarios.push(match[0]);
   }
 
-  // Extract technical sections
-  const wasMatch = content.match(/\*\*WAS:\*\*\s*([\s\S]*?)(?=\*\*WIE:|###|$)/i);
-  const wieMatch = content.match(/\*\*WIE[^:]*:\*\*\s*([\s\S]*?)(?=\*\*WO:|###|$)/i);
-  const woMatch = content.match(/\*\*WO:\*\*\s*([\s\S]*?)(?=\*\*WER:|###|$)/i);
-  const werMatch = content.match(/\*\*WER:\*\*\s*(.+?)(?:\n|$)/i);
+  // Extract technical sections. Supported formats:
+  //   - Bold-inline: `**WAS:** …` (canonical, per story-template.md)
+  //   - H3-heading:  `### WAS (…)` followed by body paragraphs/lists
+  // Both variants are accepted as a transitional safety net; canonical format is Bold-inline.
+  const wasMatch =
+    content.match(/\*\*WAS:\*\*\s*([\s\S]*?)(?=\*\*WIE[^:]*:\*\*|\n###\s|\n---\n|$)/i) ||
+    content.match(/(?:^|\n)###\s+WAS\b[^\n]*\n+([\s\S]*?)(?=\n###\s|\n---\n|$)/i);
+  const wieMatch =
+    content.match(/\*\*WIE[^:]*:\*\*\s*([\s\S]*?)(?=\*\*WO:\*\*|\n###\s|\n---\n|$)/i) ||
+    content.match(/(?:^|\n)###\s+WIE\b[^\n]*\n+([\s\S]*?)(?=\n###\s|\n---\n|$)/i);
+  const woMatch =
+    content.match(/\*\*WO:\*\*\s*([\s\S]*?)(?=\*\*WER:\*\*|\n###\s|\n---\n|$)/i) ||
+    content.match(/(?:^|\n)###\s+WO\b[^\n]*\n+([\s\S]*?)(?=\n###\s|\n---\n|$)/i);
+  const werMatch =
+    content.match(/\*\*WER:\*\*\s*(.+?)(?:\n|$)/i) ||
+    content.match(/(?:^|\n)###\s+WER\b[^\n]*\n+([\s\S]*?)(?=\n###\s|\n---\n|$)/i);
 
   // Parse WO into array of file paths
   let wo: string[] = [];
@@ -278,11 +294,11 @@ export function validateStoryFormat(content: string): { valid: boolean; issues: 
     issues.push('Missing DoD section');
   }
 
-  if (!content.match(/\*\*WAS:\*\*/i)) {
+  if (!content.match(/\*\*WAS:\*\*/i) && !content.match(/(?:^|\n)###\s+WAS\b/i)) {
     issues.push('Missing WAS section');
   }
 
-  if (!content.match(/\*\*WO:\*\*/i)) {
+  if (!content.match(/\*\*WO:\*\*/i) && !content.match(/(?:^|\n)###\s+WO\b/i)) {
     issues.push('Missing WO section');
   }
 

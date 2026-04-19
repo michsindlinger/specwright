@@ -181,6 +181,8 @@ export class AosDashboardView extends LitElement {
   private currentAutoModeProgress: AutoModeProgress | null = null;
   // KAE-004: Auto-mode paused due to error
   @state() private autoModePaused = false;
+  // Track the last auto-mode incident timestamp shown as toast to avoid duplicates on re-renders
+  private _lastShownIncidentTimestamp: string | null = null;
   // UKB-005: Backlog auto-mode progress tracking
   private _backlogAutoModeProgress: AutoModeProgress | null = null;
   // FIX: Race condition - track workflow completion waiting for status ACK
@@ -454,6 +456,11 @@ export class AosDashboardView extends LitElement {
       // KAE-003: Phase update handler
       ['workflow.interactive.message', (msg) => this.onWorkflowMessage(msg)],
       ['workflow.story.start.ack', (msg) => this.onWorkflowStartAck(msg)],
+      // Auto-mode hang detection (prompt + stall warnings)
+      ['workflow.auto-mode.prompt-detected', (msg) => this.onAutoModePromptDetected(msg)],
+      ['workflow.auto-mode.stalled', (msg) => this.onAutoModeStalled(msg)],
+      // Generic execution stall (backlog auto-mode + story executions via runClaudeCommand)
+      ['workflow.execution.stalled', (msg) => this.onWorkflowExecutionStalled(msg)],
       // ASGN-004: Assignment toggle handlers
       ['specs.assign.ack', (msg) => this.onSpecsAssignAck(msg)],
       ['specs.assign.error', (msg) => this.onSpecsAssignError(msg)],
@@ -609,6 +616,8 @@ export class AosDashboardView extends LitElement {
     const kanban = msg.kanban as KanbanBoard;
     console.log(`[DEBUG onSpecsKanban] specId=${kanban.specId} isReady=${kanban.isReady} assignedToBot=${kanban.assignedToBot}`);
 
+    this.surfacePersistedIncident(kanban);
+
     // Check if user expects to see the kanban view (clicked on a spec)
     // If selectedSpec is set and matches this kanban, show it
     if (this.selectedSpec && this.selectedSpec.id === kanban.specId) {
@@ -635,6 +644,101 @@ export class AosDashboardView extends LitElement {
     }
 
     // Otherwise, this is a background update for queue progress - already handled above
+  }
+
+  /**
+   * When a kanban arrives with a persisted auto-mode incident (crash/stall/prompt-stuck/timeout),
+   * surface it as a warning toast. Deduplicates by timestamp so a single incident
+   * isn't re-shown on every refresh.
+   */
+  private surfacePersistedIncident(kanban: KanbanBoard): void {
+    const incident = kanban.lastIncident;
+    if (!incident || !incident.timestamp) {
+      return;
+    }
+    if (incident.timestamp === this._lastShownIncidentTimestamp) {
+      return;
+    }
+    this._lastShownIncidentTimestamp = incident.timestamp;
+
+    const prefix = this.incidentPrefix(incident.type);
+    const story = incident.storyId ? ` (${incident.storyId})` : '';
+    this.dispatchEvent(new CustomEvent('show-toast', {
+      detail: {
+        message: `${prefix}${story}: ${incident.message}`,
+        type: 'warning'
+      },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  private incidentPrefix(type: string): string {
+    switch (type) {
+      case 'crash': return 'Auto-Mode Crash';
+      case 'stall': return 'Auto-Mode inaktiv';
+      case 'prompt-stuck': return 'Auto-Mode wartet auf Eingabe';
+      case 'timeout': return 'Auto-Mode Timeout';
+      default: return 'Auto-Mode Fehler';
+    }
+  }
+
+  /**
+   * Handle `workflow.auto-mode.prompt-detected`: Claude Code is asking an interactive question
+   * that nobody can answer in auto-mode. Persistent toast so the user notices immediately.
+   */
+  private onAutoModePromptDetected(msg: WebSocketMessage): void {
+    const specId = msg.specId as string;
+    if (this.selectedSpec && this.selectedSpec.id !== specId) return;
+
+    const matchedText = (msg.matchedText as string) || 'Prompt';
+    this.dispatchEvent(new CustomEvent('show-toast', {
+      detail: {
+        message: `Auto-Mode wartet auf Eingabe: "${matchedText}". Bitte im Terminal beantworten oder Auto-Mode stoppen.`,
+        type: 'warning'
+      },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  /**
+   * Handle `workflow.execution.stalled`: generic stdout-silence warning from runClaudeCommand
+   * (backlog auto-mode + legacy spec story executions). Fires after 5 min without output.
+   * Unlike `workflow.auto-mode.stalled`, there is no spec-scoped filter — backlog may be active too.
+   */
+  private onWorkflowExecutionStalled(msg: WebSocketMessage): void {
+    const silentMs = (msg.silentMs as number) || 0;
+    const storyId = msg.storyId as string | undefined;
+    const minutes = Math.max(1, Math.round(silentMs / 60000));
+    const storyPart = storyId ? ` (${storyId})` : '';
+    this.dispatchEvent(new CustomEvent('show-toast', {
+      detail: {
+        message: `Story-Execution inaktiv${storyPart}: seit ${minutes} Min. kein Output vom Claude CLI. Bitte prüfen.`,
+        type: 'warning'
+      },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  /**
+   * Handle `workflow.auto-mode.stalled`: no terminal activity for STALL_THRESHOLD_MS.
+   */
+  private onAutoModeStalled(msg: WebSocketMessage): void {
+    const specId = msg.specId as string;
+    if (this.selectedSpec && this.selectedSpec.id !== specId) return;
+
+    const silentMs = (msg.silentMs as number) || 0;
+    const minutes = Math.max(1, Math.round(silentMs / 60000));
+    this.dispatchEvent(new CustomEvent('show-toast', {
+      detail: {
+        message: `Auto-Mode scheint zu hängen — seit ${minutes} Min. keine Aktivität. Bitte Terminal prüfen.`,
+        type: 'warning'
+      },
+      bubbles: true,
+      composed: true
+    }));
   }
 
   private onSpecsStory(msg: WebSocketMessage): void {
@@ -964,9 +1068,11 @@ export class AosDashboardView extends LitElement {
       this.kanban = { ...this.kanban, stories: updatedStories };
     }
 
-    // FIX: Race condition - If auto-mode is enabled, wait for status update ACK before scheduling
-    // This ensures the backend has finished writing the kanban file before we try to start the next story
-    if (this.autoModeEnabled && !this.autoModePaused) {
+    // Skip frontend auto-continuation when backend Cloud Terminal auto-mode handles it.
+    // The backend sends autoModeHandled=true when it already started the next story.
+    const autoModeHandled = msg.autoModeHandled === true;
+
+    if (this.autoModeEnabled && !this.autoModePaused && !autoModeHandled) {
       console.log(`[Dashboard] Workflow completed for ${storyId}, waiting for status ACK before next auto-execution`);
       this.completedWorkflowStoryId = storyId;
 
@@ -979,6 +1085,8 @@ export class AosDashboardView extends LitElement {
           this.scheduleNextAutoExecution();
         }
       }, AosDashboardView.AUTO_EXECUTION_ACK_TIMEOUT);
+    } else if (autoModeHandled) {
+      console.log(`[Dashboard] Workflow completed for ${storyId}, backend auto-mode handles continuation`);
     }
   }
 
@@ -2065,8 +2173,9 @@ export class AosDashboardView extends LitElement {
         .kanban=${this.kanban}
         .specName=${this.selectedSpec.name}
         .autoModeEnabled=${this.autoModeEnabled}
-        .assignedToBot=${(() => { console.log(`[DEBUG kanban-board props] assignedToBot=${this.kanban.assignedToBot} isReady=${this.kanban.isReady}`); return this.kanban.assignedToBot ?? false; })()}
+        .assignedToBot=${this.kanban.assignedToBot ?? false}
         .isReady=${this.kanban.isReady ?? false}
+        .initialGitStrategy=${this.selectedSpec.gitStrategy ?? null}
         @kanban-back=${this.handleKanbanBack}
         @auto-mode-toggle=${this.handleAutoModeToggle}
         @auto-mode-error=${this.handleAutoModeError}

@@ -78,6 +78,15 @@ export class TerminalManager extends EventEmitter {
     }
 
     // Spawn PTY process using node-pty
+    // Ensure UTF-8 locale for correct rendering of umlauts and special characters
+    const mergedEnv = { ...process.env, ...env };
+    if (!mergedEnv.LANG) {
+      mergedEnv.LANG = 'en_US.UTF-8';
+    }
+    if (!mergedEnv.LC_CTYPE) {
+      mergedEnv.LC_CTYPE = 'UTF-8';
+    }
+
     const ptyProcess = pty.spawn(
       shell || process.env.SHELL || 'bash',
       args || [],
@@ -87,7 +96,7 @@ export class TerminalManager extends EventEmitter {
         rows: rows || 24,
         cwd,
         env: Object.fromEntries(
-          Object.entries({ ...process.env, ...env }).filter(
+          Object.entries(mergedEnv).filter(
             ([, value]) => value !== undefined
           )
         ) as { [key: string]: string },
@@ -350,8 +359,13 @@ export class TerminalManager extends EventEmitter {
       clearTimeout(session.cleanupTimeout);
     }
 
-    // Use per-session timeout if set, otherwise fall back to default
-    const timeoutMs = session.inactivityTimeoutMs || TERMINAL_BUFFER_LIMITS.INACTIVITY_TIMEOUT_MS;
+    // Use per-session timeout if set, otherwise fall back to default.
+    // A value of 0 (or negative) disables automatic cleanup — session lives until
+    // explicitly killed (e.g. cloud terminals, which close only on user request).
+    const timeoutMs = session.inactivityTimeoutMs ?? TERMINAL_BUFFER_LIMITS.INACTIVITY_TIMEOUT_MS;
+    if (timeoutMs <= 0) {
+      return;
+    }
 
     // Set new timeout
     session.cleanupTimeout = setTimeout(() => {

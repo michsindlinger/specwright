@@ -373,8 +373,11 @@ export const CLOUD_TERMINAL_CONFIG = {
   /** Maximum number of lines to keep in buffer */
   MAX_BUFFER_LINES: 10_000,
 
-  /** Inactivity timeout before PTY cleanup (2 hours for cloud terminals - much longer than client-side pause timeout) */
-  INACTIVITY_TIMEOUT_MS: 2 * 60 * 60 * 1000,
+  /**
+   * Inactivity timeout before PTY cleanup.
+   * 0 = disabled: cloud terminals persist until the user explicitly closes them.
+   */
+  INACTIVITY_TIMEOUT_MS: 0,
 
   /** Default terminal size */
   DEFAULT_COLS: 120,

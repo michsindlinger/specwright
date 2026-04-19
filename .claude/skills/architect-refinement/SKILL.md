@@ -18,6 +18,25 @@ This skill guides you when doing technical refinement for:
 - Quick tasks in `/add-todo`
 - Bug stories in `/add-bug`
 
+---
+
+## Story Format (Canonical — Single Source of Truth)
+
+The canonical story format is defined in **`specwright/templates/docs/story-template.md`**
+(Fallback: `~/.specwright/templates/docs/story-template.md`).
+
+**This template is binding. Do not improvise story structure.**
+
+This skill provides **methodology** and **Agent OS Web UI-specific architecture guidance**.
+It does not define the story file layout — the template does.
+
+When creating or refining stories:
+1. Load `story-template.md` first → use its section structure, field names, and ordering verbatim.
+2. Fill the template's `**WAS:**`, `**WIE:**`, `**WO:**` fields using the methodology and
+   architecture patterns from this skill.
+
+---
+
 ## Quick Reference
 
 ### Technical Refinement Process

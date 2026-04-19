@@ -42,7 +42,24 @@ interface ManagedCloudSession extends CloudTerminalSession {
 
   /** Flag to track if buffer overflow warning was logged */
   bufferOverflowWarned?: boolean;
+
+  /** True when this session is being driven by auto-mode and should be scanned for prompts */
+  autoModeActive?: boolean;
+
+  /** Dedup timestamp: last time a prompt was detected (enforces a cool-down) */
+  lastPromptDetectedAt?: Date;
 }
+
+/**
+ * Regex for detecting interactive prompts in terminal output.
+ * Conservative patterns — prefers false negatives over false positives.
+ */
+const PROMPT_PATTERN = /\((?:y|yes)\/(?:n|no)\)|\[(?:Y|y)\/(?:N|n)\]|Press\s+(?:Enter|Return)|Do you want to|Continue\?|Select an option/i;
+
+/**
+ * Cool-down between prompt-detected emissions for the same session (ms).
+ */
+const PROMPT_DEDUP_MS = 60 * 1000;
 
 /**
  * CloudTerminalManager - Multi-session terminal manager
@@ -54,6 +71,7 @@ interface ManagedCloudSession extends CloudTerminalSession {
  * - 'session.resumed' (CloudTerminalSessionId) - Session resumed
  * - 'session.data' (CloudTerminalSessionId, string) - Terminal output
  * - 'session.error' (CloudTerminalSessionId, Error) - Session error
+ * - 'session.prompt-detected' (CloudTerminalSessionId, matchedText) - Interactive prompt detected in output (auto-mode only)
  */
 export class CloudTerminalManager extends EventEmitter {
   /**
@@ -135,11 +153,20 @@ export class CloudTerminalManager extends EventEmitter {
       let shellArgs: string[];
       let shellEnv: Record<string, string>;
 
+      // Ensure UTF-8 locale for correct rendering of umlauts and special characters
+      const baseEnv = { ...(process.env as Record<string, string>) };
+      if (!baseEnv.LANG) {
+        baseEnv.LANG = 'en_US.UTF-8';
+      }
+      if (!baseEnv.LC_CTYPE) {
+        baseEnv.LC_CTYPE = 'UTF-8';
+      }
+
       if (terminalType === 'shell') {
         // Plain shell terminal: use system default shell, no Claude Code
         shellCommand = process.env.SHELL || 'bash';
         shellArgs = [];
-        shellEnv = process.env as Record<string, string>;
+        shellEnv = baseEnv;
       } else {
         // Claude Code terminal: use CLI command from model config
         if (!modelConfig || !modelConfig.model) {
@@ -152,7 +179,7 @@ export class CloudTerminalManager extends EventEmitter {
           shellArgs.push(initialPrompt);
         }
         shellEnv = {
-          ...(process.env as Record<string, string>),
+          ...baseEnv,
           CLAUDE_MODEL: modelConfig.model,
           CLAUDE_PROVIDER: modelConfig.provider || 'anthropic',
         };
@@ -166,7 +193,8 @@ export class CloudTerminalManager extends EventEmitter {
       }
 
       // Spawn PTY process
-      // Cloud terminals use a longer inactivity timeout (30min vs 5min for workflows)
+      // Cloud terminals disable the inactivity timeout — session runs until the
+      // user explicitly closes it (see CLOUD_TERMINAL_CONFIG.INACTIVITY_TIMEOUT_MS).
       const terminalSession = this.terminalManager.spawn({
         executionId,
         cwd: projectPath,
@@ -464,6 +492,13 @@ export class CloudTerminalManager extends EventEmitter {
         this.addToBuffer(session, data);
       }
 
+      // Track latest activity on output too — the stall watchdog reads this.
+      session.lastActivity = new Date();
+
+      if (session.autoModeActive) {
+        this.detectPrompt(session, data);
+      }
+
       // Emit data event
       this.emit('session.data', session.sessionId, data);
     });
@@ -489,6 +524,42 @@ export class CloudTerminalManager extends EventEmitter {
         this.sessions.delete(session.sessionId);
       }, 5000);
     });
+  }
+
+  /**
+   * Mark a session as being driven by auto-mode.
+   * Only auto-mode sessions get scanned for interactive prompts.
+   */
+  public setAutoModeActive(sessionId: CloudTerminalSessionId, active: boolean): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return;
+    }
+    session.autoModeActive = active;
+    if (!active) {
+      session.lastPromptDetectedAt = undefined;
+    }
+  }
+
+  /**
+   * Scan an output chunk for interactive prompt patterns.
+   * Emits `session.prompt-detected` at most once per PROMPT_DEDUP_MS per session.
+   */
+  private detectPrompt(session: ManagedCloudSession, data: string): void {
+    const now = Date.now();
+    if (session.lastPromptDetectedAt && now - session.lastPromptDetectedAt.getTime() < PROMPT_DEDUP_MS) {
+      return;
+    }
+
+    const match = PROMPT_PATTERN.exec(data);
+    if (!match) {
+      return;
+    }
+
+    session.lastPromptDetectedAt = new Date(now);
+    const matchedText = match[0];
+    console.warn(`[CloudTerminalManager] Prompt detected in session ${session.sessionId}: ${JSON.stringify(matchedText)}`);
+    this.emit('session.prompt-detected', session.sessionId, matchedText);
   }
 
   /**

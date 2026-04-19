@@ -18,6 +18,29 @@ This skill guides you when doing technical refinement for:
 - Quick tasks in `/add-todo`
 - Bug stories in `/add-bug`
 
+---
+
+## Story Format (Canonical — Single Source of Truth)
+
+The canonical story format is defined in **`specwright/templates/docs/story-template.md`**
+(Fallback: `~/.specwright/templates/docs/story-template.md`).
+
+**This template is binding. Do not improvise story structure.**
+
+This skill provides **methodology** (how to *think* about WAS/WIE/WO, when a story is READY,
+how to classify layers) and **project-specific architecture guidance**. It does not define
+the story file layout — the template does.
+
+When creating or refining stories:
+1. Load `story-template.md` first → use its section structure (headings, field names, ordering).
+2. Fill the template's `**WAS:**`, `**WIE:**`, `**WO:**` fields using the methodology from this skill.
+3. Use project-specific architecture standards below for WIE/WO content.
+
+The conceptual sections below (`### WAS`, `### WIE`, `### WO`) are this skill's own structure for
+teaching the methodology — **they are not a story-format prescription**.
+
+---
+
 ## Quick Reference
 
 ### Technical Refinement Process
@@ -297,21 +320,11 @@ Or if none:
 - Simpler story template
 - Domain tracking for business docs
 
-### Story Template Fields (v3.0)
+### Story Template Fields
 
-```markdown
-**Type**: Backend | Frontend | Full-Stack | DevOps
-**Domain:** [optional - e.g., user-registration]
-**Abhängigkeiten:** [Story IDs or None]
-
-### Technical Details
-
-**WAS:** Components to create/modify
-**WIE:** Architecture patterns and constraints
-**WO:** File paths
-**Domain:** [Optional domain area]
-**Geschätzte Komplexität:** XS/S/M
-```
+Story structure, field names, and ordering are defined in **`specwright/templates/docs/story-template.md`**
+(see "Story Format" section at the top of this skill). Follow the template exactly — do not paraphrase
+the field names or change the section structure.
 
 ---
 

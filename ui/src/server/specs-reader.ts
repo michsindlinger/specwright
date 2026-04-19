@@ -50,6 +50,19 @@ export interface StoryInfo {
   attachmentCount?: number;
 }
 
+/**
+ * Persistent record of the most recent auto-mode incident (crash, stall, stuck prompt, timeout).
+ * Survives WebSocket reconnects so the UI can re-surface the warning on reload.
+ */
+export interface KanbanAutoModeIncident {
+  type: 'crash' | 'stall' | 'prompt-stuck' | 'timeout' | 'error';
+  message: string;
+  storyId?: string;
+  timestamp: string;
+  matchedText?: string;
+  silentMs?: number;
+}
+
 export interface KanbanBoard {
   specId: string;
   stories: StoryInfo[];
@@ -58,6 +71,7 @@ export interface KanbanBoard {
   executionStatus?: string;
   assignedToBot?: boolean;
   isReady?: boolean;
+  lastIncident?: KanbanAutoModeIncident | null;
 }
 
 export interface StoryDetail {
@@ -146,6 +160,7 @@ interface KanbanJsonExecution {
   startedAt: string | null;
   completedAt: string | null;
   model: string | null;
+  lastIncident?: KanbanAutoModeIncident | null;
 }
 
 interface KanbanJsonStoryTiming {
@@ -297,6 +312,56 @@ export class SpecsReader {
   }
 
   /**
+   * Persists the latest auto-mode incident (crash, stall, prompt-stuck, timeout) in kanban.json.
+   * Used as a safety net for WebSocket-lost notifications: on reload, the UI re-surfaces this.
+   */
+  public async setAutoModeIncident(
+    projectPath: string,
+    specId: string,
+    incident: KanbanAutoModeIncident
+  ): Promise<void> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+
+    await withKanbanLock(specPath, async () => {
+      const kanban = await this.readKanbanJsonUnlocked(specPath);
+      if (!kanban) return;
+
+      kanban.execution = kanban.execution || {
+        status: 'unknown',
+        startedAt: null,
+        completedAt: null,
+        model: null
+      };
+      kanban.execution.lastIncident = incident;
+
+      this.addChangeLogEntry(
+        kanban,
+        'auto-mode-incident',
+        incident.storyId ?? null,
+        `${incident.type}: ${incident.message}`
+      );
+
+      await this.writeKanbanJsonUnlocked(specPath, kanban);
+    });
+  }
+
+  /**
+   * Clears any persisted auto-mode incident. Called when the user dismisses the warning
+   * or when the next story successfully starts.
+   */
+  public async clearAutoModeIncident(projectPath: string, specId: string): Promise<void> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+
+    await withKanbanLock(specPath, async () => {
+      const kanban = await this.readKanbanJsonUnlocked(specPath);
+      if (!kanban || !kanban.execution?.lastIncident) return;
+
+      kanban.execution.lastIncident = null;
+      await this.writeKanbanJsonUnlocked(specPath, kanban);
+    });
+  }
+
+  /**
    * Resolves dependencies for blocked stories.
    * A blocked story is unblocked to 'ready' when ALL its dependencies have status 'done'.
    * The entire read-modify-write is performed inside a single lock to prevent TOCTOU races.
@@ -424,12 +489,8 @@ export class SpecsReader {
       assignedToBot: json.assignedToBot?.assigned ?? false,
       // Compute isReady from actual story statuses instead of trusting stored boardStatus
       // (boardStatus can be stale if kanban was created/modified externally)
-      isReady: (() => {
-        const statuses = json.stories.map(s => s.status);
-        const allReady = json.stories.length > 0 && json.stories.every(s => s.status === 'ready');
-        console.log(`[DEBUG isReady] convertJsonToKanbanBoard specId=${json.spec.id} storyCount=${json.stories.length} statuses=${JSON.stringify(statuses)} allReady=${allReady}`);
-        return allReady;
-      })()
+      isReady: json.stories.length > 0 && json.stories.every(s => s.status === 'ready'),
+      lastIncident: json.execution?.lastIncident ?? null
     };
   }
 
@@ -470,11 +531,7 @@ export class SpecsReader {
    * A spec is ready when ALL stories have status "ready" and there is at least one story.
    */
   public isSpecReady(kanban: KanbanJsonV1): boolean {
-    // Compute from actual story statuses instead of trusting stored boardStatus
-    const statuses = kanban.stories.map(s => s.status);
-    const allReady = kanban.stories.length > 0 && kanban.stories.every(s => s.status === 'ready');
-    console.log(`[DEBUG isReady] isSpecReady specId=${kanban.spec.id} storyCount=${kanban.stories.length} statuses=${JSON.stringify(statuses)} allReady=${allReady}`);
-    return allReady;
+    return kanban.stories.length > 0 && kanban.stories.every(s => s.status === 'ready');
   }
 
   /**
@@ -789,7 +846,6 @@ export class SpecsReader {
       if (jsonKanban) {
         const gitStrategy = jsonKanban.resumeContext?.gitStrategy as 'branch' | 'worktree' | 'current-branch' | null;
         const isReady = this.isSpecReady(jsonKanban);
-        console.log(`[DEBUG getSpecInfo] ${specId}: JSON path, isReady=${isReady}, assignedToBot=${jsonKanban.assignedToBot?.assigned}`);
         return {
           id: specId,
           name: this.capitalizeWords(name),
@@ -805,7 +861,7 @@ export class SpecsReader {
       }
 
       // PRIORITY 2: Fallback to MD kanban
-      console.log(`[DEBUG getSpecInfo] ${specId}: MD fallback path (no kanban.json found)`);
+      // MD fallback path (no kanban.json found)
       const kanbanPath = join(specPath, 'kanban-board.md');
       let hasKanban = false;
       let completedCount = 0;
@@ -987,9 +1043,11 @@ export class SpecsReader {
       // Try multiple formats:
       // 1. "Story ID: MSK-001" format
       // 2. "# Story MSK-001:" title format
-      // 3. "| **ID** | MSK-001 |" table format
+      // 3. "# MSK-001:" / "# MSK-001 Title" inline-ID title format
+      // 4. "| **ID** | MSK-001 |" table format
       const storyIdMatch = content.match(/Story ID:\s*([A-Z0-9-]+)/i) ||
-        content.match(/^#\s+Story\s+([A-Z0-9-]+):/im) ||
+        content.match(/^#\s+Story\s+([A-Z][A-Z0-9]*-\d+):/im) ||
+        content.match(/^#\s+([A-Z][A-Z0-9]*-\d+)\b/m) ||
         content.match(/\|\s*\*\*ID\*\*\s*\|\s*([A-Z0-9-]+)\s*\|/i);
       if (storyIdMatch) {
         storyId = storyIdMatch[1];
@@ -1305,9 +1363,11 @@ export class SpecsReader {
       // Try multiple formats:
       // 1. "Story ID: MSK-001" format
       // 2. "# Story MSK-001:" title format
-      // 3. "| **ID** | MSK-001 |" table format
+      // 3. "# MSK-001:" / "# MSK-001 Title" inline-ID title format
+      // 4. "| **ID** | MSK-001 |" table format
       const storyIdMatch = content.match(/Story ID:\s*([A-Z0-9-]+)/i) ||
-        content.match(/^#\s+Story\s+([A-Z0-9-]+):/im) ||
+        content.match(/^#\s+Story\s+([A-Z][A-Z0-9]*-\d+):/im) ||
+        content.match(/^#\s+([A-Z][A-Z0-9]*-\d+)\b/m) ||
         content.match(/\|\s*\*\*ID\*\*\s*\|\s*([A-Z0-9-]+)\s*\|/i);
       if (storyIdMatch) {
         storyId = storyIdMatch[1];

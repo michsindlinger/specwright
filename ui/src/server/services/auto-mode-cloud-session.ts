@@ -7,6 +7,8 @@
  * Events:
  * - 'story.completed' (storyId: string) - Story completed successfully
  * - 'story.failed' (storyId: string, error: string) - Story failed or timed out
+ * - 'story.stalled' (storyId: string, silentMs: number) - No terminal activity for STALL_THRESHOLD_MS
+ * - 'story.prompt-stuck' (storyId: string, matchedText: string) - Interactive prompt detected in output
  * - 'spec.completed' (specId: string) - All stories in spec completed
  * - 'error' (error: Error) - Session error (crash, etc.)
  * - 'closed' () - Session closed (cleanup complete)
@@ -33,6 +35,12 @@ export interface AutoModeCloudSessionConfig {
   commandPrefix: string; // 'specwright' or 'agent-os'
 }
 
+/** Emit a stall warning after this many ms without terminal output. */
+const STALL_THRESHOLD_MS = 5 * 60 * 1000;
+
+/** How often the stall watchdog checks lastActivity. */
+const STALL_CHECK_INTERVAL_MS = 60 * 1000;
+
 export class AutoModeCloudSession extends EventEmitter {
   private config: AutoModeCloudSessionConfig;
   private sessionId: CloudTerminalSessionId | null = null;
@@ -40,6 +48,9 @@ export class AutoModeCloudSession extends EventEmitter {
   private currentModel: string;
   private kanbanWatcher: KanbanFileWatcher;
   private sessionClosedHandler: ((closedSessionId: string, exitCode?: number) => void) | null = null;
+  private promptDetectedHandler: ((detectedSessionId: string, matchedText: string) => void) | null = null;
+  private stallWatchdogTimer: ReturnType<typeof setInterval> | null = null;
+  private stalledNotified = false;
   private isCancelled = false;
   private isFirstStory = true;
 
@@ -64,12 +75,15 @@ export class AutoModeCloudSession extends EventEmitter {
     // Create the Cloud Terminal session
     const sessionId = await this.createCloudSession(storyId);
     this.sessionId = sessionId;
+    this.config.cloudTerminalManager.setAutoModeActive(sessionId, true);
 
     // Start watching kanban.json for completion
     this.startKanbanWatch(storyId);
 
     // Register session.closed listener for crash detection
     this.registerSessionClosedListener();
+    this.registerPromptDetectedListener();
+    this.startStallWatchdog();
 
     console.log(`[AutoModeCloudSession] Started first story ${storyId} in session ${sessionId}`);
 
@@ -104,13 +118,19 @@ export class AutoModeCloudSession extends EventEmitter {
     // Close old session
     if (this.sessionId) {
       this.unregisterSessionClosedListener();
+      this.unregisterPromptDetectedListener();
+      this.stopStallWatchdog();
       this.config.cloudTerminalManager.closeSession(this.sessionId);
     }
 
     // Create new session with the execute command as initial prompt
     const sessionId = await this.createCloudSession(storyId);
     this.sessionId = sessionId;
+    this.config.cloudTerminalManager.setAutoModeActive(sessionId, true);
     this.registerSessionClosedListener();
+    this.registerPromptDetectedListener();
+    this.stalledNotified = false;
+    this.startStallWatchdog();
 
     console.log(`[AutoModeCloudSession] Executing story ${storyId}`);
   }
@@ -125,10 +145,12 @@ export class AutoModeCloudSession extends EventEmitter {
 
     // Stop kanban watcher
     this.kanbanWatcher.unwatch();
+    this.stopStallWatchdog();
 
     // Close Cloud Terminal session
     if (this.sessionId) {
       this.unregisterSessionClosedListener();
+      this.unregisterPromptDetectedListener();
       this.config.cloudTerminalManager.closeSession(this.sessionId);
       this.sessionId = null;
     }
@@ -408,5 +430,69 @@ export class AutoModeCloudSession extends EventEmitter {
       this.config.cloudTerminalManager.off('session.closed', this.sessionClosedHandler);
       this.sessionClosedHandler = null;
     }
+  }
+
+  /**
+   * Register a listener for `session.prompt-detected` from CloudTerminalManager.
+   * Forwards as `story.prompt-stuck` for the currently executing story.
+   */
+  private registerPromptDetectedListener(): void {
+    this.promptDetectedHandler = (detectedSessionId: string, matchedText: string): void => {
+      if (detectedSessionId !== this.sessionId || !this.currentStoryId || this.isCancelled) {
+        return;
+      }
+      console.warn(`[AutoModeCloudSession] Story ${this.currentStoryId} prompt detected: ${JSON.stringify(matchedText)}`);
+      this.emit('story.prompt-stuck', this.currentStoryId, matchedText);
+    };
+
+    this.config.cloudTerminalManager.on('session.prompt-detected', this.promptDetectedHandler);
+  }
+
+  private unregisterPromptDetectedListener(): void {
+    if (this.promptDetectedHandler) {
+      this.config.cloudTerminalManager.off('session.prompt-detected', this.promptDetectedHandler);
+      this.promptDetectedHandler = null;
+    }
+  }
+
+  /**
+   * Start polling the session's lastActivity every STALL_CHECK_INTERVAL_MS.
+   * Emits `story.stalled` once after STALL_THRESHOLD_MS of silence; resets when activity resumes.
+   */
+  private startStallWatchdog(): void {
+    this.stopStallWatchdog();
+    this.stalledNotified = false;
+
+    this.stallWatchdogTimer = setInterval(() => {
+      if (this.isCancelled || !this.sessionId || !this.currentStoryId) {
+        return;
+      }
+
+      const session = this.config.cloudTerminalManager.getSession(this.sessionId);
+      if (!session) {
+        return;
+      }
+
+      const silentMs = Date.now() - session.lastActivity.getTime();
+
+      if (silentMs >= STALL_THRESHOLD_MS) {
+        if (!this.stalledNotified) {
+          this.stalledNotified = true;
+          console.warn(`[AutoModeCloudSession] Story ${this.currentStoryId} stalled (${Math.round(silentMs / 1000)}s without output)`);
+          this.emit('story.stalled', this.currentStoryId, silentMs);
+        }
+      } else if (this.stalledNotified) {
+        // Activity resumed — arm for next stall
+        this.stalledNotified = false;
+      }
+    }, STALL_CHECK_INTERVAL_MS);
+  }
+
+  private stopStallWatchdog(): void {
+    if (this.stallWatchdogTimer) {
+      clearInterval(this.stallWatchdogTimer);
+      this.stallWatchdogTimer = null;
+    }
+    this.stalledNotified = false;
   }
 }

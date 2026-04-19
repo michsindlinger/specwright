@@ -496,6 +496,31 @@ export class AosStoryCard extends LitElement {
         opacity: 0.5;
       }
     }
+
+    /* ── Mobile Responsive ─────────────────────────── */
+
+    @media (max-width: 768px) {
+      .story-card {
+        padding: 0.65rem;
+      }
+
+      .story-card:hover {
+        transform: none;
+        box-shadow: none;
+      }
+
+      .story-title {
+        font-size: 0.875rem;
+      }
+
+      /* Make action buttons always visible on touch */
+      .copy-path-btn,
+      .attachment-btn,
+      .comment-btn,
+      .assign-toggle-btn {
+        opacity: 1;
+      }
+    }
   `;
   private handleClick(): void {
     this.dispatchEvent(

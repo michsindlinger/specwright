@@ -30,12 +30,22 @@ export interface AutoModeProgress {
   totalPhases: number;
 }
 
+export interface KanbanAutoModeIncident {
+  type: 'crash' | 'stall' | 'prompt-stuck' | 'timeout' | 'error';
+  message: string;
+  storyId?: string;
+  timestamp: string;
+  matchedText?: string;
+  silentMs?: number;
+}
+
 export interface KanbanBoard {
   specId: string;
   stories: StoryInfo[];
   hasKanbanFile: boolean;
   assignedToBot?: boolean;
   isReady?: boolean;
+  lastIncident?: KanbanAutoModeIncident | null;
 }
 
 export type KanbanStatus = 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked';
@@ -138,6 +148,8 @@ export class AosKanbanBoard extends LitElement {
   @property({ type: Boolean }) showSpecViewer = true;
   @property({ type: Boolean }) showGitStrategy = true;
   @property({ type: Boolean }) showAutoMode = true;
+  // Pre-set git strategy from spec's resumeContext to skip git strategy dialog
+  @property({ type: String }) initialGitStrategy: GitStrategy | null = null;
   @state() private draggedStoryId: string | null = null;
   @state() private dropZoneActive: KanbanStatus | null = null;
   @state() private dropValidation: MoveValidation = { valid: true };
@@ -745,11 +757,122 @@ export class AosKanbanBoard extends LitElement {
       color: white;
     }
 
+    /* ── Mobile Responsive ─────────────────────────── */
+
+    @media (max-width: 768px) {
+      .kanban-header {
+        flex-wrap: wrap;
+        padding: 0.75rem;
+        gap: 0.5rem;
+      }
+
+      .kanban-title {
+        font-size: 1rem;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .back-btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+      }
+
+      .kanban-header-actions {
+        order: 10;
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+        justify-content: flex-start;
+        gap: 0.5rem;
+      }
+
+      .chat-toggle-btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+      }
+
+      .chat-toggle-btn span {
+        display: none;
+      }
+
+      .assign-toggle-container,
+      .auto-mode-toggle-container {
+        padding: 0.15rem 0.35rem;
+      }
+
+      .auto-mode-progress {
+        order: 10;
+        width: 100%;
+        margin-left: 0;
+        font-size: 0.8rem;
+      }
+
+      .progress-story-title {
+        max-width: 120px;
+      }
+
+      .kanban-warning {
+        order: 10;
+        width: 100%;
+        margin-left: 0;
+        font-size: 0.8rem;
+      }
+
+      .kanban-columns {
+        padding: 0.5rem;
+        gap: 0.5rem;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .kanban-column {
+        flex: 0 0 80vw;
+        min-width: 80vw;
+        scroll-snap-align: start;
+      }
+
+      .column-header h3 {
+        font-size: 0.9rem;
+      }
+
+      /* Chat sidebar full-width on mobile */
+      .chat-sidebar {
+        width: 100vw !important;
+      }
+
+      .kanban-container.chat-open {
+        margin-right: 0;
+        display: none;
+      }
+
+      .sidebar-resizer {
+        display: none;
+      }
+
+      /* Spec viewer full-width on mobile */
+      .spec-viewer-modal {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+      }
+
+      .attachment-panel-container {
+        width: 95vw;
+      }
+    }
+
   `];
 
   override connectedCallback(): void {
     super.connectedCallback();
     console.log('[KanbanBoard] Component connected, specId:', this.kanban?.specId);
+    // Pre-set git strategy from spec config to skip git strategy dialog
+    if (this.initialGitStrategy && !this.currentGitStrategy) {
+      this.currentGitStrategy = this.initialGitStrategy;
+    }
     this.setupWorkflowEventListeners();
     this.setupModelListHandler();
     this.requestModelList();

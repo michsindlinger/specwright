@@ -92,6 +92,7 @@ export class WebSocketHandler {
     this.commentHandler = commentHandler;
     this.fileHandler = fileHandler;
     this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager());
+    this.workflowExecutor.setCloudTerminalManager(this.cloudTerminalManager);
     this.voiceCallService = new VoiceCallService();
     this.previewWatcher = new PreviewWatcher();
     this.previewWatcher.init();
@@ -232,6 +233,12 @@ export class WebSocketHandler {
           break;
         case 'workflow.interactive.cancel':
           this.handleWorkflowInteractiveCancel(client, message);
+          break;
+        case 'workflow.auto-mode.cancel':
+          this.handleAutoModeCancel(client, message);
+          break;
+        case 'workflow.auto-mode.incident.clear':
+          this.handleAutoModeIncidentClear(client, message);
           break;
         case 'specs.list':
           this.handleSpecsList(client);
@@ -1029,6 +1036,77 @@ export class WebSocketHandler {
 
     // Broadcast updated running count to all
     this.broadcastRunningCount();
+  }
+
+  /**
+   * Handle auto-mode cancel: stop the persistent Cloud Terminal session for a spec.
+   */
+  private handleAutoModeCancel(client: WebSocketClient, message: WebSocketMessage): void {
+    const specId = message.specId as string;
+    const projectPath = message.projectId as string;
+
+    if (!specId) {
+      client.send(JSON.stringify({
+        type: 'workflow.auto-mode.cancel.ack',
+        cancelled: false,
+        error: 'specId is required',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+
+    const cancelled = this.workflowExecutor.cancelAutoModeSession(specId);
+
+    client.send(JSON.stringify({
+      type: 'workflow.auto-mode.cancel.ack',
+      specId,
+      cancelled,
+      projectId: projectPath,
+      timestamp: new Date().toISOString()
+    }));
+  }
+
+  /**
+   * Clear the persisted auto-mode incident (user dismissed the warning in the UI).
+   * Triggers a kanban refresh so the warning disappears on all clients.
+   */
+  private handleAutoModeIncidentClear(client: WebSocketClient, message: WebSocketMessage): void {
+    const specId = message.specId as string;
+    const projectPath = (message.projectId as string) || client.projectId;
+
+    if (!specId || !projectPath) {
+      client.send(JSON.stringify({
+        type: 'workflow.auto-mode.incident.clear.ack',
+        cleared: false,
+        error: 'specId and projectId are required',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+
+    const specsReader = new SpecsReader();
+    specsReader.clearAutoModeIncident(projectPath, specId).then(() => {
+      client.send(JSON.stringify({
+        type: 'workflow.auto-mode.incident.clear.ack',
+        specId,
+        cleared: true,
+        timestamp: new Date().toISOString()
+      }));
+
+      webSocketManager.sendToProject(projectPath, {
+        type: 'backlog.kanban.refresh',
+        timestamp: new Date().toISOString()
+      });
+    }).catch(err => {
+      console.error('[WebSocket] Failed to clear auto-mode incident:', err);
+      client.send(JSON.stringify({
+        type: 'workflow.auto-mode.incident.clear.ack',
+        specId,
+        cleared: false,
+        error: err instanceof Error ? err.message : String(err),
+        timestamp: new Date().toISOString()
+      }));
+    });
   }
 
   private handleWorkflowRunning(client: WebSocketClient): void {
