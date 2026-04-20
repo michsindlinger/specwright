@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.20.3"
+FRAMEWORK_VERSION="3.21.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -799,6 +799,9 @@ install_project() {
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-1.md" "specwright/workflows/core/execute-tasks/spec-phase-1.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-2.md" "specwright/workflows/core/execute-tasks/spec-phase-2.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3.md" "specwright/workflows/core/execute-tasks/spec-phase-3.md" "workflow"
+    download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-code-review.md" "specwright/workflows/core/execute-tasks/spec-phase-3-code-review.md" "workflow"
+    download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-integration-validation.md" "specwright/workflows/core/execute-tasks/spec-phase-3-integration-validation.md" "workflow"
+    download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-finalize-pr.md" "specwright/workflows/core/execute-tasks/spec-phase-3-finalize-pr.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/backlog-phase-1.md" "specwright/workflows/core/execute-tasks/backlog-phase-1.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/backlog-phase-2.md" "specwright/workflows/core/execute-tasks/backlog-phase-2.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/backlog-phase-3.md" "specwright/workflows/core/execute-tasks/backlog-phase-3.md" "workflow"
