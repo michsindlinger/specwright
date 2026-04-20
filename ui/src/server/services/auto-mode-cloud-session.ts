@@ -273,6 +273,18 @@ export class AutoModeCloudSession extends EventEmitter {
   }): Promise<void> {
     const specPath = projectDir(this.config.projectPath, 'specs', this.config.specId);
     const debugFilePath = join(specPath, 'auto-mode-debug.json');
+
+    // Drop a local .gitignore so this debug file never leaks into commits
+    // (self-healing for both new and existing specs).
+    const gitignorePath = join(specPath, '.gitignore');
+    if (!existsSync(gitignorePath)) {
+      try {
+        await writeFile(gitignorePath, 'auto-mode-debug.json\n', 'utf-8');
+      } catch (err) {
+        console.warn('[AutoModeCloudSession] Failed to write spec .gitignore:', err);
+      }
+    }
+
     const baseCommand = `/${this.config.commandPrefix}:execute-tasks ${this.config.specId} ${storyId}`;
     const cliConfig = getCliCommandForModel(this.currentModel);
     const fullCliArgs = [...cliConfig.args, this.buildExecuteCommand(storyId, specContext)];
