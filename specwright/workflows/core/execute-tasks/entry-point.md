@@ -315,7 +315,12 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
 
   ### 4. Execute the Target Story
 
-  LOAD: @specwright/workflows/core/execute-tasks/spec-phase-3.md
+  **V2 Lean Detection:** Check kanban.json for `mode === "lean"` or `version === "2.0"`
+
+  IF V2 Lean:
+    LOAD: @specwright/workflows/core/execute-tasks/spec-phase-3-lean.md
+  ELSE:
+    LOAD: @specwright/workflows/core/execute-tasks/spec-phase-3.md
 
   **CRITICAL: Follow Phase 3's `load_next_task` step EXACTLY.**
   **You MUST call the MCP tool `kanban_get_next_task` with storyId = TARGET_STORY_ID.**
@@ -457,6 +462,33 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
     EXTRACT: resumeContext.worktreePath
     EXTRACT: resumeContext.gitBranch
     SET: USING_JSON = true
+
+    ## V2 Lean Mode Detection (v4.3)
+
+    CHECK: Is this a V2 (Lean) kanban?
+    - IF `mode === "lean"` OR `version === "2.0"` OR `tasks` array exists:
+      SET: USING_LEAN = true
+      LOG: "V2 Lean kanban detected"
+
+      **Lean Phase Routing Table:**
+
+      | currentPhase | Load Phase File |
+      |-------------|-----------------|
+      | 1-kanban-setup | spec-phase-1-lean.md |
+      | 1-complete | spec-phase-2.md (shared) |
+      | 2-worktree-setup | spec-phase-2.md (shared) |
+      | 2-complete | spec-phase-3-lean.md |
+      | 3-execute-task | spec-phase-3-lean.md |
+      | task-complete | spec-phase-3-lean.md |
+      | all-tasks-done | spec-phase-3-lean.md |
+      | complete | INFORM: "Spec execution complete." |
+
+      LOAD: Appropriate lean phase file
+      STOP: After loading
+
+    ELSE:
+      SET: USING_LEAN = false
+      CONTINUE with V1 routing below
 
   ELSE (kanban.json NOT found):
     ## 2. ONLY THEN: Fallback to Legacy kanban-board.md

@@ -143,8 +143,10 @@ mkdir -p specwright/workflows/core/execute-tasks
 mkdir -p specwright/workflows/core/execute-tasks/shared
 download_file "$REPO_URL/specwright/workflows/core/execute-tasks/entry-point.md" "specwright/workflows/core/execute-tasks/entry-point.md" "workflows"
 download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-1.md" "specwright/workflows/core/execute-tasks/spec-phase-1.md" "workflows"
+download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-1-lean.md" "specwright/workflows/core/execute-tasks/spec-phase-1-lean.md" "workflows"
 download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-2.md" "specwright/workflows/core/execute-tasks/spec-phase-2.md" "workflows"
 download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3.md" "specwright/workflows/core/execute-tasks/spec-phase-3.md" "workflows"
+download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-lean.md" "specwright/workflows/core/execute-tasks/spec-phase-3-lean.md" "workflows"
 download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-code-review.md" "specwright/workflows/core/execute-tasks/spec-phase-3-code-review.md" "workflows"
 download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-integration-validation.md" "specwright/workflows/core/execute-tasks/spec-phase-3-integration-validation.md" "workflows"
 download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-finalize-pr.md" "specwright/workflows/core/execute-tasks/spec-phase-3-finalize-pr.md" "workflows"

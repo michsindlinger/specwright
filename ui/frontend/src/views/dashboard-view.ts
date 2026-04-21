@@ -26,9 +26,9 @@ interface StoryDetail {
   dependencies: string[];
   content: string; // Raw markdown content
   feature: string;
-  acceptanceCriteria: string[];
-  dorChecklist: string[];
-  dodChecklist: string[];
+  acceptanceCriteria: string[] | null;
+  dorChecklist: string[] | null;
+  dodChecklist: string[] | null;
 }
 
 // UKB-004: BacklogStoryInfo now imported from server types

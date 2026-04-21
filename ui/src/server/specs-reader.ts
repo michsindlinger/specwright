@@ -84,9 +84,9 @@ export interface StoryDetail {
   dependencies: string[];
   content: string; // Raw markdown content
   feature: string;
-  acceptanceCriteria: string[];
-  dorChecklist: string[];
-  dodChecklist: string[];
+  acceptanceCriteria: string[] | null;
+  dorChecklist: string[] | null;
+  dodChecklist: string[] | null;
 }
 
 export interface KanbanInitResult {
@@ -249,6 +249,37 @@ interface KanbanJsonV1 {
   changeLog: KanbanJsonChangeLogEntry[];
 }
 
+interface KanbanJsonV2Task {
+  id: string;
+  title: string;
+  description?: string;
+  planSection?: string;
+  status: KanbanJsonStatus;
+  dependencies?: string[];
+  model?: string | null;
+  phase?: KanbanJsonPhase;
+  timing?: { startedAt: string | null; completedAt: string | null };
+  [key: string]: unknown;
+}
+
+interface KanbanJsonV2 {
+  version: '2.0';
+  mode: 'lean';
+  spec: KanbanJsonSpec & { implementationPlan?: string };
+  resumeContext: KanbanJsonResumeContext;
+  execution: KanbanJsonExecution;
+  tasks: KanbanJsonV2Task[];
+  boardStatus: KanbanJsonBoardStatus;
+  assignedToBot?: KanbanJsonAssignedToBot;
+  changeLog: KanbanJsonChangeLogEntry[];
+}
+
+type KanbanJson = KanbanJsonV1 | KanbanJsonV2;
+
+function isV2Kanban(kanban: KanbanJson): kanban is KanbanJsonV2 {
+  return 'mode' in kanban && (kanban as KanbanJsonV2).mode === 'lean' || 'version' in kanban && (kanban as KanbanJsonV2).version === '2.0';
+}
+
 export class SpecsReader {
   // ============================================================================
   // JSON Kanban Methods (Priority 1)
@@ -258,7 +289,7 @@ export class SpecsReader {
    * Reads kanban.json from a spec folder.
    * Returns null if the file doesn't exist or is invalid.
    */
-  private async readKanbanJson(specPath: string): Promise<KanbanJsonV1 | null> {
+  private async readKanbanJson(specPath: string): Promise<KanbanJson | null> {
     const jsonPath = join(specPath, 'kanban.json');
     try {
       const content = await fs.readFile(jsonPath, 'utf-8');
@@ -278,7 +309,7 @@ export class SpecsReader {
    * Preserves formatting with 2-space indentation.
    * Uses same lock protocol as Kanban MCP Server for cross-process coordination.
    */
-  private async writeKanbanJson(specPath: string, kanban: KanbanJsonV1): Promise<void> {
+  private async writeKanbanJson(specPath: string, kanban: KanbanJson): Promise<void> {
     await withKanbanLock(specPath, async () => {
       const jsonPath = join(specPath, 'kanban.json');
       await fs.writeFile(jsonPath, JSON.stringify(kanban, null, 2), 'utf-8');
@@ -289,7 +320,7 @@ export class SpecsReader {
    * Reads kanban.json without acquiring a lock.
    * MUST only be called from within a withKanbanLock() callback.
    */
-  private async readKanbanJsonUnlocked(specPath: string): Promise<KanbanJsonV1 | null> {
+  private async readKanbanJsonUnlocked(specPath: string): Promise<KanbanJson | null> {
     const jsonPath = join(specPath, 'kanban.json');
     try {
       const content = await fs.readFile(jsonPath, 'utf-8');
@@ -306,7 +337,7 @@ export class SpecsReader {
    * Writes kanban.json without acquiring a lock.
    * MUST only be called from within a withKanbanLock() callback.
    */
-  private async writeKanbanJsonUnlocked(specPath: string, kanban: KanbanJsonV1): Promise<void> {
+  private async writeKanbanJsonUnlocked(specPath: string, kanban: KanbanJson): Promise<void> {
     const jsonPath = join(specPath, 'kanban.json');
     await fs.writeFile(jsonPath, JSON.stringify(kanban, null, 2), 'utf-8');
   }
@@ -377,24 +408,35 @@ export class SpecsReader {
 
       const unblockedIds: string[] = [];
 
-      for (const story of jsonKanban.stories) {
-        if (story.status !== 'blocked' || !story.dependencies?.length) continue;
-
-        const allSatisfied = story.dependencies.every(depId => {
-          const dep = jsonKanban.stories.find(s => s.id === depId);
-          return dep && (dep.status === 'done' || dep.status === 'in_review');
-        });
-
-        if (allSatisfied) {
-          story.status = 'ready';
-          story.phase = 'pending';
-          unblockedIds.push(story.id);
-          this.addChangeLogEntry(
-            jsonKanban,
-            'dependency_resolved',
-            story.id,
-            `Unblocked: all dependencies done/in_review (${story.dependencies.join(', ')})`
-          );
+      if (isV2Kanban(jsonKanban)) {
+        for (const task of jsonKanban.tasks) {
+          if (task.status !== 'blocked' || !(task.dependencies?.length)) continue;
+          const allSatisfied = task.dependencies.every(depId => {
+            const dep = jsonKanban.tasks.find(t => t.id === depId);
+            return dep && (dep.status === 'done' || dep.status === 'in_review');
+          });
+          if (allSatisfied) {
+            task.status = 'ready';
+            task.phase = 'pending';
+            unblockedIds.push(task.id);
+            this.addChangeLogEntry(jsonKanban, 'dependency_resolved', task.id,
+              `Unblocked: all dependencies done/in_review (${task.dependencies.join(', ')})`);
+          }
+        }
+      } else {
+        for (const story of jsonKanban.stories) {
+          if (story.status !== 'blocked' || !(story.dependencies?.length)) continue;
+          const allSatisfied = story.dependencies.every(depId => {
+            const dep = jsonKanban.stories.find(s => s.id === depId);
+            return dep && (dep.status === 'done' || dep.status === 'in_review');
+          });
+          if (allSatisfied) {
+            story.status = 'ready';
+            story.phase = 'pending';
+            unblockedIds.push(story.id);
+            this.addChangeLogEntry(jsonKanban, 'dependency_resolved', story.id,
+              `Unblocked: all dependencies done/in_review (${story.dependencies.join(', ')})`);
+          }
         }
       }
 
@@ -452,6 +494,47 @@ export class SpecsReader {
    * Uses story files for dorComplete status.
    * Supports both v1 format (type/priority/effort directly) and v2 format (classification object).
    */
+  private convertV2ToKanbanBoard(
+    json: KanbanJsonV2,
+    specId: string
+  ): KanbanBoard {
+    const tasks = json.tasks;
+    const boardStatus = json.boardStatus;
+
+    // Build a set of done task IDs for dependency-based dorComplete
+    const doneTaskIds = new Set(
+      tasks.filter(t => t.status === 'done').map(t => t.id)
+    );
+
+    const stories: StoryInfo[] = tasks.map(task => {
+      const deps = task.dependencies ?? [];
+      const dorComplete = deps.every(dep => doneTaskIds.has(dep));
+      return {
+        id: task.id,
+        title: task.title || '',
+        type: String(task.type ?? 'task'),
+        priority: String(task.priority ?? 'medium'),
+        effort: String(task.effort ?? '0'),
+        status: this.mapJsonStatusToFrontend(task.status),
+        dependencies: deps,
+        dorComplete: deps.length === 0 || dorComplete,
+        model: task.model ?? 'opus',
+        file: undefined,
+        attachmentCount: 0
+      };
+    });
+
+    return {
+      specId,
+      stories,
+      hasKanbanFile: true,
+      currentPhase: json.resumeContext?.currentPhase ?? null,
+      executionStatus: json.execution?.status ?? undefined,
+      assignedToBot: json.assignedToBot?.assigned ?? false,
+      isReady: boardStatus.ready === boardStatus.total && boardStatus.total > 0
+    };
+  }
+
   private convertJsonToKanbanBoard(
     json: KanbanJsonV1,
     storiesFromFiles: Map<string, StoryInfo>
@@ -497,7 +580,19 @@ export class SpecsReader {
   /**
    * Updates boardStatus counts based on current story statuses.
    */
-  private updateBoardStatus(kanban: KanbanJsonV1): void {
+  private updateBoardStatus(kanban: KanbanJson): void {
+    if (isV2Kanban(kanban)) {
+      kanban.boardStatus = {
+        total: kanban.tasks.length,
+        ready: kanban.tasks.filter(t => t.status === 'ready').length,
+        inProgress: kanban.tasks.filter(t => t.status === 'in_progress').length,
+        inReview: kanban.tasks.filter(t => t.status === 'in_review').length,
+        testing: kanban.tasks.filter(t => t.status === 'testing').length,
+        done: kanban.tasks.filter(t => t.status === 'done').length,
+        blocked: kanban.tasks.filter(t => t.status === 'blocked').length
+      };
+      return;
+    }
     kanban.boardStatus = {
       total: kanban.stories.length,
       ready: kanban.stories.filter(s => s.status === 'ready').length,
@@ -513,7 +608,7 @@ export class SpecsReader {
    * Adds an entry to the changelog.
    */
   private addChangeLogEntry(
-    kanban: KanbanJsonV1,
+    kanban: KanbanJson,
     action: string,
     storyId: string | null,
     details: string
@@ -528,9 +623,12 @@ export class SpecsReader {
 
   /**
    * Checks whether a spec is ready for bot assignment.
-   * A spec is ready when ALL stories have status "ready" and there is at least one story.
+   * A spec is ready when ALL items (stories or tasks) have status "ready" and there is at least one.
    */
-  public isSpecReady(kanban: KanbanJsonV1): boolean {
+  public isSpecReady(kanban: KanbanJson): boolean {
+    if (isV2Kanban(kanban)) {
+      return kanban.tasks.length > 0 && kanban.tasks.every(t => t.status === 'ready');
+    }
     return kanban.stories.length > 0 && kanban.stories.every(s => s.status === 'ready');
   }
 
@@ -930,32 +1028,47 @@ export class SpecsReader {
     const kanbanPath = join(specPath, 'kanban-board.md');
     const storiesPath = join(specPath, 'stories');
 
-    // Read stories from story files (for dorComplete)
-    const storyFiles = await this.listStoryFiles(storiesPath);
-    const storiesFromFiles: Map<string, StoryInfo> = new Map();
-
-    for (const file of storyFiles) {
-      const story = await this.parseStoryFile(storiesPath, file);
-      if (story) {
-        storiesFromFiles.set(story.id, story);
-      }
-    }
-
-    // PRIORITY 1: Try JSON kanban
+    // PRIORITY 0: Try JSON kanban first (handles both V1 and V2)
     try {
       const jsonKanban = await this.readKanbanJson(specPath);
       if (jsonKanban) {
+        // V2 (Lean) mode
+        if (isV2Kanban(jsonKanban)) {
+          console.log(`[SpecsReader] Using kanban.json V2 (lean) for ${specId}`);
+          const board = this.convertV2ToKanbanBoard(jsonKanban, specId);
+
+          await Promise.all(board.stories.map(async (story) => {
+            story.attachmentCount = await attachmentStorageService.count(
+              projectPath, 'spec', specId, story.id, undefined
+            );
+          }));
+
+          board.stories.sort((a, b) => {
+            const order: Record<string, number> = { in_progress: 0, backlog: 1, blocked: 2, done: 3 };
+            return (order[a.status] ?? 4) - (order[b.status] ?? 4);
+          });
+
+          return board;
+        }
+
+        // V1 (Classic) mode
         console.log(`[SpecsReader] Using kanban.json for ${specId}`);
+        const storyFiles = await this.listStoryFiles(storiesPath);
+        const storiesFromFiles: Map<string, StoryInfo> = new Map();
+        for (const file of storyFiles) {
+          const story = await this.parseStoryFile(storiesPath, file);
+          if (story) {
+            storiesFromFiles.set(story.id, story);
+          }
+        }
         const board = this.convertJsonToKanbanBoard(jsonKanban, storiesFromFiles);
 
-        // Load attachment counts for all stories
         await Promise.all(board.stories.map(async (story) => {
           story.attachmentCount = await attachmentStorageService.count(
             projectPath, 'spec', specId, story.id, undefined
           );
         }));
 
-        // Sort: in_progress first, then backlog, then blocked, then done
         board.stories.sort((a, b) => {
           const order: Record<string, number> = { in_progress: 0, backlog: 1, blocked: 2, done: 3 };
           return (order[a.status] ?? 4) - (order[b.status] ?? 4);
@@ -973,6 +1086,16 @@ export class SpecsReader {
 
     // PRIORITY 2: Fallback to MD kanban (only reached when kanban.json does not exist)
     console.log(`[SpecsReader] Falling back to kanban-board.md for ${specId}`);
+
+    // Read stories from story files (for dorComplete) - needed for MD fallback
+    const storyFiles = await this.listStoryFiles(storiesPath);
+    const storiesFromFiles: Map<string, StoryInfo> = new Map();
+    for (const file of storyFiles) {
+      const story = await this.parseStoryFile(storiesPath, file);
+      if (story) {
+        storiesFromFiles.set(story.id, story);
+      }
+    }
 
     const result: KanbanBoard = {
       specId,
@@ -1160,7 +1283,78 @@ export class SpecsReader {
   }
 
   async getStoryDetail(projectPath: string, specId: string, storyId: string): Promise<StoryDetail | null> {
-    const storiesPath = join(projectDir(projectPath, 'specs', specId), 'stories');
+    const specPath = projectDir(projectPath, 'specs', specId);
+
+    // V2 (Lean) mode: task detail from kanban.json + implementation plan
+    try {
+      const jsonKanban = await this.readKanbanJson(specPath);
+      if (jsonKanban && isV2Kanban(jsonKanban)) {
+        const task = jsonKanban.tasks.find(t => t.id === storyId);
+        if (!task) return null;
+
+        // Map status directly from the task (avoids full board rebuild)
+        const taskStatus = this.mapJsonStatusToFrontend(task.status);
+
+        // Build content from task description + implementation plan section
+        let content = `# ${task.id}: ${task.title}\n\n${task.description || ''}`;
+
+        // Try to read the implementation plan section
+        try {
+          const planPath = join(specPath, 'implementation-plan.md');
+          const planContent = await fs.readFile(planPath, 'utf-8');
+          const planSection = task.planSection || '';
+
+          // Use same robust parsing as MCP server: try exact heading, then Phase N, then fallback
+          let matched = false;
+          const exactHeading = planSection.trim();
+          if (exactHeading) {
+            const escapedHeading = exactHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const exactRegex = new RegExp(
+              `^#{2,3}\\s+${escapedHeading}\\s*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s|$)`, 'im'
+            );
+            const sectionContent = planContent.match(exactRegex);
+            if (sectionContent) {
+              content += `\n\n---\n\n## Implementation Plan: ${planSection}\n\n${sectionContent[0].trim()}`;
+              matched = true;
+            }
+          }
+
+          if (!matched) {
+            const phaseMatch = planSection.match(/Phase\s+(\d+)/i);
+            if (phaseMatch) {
+              const phaseNum = phaseMatch[1];
+              const sectionRegex = new RegExp(
+                `^#{2,3}\\s+(?:Phase\\s*)?${phaseNum}[\\s.:\\-–—]*[^\\n]*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s+(?:Phase\\s*)?\\d|\\n##\\s|$)`, 'im'
+              );
+              const sectionContent = planContent.match(sectionRegex);
+              if (sectionContent) {
+                content += `\n\n---\n\n## Implementation Plan: ${planSection}\n\n${sectionContent[0].trim()}`;
+              }
+            }
+          }
+        } catch { /* implementation plan not available */ }
+
+        return {
+          id: task.id,
+          title: task.title || '',
+          type: 'task',
+          priority: 'medium',
+          effort: '0',
+          status: taskStatus,
+          dependencies: task.dependencies ?? [],
+          content,
+          feature: '',
+          acceptanceCriteria: null,
+          dorChecklist: null,
+          dodChecklist: null
+        };
+      }
+    } catch {
+      // Not a V2 kanban or file doesn't exist, fall through to V1
+    }
+
+    // V1 (Classic) mode: read story .md file
+    const storiesPath = join(specPath, 'stories');
 
     try {
       const files = await fs.readdir(storiesPath);
@@ -1652,9 +1846,14 @@ _None yet_
   private async syncNewStoriesJson(
     specPath: string,
     storiesPath: string,
-    jsonKanban: KanbanJsonV1
+    jsonKanban: KanbanJson
   ): Promise<SyncNewStoriesResult> {
     console.log(`[SpecsReader] syncNewStories: Using kanban.json`);
+
+    // V2 (Lean) mode: no story files to sync
+    if (isV2Kanban(jsonKanban)) {
+      return { synced: true, newStoryCount: 0, storyIds: [] };
+    }
 
     // Get existing story IDs from JSON
     const existingStoryIds = new Set(jsonKanban.stories.map(s => s.id));
@@ -1778,61 +1977,61 @@ _None yet_
     const jsonKanban = await this.readKanbanJson(specPath);
     if (jsonKanban) {
       console.log(`[SpecsReader] updateStoryStatus: Using kanban.json for ${specId}`);
-      const story = jsonKanban.stories.find(s => s.id === storyId);
-      if (!story) {
-        throw new Error(`Story ${storyId} not found in kanban.json`);
+
+      if (isV2Kanban(jsonKanban)) {
+        // V2 (Lean) mode
+        const task = jsonKanban.tasks.find(t => t.id === storyId);
+        if (!task) {
+          throw new Error(`Task ${storyId} not found in kanban.json`);
+        }
+        const oldStatus = task.status;
+        const newJsonStatus = this.mapFrontendStatusToJson(newStatus);
+        if (oldStatus === newJsonStatus) return;
+
+        task.status = newJsonStatus;
+        task.phase = newStatus === 'done' ? 'done' : (newStatus === 'in_progress' || newStatus === 'in_review' ? 'in_progress' : 'pending') as KanbanJsonPhase;
+        if (!task.timing) {
+          task.timing = { startedAt: null, completedAt: null };
+        }
+        if (newStatus === 'in_progress' && !task.timing.startedAt) {
+          task.timing.startedAt = new Date().toISOString();
+        } else if (newStatus === 'done') {
+          task.timing.completedAt = new Date().toISOString();
+        }
+        this.updateBoardStatus(jsonKanban);
+        this.addChangeLogEntry(jsonKanban, 'status_changed', storyId, `Moved from ${oldStatus} to ${newJsonStatus}`);
+        await this.writeKanbanJson(specPath, jsonKanban);
+      } else {
+        // V1 (Classic) mode
+        const story = jsonKanban.stories.find(s => s.id === storyId);
+        if (!story) {
+          throw new Error(`Story ${storyId} not found in kanban.json`);
+        }
+        const oldStatus = story.status;
+        const newJsonStatus = this.mapFrontendStatusToJson(newStatus);
+        if (oldStatus === newJsonStatus) return;
+
+        story.status = newJsonStatus;
+        story.phase = newStatus === 'done' ? 'done' : (newStatus === 'in_progress' || newStatus === 'in_review' ? 'in_progress' : 'pending') as KanbanJsonPhase;
+
+        if (!story.timing) {
+          story.timing = { createdAt: new Date().toISOString(), startedAt: null, completedAt: null };
+        }
+        if (!story.implementation) {
+          story.implementation = { filesModified: [], commits: [], notes: null };
+        }
+        if (!story.verification) {
+          story.verification = { dodChecked: false, integrationVerified: false };
+        }
+        if (newStatus === 'in_progress' && !story.timing.startedAt) {
+          story.timing.startedAt = new Date().toISOString();
+        } else if (newStatus === 'done') {
+          story.timing.completedAt = new Date().toISOString();
+        }
+        this.updateBoardStatus(jsonKanban);
+        this.addChangeLogEntry(jsonKanban, 'status_changed', storyId, `Moved from ${oldStatus} to ${newJsonStatus}`);
+        await this.writeKanbanJson(specPath, jsonKanban);
       }
-
-      const oldStatus = story.status;
-      const newJsonStatus = this.mapFrontendStatusToJson(newStatus);
-
-      // Skip if no change
-      if (oldStatus === newJsonStatus) {
-        return;
-      }
-
-      // Update status and phase
-      story.status = newJsonStatus;
-      story.phase = newStatus === 'done' ? 'done' : (newStatus === 'in_progress' || newStatus === 'in_review' ? 'in_progress' : 'pending') as KanbanJsonPhase;
-
-      // Update timing
-      if (!story.timing) {
-        story.timing = {
-          createdAt: new Date().toISOString(),
-          startedAt: null,
-          completedAt: null
-        };
-      }
-
-      if (!story.implementation) {
-        story.implementation = {
-          filesModified: [],
-          commits: [],
-          notes: null
-        };
-      }
-
-      if (!story.verification) {
-        story.verification = {
-          dodChecked: false,
-          integrationVerified: false
-        };
-      }
-
-      if (newStatus === 'in_progress' && !story.timing.startedAt) {
-        story.timing.startedAt = new Date().toISOString();
-      } else if (newStatus === 'done') {
-        story.timing.completedAt = new Date().toISOString();
-      }
-
-      // Update board status counts
-      this.updateBoardStatus(jsonKanban);
-
-      // Add changelog entry
-      this.addChangeLogEntry(jsonKanban, 'status_changed', storyId, `Moved from ${oldStatus} to ${newJsonStatus}`);
-
-      // Write updated JSON
-      await this.writeKanbanJson(specPath, jsonKanban);
 
       // After moving a story to 'done' or 'in_review', resolve dependencies for blocked stories
       // in_review counts as satisfied for batch-review workflows (auto mode)
@@ -2088,16 +2287,20 @@ _None yet_
     const jsonKanban = await this.readKanbanJson(specPath);
     if (jsonKanban) {
       console.log(`[SpecsReader] updateStoryModel: Using kanban.json for ${specId}`);
-      const story = jsonKanban.stories.find(s => s.id === storyId);
-      if (!story) {
-        throw new Error(`Story ${storyId} not found in kanban.json`);
+
+      if (isV2Kanban(jsonKanban)) {
+        const task = jsonKanban.tasks.find(t => t.id === storyId);
+        if (!task) throw new Error(`Task ${storyId} not found in kanban.json`);
+        const oldModel = task.model ?? null;
+        task.model = model;
+        this.addChangeLogEntry(jsonKanban, 'model_changed', storyId, `Model changed from ${oldModel ?? 'null'} to ${model}`);
+      } else {
+        const story = jsonKanban.stories.find(s => s.id === storyId);
+        if (!story) throw new Error(`Story ${storyId} not found in kanban.json`);
+        const oldModel = story.model;
+        story.model = model;
+        this.addChangeLogEntry(jsonKanban, 'model_changed', storyId, `Model changed from ${oldModel || 'null'} to ${model}`);
       }
-
-      const oldModel = story.model;
-      story.model = model;
-
-      // Add changelog entry
-      this.addChangeLogEntry(jsonKanban, 'model_changed', storyId, `Model changed from ${oldModel || 'null'} to ${model}`);
 
       // Write updated JSON
       await this.writeKanbanJson(specPath, jsonKanban);

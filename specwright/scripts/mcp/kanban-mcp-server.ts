@@ -200,8 +200,56 @@ interface KanbanJsonV1 {
 }
 
 // ============================================================================
+// Kanban JSON v2.0 (Lean Mode) TypeScript Interfaces
+// ============================================================================
+
+interface KanbanJsonV2Task {
+  id: string;
+  title: string;
+  description: string;
+  planSection: string;
+  dependencies: string[];
+  status: KanbanJsonStatus;
+  phase: KanbanJsonPhase;
+  model: string | null;
+  timing: { startedAt: string | null; completedAt: string | null };
+  implementation: { filesModified: string[]; commits: KanbanJsonCommit[] };
+}
+
+interface KanbanJsonV2 {
+  $schema?: string;
+  version: "2.0";
+  mode: "lean";
+  spec: KanbanJsonSpec & { implementationPlan: string };
+  resumeContext: KanbanJsonResumeContext;
+  execution: KanbanJsonExecution;
+  tasks: KanbanJsonV2Task[];
+  boardStatus: KanbanJsonBoardStatus;
+  assignedToBot?: KanbanJsonAssignedToBot;
+  changeLog: KanbanJsonChangeLogEntry[];
+}
+
+type KanbanJson = KanbanJsonV1 | KanbanJsonV2;
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
+
+function isV2Kanban(kanban: KanbanJson): kanban is KanbanJsonV2 {
+  return (kanban as KanbanJsonV2).mode === 'lean' || (kanban as KanbanJsonV2).version === '2.0';
+}
+
+function updateV2BoardStatus(kanban: KanbanJsonV2): void {
+  kanban.boardStatus = {
+    total: kanban.tasks.length,
+    ready: kanban.tasks.filter(t => t.status === 'ready').length,
+    inProgress: kanban.tasks.filter(t => t.status === 'in_progress').length,
+    inReview: kanban.tasks.filter(t => t.status === 'in_review').length,
+    testing: kanban.tasks.filter(t => t.status === 'testing').length,
+    done: kanban.tasks.filter(t => t.status === 'done').length,
+    blocked: kanban.tasks.filter(t => t.status === 'blocked').length
+  };
+}
 
 /**
  * Get the story file path from a kanban story entry.
@@ -235,16 +283,16 @@ function getStoryEffort(story: KanbanJsonStory): number | string {
 /**
  * Read kanban.json from spec directory
  */
-async function readKanbanJson(specPath: string): Promise<KanbanJsonV1> {
+async function readKanbanJson(specPath: string): Promise<KanbanJson> {
   const jsonPath = join(specPath, 'kanban.json');
   const content = await readFile(jsonPath, 'utf-8');
-  return JSON.parse(content) as KanbanJsonV1;
+  return JSON.parse(content) as KanbanJson;
 }
 
 /**
  * Write kanban.json to spec directory (inside lock)
  */
-async function writeKanbanJson(specPath: string, kanban: KanbanJsonV1): Promise<void> {
+async function writeKanbanJson(specPath: string, kanban: KanbanJson): Promise<void> {
   const jsonPath = join(specPath, 'kanban.json');
   await writeFile(jsonPath, JSON.stringify(kanban, null, 2), 'utf-8');
 }
@@ -347,7 +395,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'kanban_create',
-    description: 'Initialize kanban.json from story files. Creates the full KanbanJsonV1 structure with boardStatus, statistics, and initial changeLog. Supports both flat (type/priority/effort) and classified (classification object) story formats.',
+    description: 'Initialize kanban.json from story files (V1) or task definitions (V2 Lean). Creates the full Kanban structure with boardStatus and changeLog. Use mode="lean" with tasks[] for the token-efficient V2 format.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -355,9 +403,10 @@ const TOOLS: Tool[] = [
         specName: { type: 'string', description: 'Human-readable spec name' },
         specPrefix: { type: 'string', description: 'Story ID prefix (e.g., "AUTH")' },
         specTier: { type: 'string', enum: ['S', 'M', 'L'], description: 'Spec tier for adaptive doc depth (default: M)' },
+        mode: { type: 'string', enum: ['lean'], description: 'V2 Lean mode: tasks[] instead of stories[], no story files' },
         stories: {
           type: 'array',
-          description: 'Array of story objects. Supports flat fields (type/priority/effort) or nested classification object.',
+          description: 'V1: Array of story objects. Supports flat fields (type/priority/effort) or nested classification object.',
           items: {
             type: 'object',
             properties: {
@@ -387,9 +436,25 @@ const TOOLS: Tool[] = [
             required: ['id', 'title', 'status', 'dependencies']
           }
         },
+        tasks: {
+          type: 'array',
+          description: 'V2 Lean: Array of task definitions. No individual story files created.',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Task ID (e.g., "TASK-001")' },
+              title: { type: 'string', description: 'Short descriptive title' },
+              description: { type: 'string', description: '2-3 sentences: what to implement' },
+              planSection: { type: 'string', description: 'Reference to implementation plan section (e.g., "Phase 1, Component X")' },
+              dependencies: { type: 'array', items: { type: 'string' }, description: 'Task IDs this depends on' },
+              status: { type: 'string', enum: ['ready', 'blocked'] }
+            },
+            required: ['id', 'title', 'description', 'planSection', 'dependencies', 'status']
+          }
+        },
         executionPlan: {
           type: 'object',
-          description: 'Execution plan with phases',
+          description: 'Execution plan with phases (V1 only)',
           properties: {
             strategy: { type: 'string' },
             phases: {
@@ -409,7 +474,7 @@ const TOOLS: Tool[] = [
           }
         }
       },
-      required: ['specId', 'specName', 'specPrefix', 'stories']
+      required: ['specId', 'specName', 'specPrefix']
     }
   },
   {
@@ -1025,7 +1090,8 @@ async function handleKanbanCreate(
     specName: string;
     specPrefix: string;
     specTier?: 'S' | 'M' | 'L';
-    stories: Array<{
+    mode?: 'lean';
+    stories?: Array<{
       id: string;
       title: string;
       file?: string;
@@ -1040,12 +1106,43 @@ async function handleKanbanCreate(
       dependencies: string[];
       integration?: string[];
     }>;
+    tasks?: Array<{
+      id: string;
+      title: string;
+      description: string;
+      planSection: string;
+      dependencies: string[];
+      status: 'ready' | 'blocked';
+    }>;
     executionPlan?: {
       strategy: string;
       phases: Array<{ phase: number; name: string; stories: string[]; parallel?: boolean; note?: string }>;
     };
   }
 ) {
+  // V2 (Lean) mode
+  if (args.mode === 'lean' && args.tasks) {
+    return await handleKanbanCreateV2(specPath, args as {
+      specId: string;
+      specName: string;
+      specPrefix: string;
+      specTier?: 'S' | 'M' | 'L';
+      tasks: Array<{
+        id: string;
+        title: string;
+        description: string;
+        planSection: string;
+        dependencies: string[];
+        status: 'ready' | 'blocked';
+      }>;
+    });
+  }
+
+  // V1 (Classic) mode - existing logic
+  if (!args.stories) {
+    throw new Error('Either stories[] (V1) or tasks[] with mode=lean (V2) is required');
+  }
+
   return await withKanbanLock(specPath, async () => {
     const now = new Date().toISOString();
 
@@ -1203,12 +1300,149 @@ async function handleKanbanCreate(
   });
 }
 
+async function handleKanbanCreateV2(
+  specPath: string,
+  args: {
+    specId: string;
+    specName: string;
+    specPrefix: string;
+    specTier?: 'S' | 'M' | 'L';
+    tasks: Array<{
+      id: string;
+      title: string;
+      description: string;
+      planSection: string;
+      dependencies: string[];
+      status: 'ready' | 'blocked';
+    }>;
+  }
+) {
+  return await withKanbanLock(specPath, async () => {
+    const now = new Date().toISOString();
+
+    const tasks: KanbanJsonV2Task[] = args.tasks.map(t => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      planSection: t.planSection,
+      dependencies: t.dependencies,
+      status: t.status as KanbanJsonStatus,
+      phase: 'pending' as KanbanJsonPhase,
+      model: null,
+      timing: { startedAt: null, completedAt: null },
+      implementation: { filesModified: [], commits: [] }
+    }));
+
+    const boardStatus: KanbanJsonBoardStatus = {
+      total: tasks.length,
+      ready: tasks.filter(t => t.status === 'ready').length,
+      inProgress: 0,
+      inReview: 0,
+      testing: 0,
+      done: 0,
+      blocked: tasks.filter(t => t.status === 'blocked').length
+    };
+
+    const kanban: KanbanJsonV2 = {
+      version: "2.0",
+      mode: "lean",
+      spec: {
+        id: args.specId,
+        name: args.specName,
+        prefix: args.specPrefix,
+        specFile: 'spec.md',
+        specLiteFile: 'spec-lite.md',
+        createdAt: now,
+        specTier: args.specTier || 'M',
+        implementationPlan: 'implementation-plan.md'
+      },
+      resumeContext: {
+        currentPhase: '1-complete',
+        nextPhase: '2-worktree-setup',
+        worktreePath: null,
+        gitBranch: null,
+        gitStrategy: null,
+        currentStory: null,
+        currentStoryPhase: null,
+        lastAction: 'Lean kanban created via MCP',
+        nextAction: 'Setup git worktree or branch',
+        progressIndex: 0,
+        totalStories: tasks.length
+      },
+      execution: {
+        status: 'not_started',
+        startedAt: null,
+        completedAt: null,
+        model: null
+      },
+      tasks,
+      boardStatus,
+      changeLog: [{
+        timestamp: now,
+        action: 'kanban_created',
+        storyId: null,
+        details: `Lean kanban initialized with ${tasks.length} tasks via MCP tool`
+      }]
+    };
+
+    await writeKanbanJson(specPath, kanban);
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: true,
+          path: join(specPath, 'kanban.json'),
+          taskCount: tasks.length,
+          mode: 'lean'
+        }, null, 2)
+      }]
+    };
+  });
+}
+
 async function handleKanbanStartStory(
   specPath: string,
   args: { storyId: string; model?: string }
 ) {
   return await withKanbanLock(specPath, async () => {
     const kanban = await readKanbanJson(specPath);
+
+    // V2 (Lean) mode
+    if (isV2Kanban(kanban)) {
+      const task = kanban.tasks.find(t => t.id === args.storyId);
+      if (!task) {
+        throw new Error(`Task ${args.storyId} not found in kanban.json`);
+      }
+      const now = new Date().toISOString();
+      const oldStatus = task.status;
+
+      task.status = 'in_progress';
+      task.phase = 'in_progress';
+      task.timing.startedAt = now;
+      if (args.model) task.model = args.model;
+
+      kanban.resumeContext.currentStory = task.id;
+      kanban.resumeContext.currentStoryPhase = 'implementing';
+      kanban.resumeContext.lastAction = `Started ${task.id}`;
+      kanban.resumeContext.nextAction = `Implement ${task.title}`;
+
+      if (!kanban.execution.startedAt) kanban.execution.startedAt = now;
+      kanban.execution.status = 'executing';
+
+      updateV2BoardStatus(kanban);
+      addChangeLogEntry(kanban, 'status_changed', task.id, `Task started: ${oldStatus} → in_progress`);
+
+      await writeKanbanJson(specPath, kanban);
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({ success: true, story: { id: task.id, title: task.title, status: task.status } }, null, 2)
+        }]
+      };
+    }
+
+    // V1 (Classic) mode
     const story = kanban.stories.find(s => s.id === args.storyId);
 
     if (!story) {
@@ -1272,6 +1506,57 @@ async function handleKanbanCompleteStory(
 ) {
   return await withKanbanLock(specPath, async () => {
     const kanban = await readKanbanJson(specPath);
+
+    // V2 (Lean) mode
+    if (isV2Kanban(kanban)) {
+      const task = kanban.tasks.find(t => t.id === args.storyId);
+      if (!task) {
+        throw new Error(`Task ${args.storyId} not found in kanban.json`);
+      }
+      const now = new Date().toISOString();
+      const oldStatus = task.status;
+
+      task.status = 'done';
+      task.phase = 'done';
+      task.timing.completedAt = now;
+      task.implementation.filesModified = args.filesModified;
+      task.implementation.commits = args.commits;
+
+      kanban.resumeContext.currentStory = null;
+      kanban.resumeContext.currentStoryPhase = null;
+      kanban.resumeContext.progressIndex += 1;
+      kanban.resumeContext.lastAction = `Completed ${task.id}`;
+
+      const remainingTasks = kanban.tasks.filter(t => t.status !== 'done');
+      if (remainingTasks.length > 0) {
+        const nextTask = remainingTasks.find(t => t.status === 'ready' || t.status === 'in_progress');
+        kanban.resumeContext.nextAction = nextTask
+          ? `Execute next task: ${nextTask.id}`
+          : 'Wait for blocked tasks to become ready';
+      } else {
+        kanban.resumeContext.nextAction = 'All tasks complete';
+        kanban.resumeContext.currentPhase = 'complete';
+        kanban.execution.status = 'completed';
+        kanban.execution.completedAt = now;
+      }
+
+      updateV2BoardStatus(kanban);
+      addChangeLogEntry(kanban, 'status_changed', task.id, `Task completed: ${oldStatus} → done`);
+
+      await writeKanbanJson(specPath, kanban);
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: true,
+            story: { id: task.id, title: task.title, status: task.status },
+            remaining: remainingTasks.length
+          }, null, 2)
+        }]
+      };
+    }
+
+    // V1 (Classic) mode
     const story = kanban.stories.find(s => s.id === args.storyId);
 
     if (!story) {
@@ -1418,10 +1703,15 @@ async function handleKanbanSetGitStrategy(
 }
 
 async function handleKanbanGetNextTask(specPath: string, storyId?: string) {
-  // Read kanban to find next story
+  // Read kanban to find next story/task
   const kanban = await readKanbanJson(specPath);
 
-  // Find story: specific by ID or next ready
+  // V2 (Lean) mode
+  if (isV2Kanban(kanban)) {
+    return await handleKanbanGetNextTaskV2(specPath, kanban, storyId);
+  }
+
+  // V1 (Classic) mode - find story: specific by ID or next ready
   let nextStory;
   if (storyId) {
     nextStory = kanban.stories.find(s => s.id === storyId);
@@ -1640,6 +1930,137 @@ async function handleKanbanGetNextTask(specPath: string, storyId?: string) {
   };
 }
 
+async function handleKanbanGetNextTaskV2(
+  specPath: string,
+  kanban: KanbanJsonV2,
+  storyId?: string
+) {
+  // Find task: specific by ID or next ready
+  let nextTask: KanbanJsonV2Task | undefined;
+  if (storyId) {
+    nextTask = kanban.tasks.find(t => t.id === storyId);
+    if (nextTask && nextTask.status !== 'ready' && nextTask.status !== 'in_progress') {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: false,
+            message: `Task ${storyId} has status '${nextTask.status}' - cannot execute (must be 'ready' or 'in_progress')`
+          }, null, 2)
+        }]
+      };
+    }
+  } else {
+    nextTask = kanban.tasks.find(t => t.status === 'ready');
+  }
+
+  if (!nextTask) {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          message: 'No ready tasks found. All tasks are either in_progress, done, or blocked.'
+        }, null, 2)
+      }]
+    };
+  }
+
+  // Parse implementation plan section referenced by task.planSection
+  const specContext = await parseImplementationPlanSection(
+    specPath,
+    nextTask.planSection
+  );
+
+  // Read integration context if it exists
+  let integrationContext: {
+    completedTasks: Array<{ id: string; summary: string; files: string[] }>;
+    newExports: Record<string, string[]>;
+  } = { completedTasks: [], newExports: {} };
+
+  try {
+    const integrationPath = join(specPath, 'integration-context.md');
+    const integrationContent = await readFile(integrationPath, 'utf-8');
+
+    const completedTasks: Array<{ id: string; summary: string; files: string[] }> = [];
+    const tableMatches = integrationContent.matchAll(/\|\s*([A-Z0-9]+-\d+|TASK-\d+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|/g);
+
+    for (const match of tableMatches) {
+      const [, id, summary, filesStr] = match;
+      if (id !== '-' && id !== 'Story' && id !== 'Task') {
+        completedTasks.push({
+          id: id.trim(),
+          summary: summary.trim(),
+          files: filesStr.split(',').map(f => f.trim()).filter(f => f && f !== '-')
+        });
+      }
+    }
+
+    // Include dependency-related completed tasks, plus the most recent 3 for general context
+    const depIds = new Set(nextTask!.dependencies);
+    const depTasks = completedTasks.filter(ct => depIds.has(ct.id));
+    const recentTasks = completedTasks.slice(-3);
+    const seenIds = new Set(depTasks.map(t => t.id));
+    const additionalRecent = recentTasks.filter(t => !seenIds.has(t.id));
+    integrationContext.completedTasks = [...depTasks, ...additionalRecent];
+
+    const componentsMatch = integrationContent.match(/###\s+Components\s*([\s\S]*?)(?=###|$)/i);
+    const servicesMatch = integrationContent.match(/###\s+Services\s*([\s\S]*?)(?=###|$)/i);
+
+    if (componentsMatch && !componentsMatch[1].includes('_None yet_')) {
+      integrationContext.newExports.components = componentsMatch[1].trim().split('\n').filter(l => l.trim() && l.startsWith('-'));
+    }
+    if (servicesMatch && !servicesMatch[1].includes('_None yet_')) {
+      integrationContext.newExports.services = servicesMatch[1].trim().split('\n').filter(l => l.trim() && l.startsWith('-'));
+    }
+  } catch {
+    console.log('[GetNextTaskV2] No integration context found');
+  }
+
+  // Read spec-lite.md
+  let specLite: string | null = null;
+  try {
+    specLite = await readFile(join(specPath, 'spec-lite.md'), 'utf-8');
+  } catch { /* optional */ }
+
+  const response = {
+    success: true,
+    task: {
+      id: nextTask.id,
+      title: nextTask.title,
+      description: nextTask.description,
+      planSection: nextTask.planSection,
+      dependencies: nextTask.dependencies
+    },
+    planContext: specContext,
+    integrationContext,
+    specLite,
+    resumeInfo: {
+      currentPhase: kanban.resumeContext.currentPhase,
+      gitStrategy: kanban.resumeContext.gitStrategy,
+      gitBranch: kanban.resumeContext.gitBranch,
+      worktreePath: kanban.resumeContext.worktreePath,
+      progressIndex: kanban.resumeContext.progressIndex,
+      totalTasks: kanban.resumeContext.totalStories,
+      specTier: kanban.spec.specTier || 'M'
+    },
+    boardSummary: {
+      total: kanban.boardStatus.total,
+      ready: kanban.boardStatus.ready,
+      inProgress: kanban.boardStatus.inProgress,
+      done: kanban.boardStatus.done,
+      blocked: kanban.boardStatus.blocked
+    }
+  };
+
+  return {
+    content: [{
+      type: 'text',
+      text: JSON.stringify(response, null, 2)
+    }]
+  };
+}
+
 async function parseImplementationPlan(
   specPath: string,
   phaseNumber: number | null
@@ -1675,6 +2096,83 @@ async function parseImplementationPlan(
   }
 }
 
+async function parseImplementationPlanSection(
+  specPath: string,
+  planSection: string
+): Promise<{ executiveSummary: string; componentConnections: string; relevantSection: string } | null> {
+  try {
+    const planPath = join(specPath, 'implementation-plan.md');
+    const planContent = await readFile(planPath, 'utf-8');
+
+    const summaryMatch = planContent.match(/## Executive Summary\n+([\s\S]*?)(?=\n## )/);
+    const executiveSummary = summaryMatch ? summaryMatch[1].trim() : '';
+
+    const connectionsMatch = planContent.match(
+      /## (?:Komponenten-Verbindungen|Component Connections)(?:\s*\([^)]*\))?\n+([\s\S]*?)(?=\n## )/
+    );
+    const componentConnections = connectionsMatch ? connectionsMatch[1].trim() : '';
+
+    // Extract relevant section based on planSection reference
+    let relevantSection = '';
+
+    // Strategy 1: Try exact heading match (e.g. planSection = "Phase 1: Authentication")
+    const exactHeading = planSection.trim();
+    const escapedHeading = exactHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const exactRegex = new RegExp(
+      `^#{2,3}\\s+${escapedHeading}\\s*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s|$)`,
+      'im'
+    );
+    let sectionContent = planContent.match(exactRegex);
+    if (sectionContent) {
+      relevantSection = sectionContent[0].trim();
+    }
+
+    // Strategy 2: Try "Phase N" with flexible heading level and format
+    if (!relevantSection) {
+      const phaseMatch = planSection.match(/Phase\s+(\d+)/i);
+      if (phaseMatch) {
+        const phaseNum = phaseMatch[1];
+        // Match ## or ###, with optional "Phase" label and flexible formatting
+        // Handles: "### Phase 1", "## Phase 1:", "### 1. Foundation", "## Phase 1 - Auth"
+        const sectionRegex = new RegExp(
+          `^#{2,3}\\s+(?:Phase\\s*)?${phaseNum}[\\s.:\\-–—]*[^\\n]*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s+(?:Phase\\s*)?\\d|\\n##\\s|$)`,
+          'im'
+        );
+        sectionContent = planContent.match(sectionRegex);
+        if (sectionContent) {
+          relevantSection = sectionContent[0].trim();
+        }
+      }
+    }
+
+    // Strategy 3: Search for component name in tables or subsections
+    if (!relevantSection) {
+      const componentMatch = planSection.match(/(?:Component|Komponente)[:\s]+(.+)/i);
+      if (componentMatch) {
+        const componentName = componentMatch[1].trim();
+        const compRegex = new RegExp(
+          `\\|\\s*\\*?${componentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b[^|]*\\|[\\s\\S]*?(?=\\n(?!\\s*\\|)|$)`,
+          'i'
+        );
+        const compContent = planContent.match(compRegex);
+        if (compContent) {
+          relevantSection = compContent[0].trim();
+        }
+      }
+    }
+
+    // Fallback: if no specific section found, use executive summary
+    if (!relevantSection) {
+      relevantSection = executiveSummary;
+    }
+
+    return { executiveSummary, componentConnections, relevantSection };
+  } catch {
+    console.log('[GetNextTaskV2] No implementation-plan.md found');
+    return null;
+  }
+}
+
 async function handleKanbanAddItem(
   specPath: string,
   args: {
@@ -1685,6 +2183,45 @@ async function handleKanbanAddItem(
   return await withKanbanLock(specPath, async () => {
     const kanban = await readKanbanJson(specPath);
     const data = args.data as StoryItemData & BugItemData & FixItemData;
+
+    // V2 (Lean) mode - add task to tasks[] without creating file
+    if (isV2Kanban(kanban)) {
+      if (kanban.tasks.find(t => t.id === data.id)) {
+        throw new Error(`Item ${data.id} already exists in kanban`);
+      }
+      const deps = (data.dependencies || []) as string[];
+      for (const depId of deps) {
+        if (!kanban.tasks.find(t => t.id === depId)) {
+          throw new Error(`Dependency ${depId} not found in kanban`);
+        }
+      }
+      const now = new Date().toISOString();
+      const newTask: KanbanJsonV2Task = {
+        id: data.id as string,
+        title: data.title as string,
+        description: (data.description as string) || (data.title as string),
+        planSection: (data.planSection as string) || '',
+        dependencies: deps,
+        status: data.status === 'blocked' ? 'blocked' : 'ready',
+        phase: 'pending',
+        model: null,
+        timing: { startedAt: null, completedAt: null },
+        implementation: { filesModified: [], commits: [] }
+      };
+      kanban.tasks.push(newTask);
+      kanban.resumeContext.totalStories = kanban.tasks.length;
+      updateV2BoardStatus(kanban);
+      addChangeLogEntry(kanban, 'item_added', newTask.id, `Added ${args.itemType}: ${newTask.title}`);
+      await writeKanbanJson(specPath, kanban);
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({ success: true, id: newTask.id, mode: 'lean' }, null, 2)
+        }]
+      };
+    }
+
+    // V1 (Classic) mode - existing logic
 
     // Validate: Story ID unique
     if (kanban.stories.find(s => s.id === data.id)) {

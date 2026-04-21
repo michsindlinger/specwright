@@ -19,13 +19,36 @@ import { withKanbanLock } from '../utils/kanban-lock.js';
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const DEBOUNCE_MS = 300;
 
-interface KanbanJson {
-  stories?: Array<{
-    id: string;
-    status: string;
-  }>;
+interface KanbanStory {
+  id: string;
+  status: string;
+}
+
+interface KanbanJsonV1 {
+  stories?: KanbanStory[];
   currentPhase?: string;
   executionStatus?: string;
+}
+
+interface KanbanJsonV2 {
+  mode: 'lean';
+  version: '2.0';
+  tasks?: KanbanStory[];
+  currentPhase?: string;
+  executionStatus?: string;
+}
+
+type KanbanJson = KanbanJsonV1 | KanbanJsonV2;
+
+function isV2Kanban(kanban: KanbanJson): kanban is KanbanJsonV2 {
+  return (kanban as KanbanJsonV2).mode === 'lean' || (kanban as KanbanJsonV2).version === '2.0';
+}
+
+function getItemList(kanban: KanbanJson): KanbanStory[] {
+  if (isV2Kanban(kanban)) {
+    return kanban.tasks ?? [];
+  }
+  return kanban.stories ?? [];
 }
 
 export class KanbanFileWatcher extends EventEmitter {
@@ -155,11 +178,12 @@ export class KanbanFileWatcher extends EventEmitter {
         return JSON.parse(content) as KanbanJson;
       });
 
-      if (!kanban.stories) {
+      const items = getItemList(kanban);
+      if (items.length === 0) {
         return;
       }
 
-      const story = kanban.stories.find(s => s.id === this.currentStoryId);
+      const story = items.find(s => s.id === this.currentStoryId);
 
       if (!story) {
         console.warn(`[KanbanFileWatcher] Story ${this.currentStoryId} not found in kanban.json`);
