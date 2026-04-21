@@ -1,0 +1,6 @@
+{
+  "$schema": "specwright-mcp-profile-v1",
+  "description": "MCP servers loaded for /specwright:execute-tasks. Story implementation typically needs task tracking (kanban), up-to-date framework docs (context7), code intelligence (serena) and source-control integration (github). playwright and compass are optional — loaded only if present in the project's mcp-always-on.json.",
+  "allowlist": ["kanban"],
+  "allowOptional": ["context7", "serena", "github", "playwright", "compass"]
+}

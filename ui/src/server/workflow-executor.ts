@@ -12,6 +12,7 @@ import { getBaseBranch } from './general-config.js';
 import { queueHandler } from './handlers/queue.handler.js';
 import { queueService } from './services/queue.service.js';
 import { resolveCommandDir, projectDir } from './utils/project-dirs.js';
+import { buildMcpFlags, cleanupMcpTempFile } from './utils/mcp-profile.js';
 import { gitService } from './services/git.service.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
 import { AutoModeCloudSession } from './services/auto-mode-cloud-session.js';
@@ -1789,12 +1790,22 @@ export class WorkflowExecutor {
       const modelId = execution.model || 'opus';
       const cliConfig = getCliCommandForModel(modelId);
 
+      // MCP-Profile (v3.22.0): compute additional CLI flags asynchronously
+      // before spawning. Wrapped in an IIFE so the outer Promise signature stays
+      // intact. Returns [] for unmapped commands or missing config → status-quo.
+      const spawnAsync = async (): Promise<void> => {
+      const mcpFlags = await buildMcpFlags(fullCommand, execution.projectPath, execution.id).catch(err => {
+        console.warn('[Workflow] buildMcpFlags failed, falling back to status-quo spawn:', err);
+        return [] as string[];
+      });
+
       const args = [
         '--print',
         '--verbose',
         '--output-format', 'stream-json',
         '--session-id', sessionId,
-        ...cliConfig.args  // Adds flags from provider config
+        ...cliConfig.args,  // Adds flags from provider config
+        ...mcpFlags          // v3.22.0: --mcp-config + --strict-mcp-config (or empty)
       ];
 
       args.push(fullCommand);  // e.g., "/create-spec Multi Project Support"
@@ -1814,6 +1825,13 @@ export class WorkflowExecutor {
         },
         stdio: ['pipe', 'pipe', 'pipe']
       });
+
+      // Cleanup temp MCP config on process exit (best-effort)
+      if (mcpFlags.length > 0) {
+        claudeProcess.once('exit', () => {
+          cleanupMcpTempFile(mcpFlags).catch(() => {});
+        });
+      }
 
       execution.claudeProcess = claudeProcess;
       console.log(`[Workflow] Process spawned with PID: ${claudeProcess.pid}`);
@@ -1988,6 +2006,8 @@ export class WorkflowExecutor {
           reject(error);
         }
       });
+      };
+      spawnAsync().catch(reject);
     });
   }
 

@@ -22,6 +22,7 @@ import { CloudTerminalManager } from './cloud-terminal-manager.js';
 import { KanbanFileWatcher } from './kanban-file-watcher.js';
 import { projectDir, resolveProjectDir, resolveCommandDir, resolveGlobalDir } from '../utils/project-dirs.js';
 import { getCliCommandForModel } from '../model-config.js';
+import { buildMcpFlags, cleanupMcpTempFile } from '../utils/mcp-profile.js';
 import type { GitStrategy } from '../workflow-executor.js';
 import type { CloudTerminalSessionId, CloudTerminalModelConfig } from '../../shared/types/cloud-terminal.protocol.js';
 
@@ -47,6 +48,8 @@ export class AutoModeCloudSession extends EventEmitter {
   private currentStoryId: string | null = null;
   private currentModel: string;
   private kanbanWatcher: KanbanFileWatcher;
+  /** v3.22.0: map of sessionId → MCP CLI flags so we can clean up temp configs on session close */
+  private pendingMcpCleanup: Map<string, string[]> = new Map();
   private sessionClosedHandler: ((closedSessionId: string, exitCode?: number) => void) | null = null;
   private promptDetectedHandler: ((detectedSessionId: string, matchedText: string) => void) | null = null;
   private stallWatchdogTimer: ReturnType<typeof setInterval> | null = null;
@@ -121,6 +124,7 @@ export class AutoModeCloudSession extends EventEmitter {
       this.unregisterPromptDetectedListener();
       this.stopStallWatchdog();
       this.config.cloudTerminalManager.closeSession(this.sessionId);
+      this.cleanupMcpForSession(this.sessionId);
     }
 
     // Create new session with the execute command as initial prompt
@@ -152,6 +156,7 @@ export class AutoModeCloudSession extends EventEmitter {
       this.unregisterSessionClosedListener();
       this.unregisterPromptDetectedListener();
       this.config.cloudTerminalManager.closeSession(this.sessionId);
+      this.cleanupMcpForSession(this.sessionId);
       this.sessionId = null;
     }
 
@@ -184,15 +189,34 @@ export class AutoModeCloudSession extends EventEmitter {
     const specContext = await this.readSpecContext();
     const command = this.buildExecuteCommand(storyId, specContext);
 
-    // Create session with initial prompt (passed as CLI argument)
+    // v3.22.0: Build MCP-profile flags so the Claude session only loads the
+    // MCP servers this workflow needs (~25k tokens saved for execute-tasks).
+    // Empty array on any failure path → status-quo (full MCP set).
+    const executionId = `auto-${this.config.specId}-${storyId}`;
+    const mcpFlags = await buildMcpFlags(
+      `/${this.config.commandPrefix}:execute-tasks ${this.config.specId} ${storyId}`,
+      this.config.projectPath,
+      executionId
+    ).catch(err => {
+      console.warn('[AutoModeCloudSession] buildMcpFlags failed, falling back to status-quo:', err);
+      return [] as string[];
+    });
+
+    // Create session with initial prompt + MCP flags (passed as CLI arguments)
     const session = this.config.cloudTerminalManager.createSession(
       this.config.projectPath,
       'claude-code',
       modelConfig,
       undefined, // cols
       undefined, // rows
-      command
+      command,
+      mcpFlags
     );
+
+    // Track temp MCP file so we can clean it up when the session closes
+    if (mcpFlags.length > 0) {
+      this.pendingMcpCleanup.set(session.sessionId, mcpFlags);
+    }
 
     // Save debug info (fire-and-forget, non-blocking)
     this.saveDebugInfo(storyId, session.sessionId, specContext).catch(err => {
@@ -423,6 +447,7 @@ export class AutoModeCloudSession extends EventEmitter {
 
         // Clean up
         this.kanbanWatcher.unwatch();
+        this.cleanupMcpForSession(closedSessionId);
         this.sessionId = null;
 
         if (!this.isCancelled) {
@@ -506,5 +531,16 @@ export class AutoModeCloudSession extends EventEmitter {
       this.stallWatchdogTimer = null;
     }
     this.stalledNotified = false;
+  }
+
+  /**
+   * v3.22.0: Remove the MCP temp-config file generated for a session, if any.
+   * Called from every session-close path (normal transition, cancel, crash).
+   */
+  private cleanupMcpForSession(sessionId: string): void {
+    const flags = this.pendingMcpCleanup.get(sessionId);
+    if (!flags) return;
+    this.pendingMcpCleanup.delete(sessionId);
+    cleanupMcpTempFile(flags).catch(() => {});
   }
 }

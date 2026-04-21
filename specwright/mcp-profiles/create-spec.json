@@ -1,0 +1,6 @@
+{
+  "$schema": "specwright-mcp-profile-v1",
+  "description": "MCP servers loaded for /specwright:create-spec. Spec creation needs task tracking (kanban) for story generation and framework/library docs (context7) for tech-stack alignment.",
+  "allowlist": ["kanban"],
+  "allowOptional": ["context7", "compass"]
+}

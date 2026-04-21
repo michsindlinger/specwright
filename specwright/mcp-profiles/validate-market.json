@@ -1,0 +1,6 @@
+{
+  "$schema": "specwright-mcp-profile-v1",
+  "description": "MCP servers loaded for /specwright:validate-market and /specwright:validate-market-for-existing. Market validation needs web research tools (perplexity) and framework/library docs (context7) for competitive positioning.",
+  "allowlist": [],
+  "allowOptional": ["perplexity", "context7", "compass"]
+}

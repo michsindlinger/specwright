@@ -1,0 +1,14 @@
+{
+  "$comment": "Copy to <project>/specwright/mcp-always-on.json and fill with your project-specific MCP server configs. Format matches the official .mcp.json spec — you can copy entries directly from ~/.claude.json or an existing .mcp.json. Only servers listed here are available to profiled workflows (execute-tasks, create-spec, validate-market). Recommended to add this file to .gitignore if it contains credentials.",
+  "mcpServers": {
+    "kanban": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@specwright/kanban-mcp"]
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com"
+    }
+  }
+}

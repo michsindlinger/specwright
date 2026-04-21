@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.21.0"
+FRAMEWORK_VERSION="3.22.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -760,6 +760,7 @@ install_project() {
         mkdir -p specwright/scripts
         mkdir -p specwright/templates/product
         mkdir -p specwright/docs
+        mkdir -p specwright/mcp-profiles
     fi
 
     # Standards (3)
@@ -808,6 +809,12 @@ install_project() {
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/shared/resume-context.md" "specwright/workflows/core/execute-tasks/shared/resume-context.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/shared/error-handling.md" "specwright/workflows/core/execute-tasks/shared/error-handling.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/shared/skill-extraction.md" "specwright/workflows/core/execute-tasks/shared/skill-extraction.md" "workflow"
+    # MCP Profiles (v3.22.0: per-workflow MCP allowlists for reduced context)
+    download_file "$REPO_URL/specwright/mcp-profiles/execute-tasks.json" "specwright/mcp-profiles/execute-tasks.json" "mcp-profile"
+    download_file "$REPO_URL/specwright/mcp-profiles/create-spec.json" "specwright/mcp-profiles/create-spec.json" "mcp-profile"
+    download_file "$REPO_URL/specwright/mcp-profiles/validate-market.json" "specwright/mcp-profiles/validate-market.json" "mcp-profile"
+    download_file "$REPO_URL/specwright/mcp-profiles/mcp-always-on-template.json" "specwright/mcp-profiles/mcp-always-on-template.json" "mcp-profile"
+    download_file "$REPO_URL/specwright/mcp-profiles/README.md" "specwright/mcp-profiles/README.md" "mcp-profile"
     # Guidelines
     download_file "$REPO_URL/specwright/workflows/core/guidelines/model-selection.md" "specwright/workflows/core/guidelines/model-selection.md" "workflow"
     # Backlog / Quick tasks

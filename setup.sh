@@ -155,6 +155,14 @@ download_file "$REPO_URL/specwright/workflows/core/execute-tasks/shared/resume-c
 download_file "$REPO_URL/specwright/workflows/core/execute-tasks/shared/error-handling.md" "specwright/workflows/core/execute-tasks/shared/error-handling.md" "workflows"
 download_file "$REPO_URL/specwright/workflows/core/execute-tasks/shared/skill-extraction.md" "specwright/workflows/core/execute-tasks/shared/skill-extraction.md" "workflows"
 
+# MCP Profiles (v3.22.0: per-workflow MCP allowlists for reduced context)
+mkdir -p specwright/mcp-profiles
+download_file "$REPO_URL/specwright/mcp-profiles/execute-tasks.json" "specwright/mcp-profiles/execute-tasks.json" "mcp-profile"
+download_file "$REPO_URL/specwright/mcp-profiles/create-spec.json" "specwright/mcp-profiles/create-spec.json" "mcp-profile"
+download_file "$REPO_URL/specwright/mcp-profiles/validate-market.json" "specwright/mcp-profiles/validate-market.json" "mcp-profile"
+download_file "$REPO_URL/specwright/mcp-profiles/mcp-always-on-template.json" "specwright/mcp-profiles/mcp-always-on-template.json" "mcp-profile"
+download_file "$REPO_URL/specwright/mcp-profiles/README.md" "specwright/mcp-profiles/README.md" "mcp-profile"
+
 # Guidelines
 mkdir -p specwright/workflows/core/guidelines
 download_file "$REPO_URL/specwright/workflows/core/guidelines/model-selection.md" "specwright/workflows/core/guidelines/model-selection.md" "workflows"

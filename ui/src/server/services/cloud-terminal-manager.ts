@@ -114,7 +114,8 @@ export class CloudTerminalManager extends EventEmitter {
     modelConfig?: CloudTerminalModelConfig,
     cols?: number,
     rows?: number,
-    initialPrompt?: string
+    initialPrompt?: string,
+    extraCliArgs?: string[]
   ): CloudTerminalSession {
     // Check max sessions limit
     if (this.sessions.size >= CLOUD_TERMINAL_CONFIG.MAX_SESSIONS) {
@@ -175,6 +176,11 @@ export class CloudTerminalManager extends EventEmitter {
         const cliConfig = getCliCommandForModel(modelConfig.model);
         shellCommand = cliConfig.command;
         shellArgs = [...cliConfig.args];
+        // v3.22.0: extra flags (e.g. --mcp-config + --strict-mcp-config) must
+        // precede the positional initialPrompt
+        if (extraCliArgs && extraCliArgs.length > 0) {
+          shellArgs.push(...extraCliArgs);
+        }
         if (initialPrompt) {
           shellArgs.push(initialPrompt);
         }
