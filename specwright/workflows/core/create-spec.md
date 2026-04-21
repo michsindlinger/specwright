@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.10.0
+version: 3.11.0
 encoding: UTF-8
 ---
 
@@ -10,7 +10,15 @@ encoding: UTF-8
 
 ## Overview
 
-Create detailed feature specifications: Main agent gathers fachliche requirements (PO role), then adds technical refinement guided by architect-refinement skill.
+Create detailed feature specifications: Main agent gathers fachliche requirements (PO role), then either generates V2 Lean Tasks (default) or V1 Classic Stories with technical refinement (`--classic` flag).
+
+**v3.11 Changes (V2 Lean as Default):**
+- **NEW: V2 Lean is the default mode** - Tasks live in kanban.json (no individual story files, no DoR/DoD/WAS/WIE/WO, no Technical Refinement phase)
+- **NEW: `--classic` flag** - Opt-in to V1 Classic flow for complex specs that benefit from explicit stories with Gherkin ACs and technical refinement
+- **NEW: Step 2.6-lean** - Generates task definitions directly into kanban.json via `kanban_create mode="lean"`, skips Step 3 / 3.4 / 3.5 / 3.6 entirely
+- **SKIPPED in V2:** architect-refinement, DoR validation, story size validation, effort estimation
+- **BENEFIT:** ~50-80k tokens saved per spec creation; context for task execution comes on-the-fly from implementation plan via `kanban_get_next_task`
+- **BACKWARD COMPATIBLE:** `/specwright:create-spec --classic` preserves full V1 behavior unchanged
 
 **v3.10 Changes (MCP Kanban Create):**
 - **CHANGED: Step 8.2** - kanban.json creation via MCP `kanban_create` tool instead of manual Write tool
@@ -123,14 +131,33 @@ Create detailed feature specifications: Main agent gathers fachliche requirement
 
 <phase_detection>
 
-### Phase Detection (Resume Support - v3.6)
+### Phase Detection (Resume Support - v3.6, extended v3.11)
 
 This workflow supports resuming from a previous session to prevent context window compaction.
 The user can provide a spec folder path as argument to resume where they left off.
 
 **Usage:**
-- Fresh start: `/specwright:create-spec` (no argument)
+- Fresh start (V2 Lean, default): `/specwright:create-spec`
+- Fresh start (V1 Classic): `/specwright:create-spec --classic`
 - Resume: `/specwright:create-spec specwright/specs/YYYY-MM-DD-spec-name/`
+  (mode is auto-detected from kanban.json on resume)
+
+<mode_detection>
+  ### Parse $ARGUMENTS for mode flag (v3.11)
+
+  SET: SPEC_MODE = "lean"  (default)
+
+  IF $ARGUMENTS contains "--classic":
+    SET: SPEC_MODE = "classic"
+    STRIP: "--classic" token from $ARGUMENTS before path parsing
+
+  IF $ARGUMENTS contains a spec folder path AND that folder has kanban.json:
+    READ: kanban.json
+    IF kanban has mode === "lean" OR version === "2.0":
+      OVERRIDE: SPEC_MODE = "lean"  (resume respects persisted mode)
+    ELSE:
+      OVERRIDE: SPEC_MODE = "classic"
+</mode_detection>
 
 <detection_logic>
   IF $ARGUMENTS contains a path to a spec folder:
@@ -163,7 +190,8 @@ The user can provide a spec folder path as argument to resume where they left of
               Loading: requirements-clarification.md
               ```
             → READ: [spec-folder]/requirements-clarification.md
-            → JUMP TO: Step 2.6 (Generate Stories directly from Clarification)
+            → IF SPEC_MODE = "lean": JUMP TO: Step 2.6-lean (Generate Tasks)
+            → ELSE: JUMP TO: Step 2.6 (Generate Stories directly from Clarification)
           → ELSE:
             → INFORM user:
               ```
@@ -174,8 +202,27 @@ The user can provide a spec folder path as argument to resume where they left of
             → READ: [spec-folder]/requirements-clarification.md
             → JUMP TO: Step 2.5 (Implementation Plan)
 
-       c. IF CHECK_A = true AND CHECK_B = true AND CHECK_C = true AND CHECK_D = false
-          (plan + stories exist, but stories not yet refined):
+       c. IF CHECK_A = true AND CHECK_B = true AND SPEC_MODE = "lean" AND kanban.json has tasks[]:
+          (V2 Lean: plan exists, tasks already generated in kanban.json):
+          → INFORM user:
+            ```
+            V2 Lean spec appears complete. kanban.json has tasks and plan is approved.
+            ```
+          → JUMP TO: Step 4 (Spec Complete - V2 summary)
+
+       d. IF CHECK_A = true AND CHECK_B = true AND SPEC_MODE = "lean" AND no tasks in kanban:
+          (V2 Lean: plan exists, tasks not yet generated):
+          → INFORM user:
+            ```
+            Resuming V2 Lean spec at Task Generation.
+            Plan is approved, generating tasks from implementation plan.
+            ```
+          → READ: [spec-folder]/implementation-plan.md
+          → READ: [spec-folder]/requirements-clarification.md
+          → JUMP TO: Step 2.6-lean (Generate Tasks)
+
+       e. IF CHECK_A = true AND CHECK_B = true AND CHECK_C = true AND CHECK_D = false
+          (V1 Classic: plan + stories exist, but stories not yet refined):
           → INFORM user:
             ```
             Resuming from Phase 3 (Technical Refinement).
@@ -187,8 +234,8 @@ The user can provide a spec folder path as argument to resume where they left of
           → READ: [spec-folder]/spec.md
           → JUMP TO: Step 3 (Technical Refinement)
 
-       d. IF CHECK_A = true AND CHECK_B = true AND CHECK_C = true AND CHECK_D = true
-          (stories already have technical refinement):
+       f. IF CHECK_A = true AND CHECK_B = true AND CHECK_C = true AND CHECK_D = true
+          (V1 Classic: stories already have technical refinement):
           → INFORM user:
             ```
             Spec appears to be mostly complete. Running final validations.
@@ -835,9 +882,174 @@ or an S-Spec, preventing unnecessary overhead for simple features.
 
 </substep>
 
+<substep number="2.5.9" name="mode_branch">
+
+### Step 2.5.9: Mode Branch (V2 Lean vs V1 Classic) — v3.11
+
+After the implementation plan is approved, branch based on SPEC_MODE set during Phase Detection.
+
+<branch_logic>
+  IF SPEC_MODE = "lean" (default):
+    PROCEED TO: Step 2.6-lean (Generate Tasks)
+    SKIP: Step 2.6 (Stories), Step 3 (Technical Refinement), Step 3.4 (DoR), Step 3.5 (Story Size), Step 3.5.1/3.6 (Effort Estimation)
+    AFTER Step 2.6-lean: JUMP TO Step 4 (Spec Complete - V2 Summary)
+
+  ELSE (SPEC_MODE = "classic"):
+    PROCEED TO: Step 2.6 (Generate Stories from Plan)
+    FOLLOW: Full V1 flow including Step 3, 3.4, 3.5, optional 3.6
+</branch_logic>
+
+</substep>
+
+<substep number="2.6-lean" name="generate_tasks_lean">
+
+### Step 2.6-lean: Generate Tasks (V2 Lean Mode) — v3.11
+
+**ONLY runs when SPEC_MODE = "lean" (the default).**
+
+**Input:**
+- Approved `implementation-plan.md` (from Step 2.5)
+- `requirements-clarification.md` (reference)
+
+**Goal:** Produce a V2 kanban.json with `tasks[]` that reference implementation plan sections. No individual story files, no Gherkin acceptance criteria, no DoR/DoD, no WAS/WIE/WO — context comes on-the-fly from the plan during `/execute-tasks`.
+
+<mandatory_actions>
+
+  1. USE date-checker to get current date (YYYY-MM-DD) if not already done.
+
+  2. CREATE spec folder structure (if not already exists):
+     ```
+     specwright/specs/YYYY-MM-DD-spec-name/
+     ├── spec.md                      # Full specification
+     ├── spec-lite.md                 # 1-3 sentence summary
+     ├── implementation-plan.md       # (already exists from Step 2.5)
+     ├── requirements-clarification.md # (already exists from Step 2.3)
+     └── kanban.json                  # V2 Lean kanban (tasks[], mode="lean")
+     ```
+
+     **NOT created in V2 Lean:**
+     - `stories/` directory
+     - `story-index.md`
+     - `cross-cutting-decisions.md` (optional — user can create manually if L-Spec warrants)
+
+  3. CREATE spec.md (load template with hybrid lookup):
+     - Overview (1-2 sentences goal)
+     - Task list (not user stories — just titles with 1-line descriptions)
+     - Spec scope (what's included)
+     - Out of scope (what's excluded)
+     - Integration Requirements (same rules as V1):
+       * Integration Type: Backend-only, Frontend-only, or Full-stack
+       * Integration Test Commands (bash commands that exit 0 on success)
+       * End-to-End Scenarios
+       * Mark MCP-tool requirements (e.g., Playwright)
+
+  4. CREATE spec-lite.md (1-3 sentences).
+
+  5. **DERIVE TASKS from Implementation Plan:**
+
+     READ: implementation-plan.md
+
+     IDENTIFY each task from plan phases/components. A task is:
+     - A cohesive unit of work (ideally ≤5 files, ≤400 LOC — same sizing as V1 stories)
+     - Anchored to a plan section (phase, component, or heading)
+
+     FOR EACH task:
+     - id: [SPEC_PREFIX]-NNN (e.g., AUTH-001, AUTH-002 — same format as V1)
+     - title: short descriptive title (max ~60 chars)
+     - description: 2-3 sentences in plain prose. WHAT is built + WHY. No Gherkin, no technical detail — that's in the plan.
+     - planSection: exact heading as it appears in implementation-plan.md (e.g., "Phase 1: Authentication Foundation" or "Component: SessionManager"). The V2 plan parser tries:
+       1. Exact heading match (## or ### anywhere)
+       2. "Phase N" extraction with flexible format
+       3. Component-name match in tables
+       Prefer giving the exact heading string for robust lookup.
+     - dependencies: list of task ids that must complete first (empty array for independent tasks)
+     - status: "ready" if no unmet dependencies, else "blocked"
+
+     **SYSTEM TASKS (same as V1, always appended):**
+     READ: SPEC_TIER (from Step 2.3.1, default "M")
+
+     ALWAYS add:
+     - id: [PREFIX]-997, title: "Code Review", description: "Full-feature diff review", planSection: "System: Code Review", dependencies: [all business task ids], status: "blocked"
+     - id: [PREFIX]-999, title: "Finalize PR", description: "User-todos, PR creation, cleanup", planSection: "System: Finalize PR", dependencies: ["[PREFIX]-997"], status: "blocked"
+
+     IF SPEC_TIER ≠ "S" AND Integration Type is "Full-stack":
+       ALSO add:
+       - id: [PREFIX]-998, title: "Integration Validation", description: "End-to-end test execution", planSection: "System: Integration Validation", dependencies: [all business task ids], status: "blocked"
+       UPDATE 999 dependencies to ["[PREFIX]-997", "[PREFIX]-998"]
+
+  6. **SPEC TIER CLASSIFICATION:**
+     CALCULATE business_task_count = total_tasks - system_tasks(997/998/999)
+
+     CLASSIFY:
+     - <= 2: "S"
+     - 3-5: "M"
+     - >= 6: "L"
+
+     Consistency check with Step 2.3.1 pre-classification (same as V1).
+
+  7. **CREATE kanban.json via MCP tool `kanban_create`:**
+
+     **IMPORTANT: Use MCP tool `kanban_create` — never write kanban.json manually.**
+
+     CALL MCP tool `kanban_create` with:
+     - specId = folder name (YYYY-MM-DD-spec-name)
+     - specName = human-readable name
+     - specPrefix = prefix (e.g., "AUTH")
+     - specTier = SPEC_TIER
+     - **mode = "lean"**  ← this triggers V2 handler
+     - tasks[] = array from step 5, each with:
+       - id
+       - title
+       - description (2-3 sentences)
+       - planSection (exact heading string)
+       - dependencies (array of task ids)
+       - status ("ready" or "blocked")
+
+     The MCP tool:
+     - Creates V2 schema (version "2.0", mode "lean")
+     - Calculates boardStatus
+     - Initializes resumeContext with currentPhase = "1-complete"
+     - Writes changeLog entry
+
+     DO NOT pass `stories[]` or `executionPlan` — those are V1-only.
+
+  8. **ASK user (v3.7 resume pattern):**
+     ```
+     ✅ V2 Lean spec ready!
+
+     Saved to: specwright/specs/[YYYY-MM-DD-spec-name]/
+     - implementation-plan.md (approved)
+     - spec.md, spec-lite.md
+     - kanban.json ([N] tasks, mode=lean)
+
+     No technical refinement phase needed — task context is read on-the-fly
+     from the implementation plan during /execute-tasks.
+
+     How would you like to proceed?
+     ```
+     Options:
+     1. "Continue" — proceed to Step 4 (Spec Complete)
+     2. "Clear context" — stop here; user runs `/clear` then `/execute-tasks` to start execution
+
+  9. AFTER user choice: JUMP TO Step 4 (Spec Complete — V2 summary). Do NOT proceed to Step 3.
+
+</mandatory_actions>
+
+**Output:**
+- `specwright/specs/YYYY-MM-DD-spec-name/spec.md`
+- `specwright/specs/YYYY-MM-DD-spec-name/spec-lite.md`
+- `specwright/specs/YYYY-MM-DD-spec-name/implementation-plan.md` (from Step 2.5)
+- `specwright/specs/YYYY-MM-DD-spec-name/requirements-clarification.md` (from Step 2.3)
+- `specwright/specs/YYYY-MM-DD-spec-name/kanban.json` (V2 Lean, tasks[])
+
+</substep>
+
 <substep number="2.6" name="generate_stories">
 
-### Step 2.6: Generate User Stories from Implementation Plan
+### Step 2.6: Generate User Stories from Implementation Plan (V1 Classic only)
+
+**ONLY runs when SPEC_MODE = "classic" (via `--classic` flag or resumed Classic spec).**
+
 
 <mandatory_actions>
   **Input:**
@@ -1163,7 +1375,9 @@ or an S-Spec, preventing unnecessary overhead for simple features.
 
 <step number="3" name="architect_technical_refinement">
 
-### Step 3: Architect Phase - Technical Refinement (v3.5)
+### Step 3: Architect Phase - Technical Refinement (v3.5) — V1 Classic only
+
+**GUARD (v3.11):** If SPEC_MODE = "lean", this step MUST be skipped. V2 Lean specs jump from Step 2.6-lean directly to Step 4. Reaching Step 3 in Lean mode is a workflow bug — stop and report.
 
 Main agent does technical refinement guided by architect-refinement skill.
 
@@ -1591,7 +1805,9 @@ Main agent does technical refinement guided by architect-refinement skill.
 
 <step number="3.4" name="dor_validation">
 
-### Step 3.4: Definition of Ready (DoR) Validation
+### Step 3.4: Definition of Ready (DoR) Validation — V1 Classic only
+
+**GUARD (v3.11):** If SPEC_MODE = "lean", SKIP this step. V2 Lean tasks have no DoR.
 
 Validate that all stories have complete DoR before proceeding to execution.
 
@@ -1723,7 +1939,9 @@ Validate that all stories have complete DoR before proceeding to execution.
 
 <step number="3.5" name="story_size_validation">
 
-### Step 3.5: Story Size Validation
+### Step 3.5: Story Size Validation — V1 Classic only
+
+**GUARD (v3.11):** If SPEC_MODE = "lean", SKIP. V2 Lean task sizing is handled during task derivation in Step 2.6-lean.
 
 Validate that all stories comply with size guidelines to prevent mid-execution context compaction.
 
@@ -1964,7 +2182,9 @@ Validate that all stories comply with size guidelines to prevent mid-execution c
 
 <substep number="3.5.1" name="effort_estimation_choice">
 
-### Step 3.5.1: Effort Estimation Decision
+### Step 3.5.1: Effort Estimation Decision — V1 Classic only
+
+**GUARD (v3.11):** If SPEC_MODE = "lean", SKIP. V2 Lean does not run effort estimation during spec creation (user can run `/estimate-spec` separately after execution if needed).
 
 <user_choice>
   ASK user via AskUserQuestion:
@@ -1995,7 +2215,9 @@ Validate that all stories comply with size guidelines to prevent mid-execution c
 
 <step number="3.6" name="effort_estimation">
 
-### Step 3.6: Effort Estimation (Dual: Human + AI-Adjusted)
+### Step 3.6: Effort Estimation (Dual: Human + AI-Adjusted) — V1 Classic only
+
+**GUARD (v3.11):** If SPEC_MODE = "lean", SKIP. V2 Lean does not run effort estimation during spec creation.
 
 Generate effort estimation for all stories with dual perspective: Human-only and Human+AI Agent.
 
@@ -2225,6 +2447,51 @@ Generate effort estimation for all stories with dual perspective: Human-only and
 ### Step 4: Spec Ready for Execution
 
 Present completed specification to user.
+
+<mode_branch>
+  IF SPEC_MODE = "lean": USE <v2_summary_template> below
+  ELSE:                  USE <summary_template> (V1 Classic)
+</mode_branch>
+
+<v2_summary_template>
+  ✅ V2 Lean specification complete!
+
+  **Location:** specwright/specs/[YYYY-MM-DD-spec-name]/
+
+  **Files:**
+  - requirements-clarification.md — Approved requirements summary
+  - implementation-plan.md — Technical plan (Source of Truth for task context)
+  - spec.md — Full specification
+  - spec-lite.md — Quick reference summary
+  - kanban.json — V2 Lean kanban with tasks[] (mode="lean", version="2.0")
+
+  **Task Summary:**
+  - Total tasks: [N] ([N_business] business + [N_system] system)
+  - Spec Tier: [S/M/L]
+  - Ready to start: [N_ready]
+  - Blocked (waiting on dependencies): [N_blocked]
+
+  **Mode:** V2 Lean — task context read on-the-fly from implementation-plan.md
+  via `kanban_get_next_task`. No individual story files, no Technical Refinement phase,
+  ~50-80k tokens saved compared to V1 Classic.
+
+  **Next Steps:**
+
+  1. Review the plan (this is the Source of Truth for task execution):
+     → specwright/specs/[spec-name]/implementation-plan.md
+
+  2. When ready, execute:
+     → /execute-tasks
+     → V2 phase-1-lean validates kanban
+     → Worktree/branch setup
+     → V2 phase-3-lean runs each task, reading plan section on demand
+     → System tasks (997 Code Review, optional 998 Integration, 999 Finalize PR)
+
+  What would you like to do?
+  1. Review the plan first
+  2. Start execution (/execute-tasks)
+  3. Switch to V1 Classic (delete and re-run with --classic)
+</v2_summary_template>
 
 <summary_template>
   ✅ Specification complete!
