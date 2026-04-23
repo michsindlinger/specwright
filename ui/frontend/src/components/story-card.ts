@@ -92,18 +92,21 @@ export class AosStoryCard extends LitElement {
     }
 
     .story-card {
-      background: var(--bg-color-tertiary, #2d2d2d);
-      border: 1px solid var(--border-color, #404040);
-      border-radius: 6px;
-      padding: 0.75rem;
-      cursor: pointer;
-      transition: all 0.2s;
+      background: var(--color-bg-primary, #0F1F33);
+      border: 1px solid var(--color-border, #1E3A5F);
+      border-radius: var(--radius-md, 0.5rem);
+      padding: 10px 12px;
+      cursor: grab;
+      transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
-      margin-top: 0.5rem;
+      gap: 8px;
       position: relative;
+    }
+
+    .story-card.active-ring {
+      border-color: rgba(0, 212, 255, 0.4);
+      box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
     }
 
     .story-card.dropdown-open {
@@ -111,15 +114,14 @@ export class AosStoryCard extends LitElement {
     }
 
     .story-card:hover {
-      background: var(--bg-color-hover, #3d3d3d);
-      border-color: var(--primary-color, #3b82f6);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      border-color: var(--color-border-hover, #2D4F7A);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
     }
 
     .story-card.dragging {
       opacity: 0.5;
-      transform: scale(0.95);
+      transform: scale(0.97);
     }
 
     .story-card.drag-disabled {
@@ -133,27 +135,28 @@ export class AosStoryCard extends LitElement {
 
     .story-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 6px;
     }
 
     .story-id {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--text-color-secondary, #a3a3a3);
-      background: var(--bg-color-secondary, #1e1e1e);
-      padding: 0.1rem 0.4rem;
-      border-radius: 4px;
-      font-family: monospace;
+      font-family: var(--font-family-mono, 'JetBrains Mono', ui-monospace, monospace);
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--color-text-secondary, #94A3B8);
+      background: var(--color-bg-tertiary, #1C3254);
+      padding: 2px 7px;
+      border-radius: var(--radius-sm, 0.25rem);
     }
 
+    .header-spacer { flex: 1; }
+
     .effort-badge {
-      font-size: 0.75rem;
+      font-family: var(--font-family-mono, 'JetBrains Mono', ui-monospace, monospace);
+      font-size: 10.5px;
       font-weight: 600;
-      color: var(--primary-color, #3b82f6);
-      background: rgba(59, 130, 246, 0.1);
-      padding: 0.1rem 0.4rem;
-      border-radius: 4px;
+      color: var(--color-accent-primary, #00D4FF);
     }
 
     .copy-path-btn {
@@ -286,59 +289,104 @@ export class AosStoryCard extends LitElement {
 
     .story-title {
       margin: 0;
-      font-size: 0.95rem;
+      font-size: 13px;
       font-weight: 600;
-      color: var(--text-color, #e5e5e5);
-      line-height: 1.4;
+      line-height: 1.35;
+      color: var(--color-text-primary, #E8EDF2);
+      text-wrap: pretty;
     }
 
     .story-meta {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: 6px;
       align-items: center;
-      margin-top: 0.25rem;
     }
 
     .type-badge {
-      font-size: 0.75rem;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 0.25rem;
-      color: var(--text-color-secondary, #a3a3a3);
+      gap: 5px;
+      font-size: 10.5px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: var(--radius-full, 9999px);
+      background: rgba(139, 92, 246, 0.15);
+      color: #C4B5FD;
     }
+    .type-badge .type-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .type-badge.type-backend   { background: rgba(139, 92, 246, 0.15); color: #C4B5FD; }
+    .type-badge.type-frontend  { background: rgba(34, 197, 94, 0.15);  color: #22C55E; }
+    .type-badge.type-bug       { background: rgba(239, 68, 68, 0.15);  color: #EF4444; }
+    .type-badge.type-email     { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+    .type-badge.type-security  { background: rgba(239, 68, 68, 0.18);  color: #FCA5A5; }
+    .type-badge.type-fullstack { background: rgba(0, 212, 255, 0.15);  color: #00D4FF; }
+    .type-badge.type-other     { background: var(--color-bg-tertiary, #1C3254); color: var(--color-text-secondary, #94A3B8); }
 
     .priority-badge {
-      font-size: 0.7rem;
-      text-transform: uppercase;
+      font-size: 10px;
       font-weight: 700;
-      padding: 0.1rem 0.3rem;
-      border-radius: 3px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: var(--radius-sm, 0.25rem);
     }
-
-    .priority-high {
-      color: #ef4444;
-      background: rgba(239, 68, 68, 0.1);
+    .priority-high,
+    .priority-critical {
+      color: #EF4444;
+      background: rgba(239, 68, 68, 0.15);
     }
-
+    .priority-critical {
+      color: #FCA5A5;
+      background: rgba(239, 68, 68, 0.2);
+    }
     .priority-medium {
-      color: #f59e0b;
-      background: rgba(245, 158, 11, 0.1);
+      color: #F59E0B;
+      background: rgba(245, 158, 11, 0.15);
     }
-
     .priority-low {
-      color: #10b981;
-      background: rgba(16, 185, 129, 0.1);
+      color: #94A3B8;
+      background: rgba(100, 116, 139, 0.15);
     }
 
     .story-dor-status {
-      margin-top: 0.25rem;
+      display: flex;
+    }
+
+    .agent-progress {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      background: rgba(0, 212, 255, 0.06);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: var(--radius-sm, 0.25rem);
+      font-size: 11px;
+      color: var(--color-accent-primary, #00D4FF);
+    }
+    .agent-progress .agent-emoji { font-size: 12px; }
+    .agent-progress .agent-text { flex: 1; }
+
+    .blocked-reason {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 6px 8px;
+      background: rgba(239, 68, 68, 0.06);
+      border: 1px solid rgba(239, 68, 68, 0.22);
+      border-radius: var(--radius-sm, 0.25rem);
+      font-size: 11px;
+      color: #FCA5A5;
+      line-height: 1.35;
     }
 
     .story-model-select {
-      margin-top: 0.5rem;
-      border-top: 1px solid var(--border-color, #404040);
-      padding-top: 0.5rem;
+      display: flex;
     }
 
     .story-model-select aos-model-selector {
@@ -346,26 +394,28 @@ export class AosStoryCard extends LitElement {
     }
 
     .story-deps {
-      margin-top: 0.5rem;
       display: flex;
       flex-wrap: wrap;
-      gap: 0.25rem;
+      gap: 6px;
       align-items: center;
+      font-size: 10.5px;
+      color: var(--color-text-muted, #64748B);
     }
 
     .deps-label {
-      font-size: 0.7rem;
-      color: var(--text-color-muted, #737373);
+      font-family: var(--font-family-mono, 'JetBrains Mono', ui-monospace, monospace);
       font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
     .dep-tag {
-      font-size: 0.65rem;
-      background: var(--bg-color-secondary, #1e1e1e);
-      color: var(--text-color-secondary, #a3a3a3);
-      padding: 0.05rem 0.3rem;
-      border-radius: 3px;
-      border: 1px solid var(--border-color, #404040);
+      font-family: var(--font-family-mono, 'JetBrains Mono', ui-monospace, monospace);
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: var(--radius-sm, 0.25rem);
+      background: var(--color-bg-tertiary, #1C3254);
+      color: var(--color-text-secondary, #94A3B8);
     }
 
     /* Status badge styles (duplicated from theme.css for Shadow DOM) */
@@ -634,18 +684,21 @@ export class AosStoryCard extends LitElement {
     );
   }
 
-  private getTypeIcon(): string {
+  private getTypeVariant(): string {
     const type = (this.story.type || '').toLowerCase();
-    if (type.includes('bug') || type.includes('fix')) return '🐛';
-    if (type.includes('backend')) return '⚙️';
-    if (type.includes('frontend')) return '🎨';
-    if (type.includes('full-stack') || type.includes('fullstack')) return '📦';
-    return '✨';
+    if (type.includes('bug') || type.includes('fix')) return 'type-bug';
+    if (type.includes('email')) return 'type-email';
+    if (type.includes('security')) return 'type-security';
+    if (type.includes('full-stack') || type.includes('fullstack')) return 'type-fullstack';
+    if (type.includes('backend')) return 'type-backend';
+    if (type.includes('frontend')) return 'type-frontend';
+    return 'type-other';
   }
 
   private getPriorityClass(): string {
     const priority = (this.story.priority || '').toLowerCase();
-    if (priority.includes('high') || priority.includes('critical')) return 'priority-high';
+    if (priority.includes('critical')) return 'priority-critical';
+    if (priority.includes('high')) return 'priority-high';
     if (priority.includes('low')) return 'priority-low';
     return 'priority-medium';
   }
@@ -688,9 +741,15 @@ export class AosStoryCard extends LitElement {
   }
 
   override render() {
+    const isActive = this.story.status === 'in_progress' || this.workflowStatus === 'working';
+    const isWorking = this.workflowStatus === 'working';
+    const isBlocked = this.story.status === 'blocked';
+    // TODO(backend): design also shows tag/category chip, size+SP, agent drafting %, blocked reason, assignee/PR/reviewers.
+    // We use story.type for the tag, story.effort for the size label. The rest skip when not present.
+
     return html`
       <div
-        class="story-card ${this.isDragging ? 'dragging' : ''} ${this.dropdownOpen ? 'dropdown-open' : ''} ${this.dragDisabled ? 'drag-disabled' : ''}"
+        class="story-card ${this.isDragging ? 'dragging' : ''} ${this.dropdownOpen ? 'dropdown-open' : ''} ${this.dragDisabled ? 'drag-disabled' : ''} ${isActive ? 'active-ring' : ''}"
         draggable="${this.dragDisabled ? 'false' : 'true'}"
         @click=${this.handleClick}
         @dragstart=${this.handleDragStart}
@@ -710,7 +769,6 @@ export class AosStoryCard extends LitElement {
               }
             </button>
           ` : ''}
-          <!-- SCA-004: Attachment button -->
           <button
             class="attachment-btn ${(this.story.attachmentCount ?? 0) > 0 ? 'has-attachments' : ''}"
             title="Attachments"
@@ -723,7 +781,6 @@ export class AosStoryCard extends LitElement {
               ? html`<span class="attachment-count">${this.story.attachmentCount}</span>`
               : ''}
           </button>
-          <!-- BLC-005: Comment button -->
           <button
             class="comment-btn ${(this.story.commentCount ?? 0) > 0 ? 'has-comments' : ''}"
             title="Comments"
@@ -754,17 +811,22 @@ export class AosStoryCard extends LitElement {
               </svg>
             </button>
           ` : ''}
-          <span class="effort-badge">${this.getEffortLabel()}</span>
+          <span class="header-spacer"></span>
+          ${this.story.effort ? html`<span class="effort-badge">${this.getEffortLabel()}</span>` : ''}
         </div>
 
         <h4 class="story-title">${this.story.title}</h4>
 
         <div class="story-meta">
-          <span class="type-badge">
-            <span class="type-icon">${this.getTypeIcon()}</span>
-            ${this.story.type}
-          </span>
-          <span class="priority-badge ${this.getPriorityClass()}">${this.story.priority}</span>
+          ${this.story.type ? html`
+            <span class="type-badge ${this.getTypeVariant()}">
+              <span class="type-dot"></span>
+              ${this.story.type}
+            </span>
+          ` : ''}
+          ${this.story.priority ? html`
+            <span class="priority-badge ${this.getPriorityClass()}">${this.story.priority}</span>
+          ` : ''}
         </div>
 
         <div class="story-dor-status">
@@ -774,6 +836,20 @@ export class AosStoryCard extends LitElement {
             .errorMessage="${this.workflowError}"
           ></aos-story-status-badge>
         </div>
+
+        ${isWorking ? html`
+          <div class="agent-progress">
+            <span class="agent-emoji">🤖</span>
+            <span class="agent-text">Agent running…</span>
+          </div>
+        ` : ''}
+
+        ${isBlocked && this.workflowError ? html`
+          <div class="blocked-reason">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>${this.workflowError}</span>
+          </div>
+        ` : ''}
 
         <div class="story-model-select" @click=${(e: Event) => e.stopPropagation()}>
           <aos-model-selector

@@ -269,122 +269,163 @@ export class AosKanbanBoard extends LitElement {
     .kanban-header {
       display: flex;
       align-items: center;
-      padding: 1rem;
-      border-bottom: 1px solid var(--border-color, #404040);
-      background: var(--bg-color-secondary, #1e1e1e);
-      gap: 1rem;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--color-border, #1E3A5F);
+      background: var(--color-bg-primary, #0F1F33);
+      gap: 14px;
+      flex-wrap: wrap;
     }
 
     .kanban-title {
       margin: 0;
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-color, #e5e5e5);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--color-text-primary, #E8EDF2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .back-btn {
-      background: transparent;
-      border: 1px solid var(--border-color, #404040);
-      color: var(--text-color-secondary, #a3a3a3);
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--color-bg-secondary, #162A45);
+      border: 1px solid var(--color-border, #1E3A5F);
+      color: var(--color-text-secondary, #94A3B8);
+      padding: 6px 11px;
+      border-radius: var(--radius-md, 0.5rem);
       cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
       transition: all 0.2s;
     }
-
     .back-btn:hover {
-      background: var(--bg-color-hover, #2d2d2d);
-      color: var(--text-color, #e5e5e5);
+      background: var(--color-bg-hover, #1E3A5F);
+      color: var(--color-text-primary, #E8EDF2);
     }
 
     .kanban-columns {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(280px, 1fr));
       flex: 1;
       overflow-x: auto;
-      padding: 1rem;
-      padding-left: 0;
-      gap: 1rem;
-
+      padding: 14px 24px 24px;
+      gap: 12px;
+      min-height: 0;
     }
 
     .kanban-column {
-      flex: 1 1 0;
       min-width: 0;
-      background: var(--bg-color-secondary, #1e1e1e);
-      border-radius: 6px;
+      background: var(--color-bg-secondary, #162A45);
+      border-radius: var(--radius-lg, 0.75rem);
       display: flex;
       flex-direction: column;
-      border: 1px solid var(--border-color, #404040);
+      border: 1px solid var(--color-border, #1E3A5F);
+      border-top: 2px solid var(--color-border, #1E3A5F);
+      min-height: 300px;
     }
 
     .kanban-column.drop-zone-active {
-      border: 2px dashed var(--primary-color, #3b82f6);
-      background: var(--bg-color-hover, #2d2d2d);
+      border: 2px dashed var(--color-accent-primary, #00D4FF);
+      background: var(--color-bg-hover, #1E3A5F);
     }
-
     .kanban-column.drop-zone-valid {
-      border-color: var(--success-color, #22c55e);
+      border-color: var(--color-accent-success, #22C55E);
     }
-
     .kanban-column.drop-zone-blocked {
-      border-color: var(--error-color, #ef4444);
+      border-color: var(--color-accent-error, #EF4444);
       cursor: not-allowed;
     }
 
     .column-header {
-      padding: 1rem;
-      border-bottom: 1px solid var(--border-color, #404040);
+      padding: 12px 14px 10px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      font-weight: 600;
-      color: var(--text-color, #e5e5e5);
+      gap: 8px;
+      color: var(--color-text-primary, #E8EDF2);
     }
-
+    .column-header h3 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-primary, #E8EDF2);
+    }
+    .column-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--color-border, #1E3A5F);
+    }
     .column-count {
-      background: var(--bg-color-tertiary, #2d2d2d);
-      padding: 0.25rem 0.75rem;
-      border-radius: 12px;
-      font-size: 0.875rem;
-      color: var(--text-color-secondary, #a3a3a3);
+      background: var(--color-bg-tertiary, #1C3254);
+      padding: 1px 8px;
+      border-radius: var(--radius-full, 9999px);
+      font-size: 10.5px;
+      font-weight: 600;
+      font-family: var(--font-family-mono, 'JetBrains Mono', ui-monospace, monospace);
+      color: var(--color-text-muted, #64748B);
+    }
+    .column-sp {
+      margin-left: auto;
+      font-family: var(--font-family-mono, 'JetBrains Mono', ui-monospace, monospace);
+      font-size: 10.5px;
+      color: var(--color-text-muted, #64748B);
     }
 
     .column-content {
       flex: 1;
       overflow-y: auto;
-      padding: 0.5rem;
+      padding: 0 8px 8px;
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 8px;
     }
 
     .empty-column {
-      padding: 2rem;
+      padding: 24px 10px;
       text-align: center;
-      color: var(--text-color-muted, #737373);
+      color: var(--color-text-tertiary, #475569);
       font-style: italic;
+      font-size: 12px;
     }
 
-    /* Column Specific Border Colors */
-    .kanban-column.backlog {
-      border-top: 3px solid var(--text-color-secondary, #a3a3a3);
+    .add-story-btn {
+      margin-top: 2px;
+      padding: 7px 10px;
+      border: 1px dashed var(--color-border, #1E3A5F);
+      background: transparent;
+      color: var(--color-text-muted, #64748B);
+      border-radius: var(--radius-md, 0.5rem);
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .add-story-btn:hover {
+      border-color: var(--color-border-hover, #2D4F7A);
+      color: var(--color-text-secondary, #94A3B8);
     }
 
-    .kanban-column.in-progress {
-      border-top: 3px solid var(--primary-color, #3b82f6);
+    /* Column Specific Top Borders */
+    .kanban-column.backlog     { border-top-color: var(--stage-backlog, #64748B); }
+    .kanban-column.backlog     .column-dot { background: var(--stage-backlog, #64748B); }
+    .kanban-column.blocked     { border-top-color: var(--stage-blocked, #EF4444); }
+    .kanban-column.blocked     .column-dot { background: var(--stage-blocked, #EF4444); }
+    .kanban-column.in-progress { border-top-color: var(--stage-in-progress, #00D4FF); }
+    .kanban-column.in-progress .column-dot {
+      background: var(--stage-in-progress, #00D4FF);
+      box-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
     }
-
-    .kanban-column.done {
-      border-top: 3px solid var(--success-color, #22c55e);
-    }
-
-    .kanban-column.blocked {
-      border-top: 3px solid var(--error-color, #ef4444);
-    }
-
-    .kanban-column.in-review {
-      border-top: 3px solid var(--warning-color, #f59e0b);
-    }
+    .kanban-column.in-review   { border-top-color: var(--stage-in-review, #F59E0B); }
+    .kanban-column.in-review   .column-dot { background: var(--stage-in-review, #F59E0B); }
+    .kanban-column.done        { border-top-color: var(--stage-done, #22C55E); }
+    .kanban-column.done        .column-dot { background: var(--stage-done, #22C55E); }
 
     /* ASGN-004: Assignment Toggle */
     .assign-toggle-container {
@@ -1795,6 +1836,12 @@ export class AosKanbanBoard extends LitElement {
       }
     }
 
+    // Sum story points (effort) when numeric; silent otherwise.
+    const totalSP = stories.reduce((n, s) => {
+      const raw = (s.effort || '').toString().match(/\d+/);
+      return n + (raw ? parseInt(raw[0], 10) : 0);
+    }, 0);
+
     return html`
       <div
         class="${dropZoneClasses}"
@@ -1803,8 +1850,10 @@ export class AosKanbanBoard extends LitElement {
         @drop=${(e: DragEvent) => this.handleDrop(e, status)}
       >
         <div class="column-header">
+          <span class="column-dot"></span>
           <h3>${title}</h3>
           <span class="column-count">${stories.length}</span>
+          ${totalSP > 0 ? html`<span class="column-sp">${totalSP} SP</span>` : ''}
         </div>
         <div class="column-content">
           ${stories.length === 0

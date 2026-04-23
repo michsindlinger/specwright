@@ -1931,6 +1931,8 @@ export class AosDashboardView extends LitElement {
 
   private renderDashboardTabs() {
     const isSpecsActive = this.viewMode === 'specs' || this.viewMode === 'kanban' || this.viewMode === 'story';
+    const specsCount = this.specs.length;
+    const backlogCount = this.backlogKanban?.stories?.length ?? 0;
     return html`
       <div class="dashboard-tabs">
         <div class="tabs-left">
@@ -1939,12 +1941,14 @@ export class AosDashboardView extends LitElement {
             @click=${() => this.handleTabChange('specs')}
           >
             Specs
+            ${specsCount > 0 ? html`<span class="dashboard-tab__count">${specsCount}</span>` : ''}
           </button>
           <button
             class="dashboard-tab ${this.viewMode === 'backlog' ? 'active' : ''}"
             @click=${() => this.handleTabChange('backlog')}
           >
             Backlog
+            ${backlogCount > 0 ? html`<span class="dashboard-tab__count">${backlogCount}</span>` : ''}
           </button>
           <button
             class="dashboard-tab ${this.viewMode === 'docs' ? 'active' : ''}"
@@ -1953,7 +1957,13 @@ export class AosDashboardView extends LitElement {
             Docs
           </button>
         </div>
-        ${isSpecsActive ? this.renderViewToggle() : ''}
+        <div style="display: flex; align-items: center; gap: 10px;">
+          ${isSpecsActive ? this.renderViewToggle() : ''}
+          <span class="dashboard-tabs__sync" title="Synced with GitHub">
+            <span class="sw-live-dot" style="background: var(--color-accent-success);"></span>
+            Synced with GitHub
+          </span>
+        </div>
       </div>
     `;
   }
