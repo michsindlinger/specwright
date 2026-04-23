@@ -1,6 +1,6 @@
 {
   "defaultProvider": "anthropic",
-  "defaultModel": "opus[1m]",
+  "defaultModel": "sonnet",
   "providers": [
     {
       "id": "anthropic",
@@ -98,6 +98,11 @@
           "id": "kimi-k2.5",
           "name": "Kimi K2.5",
           "description": ""
+        },
+        {
+          "id": "kimi-k2.6",
+          "name": "Kimi K2.6",
+          "description": "Most capable model"
         }
       ]
     },
