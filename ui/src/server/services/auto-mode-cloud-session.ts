@@ -15,13 +15,11 @@
  */
 
 import { EventEmitter } from 'events';
-import { writeFile, readFile } from 'fs/promises';
-import { existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { CloudTerminalManager } from './cloud-terminal-manager.js';
 import { KanbanFileWatcher } from './kanban-file-watcher.js';
-import { projectDir, resolveProjectDir, resolveCommandDir, resolveGlobalDir } from '../utils/project-dirs.js';
-import { getCliCommandForModel } from '../model-config.js';
+import { projectDir } from '../utils/project-dirs.js';
 import { buildMcpFlags, cleanupMcpTempFile } from '../utils/mcp-profile.js';
 import type { GitStrategy } from '../workflow-executor.js';
 import type { CloudTerminalSessionId, CloudTerminalModelConfig } from '../../shared/types/cloud-terminal.protocol.js';
@@ -55,7 +53,6 @@ export class AutoModeCloudSession extends EventEmitter {
   private stallWatchdogTimer: ReturnType<typeof setInterval> | null = null;
   private stalledNotified = false;
   private isCancelled = false;
-  private isFirstStory = true;
 
   constructor(config: AutoModeCloudSessionConfig) {
     super();
@@ -218,11 +215,6 @@ export class AutoModeCloudSession extends EventEmitter {
       this.pendingMcpCleanup.set(session.sessionId, mcpFlags);
     }
 
-    // Save debug info (fire-and-forget, non-blocking)
-    this.saveDebugInfo(storyId, session.sessionId, specContext).catch(err => {
-      console.warn('[AutoModeCloudSession] Failed to save debug info:', err);
-    });
-
     return session.sessionId;
   }
 
@@ -283,129 +275,6 @@ export class AutoModeCloudSession extends EventEmitter {
     }
 
     return baseCommand;
-  }
-
-  /**
-   * Save debug information about the cloud session to a local JSON file.
-   * Includes expanded slash command content and workflow files for debugging.
-   * Fire-and-forget: errors are logged but do not affect execution.
-   */
-  private async saveDebugInfo(storyId: string, sessionId: string, specContext: {
-    specLite: string | null;
-    crossCuttingDecisions: string | null;
-    integrationContext: string | null;
-  }): Promise<void> {
-    const specPath = projectDir(this.config.projectPath, 'specs', this.config.specId);
-    const debugFilePath = join(specPath, 'auto-mode-debug.json');
-
-    // Drop a local .gitignore so this debug file never leaks into commits
-    // (self-healing for both new and existing specs).
-    const gitignorePath = join(specPath, '.gitignore');
-    if (!existsSync(gitignorePath)) {
-      try {
-        await writeFile(gitignorePath, 'auto-mode-debug.json\n', 'utf-8');
-      } catch (err) {
-        console.warn('[AutoModeCloudSession] Failed to write spec .gitignore:', err);
-      }
-    }
-
-    const baseCommand = `/${this.config.commandPrefix}:execute-tasks ${this.config.specId} ${storyId}`;
-    const cliConfig = getCliCommandForModel(this.currentModel);
-    const fullCliArgs = [...cliConfig.args, this.buildExecuteCommand(storyId, specContext)];
-
-    // Resolve paths for the expanded slash command content
-    const cmdDir = resolveCommandDir(this.config.projectPath);
-    const projDir = resolveProjectDir(this.config.projectPath);
-    const globalDir = resolveGlobalDir();
-
-    // Read the slash command definition file
-    const commandFilePath = join(this.config.projectPath, '.claude', 'commands', cmdDir, 'execute-tasks.md');
-    let commandFileContent: string | null = null;
-    try {
-      commandFileContent = await readFile(commandFilePath, 'utf-8');
-    } catch { /* file not found */ }
-
-    // Read the entry-point workflow (local first, then global fallback)
-    const entryPointLocal = join(this.config.projectPath, projDir, 'workflows', 'core', 'execute-tasks', 'entry-point.md');
-    const entryPointGlobal = join(globalDir, 'workflows', 'core', 'execute-tasks', 'entry-point.md');
-    let entryPointPath = entryPointLocal;
-    let entryPointContent: string | null = null;
-    try {
-      entryPointContent = await readFile(entryPointLocal, 'utf-8');
-    } catch {
-      try {
-        entryPointContent = await readFile(entryPointGlobal, 'utf-8');
-        entryPointPath = entryPointGlobal;
-      } catch { /* not found */ }
-    }
-
-    // Read kanban.json for current phase info
-    let kanbanPhase: string | null = null;
-    try {
-      const kanbanPath = join(specPath, 'kanban.json');
-      const kanbanContent = JSON.parse(await readFile(kanbanPath, 'utf-8'));
-      kanbanPhase = kanbanContent?.resumeContext?.currentPhase || null;
-    } catch { /* not found */ }
-
-    const entry: Record<string, unknown> = {
-      storyId,
-      timestamp: new Date().toISOString(),
-      model: this.currentModel,
-      command: baseCommand,
-      cliCommand: cliConfig.command,
-      cliArgs: fullCliArgs,
-      projectPath: this.config.projectPath,
-      sessionId,
-      kanbanPhase,
-      embeddedContext: {
-        specLite: specContext.specLite ? '✓ included' : '✗ not found',
-        crossCuttingDecisions: specContext.crossCuttingDecisions ? '✓ included' : '✗ not found',
-        integrationContext: specContext.integrationContext ? '✓ included' : '✗ not found',
-      },
-      expandedPrompt: {
-        commandFile: {
-          path: commandFilePath,
-          content: commandFileContent,
-        },
-        entryPoint: {
-          path: entryPointPath,
-          content: entryPointContent,
-        },
-      },
-    };
-
-    interface DebugData {
-      specId: string;
-      lastReset: string;
-      sessions: Array<Record<string, unknown>>;
-    }
-
-    let debugData: DebugData;
-
-    if (this.isFirstStory || !existsSync(debugFilePath)) {
-      debugData = {
-        specId: this.config.specId,
-        lastReset: new Date().toISOString(),
-        sessions: [],
-      };
-      this.isFirstStory = false;
-    } else {
-      try {
-        const existing = await readFile(debugFilePath, 'utf-8');
-        debugData = JSON.parse(existing) as DebugData;
-      } catch {
-        debugData = {
-          specId: this.config.specId,
-          lastReset: new Date().toISOString(),
-          sessions: [],
-        };
-      }
-    }
-
-    debugData.sessions.push(entry);
-    await writeFile(debugFilePath, JSON.stringify(debugData, null, 2), 'utf-8');
-
-    console.log(`[AutoModeCloudSession] Debug info saved to ${debugFilePath}`);
   }
 
   /**
