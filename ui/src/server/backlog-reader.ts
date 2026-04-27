@@ -89,6 +89,12 @@ interface BacklogJson {
   };
 }
 
+export interface ReadyBacklogItem {
+  id: string;
+  title: string;
+  model: ModelSelection;
+}
+
 export function mapJsonStatusToFrontend(status: string): 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked' {
   switch (status) {
     case 'ready':
@@ -572,5 +578,38 @@ export class BacklogReader {
 
       return { assigned: newAssigned };
     });
+  }
+
+  /**
+   * Returns backlog items eligible for auto-mode execution (status ready/open/pending),
+   * excluding any IDs already running or queued.
+   * Used by AutoModeBacklogOrchestrator to find the next schedulable items.
+   */
+  async getReadyBacklogItems(
+    projectPath: string,
+    excludeIds: Set<string> = new Set()
+  ): Promise<ReadyBacklogItem[]> {
+    const backlogPath = projectDir(projectPath, 'backlog');
+    const backlogJsonPath = join(backlogPath, 'backlog-index.json');
+
+    try {
+      const content = await fs.readFile(backlogJsonPath, 'utf-8');
+      const backlogJson: BacklogJson = JSON.parse(content);
+
+      const readyStatuses = new Set(['ready', 'open', 'pending']);
+      const validModels: ModelSelection[] = ['opus', 'sonnet', 'haiku', 'glm-5', 'google/gemini-3-flash-preview', 'google/gemini-3-pro-preview'];
+
+      return backlogJson.items
+        .filter(item => readyStatuses.has(item.status) && !excludeIds.has(item.id))
+        .map(item => ({
+          id: item.id,
+          title: item.title,
+          model: (item.model && validModels.includes(item.model as ModelSelection))
+            ? (item.model as ModelSelection)
+            : 'opus'
+        }));
+    } catch {
+      return [];
+    }
   }
 }

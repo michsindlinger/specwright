@@ -46,6 +46,7 @@ export interface KanbanBoard {
   assignedToBot?: boolean;
   isReady?: boolean;
   lastIncident?: KanbanAutoModeIncident | null;
+  activeIncidents?: KanbanAutoModeIncident[];
 }
 
 export type KanbanStatus = 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked';

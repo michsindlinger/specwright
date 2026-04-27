@@ -12,21 +12,21 @@
     "implementationPlan": "implementation-plan.md"
   },
   "resumeContext": {
-    "currentPhase": "1-complete",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "2-complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
-    "gitStrategy": null,
-    "currentStory": null,
-    "currentStoryPhase": null,
-    "lastAction": "Lean kanban created via MCP",
-    "nextAction": "Setup git worktree or branch",
-    "progressIndex": 0,
+    "gitBranch": "feature/parallel-auto-mode",
+    "gitStrategy": "branch",
+    "currentStory": "PAM-004",
+    "currentStoryPhase": "implementing",
+    "lastAction": "Started PAM-004",
+    "nextAction": "Implement Slot + Base-Orchestrator + Backlog-PTY-Migration",
+    "progressIndex": 3,
     "totalStories": 11
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-04-27T17:30:44.829Z",
     "completedAt": null,
     "model": null
   },
@@ -37,16 +37,30 @@
       "description": "Backlog-Schema um 'blocked'-Status erweitern, BacklogJsonItem TS-Union erweitern, mapJsonStatusToFrontend ergänzen. Audit: alle backlog-index.json-Writes auf withKanbanLock(backlogPath, ...) umstellen. resumeContext-Feld in Schema einführen.",
       "planSection": "Phase 1: Schema- und Reader-Vorarbeit (PAM-001, PAM-002, PAM-003)",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T17:18:59.181Z",
+        "completedAt": "2026-04-27T17:29:58.149Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "specwright/templates/schemas/backlog-schema.json",
+          "ui/src/server/backlog-reader.ts",
+          "ui/src/server/backlog-item-storage.ts",
+          "ui/src/server/workflow-executor.ts",
+          "ui/src/server/websocket.ts",
+          "ui/tests/integration/kanban-ui-initialization.test.ts",
+          "specwright/specs/2026-04-27-parallel-auto-mode/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "df301a03d9617ba688310f6839d57996fc438a16",
+            "message": "feat(PAM-001): schema/reader vorarbeit + withKanbanLock audit",
+            "timestamp": "2026-04-27T19:29:49+02:00"
+          }
+        ]
       }
     },
     {
@@ -57,15 +71,20 @@
       "dependencies": [
         "PAM-001"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T17:30:44.829Z",
+        "completedAt": "2026-04-27T17:36:59.696Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/specs-reader.ts",
+          "ui/src/server/backlog-reader.ts",
+          "ui/frontend/src/components/kanban-board.ts",
+          "ui/tests/unit/pam-002-reader-helpers.test.ts"
+        ],
         "commits": []
       }
     },
@@ -75,16 +94,26 @@
       "description": "API erweitern: watch(specPath, filename: 'kanban.json'|'backlog-index.json', ids: Set<string>), addId(id), removeId(id). Directory-Watching beibehalten (macOS-Reliabilität). Events tragen storyId-Payload.",
       "planSection": "Phase 1: Schema- und Reader-Vorarbeit (PAM-001, PAM-002, PAM-003)",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T17:37:28.278Z",
+        "completedAt": "2026-04-27T17:42:28.940Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/services/kanban-file-watcher.ts",
+          "ui/src/server/services/auto-mode-cloud-session.ts",
+          "ui/tests/unit/pam-003-watcher-api.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "8acc640",
+            "message": "feat(PAM-003): KanbanFileWatcher Set-of-IDs API",
+            "timestamp": "2026-04-27T19:47:00+02:00"
+          }
+        ]
       }
     },
     {
@@ -97,11 +126,11 @@
         "PAM-002",
         "PAM-003"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "in_progress",
+      "phase": "in_progress",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
+        "startedAt": "2026-04-27T17:43:18.743Z",
         "completedAt": null
       },
       "implementation": {
@@ -268,12 +297,12 @@
   ],
   "boardStatus": {
     "total": 11,
-    "ready": 2,
-    "inProgress": 0,
+    "ready": 0,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
-    "blocked": 9
+    "done": 3,
+    "blocked": 7
   },
   "changeLog": [
     {
@@ -317,6 +346,84 @@
       "action": "model_changed",
       "storyId": "PAM-997",
       "details": "Model changed from sonnet to opus"
+    },
+    {
+      "timestamp": "2026-04-27T17:18:59.181Z",
+      "action": "status_changed",
+      "storyId": "PAM-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:19:01.168Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/parallel-auto-mode"
+    },
+    {
+      "timestamp": "2026-04-27T17:29:58.150Z",
+      "action": "status_changed",
+      "storyId": "PAM-001",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T17:29:58.466Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-002",
+      "details": "Unblocked: all dependencies done/in_review (PAM-001)"
+    },
+    {
+      "timestamp": "2026-04-27T17:29:58.489Z",
+      "action": "status_changed",
+      "storyId": "PAM-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:30:44.829Z",
+      "action": "status_changed",
+      "storyId": "PAM-002",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:36:59.696Z",
+      "action": "status_changed",
+      "storyId": "PAM-002",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T17:37:00.029Z",
+      "action": "status_changed",
+      "storyId": "PAM-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:37:28.279Z",
+      "action": "status_changed",
+      "storyId": "PAM-003",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:42:28.940Z",
+      "action": "status_changed",
+      "storyId": "PAM-003",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T17:42:29.255Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-004",
+      "details": "Unblocked: all dependencies done/in_review (PAM-001, PAM-002, PAM-003)"
+    },
+    {
+      "timestamp": "2026-04-27T17:42:29.269Z",
+      "action": "status_changed",
+      "storyId": "PAM-004",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:43:18.743Z",
+      "action": "status_changed",
+      "storyId": "PAM-004",
+      "details": "Task started: in_progress → in_progress"
     }
   ]
 }

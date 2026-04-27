@@ -15,7 +15,8 @@ import { resolveCommandDir, projectDir } from './utils/project-dirs.js';
 import { buildMcpFlags, cleanupMcpTempFile } from './utils/mcp-profile.js';
 import { gitService } from './services/git.service.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
-import { AutoModeCloudSession } from './services/auto-mode-cloud-session.js';
+import { AutoModeSpecOrchestrator } from './services/auto-mode-spec-orchestrator.js';
+import { AutoModeBacklogOrchestrator } from './services/auto-mode-backlog-orchestrator.js';
 
 export interface WorkflowCommand {
   id: string;
@@ -140,7 +141,8 @@ export class WorkflowExecutor {
   private terminalManager: TerminalManager;
   private autoContinueHistory: Map<string, { lastStoryId: string; count: number }> = new Map();
   private cloudTerminalManager: CloudTerminalManager | null = null;
-  private autoModeCloudSessions: Map<string, AutoModeCloudSession> = new Map(); // key: specId
+  private autoModeSpecOrchestrators: Map<string, AutoModeSpecOrchestrator> = new Map(); // key: specId
+  private autoModeBacklogOrchestrators: Map<string, AutoModeBacklogOrchestrator> = new Map(); // key: projectPath
 
   constructor() {
     this.terminalManager = new TerminalManager();
@@ -452,6 +454,34 @@ export class WorkflowExecutor {
       }, projectPath);
     }
 
+    // PAM-004: PTY path via AutoModeBacklogOrchestrator
+    if (this.cloudTerminalManager) {
+      let orchestrator = this.autoModeBacklogOrchestrators.get(projectPath);
+      if (!orchestrator) {
+        orchestrator = AutoModeBacklogOrchestrator.create(
+          projectPath,
+          cmdDir,
+          this.cloudTerminalManager,
+          1  // maxConcurrent=1; raised in PAM-007
+        );
+        this.setupBacklogOrchestratorListeners(orchestrator, projectPath);
+        this.autoModeBacklogOrchestrators.set(projectPath, orchestrator);
+      }
+
+      orchestrator.startItemDirectly({ id: storyId, title: storyId, model }).catch(err => {
+        console.error('[Workflow] BacklogOrchestrator.startItemDirectly error:', err);
+        this.sendToClient(client, {
+          type: 'backlog.story.start.error',
+          storyId,
+          error: err instanceof Error ? err.message : 'Failed to start PTY session',
+          timestamp: new Date().toISOString()
+        }, projectPath);
+      });
+
+      return executionId;
+    }
+
+    // Fallback: --print spawn when CloudTerminalManager unavailable
     const execution: WorkflowExecution = {
       id: executionId,
       commandId: `${cmdDir}:execute-tasks`,
@@ -463,16 +493,14 @@ export class WorkflowExecutor {
       output: [],
       abortController,
       pendingQuestions: [],
-      storyId,  // Store for tracking
-      model,    // Store model for this execution
-      branchName // BPS-002: Store branch name for post-execution PR
+      storyId,
+      model,
+      branchName
     };
 
-    // Store client reference for question events
     execution.client = client;
     this.executions.set(executionId, execution);
 
-    // Start execution in background
     this.runExecution(client, execution, command).catch(err => {
       console.error(`[Workflow] Unhandled execution error for ${executionId}:`, err);
     });
@@ -708,94 +736,32 @@ export class WorkflowExecutor {
     // MSK-003-FIX: Model is now passed as parameter (read before status update)
     console.log(`[Workflow] Using model from parameter: ${model}`);
 
-    // Cloud Terminal Auto-Mode Path
-    // Uses a persistent Cloud Terminal session instead of spawning new --print processes
+    // Cloud Terminal Auto-Mode Path — orchestrator manages slot lifecycle
     if (autoMode && this.cloudTerminalManager) {
       const cmdDir2 = resolveCommandDir(projectPath);
-      const existingSession = this.autoModeCloudSessions.get(specId);
 
-      if (existingSession) {
-        // Check if the Cloud Terminal session is still alive
-        const sessionId = existingSession.getSessionId();
-        const isSessionAlive = sessionId && this.cloudTerminalManager!.getSession(sessionId);
-
-        if (!isSessionAlive) {
-          // Session died (crash, timeout, etc.) — clean up and fall through to create new session
-          console.log(`[Workflow] Auto-Mode: Existing cloud session for spec ${specId} is no longer alive, cleaning up`);
-          existingSession.cancel();
-          this.autoModeCloudSessions.delete(specId);
-          // Fall through to create new session below
-        } else {
-          // Session is alive — guard against duplicate start for same story
-          const currentStoryInSession = existingSession.getCurrentStoryId();
-          if (currentStoryInSession === storyId) {
-            console.log(`[Workflow] Auto-Mode: Story ${storyId} already executing in cloud session for spec ${specId}, skipping duplicate start`);
-            return executionId;
-          }
-
-          // Reuse existing session for next story
-          console.log(`[Workflow] Auto-Mode: Reusing cloud session for spec ${specId}, story ${storyId}`);
-
-          // Send story start ack to frontend
-          this.sendToClient(client, {
-            type: 'workflow.story.start.ack',
-            executionId,
-            storyId,
-            specId,
-            cloudTerminalSessionId: existingSession.getSessionId(),
-            timestamp: new Date().toISOString()
-          }, projectPath);
-
-          existingSession.executeNextStory(storyId, model).catch(err => {
-            console.error(`[Workflow] Auto-Mode: Failed to execute next story ${storyId}:`, err);
-            this.sendToClient(client, {
-              type: 'workflow.auto-continue.error',
-              specId,
-              error: err instanceof Error ? err.message : 'Failed to execute next story',
-              timestamp: new Date().toISOString()
-            }, projectPath);
-          });
-
-          return executionId;
-        }
+      let orchestrator = this.autoModeSpecOrchestrators.get(specId);
+      if (!orchestrator) {
+        console.log(`[Workflow] Auto-Mode: Creating spec orchestrator for ${specId}`);
+        orchestrator = AutoModeSpecOrchestrator.create(
+          workingDirectory,
+          specId,
+          cmdDir2,
+          this.cloudTerminalManager,
+          1  // maxConcurrent=1; raised to 2 in PAM-007
+        );
+        this.setupSpecOrchestratorListeners(orchestrator, client, specId, projectPath, model);
+        this.autoModeSpecOrchestrators.set(specId, orchestrator);
       }
 
-      // Create new Auto-Mode Cloud Session
-      console.log(`[Workflow] Auto-Mode: Creating new cloud session for spec ${specId}, story ${storyId}`);
-
-      const session = new AutoModeCloudSession({
-        projectPath: workingDirectory,
-        specId,
-        gitStrategy,
-        model: model || 'opus',
-        cloudTerminalManager: this.cloudTerminalManager,
-        commandPrefix: cmdDir2,
-      });
-
-      // Register event listeners for auto-continuation
-      this.setupAutoModeSessionListeners(session, client, specId, projectPath, gitStrategy, model);
-      this.autoModeCloudSessions.set(specId, session);
-
-      session.startFirstStory(storyId).then(cloudSessionId => {
-        // Send story start ack with cloud session ID to frontend
-        this.sendToClient(client, {
-          type: 'workflow.story.start.ack',
-          executionId,
-          storyId,
-          specId,
-          cloudTerminalSessionId: cloudSessionId,
-          timestamp: new Date().toISOString()
-        }, projectPath);
-      }).catch(err => {
-        console.error(`[Workflow] Auto-Mode: Failed to start first story ${storyId}:`, err);
-        this.autoModeCloudSessions.delete(specId);
-
-        this.sendToClient(client, {
+      orchestrator.scheduleTick().catch(err => {
+        console.error(`[Workflow] Auto-Mode: scheduleTick error for spec ${specId}:`, err);
+        this.sendToProject(projectPath, {
           type: 'workflow.auto-continue.error',
           specId,
-          error: err instanceof Error ? err.message : 'Failed to start cloud session',
+          error: err instanceof Error ? err.message : 'Scheduling failed',
           timestamp: new Date().toISOString()
-        }, projectPath);
+        });
       });
 
       return executionId;
@@ -1444,41 +1410,28 @@ export class WorkflowExecutor {
     }
   }
 
-  /**
-   * Set up event listeners for an AutoModeCloudSession.
-   * Handles story completion (find next story), errors, and session close.
-   */
-  private setupAutoModeSessionListeners(
-    session: AutoModeCloudSession,
+  /** Wire orchestrator events to WebSocket broadcasts for spec auto-mode. */
+  private setupSpecOrchestratorListeners(
+    orchestrator: AutoModeSpecOrchestrator,
     client: WebSocketClient,
     specId: string,
     projectPath: string,
-    _gitStrategy: GitStrategy,
     model: ModelSelection
   ): void {
-    // Guard against duplicate story.completed events caused by KanbanFileWatcher
-    // re-firing when kanban.json is written during auto-continuation
-    let lastCompletedStoryId: string | null = null;
+    orchestrator.on('slot.started', (itemId: string, sessionId: string) => {
+      this.sendToProject(projectPath, {
+        type: 'workflow.story.start.ack',
+        executionId: `cloud-${specId}-${itemId}`,
+        storyId: itemId,
+        specId,
+        cloudTerminalSessionId: sessionId,
+        timestamp: new Date().toISOString()
+      });
+    });
 
-    session.on('story.completed', async (storyId: string) => {
-      if (storyId === lastCompletedStoryId) {
-        console.log(`[Workflow] Auto-Mode: Ignoring duplicate completion event for ${storyId}`);
-        return;
-      }
-      lastCompletedStoryId = storyId;
-      console.log(`[Workflow] Auto-Mode: Story ${storyId} completed in cloud session`);
-
-      // Clear any stale auto-mode incident — progress resumed
-      try {
-        await new SpecsReader().clearAutoModeIncident(projectPath, specId);
-      } catch (err) {
-        console.error('[Workflow] Auto-Mode: Failed to clear incident on completion:', err);
-      }
-
-      // Use project-wide broadcast instead of direct client send.
-      // The original client reference may be stale if WebSocket reconnected.
-      // autoModeHandled=true tells the frontend to NOT trigger its own auto-continuation,
-      // since the backend Cloud Terminal auto-mode already handles story progression.
+    orchestrator.on('story.completed', (storyId: string) => {
+      console.log(`[Workflow] Auto-Mode: Story ${storyId} completed`);
+      // Dep-resolution + next-slot scheduling handled inside AutoModeSpecOrchestrator.onItemCompleted
       this.sendToProject(projectPath, {
         type: 'workflow.interactive.complete',
         executionId: `cloud-${specId}-${storyId}`,
@@ -1488,121 +1441,14 @@ export class WorkflowExecutor {
         autoModeHandled: true,
         timestamp: new Date().toISOString()
       });
-
-      // Broadcast kanban refresh so frontend reflects the completed story
       webSocketManager.sendToProject(projectPath, {
         type: 'backlog.kanban.refresh',
         timestamp: new Date().toISOString()
       });
-
-      try {
-        // Resolve dependencies and find next story (same logic as handleStoryCompletionAndContinue)
-        const specsReader = new SpecsReader();
-        const unblocked = await specsReader.resolveDependencies(projectPath, specId);
-        if (unblocked.length > 0) {
-          console.log(`[Workflow] Auto-Mode: Dependencies resolved: ${unblocked.join(', ')} now ready`);
-        }
-
-        const kanban = await specsReader.getKanbanBoard(projectPath, specId);
-
-        // Check if spec is complete
-        const specComplete =
-          kanban.currentPhase === 'complete' ||
-          kanban.executionStatus === 'completed' ||
-          (kanban.stories.length > 0 && kanban.stories.every(s => s.status === 'done'));
-
-        if (specComplete) {
-          console.log(`[Workflow] Auto-Mode: Spec ${specId} complete, closing cloud session`);
-          session.cancel();
-          this.autoModeCloudSessions.delete(specId);
-
-          // Handle queue progression
-          const queueState = queueHandler.getState();
-          if (queueState.isQueueRunning) {
-            const queueItem = queueHandler.getItemBySpecId(projectPath, specId);
-            if (queueItem) {
-              const nextQueueItem = queueHandler.handleSpecComplete(projectPath, specId, true);
-              if (nextQueueItem) {
-                this.sendToProject(projectPath, {
-                  type: 'workflow.spec-complete',
-                  specId,
-                  nextSpecId: nextQueueItem.specId,
-                  message: `Spec ${specId} abgeschlossen. Weiter mit ${nextQueueItem.specId}...`,
-                  timestamp: new Date().toISOString()
-                });
-
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                const nextKanban = await specsReader.getKanbanBoard(nextQueueItem.projectPath, nextQueueItem.specId);
-                const firstStory = nextKanban.stories.find(s => s.status === 'backlog');
-                if (firstStory) {
-                  await this.startStoryExecution(client, nextQueueItem.specId, firstStory.id, nextQueueItem.projectPath, nextQueueItem.gitStrategy || 'branch', firstStory.model || 'opus', true);
-                }
-              } else {
-                this.sendToProject(projectPath, {
-                  type: 'workflow.queue-complete',
-                  specId,
-                  message: 'Alle Specs in der Queue wurden abgearbeitet.',
-                  timestamp: new Date().toISOString()
-                });
-              }
-            }
-          }
-          return;
-        }
-
-        // Find next backlog story
-        const nextStory = kanban.stories.find(s => s.status === 'backlog');
-
-        if (nextStory) {
-          console.log(`[Workflow] Auto-Mode: Continuing to story ${nextStory.id}`);
-
-          // IMPORTANT: Start execution FIRST — this updates the KanbanFileWatcher
-          // to watch for the NEW story. Only THEN write kanban.json (updateStoryStatus),
-          // so the watcher doesn't re-fire for the old completed story.
-          await session.executeNextStory(nextStory.id, nextStory.model || model);
-
-          // Now safe to update kanban.json — watcher is already watching the new story
-          await specsReader.updateStoryStatus(projectPath, specId, nextStory.id, 'in_progress');
-
-          // Notify all project clients about the auto-continuation and story start
-          this.sendToProject(projectPath, {
-            type: 'workflow.auto-continue',
-            specId,
-            nextStoryId: nextStory.id,
-            message: `Automatisch weiter mit Story ${nextStory.id}...`,
-            timestamp: new Date().toISOString()
-          });
-
-          this.sendToProject(projectPath, {
-            type: 'workflow.story.start.ack',
-            executionId: `cloud-${specId}-${nextStory.id}`,
-            storyId: nextStory.id,
-            specId,
-            cloudTerminalSessionId: session.getSessionId(),
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          // No more stories in backlog
-          console.log(`[Workflow] Auto-Mode: No more backlog stories for spec ${specId}`);
-          session.cancel();
-          this.autoModeCloudSessions.delete(specId);
-        }
-      } catch (error) {
-        console.error('[Workflow] Auto-Mode: Error in auto-continuation:', error);
-        this.sendToProject(projectPath, {
-          type: 'workflow.auto-continue.error',
-          specId,
-          error: error instanceof Error ? error.message : 'Auto-continuation failed',
-          timestamp: new Date().toISOString()
-        });
-        session.cancel();
-        this.autoModeCloudSessions.delete(specId);
-      }
     });
 
-    session.on('story.failed', async (storyId: string, error: string) => {
+    orchestrator.on('story.failed', async (storyId: string, error: string) => {
       console.log(`[Workflow] Auto-Mode: Story ${storyId} failed: ${error}`);
-
       const isTimeout = /timed out/i.test(error);
       const specsReader = new SpecsReader();
 
@@ -1617,8 +1463,7 @@ export class WorkflowExecutor {
         console.error('[Workflow] Auto-Mode: Failed to persist incident:', err);
       }
 
-      // Move the failed story out of in_progress so the UI reflects reality
-      // and dependent stories stay correctly blocked (no auto-unblock via done/in_review).
+      // Move failed story out of in_progress so UI reflects reality
       try {
         await specsReader.updateStoryStatus(projectPath, specId, storyId, 'blocked');
       } catch (err) {
@@ -1634,37 +1479,21 @@ export class WorkflowExecutor {
         error,
         timestamp: new Date().toISOString()
       });
-
-      // Broadcast kanban refresh so UI shows the blocked state immediately
       webSocketManager.sendToProject(projectPath, {
         type: 'backlog.kanban.refresh',
         timestamp: new Date().toISOString()
       });
 
-      // Tear down the stuck cloud session — otherwise it keeps running idle,
-      // consuming tokens, and eventually crashes with SIGHUP (exit 129).
-      try {
-        await session.cancel();
-      } catch (err) {
-        console.error('[Workflow] Auto-Mode: Error while cancelling session after failure:', err);
-      }
-      this.autoModeCloudSessions.delete(specId);
-
-      // Signal queue progression (success=false). If a queue is running,
-      // handleSpecComplete decides whether to stop or advance to the next spec.
+      // Signal queue failure (failure-tolerant: siblings continue via orchestrator)
       const queueState = queueHandler.getState();
       if (queueState.isQueueRunning) {
-        try {
-          queueHandler.handleSpecComplete(projectPath, specId, false);
-        } catch (err) {
-          console.error('[Workflow] Auto-Mode: queueHandler.handleSpecComplete(false) failed:', err);
-        }
+        try { queueHandler.handleSpecComplete(projectPath, specId, false); }
+        catch (err) { console.error('[Workflow] Auto-Mode: queueHandler.handleSpecComplete(false) failed:', err); }
       }
     });
 
-    session.on('story.stalled', (storyId: string, silentMs: number) => {
+    orchestrator.on('story.stalled', (storyId: string, silentMs: number) => {
       console.warn(`[Workflow] Auto-Mode: Story ${storyId} stalled for ${Math.round(silentMs / 1000)}s`);
-
       this.sendToProject(projectPath, {
         type: 'workflow.auto-mode.stalled',
         specId,
@@ -1672,22 +1501,17 @@ export class WorkflowExecutor {
         silentMs,
         timestamp: new Date().toISOString()
       });
-
-      const specsReader = new SpecsReader();
-      specsReader.setAutoModeIncident(projectPath, specId, {
+      new SpecsReader().setAutoModeIncident(projectPath, specId, {
         type: 'stall',
         message: `Auto-Mode inaktiv seit ${Math.round(silentMs / 60000)} Min. (kein Terminal-Output)`,
         storyId,
         silentMs,
         timestamp: new Date().toISOString()
-      }).catch(err => {
-        console.error('[Workflow] Auto-Mode: Failed to persist stall incident:', err);
-      });
+      }).catch(err => console.error('[Workflow] Auto-Mode: Failed to persist stall incident:', err));
     });
 
-    session.on('story.prompt-stuck', (storyId: string, matchedText: string) => {
+    orchestrator.on('story.prompt-stuck', (storyId: string, matchedText: string) => {
       console.warn(`[Workflow] Auto-Mode: Story ${storyId} prompt detected: ${matchedText}`);
-
       this.sendToProject(projectPath, {
         type: 'workflow.auto-mode.prompt-detected',
         specId,
@@ -1695,75 +1519,136 @@ export class WorkflowExecutor {
         matchedText,
         timestamp: new Date().toISOString()
       });
-
-      const specsReader = new SpecsReader();
-      specsReader.setAutoModeIncident(projectPath, specId, {
+      new SpecsReader().setAutoModeIncident(projectPath, specId, {
         type: 'prompt-stuck',
         message: `Auto-Mode wartet auf Eingabe: ${matchedText}`,
         storyId,
         matchedText,
         timestamp: new Date().toISOString()
-      }).catch(err => {
-        console.error('[Workflow] Auto-Mode: Failed to persist prompt incident:', err);
+      }).catch(err => console.error('[Workflow] Auto-Mode: Failed to persist prompt incident:', err));
+    });
+
+    orchestrator.on('all-items-done', async () => {
+      console.log(`[Workflow] Auto-Mode: All items done for spec ${specId}`);
+      this.autoModeSpecOrchestrators.delete(specId);
+
+      const specsReader = new SpecsReader();
+      let kanban;
+      try { kanban = await specsReader.getKanbanBoard(projectPath, specId); }
+      catch { /* if read fails, treat as complete */ }
+
+      const specComplete = !kanban || (
+        kanban.currentPhase === 'complete' ||
+        kanban.executionStatus === 'completed' ||
+        (kanban.stories.length > 0 && kanban.stories.every(s => s.status === 'done'))
+      );
+
+      if (!specComplete) return;
+
+      const queueState = queueHandler.getState();
+      if (queueState.isQueueRunning) {
+        const queueItem = queueHandler.getItemBySpecId(projectPath, specId);
+        if (queueItem) {
+          const nextQueueItem = queueHandler.handleSpecComplete(projectPath, specId, true);
+          if (nextQueueItem) {
+            this.sendToProject(projectPath, {
+              type: 'workflow.spec-complete',
+              specId,
+              nextSpecId: nextQueueItem.specId,
+              message: `Spec ${specId} abgeschlossen. Weiter mit ${nextQueueItem.specId}...`,
+              timestamp: new Date().toISOString()
+            });
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            try {
+              const nextKanban = await specsReader.getKanbanBoard(nextQueueItem.projectPath, nextQueueItem.specId);
+              const firstStory = nextKanban.stories.find(s => s.status === 'backlog');
+              if (firstStory) {
+                await this.startStoryExecution(
+                  client,
+                  nextQueueItem.specId,
+                  firstStory.id,
+                  nextQueueItem.projectPath,
+                  nextQueueItem.gitStrategy || 'branch',
+                  (firstStory.model as ModelSelection) || model,
+                  true
+                );
+              }
+            } catch (err) {
+              console.error('[Workflow] Auto-Mode: Queue progression error:', err);
+            }
+          } else {
+            this.sendToProject(projectPath, {
+              type: 'workflow.queue-complete',
+              specId,
+              message: 'Alle Specs in der Queue wurden abgearbeitet.',
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+      }
+    });
+
+    orchestrator.on('cancelled', () => {
+      console.log(`[Workflow] Auto-Mode: Orchestrator cancelled for spec ${specId}`);
+      this.autoModeSpecOrchestrators.delete(specId);
+    });
+  }
+
+  /** Wire orchestrator events to WebSocket broadcasts for backlog auto-mode. */
+  private setupBacklogOrchestratorListeners(
+    orchestrator: AutoModeBacklogOrchestrator,
+    projectPath: string
+  ): void {
+    orchestrator.on('slot.started', (itemId: string, sessionId: string) => {
+      this.sendToProject(projectPath, {
+        type: 'backlog.story.pty.started',
+        storyId: itemId,
+        cloudTerminalSessionId: sessionId,
+        projectId: projectPath,
+        timestamp: new Date().toISOString()
       });
     });
 
-    session.on('error', async (error: Error) => {
-      console.error(`[Workflow] Auto-Mode: Session error for spec ${specId}:`, error);
-
-      // Capture the in-flight story BEFORE the session reference is discarded
-      const crashedStoryId = session.getCurrentStoryId();
-      const specsReader = new SpecsReader();
-
-      try {
-        await specsReader.setAutoModeIncident(projectPath, specId, {
-          type: 'crash',
-          message: error.message,
-          storyId: crashedStoryId ?? undefined,
-          timestamp: new Date().toISOString()
-        });
-      } catch (err) {
-        console.error('[Workflow] Auto-Mode: Failed to persist crash incident:', err);
-      }
-
-      // Move the crashed story out of in_progress so dependents (e.g. finalize-PR)
-      // don't stay blocked forever and the UI reflects the real state.
-      if (crashedStoryId) {
-        try {
-          await specsReader.updateStoryStatus(projectPath, specId, crashedStoryId, 'blocked');
-        } catch (err) {
-          console.error(`[Workflow] Auto-Mode: Failed to mark crashed story ${crashedStoryId} as blocked:`, err);
-        }
-      }
-
-      this.sendToProject(projectPath, {
-        type: 'workflow.auto-continue.error',
-        specId,
-        storyId: crashedStoryId,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-
+    orchestrator.on('story.completed', (itemId: string) => {
+      console.log(`[Workflow] Backlog Auto-Mode: Item ${itemId} completed`);
       webSocketManager.sendToProject(projectPath, {
         type: 'backlog.kanban.refresh',
         timestamp: new Date().toISOString()
       });
-
-      this.autoModeCloudSessions.delete(specId);
-
-      const queueState = queueHandler.getState();
-      if (queueState.isQueueRunning) {
-        try {
-          queueHandler.handleSpecComplete(projectPath, specId, false);
-        } catch (err) {
-          console.error('[Workflow] Auto-Mode: queueHandler.handleSpecComplete(false) failed:', err);
-        }
-      }
     });
 
-    session.on('closed', () => {
-      console.log(`[Workflow] Auto-Mode: Session closed for spec ${specId}`);
-      this.autoModeCloudSessions.delete(specId);
+    orchestrator.on('story.failed', (itemId: string, error: string) => {
+      console.error(`[Workflow] Backlog Auto-Mode: Item ${itemId} failed: ${error}`);
+      webSocketManager.sendToProject(projectPath, {
+        type: 'backlog.kanban.refresh',
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    orchestrator.on('story.stalled', (itemId: string, silentMs: number) => {
+      this.sendToProject(projectPath, {
+        type: 'workflow.auto-mode.stalled',
+        storyId: itemId,
+        silentMs,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    orchestrator.on('story.prompt-stuck', (itemId: string, matchedText: string) => {
+      this.sendToProject(projectPath, {
+        type: 'workflow.auto-mode.prompt-detected',
+        storyId: itemId,
+        matchedText,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    orchestrator.on('all-items-done', () => {
+      this.autoModeBacklogOrchestrators.delete(projectPath);
+    });
+
+    orchestrator.on('cancelled', () => {
+      this.autoModeBacklogOrchestrators.delete(projectPath);
     });
   }
 
@@ -2986,14 +2871,14 @@ export class WorkflowExecutor {
    * @returns true if a session was found and cancelled
    */
   public cancelAutoModeSession(specId: string): boolean {
-    const session = this.autoModeCloudSessions.get(specId);
-    if (!session) {
-      return false;
-    }
+    const orchestrator = this.autoModeSpecOrchestrators.get(specId);
+    if (!orchestrator) return false;
 
-    console.log(`[Workflow] Auto-Mode: Cancelling cloud session for spec ${specId}`);
-    session.cancel();
-    this.autoModeCloudSessions.delete(specId);
+    console.log(`[Workflow] Auto-Mode: Cancelling orchestrator for spec ${specId}`);
+    this.autoModeSpecOrchestrators.delete(specId);
+    orchestrator.cancel().catch(err =>
+      console.error('[Workflow] Auto-Mode: Cancel error:', err)
+    );
     return true;
   }
 
