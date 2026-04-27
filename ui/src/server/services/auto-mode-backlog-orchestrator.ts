@@ -26,7 +26,7 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
     projectPath: string,
     commandPrefix: string,
     cloudTerminalManager: CloudTerminalManager,
-    maxConcurrent = 1
+    maxConcurrent = 2
   ): AutoModeBacklogOrchestrator {
     return new AutoModeBacklogOrchestrator({
       projectPath,

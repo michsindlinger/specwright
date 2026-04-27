@@ -66,6 +66,11 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
   /** Override to inject specId into slot config for spec-context reading. */
   protected getSpecIdForSlot(_item: ReadyItem): string | undefined { return undefined; }
 
+  /** Override to resolve the working directory for a slot (e.g., per-story worktree). */
+  protected async resolveSlotProjectPath(_item: ReadyItem): Promise<string> {
+    return this.config.projectPath;
+  }
+
   // ── Public API ──────────────────────────────────────────────────────────────
 
   /** Serialized tick: find ready items and fill available slots. */
@@ -125,8 +130,9 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
       return;
     }
 
+    const slotProjectPath = await this.resolveSlotProjectPath(item);
     const slot = new AutoModeStorySlot({
-      projectPath: this.config.projectPath,
+      projectPath: slotProjectPath,
       specId: this.getSpecIdForSlot(item),
       storyId: item.id,
       executeArgs: this.buildExecuteArgs(item),

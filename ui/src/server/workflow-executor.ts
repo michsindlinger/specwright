@@ -468,7 +468,7 @@ export class WorkflowExecutor {
           projectPath,
           cmdDir,
           this.cloudTerminalManager,
-          1  // maxConcurrent=1; raised in PAM-007
+          2
         );
         this.setupBacklogOrchestratorListeners(orchestrator, projectPath);
         this.autoModeBacklogOrchestrators.set(projectPath, orchestrator);
@@ -550,7 +550,7 @@ export class WorkflowExecutor {
     // Determine working directory based on git strategy
     let workingDirectory = projectPath;
     let worktreePath: string | undefined;
-    let branchName: string;
+    let branchName: string = `feature/${featureName}`;
 
     if (gitStrategy === 'worktree') {
       // Create worktree OUTSIDE project directory (per spec-phase-2.md v3.3)
@@ -749,12 +749,26 @@ export class WorkflowExecutor {
       let orchestrator = this.autoModeSpecOrchestrators.get(specId);
       if (!orchestrator) {
         console.log(`[Workflow] Auto-Mode: Creating spec orchestrator for ${specId}`);
+        // PAM-007: parallel only with worktree strategy — clamp to 1 otherwise
+        const effectiveConcurrent = gitStrategy === 'worktree' ? 2 : 1;
+        if (gitStrategy !== 'worktree') {
+          this.sendToProject(projectPath, {
+            type: 'workflow.auto-mode.parallel-unavailable',
+            specId,
+            reason: 'Parallel-Modus benötigt Worktree-Strategie',
+            maxConcurrent: 1,
+            timestamp: new Date().toISOString()
+          });
+        }
         orchestrator = AutoModeSpecOrchestrator.create(
           workingDirectory,
           specId,
           cmdDir2,
           this.cloudTerminalManager,
-          1  // maxConcurrent=1; raised to 2 in PAM-007
+          effectiveConcurrent,
+          gitStrategy,
+          projectPath,
+          branchName
         );
         this.setupSpecOrchestratorListeners(orchestrator, client, specId, projectPath, model);
         this.autoModeSpecOrchestrators.set(specId, orchestrator);
@@ -1592,6 +1606,33 @@ export class WorkflowExecutor {
           }
         }
       }
+    });
+
+    orchestrator.on('story.merge-conflict', async (storyId: string, worktreePath: string, errMsg: string) => {
+      console.warn(`[Workflow] Auto-Mode: Merge conflict for story ${storyId}: ${errMsg}`);
+      const specsReader = new SpecsReader();
+      try {
+        await specsReader.setAutoModeIncident(projectPath, specId, {
+          type: 'error',
+          message: errMsg,
+          storyId,
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('[Workflow] Auto-Mode: Failed to persist merge-conflict incident:', err);
+      }
+      this.sendToProject(projectPath, {
+        type: 'workflow.auto-mode.merge-conflict',
+        specId,
+        storyId,
+        worktreePath,
+        error: errMsg,
+        timestamp: new Date().toISOString()
+      });
+      webSocketManager.sendToProject(projectPath, {
+        type: 'backlog.kanban.refresh',
+        timestamp: new Date().toISOString()
+      });
     });
 
     orchestrator.on('cancelled', () => {
@@ -3002,7 +3043,7 @@ export class WorkflowExecutor {
         projectPath,
         cmdDir,
         this.cloudTerminalManager,
-        1  // maxConcurrent=1; raised in PAM-007
+        2
       );
       this.setupBacklogOrchestratorListeners(orchestrator, projectPath);
       this.autoModeBacklogOrchestrators.set(projectPath, orchestrator);

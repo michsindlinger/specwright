@@ -1,8 +1,13 @@
 export class ProjectConcurrencyGate {
+  static readonly MAX_CONCURRENT = 4;
+
+  private readonly maxConcurrent: number;
   private running = 0;
   private readonly waiters: Array<() => void> = [];
 
-  constructor(private readonly maxConcurrent: number = 1) {}
+  constructor(maxConcurrent: number = 2) {
+    this.maxConcurrent = Math.min(maxConcurrent, ProjectConcurrencyGate.MAX_CONCURRENT);
+  }
 
   async acquire(): Promise<void> {
     if (this.running < this.maxConcurrent) {
