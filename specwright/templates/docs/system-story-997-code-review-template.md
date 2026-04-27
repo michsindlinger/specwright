@@ -103,6 +103,8 @@ Scenario: Fix schlägt fehl und wird als Bug-Ticket auf das Board gestellt
 
 - [ ] LINT_PASS: Projekt-Lint-Befehl exits with code 0
 - [ ] TEST_PASS: Projekt-Test-Befehl exits with code 0
+- [ ] PLAN_VALIDATIONS: Alle nicht-manuellen Validierungen aus implementation-plan.md Verbindungs-Matrix erfolgreich (v1.1)
+- [ ] SPEC_CONFORMANCE: Expected Deliverable Items in geänderten Dateien nachweisbar; keine Out-of-Scope-Violations (v1.1)
 
 ---
 
@@ -130,6 +132,8 @@ Scenario: Fix schlägt fehl und wird als Bug-Ticket auf das Board gestellt
    - Security-Check
    - Performance-Analyse
    - Best-Practices
+   - **Spec-Conformance** (v1.1): Expected Deliverable + Spec Scope + Out of Scope cross-check
+   - **Plan-Validation** (v1.1): Verbindungs-Matrix grep-Validierungen ausführen (whitelisted bash commands)
 
 4. **Review-Report erstellen:**
    - Speichern unter: `specwright/specs/[SPEC_NAME]/review-report.md`
@@ -200,6 +204,30 @@ Der generierte Review-Report folgt diesem Format:
 | Critical | [N] |
 | Major | [N] |
 | Minor | [N] |
+
+## Spec-Conformance
+
+### Expected Deliverable Checklist
+| Deliverable (aus spec.md) | Implementiert? | Files / Notes |
+|---------------------------|----------------|---------------|
+| [item] | ✅ / ❌ / partial | [file path or note] |
+
+### Plan-Validation Results (Verbindungs-Matrix)
+**Geprüft:** [N] Validierungen — [N] passed, [N] failed, [N] manual-only
+
+| Source → Target | Story | Validation | Result |
+|-----------------|-------|------------|--------|
+| [A → B] | [STORY-ID] | `grep -n ...` | ✅ Pass / ❌ Fail / 📝 Manual |
+
+### Scope Compliance
+- **In-Scope deliverables present:** [N]/[N]
+- **Out-of-Scope-Violations:** [N] (siehe Major Issues)
+- **Plan-Drift (undocumented files):** [N] (siehe Minor Issues)
+
+### Requirements (aus requirements-clarification.md)
+| Acceptance Criterion | Erfüllt? | Implementation Reference |
+|----------------------|----------|--------------------------|
+| [criterion] | ✅ / ❌ | [file:line or story-id] |
 
 ## Geprüfte Dateien
 
