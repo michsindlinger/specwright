@@ -584,15 +584,10 @@ export class AosStoryCard extends LitElement {
 
   private async handleCopyPath(e: Event): Promise<void> {
     e.stopPropagation();
-    let path: string;
-    if (this.isBacklogMode) {
-      path = this.story.file
-        ? buildBacklogFilePath(this.story.file)
-        : this.story.id;
-    } else {
-      if (!this.story.file) return;
-      path = buildSpecFilePath(this.specId, this.story.file);
-    }
+    if (!this.story.file) return;
+    const path = this.isBacklogMode
+      ? buildBacklogFilePath(this.story.file)
+      : buildSpecFilePath(this.specId, this.story.file);
     const button = e.currentTarget as HTMLElement;
     this.copied = true;
     await copyPathToClipboard(path, button);
@@ -757,7 +752,7 @@ export class AosStoryCard extends LitElement {
       >
         <div class="story-header">
           <span class="story-id">${this.story.id}</span>
-          ${this.story.file || this.isBacklogMode ? html`
+          ${this.story.file ? html`
             <button
               class="copy-path-btn ${this.copied ? 'copied' : ''}"
               title="Copy file path"

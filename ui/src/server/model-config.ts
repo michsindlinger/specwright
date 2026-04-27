@@ -28,7 +28,7 @@ const __dirname = dirname(__filename);
 
 const CONFIG_PATH = join(__dirname, '../../config/model-config.json');
 
-const BUILT_IN_PROVIDERS = ['anthropic', 'glm', 'gemini'];
+const BUILT_IN_PROVIDERS = ['anthropic', 'glm', 'gemini', 'deepseek'];
 
 const DEFAULT_CONFIG: ModelConfig = {
   defaultProvider: 'anthropic',
@@ -71,6 +71,16 @@ const DEFAULT_CONFIG: ModelConfig = {
       cliFlags: ['--model', '{modelId}'],
       models: [
         { id: 'kimi-k2.5', name: 'Kimi K2.5', description: '' }
+      ]
+    },
+    {
+      id: 'deepseek',
+      name: 'DeepSeek V4',
+      cliCommand: 'claude-deepseek',
+      cliFlags: ['--model', '{modelId}'],
+      models: [
+        { id: 'opus', name: 'DeepSeek V4 Pro', description: 'Most capable DeepSeek model' },
+        { id: 'haiku', name: 'DeepSeek V4 Flash', description: 'Fast and efficient' }
       ]
     }
   ]

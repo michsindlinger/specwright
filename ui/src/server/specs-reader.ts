@@ -1310,7 +1310,7 @@ export class SpecsReader {
           if (exactHeading) {
             const escapedHeading = exactHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const exactRegex = new RegExp(
-              `^#{2,3}\\s+${escapedHeading}\\s*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s|$)`, 'im'
+              `^#{2,3}\\s+${escapedHeading}\\s*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s|$(?![\\s\\S]))`, 'im'
             );
             const sectionContent = planContent.match(exactRegex);
             if (sectionContent) {
@@ -1324,7 +1324,7 @@ export class SpecsReader {
             if (phaseMatch) {
               const phaseNum = phaseMatch[1];
               const sectionRegex = new RegExp(
-                `^#{2,3}\\s+(?:Phase\\s*)?${phaseNum}[\\s.:\\-–—]*[^\\n]*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s+(?:Phase\\s*)?\\d|\\n##\\s|$)`, 'im'
+                `^#{2,3}\\s+(?:Phase\\s*)?${phaseNum}[\\s.:\\-–—]*[^\\n]*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s+(?:Phase\\s*)?\\d|\\n##\\s|$(?![\\s\\S]))`, 'im'
               );
               const sectionContent = planContent.match(sectionRegex);
               if (sectionContent) {
@@ -2311,6 +2311,72 @@ _None yet_
     // PRIORITY 2: Fallback to MD kanban
     console.log(`[SpecsReader] updateStoryModel: Falling back to kanban-board.md for ${specId}`);
     await this.updateStoryModelMarkdown(specPath, storyId, model);
+  }
+
+  /**
+   * Bulk-updates the model for multiple stories/tasks atomically.
+   * Single locked read/modify/write on kanban.json; one changelog entry.
+   * Falls back to per-story markdown updates only when no kanban.json exists.
+   */
+  async updateStoriesModelBulk(
+    projectPath: string,
+    specId: string,
+    storyIds: string[],
+    model: ModelSelection
+  ): Promise<{ updated: string[]; missing: string[] }> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+
+    return await withKanbanLock(specPath, async () => {
+      const updated: string[] = [];
+      const missing: string[] = [];
+
+      const jsonKanban = await this.readKanbanJsonUnlocked(specPath);
+      if (jsonKanban) {
+        if (isV2Kanban(jsonKanban)) {
+          for (const id of storyIds) {
+            const task = jsonKanban.tasks.find(t => t.id === id);
+            if (task) {
+              task.model = model;
+              updated.push(id);
+            } else {
+              missing.push(id);
+            }
+          }
+        } else {
+          for (const id of storyIds) {
+            const story = jsonKanban.stories.find(s => s.id === id);
+            if (story) {
+              story.model = model;
+              updated.push(id);
+            } else {
+              missing.push(id);
+            }
+          }
+        }
+
+        if (updated.length > 0) {
+          this.addChangeLogEntry(
+            jsonKanban,
+            'models_bulk_changed',
+            null,
+            `Model set to ${model} for: ${updated.join(', ')}`
+          );
+          await this.writeKanbanJsonUnlocked(specPath, jsonKanban);
+        }
+        return { updated, missing };
+      }
+
+      // MD fallback: no kanban.json — update each story sequentially.
+      for (const id of storyIds) {
+        try {
+          await this.updateStoryModelMarkdown(specPath, id, model);
+          updated.push(id);
+        } catch {
+          missing.push(id);
+        }
+      }
+      return { updated, missing };
+    });
   }
 
   /**

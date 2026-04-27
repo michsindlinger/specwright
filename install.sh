@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.23.1"
+FRAMEWORK_VERSION="3.24.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -1061,8 +1061,8 @@ install_mcp() {
 
     # Copy or download MCP server files
     # ALWAYS overwrite: MCP files are pure framework code, not user-customizable
-    substep "MCP server files" "5"
-    local mcp_files=(kanban-mcp-server.ts kanban-lock.ts story-parser.ts item-templates.ts memory-store.ts)
+    substep "MCP server files" "6"
+    local mcp_files=(kanban-mcp-server.ts kanban-lock.ts kanban-validation.ts story-parser.ts item-templates.ts memory-store.ts)
     if [[ "$DETECT_FRAMEWORK_REPO" == true ]]; then
         # Local copy in framework repo
         for f in "${mcp_files[@]}"; do

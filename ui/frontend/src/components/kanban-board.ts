@@ -243,6 +243,23 @@ export class AosKanbanBoard extends LitElement {
       margin-right: 1rem;
     }
 
+    .bulk-model-container {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      background: var(--color-bg-secondary, #162A45);
+      border: 1px solid var(--color-border, #1E3A5F);
+      border-radius: var(--radius-md, 0.5rem);
+    }
+
+    .bulk-model-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-text-secondary, #94A3B8);
+      white-space: nowrap;
+    }
+
     .chat-toggle-btn {
       display: flex;
       align-items: center;
@@ -1304,6 +1321,25 @@ export class AosKanbanBoard extends LitElement {
     );
   }
 
+  private get bulkModelEligibleIds(): string[] {
+    return this.kanban.stories
+      .filter(s => s.status === 'backlog' || s.status === 'blocked')
+      .map(s => s.id);
+  }
+
+  private handleBulkModelChange(e: CustomEvent<{ modelId: string }>): void {
+    const model = e.detail.modelId as ModelSelection;
+    const storyIds = this.bulkModelEligibleIds;
+    if (storyIds.length === 0) return;
+    this.dispatchEvent(
+      new CustomEvent('stories-bulk-model-change', {
+        detail: { storyIds, model },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
   // SCA-004: Handle attachment-open event from story-card
   private handleAttachmentOpen(e: CustomEvent<{ storyId: string; story: StoryInfo }>): void {
     const { storyId } = e.detail;
@@ -2025,6 +2061,18 @@ export class AosKanbanBoard extends LitElement {
               ${this.autoModeEnabled
                 ? html`<span class="auto-mode-badge">Auto aktiv</span>`
                 : ''}
+            </div>
+          ` : ''}
+
+          <!-- Bulk model setter for Backlog + Blocked stories -->
+          ${this.bulkModelEligibleIds.length > 0 ? html`
+            <div class="bulk-model-container" @click=${(e: Event) => e.stopPropagation()}>
+              <span class="bulk-model-label">Set model · Backlog + Blocked (${this.bulkModelEligibleIds.length})</span>
+              <aos-model-selector
+                .externalProviders=${this.providers}
+                .externalSelectedModelId=${''}
+                @model-changed=${this.handleBulkModelChange}
+              ></aos-model-selector>
             </div>
           ` : ''}
 

@@ -43,6 +43,7 @@ interface BacklogStoryInfo {
   model?: 'opus' | 'sonnet' | 'haiku' | 'glm-5';
   dorComplete?: boolean;
   dependencies?: string[];
+  file?: string;
   attachmentCount?: number;
   assignedToBot?: boolean;
 }
@@ -206,6 +207,7 @@ export class AosDashboardView extends LitElement {
       model: story.model,
       dependencies: story.dependencies || [],
       dorComplete: story.dorComplete ?? true, // Default to true for legacy items
+      file: story.file,
       attachmentCount: story.attachmentCount,
       assignedToBot: story.assignedToBot,
     }));
@@ -1528,6 +1530,25 @@ export class AosDashboardView extends LitElement {
     gateway.send(message);
   }
 
+  private handleStoriesBulkModelChange(e: CustomEvent<{ storyIds: string[]; model: string }>): void {
+    if (!this.selectedSpec || !this.kanban) return;
+    const { storyIds, model } = e.detail;
+    if (storyIds.length === 0) return;
+
+    const idSet = new Set(storyIds);
+    const updatedStories = this.kanban.stories.map(story =>
+      idSet.has(story.id) ? { ...story, model: model as 'opus' | 'sonnet' | 'haiku' } : story
+    );
+    this.kanban = { ...this.kanban, stories: updatedStories };
+
+    gateway.send({
+      type: 'specs.stories.updateModelBulk',
+      specId: this.selectedSpec.id,
+      storyIds,
+      model
+    });
+  }
+
   private handleStoryBack(): void {
     this.viewMode = 'kanban';
     this.selectedStory = null;
@@ -2195,6 +2216,7 @@ export class AosDashboardView extends LitElement {
         @story-select=${this.handleStorySelect}
         @story-move=${this.handleStoryMove}
         @story-model-change=${this.handleStoryModelChange}
+        @stories-bulk-model-change=${this.handleStoriesBulkModelChange}
       ></aos-kanban-board>
     `;
   }

@@ -123,6 +123,27 @@
       ]
     },
     {
+      "id": "deepseek",
+      "name": "DeepSeek V4",
+      "cliCommand": "claude-deepseek",
+      "cliFlags": [
+        "--model",
+        "{modelId}"
+      ],
+      "models": [
+        {
+          "id": "opus",
+          "name": "DeepSeek V4 Pro",
+          "description": "Most capable DeepSeek model"
+        },
+        {
+          "id": "haiku",
+          "name": "DeepSeek V4 Flash",
+          "description": "Fast and efficient"
+        }
+      ]
+    },
+    {
       "id": "openrouter",
       "name": "OpenRouter",
       "cliCommand": "claude-openrouter",

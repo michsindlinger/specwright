@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.11.0
+version: 3.12.0
 encoding: UTF-8
 ---
 
@@ -11,6 +11,11 @@ encoding: UTF-8
 ## Overview
 
 Create detailed feature specifications: Main agent gathers fachliche requirements (PO role), then either generates V2 Lean Tasks (default) or V1 Classic Stories with technical refinement (`--classic` flag).
+
+**v3.12 Changes (Description-Cap + Story-Size-Awareness):**
+- **CHANGED: Step 2.6-lean description rule** — description = 1 sentence (max ~150 chars), subject-line only. Detail lives in `planSection`. Eliminates plan/description duplication.
+- **NEW: Step 2.6-lean inline size-awareness** — Agent applies common-sense judgment during task-derivation: if a single planSection mixes multiple distinct concerns (rename + new + migrate), agent flags for user-review BEFORE kanban.json write. No regex, no separate substep — preserves V2 Lean's token-saving value-prop.
+- **NEW: kanban_create soft-warn** — MCP tool warns (but accepts) when description >150 chars. Length-only check (no fragile multi-sentence regex).
 
 **v3.11 Changes (V2 Lean as Default):**
 - **NEW: V2 Lean is the default mode** - Tasks live in kanban.json (no individual story files, no DoR/DoD/WAS/WIE/WO, no Technical Refinement phase)
@@ -952,11 +957,28 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
      IDENTIFY each task from plan phases/components. A task is:
      - A cohesive unit of work (ideally ≤5 files, ≤400 LOC — same sizing as V1 stories)
      - Anchored to a plan section (phase, component, or heading)
+     - **Single-concern:** prefer one of {refactor, new-code, migration, schema-change}. AVOID mixing 3+ concerns in one task (e.g. "rename existing + new base + 2 subclasses + new utility + PTY-migration" → 3 tasks: refactor, new-code, migration).
+
+     **Size-Awareness (inline, agent-judgment):**
+     For each derived task, briefly assess based on plan-section content:
+     - Touches ≤5 distinct files in scope?
+     - Single dominant concern (not 3+ mixed)?
+     - Cohesive enough that fresh-context LLM can complete in one /execute-tasks run?
+
+     If a task looks oversized (e.g. plan-section lists 7+ files OR mixes rename+new+migrate), FLAG inline:
+       "[TASK-ID] looks oversized. Plan-Section "[X]" mixes [N] concerns: [list].
+        Suggested split: [TASK-A] (concern 1) → [TASK-B] (concern 2, deps TASK-A).
+        Confirm split or keep as-is?"
+
+     Tier-Awareness: For S-tier specs (1-2 tasks total), stricter — split rather than ship oversized.
+     For L-tier specs (6+ tasks), tasks naturally larger — only flag when 7+ files OR clear concern-mixing.
+
+     User confirms split or keeps. If user keeps oversized task: NOTE "size-warning-accepted: [TASK-ID]" in spec.md tail-section for audit-trail.
 
      FOR EACH task:
      - id: [SPEC_PREFIX]-NNN (e.g., AUTH-001, AUTH-002 — same format as V1)
      - title: short descriptive title (max ~60 chars)
-     - description: 2-3 sentences in plain prose. WHAT is built + WHY. No Gherkin, no technical detail — that's in the plan.
+     - description: **1 sentence (max ~150 chars).** Subject-line — names WHAT in 1 phrase. NO multi-sentence prose, NO TL;DR, NO technical detail (that's in `planSection`). Rule: if you need a second sentence, your title is too vague → rename title instead. Detail lives ONLY in implementation-plan.md.
      - planSection: exact heading as it appears in implementation-plan.md (e.g., "Phase 1: Authentication Foundation" or "Component: SessionManager"). The V2 plan parser tries:
        1. Exact heading match (## or ### anywhere)
        2. "Phase N" extraction with flexible format
@@ -1000,7 +1022,7 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
      - tasks[] = array from step 5, each with:
        - id
        - title
-       - description (2-3 sentences)
+       - description (1 sentence, max ~150 chars — subject-line only)
        - planSection (exact heading string)
        - dependencies (array of task ids)
        - status ("ready" or "blocked")

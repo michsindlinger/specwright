@@ -44,6 +44,7 @@ import { existsSync } from 'fs';
 import { createHash } from 'crypto';
 import { withKanbanLock } from './kanban-lock.js';
 import { parseStoryFile } from './story-parser.js';
+import { validateTaskDescriptions } from './kanban-validation.js';
 import {
   generateStoryTemplate,
   generateBugTemplate,
@@ -1320,6 +1321,12 @@ async function handleKanbanCreateV2(
   return await withKanbanLock(specPath, async () => {
     const now = new Date().toISOString();
 
+    // v3.12: Soft-warn on description that violates 1-sentence cap
+    const warnings = validateTaskDescriptions(args.tasks);
+    if (warnings.length > 0) {
+      console.warn('[KanbanCreateV2] Description warnings:\n' + warnings.join('\n'));
+    }
+
     const tasks: KanbanJsonV2Task[] = args.tasks.map(t => ({
       id: t.id,
       title: t.title,
@@ -1394,7 +1401,8 @@ async function handleKanbanCreateV2(
           success: true,
           path: join(specPath, 'kanban.json'),
           taskCount: tasks.length,
-          mode: 'lean'
+          mode: 'lean',
+          ...(warnings.length > 0 && { warnings })
         }, null, 2)
       }]
     };
@@ -2119,7 +2127,7 @@ async function parseImplementationPlanSection(
     const exactHeading = planSection.trim();
     const escapedHeading = exactHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const exactRegex = new RegExp(
-      `^#{2,3}\\s+${escapedHeading}\\s*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s|$)`,
+      `^#{2,3}\\s+${escapedHeading}\\s*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s|$(?![\\s\\S]))`,
       'im'
     );
     let sectionContent = planContent.match(exactRegex);
@@ -2135,7 +2143,7 @@ async function parseImplementationPlanSection(
         // Match ## or ###, with optional "Phase" label and flexible formatting
         // Handles: "### Phase 1", "## Phase 1:", "### 1. Foundation", "## Phase 1 - Auth"
         const sectionRegex = new RegExp(
-          `^#{2,3}\\s+(?:Phase\\s*)?${phaseNum}[\\s.:\\-–—]*[^\\n]*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s+(?:Phase\\s*)?\\d|\\n##\\s|$)`,
+          `^#{2,3}\\s+(?:Phase\\s*)?${phaseNum}[\\s.:\\-–—]*[^\\n]*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s+(?:Phase\\s*)?\\d|\\n##\\s|$(?![\\s\\S]))`,
           'im'
         );
         sectionContent = planContent.match(sectionRegex);

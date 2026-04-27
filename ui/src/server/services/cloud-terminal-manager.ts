@@ -28,7 +28,7 @@ import {
   CLOUD_TERMINAL_ERROR_CODES,
 } from '../../shared/types/cloud-terminal.protocol.js';
 import { TerminalManager } from './terminal-manager.js';
-import { getCliCommandForModel, checkCliAvailability } from '../model-config.js';
+import { getCliCommandForModel, getProviderCommand, checkCliAvailability } from '../model-config.js';
 
 /**
  * Extended cloud terminal session with internal state
@@ -173,7 +173,9 @@ export class CloudTerminalManager extends EventEmitter {
         if (!modelConfig || !modelConfig.model) {
           throw new Error('Model configuration is required for claude-code terminals');
         }
-        const cliConfig = getCliCommandForModel(modelConfig.model);
+        const cliConfig = (modelConfig.provider
+          ? getProviderCommand(modelConfig.provider, modelConfig.model)
+          : undefined) ?? getCliCommandForModel(modelConfig.model);
         shellCommand = cliConfig.command;
         shellArgs = [...cliConfig.args];
         // v3.22.0: extra flags (e.g. --mcp-config + --strict-mcp-config) must

@@ -1,0 +1,286 @@
+{
+  "version": "2.0",
+  "mode": "lean",
+  "spec": {
+    "id": "2026-04-27-parallel-auto-mode",
+    "name": "Parallel Auto-Mode für Spec- und Backlog-Kanban",
+    "prefix": "PAM",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-04-27T15:02:09.591Z",
+    "specTier": "L",
+    "implementationPlan": "implementation-plan.md"
+  },
+  "resumeContext": {
+    "currentPhase": "1-complete",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "gitStrategy": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Lean kanban created via MCP",
+    "nextAction": "Setup git worktree or branch",
+    "progressIndex": 0,
+    "totalStories": 11
+  },
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "tasks": [
+    {
+      "id": "PAM-001",
+      "title": "Schema- und Reader-Vorarbeit",
+      "description": "Backlog-Schema um 'blocked'-Status erweitern, BacklogJsonItem TS-Union erweitern, mapJsonStatusToFrontend ergänzen. Audit: alle backlog-index.json-Writes auf withKanbanLock(backlogPath, ...) umstellen. resumeContext-Feld in Schema einführen.",
+      "planSection": "Phase 1: Schema- und Reader-Vorarbeit (PAM-001, PAM-002, PAM-003)",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-002",
+      "title": "Reader-Helper (getReadyStories, getReadyBacklogItems, activeIncidents)",
+      "description": "SpecsReader.getReadyStories(projectPath, specId, excludeIds) für V1+V2. BacklogReader.getReadyBacklogItems(projectPath, excludeIds) inkl. ready/pending/open. activeIncidents[]-Lese-/Schreib-Layer mit V1+V2 Branches und One-shot-Migration aus lastIncident.",
+      "planSection": "Phase 1: Schema- und Reader-Vorarbeit (PAM-001, PAM-002, PAM-003)",
+      "dependencies": [
+        "PAM-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-003",
+      "title": "KanbanFileWatcher Set-of-IDs API",
+      "description": "API erweitern: watch(specPath, filename: 'kanban.json'|'backlog-index.json', ids: Set<string>), addId(id), removeId(id). Directory-Watching beibehalten (macOS-Reliabilität). Events tragen storyId-Payload.",
+      "planSection": "Phase 1: Schema- und Reader-Vorarbeit (PAM-001, PAM-002, PAM-003)",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-004",
+      "title": "Slot + Base-Orchestrator + Backlog-PTY-Migration",
+      "description": "auto-mode-cloud-session.ts → auto-mode-story-slot.ts (Rename + Slim). auto-mode-orchestrator-base.ts mit Map<id, slot>, Gate, serialisiertem scheduleTick. AutoModeSpec/BacklogOrchestrator. project-concurrency-gate.ts (Semaphor). Backlog-Execution: runClaudeCommand → CloudTerminalManager.createSession (PTY). Per-ID-Dedup processedTransitions. Promise.allSettled in cancelXAutoMode. git worktree prune beim Konstruktor. maxConcurrent=1 initial (Verhalten unverändert).",
+      "planSection": "Phase 2: Slot + Orchestrator-Base + Backlog-PTY-Migration (PAM-004)",
+      "dependencies": [
+        "PAM-001",
+        "PAM-002",
+        "PAM-003"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-005",
+      "title": "Worktree-per-Story Helper",
+      "description": "createStoryWorktree, removeStoryWorktree, mergeStoryBranchIntoSpec, setupBacklogSymlink in workflow-executor.ts. Spec: ${proj}-worktrees/${feature}-${storyId}, Branch feature/${feature}/${storyId}. Backlog: ${proj}-worktrees/backlog-${slug}, Branch feature/${slug}. Symlink-Pfad-Unit-Tests mit realpath. Konflikt-Pfad: kein git reset, Sub-Worktree behalten, Story blocked, Incident mit Pfad.",
+      "planSection": "Phase 3: Worktree-per-Story Helper (PAM-005)",
+      "dependencies": [
+        "PAM-004"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-006",
+      "title": "Backlog-Backend-Scheduling + Frontend-Timer-Entfernung",
+      "description": "WebSocket-Handler-Umbau: handleBacklogStoryStart → handleBacklogAutoModeStart, neuer backlog.auto-mode.cancel-Handler. _scheduleNextBacklogAutoExecution + _processBacklogAutoExecution aus dashboard-view.ts entfernen. Frontend schickt nur noch start/cancel, Backend übernimmt Scheduling.",
+      "planSection": "Phase 4: Backlog-Backend-Scheduling + Frontend-Timer-Entfernung (PAM-006)",
+      "dependencies": [
+        "PAM-004"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-007",
+      "title": "Echte Parallelität freischalten (maxConcurrent=2)",
+      "description": "ProjectConcurrencyGate Default = 2 global pro Projekt. Hard-Cap 4. Tick-Scheduling füllt freie Slots aus dem Ready-Set. Hard-Requirement: Spec gitStrategy=worktree für Parallelmodus, sonst clamp auf maxConcurrent=1 mit UI-Banner.",
+      "planSection": "Phase 5: Echte Parallelität freischalten (PAM-007)",
+      "dependencies": [
+        "PAM-005",
+        "PAM-006"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-008",
+      "title": "Frontend Multi-Slot + Queued-State",
+      "description": "AutoModeProgressBoard State + WS-Demux nach scope und storyId. _specAutoModeBoard: Map<specId, AutoModeProgressBoard>. _backlogAutoModeBoard: AutoModeProgressBoard | null. Multi-Slot-Pills (running + waiting) in Spec- und Backlog-Boards. Multi-Incident-Modal mit Liste, einzeln dismissibar. AutoModeProgress mit slotState='running'|'waiting'.",
+      "planSection": "Phase 6: Frontend Multi-Slot + Queued-State (PAM-008)",
+      "dependencies": [
+        "PAM-007"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-997",
+      "title": "Code Review",
+      "description": "Full-Feature-Diff Review (Opus) über alle Änderungen aus PAM-001..PAM-008. Architektur-Konsistenz, TypeScript-Strictness, fehlende Tests, Race-Conditions.",
+      "planSection": "System: Code Review",
+      "dependencies": [
+        "PAM-001",
+        "PAM-002",
+        "PAM-003",
+        "PAM-004",
+        "PAM-005",
+        "PAM-006",
+        "PAM-007",
+        "PAM-008"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-998",
+      "title": "Integration Validation",
+      "description": "End-to-End-Tests gemäß spec.md Integration Requirements: Spec-Parallel, Backlog-Parallel, Failure-Tolerance, Cancel mid-flight, gitStrategy=branch Fallback, Multi-Spec/Spec+Backlog. Wallclock-Halbierung verifizieren.",
+      "planSection": "System: Integration Validation",
+      "dependencies": [
+        "PAM-001",
+        "PAM-002",
+        "PAM-003",
+        "PAM-004",
+        "PAM-005",
+        "PAM-006",
+        "PAM-007",
+        "PAM-008"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-999",
+      "title": "Finalize PR",
+      "description": "User-Todos sammeln, Branch pushen, PR erstellen mit vollständigem Summary, CHANGELOG-Entry für Multi-Incident-Migration und --session-id-Verlust, manuelles Aufräumen-Hinweis für stranded Worktree-Dirs.",
+      "planSection": "System: Finalize PR",
+      "dependencies": [
+        "PAM-997",
+        "PAM-998"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 11,
+    "ready": 2,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 9
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-04-27T15:02:09.591Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Lean kanban initialized with 11 tasks via MCP tool"
+    }
+  ]
+}

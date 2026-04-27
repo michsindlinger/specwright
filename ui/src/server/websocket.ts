@@ -261,6 +261,9 @@ export class WebSocketHandler {
         case 'specs.story.updateModel':
           this.handleSpecsStoryUpdateModel(client, message);
           break;
+        case 'specs.stories.updateModelBulk':
+          this.handleSpecsStoriesUpdateModelBulk(client, message);
+          break;
         case 'specs.story.save':
           this.handleSpecsStorySave(client, message);
           break;
@@ -1762,6 +1765,73 @@ export class WebSocketHandler {
       const errorResponse: WebSocketMessage = {
         type: 'specs.story.updateModel.error',
         error: error instanceof Error ? error.message : 'Failed to update story model',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * Bulk variant of handleSpecsStoryUpdateModel: applies one model to many stories atomically.
+   */
+  private async handleSpecsStoriesUpdateModelBulk(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
+    const specId = message.specId as string;
+    const storyIds = message.storyIds as string[];
+    const model = message.model as string;
+
+    if (!specId || !Array.isArray(storyIds) || storyIds.length === 0 || !model) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.stories.updateModelBulk.error',
+        error: 'specId, non-empty storyIds[], and model are required',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    const allModels = getAllProviders().flatMap(p => p.models.map(m => m.id));
+    if (!allModels.includes(model)) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.stories.updateModelBulk.error',
+        error: `Invalid model value: ${model}. Must be one of: ${allModels.join(', ')}`,
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.stories.updateModelBulk.error',
+        error: 'No project selected',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    try {
+      const { updated, missing } = await this.specsReader.updateStoriesModelBulk(
+        projectPath,
+        specId,
+        storyIds,
+        model
+      );
+      const response: WebSocketMessage = {
+        type: 'specs.stories.updateModelBulk.ack',
+        specId,
+        storyIds,
+        model,
+        updated,
+        missing,
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.stories.updateModelBulk.error',
+        error: error instanceof Error ? error.message : 'Failed to bulk-update story models',
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));
