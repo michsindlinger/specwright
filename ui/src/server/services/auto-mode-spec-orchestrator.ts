@@ -1,18 +1,20 @@
-import { execSync } from 'child_process';
-import { existsSync } from 'fs';
-import { mkdir } from 'fs/promises';
-import { dirname } from 'path';
 import { AutoModeOrchestratorBase, type OrchestratorBaseConfig, type ReadyItem } from './auto-mode-orchestrator-base.js';
 import { SpecsReader } from '../specs-reader.js';
 import { projectDir } from '../utils/project-dirs.js';
 import { CloudTerminalManager } from './cloud-terminal-manager.js';
-import {
-  storyWorktreePath,
-  storyBranchName,
-  setupSpecSymlinkInWorktree,
-} from '../utils/worktree-story.js';
+import { storyBranchName } from '../utils/worktree-story.js';
 
 type GitStrategy = 'branch' | 'worktree' | 'current-branch';
+
+/**
+ * Minimal subset of WorkflowExecutor methods used for git/worktree ops.
+ * Avoids circular import on the full WorkflowExecutor type.
+ */
+export interface SpecWorktreeOps {
+  createStoryWorktree(projectPath: string, specId: string, storyId: string): Promise<string>;
+  removeStoryWorktree(projectPath: string, worktreePath: string): Promise<void>;
+  mergeStoryBranchIntoSpec(projectPath: string, specBranch: string, storyBranch: string): Promise<void>;
+}
 
 export interface AutoModeSpecOrchestratorConfig extends OrchestratorBaseConfig {
   specId: string;
@@ -21,6 +23,8 @@ export interface AutoModeSpecOrchestratorConfig extends OrchestratorBaseConfig {
   gitStrategy?: GitStrategy;
   /** Spec-level branch to merge story branches into (required for worktree strategy). */
   specBranch?: string;
+  /** Worktree/git ops provider — usually the WorkflowExecutor instance. */
+  worktreeOps?: SpecWorktreeOps;
 }
 
 export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
@@ -29,6 +33,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
   private readonly mainProjectPath: string;
   private readonly gitStrategy: GitStrategy;
   private readonly specBranch: string | undefined;
+  private readonly worktreeOps: SpecWorktreeOps | undefined;
   /** Tracks active story sub-worktree paths by storyId. */
   private readonly storyWorktrees = new Map<string, string>();
 
@@ -45,6 +50,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     this.mainProjectPath = config.mainProjectPath;
     this.gitStrategy = config.gitStrategy ?? 'branch';
     this.specBranch = config.specBranch;
+    this.worktreeOps = config.worktreeOps;
     this.specsReader = new SpecsReader();
   }
 
@@ -56,7 +62,8 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     maxConcurrent = 2,
     gitStrategy?: GitStrategy,
     mainProjectPath?: string,
-    specBranch?: string
+    specBranch?: string,
+    worktreeOps?: SpecWorktreeOps
   ): AutoModeSpecOrchestrator {
     return new AutoModeSpecOrchestrator({
       projectPath,
@@ -69,6 +76,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
       mainProjectPath: mainProjectPath ?? projectPath,
       gitStrategy,
       specBranch,
+      worktreeOps,
     });
   }
 
@@ -76,33 +84,13 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
 
   protected override async resolveSlotProjectPath(item: ReadyItem): Promise<string> {
     if (this.gitStrategy !== 'worktree') return this.config.projectPath;
-
-    const wtPath = storyWorktreePath(this.mainProjectPath, this.specId, item.id);
-    const branch = storyBranchName(this.specId, item.id);
-    const wtBase = dirname(wtPath);
+    if (!this.worktreeOps) {
+      console.warn('[SpecOrchestrator] gitStrategy=worktree but no worktreeOps configured — falling back to project path');
+      return this.config.projectPath;
+    }
 
     try {
-      if (!existsSync(wtBase)) {
-        await mkdir(wtBase, { recursive: true });
-      }
-
-      if (!existsSync(wtPath)) {
-        let branchExists = false;
-        try {
-          execSync(`git rev-parse --verify ${branch}`, { cwd: this.config.projectPath, stdio: 'pipe' });
-          branchExists = true;
-        } catch { branchExists = false; }
-
-        const args = branchExists
-          ? `worktree add "${wtPath}" ${branch}`
-          : `worktree add "${wtPath}" -b ${branch}`;
-        execSync(`git ${args}`, { cwd: this.config.projectPath, stdio: 'pipe' });
-        console.log(`[SpecOrchestrator] Created story worktree: ${wtPath} (${branch})`);
-      } else {
-        console.log(`[SpecOrchestrator] Story worktree already exists: ${wtPath}`);
-      }
-
-      await setupSpecSymlinkInWorktree(this.mainProjectPath, wtPath, this.specId);
+      const wtPath = await this.worktreeOps.createStoryWorktree(this.mainProjectPath, this.specId, item.id);
       this.storyWorktrees.set(item.id, wtPath);
       return wtPath;
     } catch (err) {
@@ -128,19 +116,15 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
   protected async onItemCompleted(itemId: string): Promise<void> {
     const wtPath = this.storyWorktrees.get(itemId);
 
-    if (wtPath && this.gitStrategy === 'worktree' && this.specBranch) {
+    if (wtPath && this.gitStrategy === 'worktree' && this.specBranch && this.worktreeOps) {
       const branch = storyBranchName(this.specId, itemId);
       try {
-        // spec worktree already has specBranch checked out — just merge
-        execSync(
-          `git merge --no-ff ${branch} -m "merge: ${branch} into ${this.specBranch}"`,
-          { cwd: this.config.projectPath, stdio: 'pipe' }
-        );
+        await this.worktreeOps.mergeStoryBranchIntoSpec(this.config.projectPath, this.specBranch, branch);
         console.log(`[SpecOrchestrator] Merged ${branch} into ${this.specBranch}`);
-        this.removeStoryWorktree(wtPath);
-      } catch {
-        try { execSync('git merge --abort', { cwd: this.config.projectPath, stdio: 'pipe' }); } catch { /* ignore */ }
-        const errMsg = `Merge conflict: ${branch} → ${this.specBranch} (worktree kept at ${wtPath})`;
+        await this.worktreeOps.removeStoryWorktree(this.config.projectPath, wtPath);
+      } catch (err) {
+        const baseMsg = err instanceof Error ? err.message : `Merge conflict: ${branch} → ${this.specBranch}`;
+        const errMsg = `${baseMsg} (worktree kept at ${wtPath})`;
         console.warn(`[SpecOrchestrator] ${errMsg}`);
         this.emit('story.merge-conflict', itemId, wtPath, errMsg);
         this.storyWorktrees.delete(itemId);
@@ -171,31 +155,20 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
 
   protected async onItemFailed(itemId: string, _error: string): Promise<void> {
     const wtPath = this.storyWorktrees.get(itemId);
-    if (wtPath) {
-      this.removeStoryWorktree(wtPath);
+    if (wtPath && this.worktreeOps) {
+      await this.worktreeOps.removeStoryWorktree(this.config.projectPath, wtPath);
       this.storyWorktrees.delete(itemId);
     }
     await this.scheduleTick();
   }
 
   public override async cancel(): Promise<void> {
-    // Clean up any tracked story worktrees before cancelling
-    for (const [, wtPath] of this.storyWorktrees) {
-      this.removeStoryWorktree(wtPath);
+    if (this.worktreeOps) {
+      for (const [, wtPath] of this.storyWorktrees) {
+        await this.worktreeOps.removeStoryWorktree(this.config.projectPath, wtPath);
+      }
     }
     this.storyWorktrees.clear();
     await super.cancel();
-  }
-
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-
-  private removeStoryWorktree(wtPath: string): void {
-    try {
-      execSync(`git worktree remove --force "${wtPath}"`, { cwd: this.config.projectPath, stdio: 'pipe' });
-      execSync('git worktree prune', { cwd: this.config.projectPath, stdio: 'pipe' });
-      console.log(`[SpecOrchestrator] Removed story worktree: ${wtPath}`);
-    } catch (err) {
-      console.warn('[SpecOrchestrator] removeStoryWorktree best-effort failed:', err instanceof Error ? err.message : err);
-    }
   }
 }

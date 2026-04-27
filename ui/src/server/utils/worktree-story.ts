@@ -32,6 +32,12 @@ export function backlogWorktreePath(projectPath: string, itemId: string): string
   return join(worktreeBase, `backlog-${slug}`);
 }
 
+/** Branch name for a backlog item: `feature/${slug}` (matches startBacklogStoryExecution). */
+export function backlogBranchName(itemId: string): string {
+  const slug = itemId.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+  return `feature/${slug}`;
+}
+
 // ── Symlink setup ─────────────────────────────────────────────────────────────
 
 /**

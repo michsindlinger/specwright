@@ -423,11 +423,11 @@ export class WorkflowExecutor {
     const baseBranch = getBaseBranch(projectPath);
 
     try {
-      // 1. Ensure we're on base branch before creating feature branch
+      // 1. Ensure we're on base branch so subsequent ops see latest state
       await gitService.checkoutMain(projectPath, baseBranch);
       console.log(`[Workflow] Checked out ${baseBranch} branch`);
 
-      // 2. Pull latest base branch to ensure we branch from current state
+      // 2. Pull latest base branch
       try {
         await gitService.pull(projectPath);
         console.log(`[Workflow] Pulled latest ${baseBranch}`);
@@ -435,17 +435,13 @@ export class WorkflowExecutor {
         console.warn(`[Workflow] Pull failed (continuing with local ${baseBranch}):`, pullError instanceof Error ? pullError.message : pullError);
       }
 
-      // 3. Mark story as "in_progress" on base branch before branching
+      // 3. Mark story as "in_progress" so UI reflects state immediately
       try {
         await this.updateBacklogIndexOnMain(projectPath, storyId, 'in_progress');
         console.log(`[Workflow] Marked story ${storyId} as in_progress on ${baseBranch}`);
       } catch (statusError) {
         console.warn(`[Workflow] Failed to mark story as in_progress (non-critical):`, statusError instanceof Error ? statusError.message : statusError);
       }
-
-      // 4. Create feature branch from base branch
-      const branchResult = await gitService.createBranch(projectPath, branchName, baseBranch);
-      console.log(`[Workflow] Branch created/checked out: ${branchName} (created: ${branchResult.created})`);
     } catch (error) {
       // BPS-003: Log error but continue - don't fail the entire execution
       console.warn(`[Workflow] Pre-execution git operations failed (continuing anyway):`, error instanceof Error ? error.message : error);
@@ -454,13 +450,14 @@ export class WorkflowExecutor {
       this.sendToClient(client, {
         type: 'backlog.story.git.warning',
         storyId,
-        warning: `Branch-Erstellung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        warning: `Pre-Execution fehlgeschlagen: ${error instanceof Error ? error.message : 'Unknown error'}`,
         canContinue: true,
         timestamp: new Date().toISOString()
       }, projectPath);
     }
 
-    // PAM-004: PTY path via AutoModeBacklogOrchestrator
+    // PAM-FIX-001: PTY path — orchestrator creates per-item sub-worktree on the
+    // feature branch (branch is created inside `git worktree add -b`).
     if (this.cloudTerminalManager) {
       let orchestrator = this.autoModeBacklogOrchestrators.get(projectPath);
       if (!orchestrator) {
@@ -487,7 +484,22 @@ export class WorkflowExecutor {
       return executionId;
     }
 
-    // Fallback: --print spawn when CloudTerminalManager unavailable
+    // Fallback: --print spawn when CloudTerminalManager unavailable.
+    // Branch creation stays in main workdir for legacy single-PTY behavior.
+    try {
+      const branchResult = await gitService.createBranch(projectPath, branchName, baseBranch);
+      console.log(`[Workflow] Branch created/checked out: ${branchName} (created: ${branchResult.created})`);
+    } catch (branchError) {
+      console.warn(`[Workflow] createBranch fallback failed (continuing anyway):`, branchError instanceof Error ? branchError.message : branchError);
+      this.sendToClient(client, {
+        type: 'backlog.story.git.warning',
+        storyId,
+        warning: `Branch-Erstellung fehlgeschlagen: ${branchError instanceof Error ? branchError.message : 'Unknown error'}`,
+        canContinue: true,
+        timestamp: new Date().toISOString()
+      }, projectPath);
+    }
+
     const execution: WorkflowExecution = {
       id: executionId,
       commandId: `${cmdDir}:execute-tasks`,
@@ -768,7 +780,8 @@ export class WorkflowExecutor {
           effectiveConcurrent,
           gitStrategy,
           projectPath,
-          branchName
+          branchName,
+          this
         );
         this.setupSpecOrchestratorListeners(orchestrator, client, specId, projectPath, model);
         this.autoModeSpecOrchestrators.set(specId, orchestrator);

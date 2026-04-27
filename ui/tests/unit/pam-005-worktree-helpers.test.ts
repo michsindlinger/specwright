@@ -11,6 +11,7 @@ import {
   storyWorktreePath,
   storyBranchName,
   backlogWorktreePath,
+  backlogBranchName,
   setupSpecSymlinkInWorktree,
   setupBacklogSymlinkInWorktree,
 } from '../../src/server/utils/worktree-story.js';
@@ -83,6 +84,23 @@ describe('backlogWorktreePath', () => {
   it('replaces special chars with hyphens', () => {
     const result = backlogWorktreePath('/home/user/proj', 'FEAT_123.x');
     expect(result).toBe('/home/user/proj-worktrees/backlog-feat-123-x');
+  });
+});
+
+describe('backlogBranchName', () => {
+  it('builds feature/${slug} format for uppercase IDs', () => {
+    expect(backlogBranchName('BUG-001')).toBe('feature/bug-001');
+  });
+
+  it('replaces special chars with hyphens', () => {
+    expect(backlogBranchName('FEAT_123.x')).toBe('feature/feat-123-x');
+  });
+
+  it('matches startBacklogStoryExecution slug convention', () => {
+    // Mirrors the inline expression in workflow-executor.ts
+    const id = 'TODO-042';
+    const expected = `feature/${id.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
+    expect(backlogBranchName(id)).toBe(expected);
   });
 });
 
