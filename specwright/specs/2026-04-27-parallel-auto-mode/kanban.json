@@ -192,8 +192,8 @@
     },
     {
       "id": "PAM-997",
-      "title": "Code Review",
-      "description": "Full-Feature-Diff Review (Opus) über alle Änderungen aus PAM-001..PAM-008. Architektur-Konsistenz, TypeScript-Strictness, fehlende Tests, Race-Conditions.",
+      "title": "Code Review + Spec-Conformance",
+      "description": "Code-Quality + Spec-Conformance Review v1.1 (Opus) — Plan-Validation der Verbindungs-Matrix automatisch ausgeführt.",
       "planSection": "System: Code Review",
       "dependencies": [
         "PAM-001",

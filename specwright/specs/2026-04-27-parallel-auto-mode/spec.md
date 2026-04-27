@@ -24,7 +24,7 @@ Tasks werden in `kanban.json` (mode=lean) generiert. Siehe `implementation-plan.
 | PAM-006 | Backlog-Backend-Scheduling + Frontend-Timer-Entfernung | Phase 4 |
 | PAM-007 | Echte Parallelität freischalten (maxConcurrent=2) | Phase 5 |
 | PAM-008 | Frontend Multi-Slot + Queued-State | Phase 6 |
-| PAM-997 | Code Review (System Task) | Phase 7 |
+| PAM-997 | Code Review + Spec-Conformance (System Task) | Phase 7 |
 | PAM-998 | Integration Validation (System Task, Full-Stack) | Phase 7 |
 | PAM-999 | Finalize PR (System Task) | Phase 7 |
 
