@@ -178,6 +178,7 @@ export class AosKanbanBoard extends LitElement {
   private readonly minSidebarWidth = 300;
   private readonly maxSidebarWidth = 800;
   // Spec viewer state
+  @state() private lastBulkModelId = '';
   @state() private isSpecViewerOpen = false;
   @state() private specViewerContent = '';
   @state() private specViewerFilename = '';
@@ -1331,6 +1332,7 @@ export class AosKanbanBoard extends LitElement {
     const model = e.detail.modelId as ModelSelection;
     const storyIds = this.bulkModelEligibleIds;
     if (storyIds.length === 0) return;
+    this.lastBulkModelId = e.detail.modelId;
     this.dispatchEvent(
       new CustomEvent('stories-bulk-model-change', {
         detail: { storyIds, model },
@@ -2070,7 +2072,7 @@ export class AosKanbanBoard extends LitElement {
               <span class="bulk-model-label">Set model · Backlog + Blocked (${this.bulkModelEligibleIds.length})</span>
               <aos-model-selector
                 .externalProviders=${this.providers}
-                .externalSelectedModelId=${''}
+                .externalSelectedModelId=${this.lastBulkModelId}
                 @model-changed=${this.handleBulkModelChange}
               ></aos-model-selector>
             </div>

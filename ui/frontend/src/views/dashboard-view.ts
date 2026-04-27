@@ -467,7 +467,10 @@ export class AosDashboardView extends LitElement {
       ['specs.assign.ack', (msg) => this.onSpecsAssignAck(msg)],
       ['specs.assign.error', (msg) => this.onSpecsAssignError(msg)],
       ['backlog.assign.ack', (msg) => this.onBacklogAssignAck(msg)],
-      ['backlog.assign.error', (msg) => this.onBacklogAssignError(msg)]
+      ['backlog.assign.error', (msg) => this.onBacklogAssignError(msg)],
+      // Bulk model update: confirm via disk refetch on ack, surface + rollback on error
+      ['specs.stories.updateModelBulk.ack', (msg) => this.onStoriesBulkModelAck(msg)],
+      ['specs.stories.updateModelBulk.error', (msg) => this.onStoriesBulkModelError(msg)]
     ];
 
     for (const [type, handler] of handlers) {
@@ -1460,6 +1463,40 @@ export class AosDashboardView extends LitElement {
         composed: true
       })
     );
+  }
+
+  private onStoriesBulkModelAck(msg: WebSocketMessage): void {
+    const specId = msg.specId as string;
+    const updated = (msg.updated as string[]) ?? [];
+    const missing = (msg.missing as string[]) ?? [];
+    console.log(`[Dashboard] Bulk model ack: specId=${specId}, updated=${updated.length}, missing=${missing.length}`);
+    if (this.selectedSpec && this.selectedSpec.id === specId) {
+      gateway.send({ type: 'specs.kanban', specId });
+    }
+    if (missing.length > 0) {
+      this.dispatchEvent(
+        new CustomEvent('show-toast', {
+          detail: { message: `${missing.length} Stories nicht gefunden`, type: 'warning' },
+          bubbles: true,
+          composed: true
+        })
+      );
+    }
+  }
+
+  private onStoriesBulkModelError(msg: WebSocketMessage): void {
+    const error = (msg.error as string) || 'Bulk-Modellzuweisung fehlgeschlagen';
+    console.error('[Dashboard] Bulk model error:', error);
+    this.dispatchEvent(
+      new CustomEvent('show-toast', {
+        detail: { message: error, type: 'error' },
+        bubbles: true,
+        composed: true
+      })
+    );
+    if (this.selectedSpec) {
+      gateway.send({ type: 'specs.kanban', specId: this.selectedSpec.id });
+    }
   }
 
   /**

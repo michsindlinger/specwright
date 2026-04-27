@@ -1779,6 +1779,8 @@ export class WebSocketHandler {
     const storyIds = message.storyIds as string[];
     const model = message.model as string;
 
+    console.log(`[WebSocket] handleSpecsStoriesUpdateModelBulk called: specId=${specId}, storyIds.length=${Array.isArray(storyIds) ? storyIds.length : 'n/a'}, model=${model}`);
+
     if (!specId || !Array.isArray(storyIds) || storyIds.length === 0 || !model) {
       const errorResponse: WebSocketMessage = {
         type: 'specs.stories.updateModelBulk.error',
@@ -1818,6 +1820,7 @@ export class WebSocketHandler {
         storyIds,
         model
       );
+      console.log(`[WebSocket] handleSpecsStoriesUpdateModelBulk done: updated.length=${updated.length}, missing.length=${missing.length}`);
       const response: WebSocketMessage = {
         type: 'specs.stories.updateModelBulk.ack',
         specId,
