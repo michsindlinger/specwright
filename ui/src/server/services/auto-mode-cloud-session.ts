@@ -282,7 +282,7 @@ export class AutoModeCloudSession extends EventEmitter {
    */
   private startKanbanWatch(storyId: string): void {
     const specPath = projectDir(this.config.projectPath, 'specs', this.config.specId);
-    this.kanbanWatcher.watch(specPath, storyId);
+    this.kanbanWatcher.watch(specPath, 'kanban.json', new Set([storyId]));
   }
 
   /**
