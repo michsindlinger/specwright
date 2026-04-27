@@ -1082,6 +1082,7 @@ export class WebSocketHandler {
    */
   private handleAutoModeIncidentClear(client: WebSocketClient, message: WebSocketMessage): void {
     const specId = message.specId as string;
+    const storyId = message.storyId as string | undefined;
     const projectPath = (message.projectId as string) || client.projectId;
 
     if (!specId || !projectPath) {
@@ -1095,16 +1096,18 @@ export class WebSocketHandler {
     }
 
     const specsReader = new SpecsReader();
-    specsReader.clearAutoModeIncident(projectPath, specId).then(() => {
+    specsReader.clearAutoModeIncident(projectPath, specId, storyId).then(() => {
       client.send(JSON.stringify({
         type: 'workflow.auto-mode.incident.clear.ack',
         specId,
+        storyId,
         cleared: true,
         timestamp: new Date().toISOString()
       }));
 
       webSocketManager.sendToProject(projectPath, {
-        type: 'backlog.kanban.refresh',
+        type: 'specs.kanban.updated',
+        specId,
         timestamp: new Date().toISOString()
       });
     }).catch(err => {
@@ -1112,6 +1115,7 @@ export class WebSocketHandler {
       client.send(JSON.stringify({
         type: 'workflow.auto-mode.incident.clear.ack',
         specId,
+        storyId,
         cleared: false,
         error: err instanceof Error ? err.message : String(err),
         timestamp: new Date().toISOString()

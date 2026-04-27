@@ -11,6 +11,7 @@
  * - 'story.stalled'  (itemId: string, silentMs: number)
  * - 'story.prompt-stuck' (itemId: string, matchedText: string)
  * - 'slot.started'   (itemId: string, sessionId: string)
+ * - 'slot.queued'    (itemId: string, title: string)
  * - 'all-items-done' ()
  * - 'cancelled'      ()
  */
@@ -112,10 +113,16 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
     const excludeIds = new Set(this.activeSlots.keys());
     const readyItems = await this.getReadySet(excludeIds);
 
+    let launched = 0;
     for (const item of readyItems) {
       if (this.activeSlots.size >= this.config.maxConcurrent) break;
       if (this.isCancelling) break;
       await this.launchSlot(item);
+      launched++;
+    }
+
+    for (let i = launched; i < readyItems.length && !this.isCancelling; i++) {
+      this.emit('slot.queued', readyItems[i].id, readyItems[i].title);
     }
 
     if (!this.isCancelling && this.activeSlots.size === 0 && readyItems.length === 0) {

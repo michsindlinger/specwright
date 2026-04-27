@@ -13,7 +13,7 @@ import { buildSpecFilePath, copyPathToClipboard } from '../utils/copy-path.js';
 import { markdownStyles } from '../styles/markdown-styles.js';
 import type { SpecFileGroup } from './specs/aos-spec-file-tabs.js';
 import type { GitStrategy, GitStrategySelection } from './git-strategy-dialog.js';
-import type { AutoModeError } from './auto-mode-error-modal.js';
+import type { AutoModeError, AutoModeIncident } from './auto-mode-error-modal.js';
 import type { ModelSelection, ProviderInfo, StoryInfo } from './story-card.js';
 import type { ChatMessageData } from './chat-message.js';
 
@@ -28,6 +28,12 @@ export interface AutoModeProgress {
   storyTitle: string;
   currentPhase: number;
   totalPhases: number;
+  slotState?: 'running' | 'waiting';
+}
+
+// PAM-008: Multi-slot progress board
+export interface AutoModeProgressBoard {
+  slots: AutoModeProgress[];
 }
 
 export interface KanbanAutoModeIncident {
@@ -159,8 +165,10 @@ export class AosKanbanBoard extends LitElement {
   @state() private pendingStoryId: string | null = null;
   @state() private currentGitStrategy: GitStrategy | null = null;
   @property({ type: Boolean }) autoModeEnabled = false;
-  // KAE-003: Auto-mode progress state
+  // KAE-003: Auto-mode progress state (single-slot legacy)
   @state() private autoModeProgress: AutoModeProgress | null = null;
+  // PAM-008: Multi-slot progress board
+  @state() private autoModeProgressBoard: AutoModeProgressBoard | null = null;
   // KAE-004: Auto-mode error modal state
   @state() private showErrorModal = false;
   @state() private autoModeError: AutoModeError | null = null;
@@ -644,6 +652,12 @@ export class AosKanbanBoard extends LitElement {
     .auto-mode-pending-git {
       background-color: rgba(234, 179, 8, 0.1); /* Yellow/Warning tint */
       border-color: rgba(234, 179, 8, 0.3);
+    }
+
+    .slot-waiting {
+      background-color: rgba(234, 179, 8, 0.05);
+      border-color: rgba(234, 179, 8, 0.25);
+      opacity: 0.8;
     }
 
     .progress-waiting-text {
@@ -1800,6 +1814,24 @@ export class AosKanbanBoard extends LitElement {
   }
 
   /**
+   * PAM-008: Update multi-slot progress board.
+   */
+  public updateAutoModeProgressBoard(board: AutoModeProgressBoard | null): void {
+    this.autoModeProgressBoard = board;
+  }
+
+  /**
+   * PAM-008: Handle incident dismiss from multi-incident modal.
+   */
+  private handleIncidentDismiss(e: CustomEvent): void {
+    this.dispatchEvent(new CustomEvent('auto-mode-incident-dismiss', {
+      detail: { storyId: e.detail?.storyId },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  /**
    * KAE-003: Clear auto-mode progress display.
    * Called when workflow completes or auto-mode is disabled.
    */
@@ -2079,27 +2111,44 @@ export class AosKanbanBoard extends LitElement {
             </div>
           ` : ''}
 
-          <!-- KAE-003/KAE-005: Progress Summary Display -->
+          <!-- KAE-003/KAE-005/PAM-008: Progress Summary Display -->
           ${this.autoModeEnabled && this.autoModePendingGitStrategy
             ? html`
                 <div class="auto-mode-progress auto-mode-pending-git">
                   <span class="progress-waiting-text">Warte auf Git-Strategie Auswahl...</span>
                 </div>
               `
-            : this.autoModeEnabled && this.autoModeProgress
-              ? html`
-                  <div class="auto-mode-progress">
-                    <span class="progress-story-id">${this.autoModeProgress.storyId}</span>
-                    <span class="progress-story-title">${this.truncateTitle(this.autoModeProgress.storyTitle)}</span>
-                    <div class="progress-phase">
-                      <span class="progress-phase-label">Phase</span>
-                      <span class="progress-phase-current">${this.autoModeProgress.currentPhase}</span>
-                      <span class="progress-phase-separator">/</span>
-                      <span class="progress-phase-total">${this.autoModeProgress.totalPhases}</span>
-                    </div>
+            : this.autoModeEnabled && this.autoModeProgressBoard?.slots.length
+              ? this.autoModeProgressBoard.slots.map(slot => html`
+                  <div class="auto-mode-progress ${slot.slotState === 'waiting' ? 'slot-waiting' : ''}">
+                    ${slot.slotState === 'waiting'
+                      ? html`<span class="progress-waiting-text">${slot.storyId}: Wartet auf Slot...</span>`
+                      : html`
+                          <span class="progress-story-id">${slot.storyId}</span>
+                          <span class="progress-story-title">${this.truncateTitle(slot.storyTitle)}</span>
+                          <div class="progress-phase">
+                            <span class="progress-phase-label">Phase</span>
+                            <span class="progress-phase-current">${slot.currentPhase}</span>
+                            <span class="progress-phase-separator">/</span>
+                            <span class="progress-phase-total">${slot.totalPhases}</span>
+                          </div>
+                        `}
                   </div>
-                `
-              : ''}
+                `)
+              : this.autoModeEnabled && this.autoModeProgress
+                ? html`
+                    <div class="auto-mode-progress">
+                      <span class="progress-story-id">${this.autoModeProgress.storyId}</span>
+                      <span class="progress-story-title">${this.truncateTitle(this.autoModeProgress.storyTitle)}</span>
+                      <div class="progress-phase">
+                        <span class="progress-phase-label">Phase</span>
+                        <span class="progress-phase-current">${this.autoModeProgress.currentPhase}</span>
+                        <span class="progress-phase-separator">/</span>
+                        <span class="progress-phase-total">${this.autoModeProgress.totalPhases}</span>
+                      </div>
+                    </div>
+                  `
+                : ''}
 
           ${!this.kanban.hasKanbanFile
             ? html`<span class="kanban-warning">Kanban not initialized - showing all stories as Backlog</span>`
@@ -2188,12 +2237,14 @@ export class AosKanbanBoard extends LitElement {
         ></aos-git-strategy-dialog>
       ` : ''}
 
-      <!-- KAE-004: Auto-Mode Error Modal -->
+      <!-- KAE-004 / PAM-008: Auto-Mode Error Modal -->
       <aos-auto-mode-error-modal
-        .open=${this.showErrorModal}
+        .open=${this.showErrorModal || (this.autoModeEnabled && !!(this.kanban.activeIncidents?.length))}
         .error=${this.autoModeError}
+        .activeIncidents=${(this.kanban.activeIncidents ?? []) as AutoModeIncident[]}
         @auto-mode-resume=${this.handleErrorModalResume}
         @auto-mode-stop=${this.handleErrorModalStop}
+        @incident-dismiss=${this.handleIncidentDismiss}
       ></aos-auto-mode-error-modal>
 
       <!-- SCA-004: Attachment Panel Overlay -->

@@ -1447,10 +1447,33 @@ export class WorkflowExecutor {
         cloudTerminalSessionId: sessionId,
         timestamp: new Date().toISOString()
       });
+      this.sendToProject(projectPath, {
+        type: 'workflow.auto-mode.slot.update',
+        specId,
+        storyId: itemId,
+        slotState: 'running',
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    orchestrator.on('slot.queued', (itemId: string) => {
+      this.sendToProject(projectPath, {
+        type: 'workflow.auto-mode.slot.queued',
+        specId,
+        storyId: itemId,
+        slotState: 'waiting',
+        timestamp: new Date().toISOString()
+      });
     });
 
     orchestrator.on('story.completed', (storyId: string) => {
       console.log(`[Workflow] Auto-Mode: Story ${storyId} completed`);
+      this.sendToProject(projectPath, {
+        type: 'workflow.auto-mode.slot.cleared',
+        specId,
+        storyId,
+        timestamp: new Date().toISOString()
+      });
       // Dep-resolution + next-slot scheduling handled inside AutoModeSpecOrchestrator.onItemCompleted
       this.sendToProject(projectPath, {
         type: 'workflow.interactive.complete',
@@ -1469,6 +1492,12 @@ export class WorkflowExecutor {
 
     orchestrator.on('story.failed', async (storyId: string, error: string) => {
       console.log(`[Workflow] Auto-Mode: Story ${storyId} failed: ${error}`);
+      this.sendToProject(projectPath, {
+        type: 'workflow.auto-mode.slot.cleared',
+        specId,
+        storyId,
+        timestamp: new Date().toISOString()
+      });
       const isTimeout = /timed out/i.test(error);
       const specsReader = new SpecsReader();
 
@@ -1654,10 +1683,30 @@ export class WorkflowExecutor {
         projectId: projectPath,
         timestamp: new Date().toISOString()
       });
+      this.sendToProject(projectPath, {
+        type: 'backlog.auto-mode.slot.update',
+        storyId: itemId,
+        slotState: 'running',
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    orchestrator.on('slot.queued', (itemId: string) => {
+      this.sendToProject(projectPath, {
+        type: 'backlog.auto-mode.slot.queued',
+        storyId: itemId,
+        slotState: 'waiting',
+        timestamp: new Date().toISOString()
+      });
     });
 
     orchestrator.on('story.completed', (itemId: string) => {
       console.log(`[Workflow] Backlog Auto-Mode: Item ${itemId} completed`);
+      this.sendToProject(projectPath, {
+        type: 'backlog.auto-mode.slot.cleared',
+        storyId: itemId,
+        timestamp: new Date().toISOString()
+      });
       webSocketManager.sendToProject(projectPath, {
         type: 'backlog.kanban.refresh',
         timestamp: new Date().toISOString()
@@ -1666,6 +1715,11 @@ export class WorkflowExecutor {
 
     orchestrator.on('story.failed', (itemId: string, error: string) => {
       console.error(`[Workflow] Backlog Auto-Mode: Item ${itemId} failed: ${error}`);
+      this.sendToProject(projectPath, {
+        type: 'backlog.auto-mode.slot.cleared',
+        storyId: itemId,
+        timestamp: new Date().toISOString()
+      });
       webSocketManager.sendToProject(projectPath, {
         type: 'backlog.kanban.refresh',
         timestamp: new Date().toISOString()

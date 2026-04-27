@@ -10,7 +10,7 @@ import '../components/docs/aos-docs-panel.js';
 import '../components/aos-create-spec-modal.js';
 import '../components/comments/aos-comment-thread.js';
 import type { SpecInfo } from '../components/spec-card.js';
-import type { KanbanBoard, StoryInfo, AutoModeProgress, KanbanStatus } from '../components/kanban-board.js';
+import type { KanbanBoard, StoryInfo, AutoModeProgress, AutoModeProgressBoard, KanbanStatus } from '../components/kanban-board.js';
 import type { ProviderInfo } from '../components/story-card.js';
 import { AosKanbanBoard } from '../components/kanban-board.js';
 import type { AosDocsPanel } from '../components/docs/aos-docs-panel.js';
@@ -176,6 +176,10 @@ export class AosDashboardView extends LitElement {
   private static readonly AUTO_EXECUTION_DELAY = 2000; // 2 seconds between stories
   // KAE-003: Current progress state
   private currentAutoModeProgress: AutoModeProgress | null = null;
+  // PAM-008: Multi-slot boards (specId → storyId → AutoModeProgress)
+  private _specAutoModeBoards: Map<string, Map<string, AutoModeProgress>> = new Map();
+  // PAM-008: Backlog multi-slot board (itemId → AutoModeProgress)
+  private _backlogAutoModeBoard: Map<string, AutoModeProgress> = new Map();
   // KAE-004: Auto-mode paused due to error
   @state() private autoModePaused = false;
   // Track the last auto-mode incident timestamp shown as toast to avoid duplicates on re-renders
@@ -451,6 +455,16 @@ export class AosDashboardView extends LitElement {
       // Auto-mode hang detection (prompt + stall warnings)
       ['workflow.auto-mode.prompt-detected', (msg) => this.onAutoModePromptDetected(msg)],
       ['workflow.auto-mode.stalled', (msg) => this.onAutoModeStalled(msg)],
+      // PAM-008: Multi-slot board events (spec)
+      ['workflow.auto-mode.slot.update', (msg) => this.onAutoModeSlotUpdate(msg)],
+      ['workflow.auto-mode.slot.queued', (msg) => this.onAutoModeSlotQueued(msg)],
+      ['workflow.auto-mode.slot.cleared', (msg) => this.onAutoModeSlotCleared(msg)],
+      ['workflow.auto-mode.incident.clear.ack', (msg) => this.onAutoModeIncidentClearAck(msg)],
+      ['specs.kanban.updated', (msg) => this.onSpecsKanbanUpdated(msg)],
+      // PAM-008: Multi-slot board events (backlog)
+      ['backlog.auto-mode.slot.update', (msg) => this.onBacklogAutoModeSlotUpdate(msg)],
+      ['backlog.auto-mode.slot.queued', (msg) => this.onBacklogAutoModeSlotQueued(msg)],
+      ['backlog.auto-mode.slot.cleared', (msg) => this.onBacklogAutoModeSlotCleared(msg)],
       // Generic execution stall (backlog auto-mode + story executions via runClaudeCommand)
       ['workflow.execution.stalled', (msg) => this.onWorkflowExecutionStalled(msg)],
       // ASGN-004: Assignment toggle handlers
@@ -735,6 +749,130 @@ export class AosDashboardView extends LitElement {
       composed: true
     }));
   }
+
+  // PAM-008: Multi-slot board handlers (spec) ──────────────────────────────────
+
+  private onAutoModeSlotUpdate(msg: WebSocketMessage): void {
+    const specId = msg.specId as string;
+    const storyId = msg.storyId as string;
+    if (!this.selectedSpec || this.selectedSpec.id !== specId) return;
+
+    let board = this._specAutoModeBoards.get(specId);
+    if (!board) { board = new Map(); this._specAutoModeBoards.set(specId, board); }
+
+    const story = this.kanban?.stories.find((s: StoryInfo) => s.id === storyId);
+    board.set(storyId, {
+      storyId,
+      storyTitle: story?.title ?? storyId,
+      currentPhase: board.get(storyId)?.currentPhase ?? 1,
+      totalPhases: 5,
+      slotState: 'running'
+    });
+    this._pushSpecBoardToKanban(specId);
+  }
+
+  private onAutoModeSlotQueued(msg: WebSocketMessage): void {
+    const specId = msg.specId as string;
+    const storyId = msg.storyId as string;
+    if (!this.selectedSpec || this.selectedSpec.id !== specId) return;
+
+    let board = this._specAutoModeBoards.get(specId);
+    if (!board) { board = new Map(); this._specAutoModeBoards.set(specId, board); }
+
+    if (board.get(storyId)?.slotState === 'running') return;
+
+    const story = this.kanban?.stories.find((s: StoryInfo) => s.id === storyId);
+    board.set(storyId, {
+      storyId,
+      storyTitle: story?.title ?? storyId,
+      currentPhase: 1,
+      totalPhases: 5,
+      slotState: 'waiting'
+    });
+    this._pushSpecBoardToKanban(specId);
+  }
+
+  private onAutoModeSlotCleared(msg: WebSocketMessage): void {
+    const specId = msg.specId as string;
+    const storyId = msg.storyId as string;
+    if (!this.selectedSpec || this.selectedSpec.id !== specId) return;
+
+    const board = this._specAutoModeBoards.get(specId);
+    if (board) {
+      board.delete(storyId);
+      if (board.size === 0) this._specAutoModeBoards.delete(specId);
+    }
+    this._pushSpecBoardToKanban(specId);
+    if (!this._specAutoModeBoards.has(specId)) this.updateKanbanProgress(null);
+  }
+
+  private onAutoModeIncidentClearAck(msg: WebSocketMessage): void {
+    const specId = msg.specId as string;
+    if (specId) gateway.send({ type: 'specs.kanban', specId });
+  }
+
+  private onSpecsKanbanUpdated(msg: WebSocketMessage): void {
+    const specId = msg.specId as string;
+    if (this.selectedSpec?.id === specId) {
+      gateway.send({ type: 'specs.kanban', specId });
+    }
+  }
+
+  private _pushSpecBoardToKanban(specId: string): void {
+    const kanbanBoard = this.querySelector('aos-kanban-board') as AosKanbanBoard | null;
+    if (!kanbanBoard) return;
+    const board = this._specAutoModeBoards.get(specId);
+    const progressBoard: AutoModeProgressBoard | null =
+      board && board.size > 0 ? { slots: [...board.values()] } : null;
+    kanbanBoard.updateAutoModeProgressBoard(progressBoard);
+  }
+
+  // PAM-008: Multi-slot board handlers (backlog) ────────────────────────────────
+
+  private onBacklogAutoModeSlotUpdate(msg: WebSocketMessage): void {
+    const storyId = msg.storyId as string;
+    const story = this.backlogKanban?.stories.find(s => s.id === storyId);
+    this._backlogAutoModeBoard.set(storyId, {
+      storyId,
+      storyTitle: story?.title ?? storyId,
+      currentPhase: this._backlogAutoModeBoard.get(storyId)?.currentPhase ?? 1,
+      totalPhases: 5,
+      slotState: 'running'
+    });
+    this._pushBacklogBoardToKanban();
+  }
+
+  private onBacklogAutoModeSlotQueued(msg: WebSocketMessage): void {
+    const storyId = msg.storyId as string;
+    if (this._backlogAutoModeBoard.get(storyId)?.slotState === 'running') return;
+    const story = this.backlogKanban?.stories.find(s => s.id === storyId);
+    this._backlogAutoModeBoard.set(storyId, {
+      storyId,
+      storyTitle: story?.title ?? storyId,
+      currentPhase: 1,
+      totalPhases: 5,
+      slotState: 'waiting'
+    });
+    this._pushBacklogBoardToKanban();
+  }
+
+  private onBacklogAutoModeSlotCleared(msg: WebSocketMessage): void {
+    const storyId = msg.storyId as string;
+    this._backlogAutoModeBoard.delete(storyId);
+    this._pushBacklogBoardToKanban();
+    if (this._backlogAutoModeBoard.size === 0) this.updateBacklogKanbanProgress(null);
+  }
+
+  private _pushBacklogBoardToKanban(): void {
+    const kanbanBoard = this.querySelector('aos-kanban-board') as AosKanbanBoard | null;
+    if (!kanbanBoard) return;
+    const board = this._backlogAutoModeBoard;
+    const progressBoard: AutoModeProgressBoard | null =
+      board.size > 0 ? { slots: [...board.values()] } : null;
+    kanbanBoard.updateAutoModeProgressBoard(progressBoard);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   private onSpecsStory(msg: WebSocketMessage): void {
     this.selectedStory = msg.story as StoryDetail;
@@ -1044,9 +1182,12 @@ export class AosDashboardView extends LitElement {
       return;
     }
 
-    // KAE-003: Clear progress display
+    // KAE-003: Clear single-slot progress display; PAM-008 board is managed via slot.cleared event
     this.currentAutoModeProgress = null;
-    this.updateKanbanProgress(null);
+    const activeBoard = this._specAutoModeBoards.get(specId);
+    if (!activeBoard || activeBoard.size === 0) {
+      this.updateKanbanProgress(null);
+    }
 
     // Update the completed story's status in local state
     if (this.kanban) {
@@ -1651,6 +1792,19 @@ export class AosDashboardView extends LitElement {
     }
   }
 
+  private handleSpecAutoModeIncidentDismiss(e: CustomEvent): void {
+    if (!this.selectedSpec) return;
+    gateway.send({
+      type: 'workflow.auto-mode.incident.clear',
+      specId: this.selectedSpec.id,
+      storyId: e.detail?.storyId,
+    });
+  }
+
+  private handleBacklogAutoModeIncidentDismiss(_e: CustomEvent): void {
+    // Backlog incidents are not yet persisted — no-op for now
+  }
+
   private handleOpenCreateSpecModal(): void {
     this.createSpecModalOpen = true;
   }
@@ -2074,6 +2228,7 @@ export class AosDashboardView extends LitElement {
         @auto-mode-toggle=${this.handleBacklogAutoModeToggle}
         @auto-mode-error=${this.handleBacklogAutoModeError}
         @auto-mode-resume=${this.handleBacklogAutoModeResume}
+        @auto-mode-incident-dismiss=${this.handleBacklogAutoModeIncidentDismiss}
         @backlog-item-assign=${this.handleBacklogItemAssign}
         @story-select=${(e: CustomEvent) => {
           // Navigate to backlog story detail when a story is clicked
@@ -2154,6 +2309,7 @@ export class AosDashboardView extends LitElement {
         @auto-mode-error=${this.handleAutoModeError}
         @auto-mode-resume=${this.handleAutoModeResume}
         @auto-mode-git-strategy-selected=${this.handleAutoModeGitStrategySelected}
+        @auto-mode-incident-dismiss=${this.handleSpecAutoModeIncidentDismiss}
         @spec-assign-toggle=${this.handleSpecAssignToggle}
         @story-select=${this.handleStorySelect}
         @story-move=${this.handleStoryMove}
