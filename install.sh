@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.23.0"
+FRAMEWORK_VERSION="3.23.1"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -778,7 +778,7 @@ install_project() {
     substep_done
 
     # Core workflows
-    substep "Core workflows" "30"
+    substep "Core workflows" "32"
     # Meta
     download_file "$REPO_URL/specwright/workflows/meta/pre-flight.md" "specwright/workflows/meta/pre-flight.md" "workflow"
     # Security template
@@ -795,11 +795,13 @@ install_project() {
     download_file "$REPO_URL/specwright/workflows/core/retroactive-spec.md" "specwright/workflows/core/retroactive-spec.md" "workflow"
     # Bug management
     download_file "$REPO_URL/specwright/workflows/core/add-bug.md" "specwright/workflows/core/add-bug.md" "workflow"
-    # Execute tasks (10)
+    # Execute tasks (12)
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/entry-point.md" "specwright/workflows/core/execute-tasks/entry-point.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-1.md" "specwright/workflows/core/execute-tasks/spec-phase-1.md" "workflow"
+    download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-1-lean.md" "specwright/workflows/core/execute-tasks/spec-phase-1-lean.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-2.md" "specwright/workflows/core/execute-tasks/spec-phase-2.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3.md" "specwright/workflows/core/execute-tasks/spec-phase-3.md" "workflow"
+    download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-lean.md" "specwright/workflows/core/execute-tasks/spec-phase-3-lean.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-code-review.md" "specwright/workflows/core/execute-tasks/spec-phase-3-code-review.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-integration-validation.md" "specwright/workflows/core/execute-tasks/spec-phase-3-integration-validation.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-finalize-pr.md" "specwright/workflows/core/execute-tasks/spec-phase-3-finalize-pr.md" "workflow"
