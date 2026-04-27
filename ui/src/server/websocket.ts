@@ -315,6 +315,12 @@ export class WebSocketHandler {
         case 'backlog.story.save':
           this.handleBacklogStorySave(client, message);
           break;
+        case 'backlog.auto-mode.start':
+          this.handleBacklogAutoModeStart(client, message);
+          break;
+        case 'backlog.auto-mode.cancel':
+          this.handleBacklogAutoModeCancel(client, message);
+          break;
         case 'backlog.assign':
           this.handleBacklogAssign(client, message);
           break;
@@ -2836,6 +2842,45 @@ export class WebSocketHandler {
       };
       client.send(JSON.stringify(errorResponse));
     }
+  }
+
+  /** PAM-006: Start backend-driven backlog auto-mode scheduling. */
+  private async handleBacklogAutoModeStart(client: WebSocketClient, _message: WebSocketMessage): Promise<void> {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      client.send(JSON.stringify({
+        type: 'backlog.auto-mode.error',
+        error: 'No project selected',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+    try {
+      await this.workflowExecutor.startBacklogAutoMode(client, projectPath);
+      client.send(JSON.stringify({
+        type: 'backlog.auto-mode.ack',
+        projectId: projectPath,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      client.send(JSON.stringify({
+        type: 'backlog.auto-mode.error',
+        error: error instanceof Error ? error.message : 'Failed to start backlog auto-mode',
+        timestamp: new Date().toISOString()
+      }));
+    }
+  }
+
+  /** PAM-006: Cancel backend-driven backlog auto-mode scheduling. */
+  private async handleBacklogAutoModeCancel(client: WebSocketClient, _message: WebSocketMessage): Promise<void> {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) return;
+    await this.workflowExecutor.cancelBacklogAutoMode(projectPath);
+    client.send(JSON.stringify({
+      type: 'backlog.auto-mode.cancelled',
+      projectId: projectPath,
+      timestamp: new Date().toISOString()
+    }));
   }
 
   /**

@@ -12,6 +12,12 @@ import { getBaseBranch } from './general-config.js';
 import { queueHandler } from './handlers/queue.handler.js';
 import { queueService } from './services/queue.service.js';
 import { resolveCommandDir, projectDir } from './utils/project-dirs.js';
+import {
+  storyWorktreePath,
+  storyBranchName,
+  setupSpecSymlinkInWorktree,
+  setupBacklogSymlinkInWorktree,
+} from './utils/worktree-story.js';
 import { buildMcpFlags, cleanupMcpTempFile } from './utils/mcp-profile.js';
 import { gitService } from './services/git.service.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
@@ -1645,6 +1651,11 @@ export class WorkflowExecutor {
 
     orchestrator.on('all-items-done', () => {
       this.autoModeBacklogOrchestrators.delete(projectPath);
+      webSocketManager.sendToProject(projectPath, {
+        type: 'backlog.auto-mode.done',
+        projectId: projectPath,
+        timestamp: new Date().toISOString()
+      });
     });
 
     orchestrator.on('cancelled', () => {
@@ -2686,6 +2697,112 @@ export class WorkflowExecutor {
     }
   }
 
+  // ── PAM-005: Per-story worktree helpers ────────────────────────────────────
+
+  /**
+   * Create a per-story sub-worktree for parallel auto-mode spec execution.
+   * Path:   ${proj}-worktrees/${feature}-${storyId}
+   * Branch: feature/${feature}/${storyId}
+   * Idempotent — returns existing path without error.
+   */
+  public async createStoryWorktree(
+    projectPath: string,
+    specId: string,
+    storyId: string
+  ): Promise<string> {
+    const wtPath = storyWorktreePath(projectPath, specId, storyId);
+    const branchName = storyBranchName(specId, storyId);
+    const worktreeBase = dirname(wtPath);
+
+    if (!existsSync(worktreeBase)) {
+      await mkdir(worktreeBase, { recursive: true });
+    }
+
+    if (!existsSync(wtPath)) {
+      let branchExists = false;
+      try {
+        execSync(`git rev-parse --verify ${branchName}`, { cwd: projectPath, stdio: 'pipe' });
+        branchExists = true;
+      } catch { branchExists = false; }
+
+      const args = branchExists
+        ? ['worktree', 'add', wtPath, branchName]
+        : ['worktree', 'add', wtPath, '-b', branchName];
+
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawn('git', args, { cwd: projectPath, stdio: 'pipe' });
+        let stderr = '';
+        proc.stderr?.on('data', (d) => { stderr += d.toString(); });
+        proc.on('close', (code) => code === 0 ? resolve() : reject(new Error(`git worktree add failed (${code}): ${stderr}`)));
+        proc.on('error', reject);
+      });
+
+      console.log(`[Workflow] PAM-005: Created story worktree at ${wtPath} (${branchName})`);
+    } else {
+      console.log(`[Workflow] PAM-005: Story worktree already exists at ${wtPath}`);
+    }
+
+    await setupSpecSymlinkInWorktree(projectPath, wtPath, specId);
+    return wtPath;
+  }
+
+  /**
+   * Remove a story sub-worktree after successful completion. Best-effort.
+   */
+  public async removeStoryWorktree(projectPath: string, worktreePath: string): Promise<void> {
+    try {
+      execSync(`git worktree remove --force "${worktreePath}"`, { cwd: projectPath, stdio: 'pipe' });
+      execSync('git worktree prune', { cwd: projectPath, stdio: 'pipe' });
+      console.log(`[Workflow] PAM-005: Removed story worktree at ${worktreePath}`);
+    } catch (err) {
+      console.warn('[Workflow] PAM-005: removeStoryWorktree best-effort failed:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /**
+   * Merge a story branch into the spec branch with --no-ff.
+   * On conflict: aborts the merge and throws so the caller can keep the worktree
+   * for manual resolution and mark the story as blocked with an incident.
+   */
+  public async mergeStoryBranchIntoSpec(
+    projectPath: string,
+    specBranch: string,
+    storyBranch: string
+  ): Promise<void> {
+    try {
+      execSync(`git checkout ${specBranch}`, { cwd: projectPath, stdio: 'pipe' });
+      execSync(
+        `git merge --no-ff ${storyBranch} -m "merge: ${storyBranch} into ${specBranch}"`,
+        { cwd: projectPath, stdio: 'pipe' }
+      );
+      console.log(`[Workflow] PAM-005: Merged ${storyBranch} into ${specBranch}`);
+    } catch {
+      try { execSync('git merge --abort', { cwd: projectPath, stdio: 'pipe' }); } catch { /* ignore */ }
+      throw new Error(`Merge conflict: ${storyBranch} → ${specBranch}`);
+    }
+  }
+
+  /**
+   * Create (or repair) the backlog-folder symlink in a backlog sub-worktree.
+   * Also symlinks .mcp.json for MCP server discovery (best-effort).
+   */
+  public async setupBacklogSymlink(projectPath: string, worktreePath: string): Promise<void> {
+    await setupBacklogSymlinkInWorktree(projectPath, worktreePath);
+
+    const mcpConfigSource = join(projectPath, '..', '.mcp.json');
+    const mcpConfigTarget = join(worktreePath, '.mcp.json');
+    if (existsSync(mcpConfigSource) && !existsSync(mcpConfigTarget)) {
+      try {
+        const relativeMcpPath = join('..', '..', '..', basename(projectPath), '..', '.mcp.json');
+        await symlink(relativeMcpPath, mcpConfigTarget);
+      } catch (err) {
+        console.warn('[Workflow] PAM-005: .mcp.json symlink failed (non-critical):', err instanceof Error ? err.message : err);
+      }
+    }
+  }
+
+  // ── End PAM-005 ────────────────────────────────────────────────────────────
+
   /**
    * KSE-005: Update kanban board with git strategy info.
    * This ensures Claude doesn't ask for git strategy again since UI already decided.
@@ -2870,6 +2987,42 @@ export class WorkflowExecutor {
    * @param specId - Spec ID whose auto-mode session to cancel
    * @returns true if a session was found and cancelled
    */
+  /**
+   * PAM-006: Start backend-driven backlog auto-mode.
+   * Orchestrator picks items via getReadySet and schedules PTY slots internally.
+   */
+  public async startBacklogAutoMode(client: WebSocketClient, projectPath: string): Promise<void> {
+    if (!this.cloudTerminalManager) {
+      throw new Error('CloudTerminalManager unavailable');
+    }
+    const cmdDir = resolveCommandDir(projectPath);
+    let orchestrator = this.autoModeBacklogOrchestrators.get(projectPath);
+    if (!orchestrator) {
+      orchestrator = AutoModeBacklogOrchestrator.create(
+        projectPath,
+        cmdDir,
+        this.cloudTerminalManager,
+        1  // maxConcurrent=1; raised in PAM-007
+      );
+      this.setupBacklogOrchestratorListeners(orchestrator, projectPath);
+      this.autoModeBacklogOrchestrators.set(projectPath, orchestrator);
+    }
+    await orchestrator.scheduleTick();
+    webSocketManager.markWorkflowActive(projectPath);
+    void client;
+  }
+
+  /**
+   * PAM-006: Cancel backend-driven backlog auto-mode.
+   */
+  public async cancelBacklogAutoMode(projectPath: string): Promise<void> {
+    const orchestrator = this.autoModeBacklogOrchestrators.get(projectPath);
+    if (orchestrator) {
+      this.autoModeBacklogOrchestrators.delete(projectPath);
+      await orchestrator.cancel();
+    }
+  }
+
   public cancelAutoModeSession(specId: string): boolean {
     const orchestrator = this.autoModeSpecOrchestrators.get(specId);
     if (!orchestrator) return false;
