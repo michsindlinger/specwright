@@ -175,7 +175,7 @@ describe('kanban-ui-initialization integration', () => {
         expect(story.type).toBeDefined();
         expect(story.priority).toBeDefined();
         expect(story.effort).toBeDefined();
-        expect(['backlog', 'in_progress', 'done']).toContain(story.status);
+        expect(['backlog', 'in_progress', 'in_review', 'done', 'blocked']).toContain(story.status);
         expect(Array.isArray(story.dependencies)).toBe(true);
         expect(typeof story.dorComplete).toBe('boolean');
       }

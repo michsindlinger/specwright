@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { projectDir, resolveCommandDir } from './utils/project-dirs.js';
+import { withKanbanLock } from './utils/kanban-lock.js';
 import { ProjectManager } from './projects.js';
 import { ClaudeHandler } from './claude-handler.js';
 import { WorkflowExecutor } from './workflow-executor.js';
@@ -2614,16 +2615,59 @@ export class WebSocketHandler {
 
     // Update status in backlog-index.json
     const backlogPath = projectDir(projectPath, 'backlog', 'backlog-index.json');
+    const backlogDirPath = projectDir(projectPath, 'backlog');
     try {
-      const backlogContent = await fs.readFile(backlogPath, 'utf-8');
-      const backlogJson = JSON.parse(backlogContent) as {
-        items: Array<{ id: string; status: string; updatedAt?: string; completedAt?: string }>;
-        statistics?: { byStatus: Record<string, number> };
-        metadata?: { lastUpdated: string };
-      };
-      const itemIndex = backlogJson.items.findIndex((i: typeof backlogJson.items[0]) => i.id === storyId);
+      let itemNotFound = false;
+      await withKanbanLock(backlogDirPath, async () => {
+        const backlogContent = await fs.readFile(backlogPath, 'utf-8');
+        const backlogJson = JSON.parse(backlogContent) as {
+          items: Array<{ id: string; status: string; updatedAt?: string; completedAt?: string }>;
+          statistics?: { byStatus: Record<string, number> };
+          metadata?: { lastUpdated: string };
+        };
+        const itemIndex = backlogJson.items.findIndex((i: typeof backlogJson.items[0]) => i.id === storyId);
 
-      if (itemIndex === -1) {
+        if (itemIndex === -1) {
+          itemNotFound = true;
+          return;
+        }
+
+        // Map UI status to JSON status (UKB-003: added 'blocked' and 'in_review')
+        const statusMap: Record<string, string> = {
+          'backlog': 'open',
+          'in_progress': 'in_progress',
+          'in_review': 'in_review',
+          'blocked': 'blocked',
+          'done': 'done'
+        };
+
+        backlogJson.items[itemIndex].status = statusMap[newStatus] || newStatus;
+        if (newStatus === 'done') {
+          backlogJson.items[itemIndex].completedAt = new Date().toISOString();
+        }
+
+        // Update statistics if present (UKB-003: added 'blocked' and 'in_review')
+        if (backlogJson.statistics) {
+          backlogJson.statistics.byStatus = {
+            open: 0,
+            in_progress: 0,
+            in_review: 0,
+            blocked: 0,
+            done: 0
+          };
+
+          for (const item of backlogJson.items) {
+            const status = item.status as string;
+            if (status in backlogJson.statistics.byStatus) {
+              backlogJson.statistics.byStatus[status]++;
+            }
+          }
+        }
+
+        await fs.writeFile(backlogPath, JSON.stringify(backlogJson, null, 2));
+      });
+
+      if (itemNotFound) {
         const errorResponse: WebSocketMessage = {
           type: 'backlog.error',
           error: `Story not found: ${storyId}`,
@@ -2632,41 +2676,6 @@ export class WebSocketHandler {
         client.send(JSON.stringify(errorResponse));
         return;
       }
-
-      // Map UI status to JSON status (UKB-003: added 'blocked' and 'in_review')
-      const statusMap: Record<string, string> = {
-        'backlog': 'open',
-        'in_progress': 'in_progress',
-        'in_review': 'in_review',
-        'blocked': 'blocked',
-        'done': 'done'
-      };
-
-      backlogJson.items[itemIndex].status = statusMap[newStatus] || newStatus;
-      if (newStatus === 'done') {
-        backlogJson.items[itemIndex].completedAt = new Date().toISOString();
-      }
-
-      // Update statistics if present (UKB-003: added 'blocked' and 'in_review')
-      if (backlogJson.statistics) {
-        backlogJson.statistics.byStatus = {
-          open: 0,
-          in_progress: 0,
-          in_review: 0,
-          blocked: 0,
-          done: 0
-        };
-
-        for (const item of backlogJson.items) {
-          const status = item.status as string;
-          if (status in backlogJson.statistics.byStatus) {
-            backlogJson.statistics.byStatus[status]++;
-          }
-        }
-      }
-
-      // Write updated backlog-index.json
-      await fs.writeFile(backlogPath, JSON.stringify(backlogJson, null, 2));
 
       // Send updated kanban to all clients
       const kanban = await this.backlogReader.getKanbanBoard(projectPath);
@@ -2713,15 +2722,27 @@ export class WebSocketHandler {
 
     // Update model in backlog-index.json
     const backlogPath = projectDir(projectPath, 'backlog', 'backlog-index.json');
+    const backlogDirPath = projectDir(projectPath, 'backlog');
     try {
-      const backlogContent = await fs.readFile(backlogPath, 'utf-8');
-      const backlogJson = JSON.parse(backlogContent) as {
-        items: Array<{ id: string; model?: string; updatedAt?: string }>;
-        metadata?: { lastUpdated: string };
-      };
-      const itemIndex = backlogJson.items.findIndex((i: typeof backlogJson.items[0]) => i.id === storyId);
+      let itemNotFound = false;
+      await withKanbanLock(backlogDirPath, async () => {
+        const backlogContent = await fs.readFile(backlogPath, 'utf-8');
+        const backlogJson = JSON.parse(backlogContent) as {
+          items: Array<{ id: string; model?: string; updatedAt?: string }>;
+          metadata?: { lastUpdated: string };
+        };
+        const itemIndex = backlogJson.items.findIndex((i: typeof backlogJson.items[0]) => i.id === storyId);
 
-      if (itemIndex === -1) {
+        if (itemIndex === -1) {
+          itemNotFound = true;
+          return;
+        }
+
+        backlogJson.items[itemIndex].model = model;
+        await fs.writeFile(backlogPath, JSON.stringify(backlogJson, null, 2));
+      });
+
+      if (itemNotFound) {
         const errorResponse: WebSocketMessage = {
           type: 'backlog.error',
           error: `Story not found: ${storyId}`,
@@ -2730,11 +2751,6 @@ export class WebSocketHandler {
         client.send(JSON.stringify(errorResponse));
         return;
       }
-
-      backlogJson.items[itemIndex].model = model;
-
-      // Write updated backlog-index.json
-      await fs.writeFile(backlogPath, JSON.stringify(backlogJson, null, 2));
 
       // Send updated kanban to all clients
       const kanban = await this.backlogReader.getKanbanBoard(projectPath);

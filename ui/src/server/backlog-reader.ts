@@ -39,6 +39,12 @@ export interface BacklogKanbanBoard {
   hasKanbanFile: boolean;
 }
 
+interface BacklogIncident {
+  message: string;
+  timestamp: string;
+  phase?: string | null;
+}
+
 // JSON backlog structure (backlog-index.json from kanban MCP server)
 interface BacklogJsonItem {
   id: string;
@@ -47,13 +53,18 @@ interface BacklogJsonItem {
   priority: string;
   severity?: string;
   effort?: number;
-  status: string;  // 'open' | 'done' | 'in_progress' | 'ready' | 'pending' | 'completed'
+  status: string;  // 'open' | 'done' | 'in_progress' | 'ready' | 'pending' | 'completed' | 'blocked'
   file?: string;
   // Assignment tracking
   assignedToBot?: {
     assigned: boolean;
     assignedAt: string;
     assignedBy: string;
+  };
+  // Auto-mode state
+  resumeContext?: {
+    autoModeActive: boolean;
+    activeIncidents: BacklogIncident[];
   };
   // Legacy fields (kept for backward compatibility)
   slug?: string;
@@ -76,6 +87,28 @@ interface BacklogJson {
     created: string;
     lastUpdated: string;
   };
+}
+
+export function mapJsonStatusToFrontend(status: string): 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked' {
+  switch (status) {
+    case 'ready':
+    case 'pending':
+    case 'open':
+      return 'backlog';
+    case 'in_progress':
+    case 'testing':
+      return 'in_progress';
+    case 'in_review':
+    case 'inReview':
+      return 'in_review';
+    case 'blocked':
+      return 'blocked';
+    case 'done':
+    case 'completed':
+      return 'done';
+    default:
+      return 'backlog';
+  }
 }
 
 export class BacklogReader {
@@ -177,32 +210,7 @@ export class BacklogReader {
       const storiesMap = new Map<string, BacklogStoryInfo>();
 
       for (const item of backlogJson.items) {
-        // Map JSON status to our status (UKB-003: added 'blocked' and 'in_review')
-        let status: 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked';
-        switch (item.status) {
-          case 'ready':
-          case 'pending':
-          case 'open':
-            status = 'backlog';
-            break;
-          case 'in_progress':
-          case 'testing':
-            status = 'in_progress';
-            break;
-          case 'in_review':
-          case 'inReview':
-            status = 'in_review';
-            break;
-          case 'blocked':
-            status = 'blocked';
-            break;
-          case 'done':
-          case 'completed':
-            status = 'done';
-            break;
-          default:
-            status = 'backlog';
-        }
+        const status = mapJsonStatusToFrontend(item.status);
 
         // Map effort number to string
         const effortMap: Record<number, string> = {

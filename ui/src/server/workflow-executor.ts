@@ -1151,53 +1151,60 @@ export class WorkflowExecutor {
     storyId: string,
     newStatus: string
   ): Promise<void> {
-    const backlogPath = projectDir(projectPath, 'backlog', 'backlog-index.json');
+    const backlogFilePath = projectDir(projectPath, 'backlog', 'backlog-index.json');
+    const backlogDirPath = projectDir(projectPath, 'backlog');
 
-    if (!existsSync(backlogPath)) {
-      console.log(`[Workflow] No backlog-index.json found at ${backlogPath}, skipping status update`);
+    if (!existsSync(backlogFilePath)) {
+      console.log(`[Workflow] No backlog-index.json found at ${backlogFilePath}, skipping status update`);
       return;
     }
 
-    const backlogContent = await readFile(backlogPath, 'utf-8');
-    const backlogJson = JSON.parse(backlogContent) as {
-      items: Array<{ id: string; status: string; updatedAt?: string; completedAt?: string }>;
-      statistics?: { byStatus: Record<string, number> };
-      metadata?: { lastUpdated: string };
-    };
+    let itemFound = false;
+    await withKanbanLock(backlogDirPath, async () => {
+      const backlogContent = await readFile(backlogFilePath, 'utf-8');
+      const backlogJson = JSON.parse(backlogContent) as {
+        items: Array<{ id: string; status: string; updatedAt?: string; completedAt?: string }>;
+        statistics?: { byStatus: Record<string, number> };
+        metadata?: { lastUpdated: string };
+      };
 
-    const itemIndex = backlogJson.items.findIndex(i => i.id === storyId);
-    if (itemIndex === -1) {
-      console.log(`[Workflow] Story ${storyId} not found in backlog-index.json, skipping status update`);
-      return;
-    }
+      const itemIndex = backlogJson.items.findIndex(i => i.id === storyId);
+      if (itemIndex === -1) {
+        console.log(`[Workflow] Story ${storyId} not found in backlog-index.json, skipping status update`);
+        return;
+      }
+      itemFound = true;
 
-    // Update story status
-    backlogJson.items[itemIndex].status = newStatus;
-    backlogJson.items[itemIndex].updatedAt = new Date().toISOString();
-    if (newStatus === 'done') {
-      backlogJson.items[itemIndex].completedAt = new Date().toISOString();
-    }
+      // Update story status
+      backlogJson.items[itemIndex].status = newStatus;
+      backlogJson.items[itemIndex].updatedAt = new Date().toISOString();
+      if (newStatus === 'done') {
+        backlogJson.items[itemIndex].completedAt = new Date().toISOString();
+      }
 
-    // Recalculate statistics
-    if (backlogJson.statistics) {
-      backlogJson.statistics.byStatus = { open: 0, in_progress: 0, in_review: 0, blocked: 0, done: 0 };
-      for (const item of backlogJson.items) {
-        if (item.status in backlogJson.statistics.byStatus) {
-          backlogJson.statistics.byStatus[item.status]++;
+      // Recalculate statistics
+      if (backlogJson.statistics) {
+        backlogJson.statistics.byStatus = { open: 0, in_progress: 0, in_review: 0, blocked: 0, done: 0 };
+        for (const item of backlogJson.items) {
+          if (item.status in backlogJson.statistics.byStatus) {
+            backlogJson.statistics.byStatus[item.status]++;
+          }
         }
       }
-    }
 
-    if (backlogJson.metadata) {
-      backlogJson.metadata.lastUpdated = new Date().toISOString();
-    }
+      if (backlogJson.metadata) {
+        backlogJson.metadata.lastUpdated = new Date().toISOString();
+      }
 
-    // Write and commit on main
-    await writeFile(backlogPath, JSON.stringify(backlogJson, null, 2));
+      await writeFile(backlogFilePath, JSON.stringify(backlogJson, null, 2));
+    });
+
+    if (!itemFound) return;
+
     try {
       await gitService.commit(
         projectPath,
-        [backlogPath],
+        [backlogFilePath],
         `chore: mark backlog story ${storyId} as ${newStatus}`
       );
     } catch {
