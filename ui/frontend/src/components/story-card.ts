@@ -1,6 +1,7 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './story-status-badge.js';
+import './aos-claude-log-panel.js';
 import type { StoryStatus } from './story-status-badge.js';
 import { buildSpecFilePath, buildBacklogFilePath, copyPathToClipboard } from '../utils/copy-path.js';
 
@@ -81,9 +82,11 @@ export class AosStoryCard extends LitElement {
   @property({ type: Array }) providers: ProviderInfo[] = DEFAULT_PROVIDERS;
   @property({ type: Boolean, reflect: true }) dragDisabled = false;
   @property({ type: Boolean }) isBacklogMode = false;
+  @property({ type: String }) sessionId?: string;
   @state() private isDragging = false;
   @state() private copied = false;
   @state() private dropdownOpen = false;
+  @state() private logExpanded = false;
 
   static override styles = css`
     :host {
@@ -402,6 +405,45 @@ export class AosStoryCard extends LitElement {
       color: var(--color-text-muted, #64748B);
     }
 
+    .log-toggle-row {
+      display: flex;
+    }
+
+    .log-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-family-mono, 'JetBrains Mono', ui-monospace, monospace);
+      font-size: 10.5px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm, 0.25rem);
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      color: var(--color-accent-primary, #00D4FF);
+      cursor: pointer;
+      user-select: none;
+      transition: background 150ms ease, border-color 150ms ease;
+    }
+
+    .log-toggle-btn:hover {
+      background: rgba(0, 212, 255, 0.14);
+      border-color: rgba(0, 212, 255, 0.45);
+    }
+
+    .log-toggle-btn .chevron {
+      display: inline-block;
+      transition: transform 150ms ease;
+    }
+
+    .log-toggle-btn[aria-expanded="true"] .chevron {
+      transform: rotate(90deg);
+    }
+
+    .log-panel-wrapper {
+      display: block;
+    }
+
     .deps-label {
       font-family: var(--font-family-mono, 'JetBrains Mono', ui-monospace, monospace);
       font-weight: 600;
@@ -679,6 +721,11 @@ export class AosStoryCard extends LitElement {
     );
   }
 
+  private handleLogToggle(e: Event): void {
+    e.stopPropagation();
+    this.logExpanded = !this.logExpanded;
+  }
+
   private getTypeVariant(): string {
     const type = (this.story.type || '').toLowerCase();
     if (type.includes('bug') || type.includes('fix')) return 'type-bug';
@@ -831,6 +878,32 @@ export class AosStoryCard extends LitElement {
             .errorMessage="${this.workflowError}"
           ></aos-story-status-badge>
         </div>
+
+        ${this.sessionId ? html`
+          <div class="log-toggle-row" @click=${(e: Event) => e.stopPropagation()}>
+            <button
+              class="log-toggle-btn"
+              type="button"
+              aria-expanded="${this.logExpanded ? 'true' : 'false'}"
+              aria-controls="claude-log-${this.story.id}"
+              title="${this.logExpanded ? 'Logs ausblenden' : 'Claude-Logs anzeigen'}"
+              @click=${this.handleLogToggle}
+            >
+              <span class="chevron">▶</span>
+              <span>${this.logExpanded ? 'Logs ausblenden' : 'Claude-Logs'}</span>
+            </button>
+          </div>
+        ` : nothing}
+
+        ${this.sessionId && this.logExpanded ? html`
+          <div
+            class="log-panel-wrapper"
+            id="claude-log-${this.story.id}"
+            @click=${(e: Event) => e.stopPropagation()}
+          >
+            <aos-claude-log-panel .sessionId=${this.sessionId}></aos-claude-log-panel>
+          </div>
+        ` : nothing}
 
         ${isWorking ? html`
           <div class="agent-progress">
