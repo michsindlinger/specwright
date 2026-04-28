@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import { join, basename } from 'path';
 import { resolveProjectDir } from './utils/project-dirs.js';
+import { withKanbanLock } from './utils/kanban-lock.js';
 
 /**
  * backlog-index.json structure
@@ -92,75 +93,78 @@ export class BacklogItemStorageService {
     request: CreateQuickTodoRequest
   ): Promise<CreateItemResult> {
     try {
-      // Ensure directory structure exists
+      // Ensure directory structure exists (no index access, outside lock)
       await this.ensureDirectories(projectPath);
 
-      // Read or initialize backlog-index.json
-      const index = await this.readOrCreateIndex(projectPath);
+      const lockDir = join(projectPath, backlogDir(projectPath));
+      return await withKanbanLock(lockDir, async () => {
+        // Read or initialize backlog-index.json
+        const index = await this.readOrCreateIndex(projectPath);
 
-      // Generate item ID
-      const itemId = `ITEM-${String(index.nextId).padStart(3, '0')}`;
+        // Generate item ID
+        const itemId = `ITEM-${String(index.nextId).padStart(3, '0')}`;
 
-      // Save images if provided
-      const savedImages: Array<{ filename: string; path: string }> = [];
-      if (request.images && request.images.length > 0) {
-        const attachmentDir = join(projectPath, attachmentsDir(projectPath), itemId);
-        await fs.mkdir(attachmentDir, { recursive: true });
+        // Save images if provided
+        const savedImages: Array<{ filename: string; path: string }> = [];
+        if (request.images && request.images.length > 0) {
+          const attachmentDir = join(projectPath, attachmentsDir(projectPath), itemId);
+          await fs.mkdir(attachmentDir, { recursive: true });
 
-        for (const image of request.images) {
-          if (!ALLOWED_IMAGE_TYPES.has(image.mimeType)) {
-            continue; // Skip invalid image types
+          for (const image of request.images) {
+            if (!ALLOWED_IMAGE_TYPES.has(image.mimeType)) {
+              continue; // Skip invalid image types
+            }
+
+            const sanitizedName = this.sanitizeFilename(image.filename);
+            const ext = MIME_TO_EXT[image.mimeType] || 'png';
+            const filename = `${sanitizedName}.${ext}`;
+
+            // Remove data URL prefix if present
+            const base64Data = image.data.replace(/^data:[^;]+;base64,/, '');
+            const buffer = Buffer.from(base64Data, 'base64');
+
+            const filePath = join(attachmentDir, filename);
+            await fs.writeFile(filePath, buffer, { mode: 0o644 });
+
+            savedImages.push({
+              filename,
+              path: `attachments/${itemId}/${filename}`,
+            });
           }
-
-          const sanitizedName = this.sanitizeFilename(image.filename);
-          const ext = MIME_TO_EXT[image.mimeType] || 'png';
-          const filename = `${sanitizedName}.${ext}`;
-
-          // Remove data URL prefix if present
-          const base64Data = image.data.replace(/^data:[^;]+;base64,/, '');
-          const buffer = Buffer.from(base64Data, 'base64');
-
-          const filePath = join(attachmentDir, filename);
-          await fs.writeFile(filePath, buffer, { mode: 0o644 });
-
-          savedImages.push({
-            filename,
-            path: `attachments/${itemId}/${filename}`,
-          });
         }
-      }
 
-      // Generate Markdown content
-      const markdown = this.generateMarkdown(itemId, request, savedImages);
+        // Generate Markdown content
+        const markdown = this.generateMarkdown(itemId, request, savedImages);
 
-      // Write Markdown file
-      const mdFilename = `${itemId.toLowerCase()}.md`;
-      const mdPath = join(projectPath, itemsDir(projectPath), mdFilename);
-      await fs.writeFile(mdPath, markdown, 'utf-8');
+        // Write Markdown file
+        const mdFilename = `${itemId.toLowerCase()}.md`;
+        const mdPath = join(projectPath, itemsDir(projectPath), mdFilename);
+        await fs.writeFile(mdPath, markdown, 'utf-8');
 
-      // Update index
-      const now = new Date().toISOString();
-      index.items.push({
-        id: itemId,
-        title: request.title,
-        priority: request.priority,
-        status: 'ready',
-        createdAt: now,
-        file: `items/${mdFilename}`,
+        // Update index
+        const now = new Date().toISOString();
+        index.items.push({
+          id: itemId,
+          title: request.title,
+          priority: request.priority,
+          status: 'ready',
+          createdAt: now,
+          file: `items/${mdFilename}`,
+        });
+        index.nextId += 1;
+
+        // Write index atomically (write to temp then rename)
+        const indexPath = join(projectPath, indexFile(projectPath));
+        const tmpPath = `${indexPath}.tmp`;
+        await fs.writeFile(tmpPath, JSON.stringify(index, null, 2), 'utf-8');
+        await fs.rename(tmpPath, indexPath);
+
+        return {
+          success: true,
+          itemId,
+          file: `items/${mdFilename}`,
+        };
       });
-      index.nextId += 1;
-
-      // Write index atomically (write to temp then rename)
-      const indexPath = join(projectPath, indexFile(projectPath));
-      const tmpPath = `${indexPath}.tmp`;
-      await fs.writeFile(tmpPath, JSON.stringify(index, null, 2), 'utf-8');
-      await fs.rename(tmpPath, indexPath);
-
-      return {
-        success: true,
-        itemId,
-        file: `items/${mdFilename}`,
-      };
     } catch (error) {
       console.error('Error creating backlog item:', error);
       return {

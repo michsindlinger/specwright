@@ -1,0 +1,218 @@
+{
+  "version": "2.0",
+  "mode": "lean",
+  "spec": {
+    "id": "2026-04-28-claude-logs-on-story-cards",
+    "name": "Claude-Code-Logs auf Story-Cards",
+    "prefix": "CLOG",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-04-28T06:31:38.725Z",
+    "specTier": "M",
+    "implementationPlan": "implementation-plan.md"
+  },
+  "resumeContext": {
+    "currentPhase": "1-complete",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "gitStrategy": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Lean kanban created via MCP",
+    "nextAction": "Setup git worktree or branch",
+    "progressIndex": 0,
+    "totalStories": 8
+  },
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "tasks": [
+    {
+      "id": "CLOG-001",
+      "title": "Backend: SlotSnapshot.sessionId expose",
+      "description": "Add optional sessionId field to SlotSnapshot/OrchestratorSlotSnapshot, populate from AutoModeStorySlot.getSessionId() in snapshot builder.",
+      "planSection": "Phase 1: Backend Snapshot-Erweiterung (sessionId Exposure)",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOG-002",
+      "title": "Util: ansi-strip + tests",
+      "description": "Hand-rolled stripAnsi(s) regex util in ui/frontend/src/utils/ansi-strip.ts plus unit tests for CSI/SGR/cursor sequences.",
+      "planSection": "Phase 2: Frontend Log-Panel Standalone",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOG-003",
+      "title": "Component: aos-claude-log-panel",
+      "description": "Lit panel: subscribe cloud-terminal:data per sessionId, RAF-batched render, auto-scroll, buffer-request hydration, reconnect.",
+      "planSection": "Phase 2: Frontend Log-Panel Standalone",
+      "dependencies": [
+        "CLOG-002"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOG-004",
+      "title": "Integration: story-card + dashboard-view",
+      "description": "Toggle on story-card conditional on sessionId, dashboard-view propagates storyId-to-sessionId map from AutoModeSnapshot.",
+      "planSection": "Phase 3: Integration + Buffer-Hydration + Tests",
+      "dependencies": [
+        "CLOG-001",
+        "CLOG-003"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOG-005",
+      "title": "E2E + edge-case tests",
+      "description": "Playwright smoke (parallel slots, hydration, reload-reset, session-end) plus unit tests for race + reconnect.",
+      "planSection": "Phase 3: Integration + Buffer-Hydration + Tests",
+      "dependencies": [
+        "CLOG-004"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOG-997",
+      "title": "Code Review",
+      "description": "Full-feature diff review",
+      "planSection": "System: Code Review",
+      "dependencies": [
+        "CLOG-001",
+        "CLOG-002",
+        "CLOG-003",
+        "CLOG-004",
+        "CLOG-005"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOG-998",
+      "title": "Integration Validation",
+      "description": "End-to-end test execution",
+      "planSection": "System: Integration Validation",
+      "dependencies": [
+        "CLOG-001",
+        "CLOG-002",
+        "CLOG-003",
+        "CLOG-004",
+        "CLOG-005"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOG-999",
+      "title": "Finalize PR",
+      "description": "User-todos, PR creation, cleanup",
+      "planSection": "System: Finalize PR",
+      "dependencies": [
+        "CLOG-997",
+        "CLOG-998"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 8,
+    "ready": 2,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 6
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-04-28T06:31:38.725Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Lean kanban initialized with 8 tasks via MCP tool"
+    }
+  ]
+}

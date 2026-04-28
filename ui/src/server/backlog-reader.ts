@@ -39,6 +39,12 @@ export interface BacklogKanbanBoard {
   hasKanbanFile: boolean;
 }
 
+interface BacklogIncident {
+  message: string;
+  timestamp: string;
+  phase?: string | null;
+}
+
 // JSON backlog structure (backlog-index.json from kanban MCP server)
 interface BacklogJsonItem {
   id: string;
@@ -47,13 +53,18 @@ interface BacklogJsonItem {
   priority: string;
   severity?: string;
   effort?: number;
-  status: string;  // 'open' | 'done' | 'in_progress' | 'ready' | 'pending' | 'completed'
+  status: string;  // 'open' | 'done' | 'in_progress' | 'ready' | 'pending' | 'completed' | 'blocked'
   file?: string;
   // Assignment tracking
   assignedToBot?: {
     assigned: boolean;
     assignedAt: string;
     assignedBy: string;
+  };
+  // Auto-mode state
+  resumeContext?: {
+    autoModeActive: boolean;
+    activeIncidents: BacklogIncident[];
   };
   // Legacy fields (kept for backward compatibility)
   slug?: string;
@@ -76,6 +87,34 @@ interface BacklogJson {
     created: string;
     lastUpdated: string;
   };
+}
+
+export interface ReadyBacklogItem {
+  id: string;
+  title: string;
+  model: ModelSelection;
+}
+
+export function mapJsonStatusToFrontend(status: string): 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked' {
+  switch (status) {
+    case 'ready':
+    case 'pending':
+    case 'open':
+      return 'backlog';
+    case 'in_progress':
+    case 'testing':
+      return 'in_progress';
+    case 'in_review':
+    case 'inReview':
+      return 'in_review';
+    case 'blocked':
+      return 'blocked';
+    case 'done':
+    case 'completed':
+      return 'done';
+    default:
+      return 'backlog';
+  }
 }
 
 export class BacklogReader {
@@ -177,32 +216,7 @@ export class BacklogReader {
       const storiesMap = new Map<string, BacklogStoryInfo>();
 
       for (const item of backlogJson.items) {
-        // Map JSON status to our status (UKB-003: added 'blocked' and 'in_review')
-        let status: 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked';
-        switch (item.status) {
-          case 'ready':
-          case 'pending':
-          case 'open':
-            status = 'backlog';
-            break;
-          case 'in_progress':
-          case 'testing':
-            status = 'in_progress';
-            break;
-          case 'in_review':
-          case 'inReview':
-            status = 'in_review';
-            break;
-          case 'blocked':
-            status = 'blocked';
-            break;
-          case 'done':
-          case 'completed':
-            status = 'done';
-            break;
-          default:
-            status = 'backlog';
-        }
+        const status = mapJsonStatusToFrontend(item.status);
 
         // Map effort number to string
         const effortMap: Record<number, string> = {
@@ -563,6 +577,104 @@ export class BacklogReader {
       await fs.writeFile(backlogJsonPath, JSON.stringify(backlogJson, null, 2), 'utf-8');
 
       return { assigned: newAssigned };
+    });
+  }
+
+  /**
+   * Returns backlog items eligible for auto-mode execution (status ready/open/pending),
+   * excluding any IDs already running or queued.
+   * Used by AutoModeBacklogOrchestrator to find the next schedulable items.
+   */
+  async getReadyBacklogItems(
+    projectPath: string,
+    excludeIds: Set<string> = new Set()
+  ): Promise<ReadyBacklogItem[]> {
+    const backlogPath = projectDir(projectPath, 'backlog');
+    const backlogJsonPath = join(backlogPath, 'backlog-index.json');
+
+    try {
+      const content = await fs.readFile(backlogJsonPath, 'utf-8');
+      const backlogJson: BacklogJson = JSON.parse(content);
+
+      const readyStatuses = new Set(['ready', 'open', 'pending']);
+      const validModels: ModelSelection[] = ['opus', 'sonnet', 'haiku', 'glm-5', 'google/gemini-3-flash-preview', 'google/gemini-3-pro-preview'];
+
+      return backlogJson.items
+        .filter(item => readyStatuses.has(item.status) && !excludeIds.has(item.id))
+        .map(item => ({
+          id: item.id,
+          title: item.title,
+          model: (item.model && validModels.includes(item.model as ModelSelection))
+            ? (item.model as ModelSelection)
+            : 'opus'
+        }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * PAM-FIX-007: Flip a backlog item's status to 'in_progress'. Called by
+   * AutoModeBacklogOrchestrator when a slot starts, so the UI moves the
+   * item out of Backlog into In Progress.
+   */
+  public async markItemInProgress(
+    projectPath: string,
+    itemId: string
+  ): Promise<void> {
+    const backlogPath = projectDir(projectPath, 'backlog');
+    const backlogJsonPath = join(backlogPath, 'backlog-index.json');
+
+    await withKanbanLock(backlogPath, async () => {
+      let content: string;
+      try {
+        content = await fs.readFile(backlogJsonPath, 'utf-8');
+      } catch {
+        return;
+      }
+      const backlogJson: BacklogJson = JSON.parse(content);
+      const item = backlogJson.items.find(i => i.id === itemId);
+      if (!item) return;
+      if (item.status === 'in_progress') return;
+      item.status = 'in_progress';
+      await fs.writeFile(backlogJsonPath, JSON.stringify(backlogJson, null, 2));
+    });
+  }
+
+  /**
+   * PAM-FIX-006: Reset backlog items with status 'in_progress' that have no
+   * active orchestrator slot back to 'ready'. Mirror of
+   * SpecsReader.resetStaleInProgress.
+   *
+   * @param activeIds Item IDs currently held by orchestrator slots — left untouched.
+   * @returns IDs of items that were recovered.
+   */
+  public async resetStaleInProgressItems(
+    projectPath: string,
+    activeIds: Set<string>
+  ): Promise<string[]> {
+    const backlogPath = projectDir(projectPath, 'backlog');
+    const backlogJsonPath = join(backlogPath, 'backlog-index.json');
+
+    return await withKanbanLock(backlogPath, async () => {
+      let content: string;
+      try {
+        content = await fs.readFile(backlogJsonPath, 'utf-8');
+      } catch {
+        return [];
+      }
+      const backlogJson: BacklogJson = JSON.parse(content);
+      const recovered: string[] = [];
+      for (const item of backlogJson.items) {
+        if (item.status === 'in_progress' && !activeIds.has(item.id)) {
+          item.status = 'ready';
+          recovered.push(item.id);
+        }
+      }
+      if (recovered.length > 0) {
+        await fs.writeFile(backlogJsonPath, JSON.stringify(backlogJson, null, 2));
+      }
+      return recovered;
     });
   }
 }

@@ -72,6 +72,12 @@ export interface KanbanBoard {
   assignedToBot?: boolean;
   isReady?: boolean;
   lastIncident?: KanbanAutoModeIncident | null;
+  activeIncidents: KanbanAutoModeIncident[];
+}
+
+export interface ReadyStoryInfo {
+  id: string;
+  title: string;
 }
 
 export interface StoryDetail {
@@ -161,6 +167,7 @@ interface KanbanJsonExecution {
   completedAt: string | null;
   model: string | null;
   lastIncident?: KanbanAutoModeIncident | null;
+  activeIncidents?: KanbanAutoModeIncident[];
 }
 
 interface KanbanJsonStoryTiming {
@@ -343,8 +350,23 @@ export class SpecsReader {
   }
 
   /**
-   * Persists the latest auto-mode incident (crash, stall, prompt-stuck, timeout) in kanban.json.
-   * Used as a safety net for WebSocket-lost notifications: on reload, the UI re-surfaces this.
+   * Returns active incidents from execution, migrating V1 lastIncident → activeIncidents on read.
+   * V1 kanbans only have lastIncident (single); V2+ use activeIncidents[].
+   */
+  private getActiveIncidents(execution: KanbanJsonExecution | undefined): KanbanAutoModeIncident[] {
+    if (!execution) return [];
+    if (execution.activeIncidents && execution.activeIncidents.length > 0) {
+      return execution.activeIncidents;
+    }
+    // V1 one-shot migration: lastIncident → activeIncidents
+    if (execution.lastIncident) {
+      return [execution.lastIncident];
+    }
+    return [];
+  }
+
+  /**
+   * Appends an auto-mode incident to activeIncidents[]. Migrates V1 lastIncident on first write.
    */
   public async setAutoModeIncident(
     projectPath: string,
@@ -363,7 +385,10 @@ export class SpecsReader {
         completedAt: null,
         model: null
       };
-      kanban.execution.lastIncident = incident;
+
+      const existing = this.getActiveIncidents(kanban.execution);
+      kanban.execution.activeIncidents = [...existing, incident];
+      kanban.execution.lastIncident = null;
 
       this.addChangeLogEntry(
         kanban,
@@ -377,18 +402,108 @@ export class SpecsReader {
   }
 
   /**
-   * Clears any persisted auto-mode incident. Called when the user dismisses the warning
-   * or when the next story successfully starts.
+   * Removes a specific incident (by storyId) or clears all incidents.
+   * Passing no storyId clears everything.
    */
-  public async clearAutoModeIncident(projectPath: string, specId: string): Promise<void> {
+  public async clearAutoModeIncident(projectPath: string, specId: string, storyId?: string): Promise<void> {
     const specPath = projectDir(projectPath, 'specs', specId);
 
     await withKanbanLock(specPath, async () => {
       const kanban = await this.readKanbanJsonUnlocked(specPath);
-      if (!kanban || !kanban.execution?.lastIncident) return;
+      if (!kanban || !kanban.execution) return;
 
+      const current = this.getActiveIncidents(kanban.execution);
+      if (current.length === 0) return;
+
+      kanban.execution.activeIncidents = storyId
+        ? current.filter(i => i.storyId !== storyId)
+        : [];
       kanban.execution.lastIncident = null;
+
       await this.writeKanbanJsonUnlocked(specPath, kanban);
+    });
+  }
+
+  /**
+   * Returns stories/tasks with status 'ready', excluding any in excludeIds.
+   * Used by AutoModeSpecOrchestrator to find the next schedulable items.
+   * Works for both V1 (stories[]) and V2/Lean (tasks[]) kanban formats.
+   */
+  public async getReadyStories(
+    projectPath: string,
+    specId: string,
+    excludeIds: Set<string> = new Set()
+  ): Promise<ReadyStoryInfo[]> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+    const kanban = await this.readKanbanJson(specPath);
+    if (!kanban) return [];
+
+    if (isV2Kanban(kanban)) {
+      return kanban.tasks
+        .filter(t => t.status === 'ready' && !excludeIds.has(t.id))
+        .map(t => ({ id: t.id, title: t.title || '' }));
+    }
+    return kanban.stories
+      .filter(s => s.status === 'ready' && !excludeIds.has(s.id))
+      .map(s => ({ id: s.id, title: s.title }));
+  }
+
+  /**
+   * PAM-FIX-006: Reset stories with status 'in_progress' that have no active
+   * orchestrator slot back to 'ready'. Prevents zombie state after crash,
+   * server restart, or auto-toggle on already-running story.
+   *
+   * @param activeIds Story IDs currently held by orchestrator slots — left untouched.
+   * @returns IDs of stories that were recovered.
+   */
+  public async resetStaleInProgress(
+    projectPath: string,
+    specId: string,
+    activeIds: Set<string>
+  ): Promise<string[]> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+    return await withKanbanLock(specPath, async () => {
+      const kanban = await this.readKanbanJsonUnlocked(specPath);
+      if (!kanban) return [];
+      const recovered: string[] = [];
+
+      if (isV2Kanban(kanban)) {
+        for (const task of kanban.tasks) {
+          if (task.status === 'in_progress' && !activeIds.has(task.id)) {
+            task.status = 'ready';
+            task.phase = 'pending';
+            if (task.timing) task.timing.startedAt = null;
+            recovered.push(task.id);
+            this.addChangeLogEntry(
+              kanban,
+              'stale_recovery',
+              task.id,
+              'Reset in_progress → ready (no active slot at orchestrator-init)'
+            );
+          }
+        }
+      } else {
+        for (const story of kanban.stories) {
+          if (story.status === 'in_progress' && !activeIds.has(story.id)) {
+            story.status = 'ready';
+            story.phase = 'pending';
+            story.timing.startedAt = null;
+            recovered.push(story.id);
+            this.addChangeLogEntry(
+              kanban,
+              'stale_recovery',
+              story.id,
+              'Reset in_progress → ready (no active slot at orchestrator-init)'
+            );
+          }
+        }
+      }
+
+      if (recovered.length > 0) {
+        this.updateBoardStatus(kanban);
+        await this.writeKanbanJsonUnlocked(specPath, kanban);
+      }
+      return recovered;
     });
   }
 
@@ -524,6 +639,7 @@ export class SpecsReader {
       };
     });
 
+    const activeIncidents = this.getActiveIncidents(json.execution);
     return {
       specId,
       stories,
@@ -531,7 +647,9 @@ export class SpecsReader {
       currentPhase: json.resumeContext?.currentPhase ?? null,
       executionStatus: json.execution?.status ?? undefined,
       assignedToBot: json.assignedToBot?.assigned ?? false,
-      isReady: boardStatus.ready === boardStatus.total && boardStatus.total > 0
+      isReady: boardStatus.ready === boardStatus.total && boardStatus.total > 0,
+      activeIncidents,
+      lastIncident: activeIncidents[0] ?? null
     };
   }
 
@@ -563,6 +681,7 @@ export class SpecsReader {
       };
     });
 
+    const activeIncidents = this.getActiveIncidents(json.execution);
     return {
       specId: json.spec.id,
       stories,
@@ -573,7 +692,8 @@ export class SpecsReader {
       // Compute isReady from actual story statuses instead of trusting stored boardStatus
       // (boardStatus can be stale if kanban was created/modified externally)
       isReady: json.stories.length > 0 && json.stories.every(s => s.status === 'ready'),
-      lastIncident: json.execution?.lastIncident ?? null
+      lastIncident: activeIncidents[0] ?? null,
+      activeIncidents
     };
   }
 
@@ -1100,7 +1220,8 @@ export class SpecsReader {
     const result: KanbanBoard = {
       specId,
       stories: [],
-      hasKanbanFile: false
+      hasKanbanFile: false,
+      activeIncidents: []
     };
 
     // Try to read kanban board for status

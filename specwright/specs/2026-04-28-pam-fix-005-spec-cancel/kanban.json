@@ -1,0 +1,213 @@
+{
+  "version": "2.0",
+  "mode": "lean",
+  "spec": {
+    "id": "2026-04-28-pam-fix-005-spec-cancel",
+    "name": "Spec-Auto-Mode Mid-Run Cancel Fix",
+    "prefix": "SAMC",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-04-28T06:53:29.875Z",
+    "specTier": "S",
+    "implementationPlan": "implementation-plan.md"
+  },
+  "resumeContext": {
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "feature/parallel-auto-mode",
+    "gitStrategy": "current-branch",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed SAMC-999",
+    "nextAction": "All tasks complete",
+    "progressIndex": 3,
+    "totalStories": 3
+  },
+  "execution": {
+    "status": "completed",
+    "startedAt": "2026-04-28T07:16:19.092Z",
+    "completedAt": "2026-04-28T07:21:01.442Z",
+    "model": null
+  },
+  "tasks": [
+    {
+      "id": "SAMC-001",
+      "title": "Frontend: send workflow.auto-mode.cancel on toggle-off",
+      "description": "Add gateway.send({type:'workflow.auto-mode.cancel',specId}) to else-branch of handleAutoModeToggle, guarded by selectedSpec.",
+      "planSection": "requirements-clarification.md → Functional Requirements 1-3",
+      "dependencies": [],
+      "status": "done",
+      "phase": "done",
+      "model": "claude-opus-4-7",
+      "timing": {
+        "startedAt": "2026-04-28T07:16:19.092Z",
+        "completedAt": "2026-04-28T07:17:05.228Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/frontend/src/views/dashboard-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "94675e15924be7b71e2f59f06b7f2597c6b27fcb",
+            "message": "fix(SAMC-001): send workflow.auto-mode.cancel on spec toggle-off",
+            "timestamp": "2026-04-28T09:16:59+02:00"
+          }
+        ]
+      }
+    },
+    {
+      "id": "SAMC-997",
+      "title": "Code Review",
+      "description": "Full-feature diff review.",
+      "planSection": "System: Code Review",
+      "dependencies": [
+        "SAMC-001"
+      ],
+      "status": "done",
+      "phase": "done",
+      "model": "claude-opus-4-7",
+      "timing": {
+        "startedAt": "2026-04-28T07:17:45.389Z",
+        "completedAt": "2026-04-28T07:19:38.035Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "specwright/specs/2026-04-28-pam-fix-005-spec-cancel/review-report.md"
+        ],
+        "commits": []
+      }
+    },
+    {
+      "id": "SAMC-999",
+      "title": "Finalize PR",
+      "description": "User-todos, PR creation, cleanup.",
+      "planSection": "System: Finalize PR",
+      "dependencies": [
+        "SAMC-997"
+      ],
+      "status": "done",
+      "phase": "done",
+      "model": "claude-opus-4-7",
+      "timing": {
+        "startedAt": "2026-04-28T07:20:18.553Z",
+        "completedAt": "2026-04-28T07:21:01.442Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "specwright/specs/2026-04-28-pam-fix-005-spec-cancel/kanban.json",
+          "specwright/specs/2026-04-28-pam-fix-005-spec-cancel/review-report.md"
+        ],
+        "commits": []
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 3,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 3,
+    "blocked": 0
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-04-28T06:53:29.875Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Lean kanban initialized with 3 tasks via MCP tool"
+    },
+    {
+      "timestamp": "2026-04-28T06:54:15.203Z",
+      "action": "model_changed",
+      "storyId": "SAMC-001",
+      "details": "Model changed from null to sonnet"
+    },
+    {
+      "timestamp": "2026-04-28T06:54:19.578Z",
+      "action": "model_changed",
+      "storyId": "SAMC-999",
+      "details": "Model changed from null to sonnet"
+    },
+    {
+      "timestamp": "2026-04-28T06:54:43.738Z",
+      "action": "status_changed",
+      "storyId": "SAMC-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T06:54:43.881Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git current-branch setup via UI: feature/parallel-auto-mode"
+    },
+    {
+      "timestamp": "2026-04-28T07:15:51.295Z",
+      "action": "status_changed",
+      "storyId": "SAMC-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T07:15:51.429Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git current-branch setup via UI: feature/parallel-auto-mode"
+    },
+    {
+      "timestamp": "2026-04-28T07:15:51.447Z",
+      "action": "stale_recovery",
+      "storyId": "SAMC-001",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-04-28T07:16:19.095Z",
+      "action": "status_changed",
+      "storyId": "SAMC-001",
+      "details": "Task started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T07:17:05.228Z",
+      "action": "status_changed",
+      "storyId": "SAMC-001",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-28T07:17:05.553Z",
+      "action": "dependency_resolved",
+      "storyId": "SAMC-997",
+      "details": "Unblocked: all dependencies done/in_review (SAMC-001)"
+    },
+    {
+      "timestamp": "2026-04-28T07:17:45.391Z",
+      "action": "status_changed",
+      "storyId": "SAMC-997",
+      "details": "Task started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T07:19:38.035Z",
+      "action": "status_changed",
+      "storyId": "SAMC-997",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-28T07:19:38.366Z",
+      "action": "dependency_resolved",
+      "storyId": "SAMC-999",
+      "details": "Unblocked: all dependencies done/in_review (SAMC-997)"
+    },
+    {
+      "timestamp": "2026-04-28T07:20:18.557Z",
+      "action": "status_changed",
+      "storyId": "SAMC-999",
+      "details": "Task started: ready → in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T07:21:01.442Z",
+      "action": "status_changed",
+      "storyId": "SAMC-999",
+      "details": "Task completed: in_progress → done"
+    }
+  ]
+}

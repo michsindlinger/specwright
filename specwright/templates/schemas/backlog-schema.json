@@ -145,7 +145,31 @@
         "completedAt": {
           "type": ["string", "null"],
           "format": "date-time"
+        },
+        "resumeContext": {
+          "type": ["object", "null"],
+          "description": "Auto-mode execution state for this item",
+          "properties": {
+            "autoModeActive": {
+              "type": "boolean"
+            },
+            "activeIncidents": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/backlogIncident"
+              }
+            }
+          }
         }
+      }
+    },
+    "backlogIncident": {
+      "type": "object",
+      "required": ["message", "timestamp"],
+      "properties": {
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "phase": { "type": ["string", "null"] }
       }
     },
     "executionRecord": {

@@ -1,13 +1,14 @@
 /**
  * KanbanFileWatcher Service
  *
- * Watches kanban.json for story status changes during Auto-Mode execution.
- * Uses fs.watch() with debouncing and withKanbanLock() for safe reads.
+ * Watches kanban.json or backlog-index.json for story/item status changes
+ * during Auto-Mode execution. Supports watching a Set of IDs simultaneously
+ * (multi-slot parallel execution).
  *
  * Events:
- * - 'story.completed' (storyId: string) - Story status changed to 'done'
- * - 'story.failed' (storyId: string, error: string) - Story status changed to 'failed'
- * - 'timeout' (storyId: string) - Story execution exceeded timeout
+ * - 'story.completed' (storyId: string) - Item status changed to done/completed
+ * - 'story.failed' (storyId: string, error: string) - Item status changed to failed/blocked
+ * - 'timeout' (storyId: string) - Watch session exceeded timeout
  */
 
 import { EventEmitter } from 'events';
@@ -19,36 +20,40 @@ import { withKanbanLock } from '../utils/kanban-lock.js';
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const DEBOUNCE_MS = 300;
 
-interface KanbanStory {
+export type WatchFilename = 'kanban.json' | 'backlog-index.json';
+
+interface WatchableItem {
   id: string;
   status: string;
 }
 
-interface KanbanJsonV1 {
-  stories?: KanbanStory[];
-  currentPhase?: string;
-  executionStatus?: string;
-}
-
-interface KanbanJsonV2 {
-  mode: 'lean';
-  version: '2.0';
-  tasks?: KanbanStory[];
-  currentPhase?: string;
-  executionStatus?: string;
-}
-
-type KanbanJson = KanbanJsonV1 | KanbanJsonV2;
-
-function isV2Kanban(kanban: KanbanJson): kanban is KanbanJsonV2 {
-  return (kanban as KanbanJsonV2).mode === 'lean' || (kanban as KanbanJsonV2).version === '2.0';
-}
-
-function getItemList(kanban: KanbanJson): KanbanStory[] {
-  if (isV2Kanban(kanban)) {
-    return kanban.tasks ?? [];
+function extractItems(data: unknown): WatchableItem[] {
+  if (!data || typeof data !== 'object') return [];
+  const d = data as Record<string, unknown>;
+  // V2 Lean kanban
+  if (d.mode === 'lean' || d.version === '2.0') {
+    return (d.tasks as WatchableItem[] | undefined) ?? [];
   }
-  return kanban.stories ?? [];
+  // V1 kanban
+  if (Array.isArray(d.stories)) {
+    return d.stories as WatchableItem[];
+  }
+  // Backlog index
+  if (Array.isArray(d.items)) {
+    return d.items as WatchableItem[];
+  }
+  return [];
+}
+
+function isCompletedStatus(status: string, filename: WatchFilename): boolean {
+  return status === 'done' || (filename === 'backlog-index.json' && status === 'completed');
+}
+
+function isFailedStatus(status: string, filename: WatchFilename): boolean {
+  if (status === 'failed') return true;
+  // For backlog items, 'blocked' indicates Claude failed and item has an incident
+  if (filename === 'backlog-index.json' && status === 'blocked') return true;
+  return false;
 }
 
 export class KanbanFileWatcher extends EventEmitter {
@@ -56,43 +61,45 @@ export class KanbanFileWatcher extends EventEmitter {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private timeoutTimer: ReturnType<typeof setTimeout> | null = null;
   private specPath: string | null = null;
-  private currentStoryId: string | null = null;
+  private watchFilename: WatchFilename = 'kanban.json';
+  private watchedIds: Set<string> = new Set();
+  /** Tracks last emitted terminal status per ID to prevent duplicate events. */
+  private processedTransitions: Map<string, string> = new Map();
   private isProcessing = false;
 
   /**
-   * Start watching kanban.json for story status changes.
+   * Start watching a file for status changes across a set of IDs.
    *
-   * @param specPath - Path to the spec directory containing kanban.json
-   * @param storyId - Story ID to watch for completion
-   * @param timeoutMs - Maximum time to wait for completion (default: 30 minutes)
+   * @param specPath - Directory containing the file to watch
+   * @param filename - 'kanban.json' or 'backlog-index.json'
+   * @param ids - Set of story/item IDs to watch
+   * @param timeoutMs - Max wait time for all IDs (default: 30 minutes)
    */
-  public watch(specPath: string, storyId: string, timeoutMs: number = DEFAULT_TIMEOUT_MS): void {
-    // Clean up any previous watch
+  public watch(
+    specPath: string,
+    filename: WatchFilename,
+    ids: Set<string>,
+    timeoutMs: number = DEFAULT_TIMEOUT_MS
+  ): void {
     this.unwatch();
 
     this.specPath = specPath;
-    this.currentStoryId = storyId;
+    this.watchFilename = filename;
+    this.watchedIds = new Set(ids);
+    this.processedTransitions.clear();
 
-    const kanbanJsonPath = join(specPath, 'kanban.json');
-
-    if (!existsSync(kanbanJsonPath)) {
-      console.warn(`[KanbanFileWatcher] kanban.json not found at ${kanbanJsonPath}`);
+    const filePath = join(specPath, filename);
+    if (!existsSync(filePath)) {
+      console.warn(`[KanbanFileWatcher] ${filename} not found at ${filePath}`);
       return;
     }
 
-    console.log(`[KanbanFileWatcher] Watching ${kanbanJsonPath} for story ${storyId}`);
+    console.log(`[KanbanFileWatcher] Watching ${filePath} for ids: ${[...ids].join(', ')}`);
 
-    // Watch the spec directory (not the file directly - more reliable for editors that replace files)
-    this.watcher = watch(specPath, (_eventType, filename) => {
-      if (filename !== 'kanban.json') {
-        return;
-      }
+    this.watcher = watch(specPath, (_eventType, changedFilename) => {
+      if (changedFilename !== this.watchFilename) return;
 
-      // Debounce: kanban.json may receive multiple rapid writes
-      if (this.debounceTimer) {
-        clearTimeout(this.debounceTimer);
-      }
-
+      if (this.debounceTimer) clearTimeout(this.debounceTimer);
       this.debounceTimer = setTimeout(() => {
         this.checkStoryStatus().catch(err => {
           console.error('[KanbanFileWatcher] Error checking story status:', err);
@@ -100,28 +107,45 @@ export class KanbanFileWatcher extends EventEmitter {
       }, DEBOUNCE_MS);
     });
 
-    // Set up timeout
     this.timeoutTimer = setTimeout(() => {
-      console.warn(`[KanbanFileWatcher] Timeout for story ${storyId} after ${timeoutMs}ms`);
-      this.emit('timeout', storyId);
+      const representativeId = [...this.watchedIds][0] ?? '';
+      console.warn(`[KanbanFileWatcher] Timeout after ${timeoutMs}ms (ids: ${[...this.watchedIds].join(', ')})`);
+      this.emit('timeout', representativeId);
       this.unwatch();
     }, timeoutMs);
   }
 
   /**
-   * Update the watched story ID without creating a new watcher.
-   * Used when moving to the next story in the same spec.
+   * Add an ID to the watched set at runtime (e.g. when a new slot starts).
+   */
+  public addId(id: string): void {
+    this.watchedIds.add(id);
+    console.log(`[KanbanFileWatcher] Added watch id: ${id}`);
+  }
+
+  /**
+   * Remove an ID from the watched set (e.g. when a slot completes).
+   * Also clears its transition record so it can be re-added cleanly.
+   */
+  public removeId(id: string): void {
+    this.watchedIds.delete(id);
+    this.processedTransitions.delete(id);
+    console.log(`[KanbanFileWatcher] Removed watch id: ${id}`);
+  }
+
+  /**
+   * Replace the entire watched set with a single ID.
+   * Resets the timeout.
    *
-   * @param storyId - New story ID to watch
-   * @param timeoutMs - New timeout (resets the timer)
+   * @deprecated Use addId/removeId for multi-slot management. Kept for
+   * backward compatibility with AutoModeCloudSession.
    */
   public updateStoryId(storyId: string, timeoutMs: number = DEFAULT_TIMEOUT_MS): void {
-    this.currentStoryId = storyId;
+    this.watchedIds.clear();
+    this.processedTransitions.clear();
+    this.watchedIds.add(storyId);
 
-    // Reset timeout
-    if (this.timeoutTimer) {
-      clearTimeout(this.timeoutTimer);
-    }
+    if (this.timeoutTimer) clearTimeout(this.timeoutTimer);
     this.timeoutTimer = setTimeout(() => {
       console.warn(`[KanbanFileWatcher] Timeout for story ${storyId} after ${timeoutMs}ms`);
       this.emit('timeout', storyId);
@@ -139,69 +163,58 @@ export class KanbanFileWatcher extends EventEmitter {
       this.watcher.close();
       this.watcher = null;
     }
-
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
-
     if (this.timeoutTimer) {
       clearTimeout(this.timeoutTimer);
       this.timeoutTimer = null;
     }
-
     this.specPath = null;
-    this.currentStoryId = null;
+    this.watchedIds.clear();
+    this.processedTransitions.clear();
     this.isProcessing = false;
   }
 
-  /**
-   * Check the current story's status in kanban.json.
-   * Uses withKanbanLock for safe concurrent access.
-   */
   private async checkStoryStatus(): Promise<void> {
-    if (!this.specPath || !this.currentStoryId || this.isProcessing) {
-      return;
-    }
+    if (!this.specPath || this.watchedIds.size === 0 || this.isProcessing) return;
 
     this.isProcessing = true;
-
     try {
-      const kanbanJsonPath = join(this.specPath, 'kanban.json');
+      const filePath = join(this.specPath, this.watchFilename);
+      if (!existsSync(filePath)) return;
 
-      if (!existsSync(kanbanJsonPath)) {
-        return;
-      }
+      const content = await withKanbanLock<string>(this.specPath, () => readFile(filePath, 'utf-8'));
+      const data = JSON.parse(content) as unknown;
+      const items = extractItems(data);
+      if (items.length === 0) return;
 
-      const kanban = await withKanbanLock<KanbanJson>(this.specPath, async () => {
-        const content = await readFile(kanbanJsonPath, 'utf-8');
-        return JSON.parse(content) as KanbanJson;
-      });
+      for (const id of this.watchedIds) {
+        const item = items.find(i => i.id === id);
+        if (!item) {
+          console.warn(`[KanbanFileWatcher] ID ${id} not found in ${this.watchFilename}`);
+          continue;
+        }
 
-      const items = getItemList(kanban);
-      if (items.length === 0) {
-        return;
-      }
+        const lastSeen = this.processedTransitions.get(id);
 
-      const story = items.find(s => s.id === this.currentStoryId);
-
-      if (!story) {
-        console.warn(`[KanbanFileWatcher] Story ${this.currentStoryId} not found in kanban.json`);
-        return;
-      }
-
-      if (story.status === 'done') {
-        console.log(`[KanbanFileWatcher] Story ${this.currentStoryId} completed`);
-        const storyId = this.currentStoryId;
-        this.emit('story.completed', storyId);
-      } else if (story.status === 'failed') {
-        console.log(`[KanbanFileWatcher] Story ${this.currentStoryId} failed`);
-        const storyId = this.currentStoryId;
-        this.emit('story.failed', storyId, 'Story marked as failed in kanban.json');
+        if (isCompletedStatus(item.status, this.watchFilename)) {
+          if (lastSeen !== item.status) {
+            this.processedTransitions.set(id, item.status);
+            console.log(`[KanbanFileWatcher] ${id} completed (status: ${item.status})`);
+            this.emit('story.completed', id);
+          }
+        } else if (isFailedStatus(item.status, this.watchFilename)) {
+          if (lastSeen !== item.status) {
+            this.processedTransitions.set(id, item.status);
+            console.log(`[KanbanFileWatcher] ${id} failed (status: ${item.status})`);
+            this.emit('story.failed', id, `Item marked as ${item.status}`);
+          }
+        }
       }
     } catch (error) {
-      // Lock timeout or JSON parse error - not critical, will retry on next change
-      console.warn('[KanbanFileWatcher] Error reading kanban.json:', error instanceof Error ? error.message : error);
+      console.warn('[KanbanFileWatcher] Error reading file:', error instanceof Error ? error.message : error);
     } finally {
       this.isProcessing = false;
     }

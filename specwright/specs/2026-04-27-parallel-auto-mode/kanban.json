@@ -12,22 +12,22 @@
     "implementationPlan": "implementation-plan.md"
   },
   "resumeContext": {
-    "currentPhase": "1-complete",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
-    "gitStrategy": null,
+    "gitBranch": "feature/parallel-auto-mode",
+    "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Lean kanban created via MCP",
-    "nextAction": "Setup git worktree or branch",
-    "progressIndex": 0,
-    "totalStories": 11
+    "lastAction": "Completed PAM-FIX-007",
+    "nextAction": "All tasks complete",
+    "progressIndex": 17,
+    "totalStories": 17
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
-    "completedAt": null,
+    "status": "completed",
+    "startedAt": "2026-04-27T17:30:44.829Z",
+    "completedAt": "2026-04-27T19:21:48.272Z",
     "model": null
   },
   "tasks": [
@@ -37,16 +37,30 @@
       "description": "Backlog-Schema um 'blocked'-Status erweitern, BacklogJsonItem TS-Union erweitern, mapJsonStatusToFrontend ergänzen. Audit: alle backlog-index.json-Writes auf withKanbanLock(backlogPath, ...) umstellen. resumeContext-Feld in Schema einführen.",
       "planSection": "Phase 1: Schema- und Reader-Vorarbeit (PAM-001, PAM-002, PAM-003)",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T17:18:59.181Z",
+        "completedAt": "2026-04-27T17:29:58.149Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "specwright/templates/schemas/backlog-schema.json",
+          "ui/src/server/backlog-reader.ts",
+          "ui/src/server/backlog-item-storage.ts",
+          "ui/src/server/workflow-executor.ts",
+          "ui/src/server/websocket.ts",
+          "ui/tests/integration/kanban-ui-initialization.test.ts",
+          "specwright/specs/2026-04-27-parallel-auto-mode/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "df301a03d9617ba688310f6839d57996fc438a16",
+            "message": "feat(PAM-001): schema/reader vorarbeit + withKanbanLock audit",
+            "timestamp": "2026-04-27T19:29:49+02:00"
+          }
+        ]
       }
     },
     {
@@ -57,15 +71,20 @@
       "dependencies": [
         "PAM-001"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T17:30:44.829Z",
+        "completedAt": "2026-04-27T17:36:59.696Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/specs-reader.ts",
+          "ui/src/server/backlog-reader.ts",
+          "ui/frontend/src/components/kanban-board.ts",
+          "ui/tests/unit/pam-002-reader-helpers.test.ts"
+        ],
         "commits": []
       }
     },
@@ -75,16 +94,26 @@
       "description": "API erweitern: watch(specPath, filename: 'kanban.json'|'backlog-index.json', ids: Set<string>), addId(id), removeId(id). Directory-Watching beibehalten (macOS-Reliabilität). Events tragen storyId-Payload.",
       "planSection": "Phase 1: Schema- und Reader-Vorarbeit (PAM-001, PAM-002, PAM-003)",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T17:37:28.278Z",
+        "completedAt": "2026-04-27T17:42:28.940Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/services/kanban-file-watcher.ts",
+          "ui/src/server/services/auto-mode-cloud-session.ts",
+          "ui/tests/unit/pam-003-watcher-api.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "8acc640",
+            "message": "feat(PAM-003): KanbanFileWatcher Set-of-IDs API",
+            "timestamp": "2026-04-27T19:47:00+02:00"
+          }
+        ]
       }
     },
     {
@@ -97,16 +126,33 @@
         "PAM-002",
         "PAM-003"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T17:43:18.743Z",
+        "completedAt": "2026-04-27T18:06:35.593Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/services/project-concurrency-gate.ts",
+          "ui/src/server/services/auto-mode-story-slot.ts",
+          "ui/src/server/services/auto-mode-orchestrator-base.ts",
+          "ui/src/server/services/auto-mode-spec-orchestrator.ts",
+          "ui/src/server/services/auto-mode-backlog-orchestrator.ts",
+          "ui/src/server/workflow-executor.ts",
+          "ui/src/server/backlog-reader.ts",
+          "ui/src/server/specs-reader.ts",
+          "ui/frontend/src/components/kanban-board.ts",
+          "ui/tests/unit/pam-002-reader-helpers.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "8c1554f",
+            "message": "feat(PAM-004): Slot + Base-Orchestrator + Backlog-PTY-Migration",
+            "timestamp": "2026-04-27T20:05:00Z"
+          }
+        ]
       }
     },
     {
@@ -117,15 +163,20 @@
       "dependencies": [
         "PAM-004"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T18:07:08.490Z",
+        "completedAt": "2026-04-27T18:16:59.894Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/utils/worktree-story.ts",
+          "ui/src/server/workflow-executor.ts",
+          "ui/tests/unit/pam-005-worktree-helpers.test.ts",
+          "specwright/specs/2026-04-27-parallel-auto-mode/integration-context.md"
+        ],
         "commits": []
       }
     },
@@ -137,16 +188,26 @@
       "dependencies": [
         "PAM-004"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T18:17:29.994Z",
+        "completedAt": "2026-04-27T18:26:57.609Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/websocket.ts",
+          "ui/src/server/workflow-executor.ts",
+          "ui/frontend/src/views/dashboard-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "6c85f9a",
+            "message": "feat(PAM-006): Backlog-Backend-Scheduling + Frontend-Timer-Entfernung",
+            "timestamp": "2026-04-27T20:26:51+02:00"
+          }
+        ]
       }
     },
     {
@@ -158,16 +219,28 @@
         "PAM-005",
         "PAM-006"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T18:27:35.403Z",
+        "completedAt": "2026-04-27T18:38:43.731Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/services/project-concurrency-gate.ts",
+          "ui/src/server/services/auto-mode-orchestrator-base.ts",
+          "ui/src/server/services/auto-mode-spec-orchestrator.ts",
+          "ui/src/server/services/auto-mode-backlog-orchestrator.ts",
+          "ui/src/server/workflow-executor.ts"
+        ],
+        "commits": [
+          {
+            "hash": "7fbde4c",
+            "message": "feat(PAM-007): Echte Parallelität freischalten (maxConcurrent=2)",
+            "timestamp": "2026-04-27T20:45:00+02:00"
+          }
+        ]
       }
     },
     {
@@ -178,16 +251,29 @@
       "dependencies": [
         "PAM-007"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T18:39:18.073Z",
+        "completedAt": "2026-04-27T18:53:50.503Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/components/auto-mode-error-modal.ts",
+          "ui/frontend/src/components/kanban-board.ts",
+          "ui/frontend/src/views/dashboard-view.ts",
+          "ui/src/server/services/auto-mode-orchestrator-base.ts",
+          "ui/src/server/websocket.ts",
+          "ui/src/server/workflow-executor.ts"
+        ],
+        "commits": [
+          {
+            "hash": "02b457e",
+            "message": "feat(PAM-008): Frontend Multi-Slot + Queued-State",
+            "timestamp": "2026-04-27"
+          }
+        ]
       }
     },
     {
@@ -205,16 +291,27 @@
         "PAM-007",
         "PAM-008"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "opus",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T18:53:50.842Z",
+        "completedAt": "2026-04-27T19:03:54.483Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "specwright/specs/2026-04-27-parallel-auto-mode/review-report.md",
+          "specwright/specs/2026-04-27-parallel-auto-mode/kanban.json",
+          "ui/src/server/utils/worktree-story.ts",
+          "ui/tests/unit/pam-005-worktree-helpers.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "05a0629",
+            "message": "feat(PAM-005): commit worktree-per-story helpers + tests",
+            "timestamp": "2026-04-27T19:00:00+02:00"
+          }
+        ]
       }
     },
     {
@@ -232,15 +329,18 @@
         "PAM-007",
         "PAM-008"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "opus",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T19:03:54.818Z",
+        "completedAt": "2026-04-27T19:07:08.705Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-04-27-parallel-auto-mode/validation-report.md",
+          "specwright/specs/2026-04-27-parallel-auto-mode/integration-context.md"
+        ],
         "commits": []
       }
     },
@@ -253,27 +353,184 @@
         "PAM-997",
         "PAM-998"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-27T19:07:35.204Z",
+        "completedAt": "2026-04-27T19:08:53.030Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-04-27-parallel-auto-mode/kanban.json",
+          "specwright/specs/2026-04-27-parallel-auto-mode/integration-context.md",
+          "specwright/specs/2026-04-27-parallel-auto-mode/review-report.md",
+          "specwright/specs/2026-04-27-parallel-auto-mode/validation-report.md"
+        ],
+        "commits": [
+          {
+            "hash": "12e9f16",
+            "message": "feat(PAM-999): finalize PR — spec housekeeping + reports",
+            "timestamp": "2026-04-27T21:00:00+02:00"
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAM-FIX-001",
+      "title": "Backlog-Orchestrator: FS-Isolation pro Item via Sub-Worktree",
+      "description": "Backlog-Orchestrator: FS-Isolation pro Item via Sub-Worktree",
+      "planSection": "",
+      "dependencies": [],
+      "status": "done",
+      "phase": "done",
+      "model": null,
+      "timing": {
+        "startedAt": "2026-04-27T19:08:53.369Z",
+        "completedAt": "2026-04-27T19:16:06.661Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/src/server/services/auto-mode-backlog-orchestrator.ts",
+          "ui/src/server/utils/worktree-story.ts",
+          "ui/src/server/workflow-executor.ts",
+          "ui/tests/unit/pam-005-worktree-helpers.test.ts",
+          "specwright/specs/2026-04-27-parallel-auto-mode/integration-context.md"
+        ],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-FIX-002",
+      "title": "SpecOrchestrator: WorkflowExecutor-Helper statt Inline-execSync nutzen",
+      "description": "SpecOrchestrator: WorkflowExecutor-Helper statt Inline-execSync nutzen",
+      "planSection": "",
+      "dependencies": [],
+      "status": "done",
+      "phase": "done",
+      "model": null,
+      "timing": {
+        "startedAt": "2026-04-27T19:16:06.999Z",
+        "completedAt": "2026-04-27T19:21:48.272Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/src/server/services/auto-mode-spec-orchestrator.ts",
+          "ui/src/server/workflow-executor.ts",
+          "specwright/specs/2026-04-27-parallel-auto-mode/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "ea548fd573b83589625d8e7f41ff1a06593f3787",
+            "message": "feat(PAM-FIX-002): SpecOrchestrator uses WorkflowExecutor helpers",
+            "timestamp": "2026-04-27T21:21:40+02:00"
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAM-FIX-004",
+      "title": "Auto-Mode: Tool-Block + Blocker-Marker (kein User-Prompt-Hang mehr)",
+      "description": "Auto-Mode-Sessions spawnen Claude mit --disallowed-tools AskUserQuestion + --append-system-prompt 'never ask'. Bei unrecoverable Blocker emittiert LLM <<BLOCKER:reason>>; CloudTerminalManager erkennt Marker und löst story.failed mit 'Blocker: reason' aus. Verhindert Endlos-Hänger wie bei IG-998 nach 7h.",
+      "planSection": "",
+      "dependencies": [],
+      "status": "done",
+      "phase": "done",
+      "model": "opus",
+      "timing": {
+        "startedAt": "2026-04-28T04:30:00.000Z",
+        "completedAt": "2026-04-28T04:35:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/src/server/services/auto-mode-cli-flags.ts",
+          "ui/src/server/services/cloud-terminal-manager.ts",
+          "ui/src/server/services/auto-mode-story-slot.ts",
+          "ui/src/server/services/auto-mode-cloud-session.ts",
+          "ui/tests/unit/pam-fix-004-blocker-pattern.test.ts"
+        ],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-FIX-005",
+      "title": "PROMPT_PATTERN erweitern um Claude-Code AskUserQuestion-UI",
+      "description": "PROMPT_PATTERN in cloud-terminal-manager.ts erweitern um die Footer-Patterns der AskUserQuestion-UI ('Enter to select … Esc to cancel', 'Chat about this', 'Type something.'). Layer 3 Safety-Net falls Layer 1 (Tool-Disable) umgangen wird.",
+      "planSection": "",
+      "dependencies": ["PAM-FIX-004"],
+      "status": "done",
+      "phase": "done",
+      "model": "opus",
+      "timing": {
+        "startedAt": "2026-04-28T04:35:00.000Z",
+        "completedAt": "2026-04-28T04:36:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/src/server/services/cloud-terminal-manager.ts",
+          "ui/tests/unit/pam-fix-004-blocker-pattern.test.ts"
+        ],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-FIX-006",
+      "title": "Auto-Mode: Stale-in_progress Recovery on Orchestrator-Init",
+      "description": "AutoModeOrchestratorBase.tick() ruft vor getReadySet() recoverStaleInProgress(activeIds), das in_progress-Stories ohne aktive Slots zurück auf 'ready' setzt. Verhindert Zombie-State nach Crash, Server-Restart oder Auto-Toggle-Klick auf bereits laufende Story (Symptom: Auto-Mode tut nichts, all-items-done feuert sofort, kanban zeigt in_progress ohne Cloud-Session).",
+      "planSection": "",
+      "dependencies": ["PAM-FIX-005"],
+      "status": "done",
+      "phase": "done",
+      "model": "opus",
+      "timing": {
+        "startedAt": "2026-04-28T09:00:00.000Z",
+        "completedAt": "2026-04-28T09:15:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/src/server/services/auto-mode-orchestrator-base.ts",
+          "ui/src/server/services/auto-mode-spec-orchestrator.ts",
+          "ui/src/server/services/auto-mode-backlog-orchestrator.ts",
+          "ui/src/server/specs-reader.ts",
+          "ui/src/server/backlog-reader.ts",
+          "ui/tests/unit/pam-fix-006-stale-recovery.test.ts"
+        ],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-FIX-007",
+      "title": "Auto-Mode: Story-Status auf in_progress flippen wenn Slot startet",
+      "description": "AutoModeOrchestratorBase.launchSlot() ruft markItemInProgress(itemId) vor slot.start() — Spec-Variante via specsReader.updateStoryStatus, Backlog-Variante via neuem backlogReader.markItemInProgress. Sonst bleibt Story status='ready' während Cloud-Session läuft → UI zeigt Story in Backlog-Spalte trotz 'Agent running'-Badge.",
+      "planSection": "",
+      "dependencies": ["PAM-FIX-006"],
+      "status": "done",
+      "phase": "done",
+      "model": "opus",
+      "timing": {
+        "startedAt": "2026-04-28T09:25:00.000Z",
+        "completedAt": "2026-04-28T09:32:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/src/server/services/auto-mode-orchestrator-base.ts",
+          "ui/src/server/services/auto-mode-spec-orchestrator.ts",
+          "ui/src/server/services/auto-mode-backlog-orchestrator.ts",
+          "ui/src/server/backlog-reader.ts",
+          "ui/tests/unit/pam-fix-006-stale-recovery.test.ts"
+        ],
         "commits": []
       }
     }
   ],
   "boardStatus": {
-    "total": 11,
-    "ready": 2,
+    "total": 17,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
-    "blocked": 9
+    "done": 17,
+    "blocked": 0
   },
   "changeLog": [
     {
@@ -317,6 +574,282 @@
       "action": "model_changed",
       "storyId": "PAM-997",
       "details": "Model changed from sonnet to opus"
+    },
+    {
+      "timestamp": "2026-04-27T17:18:59.181Z",
+      "action": "status_changed",
+      "storyId": "PAM-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:19:01.168Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/parallel-auto-mode"
+    },
+    {
+      "timestamp": "2026-04-27T17:29:58.150Z",
+      "action": "status_changed",
+      "storyId": "PAM-001",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T17:29:58.466Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-002",
+      "details": "Unblocked: all dependencies done/in_review (PAM-001)"
+    },
+    {
+      "timestamp": "2026-04-27T17:29:58.489Z",
+      "action": "status_changed",
+      "storyId": "PAM-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:30:44.829Z",
+      "action": "status_changed",
+      "storyId": "PAM-002",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:36:59.696Z",
+      "action": "status_changed",
+      "storyId": "PAM-002",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T17:37:00.029Z",
+      "action": "status_changed",
+      "storyId": "PAM-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:37:28.279Z",
+      "action": "status_changed",
+      "storyId": "PAM-003",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:42:28.940Z",
+      "action": "status_changed",
+      "storyId": "PAM-003",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T17:42:29.255Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-004",
+      "details": "Unblocked: all dependencies done/in_review (PAM-001, PAM-002, PAM-003)"
+    },
+    {
+      "timestamp": "2026-04-27T17:42:29.269Z",
+      "action": "status_changed",
+      "storyId": "PAM-004",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T17:43:18.743Z",
+      "action": "status_changed",
+      "storyId": "PAM-004",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T18:06:35.593Z",
+      "action": "status_changed",
+      "storyId": "PAM-004",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T18:06:35.916Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-005",
+      "details": "Unblocked: all dependencies done/in_review (PAM-004)"
+    },
+    {
+      "timestamp": "2026-04-27T18:06:35.916Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-006",
+      "details": "Unblocked: all dependencies done/in_review (PAM-004)"
+    },
+    {
+      "timestamp": "2026-04-27T18:06:35.936Z",
+      "action": "status_changed",
+      "storyId": "PAM-005",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T18:07:08.492Z",
+      "action": "status_changed",
+      "storyId": "PAM-005",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T18:16:59.894Z",
+      "action": "status_changed",
+      "storyId": "PAM-005",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T18:17:00.223Z",
+      "action": "status_changed",
+      "storyId": "PAM-006",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T18:17:29.995Z",
+      "action": "status_changed",
+      "storyId": "PAM-006",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T18:26:57.609Z",
+      "action": "status_changed",
+      "storyId": "PAM-006",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T18:26:57.927Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-007",
+      "details": "Unblocked: all dependencies done/in_review (PAM-005, PAM-006)"
+    },
+    {
+      "timestamp": "2026-04-27T18:26:57.940Z",
+      "action": "status_changed",
+      "storyId": "PAM-007",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T18:27:35.404Z",
+      "action": "status_changed",
+      "storyId": "PAM-007",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T18:38:43.731Z",
+      "action": "status_changed",
+      "storyId": "PAM-007",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T18:38:44.040Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-008",
+      "details": "Unblocked: all dependencies done/in_review (PAM-007)"
+    },
+    {
+      "timestamp": "2026-04-27T18:38:44.056Z",
+      "action": "status_changed",
+      "storyId": "PAM-008",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T18:39:18.073Z",
+      "action": "status_changed",
+      "storyId": "PAM-008",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T18:53:50.503Z",
+      "action": "status_changed",
+      "storyId": "PAM-008",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T18:53:50.818Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-997",
+      "details": "Unblocked: all dependencies done/in_review (PAM-001, PAM-002, PAM-003, PAM-004, PAM-005, PAM-006, PAM-007, PAM-008)"
+    },
+    {
+      "timestamp": "2026-04-27T18:53:50.818Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-998",
+      "details": "Unblocked: all dependencies done/in_review (PAM-001, PAM-002, PAM-003, PAM-004, PAM-005, PAM-006, PAM-007, PAM-008)"
+    },
+    {
+      "timestamp": "2026-04-27T18:53:50.842Z",
+      "action": "status_changed",
+      "storyId": "PAM-997",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T19:03:18.293Z",
+      "action": "item_added",
+      "storyId": "PAM-FIX-001",
+      "details": "Added fix: Backlog-Orchestrator: FS-Isolation pro Item via Sub-Worktree"
+    },
+    {
+      "timestamp": "2026-04-27T19:03:23.449Z",
+      "action": "item_added",
+      "storyId": "PAM-FIX-002",
+      "details": "Added fix: SpecOrchestrator: WorkflowExecutor-Helper statt Inline-execSync nutzen"
+    },
+    {
+      "timestamp": "2026-04-27T19:03:54.483Z",
+      "action": "status_changed",
+      "storyId": "PAM-997",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T19:03:54.818Z",
+      "action": "status_changed",
+      "storyId": "PAM-998",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T19:07:08.706Z",
+      "action": "status_changed",
+      "storyId": "PAM-998",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T19:07:09.018Z",
+      "action": "dependency_resolved",
+      "storyId": "PAM-999",
+      "details": "Unblocked: all dependencies done/in_review (PAM-997, PAM-998)"
+    },
+    {
+      "timestamp": "2026-04-27T19:07:09.029Z",
+      "action": "status_changed",
+      "storyId": "PAM-999",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T19:07:35.205Z",
+      "action": "status_changed",
+      "storyId": "PAM-999",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T19:08:53.030Z",
+      "action": "status_changed",
+      "storyId": "PAM-999",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T19:08:53.369Z",
+      "action": "status_changed",
+      "storyId": "PAM-FIX-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T19:16:06.662Z",
+      "action": "status_changed",
+      "storyId": "PAM-FIX-001",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-27T19:16:06.999Z",
+      "action": "status_changed",
+      "storyId": "PAM-FIX-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-27T19:21:48.272Z",
+      "action": "status_changed",
+      "storyId": "PAM-FIX-002",
+      "details": "Task completed: in_progress → done"
     }
   ]
 }

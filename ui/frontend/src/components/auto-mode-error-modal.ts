@@ -12,13 +12,27 @@ export interface AutoModeError {
 }
 
 /**
- * KAE-004: Modal dialog for handling errors during auto-mode execution.
- * Shows error details and provides Resume/Stop options.
+ * PAM-008: Single incident entry (structurally compatible with KanbanAutoModeIncident).
+ */
+export interface AutoModeIncident {
+  type: string;
+  message: string;
+  storyId?: string;
+  timestamp: string;
+  matchedText?: string;
+  silentMs?: number;
+}
+
+/**
+ * KAE-004 / PAM-008: Modal for auto-mode errors and incidents.
+ * - Single error (error property): shows Resume/Stop buttons.
+ * - Multi-incident list (activeIncidents): shows list with per-incident dismiss.
  */
 @customElement('aos-auto-mode-error-modal')
 export class AosAutoModeErrorModal extends LitElement {
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: Object }) error: AutoModeError | null = null;
+  @property({ type: Array }) activeIncidents: AutoModeIncident[] = [];
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -32,41 +46,67 @@ export class AosAutoModeErrorModal extends LitElement {
 
   private handleKeydown = (e: KeyboardEvent): void => {
     if (!this.open) return;
-
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      this.handleStop();
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      this.handleResume();
+    if (this.activeIncidents.length > 0) {
+      if (e.key === 'Escape') { e.preventDefault(); this.handleStop(); }
+      return;
     }
+    if (e.key === 'Escape') { e.preventDefault(); this.handleStop(); }
+    else if (e.key === 'Enter') { e.preventDefault(); this.handleResume(); }
   };
 
   private handleResume(): void {
-    this.dispatchEvent(
-      new CustomEvent('auto-mode-resume', {
-        bubbles: true,
-        composed: true
-      })
-    );
+    this.dispatchEvent(new CustomEvent('auto-mode-resume', { bubbles: true, composed: true }));
     this.open = false;
   }
 
   private handleStop(): void {
-    this.dispatchEvent(
-      new CustomEvent('auto-mode-stop', {
-        bubbles: true,
-        composed: true
-      })
-    );
+    this.dispatchEvent(new CustomEvent('auto-mode-stop', { bubbles: true, composed: true }));
     this.open = false;
   }
 
-  override render() {
-    if (!this.open || !this.error) {
-      return html``;
-    }
+  private handleDismissIncident(incident: AutoModeIncident): void {
+    this.dispatchEvent(new CustomEvent('incident-dismiss', {
+      detail: { storyId: incident.storyId },
+      bubbles: true,
+      composed: true
+    }));
+  }
 
+  private renderIncidentList() {
+    return html`
+      <div class="auto-mode-error-overlay">
+        <div class="auto-mode-error-modal" role="dialog" aria-modal="true" style="min-width:400px;max-width:600px">
+          <div class="auto-mode-error-header" style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+            <span class="error-icon">⚠️</span>
+            <h2 style="margin:0;font-size:1.1rem">Auto-Mode Fehler (${this.activeIncidents.length})</h2>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+            ${this.activeIncidents.map(inc => html`
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px">
+                <div style="flex:1;min-width:0">
+                  ${inc.storyId ? html`<div style="font-family:monospace;font-size:0.8rem;color:#3b82f6;margin-bottom:4px">${inc.storyId}</div>` : ''}
+                  <div style="font-size:0.9rem;word-break:break-word">${inc.message}</div>
+                </div>
+                <button
+                  style="flex-shrink:0;padding:4px 10px;font-size:0.8rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:inherit;cursor:pointer"
+                  @click=${() => this.handleDismissIncident(inc)}
+                >Dismiss</button>
+              </div>
+            `)}
+          </div>
+          <div style="display:flex;justify-content:flex-end">
+            <button
+              style="padding:6px 16px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);border-radius:4px;color:#ef4444;cursor:pointer"
+              @click=${this.handleStop}
+            >Auto-Mode stoppen</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderSingleError() {
+    if (!this.error) return html``;
     return html`
       <div class="auto-mode-error-overlay">
         <div class="auto-mode-error-modal" role="dialog" aria-labelledby="error-modal-title" aria-modal="true">
@@ -105,6 +145,12 @@ export class AosAutoModeErrorModal extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  override render() {
+    if (!this.open) return html``;
+    if (this.activeIncidents.length > 0) return this.renderIncidentList();
+    return this.renderSingleError();
   }
 
   protected override createRenderRoot() {

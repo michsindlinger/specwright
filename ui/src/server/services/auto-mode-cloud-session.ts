@@ -21,6 +21,7 @@ import { CloudTerminalManager } from './cloud-terminal-manager.js';
 import { KanbanFileWatcher } from './kanban-file-watcher.js';
 import { projectDir } from '../utils/project-dirs.js';
 import { buildMcpFlags, cleanupMcpTempFile } from '../utils/mcp-profile.js';
+import { AUTO_MODE_CLI_FLAGS } from './auto-mode-cli-flags.js';
 import type { GitStrategy } from '../workflow-executor.js';
 import type { CloudTerminalSessionId, CloudTerminalModelConfig } from '../../shared/types/cloud-terminal.protocol.js';
 
@@ -50,6 +51,7 @@ export class AutoModeCloudSession extends EventEmitter {
   private pendingMcpCleanup: Map<string, string[]> = new Map();
   private sessionClosedHandler: ((closedSessionId: string, exitCode?: number) => void) | null = null;
   private promptDetectedHandler: ((detectedSessionId: string, matchedText: string) => void) | null = null;
+  private blockerReportedHandler: ((sessionId: string, reason: string) => void) | null = null;
   private stallWatchdogTimer: ReturnType<typeof setInterval> | null = null;
   private stalledNotified = false;
   private isCancelled = false;
@@ -83,6 +85,7 @@ export class AutoModeCloudSession extends EventEmitter {
     // Register session.closed listener for crash detection
     this.registerSessionClosedListener();
     this.registerPromptDetectedListener();
+    this.registerBlockerReportedListener();
     this.startStallWatchdog();
 
     console.log(`[AutoModeCloudSession] Started first story ${storyId} in session ${sessionId}`);
@@ -119,6 +122,7 @@ export class AutoModeCloudSession extends EventEmitter {
     if (this.sessionId) {
       this.unregisterSessionClosedListener();
       this.unregisterPromptDetectedListener();
+      this.unregisterBlockerReportedListener();
       this.stopStallWatchdog();
       this.config.cloudTerminalManager.closeSession(this.sessionId);
       this.cleanupMcpForSession(this.sessionId);
@@ -130,6 +134,7 @@ export class AutoModeCloudSession extends EventEmitter {
     this.config.cloudTerminalManager.setAutoModeActive(sessionId, true);
     this.registerSessionClosedListener();
     this.registerPromptDetectedListener();
+    this.registerBlockerReportedListener();
     this.stalledNotified = false;
     this.startStallWatchdog();
 
@@ -152,6 +157,7 @@ export class AutoModeCloudSession extends EventEmitter {
     if (this.sessionId) {
       this.unregisterSessionClosedListener();
       this.unregisterPromptDetectedListener();
+      this.unregisterBlockerReportedListener();
       this.config.cloudTerminalManager.closeSession(this.sessionId);
       this.cleanupMcpForSession(this.sessionId);
       this.sessionId = null;
@@ -199,7 +205,9 @@ export class AutoModeCloudSession extends EventEmitter {
       return [] as string[];
     });
 
-    // Create session with initial prompt + MCP flags (passed as CLI arguments)
+    // Create session with initial prompt + MCP flags + Auto-Mode CLI flags
+    // (PAM-FIX-004 Layer 1: --disallowed-tools AskUserQuestion + system-prompt rule)
+    const extraCliArgs = [...mcpFlags, ...AUTO_MODE_CLI_FLAGS];
     const session = this.config.cloudTerminalManager.createSession(
       this.config.projectPath,
       'claude-code',
@@ -207,7 +215,7 @@ export class AutoModeCloudSession extends EventEmitter {
       undefined, // cols
       undefined, // rows
       command,
-      mcpFlags
+      extraCliArgs
     );
 
     // Track temp MCP file so we can clean it up when the session closes
@@ -282,7 +290,7 @@ export class AutoModeCloudSession extends EventEmitter {
    */
   private startKanbanWatch(storyId: string): void {
     const specPath = projectDir(this.config.projectPath, 'specs', this.config.specId);
-    this.kanbanWatcher.watch(specPath, storyId);
+    this.kanbanWatcher.watch(specPath, 'kanban.json', new Set([storyId]));
   }
 
   /**
@@ -358,6 +366,31 @@ export class AutoModeCloudSession extends EventEmitter {
     if (this.promptDetectedHandler) {
       this.config.cloudTerminalManager.off('session.prompt-detected', this.promptDetectedHandler);
       this.promptDetectedHandler = null;
+    }
+  }
+
+  /**
+   * Register a listener for `session.blocker-reported`. The LLM emits
+   * `<<BLOCKER:reason>>` instead of asking the user; treat as failure so
+   * the orchestrator marks the story `blocked` and clears the slot.
+   */
+  private registerBlockerReportedListener(): void {
+    this.blockerReportedHandler = (reportedSessionId: string, reason: string): void => {
+      if (reportedSessionId !== this.sessionId || !this.currentStoryId || this.isCancelled) {
+        return;
+      }
+      const storyId = this.currentStoryId;
+      console.warn(`[AutoModeCloudSession] Story ${storyId} blocker reported: ${reason}`);
+      this.emit('story.failed', storyId, `Blocker: ${reason}`);
+    };
+
+    this.config.cloudTerminalManager.on('session.blocker-reported', this.blockerReportedHandler);
+  }
+
+  private unregisterBlockerReportedListener(): void {
+    if (this.blockerReportedHandler) {
+      this.config.cloudTerminalManager.off('session.blocker-reported', this.blockerReportedHandler);
+      this.blockerReportedHandler = null;
     }
   }
 
