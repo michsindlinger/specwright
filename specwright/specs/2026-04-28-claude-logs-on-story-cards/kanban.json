@@ -12,22 +12,22 @@
     "implementationPlan": "implementation-plan.md"
   },
   "resumeContext": {
-    "currentPhase": "1-complete",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
-    "gitStrategy": null,
+    "gitBranch": "feature/claude-logs-on-story-cards",
+    "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Lean kanban created via MCP",
-    "nextAction": "Setup git worktree or branch",
-    "progressIndex": 0,
+    "lastAction": "Completed CLOG-999",
+    "nextAction": "All tasks complete",
+    "progressIndex": 8,
     "totalStories": 8
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
-    "completedAt": null,
+    "status": "completed",
+    "startedAt": "2026-04-28T07:50:14.293Z",
+    "completedAt": "2026-04-28T08:11:39.952Z",
     "model": null
   },
   "tasks": [
@@ -37,16 +37,29 @@
       "description": "Add optional sessionId field to SlotSnapshot/OrchestratorSlotSnapshot, populate from AutoModeStorySlot.getSessionId() in snapshot builder.",
       "planSection": "Phase 1: Backend Snapshot-Erweiterung (sessionId Exposure)",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T07:33:34.563Z",
+        "completedAt": "2026-04-28T07:38:11.188Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/shared/types/auto-mode.protocol.ts",
+          "ui/src/server/services/auto-mode-orchestrator-base.ts",
+          "ui/src/server/workflow-executor.ts",
+          "ui/tests/unit/clog-001-snapshot-sessionid.test.ts",
+          "ui/tests/unit/pam-fix-003-snapshot.test.ts",
+          "specwright/specs/2026-04-28-claude-logs-on-story-cards/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "a063c6333b5eb1324dbcb9aee30c888c59d89930",
+            "message": "feat: CLOG-001 expose sessionId on Auto-Mode SlotSnapshot",
+            "timestamp": "2026-04-28T09:38:03+02:00"
+          }
+        ]
       }
     },
     {
@@ -55,16 +68,26 @@
       "description": "Hand-rolled stripAnsi(s) regex util in ui/frontend/src/utils/ansi-strip.ts plus unit tests for CSI/SGR/cursor sequences.",
       "planSection": "Phase 2: Frontend Log-Panel Standalone",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T07:38:11.535Z",
+        "completedAt": "2026-04-28T07:42:00.838Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/utils/ansi-strip.ts",
+          "ui/tests/unit/clog-002-ansi-strip.test.ts",
+          "specwright/specs/2026-04-28-claude-logs-on-story-cards/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "56da01c967009c31c98de93b07293666bcb3b3a9",
+            "message": "feat: CLOG-002 add stripAnsi util + tests",
+            "timestamp": "2026-04-28T09:41:53+02:00"
+          }
+        ]
       }
     },
     {
@@ -75,16 +98,26 @@
       "dependencies": [
         "CLOG-002"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T07:42:01.163Z",
+        "completedAt": "2026-04-28T07:49:33.825Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/components/aos-claude-log-panel.ts",
+          "ui/tests/unit/clog-003-claude-log-panel.test.ts",
+          "specwright/specs/2026-04-28-claude-logs-on-story-cards/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "bfc6c51ff6fa3f95bdc6f2f2891fd4d0f14d5dac",
+            "message": "feat: CLOG-003 add aos-claude-log-panel Lit component",
+            "timestamp": "2026-04-28T09:49:26+02:00"
+          }
+        ]
       }
     },
     {
@@ -96,15 +129,21 @@
         "CLOG-001",
         "CLOG-003"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T07:50:14.293Z",
+        "completedAt": "2026-04-28T07:56:16.329Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/components/story-card.ts",
+          "ui/frontend/src/components/kanban-board.ts",
+          "ui/frontend/src/views/dashboard-view.ts",
+          "ui/tests/unit/clog-004-integration.test.ts",
+          "specwright/specs/2026-04-28-claude-logs-on-story-cards/integration-context.md"
+        ],
         "commits": []
       }
     },
@@ -116,15 +155,19 @@
       "dependencies": [
         "CLOG-004"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T07:56:16.667Z",
+        "completedAt": "2026-04-28T08:02:23.630Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/tests/unit/clog-005-e2e-edge-cases.test.ts",
+          "specwright/specs/2026-04-28-claude-logs-on-story-cards/user-todos.md",
+          "specwright/specs/2026-04-28-claude-logs-on-story-cards/integration-context.md"
+        ],
         "commits": []
       }
     },
@@ -140,15 +183,17 @@
         "CLOG-004",
         "CLOG-005"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "opus",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T08:02:23.954Z",
+        "completedAt": "2026-04-28T08:07:26.403Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-04-28-claude-logs-on-story-cards/review-report.md"
+        ],
         "commits": []
       }
     },
@@ -164,12 +209,12 @@
         "CLOG-004",
         "CLOG-005"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "opus",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T08:07:26.730Z",
+        "completedAt": "2026-04-28T08:09:08.333Z"
       },
       "implementation": {
         "filesModified": [],
@@ -185,27 +230,37 @@
         "CLOG-997",
         "CLOG-998"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T08:09:08.649Z",
+        "completedAt": "2026-04-28T08:11:39.952Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "specwright/specs/2026-04-28-claude-logs-on-story-cards/user-todos.md",
+          "specwright/specs/2026-04-28-claude-logs-on-story-cards/integration-context.md",
+          "specwright/specs/2026-04-28-claude-logs-on-story-cards/kanban.json"
+        ],
+        "commits": [
+          {
+            "hash": "1bfa837174aa061621e0bcafda277f79867d0988",
+            "message": "feat: CLOG-005/997 e2e tests + code review report",
+            "timestamp": "2026-04-28T10:11:05+02:00"
+          }
+        ]
       }
     }
   ],
   "boardStatus": {
     "total": 8,
-    "ready": 2,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
-    "blocked": 6
+    "done": 8,
+    "blocked": 0
   },
   "changeLog": [
     {
@@ -231,6 +286,162 @@
       "action": "model_changed",
       "storyId": "CLOG-998",
       "details": "Model changed from sonnet to opus"
+    },
+    {
+      "timestamp": "2026-04-28T07:33:32.755Z",
+      "action": "status_changed",
+      "storyId": "CLOG-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T07:33:34.548Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/claude-logs-on-story-cards"
+    },
+    {
+      "timestamp": "2026-04-28T07:33:34.562Z",
+      "action": "stale_recovery",
+      "storyId": "CLOG-001",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-04-28T07:33:34.563Z",
+      "action": "status_changed",
+      "storyId": "CLOG-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T07:38:11.190Z",
+      "action": "status_changed",
+      "storyId": "CLOG-001",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-28T07:38:11.535Z",
+      "action": "status_changed",
+      "storyId": "CLOG-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T07:42:00.840Z",
+      "action": "status_changed",
+      "storyId": "CLOG-002",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-28T07:42:01.155Z",
+      "action": "dependency_resolved",
+      "storyId": "CLOG-003",
+      "details": "Unblocked: all dependencies done/in_review (CLOG-002)"
+    },
+    {
+      "timestamp": "2026-04-28T07:42:01.163Z",
+      "action": "status_changed",
+      "storyId": "CLOG-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T07:49:33.826Z",
+      "action": "status_changed",
+      "storyId": "CLOG-003",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-28T07:49:34.151Z",
+      "action": "dependency_resolved",
+      "storyId": "CLOG-004",
+      "details": "Unblocked: all dependencies done/in_review (CLOG-001, CLOG-003)"
+    },
+    {
+      "timestamp": "2026-04-28T07:49:34.163Z",
+      "action": "status_changed",
+      "storyId": "CLOG-004",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T07:50:14.295Z",
+      "action": "status_changed",
+      "storyId": "CLOG-004",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T07:56:16.330Z",
+      "action": "status_changed",
+      "storyId": "CLOG-004",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-28T07:56:16.657Z",
+      "action": "dependency_resolved",
+      "storyId": "CLOG-005",
+      "details": "Unblocked: all dependencies done/in_review (CLOG-004)"
+    },
+    {
+      "timestamp": "2026-04-28T07:56:16.667Z",
+      "action": "status_changed",
+      "storyId": "CLOG-005",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T08:02:23.633Z",
+      "action": "status_changed",
+      "storyId": "CLOG-005",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-28T08:02:23.948Z",
+      "action": "dependency_resolved",
+      "storyId": "CLOG-997",
+      "details": "Unblocked: all dependencies done/in_review (CLOG-001, CLOG-002, CLOG-003, CLOG-004, CLOG-005)"
+    },
+    {
+      "timestamp": "2026-04-28T08:02:23.948Z",
+      "action": "dependency_resolved",
+      "storyId": "CLOG-998",
+      "details": "Unblocked: all dependencies done/in_review (CLOG-001, CLOG-002, CLOG-003, CLOG-004, CLOG-005)"
+    },
+    {
+      "timestamp": "2026-04-28T08:02:23.954Z",
+      "action": "status_changed",
+      "storyId": "CLOG-997",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T08:07:26.404Z",
+      "action": "status_changed",
+      "storyId": "CLOG-997",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-28T08:07:26.730Z",
+      "action": "status_changed",
+      "storyId": "CLOG-998",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T08:09:08.334Z",
+      "action": "status_changed",
+      "storyId": "CLOG-998",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-04-28T08:09:08.647Z",
+      "action": "dependency_resolved",
+      "storyId": "CLOG-999",
+      "details": "Unblocked: all dependencies done/in_review (CLOG-997, CLOG-998)"
+    },
+    {
+      "timestamp": "2026-04-28T08:09:08.649Z",
+      "action": "status_changed",
+      "storyId": "CLOG-999",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T08:11:39.953Z",
+      "action": "status_changed",
+      "storyId": "CLOG-999",
+      "details": "Task completed: in_progress → done"
     }
   ]
 }
