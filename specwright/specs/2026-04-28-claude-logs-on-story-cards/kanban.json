@@ -39,7 +39,7 @@
       "dependencies": [],
       "status": "ready",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -57,7 +57,7 @@
       "dependencies": [],
       "status": "ready",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -77,7 +77,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -98,7 +98,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -118,7 +118,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -142,7 +142,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "opus",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -166,7 +166,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "opus",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -187,7 +187,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -213,6 +213,24 @@
       "action": "kanban_created",
       "storyId": null,
       "details": "Lean kanban initialized with 8 tasks via MCP tool"
+    },
+    {
+      "timestamp": "2026-04-28T07:32:46.226Z",
+      "action": "models_bulk_changed",
+      "storyId": null,
+      "details": "Model set to sonnet for: CLOG-001, CLOG-002, CLOG-003, CLOG-004, CLOG-005, CLOG-997, CLOG-998, CLOG-999"
+    },
+    {
+      "timestamp": "2026-04-28T07:32:53.797Z",
+      "action": "model_changed",
+      "storyId": "CLOG-997",
+      "details": "Model changed from sonnet to opus"
+    },
+    {
+      "timestamp": "2026-04-28T07:32:55.854Z",
+      "action": "model_changed",
+      "storyId": "CLOG-998",
+      "details": "Model changed from sonnet to opus"
     }
   ]
 }
