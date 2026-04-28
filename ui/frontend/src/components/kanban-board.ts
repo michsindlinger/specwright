@@ -29,6 +29,7 @@ export interface AutoModeProgress {
   currentPhase: number;
   totalPhases: number;
   slotState?: 'running' | 'waiting';
+  sessionId?: string;
 }
 
 // PAM-008: Multi-slot progress board
@@ -1913,6 +1914,11 @@ export class AosKanbanBoard extends LitElement {
       return n + (raw ? parseInt(raw[0], 10) : 0);
     }, 0);
 
+    const sessionIdByStoryId = new Map<string, string>();
+    for (const slot of this.autoModeProgressBoard?.slots ?? []) {
+      if (slot.sessionId) sessionIdByStoryId.set(slot.storyId, slot.sessionId);
+    }
+
     return html`
       <div
         class="${dropZoneClasses}"
@@ -1941,6 +1947,7 @@ export class AosKanbanBoard extends LitElement {
                       .providers=${this.providers}
                       .dragDisabled=${this.isDragDisabled}
                       .isBacklogMode=${this.mode === 'backlog'}
+                      .sessionId=${sessionIdByStoryId.get(story.id)}
                       @story-select=${this.handleStorySelect}
                       @story-drag-start=${this.handleDragStart}
                       @story-drag-end=${this.handleDragEnd}

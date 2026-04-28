@@ -3149,8 +3149,8 @@ export class WorkflowExecutor {
    */
   public async getSpecAutoModeSnapshot(specId: string): Promise<{
     enabled: true;
-    activeSlots: { id: string; title: string }[];
-    queuedSlots: { id: string; title: string }[];
+    activeSlots: { id: string; title: string; sessionId?: string }[];
+    queuedSlots: { id: string; title: string; sessionId?: string }[];
   } | null> {
     const orchestrator = this.autoModeSpecOrchestrators.get(specId);
     if (!orchestrator) return null;
@@ -3163,8 +3163,8 @@ export class WorkflowExecutor {
    */
   public async getBacklogAutoModeSnapshot(projectPath: string): Promise<{
     enabled: true;
-    activeSlots: { id: string; title: string }[];
-    queuedSlots: { id: string; title: string }[];
+    activeSlots: { id: string; title: string; sessionId?: string }[];
+    queuedSlots: { id: string; title: string; sessionId?: string }[];
   } | null> {
     const orchestrator = this.autoModeBacklogOrchestrators.get(projectPath);
     if (!orchestrator) return null;

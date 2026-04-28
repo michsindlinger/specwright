@@ -39,7 +39,10 @@ class TestOrchestrator extends AutoModeOrchestratorBase {
 
   /** Test helper: inject fake active slot with a title. */
   public injectActiveSlot(id: string, title: string): void {
-    const fakeSlot = { getTitle: () => title } as unknown;
+    const fakeSlot = {
+      getTitle: () => title,
+      getSessionId: () => null,
+    } as unknown;
     (this.activeSlots as Map<string, unknown>).set(id, fakeSlot);
   }
 }

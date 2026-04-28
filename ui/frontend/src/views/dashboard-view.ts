@@ -688,6 +688,7 @@ export class AosDashboardView extends LitElement {
         currentPhase: carryPhase(s.id),
         totalPhases: 5,
         slotState: 'running',
+        sessionId: s.sessionId,
       });
     }
     for (const s of snap.queuedSlots) {
@@ -715,6 +716,7 @@ export class AosDashboardView extends LitElement {
         currentPhase: carryPhase(s.id),
         totalPhases: 5,
         slotState: 'running',
+        sessionId: s.sessionId,
       });
     }
     for (const s of snap.queuedSlots) {
