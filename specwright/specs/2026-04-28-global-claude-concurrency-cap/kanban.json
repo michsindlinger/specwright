@@ -37,11 +37,11 @@
       "description": "Statische Counter, acquireGlobalOnly/releaseGlobalOnly, drain-Fix für globalHeld und resetForTests in bestehende Klasse einbauen.",
       "planSection": "Phase 1: Erweitere ProjectConcurrencyGate",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "in_progress",
+      "phase": "in_progress",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
+        "startedAt": "2026-04-28T17:49:10.749Z",
         "completedAt": null
       },
       "implementation": {
@@ -201,8 +201,8 @@
   ],
   "boardStatus": {
     "total": 8,
-    "ready": 1,
-    "inProgress": 0,
+    "ready": 0,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
     "done": 0,
@@ -232,6 +232,12 @@
       "action": "model_changed",
       "storyId": "CCG-998",
       "details": "Model changed from sonnet to opus"
+    },
+    {
+      "timestamp": "2026-04-28T17:49:10.749Z",
+      "action": "status_changed",
+      "storyId": "CCG-001",
+      "details": "Moved from ready to in_progress"
     }
   ]
 }
