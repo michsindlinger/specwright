@@ -12,23 +12,23 @@
     "implementationPlan": "implementation-plan.md"
   },
   "resumeContext": {
-    "currentPhase": "1-complete",
-    "nextPhase": "2-worktree-setup",
-    "worktreePath": null,
-    "gitBranch": null,
-    "gitStrategy": null,
+    "currentPhase": "complete",
+    "nextPhase": null,
+    "worktreePath": "/Users/michaelsindlinger/Entwicklung/specwright-worktrees/global-claude-concurrency-cap",
+    "gitBranch": "feature/global-claude-concurrency-cap",
+    "gitStrategy": "worktree",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Lean kanban created via MCP",
-    "nextAction": "Setup git worktree or branch",
-    "progressIndex": 0,
+    "lastAction": "PR created - https://github.com/michsindlinger/specwright/pull/25",
+    "nextAction": null,
+    "progressIndex": 8,
     "totalStories": 8
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
-    "completedAt": null,
-    "model": null
+    "status": "complete",
+    "startedAt": "2026-04-28T17:49:11.398Z",
+    "completedAt": "2026-04-28T20:30:00.000Z",
+    "model": "sonnet"
   },
   "tasks": [
     {
@@ -37,15 +37,17 @@
       "description": "Statische Counter, acquireGlobalOnly/releaseGlobalOnly, drain-Fix für globalHeld und resetForTests in bestehende Klasse einbauen.",
       "planSection": "Phase 1: Erweitere ProjectConcurrencyGate",
       "dependencies": [],
-      "status": "in_progress",
-      "phase": "in_progress",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": "2026-04-28T17:49:10.749Z",
-        "completedAt": null
+        "startedAt": "2026-04-28T17:49:11.398Z",
+        "completedAt": "2026-04-28T19:52:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/services/project-concurrency-gate.ts"
+        ],
         "commits": []
       }
     },
@@ -57,15 +59,17 @@
       "dependencies": [
         "CCG-001"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T17:53:03.362Z",
+        "completedAt": "2026-04-28T18:00:58.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/workflow-executor.ts"
+        ],
         "commits": []
       }
     },
@@ -77,15 +81,17 @@
       "dependencies": [
         "CCG-001"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T17:53:03.397Z",
+        "completedAt": "2026-04-28T20:00:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/claude-handler.ts"
+        ],
         "commits": []
       }
     },
@@ -97,15 +103,18 @@
       "dependencies": [
         "CCG-003"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T17:57:47.382Z",
+        "completedAt": "2026-04-28T20:10:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/frontend/src/views/chat-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
         "commits": []
       }
     },
@@ -117,16 +126,26 @@
       "dependencies": [
         "CCG-001"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T18:00:38.471Z",
+        "completedAt": "2026-04-28T20:15:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/services/project-concurrency-gate.ts",
+          "ui/tests/unit/project-concurrency-gate.test.ts",
+          "ui/tests/integration/global-gate-cross-orchestrator.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "c3e1ecd",
+            "message": "feat(CCG-005): add global gate unit + integration tests, fix releaseGlobal counter bug",
+            "timestamp": "2026-04-28T20:15:00.000Z"
+          }
+        ]
       }
     },
     {
@@ -141,15 +160,20 @@
         "CCG-004",
         "CCG-005"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "opus",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T18:06:31.044Z",
+        "completedAt": "2026-04-28T20:20:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "specwright/specs/2026-04-28-global-claude-concurrency-cap/review-report.md",
+          "ui/src/server/services/project-concurrency-gate.ts",
+          "ui/tests/unit/project-concurrency-gate.test.ts",
+          "README.md"
+        ],
         "commits": []
       }
     },
@@ -165,12 +189,12 @@
         "CCG-004",
         "CCG-005"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "opus",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T18:06:31.075Z",
+        "completedAt": "2026-04-28T20:15:00.000Z"
       },
       "implementation": {
         "filesModified": [],
@@ -186,27 +210,48 @@
         "CCG-997",
         "CCG-998"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-28T18:15:13.695Z",
+        "completedAt": "2026-04-28T20:30:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "README.md",
+          "ui/frontend/src/styles/theme.css",
+          "ui/frontend/src/views/chat-view.ts",
+          "ui/src/server/claude-handler.ts",
+          "ui/src/server/services/project-concurrency-gate.ts",
+          "ui/src/server/workflow-executor.ts",
+          "ui/tests/unit/project-concurrency-gate.test.ts",
+          "specwright/knowledge/knowledge-index.md",
+          "specwright/knowledge/shared-services.md"
+        ],
+        "commits": [
+          {
+            "hash": "c35436c",
+            "message": "feat(CCG): global Claude concurrency cap (CCG-001..004 + CCG-997)",
+            "timestamp": "2026-04-28T20:25:00.000Z"
+          },
+          {
+            "hash": "9976ed0",
+            "message": "docs: update Project Knowledge with CCG global gate service",
+            "timestamp": "2026-04-28T20:28:00.000Z"
+          }
+        ]
       }
     }
   ],
   "boardStatus": {
     "total": 8,
     "ready": 0,
-    "inProgress": 1,
+    "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
-    "blocked": 7
+    "done": 8,
+    "blocked": 0
   },
   "changeLog": [
     {
@@ -237,6 +282,102 @@
       "timestamp": "2026-04-28T17:49:10.749Z",
       "action": "status_changed",
       "storyId": "CCG-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T17:49:11.360Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/global-claude-concurrency-cap (worktree: /Users/michaelsindlinger/Entwicklung/specwright-worktrees/global-claude-concurrency-cap)"
+    },
+    {
+      "timestamp": "2026-04-28T17:49:11.372Z",
+      "action": "stale_recovery",
+      "storyId": "CCG-001",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-04-28T17:49:11.398Z",
+      "action": "status_changed",
+      "storyId": "CCG-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T19:52:00.000Z",
+      "action": "task_completed",
+      "storyId": "CCG-001",
+      "details": "Progress: 1/8"
+    },
+    {
+      "timestamp": "2026-04-28T17:53:03.362Z",
+      "action": "status_changed",
+      "storyId": "CCG-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T17:53:03.397Z",
+      "action": "status_changed",
+      "storyId": "CCG-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T17:57:47.342Z",
+      "action": "dependency_resolved",
+      "storyId": "CCG-004",
+      "details": "Unblocked: all dependencies done/in_review (CCG-003)"
+    },
+    {
+      "timestamp": "2026-04-28T17:57:47.382Z",
+      "action": "status_changed",
+      "storyId": "CCG-004",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T18:00:38.471Z",
+      "action": "status_changed",
+      "storyId": "CCG-005",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T18:00:58.000Z",
+      "action": "task_completed",
+      "storyId": "CCG-002",
+      "details": "Progress: 4/8"
+    },
+    {
+      "timestamp": "2026-04-28T18:06:31.016Z",
+      "action": "dependency_resolved",
+      "storyId": "CCG-997",
+      "details": "Unblocked: all dependencies done/in_review (CCG-001, CCG-002, CCG-003, CCG-004, CCG-005)"
+    },
+    {
+      "timestamp": "2026-04-28T18:06:31.016Z",
+      "action": "dependency_resolved",
+      "storyId": "CCG-998",
+      "details": "Unblocked: all dependencies done/in_review (CCG-001, CCG-002, CCG-003, CCG-004, CCG-005)"
+    },
+    {
+      "timestamp": "2026-04-28T18:06:31.044Z",
+      "action": "status_changed",
+      "storyId": "CCG-997",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T18:06:31.075Z",
+      "action": "status_changed",
+      "storyId": "CCG-998",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-28T18:15:13.634Z",
+      "action": "dependency_resolved",
+      "storyId": "CCG-999",
+      "details": "Unblocked: all dependencies done/in_review (CCG-997, CCG-998)"
+    },
+    {
+      "timestamp": "2026-04-28T18:15:13.695Z",
+      "action": "status_changed",
+      "storyId": "CCG-999",
       "details": "Moved from ready to in_progress"
     }
   ]
