@@ -83,6 +83,33 @@ describe('ProjectConcurrencyGate — acquireGlobalOnly / releaseGlobalOnly', () 
   });
 });
 
+describe('ProjectConcurrencyGate — stampede invariant', () => {
+  it('cap not exceeded when release and a new acquire run on the same tick', async () => {
+    const max = ProjectConcurrencyGate.globalMax;
+    for (let i = 0; i < max; i++) {
+      await ProjectConcurrencyGate.acquireGlobalOnly();
+    }
+
+    // Existing waiter
+    const w = ProjectConcurrencyGate.acquireGlobalOnly();
+    await Promise.resolve();
+    expect(ProjectConcurrencyGate.globalActive).toBe(max);
+    expect(ProjectConcurrencyGate.globalWaiting).toBe(1);
+
+    // SYNC: release immediately followed by a new acquire — must NOT bypass the waiter
+    ProjectConcurrencyGate.releaseGlobalOnly();
+    const newAcq = ProjectConcurrencyGate.acquireGlobalOnly();
+
+    await w;
+    // After w resolves, second acquire is still waiting (cap respected)
+    expect(ProjectConcurrencyGate.globalActive).toBeLessThanOrEqual(max);
+
+    ProjectConcurrencyGate.releaseGlobalOnly();
+    await newAcq;
+    expect(ProjectConcurrencyGate.globalActive).toBeLessThanOrEqual(max);
+  });
+});
+
 describe('ProjectConcurrencyGate — cross-instance global cap', () => {
   it('two instances share the global cap', async () => {
     const max = ProjectConcurrencyGate.globalMax; // 2

@@ -92,6 +92,13 @@ To use a different port:
 cd ~/specwright-ui/ui && PORT=8080 npm start
 ```
 
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3001` | HTTP / WebSocket port |
+| `SPECWRIGHT_GLOBAL_CLAUDE_CONCURRENCY` | `2` | App-wide cap on parallel Claude Code sessions (Auto-Mode + Chat). Hard ceiling: 4. Cloud Terminal sessions are not gated. Increase only if your Anthropic API key tolerates the additional load — values >2 may trigger token-per-second throttling and `Stream idle timeout` errors. |
+
 ### How it works
 
 The Web UI provides three main views:

@@ -21,11 +21,13 @@ export class ProjectConcurrencyGate {
   }
 
   async acquire(): Promise<void> {
-    if (ProjectConcurrencyGate._globalRunning >= ProjectConcurrencyGate._globalMax) {
+    if (ProjectConcurrencyGate._globalRunning < ProjectConcurrencyGate._globalMax) {
+      ProjectConcurrencyGate._globalRunning++;
+    } else {
       ProjectConcurrencyGate.notifyQueued();
       await new Promise<void>(res => ProjectConcurrencyGate._globalWaiters.push(res));
+      // Slot was handed off by releaseGlobal — counter NOT incremented to keep cap invariant.
     }
-    ProjectConcurrencyGate._globalRunning++;
     this.globalHeld++;
 
     if (this.running < this.maxConcurrent) {
@@ -61,11 +63,13 @@ export class ProjectConcurrencyGate {
   }
 
   static async acquireGlobalOnly(): Promise<void> {
-    if (this._globalRunning >= this._globalMax) {
-      this.notifyQueued();
-      await new Promise<void>(res => this._globalWaiters.push(res));
+    if (this._globalRunning < this._globalMax) {
+      this._globalRunning++;
+      return;
     }
-    this._globalRunning++;
+    this.notifyQueued();
+    await new Promise<void>(res => this._globalWaiters.push(res));
+    // Slot was handed off by releaseGlobal — counter NOT incremented to keep cap invariant.
   }
 
   static releaseGlobalOnly(): void {
@@ -73,9 +77,11 @@ export class ProjectConcurrencyGate {
   }
 
   private static releaseGlobal(): void {
-    this._globalRunning--;
     if (this._globalWaiters.length > 0) {
+      // Hand off slot to the next waiter without changing the counter.
       this._globalWaiters.shift()!();
+    } else {
+      this._globalRunning--;
     }
   }
 
