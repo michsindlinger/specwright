@@ -5,6 +5,7 @@
 | Story | Summary | Key Files |
 |-------|---------|-----------|
 | CLOG-001 | Backend exposes `sessionId` on Auto-Mode `SlotSnapshot` (active slots only) | `auto-mode.protocol.ts`, `auto-mode-orchestrator-base.ts`, `workflow-executor.ts` |
+| CLOG-002 | Hand-rolled `stripAnsi()` util for CSI/OSC/single-char ESC sequences | `ui/frontend/src/utils/ansi-strip.ts` |
 
 ## New Exports & APIs
 
@@ -15,7 +16,7 @@ _None yet_
 - `ui/src/server/workflow-executor.ts` → `getSpecAutoModeSnapshot(specId)` and `getBacklogAutoModeSnapshot(projectPath)` now return `activeSlots[].sessionId?: string` (Cloud-Terminal session id of the running slot). `queuedSlots[].sessionId` stays undefined.
 
 ### Hooks / Utilities
-_None yet_
+- `ui/frontend/src/utils/ansi-strip.ts` → `stripAnsi(input: string): string` — removes CSI (SGR/cursor/erase), OSC (window title / hyperlink, BEL or ST terminator) and single-char Fe escape sequences. Hand-rolled regex, no dependency. Idempotent. Used by `<aos-claude-log-panel>` (CLOG-003) for both streamed chunks and buffer hydration.
 
 ### Types / Interfaces
 - `ui/src/shared/types/auto-mode.protocol.ts` → `SlotSnapshot.sessionId?: string` — additive, optional. Frontend can subscribe to `cloud-terminal:data` per story by reading `activeSlots[*].sessionId`.
@@ -34,3 +35,5 @@ _None yet_
 | `ui/src/server/workflow-executor.ts` | Modified | CLOG-001 |
 | `ui/tests/unit/clog-001-snapshot-sessionid.test.ts` | Created | CLOG-001 |
 | `ui/tests/unit/pam-fix-003-snapshot.test.ts` | Modified (fixture: `getSessionId` added) | CLOG-001 |
+| `ui/frontend/src/utils/ansi-strip.ts` | Created | CLOG-002 |
+| `ui/tests/unit/clog-002-ansi-strip.test.ts` | Created (20 tests) | CLOG-002 |
