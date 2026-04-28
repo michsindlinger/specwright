@@ -357,4 +357,44 @@
 
 ---
 
+### ProjectConcurrencyGate (Global Methods)
+
+**Pfad:** `ui/src/server/services/project-concurrency-gate.ts`
+**Typ:** Service (Static Methods)
+**Erstellt:** Global Claude Concurrency Cap (2026-04-28)
+
+**Beschreibung:** App-weiter Cap auf parallele Claude Code Sessions. Statische Counter auf Klassen-Ebene (shared across all instances). Konfigurierbar via `SPECWRIGHT_GLOBAL_CLAUDE_CONCURRENCY` env var (default 2, ceiling 4). Cloud Terminal Sessions sind nicht gegated.
+
+**Statische Methoden (Global Gate):**
+| Methode | Parameter | Return | Beschreibung |
+|---------|-----------|--------|--------------|
+| acquireGlobalOnly | () | Promise<void> | Erwirbt einen globalen Slot; blockiert wenn Cap erreicht |
+| releaseGlobalOnly | () | void | Gibt einen globalen Slot frei |
+| onQueued | (fn: (state: GlobalGateState) => void) | () => void | Listener für blockierende acquire-Aufrufe; gibt unsubscribe-Fn zurück |
+
+**Statische Properties:**
+| Property | Typ | Beschreibung |
+|----------|-----|--------------|
+| globalActive | number | Aktuell laufende globale Slots |
+| globalWaiting | number | Wartende Caller im Queue |
+| globalMax | number | Effektiver Cap (env-konfiguriert, max 4) |
+
+**Typ `GlobalGateState`:**
+```typescript
+{ running: number; max: number; waiting: number }
+```
+
+**WS Event `chat.queued`** (gesendet vor blockierender acquireGlobalOnly in claude-handler.ts):
+```json
+{ "type": "chat.queued", "reason": "claude_capacity", "state": { "running": N, "waiting": N, "max": N } }
+```
+
+**Notes:**
+- `releaseGlobalOnce`-Pattern (boolean flag) verhindert doppelte Releases in close/error/abort Handlers
+- `resetForTests()` setzt alle statischen Counter zurück — nur in Tests verwenden
+- Registrierung: `acquireGlobalOnly` in `workflow-executor.ts` (runClaudeCommand) und `claude-handler.ts` (streamClaudeCodeResponse / streamClaudeCodeResponseWithImages)
+- Sequenz: `onQueued`-Listener triggert VOR dem blockierenden `acquireGlobalOnly()` Call → Frontend-Banner
+
+---
+
 *Template Version: 1.0*
