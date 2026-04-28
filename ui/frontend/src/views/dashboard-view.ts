@@ -1598,6 +1598,10 @@ export class AosDashboardView extends LitElement {
       this.autoModePaused = false;
       // BUG-005: Clear persisted state
       clearAutoModeState();
+      // SAMC-001: Tell backend to cancel running spec orchestrator.
+      if (this.selectedSpec) {
+        gateway.send({ type: 'workflow.auto-mode.cancel', specId: this.selectedSpec.id });
+      }
     }
   }
 
