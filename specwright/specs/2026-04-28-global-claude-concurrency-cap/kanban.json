@@ -39,7 +39,7 @@
       "dependencies": [],
       "status": "ready",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -59,7 +59,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -79,7 +79,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -99,7 +99,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -119,7 +119,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -143,7 +143,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "opus",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -167,7 +167,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "opus",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -188,7 +188,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -214,6 +214,24 @@
       "action": "kanban_created",
       "storyId": null,
       "details": "Lean kanban initialized with 8 tasks via MCP tool"
+    },
+    {
+      "timestamp": "2026-04-28T17:48:43.837Z",
+      "action": "models_bulk_changed",
+      "storyId": null,
+      "details": "Model set to sonnet for: CCG-001, CCG-002, CCG-003, CCG-004, CCG-005, CCG-997, CCG-998, CCG-999"
+    },
+    {
+      "timestamp": "2026-04-28T17:48:49.334Z",
+      "action": "model_changed",
+      "storyId": "CCG-997",
+      "details": "Model changed from sonnet to opus"
+    },
+    {
+      "timestamp": "2026-04-28T17:48:51.754Z",
+      "action": "model_changed",
+      "storyId": "CCG-998",
+      "details": "Model changed from sonnet to opus"
     }
   ]
 }
