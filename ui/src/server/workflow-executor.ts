@@ -3144,6 +3144,35 @@ export class WorkflowExecutor {
   }
 
   /**
+   * Snapshot of running spec auto-mode for state restoration after navigation
+   * or hard reload. Returns null when no orchestrator exists for this spec.
+   */
+  public async getSpecAutoModeSnapshot(specId: string): Promise<{
+    enabled: true;
+    activeSlots: { id: string; title: string }[];
+    queuedSlots: { id: string; title: string }[];
+  } | null> {
+    const orchestrator = this.autoModeSpecOrchestrators.get(specId);
+    if (!orchestrator) return null;
+    const snap = await orchestrator.getSnapshot();
+    return { enabled: true, activeSlots: snap.active, queuedSlots: snap.queued };
+  }
+
+  /**
+   * Snapshot of running backlog auto-mode (key = projectPath).
+   */
+  public async getBacklogAutoModeSnapshot(projectPath: string): Promise<{
+    enabled: true;
+    activeSlots: { id: string; title: string }[];
+    queuedSlots: { id: string; title: string }[];
+  } | null> {
+    const orchestrator = this.autoModeBacklogOrchestrators.get(projectPath);
+    if (!orchestrator) return null;
+    const snap = await orchestrator.getSnapshot();
+    return { enabled: true, activeSlots: snap.active, queuedSlots: snap.queued };
+  }
+
+  /**
    * MPRO-005: Send message to client with optional projectId.
    * Messages include projectId when execution has a projectPath.
    */

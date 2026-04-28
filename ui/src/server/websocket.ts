@@ -1595,9 +1595,11 @@ export class WebSocketHandler {
       }
     }
 
+    const autoMode = await this.workflowExecutor.getSpecAutoModeSnapshot(specId);
     const response: WebSocketMessage = {
       type: 'specs.kanban',
       kanban,
+      autoMode,
       timestamp: new Date().toISOString()
     };
     client.send(JSON.stringify(response));
@@ -2503,9 +2505,11 @@ export class WebSocketHandler {
     }
 
     const kanban = await this.backlogReader.getKanbanBoard(projectPath);
+    const autoMode = await this.workflowExecutor.getBacklogAutoModeSnapshot(projectPath);
     const response: WebSocketMessage = {
       type: 'backlog.kanban',
       kanban,
+      autoMode,
       timestamp: new Date().toISOString()
     };
     client.send(JSON.stringify(response));

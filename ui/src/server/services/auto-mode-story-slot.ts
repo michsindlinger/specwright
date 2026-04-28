@@ -18,11 +18,13 @@ import { join } from 'path';
 import { CloudTerminalManager } from './cloud-terminal-manager.js';
 import { projectDir } from '../utils/project-dirs.js';
 import { buildMcpFlags, cleanupMcpTempFile } from '../utils/mcp-profile.js';
+import { AUTO_MODE_CLI_FLAGS } from './auto-mode-cli-flags.js';
 import type { CloudTerminalSessionId, CloudTerminalModelConfig } from '../../shared/types/cloud-terminal.protocol.js';
 
 export interface AutoModeStorySlotConfig {
   projectPath: string;
   storyId: string;
+  title: string;
   executeArgs: string;
   model: string;
   cloudTerminalManager: CloudTerminalManager;
@@ -39,11 +41,16 @@ export class AutoModeStorySlot extends EventEmitter {
   private readonly pendingMcpCleanup: Map<string, string[]> = new Map();
   private sessionClosedHandler: ((sid: string, exitCode?: number) => void) | null = null;
   private promptDetectedHandler: ((sid: string, matchedText: string) => void) | null = null;
+  private blockerReportedHandler: ((sid: string, reason: string) => void) | null = null;
   private stallWatchdogTimer: ReturnType<typeof setInterval> | null = null;
   private stalledNotified = false;
 
   constructor(private readonly config: AutoModeStorySlotConfig) {
     super();
+  }
+
+  getTitle(): string {
+    return this.config.title;
   }
 
   async start(): Promise<CloudTerminalSessionId> {
@@ -64,6 +71,7 @@ export class AutoModeStorySlot extends EventEmitter {
     });
 
     const modelConfig: CloudTerminalModelConfig = { model: this.config.model };
+    const extraCliArgs = [...mcpFlags, ...AUTO_MODE_CLI_FLAGS];
     const session = this.config.cloudTerminalManager.createSession(
       this.config.projectPath,
       'claude-code',
@@ -71,7 +79,7 @@ export class AutoModeStorySlot extends EventEmitter {
       undefined,
       undefined,
       command,
-      mcpFlags
+      extraCliArgs
     );
 
     if (mcpFlags.length > 0) {
@@ -83,6 +91,7 @@ export class AutoModeStorySlot extends EventEmitter {
 
     this.registerSessionClosedListener();
     this.registerPromptDetectedListener();
+    this.registerBlockerReportedListener();
     this.startStallWatchdog();
 
     console.log(`[AutoModeStorySlot] Started story ${this.config.storyId} in session ${session.sessionId}`);
@@ -96,6 +105,7 @@ export class AutoModeStorySlot extends EventEmitter {
     this.stopStallWatchdog();
     this.unregisterSessionClosedListener();
     this.unregisterPromptDetectedListener();
+    this.unregisterBlockerReportedListener();
 
     if (this.sessionId) {
       this.config.cloudTerminalManager.closeSession(this.sessionId);
@@ -186,6 +196,22 @@ export class AutoModeStorySlot extends EventEmitter {
     if (this.promptDetectedHandler) {
       this.config.cloudTerminalManager.off('session.prompt-detected', this.promptDetectedHandler);
       this.promptDetectedHandler = null;
+    }
+  }
+
+  private registerBlockerReportedListener(): void {
+    this.blockerReportedHandler = (sid: string, reason: string): void => {
+      if (sid !== this.sessionId || this.isCancelled) return;
+      console.warn(`[AutoModeStorySlot] Story ${this.config.storyId} blocker reported: ${reason}`);
+      this.emit('error', new Error(`Blocker: ${reason}`));
+    };
+    this.config.cloudTerminalManager.on('session.blocker-reported', this.blockerReportedHandler);
+  }
+
+  private unregisterBlockerReportedListener(): void {
+    if (this.blockerReportedHandler) {
+      this.config.cloudTerminalManager.off('session.blocker-reported', this.blockerReportedHandler);
+      this.blockerReportedHandler = null;
     }
   }
 

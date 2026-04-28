@@ -1,0 +1,110 @@
+{
+  "version": "2.0",
+  "mode": "lean",
+  "spec": {
+    "id": "2026-04-28-pam-fix-005-spec-cancel",
+    "name": "Spec-Auto-Mode Mid-Run Cancel Fix",
+    "prefix": "SAMC",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-04-28T06:53:29.875Z",
+    "specTier": "S",
+    "implementationPlan": "implementation-plan.md"
+  },
+  "resumeContext": {
+    "currentPhase": "1-complete",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "gitStrategy": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Lean kanban created via MCP",
+    "nextAction": "Setup git worktree or branch",
+    "progressIndex": 0,
+    "totalStories": 3
+  },
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "tasks": [
+    {
+      "id": "SAMC-001",
+      "title": "Frontend: send workflow.auto-mode.cancel on toggle-off",
+      "description": "Add gateway.send({type:'workflow.auto-mode.cancel',specId}) to else-branch of handleAutoModeToggle, guarded by selectedSpec.",
+      "planSection": "requirements-clarification.md → Functional Requirements 1-3",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SAMC-997",
+      "title": "Code Review",
+      "description": "Full-feature diff review.",
+      "planSection": "System: Code Review",
+      "dependencies": [
+        "SAMC-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SAMC-999",
+      "title": "Finalize PR",
+      "description": "User-todos, PR creation, cleanup.",
+      "planSection": "System: Finalize PR",
+      "dependencies": [
+        "SAMC-997"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 3,
+    "ready": 1,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 2
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-04-28T06:53:29.875Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Lean kanban initialized with 3 tasks via MCP tool"
+    }
+  ]
+}

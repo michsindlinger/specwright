@@ -11,6 +11,7 @@ import '../components/aos-create-spec-modal.js';
 import '../components/comments/aos-comment-thread.js';
 import type { SpecInfo } from '../components/spec-card.js';
 import type { KanbanBoard, StoryInfo, AutoModeProgress, AutoModeProgressBoard, KanbanStatus } from '../components/kanban-board.js';
+import type { AutoModeSnapshot as AutoModeSnapshotMsg } from '../../../src/shared/types/auto-mode.protocol.js';
 import type { ProviderInfo } from '../components/story-card.js';
 import { AosKanbanBoard } from '../components/kanban-board.js';
 import type { AosDocsPanel } from '../components/docs/aos-docs-panel.js';
@@ -621,29 +622,44 @@ export class AosDashboardView extends LitElement {
     }
   }
 
-  private onSpecsKanban(msg: WebSocketMessage): void {
+  private async onSpecsKanban(msg: WebSocketMessage): Promise<void> {
     const kanban = msg.kanban as KanbanBoard;
     console.log(`[DEBUG onSpecsKanban] specId=${kanban.specId} isReady=${kanban.isReady} assignedToBot=${kanban.assignedToBot}`);
 
     this.surfacePersistedIncident(kanban);
 
+    // PAM-FIX-003: Auto-mode snapshot from backend — single source of truth.
+    const snap = msg.autoMode as AutoModeSnapshotMsg | null | undefined;
+
     // Check if user expects to see the kanban view (clicked on a spec)
     // If selectedSpec is set and matches this kanban, show it
     if (this.selectedSpec && this.selectedSpec.id === kanban.specId) {
-      // Only reset auto-mode if we're loading a new spec (not if already in kanban view)
-      // This prevents auto-mode from being reset when the kanban is refreshed during execution
       const isNewSpecView = this.viewMode !== 'kanban';
       this.kanban = kanban;
       this.loading = false;
       this.viewMode = 'kanban';
-      if (isNewSpecView) {
-        // BUG-005: Don't reset auto-mode if it was restored from persisted state
+
+      if (snap?.enabled) {
+        // Backend reports running orchestrator → restore toggle + slot list.
+        this.autoModeEnabled = true;
+        this._hydrateSpecBoardFromSnapshot(kanban.specId, snap);
+        saveAutoModeState({ mode: 'spec', specId: kanban.specId });
+        await this.updateComplete;
+        this._pushSpecBoardToKanban(kanban.specId);
+      } else {
+        // Backend has no orchestrator → backend = truth, regardless of localStorage.
         if (this._autoModeRestoredFromStorage) {
-          this._autoModeRestoredFromStorage = false;
-        } else {
+          // localStorage hint stale (orchestrator gone since last session) — clear.
+          clearAutoModeState();
+        }
+        if (isNewSpecView) {
           this.autoModeEnabled = false;
         }
+        this._specAutoModeBoards.delete(kanban.specId);
+        await this.updateComplete;
+        this._pushSpecBoardToKanban(kanban.specId);
       }
+      this._autoModeRestoredFromStorage = false;
       return;
     }
 
@@ -653,6 +669,65 @@ export class AosDashboardView extends LitElement {
     }
 
     // Otherwise, this is a background update for queue progress - already handled above
+  }
+
+  /**
+   * PAM-FIX-003: Reconcile _specAutoModeBoards with a backend snapshot.
+   * Preserves currentPhase from existing entries (kanban refreshes during
+   * a running auto-mode would otherwise reset 1/5). Removes stale entries
+   * not in the snapshot.
+   */
+  private _hydrateSpecBoardFromSnapshot(specId: string, snap: AutoModeSnapshotMsg): void {
+    const prev = this._specAutoModeBoards.get(specId);
+    const next = new Map<string, AutoModeProgress>();
+    const carryPhase = (id: string): number => prev?.get(id)?.currentPhase ?? 1;
+    for (const s of snap.activeSlots) {
+      next.set(s.id, {
+        storyId: s.id,
+        storyTitle: s.title,
+        currentPhase: carryPhase(s.id),
+        totalPhases: 5,
+        slotState: 'running',
+      });
+    }
+    for (const s of snap.queuedSlots) {
+      if (!next.has(s.id)) {
+        next.set(s.id, {
+          storyId: s.id,
+          storyTitle: s.title,
+          currentPhase: 1,
+          totalPhases: 5,
+          slotState: 'waiting',
+        });
+      }
+    }
+    this._specAutoModeBoards.set(specId, next);
+  }
+
+  private _hydrateBacklogBoardFromSnapshot(snap: AutoModeSnapshotMsg): void {
+    const prev = new Map(this._backlogAutoModeBoard);
+    this._backlogAutoModeBoard.clear();
+    const carryPhase = (id: string): number => prev.get(id)?.currentPhase ?? 1;
+    for (const s of snap.activeSlots) {
+      this._backlogAutoModeBoard.set(s.id, {
+        storyId: s.id,
+        storyTitle: s.title,
+        currentPhase: carryPhase(s.id),
+        totalPhases: 5,
+        slotState: 'running',
+      });
+    }
+    for (const s of snap.queuedSlots) {
+      if (!this._backlogAutoModeBoard.has(s.id)) {
+        this._backlogAutoModeBoard.set(s.id, {
+          storyId: s.id,
+          storyTitle: s.title,
+          currentPhase: 1,
+          totalPhases: 5,
+          slotState: 'waiting',
+        });
+      }
+    }
   }
 
   /**
@@ -907,19 +982,39 @@ export class AosDashboardView extends LitElement {
     this.backlogLoading = false;
   }
 
-  private onBacklogKanban(msg: WebSocketMessage): void {
+  private async onBacklogKanban(msg: WebSocketMessage): Promise<void> {
     this.backlogKanban = msg.kanban as BacklogKanbanBoard;
     this.backlogLoading = false;
 
-    // PAM-006: If auto-mode was restored from storage and kanban just loaded,
-    // kick off backend scheduling if no story is already in progress.
-    if (this._backlogAutoModeEnabled && this._autoModeRestoredFromStorage) {
+    // PAM-FIX-003: Auto-mode snapshot from backend — single source of truth for
+    // toggle + queue state on kanban (re-)mount.
+    const snap = msg.autoMode as AutoModeSnapshotMsg | null | undefined;
+    if (snap?.enabled) {
+      this._backlogAutoModeEnabled = true;
+      this._hydrateBacklogBoardFromSnapshot(snap);
+      saveAutoModeState({ mode: 'backlog' });
+      await this.updateComplete;
+      this._pushBacklogBoardToKanban();
+      this._autoModeRestoredFromStorage = false;
+      return;
+    }
+
+    // No active backend orchestrator → backend is truth.
+    if (this._autoModeRestoredFromStorage) {
+      // PAM-006 legacy path: localStorage hint says auto was on. If no in-progress
+      // story, kick off scheduling so backend creates an orchestrator.
       this._autoModeRestoredFromStorage = false;
       const hasInProgress = this.backlogKanban.stories.some(s => s.status === 'in_progress');
-      if (!hasInProgress) {
+      if (this._backlogAutoModeEnabled && !hasInProgress) {
         gateway.send({ type: 'backlog.auto-mode.start' });
+        return;
       }
     }
+
+    // Snap is null and no restore-bootstrap → ensure UI matches: no chips.
+    this._backlogAutoModeBoard.clear();
+    await this.updateComplete;
+    this._pushBacklogBoardToKanban();
   }
 
   private onModelProvidersList(msg: WebSocketMessage): void {

@@ -48,13 +48,30 @@ interface ManagedCloudSession extends CloudTerminalSession {
 
   /** Dedup timestamp: last time a prompt was detected (enforces a cool-down) */
   lastPromptDetectedAt?: Date;
+
+  /** True once `<<BLOCKER:reason>>` was detected — prevents duplicate emissions. */
+  blockerReported?: boolean;
 }
 
 /**
  * Regex for detecting interactive prompts in terminal output.
- * Conservative patterns — prefers false negatives over false positives.
+ *
+ * Anchored to line ends / Claude-Code-AskUserQuestion-UI markers to avoid
+ * false positives on natural Claude commentary (e.g. "Do you want to refactor?"
+ * or "Phase 1 done. Continue with Phase 2?" appearing in summary text).
+ *
+ * Layered safety:
+ *   Layer 1 — `--disallowed-tools AskUserQuestion` blocks the tool itself
+ *   Layer 2 — `<<BLOCKER:reason>>` marker for Auto-Mode-aware blockers
+ *   Layer 3 — this pattern, anchored to actual prompt-shaped output
  */
-const PROMPT_PATTERN = /\((?:y|yes)\/(?:n|no)\)|\[(?:Y|y)\/(?:N|n)\]|Press\s+(?:Enter|Return)|Do you want to|Continue\?|Select an option/i;
+export const PROMPT_PATTERN = /\((?:y|yes)\/(?:n|no)\)\??\s*$|\[(?:Y|y)\/(?:N|n)\]\??\s*$|^\s*Press\s+(?:Enter|Return)(?:\s+to\s+continue)?\s*\.?\s*$|Enter to select.*navigate.*Esc to cancel|^\s*\d+\.\s+(?:Chat about this|Type something\.)\s*$/im;
+
+/**
+ * Marker the LLM is instructed to emit on unrecoverable blockers in Auto-Mode.
+ * Matches `<<BLOCKER:reason>>` (reason captured in group 1).
+ */
+export const BLOCKER_PATTERN = /<<BLOCKER:([^>]+)>>/;
 
 /**
  * Cool-down between prompt-detected emissions for the same session (ms).
@@ -72,6 +89,7 @@ const PROMPT_DEDUP_MS = 60 * 1000;
  * - 'session.data' (CloudTerminalSessionId, string) - Terminal output
  * - 'session.error' (CloudTerminalSessionId, Error) - Session error
  * - 'session.prompt-detected' (CloudTerminalSessionId, matchedText) - Interactive prompt detected in output (auto-mode only)
+ * - 'session.blocker-reported' (CloudTerminalSessionId, reason) - LLM emitted <<BLOCKER:reason>> marker (auto-mode only)
  */
 export class CloudTerminalManager extends EventEmitter {
   /**
@@ -505,6 +523,7 @@ export class CloudTerminalManager extends EventEmitter {
 
       if (session.autoModeActive) {
         this.detectPrompt(session, data);
+        this.detectBlocker(session, data);
       }
 
       // Emit data event
@@ -546,6 +565,7 @@ export class CloudTerminalManager extends EventEmitter {
     session.autoModeActive = active;
     if (!active) {
       session.lastPromptDetectedAt = undefined;
+      session.blockerReported = undefined;
     }
   }
 
@@ -568,6 +588,24 @@ export class CloudTerminalManager extends EventEmitter {
     const matchedText = match[0];
     console.warn(`[CloudTerminalManager] Prompt detected in session ${session.sessionId}: ${JSON.stringify(matchedText)}`);
     this.emit('session.prompt-detected', session.sessionId, matchedText);
+  }
+
+  /**
+   * Scan an output chunk for a `<<BLOCKER:reason>>` marker emitted by the
+   * LLM in Auto-Mode. Emits `session.blocker-reported` once per session.
+   */
+  private detectBlocker(session: ManagedCloudSession, data: string): void {
+    if (session.blockerReported) {
+      return;
+    }
+    const match = BLOCKER_PATTERN.exec(data);
+    if (!match) {
+      return;
+    }
+    session.blockerReported = true;
+    const reason = match[1].trim();
+    console.warn(`[CloudTerminalManager] Blocker reported in session ${session.sessionId}: ${reason}`);
+    this.emit('session.blocker-reported', session.sessionId, reason);
   }
 
   /**

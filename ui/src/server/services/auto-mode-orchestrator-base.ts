@@ -31,6 +31,16 @@ export interface ReadyItem {
   model?: string;
 }
 
+export interface OrchestratorSlotSnapshot {
+  id: string;
+  title: string;
+}
+
+export interface OrchestratorSnapshot {
+  active: OrchestratorSlotSnapshot[];
+  queued: OrchestratorSlotSnapshot[];
+}
+
 export interface OrchestratorBaseConfig {
   /** CWD for PTY sessions (may be worktree path for gitStrategy=worktree). */
   projectPath: string;
@@ -94,6 +104,24 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
     await this.launchSlot(item);
   }
 
+  /**
+   * Read-only snapshot of orchestrator state.
+   * Active slots come from in-memory map; queued items come from a fresh
+   * getReadySet() pull (current truth, may differ from last tick).
+   */
+  public async getSnapshot(): Promise<OrchestratorSnapshot> {
+    const active: OrchestratorSlotSnapshot[] = [...this.activeSlots.entries()].map(
+      ([id, slot]) => ({ id, title: slot.getTitle() })
+    );
+    const excludeIds = new Set(this.activeSlots.keys());
+    const ready = await this.getReadySet(excludeIds);
+    const queued: OrchestratorSlotSnapshot[] = ready.map(item => ({
+      id: item.id,
+      title: item.title,
+    }));
+    return { active, queued };
+  }
+
   /** Cancel all active slots (Promise.allSettled — siblings don't block). */
   public async cancel(): Promise<void> {
     this.isCancelling = true;
@@ -142,6 +170,7 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
       projectPath: slotProjectPath,
       specId: this.getSpecIdForSlot(item),
       storyId: item.id,
+      title: item.title,
       executeArgs: this.buildExecuteArgs(item),
       model: item.model ?? 'opus',
       cloudTerminalManager: this.config.cloudTerminalManager,
@@ -155,11 +184,27 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
     });
 
     slot.on('prompt-stuck', (storyId: string, matchedText: string) => {
+      // PAM-FIX-009: prompt-stuck has a defined semantic — Claude is waiting
+      // for input that auto-mode cannot give. Symmetric to BLOCKER handling:
+      // mark story failed, free the slot, let the orchestrator move on.
+      if (!this.activeSlots.has(item.id)) return;
+      this.activeSlots.delete(item.id);
+      this.kanbanWatcher.removeId(item.id);
+      this.gate.release();
+      const reason = `Auto-Mode kann interaktive Prompts nicht beantworten: ${matchedText}`;
       this.emit('story.prompt-stuck', storyId, matchedText);
+      this.emit('story.failed', item.id, reason);
+      this.onItemFailed(item.id, reason).catch(err =>
+        console.error('[OrchestratorBase] onItemFailed (prompt-stuck) error:', err)
+      );
+      slot.cancel().catch(err =>
+        console.error('[OrchestratorBase] slot.cancel on prompt-stuck error:', err)
+      );
     });
 
     slot.on('error', (error: Error) => {
       // PTY session died — treat as failure
+      if (!this.activeSlots.has(item.id)) return;
       this.activeSlots.delete(item.id);
       this.kanbanWatcher.removeId(item.id);
       this.gate.release();
