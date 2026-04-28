@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import { getProviderCommand, getDefaultSelection } from './model-config.js';
 import type { ImageInfo } from './image-storage.js';
 import { SpecsReader } from './specs-reader.js';
+import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 
 const specsReader = new SpecsReader();
 
@@ -329,12 +330,30 @@ export class ClaudeHandler {
     toolCalls: ToolCall[],
     onContent: (content: string) => void
   ): Promise<void> {
+    if (ProjectConcurrencyGate.globalActive >= ProjectConcurrencyGate.globalMax) {
+      this.sendToClient(client, {
+        type: 'chat.queued',
+        reason: 'claude_capacity',
+        state: {
+          running: ProjectConcurrencyGate.globalActive,
+          waiting: ProjectConcurrencyGate.globalWaiting + 1,
+          max: ProjectConcurrencyGate.globalMax,
+        },
+      });
+    }
+    await ProjectConcurrencyGate.acquireGlobalOnly();
+    let released = false;
+    const releaseOnce = (): void => {
+      if (!released) { released = true; ProjectConcurrencyGate.releaseGlobalOnly(); }
+    };
+
     return new Promise((resolve, reject) => {
       // Get the CLI command based on selected model
       const { providerId, modelId } = session.selectedModel;
       const providerCommand = getProviderCommand(providerId, modelId);
 
       if (!providerCommand) {
+        releaseOnce();
         reject(new Error(`Model nicht verfügbar: Provider "${providerId}" oder Model "${modelId}" nicht gefunden`));
         return;
       }
@@ -444,6 +463,7 @@ export class ClaudeHandler {
           }
         }
 
+        releaseOnce();
         if (code === 0) {
           resolve();
         } else {
@@ -454,6 +474,7 @@ export class ClaudeHandler {
       claudeProcess.on('error', (error) => {
         console.error('[Claude] Process error:', error);
         session.claudeProcess = undefined;
+        releaseOnce();
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           reject(new Error(`Model nicht verfügbar: CLI-Befehl "${command}" nicht in PATH gefunden`));
         } else {
@@ -477,12 +498,30 @@ export class ClaudeHandler {
     toolCalls: ToolCall[],
     onContent: (content: string) => void
   ): Promise<void> {
+    if (ProjectConcurrencyGate.globalActive >= ProjectConcurrencyGate.globalMax) {
+      this.sendToClient(client, {
+        type: 'chat.queued',
+        reason: 'claude_capacity',
+        state: {
+          running: ProjectConcurrencyGate.globalActive,
+          waiting: ProjectConcurrencyGate.globalWaiting + 1,
+          max: ProjectConcurrencyGate.globalMax,
+        },
+      });
+    }
+    await ProjectConcurrencyGate.acquireGlobalOnly();
+    let released2 = false;
+    const releaseOnce2 = (): void => {
+      if (!released2) { released2 = true; ProjectConcurrencyGate.releaseGlobalOnly(); }
+    };
+
     return new Promise((resolve, reject) => {
       // Get the CLI command based on selected model
       const { providerId, modelId } = session.selectedModel;
       const providerCommand = getProviderCommand(providerId, modelId);
 
       if (!providerCommand) {
+        releaseOnce2();
         reject(new Error(`Model nicht verfügbar: Provider "${providerId}" oder Model "${modelId}" nicht gefunden`));
         return;
       }
@@ -627,6 +666,7 @@ export class ClaudeHandler {
           }
         }
 
+        releaseOnce2();
         if (code === 0) {
           resolve();
         } else {
@@ -637,6 +677,7 @@ export class ClaudeHandler {
       claudeProcess.on('error', (error) => {
         console.error('[Claude] Process error:', error);
         session.claudeProcess = undefined;
+        releaseOnce2();
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           reject(new Error(`Model nicht verfügbar: CLI-Befehl "${command}" nicht in PATH gefunden`));
         } else {

@@ -23,6 +23,7 @@ import { gitService } from './services/git.service.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
 import { AutoModeSpecOrchestrator } from './services/auto-mode-spec-orchestrator.js';
 import { AutoModeBacklogOrchestrator } from './services/auto-mode-backlog-orchestrator.js';
+import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 
 export interface WorkflowCommand {
   id: string;
@@ -1805,6 +1806,15 @@ export class WorkflowExecutor {
       // before spawning. Wrapped in an IIFE so the outer Promise signature stays
       // intact. Returns [] for unmapped commands or missing config → status-quo.
       const spawnAsync = async (): Promise<void> => {
+      await ProjectConcurrencyGate.acquireGlobalOnly();
+      let globalReleased = false;
+      const releaseGlobalOnce = (): void => {
+        if (!globalReleased) {
+          globalReleased = true;
+          ProjectConcurrencyGate.releaseGlobalOnly();
+        }
+      };
+      try {
       const mcpFlags = await buildMcpFlags(fullCommand, execution.projectPath, execution.id).catch(err => {
         console.warn('[Workflow] buildMcpFlags failed, falling back to status-quo spawn:', err);
         return [] as string[];
@@ -1889,6 +1899,7 @@ export class WorkflowExecutor {
 
       // Handle abort signal
       const abortHandler = (): void => {
+        releaseGlobalOnce();
         console.log(`[Workflow] Abort signal received, killing process ${claudeProcess.pid}`);
         clearStallTimer();
         claudeProcess.kill('SIGTERM');
@@ -1936,6 +1947,7 @@ export class WorkflowExecutor {
       });
 
       claudeProcess.on('close', async (code) => {
+        releaseGlobalOnce();
         console.log(`[Workflow] Process closed with code: ${code}`);
         execution.claudeProcess = undefined;
         clearStallTimer();
@@ -2006,6 +2018,7 @@ export class WorkflowExecutor {
       });
 
       claudeProcess.on('error', (error) => {
+        releaseGlobalOnce();
         console.error('[Workflow] Process error:', error);
         execution.claudeProcess = undefined;
         clearStallTimer();
@@ -2017,6 +2030,10 @@ export class WorkflowExecutor {
           reject(error);
         }
       });
+      } catch (err) {
+        releaseGlobalOnce();
+        throw err;
+      }
       };
       spawnAsync().catch(reject);
     });
@@ -2547,7 +2564,7 @@ export class WorkflowExecutor {
     return true;
   }
 
-  private resumeWithAnswer(execution: WorkflowExecution, answer: string, isTextQuestion = false): void {
+  private async resumeWithAnswer(execution: WorkflowExecution, answer: string, isTextQuestion = false): Promise<void> {
     const client = execution.client;
     if (!client) {
       console.error(`[Workflow] No client for execution: ${execution.id}`);
@@ -2594,6 +2611,15 @@ export class WorkflowExecutor {
 
     // Remove ANTHROPIC_API_KEY to use Claude Max OAuth instead of API key auth
     const { ANTHROPIC_API_KEY: _removed, ...envWithoutApiKey } = process.env;
+
+    await ProjectConcurrencyGate.acquireGlobalOnly();
+    let globalReleased = false;
+    const releaseGlobalOnce = (): void => {
+      if (!globalReleased) {
+        globalReleased = true;
+        ProjectConcurrencyGate.releaseGlobalOnly();
+      }
+    };
 
     const claudeProcess = spawnWithLoginShell(cliConfig.command, [
       '--print',
@@ -2657,6 +2683,7 @@ export class WorkflowExecutor {
     });
 
     claudeProcess.on('close', (code) => {
+      releaseGlobalOnce();
       console.log(`[Workflow Resume] Process closed with code: ${code}`);
       execution.claudeProcess = undefined;
 
@@ -2717,6 +2744,7 @@ export class WorkflowExecutor {
     });
 
     claudeProcess.on('error', (error) => {
+      releaseGlobalOnce();
       console.error('[Workflow Resume] Process error:', error);
       execution.claudeProcess = undefined;
     });

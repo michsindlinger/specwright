@@ -56,6 +56,8 @@ export class AosChatView extends LitElement {
   @state() private selectedModel: SelectedModel = { providerId: 'anthropic', modelId: 'opus-4.5' };
   @state() private stagedImages: StagedImage[] = [];
   @state() private isDragOver = false;
+  @state() private queued = false;
+  @state() private queuedState: { running: number; max: number; waiting: number } | null = null;
 
   @query('.chat-messages') private messagesContainer!: HTMLElement;
   @query('.chat-input') private inputElement!: HTMLTextAreaElement;
@@ -98,7 +100,8 @@ export class AosChatView extends LitElement {
       'gateway.disconnected': () => this.handleDisconnected(),
       'project.selected': () => this.handleProjectSelected(),
       'project.current': (msg) => this.handleProjectCurrent(msg),
-      'chat.settings.response': (msg) => this.handleSettingsResponse(msg)
+      'chat.settings.response': (msg) => this.handleSettingsResponse(msg),
+      'chat.queued': (msg) => this.handleChatQueued(msg)
     };
 
     for (const [type, handler] of Object.entries(handlers)) {
@@ -152,7 +155,14 @@ export class AosChatView extends LitElement {
     }
   }
 
+  private handleChatQueued(msg: WebSocketMessage): void {
+    this.queued = true;
+    this.queuedState = msg.state as { running: number; max: number; waiting: number };
+  }
+
   private handleStreamStart(msg: WebSocketMessage): void {
+    this.queued = false;
+    this.queuedState = null;
     this.isStreaming = true;
     this.streamingMessage = {
       id: msg.messageId as string,
@@ -198,6 +208,8 @@ export class AosChatView extends LitElement {
     this.messages = [...this.messages, message];
     this.isStreaming = false;
     this.streamingMessage = null;
+    this.queued = false;
+    this.queuedState = null;
     this.scrollToBottom();
   }
 
@@ -205,6 +217,8 @@ export class AosChatView extends LitElement {
     console.error('Chat error:', msg.error);
     this.isStreaming = false;
     this.streamingMessage = null;
+    this.queued = false;
+    this.queuedState = null;
   }
 
   private handleHistory(msg: WebSocketMessage): void {
@@ -227,6 +241,8 @@ export class AosChatView extends LitElement {
     this.connectionError = true;
     this.isStreaming = false;
     this.streamingMessage = null;
+    this.queued = false;
+    this.queuedState = null;
   }
 
   private handleProjectSelected(): void {
@@ -498,6 +514,17 @@ export class AosChatView extends LitElement {
                   }}
                   .streaming=${true}
                 ></aos-chat-message>
+              `
+            : ''}
+
+          ${this.queued && this.queuedState
+            ? html`
+                <div class="chat-queued-banner">
+                  <span class="queued-icon">⏳</span>
+                  Warte auf Claude-Kapazität
+                  (${this.queuedState.running}/${this.queuedState.max} aktiv,
+                  ${this.queuedState.waiting} in Warteschlange)…
+                </div>
               `
             : ''}
         </div>
