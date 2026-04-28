@@ -90,6 +90,20 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
     return this.backlogReader.getReadyBacklogItems(this.config.projectPath, excludeIds);
   }
 
+  protected async recoverStaleInProgress(activeIds: Set<string>): Promise<void> {
+    const recovered = await this.backlogReader.resetStaleInProgressItems(
+      this.config.projectPath,
+      activeIds
+    );
+    if (recovered.length > 0) {
+      console.log(`[BacklogOrchestrator] Recovered stale in_progress: ${recovered.join(', ')}`);
+    }
+  }
+
+  protected async markItemInProgress(itemId: string): Promise<void> {
+    await this.backlogReader.markItemInProgress(this.config.projectPath, itemId);
+  }
+
   protected buildExecuteArgs(item: ReadyItem): string {
     return `backlog ${item.id}`;
   }

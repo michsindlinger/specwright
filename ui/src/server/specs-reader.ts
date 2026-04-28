@@ -449,6 +449,65 @@ export class SpecsReader {
   }
 
   /**
+   * PAM-FIX-006: Reset stories with status 'in_progress' that have no active
+   * orchestrator slot back to 'ready'. Prevents zombie state after crash,
+   * server restart, or auto-toggle on already-running story.
+   *
+   * @param activeIds Story IDs currently held by orchestrator slots — left untouched.
+   * @returns IDs of stories that were recovered.
+   */
+  public async resetStaleInProgress(
+    projectPath: string,
+    specId: string,
+    activeIds: Set<string>
+  ): Promise<string[]> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+    return await withKanbanLock(specPath, async () => {
+      const kanban = await this.readKanbanJsonUnlocked(specPath);
+      if (!kanban) return [];
+      const recovered: string[] = [];
+
+      if (isV2Kanban(kanban)) {
+        for (const task of kanban.tasks) {
+          if (task.status === 'in_progress' && !activeIds.has(task.id)) {
+            task.status = 'ready';
+            task.phase = 'pending';
+            if (task.timing) task.timing.startedAt = null;
+            recovered.push(task.id);
+            this.addChangeLogEntry(
+              kanban,
+              'stale_recovery',
+              task.id,
+              'Reset in_progress → ready (no active slot at orchestrator-init)'
+            );
+          }
+        }
+      } else {
+        for (const story of kanban.stories) {
+          if (story.status === 'in_progress' && !activeIds.has(story.id)) {
+            story.status = 'ready';
+            story.phase = 'pending';
+            story.timing.startedAt = null;
+            recovered.push(story.id);
+            this.addChangeLogEntry(
+              kanban,
+              'stale_recovery',
+              story.id,
+              'Reset in_progress → ready (no active slot at orchestrator-init)'
+            );
+          }
+        }
+      }
+
+      if (recovered.length > 0) {
+        this.updateBoardStatus(kanban);
+        await this.writeKanbanJsonUnlocked(specPath, kanban);
+      }
+      return recovered;
+    });
+  }
+
+  /**
    * Resolves dependencies for blocked stories.
    * A blocked story is unblocked to 'ready' when ALL its dependencies have status 'done'.
    * The entire read-modify-write is performed inside a single lock to prevent TOCTOU races.

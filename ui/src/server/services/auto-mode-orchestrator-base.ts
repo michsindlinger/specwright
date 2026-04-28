@@ -70,6 +70,20 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
   // ── Abstract interface ──────────────────────────────────────────────────────
 
   protected abstract getReadySet(excludeIds: Set<string>): Promise<ReadyItem[]>;
+
+  /**
+   * PAM-FIX-006: Reset stale `in_progress` items (no active slot) to `ready`
+   * before each tick. Prevents zombie state after crash, server restart, or
+   * auto-toggle on already-running stories.
+   */
+  protected abstract recoverStaleInProgress(activeIds: Set<string>): Promise<void>;
+
+  /**
+   * PAM-FIX-007: Flip item status to `in_progress` when its slot starts.
+   * Without this the kanban shows the running item as Backlog/Ready until
+   * Claude eventually calls `kanban_start_story` from inside the session.
+   */
+  protected abstract markItemInProgress(itemId: string): Promise<void>;
   protected abstract buildExecuteArgs(item: ReadyItem): string;
   protected abstract onItemCompleted(itemId: string): Promise<void>;
   protected abstract onItemFailed(itemId: string, error: string): Promise<void>;
@@ -139,6 +153,14 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
 
   private async tick(): Promise<void> {
     const excludeIds = new Set(this.activeSlots.keys());
+
+    // PAM-FIX-006: Recover any zombie in_progress items before reading ready set
+    try {
+      await this.recoverStaleInProgress(excludeIds);
+    } catch (err) {
+      console.error('[OrchestratorBase] recoverStaleInProgress error:', err);
+    }
+
     const readyItems = await this.getReadySet(excludeIds);
 
     let launched = 0;
@@ -216,6 +238,12 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
 
     try {
       this.kanbanWatcher.addId(item.id);
+      // PAM-FIX-007: flip status to in_progress so UI moves item out of Backlog
+      try {
+        await this.markItemInProgress(item.id);
+      } catch (markErr) {
+        console.error('[OrchestratorBase] markItemInProgress error:', markErr);
+      }
       const sessionId = await slot.start();
       this.emit('slot.started', item.id, sessionId);
     } catch (err) {

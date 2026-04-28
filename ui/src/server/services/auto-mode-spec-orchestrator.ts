@@ -105,6 +105,26 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     return this.specsReader.getReadyStories(this.config.projectPath, this.specId, excludeIds);
   }
 
+  protected async recoverStaleInProgress(activeIds: Set<string>): Promise<void> {
+    const recovered = await this.specsReader.resetStaleInProgress(
+      this.config.projectPath,
+      this.specId,
+      activeIds
+    );
+    if (recovered.length > 0) {
+      console.log(`[SpecOrchestrator] Recovered stale in_progress: ${recovered.join(', ')}`);
+    }
+  }
+
+  protected async markItemInProgress(itemId: string): Promise<void> {
+    await this.specsReader.updateStoryStatus(
+      this.config.projectPath,
+      this.specId,
+      itemId,
+      'in_progress'
+    );
+  }
+
   protected buildExecuteArgs(item: ReadyItem): string {
     return `${this.specId} ${item.id}`;
   }

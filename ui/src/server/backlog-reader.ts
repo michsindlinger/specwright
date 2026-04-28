@@ -612,4 +612,69 @@ export class BacklogReader {
       return [];
     }
   }
+
+  /**
+   * PAM-FIX-007: Flip a backlog item's status to 'in_progress'. Called by
+   * AutoModeBacklogOrchestrator when a slot starts, so the UI moves the
+   * item out of Backlog into In Progress.
+   */
+  public async markItemInProgress(
+    projectPath: string,
+    itemId: string
+  ): Promise<void> {
+    const backlogPath = projectDir(projectPath, 'backlog');
+    const backlogJsonPath = join(backlogPath, 'backlog-index.json');
+
+    await withKanbanLock(backlogPath, async () => {
+      let content: string;
+      try {
+        content = await fs.readFile(backlogJsonPath, 'utf-8');
+      } catch {
+        return;
+      }
+      const backlogJson: BacklogJson = JSON.parse(content);
+      const item = backlogJson.items.find(i => i.id === itemId);
+      if (!item) return;
+      if (item.status === 'in_progress') return;
+      item.status = 'in_progress';
+      await fs.writeFile(backlogJsonPath, JSON.stringify(backlogJson, null, 2));
+    });
+  }
+
+  /**
+   * PAM-FIX-006: Reset backlog items with status 'in_progress' that have no
+   * active orchestrator slot back to 'ready'. Mirror of
+   * SpecsReader.resetStaleInProgress.
+   *
+   * @param activeIds Item IDs currently held by orchestrator slots — left untouched.
+   * @returns IDs of items that were recovered.
+   */
+  public async resetStaleInProgressItems(
+    projectPath: string,
+    activeIds: Set<string>
+  ): Promise<string[]> {
+    const backlogPath = projectDir(projectPath, 'backlog');
+    const backlogJsonPath = join(backlogPath, 'backlog-index.json');
+
+    return await withKanbanLock(backlogPath, async () => {
+      let content: string;
+      try {
+        content = await fs.readFile(backlogJsonPath, 'utf-8');
+      } catch {
+        return [];
+      }
+      const backlogJson: BacklogJson = JSON.parse(content);
+      const recovered: string[] = [];
+      for (const item of backlogJson.items) {
+        if (item.status === 'in_progress' && !activeIds.has(item.id)) {
+          item.status = 'ready';
+          recovered.push(item.id);
+        }
+      }
+      if (recovered.length > 0) {
+        await fs.writeFile(backlogJsonPath, JSON.stringify(backlogJson, null, 2));
+      }
+      return recovered;
+    });
+  }
 }

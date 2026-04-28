@@ -19,10 +19,10 @@
     "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed PAM-FIX-005",
+    "lastAction": "Completed PAM-FIX-007",
     "nextAction": "All tasks complete",
-    "progressIndex": 15,
-    "totalStories": 15
+    "progressIndex": 17,
+    "totalStories": 17
   },
   "execution": {
     "status": "completed",
@@ -472,15 +472,64 @@
         ],
         "commits": []
       }
+    },
+    {
+      "id": "PAM-FIX-006",
+      "title": "Auto-Mode: Stale-in_progress Recovery on Orchestrator-Init",
+      "description": "AutoModeOrchestratorBase.tick() ruft vor getReadySet() recoverStaleInProgress(activeIds), das in_progress-Stories ohne aktive Slots zurück auf 'ready' setzt. Verhindert Zombie-State nach Crash, Server-Restart oder Auto-Toggle-Klick auf bereits laufende Story (Symptom: Auto-Mode tut nichts, all-items-done feuert sofort, kanban zeigt in_progress ohne Cloud-Session).",
+      "planSection": "",
+      "dependencies": ["PAM-FIX-005"],
+      "status": "done",
+      "phase": "done",
+      "model": "opus",
+      "timing": {
+        "startedAt": "2026-04-28T09:00:00.000Z",
+        "completedAt": "2026-04-28T09:15:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/src/server/services/auto-mode-orchestrator-base.ts",
+          "ui/src/server/services/auto-mode-spec-orchestrator.ts",
+          "ui/src/server/services/auto-mode-backlog-orchestrator.ts",
+          "ui/src/server/specs-reader.ts",
+          "ui/src/server/backlog-reader.ts",
+          "ui/tests/unit/pam-fix-006-stale-recovery.test.ts"
+        ],
+        "commits": []
+      }
+    },
+    {
+      "id": "PAM-FIX-007",
+      "title": "Auto-Mode: Story-Status auf in_progress flippen wenn Slot startet",
+      "description": "AutoModeOrchestratorBase.launchSlot() ruft markItemInProgress(itemId) vor slot.start() — Spec-Variante via specsReader.updateStoryStatus, Backlog-Variante via neuem backlogReader.markItemInProgress. Sonst bleibt Story status='ready' während Cloud-Session läuft → UI zeigt Story in Backlog-Spalte trotz 'Agent running'-Badge.",
+      "planSection": "",
+      "dependencies": ["PAM-FIX-006"],
+      "status": "done",
+      "phase": "done",
+      "model": "opus",
+      "timing": {
+        "startedAt": "2026-04-28T09:25:00.000Z",
+        "completedAt": "2026-04-28T09:32:00.000Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/src/server/services/auto-mode-orchestrator-base.ts",
+          "ui/src/server/services/auto-mode-spec-orchestrator.ts",
+          "ui/src/server/services/auto-mode-backlog-orchestrator.ts",
+          "ui/src/server/backlog-reader.ts",
+          "ui/tests/unit/pam-fix-006-stale-recovery.test.ts"
+        ],
+        "commits": []
+      }
     }
   ],
   "boardStatus": {
-    "total": 15,
+    "total": 17,
     "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 15,
+    "done": 17,
     "blocked": 0
   },
   "changeLog": [
