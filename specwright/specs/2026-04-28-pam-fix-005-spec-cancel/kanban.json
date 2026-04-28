@@ -39,7 +39,7 @@
       "dependencies": [],
       "status": "ready",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -79,7 +79,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -105,6 +105,18 @@
       "action": "kanban_created",
       "storyId": null,
       "details": "Lean kanban initialized with 3 tasks via MCP tool"
+    },
+    {
+      "timestamp": "2026-04-28T06:54:15.203Z",
+      "action": "model_changed",
+      "storyId": "SAMC-001",
+      "details": "Model changed from null to sonnet"
+    },
+    {
+      "timestamp": "2026-04-28T06:54:19.578Z",
+      "action": "model_changed",
+      "storyId": "SAMC-999",
+      "details": "Model changed from null to sonnet"
     }
   ]
 }
