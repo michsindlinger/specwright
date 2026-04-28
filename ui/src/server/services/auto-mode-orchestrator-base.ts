@@ -34,6 +34,7 @@ export interface ReadyItem {
 export interface OrchestratorSlotSnapshot {
   id: string;
   title: string;
+  sessionId?: string;
 }
 
 export interface OrchestratorSnapshot {
@@ -125,7 +126,11 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
    */
   public async getSnapshot(): Promise<OrchestratorSnapshot> {
     const active: OrchestratorSlotSnapshot[] = [...this.activeSlots.entries()].map(
-      ([id, slot]) => ({ id, title: slot.getTitle() })
+      ([id, slot]) => ({
+        id,
+        title: slot.getTitle(),
+        sessionId: slot.getSessionId() ?? undefined,
+      })
     );
     const excludeIds = new Set(this.activeSlots.keys());
     const ready = await this.getReadySet(excludeIds);

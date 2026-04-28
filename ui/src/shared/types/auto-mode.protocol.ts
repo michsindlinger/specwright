@@ -9,6 +9,12 @@
 export interface SlotSnapshot {
   id: string;
   title: string;
+  /**
+   * Cloud-Terminal session id of the running auto-mode slot. Set on `active`
+   * slots so the frontend can subscribe to `cloud-terminal:data` per story.
+   * Omitted on `queued` slots (no PTY started yet).
+   */
+  sessionId?: string;
 }
 
 export interface AutoModeSnapshot {
