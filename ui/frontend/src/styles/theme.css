@@ -4646,9 +4646,10 @@ aos-app .main-content {
   flex: 1;
   margin-left: var(--sidebar-width);
   padding-left: max(0px, calc(var(--file-tree-open-width, 0px) - var(--sidebar-width)));
+  padding-right: var(--terminal-open-width, 0px);
   min-height: 100vh;
   overflow-x: hidden;
-  transition: padding-bottom 0.3s ease, padding-left 0.3s ease;
+  transition: padding-bottom 0.3s ease, padding-left 0.3s ease, padding-right 0.3s ease;
 }
 
 aos-app .header {
@@ -11138,6 +11139,8 @@ aos-model-selector .model-option.selected .model-name {
   gap: var(--spacing-md);
   flex: 1;
   min-width: 0;
+  flex-wrap: wrap;
+  row-gap: var(--spacing-xs);
 }
 
 .git-status-bar__info-text {

@@ -469,6 +469,28 @@ export class AosApp extends LitElement {
     this._openWorkflowTerminalTab(e.detail);
   };
 
+  // Handler for open-terminal-session events from story-card claude-log-panel.
+  // Maps the backend CloudTerminalSessionId to the frontend TerminalSession.id
+  // (which is what aos-cloud-terminal-sidebar matches activeSessionId against).
+  private _handleOpenTerminalSession = (e: CustomEvent<{ sessionId: string }>): void => {
+    const { sessionId } = e.detail;
+    if (!sessionId) return;
+    const match = this.projectTerminalSessions.find(s => s.terminalSessionId === sessionId);
+    if (!match) {
+      this.showToast('Terminal-Session nicht mehr aktiv', 'warning');
+      return;
+    }
+    this.activeTerminalSessionId = match.id;
+    if (!this.isTerminalSidebarOpen) {
+      this.isTerminalSidebarOpen = true;
+    }
+    if (match.needsInput) {
+      this.terminalSessions = this.terminalSessions.map(s =>
+        s.id === match.id ? { ...s, needsInput: false } : s
+      );
+    }
+  };
+
   override connectedCallback(): void {
     super.connectedCallback();
     routerService.on('route-changed', this.boundRouteChangeHandler);
@@ -506,6 +528,9 @@ export class AosApp extends LitElement {
 
     // WTT-003: Listen for workflow-terminal-request events
     document.addEventListener('workflow-terminal-request', this._handleWorkflowTerminalRequest as EventListener);
+
+    // Listen for open-terminal-session events from story-card claude-log-panel
+    document.addEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
 
     // Global error handler
     window.addEventListener('error', this.handleGlobalError.bind(this));
@@ -569,6 +594,7 @@ export class AosApp extends LitElement {
     document.removeEventListener('keydown', this.boundKeydownHandler);
     // WTT-003: Remove workflow-terminal-request listener
     document.removeEventListener('workflow-terminal-request', this._handleWorkflowTerminalRequest as EventListener);
+    document.removeEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
   }
 
   private handleGlobalError(event: ErrorEvent): void {

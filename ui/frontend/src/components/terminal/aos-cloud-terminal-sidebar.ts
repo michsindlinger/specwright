@@ -815,6 +815,16 @@ export class AosCloudTerminalSidebar extends LitElement {
     );
   }
 
+  /**
+   * Set a CSS custom property on the document root so that the main content
+   * area can shift left when the cloud terminal sidebar is open. Mirrors the
+   * pattern used by aos-file-tree-sidebar.
+   */
+  private updateContentOffset(): void {
+    const width = this.isOpen ? this.sidebarWidth : 0;
+    document.documentElement.style.setProperty('--terminal-open-width', `${width}px`);
+  }
+
   private _handleResizeStart(e: MouseEvent) {
     this.isResizing = true;
     const startX = e.clientX;
@@ -827,6 +837,7 @@ export class AosCloudTerminalSidebar extends LitElement {
         Math.min(this.maxSidebarWidth, startWidth + delta)
       );
       this.sidebarWidth = newWidth;
+      this.updateContentOffset();
     };
 
     const handleMouseUp = () => {
@@ -850,6 +861,9 @@ export class AosCloudTerminalSidebar extends LitElement {
   private _refreshScheduled = false;
 
   override updated(changed: PropertyValues): void {
+    if (changed.has('isOpen')) {
+      this.updateContentOffset();
+    }
     // Refresh terminal rendering after sidebar opens (wait for CSS transition to finish)
     if (changed.has('isOpen') && this.isOpen) {
       this._refreshScheduled = false;
@@ -890,6 +904,11 @@ export class AosCloudTerminalSidebar extends LitElement {
     } catch {
       // localStorage unavailable
     }
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    document.documentElement.style.setProperty('--terminal-open-width', '0px');
   }
 }
 

@@ -78,6 +78,7 @@ export interface KanbanBoard {
 export interface ReadyStoryInfo {
   id: string;
   title: string;
+  model?: string;
 }
 
 export interface StoryDetail {
@@ -441,11 +442,11 @@ export class SpecsReader {
     if (isV2Kanban(kanban)) {
       return kanban.tasks
         .filter(t => t.status === 'ready' && !excludeIds.has(t.id))
-        .map(t => ({ id: t.id, title: t.title || '' }));
+        .map(t => ({ id: t.id, title: t.title || '', model: t.model ?? undefined }));
     }
     return kanban.stories
       .filter(s => s.status === 'ready' && !excludeIds.has(s.id))
-      .map(s => ({ id: s.id, title: s.title }));
+      .map(s => ({ id: s.id, title: s.title, model: s.model ?? undefined }));
   }
 
   /**

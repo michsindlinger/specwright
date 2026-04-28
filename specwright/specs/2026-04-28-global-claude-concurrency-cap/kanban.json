@@ -1,0 +1,219 @@
+{
+  "version": "2.0",
+  "mode": "lean",
+  "spec": {
+    "id": "2026-04-28-global-claude-concurrency-cap",
+    "name": "Global Claude Concurrency Cap",
+    "prefix": "CCG",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-04-28T17:48:05.130Z",
+    "specTier": "M",
+    "implementationPlan": "implementation-plan.md"
+  },
+  "resumeContext": {
+    "currentPhase": "1-complete",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "gitStrategy": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Lean kanban created via MCP",
+    "nextAction": "Setup git worktree or branch",
+    "progressIndex": 0,
+    "totalStories": 8
+  },
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "tasks": [
+    {
+      "id": "CCG-001",
+      "title": "Erweitere ProjectConcurrencyGate um globale Counter",
+      "description": "Statische Counter, acquireGlobalOnly/releaseGlobalOnly, drain-Fix für globalHeld und resetForTests in bestehende Klasse einbauen.",
+      "planSection": "Phase 1: Erweitere ProjectConcurrencyGate",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CCG-002",
+      "title": "Wrap direct-spawn Pfade in workflow-executor",
+      "description": "withGlobalGate-Helper und Wrap an 3 Sites: Fallback --print (489+), runClaudeCommand (1774-2030), Resume (2598-2622).",
+      "planSection": "Phase 2: Wrap Direct-Spawn-Pfade in workflow-executor",
+      "dependencies": [
+        "CCG-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CCG-003",
+      "title": "Wrap chat-send + chat.queued WS-Event",
+      "description": "Wrap claude-handler.ts Lines 360 und 543 mit acquireGlobalOnly, sende chat.queued WS-Event vor blockierender acquire.",
+      "planSection": "Phase 3: Wrap Chat-Send + chat.queued WS-Event",
+      "dependencies": [
+        "CCG-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CCG-004",
+      "title": "Frontend-Banner für chat.queued",
+      "description": "Chat-Lit-Component erhält chat.queued-Handler und Banner Warte auf Claude-Kapazität bis Antwort startet.",
+      "planSection": "Phase 4: Frontend Banner für chat.queued",
+      "dependencies": [
+        "CCG-003"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CCG-005",
+      "title": "Tests für Gate (Unit + Integration)",
+      "description": "Unit-Suite acquireGlobalOnly FIFO, cross-instance cap, drain-release, resetForTests; Integration cross-orchestrator mit 2 Specs.",
+      "planSection": "Phase 5: Tests",
+      "dependencies": [
+        "CCG-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CCG-997",
+      "title": "Code Review",
+      "description": "Full-feature diff review",
+      "planSection": "System: Code Review",
+      "dependencies": [
+        "CCG-001",
+        "CCG-002",
+        "CCG-003",
+        "CCG-004",
+        "CCG-005"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CCG-998",
+      "title": "Integration Validation",
+      "description": "End-to-end test execution",
+      "planSection": "System: Integration Validation",
+      "dependencies": [
+        "CCG-001",
+        "CCG-002",
+        "CCG-003",
+        "CCG-004",
+        "CCG-005"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CCG-999",
+      "title": "Finalize PR",
+      "description": "User-todos, PR creation, cleanup",
+      "planSection": "System: Finalize PR",
+      "dependencies": [
+        "CCG-997",
+        "CCG-998"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 8,
+    "ready": 1,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 7
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-04-28T17:48:05.130Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Lean kanban initialized with 8 tasks via MCP tool"
+    }
+  ]
+}
