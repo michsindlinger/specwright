@@ -7,6 +7,7 @@ import type { ParsedRoute } from '../types/route.types.js';
 import { themeService, type ThemeMode } from '../services/theme.service.js';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
 import '../components/setup/aos-setup-wizard.js';
+import '../components/settings/aos-review-prompt-editor.js';
 
 interface Model {
   id: string;
@@ -820,6 +821,8 @@ export class AosSettingsView extends LitElement {
             </div>
           </div>
         </div>
+
+        <aos-review-prompt-editor></aos-review-prompt-editor>
       </div>
     `;
   }

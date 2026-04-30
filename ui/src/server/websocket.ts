@@ -35,9 +35,11 @@ import {
   type Model,
   type ModelProvider
 } from './model-config.js';
-import { loadGeneralConfig, updateGeneralConfig } from './general-config.js';
+import { loadGeneralConfig, updateGeneralConfig, getReviewPrompt } from './general-config.js';
 import { loadVoiceConfigStatus, updateVoiceConfig } from './voice-config.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
+import { PlanReviewOrchestrator } from './services/plan-review-orchestrator.js';
+import type { TabReviewConfig } from './services/plan-review-orchestrator.js';
 import { VoiceCallService } from './services/voice-call.service.js';
 import { setupService, type StepOutput, type StepComplete } from './services/setup.service.js';
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
@@ -78,6 +80,7 @@ export class WebSocketHandler {
   private commentHandler;
   private fileHandler;
   private cloudTerminalManager: CloudTerminalManager;
+  private planReviewOrchestrator: PlanReviewOrchestrator;
   private voiceCallService: VoiceCallService;
   private previewWatcher: PreviewWatcher;
   private unsubscribeConcurrency: (() => void) | null = null;
@@ -96,12 +99,14 @@ export class WebSocketHandler {
     this.fileHandler = fileHandler;
     this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager());
     this.workflowExecutor.setCloudTerminalManager(this.cloudTerminalManager);
+    this.planReviewOrchestrator = new PlanReviewOrchestrator(this.cloudTerminalManager);
     this.voiceCallService = new VoiceCallService();
     this.previewWatcher = new PreviewWatcher();
     this.previewWatcher.init();
     this.setupConnectionHandler();
     this.startHeartbeat();
     this.setupCloudTerminalListeners();
+    this.setupPlanReviewListeners();
     this.setupVoiceCallListeners();
     this.setupSetupListeners();
     this.setupConcurrencyBroadcast();
@@ -538,6 +543,19 @@ export class WebSocketHandler {
           break;
         case 'cloud-terminal:buffer-request':
           this.handleCloudTerminalBufferRequest(client, message);
+          break;
+        // Plan Review Messages (APR-004, APR-007)
+        case 'plan-review:prompt.get':
+          this.handlePlanReviewPromptGet(client);
+          break;
+        case 'plan-review:prompt.update':
+          this.handlePlanReviewPromptUpdate(client, message);
+          break;
+        case 'plan-review:config.update':
+          this.handlePlanReviewConfigUpdate(client, message);
+          break;
+        case 'plan-review:trigger.manual':
+          this.handlePlanReviewTriggerManual(client, message);
           break;
         // Voice Call Messages (VCF-003)
         case 'voice:call:start':
@@ -3441,6 +3459,36 @@ export class WebSocketHandler {
     }
   }
 
+  private handlePlanReviewPromptGet(client: WebSocketClient): void {
+    const prompt = getReviewPrompt();
+    const response: WebSocketMessage = {
+      type: 'plan-review:prompt',
+      prompt,
+      timestamp: new Date().toISOString()
+    };
+    client.send(JSON.stringify(response));
+  }
+
+  private handlePlanReviewPromptUpdate(client: WebSocketClient, message: WebSocketMessage): void {
+    const reviewPrompt = message.prompt as string | undefined;
+    try {
+      const config = updateGeneralConfig({ reviewPrompt });
+      const response: WebSocketMessage = {
+        type: 'plan-review:prompt',
+        prompt: config.reviewPrompt,
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'plan-review:error',
+        error: error instanceof Error ? error.message : 'Failed to update review prompt',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
   /**
    * SKQ-004/GSQ-001: Handle queue.add message.
    * Adds a spec to the global queue. projectPath comes from message payload.
@@ -4607,6 +4655,101 @@ export class WebSocketHandler {
   }
 
   /**
+   * Wire PlanReviewOrchestrator events to WS broadcasts (APR-007).
+   */
+  private setupPlanReviewListeners(): void {
+    this.planReviewOrchestrator.on(
+      'plan-review:started',
+      (sessionId: string, source: 'auto' | 'manual', reviewerCount: number) => {
+        this.broadcast({
+          type: 'plan-review:started',
+          sessionId,
+          source,
+          reviewerCount,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    );
+
+    this.planReviewOrchestrator.on(
+      'plan-review:reviewer.result',
+      (sessionId: string, reviewerId: string, status: 'fulfilled' | 'rejected', output?: string, error?: string) => {
+        this.broadcast({
+          type: 'plan-review:reviewer.result',
+          sessionId,
+          reviewerId,
+          status,
+          ...(output !== undefined ? { output } : {}),
+          ...(error !== undefined ? { error } : {}),
+          timestamp: new Date().toISOString(),
+        });
+      }
+    );
+
+    this.planReviewOrchestrator.on('plan-review:aggregated', (sessionId: string, aggregatedText: string) => {
+      this.broadcast({
+        type: 'plan-review:aggregated',
+        sessionId,
+        aggregatedText,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    this.planReviewOrchestrator.on('plan-review:injected', (sessionId: string) => {
+      this.broadcast({
+        type: 'plan-review:injected',
+        sessionId,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    this.planReviewOrchestrator.on('plan-review:error', (sessionId: string, errorMessage: string) => {
+      this.broadcast({
+        type: 'plan-review:error',
+        sessionId,
+        message: errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+    });
+  }
+
+  private handlePlanReviewConfigUpdate(client: WebSocketClient, message: WebSocketMessage): void {
+    const sessionId = message.sessionId as string;
+    const enabled = message.enabled as boolean;
+    const reviewers = message.reviewers as TabReviewConfig['reviewers'];
+
+    if (!sessionId || typeof enabled !== 'boolean' || !Array.isArray(reviewers)) {
+      client.send(
+        JSON.stringify({
+          type: 'plan-review:error',
+          message: 'sessionId, enabled (boolean), and reviewers (array) are required',
+          timestamp: new Date().toISOString(),
+        })
+      );
+      return;
+    }
+
+    this.planReviewOrchestrator.setTabConfig(sessionId, { enabled, reviewers });
+  }
+
+  private handlePlanReviewTriggerManual(client: WebSocketClient, message: WebSocketMessage): void {
+    const sessionId = message.sessionId as string;
+
+    if (!sessionId) {
+      client.send(
+        JSON.stringify({
+          type: 'plan-review:error',
+          message: 'sessionId is required',
+          timestamp: new Date().toISOString(),
+        })
+      );
+      return;
+    }
+
+    this.planReviewOrchestrator.triggerManualReview(sessionId);
+  }
+
+  /**
    * Handle cloud-terminal:create
    * Creates a new Cloud Terminal session
    */
@@ -4653,6 +4796,7 @@ export class WebSocketHandler {
         timestamp: new Date().toISOString()
       };
       this.broadcast(createdResponse);
+      this.planReviewOrchestrator.sendSnapshot(session.sessionId, client);
     } catch (error) {
       const errorCode = (error as Error & { code?: string }).code || 'SPAWN_FAILED';
       const errorResponse: WebSocketMessage = {
@@ -4732,6 +4876,7 @@ export class WebSocketHandler {
         timestamp: new Date().toISOString()
       };
       this.broadcast(createdResponse);
+      this.planReviewOrchestrator.sendSnapshot(session.sessionId, client);
     } catch (error) {
       const errorCode = (error as Error & { code?: string }).code || 'SPAWN_FAILED';
       const errorResponse: WebSocketMessage = {
@@ -4839,8 +4984,10 @@ export class WebSocketHandler {
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));
+      return;
     }
     // Response is sent via the session.resumed event listener
+    this.planReviewOrchestrator.sendSnapshot(sessionId, client);
   }
 
   /**

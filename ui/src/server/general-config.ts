@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 
 export interface GeneralConfig {
   baseBranch: string;
+  reviewPrompt: string;
 }
 
 interface GeneralConfigStore {
@@ -18,8 +19,17 @@ const CONFIG_PATH = join(__dirname, '../../config/general-config.json');
 
 const BRANCH_NAME_REGEX = /^[a-zA-Z0-9_.\-/]+$/;
 
+export const DEFAULT_REVIEW_PROMPT =
+  'You are an external reviewer for an implementation plan. Read the plan carefully and provide concrete, actionable feedback focused on:\n' +
+  '- Architectural risks\n' +
+  '- Missing edge cases\n' +
+  '- Inconsistencies between requirements and implementation\n' +
+  '- Simpler alternatives that preserve all features\n\n' +
+  'Be specific and reference parts of the plan. Be concise.';
+
 const DEFAULT_CONFIG: GeneralConfig = {
   baseBranch: 'main',
+  reviewPrompt: DEFAULT_REVIEW_PROMPT,
 };
 
 let cachedStore: GeneralConfigStore | null = null;
@@ -36,11 +46,12 @@ function loadStore(): GeneralConfigStore {
 
       // Migrate from old flat format ({ baseBranch: "main" }) to new store format
       if (parsed.baseBranch && !parsed.projects) {
-        cachedStore = {
-          defaults: { baseBranch: parsed.baseBranch },
+        const migrated: GeneralConfigStore = {
+          defaults: { ...DEFAULT_CONFIG, baseBranch: parsed.baseBranch },
           projects: {},
         };
-        saveStore(cachedStore);
+        saveStore(migrated);
+        cachedStore = migrated;
         console.log('[GeneralConfig] Migrated flat config to project-aware format');
         return cachedStore;
       }
@@ -72,13 +83,17 @@ function saveStore(store: GeneralConfigStore): void {
 export function loadGeneralConfig(projectPath?: string): GeneralConfig {
   const store = loadStore();
   if (projectPath && store.projects[projectPath]) {
-    return { ...store.defaults, ...store.projects[projectPath] };
+    return { ...DEFAULT_CONFIG, ...store.defaults, ...store.projects[projectPath] };
   }
-  return { ...store.defaults };
+  return { ...DEFAULT_CONFIG, ...store.defaults };
 }
 
 export function getBaseBranch(projectPath?: string): string {
   return loadGeneralConfig(projectPath).baseBranch;
+}
+
+export function getReviewPrompt(projectPath?: string): string {
+  return loadGeneralConfig(projectPath).reviewPrompt;
 }
 
 function validateBranch(branch: string): string {
@@ -98,6 +113,13 @@ export function updateGeneralConfig(updates: Partial<GeneralConfig>, projectPath
   const validated: Partial<GeneralConfig> = {};
   if (updates.baseBranch !== undefined) {
     validated.baseBranch = validateBranch(updates.baseBranch);
+  }
+  if (updates.reviewPrompt !== undefined) {
+    const trimmed = updates.reviewPrompt.trim();
+    if (!trimmed) {
+      throw new Error('Review prompt cannot be empty');
+    }
+    validated.reviewPrompt = trimmed;
   }
 
   if (projectPath) {

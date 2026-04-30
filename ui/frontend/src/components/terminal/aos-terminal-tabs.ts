@@ -2,6 +2,8 @@ import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { TerminalSession } from './aos-cloud-terminal-sidebar.js';
 import { getTabTitle } from './tab-title.js';
+import './aos-auto-review-toggle.js';
+import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 
 /**
  * Terminal Tabs Component
@@ -19,6 +21,10 @@ export class AosTerminalTabs extends LitElement {
   @property({ type: String }) activeSessionId: string | null = null;
   @state() private renamingSessionId: string | null = null;
   @state() private renameDraft = '';
+  @property({ type: Array }) availableProviders: AvailableProvider[] = [];
+  @property({ type: Boolean }) activeSessionReviewEnabled = false;
+  @property({ type: Array }) activeSessionReviewReviewers: ReviewerConfig[] = [];
+  @property({ type: String }) activeTerminalSessionId = '';
 
   // Use light DOM for styling compatibility
   override createRenderRoot() {
@@ -229,6 +235,15 @@ export class AosTerminalTabs extends LitElement {
         flex-shrink: 0;
         margin-left: 4px;
       }
+
+      .tab-bar-actions {
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        margin-left: auto;
+        flex-shrink: 0;
+        gap: 4px;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -318,6 +333,16 @@ export class AosTerminalTabs extends LitElement {
             `;
           }
         )}
+        ${this.activeTerminalSessionId ? html`
+          <div class="tab-bar-actions">
+            <aos-auto-review-toggle
+              .sessionId=${this.activeTerminalSessionId}
+              .enabled=${this.activeSessionReviewEnabled}
+              .reviewers=${this.activeSessionReviewReviewers}
+              .availableProviders=${this.availableProviders}
+            ></aos-auto-review-toggle>
+          </div>
+        ` : ''}
       </div>
     `;
   }
