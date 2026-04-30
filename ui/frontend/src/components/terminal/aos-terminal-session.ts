@@ -6,6 +6,8 @@ import type { ModelSelectedDetail } from './aos-model-dropdown.js';
 import '../aos-terminal.js';
 import type { AosTerminal } from '../aos-terminal.js';
 import './aos-model-dropdown.js';
+import './aos-plan-review-block.js';
+import type { ReviewerConfig } from './aos-auto-review-toggle.js';
 import xtermCss from '@xterm/xterm/css/xterm.css?inline';
 
 /**
@@ -570,6 +572,26 @@ export class AosTerminalSession extends LitElement {
     );
   }
 
+  public sendPlanReviewConfigUpdate(enabled: boolean, reviewers: ReviewerConfig[]): void {
+    if (!this.terminalSessionId) return;
+    gateway.send({
+      type: 'plan-review:config.update',
+      sessionId: this.terminalSessionId,
+      enabled,
+      reviewers,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  public sendPlanReviewTriggerManual(): void {
+    if (!this.terminalSessionId) return;
+    gateway.send({
+      type: 'plan-review:trigger.manual',
+      sessionId: this.terminalSessionId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   private getStatusText(): string {
     switch (this.connectionStatus) {
       case 'connecting':
@@ -611,6 +633,9 @@ export class AosTerminalSession extends LitElement {
             <div class="terminal-wrapper ${!this.isActive ? 'hidden' : ''}">
               ${this.renderContent()}
             </div>
+            ${this.terminalSessionId
+              ? html`<aos-plan-review-block .sessionId=${this.terminalSessionId}></aos-plan-review-block>`
+              : ''}
           `}
       </div>
     `;

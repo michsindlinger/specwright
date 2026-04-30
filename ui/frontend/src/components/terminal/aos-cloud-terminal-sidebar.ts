@@ -5,6 +5,8 @@ import { repeat } from 'lit/directives/repeat.js';
 import './aos-terminal-tabs.js';
 import './aos-terminal-session.js';
 import type { AosTerminalSession } from './aos-terminal-session.js';
+import { gateway, type WebSocketMessage } from '../../gateway.js';
+import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 
 export interface TerminalSession {
   id: string;
@@ -66,6 +68,13 @@ export class AosCloudTerminalSidebar extends LitElement {
   private get maxSidebarWidth() {
     return window.innerWidth * 0.75;
   }
+
+  @state() private availableProviders: AvailableProvider[] = [];
+  @state() private sessionReviewConfigs: Record<string, { enabled: boolean; reviewers: ReviewerConfig[] }> = {};
+
+  private boundHandleProvidersListResponse = this._handleProvidersListResponse.bind(this);
+  private boundHandleConfigSnapshot = this._handleConfigSnapshot.bind(this);
+  private boundHandleGatewayConnected = this._handleGatewayConnectedForProviders.bind(this);
 
   // Use light DOM for styling compatibility
   override createRenderRoot() {
@@ -552,9 +561,15 @@ export class AosCloudTerminalSidebar extends LitElement {
       <aos-terminal-tabs
         .sessions=${this.sessions}
         .activeSessionId=${this.activeSessionId}
+        .availableProviders=${this.availableProviders}
+        .activeTerminalSessionId=${this.sessions.find(s => s.id === this.activeSessionId)?.terminalSessionId ?? ''}
+        .activeSessionReviewEnabled=${this._getActiveReviewConfig().enabled}
+        .activeSessionReviewReviewers=${this._getActiveReviewConfig().reviewers}
         @session-select=${this._handleSessionSelect}
         @session-close=${this._handleSessionClose}
         @session-rename=${this._handleSessionRename}
+        @auto-review-config-changed=${this._handleAutoReviewConfigChanged}
+        @auto-review-trigger-manual=${this._handleAutoReviewTriggerManual}
       ></aos-terminal-tabs>
       <div class="terminal-sessions-container">
         ${this.loadingState.isLoading ? this._renderLoadingOverlay() : ''}
@@ -567,6 +582,7 @@ export class AosCloudTerminalSidebar extends LitElement {
               .session=${session}
               .isActive=${session.id === this.activeSessionId}
               .terminalSessionId=${session.terminalSessionId || null}
+              data-session-id="${session.id}"
               class="session-panel ${session.id === this.activeSessionId ? 'active' : 'inactive'}"
               @session-connected=${this._handleSessionConnected}
               @input-needed=${this._handleInputNeeded}
@@ -806,6 +822,56 @@ export class AosCloudTerminalSidebar extends LitElement {
     return sessionId;
   }
 
+  private _getActiveReviewConfig(): { enabled: boolean; reviewers: ReviewerConfig[] } {
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    const termId = activeSession?.terminalSessionId;
+    return termId ? (this.sessionReviewConfigs[termId] ?? { enabled: false, reviewers: [] }) : { enabled: false, reviewers: [] };
+  }
+
+  private _handleProvidersListResponse(msg: WebSocketMessage): void {
+    const providers = msg.providers as AvailableProvider[] | undefined;
+    if (providers) {
+      this.availableProviders = providers;
+    }
+  }
+
+  private _handleConfigSnapshot(msg: WebSocketMessage): void {
+    const sessionId = msg.sessionId as string | undefined;
+    if (!sessionId) return;
+    this.sessionReviewConfigs = {
+      ...this.sessionReviewConfigs,
+      [sessionId]: {
+        enabled: (msg.enabled as boolean) ?? false,
+        reviewers: (msg.reviewers as ReviewerConfig[]) ?? [],
+      },
+    };
+  }
+
+  private _handleGatewayConnectedForProviders(): void {
+    gateway.send({ type: 'model.providers.list' });
+  }
+
+  private _handleAutoReviewConfigChanged(e: CustomEvent<{ sessionId: string; enabled: boolean; reviewers: ReviewerConfig[] }>): void {
+    const { sessionId: terminalSessionId, enabled, reviewers } = e.detail;
+    const session = this.sessions.find(s => s.terminalSessionId === terminalSessionId);
+    if (!session) return;
+    const el = this.querySelector(`[data-session-id="${session.id}"]`) as AosTerminalSession | null;
+    el?.sendPlanReviewConfigUpdate(enabled, reviewers);
+    // Update local config so toggle state stays in sync without waiting for snapshot
+    this.sessionReviewConfigs = {
+      ...this.sessionReviewConfigs,
+      [terminalSessionId]: { enabled, reviewers },
+    };
+  }
+
+  private _handleAutoReviewTriggerManual(e: CustomEvent<{ sessionId: string }>): void {
+    const { sessionId: terminalSessionId } = e.detail;
+    const session = this.sessions.find(s => s.terminalSessionId === terminalSessionId);
+    if (!session) return;
+    const el = this.querySelector(`[data-session-id="${session.id}"]`) as AosTerminalSession | null;
+    el?.sendPlanReviewTriggerManual();
+  }
+
   private _handleRetry() {
     this.dispatchEvent(
       new CustomEvent('retry-session', {
@@ -918,11 +984,21 @@ export class AosCloudTerminalSidebar extends LitElement {
     } catch {
       // localStorage unavailable
     }
+
+    gateway.on('model.providers.list', this.boundHandleProvidersListResponse);
+    gateway.on('plan-review:config.snapshot', this.boundHandleConfigSnapshot);
+    gateway.on('gateway.connected', this.boundHandleGatewayConnected);
+    if (gateway.getConnectionStatus()) {
+      gateway.send({ type: 'model.providers.list' });
+    }
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     document.documentElement.style.setProperty('--terminal-open-width', '0px');
+    gateway.off('model.providers.list', this.boundHandleProvidersListResponse);
+    gateway.off('plan-review:config.snapshot', this.boundHandleConfigSnapshot);
+    gateway.off('gateway.connected', this.boundHandleGatewayConnected);
   }
 }
 
