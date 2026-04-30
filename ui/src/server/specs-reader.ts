@@ -55,7 +55,7 @@ export interface StoryInfo {
  * Survives WebSocket reconnects so the UI can re-surface the warning on reload.
  */
 export interface KanbanAutoModeIncident {
-  type: 'crash' | 'stall' | 'prompt-stuck' | 'timeout' | 'error';
+  type: 'crash' | 'stall' | 'stall-recovered' | 'prompt-stuck' | 'timeout' | 'error';
   message: string;
   storyId?: string;
   timestamp: string;
@@ -467,35 +467,16 @@ export class SpecsReader {
       const kanban = await this.readKanbanJsonUnlocked(specPath);
       if (!kanban) return [];
       const recovered: string[] = [];
+      const reason = 'Reset in_progress → ready (no active slot at orchestrator-init)';
 
-      if (isV2Kanban(kanban)) {
-        for (const task of kanban.tasks) {
-          if (task.status === 'in_progress' && !activeIds.has(task.id)) {
-            task.status = 'ready';
-            task.phase = 'pending';
-            if (task.timing) task.timing.startedAt = null;
-            recovered.push(task.id);
-            this.addChangeLogEntry(
-              kanban,
-              'stale_recovery',
-              task.id,
-              'Reset in_progress → ready (no active slot at orchestrator-init)'
-            );
-          }
-        }
-      } else {
-        for (const story of kanban.stories) {
-          if (story.status === 'in_progress' && !activeIds.has(story.id)) {
-            story.status = 'ready';
-            story.phase = 'pending';
-            story.timing.startedAt = null;
-            recovered.push(story.id);
-            this.addChangeLogEntry(
-              kanban,
-              'stale_recovery',
-              story.id,
-              'Reset in_progress → ready (no active slot at orchestrator-init)'
-            );
+      const items: Array<{ id: string; status: KanbanJsonStatus }> = isV2Kanban(kanban)
+        ? kanban.tasks
+        : kanban.stories;
+
+      for (const item of items) {
+        if (item.status === 'in_progress' && !activeIds.has(item.id)) {
+          if (this.resetItemToReady(kanban, item.id, reason, 'stale_recovery')) {
+            recovered.push(item.id);
           }
         }
       }
@@ -506,6 +487,74 @@ export class SpecsReader {
       }
       return recovered;
     });
+  }
+
+  /**
+   * Force-reset a single in_progress item back to ready.
+   * Used by stall-recovery when an auto-mode slot has been silent past the
+   * recovery threshold and we want the orchestrator to re-pick the item on
+   * the next tick. Persists kanban.json with a `stall_recovery` changeLog entry.
+   *
+   * Idempotent: if the item is not currently in_progress, no-op (returns false).
+   */
+  public async forceResetItem(
+    projectPath: string,
+    specId: string,
+    itemId: string,
+    reason: string
+  ): Promise<boolean> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+    return await withKanbanLock(specPath, async () => {
+      const kanban = await this.readKanbanJsonUnlocked(specPath);
+      if (!kanban) return false;
+
+      const items: Array<{ id: string; status: KanbanJsonStatus }> = isV2Kanban(kanban)
+        ? kanban.tasks
+        : kanban.stories;
+      const item = items.find(i => i.id === itemId);
+      if (!item || item.status !== 'in_progress') return false;
+
+      const ok = this.resetItemToReady(kanban, itemId, reason, 'stall_recovery');
+      if (!ok) return false;
+      this.updateBoardStatus(kanban);
+      await this.writeKanbanJsonUnlocked(specPath, kanban);
+      return true;
+    });
+  }
+
+  /**
+   * Shared item-reset helper: flips one item (V1 story or V2 task) to ready,
+   * resets phase + timing fields, and appends a changeLog entry.
+   * Returns true if a reset was applied; false if the item could not be found.
+   * Caller is responsible for the surrounding lock + writeKanbanJsonUnlocked.
+   */
+  private resetItemToReady(
+    kanban: KanbanJson,
+    itemId: string,
+    reason: string,
+    changeAction: 'stale_recovery' | 'stall_recovery'
+  ): boolean {
+    if (isV2Kanban(kanban)) {
+      const task = kanban.tasks.find(t => t.id === itemId);
+      if (!task) return false;
+      task.status = 'ready';
+      task.phase = 'pending';
+      if (task.timing) {
+        task.timing.startedAt = null;
+        task.timing.completedAt = null;
+      }
+      this.addChangeLogEntry(kanban, changeAction, task.id, reason);
+      return true;
+    }
+
+    const story = kanban.stories.find(s => s.id === itemId);
+    if (!story) return false;
+    story.status = 'ready';
+    story.phase = 'pending';
+    story.timing.startedAt = null;
+    story.timing.completedAt = null;
+    this.addChangeLogEntry(kanban, changeAction, story.id, reason);
+    return true;
   }
 
   /**

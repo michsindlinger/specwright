@@ -222,6 +222,170 @@ describe('ProjectConcurrencyGate — onQueued listener', () => {
   });
 });
 
+describe('ProjectConcurrencyGate — onStateChange listener', () => {
+  it('fires on acquireGlobalOnly without wait — running incremented', async () => {
+    const states: GlobalGateState[] = [];
+    const unsub = ProjectConcurrencyGate.onStateChange(s => states.push(s));
+
+    await ProjectConcurrencyGate.acquireGlobalOnly();
+
+    expect(states).toHaveLength(1);
+    expect(states[0].running).toBe(1);
+    expect(states[0].waiting).toBe(0);
+    unsub();
+  });
+
+  it('fires on instance.acquire without wait — running incremented', async () => {
+    const states: GlobalGateState[] = [];
+    const unsub = ProjectConcurrencyGate.onStateChange(s => states.push(s));
+    const gate = new ProjectConcurrencyGate(2);
+
+    await gate.acquire();
+
+    expect(states).toHaveLength(1);
+    expect(states[0].running).toBe(1);
+    unsub();
+  });
+
+  it('fires on releaseGlobalOnly — running decremented', async () => {
+    await ProjectConcurrencyGate.acquireGlobalOnly();
+
+    const states: GlobalGateState[] = [];
+    const unsub = ProjectConcurrencyGate.onStateChange(s => states.push(s));
+
+    ProjectConcurrencyGate.releaseGlobalOnly();
+
+    expect(states).toHaveLength(1);
+    expect(states[0].running).toBe(0);
+    unsub();
+  });
+
+  it('fires on enqueue with correct waiting count (off-by-one regression)', async () => {
+    const max = ProjectConcurrencyGate.globalMax;
+    for (let i = 0; i < max; i++) {
+      await ProjectConcurrencyGate.acquireGlobalOnly();
+    }
+
+    const states: GlobalGateState[] = [];
+    const unsub = ProjectConcurrencyGate.onStateChange(s => states.push(s));
+
+    const blocked = ProjectConcurrencyGate.acquireGlobalOnly();
+    await Promise.resolve();
+
+    // After enqueue, waiting must reflect the just-pushed waiter
+    const enqueueState = states.find(s => s.waiting === 1);
+    expect(enqueueState).toBeDefined();
+    expect(enqueueState!.running).toBe(max);
+    expect(enqueueState!.waiting).toBe(1);
+
+    unsub();
+    ProjectConcurrencyGate.releaseGlobalOnly();
+    await blocked;
+  });
+
+  it('fires once on hand-off in releaseGlobal — no double-fire after wait-resolve', async () => {
+    const max = ProjectConcurrencyGate.globalMax;
+    for (let i = 0; i < max; i++) {
+      await ProjectConcurrencyGate.acquireGlobalOnly();
+    }
+
+    const blocked = ProjectConcurrencyGate.acquireGlobalOnly();
+    await Promise.resolve();
+
+    const states: GlobalGateState[] = [];
+    const unsub = ProjectConcurrencyGate.onStateChange(s => states.push(s));
+
+    ProjectConcurrencyGate.releaseGlobalOnly();
+    await blocked;
+
+    // Exactly one fire from releaseGlobal handoff (waiting=0, running stays max)
+    // No second fire from the wait-resolve path
+    expect(states).toHaveLength(1);
+    expect(states[0].running).toBe(max);
+    expect(states[0].waiting).toBe(0);
+    unsub();
+  });
+
+  it('drain fires onStateChange exactly once regardless of held slots', async () => {
+    const max = ProjectConcurrencyGate.globalMax;
+    const gate = new ProjectConcurrencyGate(max);
+
+    for (let i = 0; i < max; i++) {
+      await gate.acquire();
+    }
+
+    const states: GlobalGateState[] = [];
+    const unsub = ProjectConcurrencyGate.onStateChange(s => states.push(s));
+
+    gate.drain();
+
+    expect(states).toHaveLength(1);
+    expect(states[0].running).toBe(0);
+    unsub();
+  });
+
+  it('drain on empty gate fires no state-change event', () => {
+    const gate = new ProjectConcurrencyGate(2);
+
+    const states: GlobalGateState[] = [];
+    const unsub = ProjectConcurrencyGate.onStateChange(s => states.push(s));
+
+    gate.drain();
+
+    expect(states).toHaveLength(0);
+    unsub();
+  });
+
+  it('multiple listeners all receive updates', async () => {
+    const a: GlobalGateState[] = [];
+    const b: GlobalGateState[] = [];
+    const u1 = ProjectConcurrencyGate.onStateChange(s => a.push(s));
+    const u2 = ProjectConcurrencyGate.onStateChange(s => b.push(s));
+
+    await ProjectConcurrencyGate.acquireGlobalOnly();
+
+    expect(a).toHaveLength(1);
+    expect(b).toHaveLength(1);
+    u1();
+    u2();
+  });
+
+  it('unsubscribe removes listener', async () => {
+    const calls: number[] = [];
+    const unsub = ProjectConcurrencyGate.onStateChange(() => calls.push(1));
+    unsub();
+
+    await ProjectConcurrencyGate.acquireGlobalOnly();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('listener exception does not break other listeners', async () => {
+    const ok: GlobalGateState[] = [];
+    const u1 = ProjectConcurrencyGate.onStateChange(() => { throw new Error('boom'); });
+    const u2 = ProjectConcurrencyGate.onStateChange(s => ok.push(s));
+
+    await ProjectConcurrencyGate.acquireGlobalOnly();
+
+    expect(ok).toHaveLength(1);
+    u1();
+    u2();
+  });
+
+  it('getCurrentState reflects counters at any time', async () => {
+    expect(ProjectConcurrencyGate.getCurrentState()).toEqual({
+      running: 0,
+      max: ProjectConcurrencyGate.globalMax,
+      waiting: 0,
+    });
+
+    await ProjectConcurrencyGate.acquireGlobalOnly();
+    expect(ProjectConcurrencyGate.getCurrentState().running).toBe(1);
+
+    ProjectConcurrencyGate.releaseGlobalOnly();
+    expect(ProjectConcurrencyGate.getCurrentState().running).toBe(0);
+  });
+});
+
 describe('ProjectConcurrencyGate — test isolation (resetForTests)', () => {
   it('resetForTests clears running counter and waiters', async () => {
     const max = ProjectConcurrencyGate.globalMax;
@@ -256,5 +420,15 @@ describe('ProjectConcurrencyGate — test isolation (resetForTests)', () => {
 
     ProjectConcurrencyGate.releaseGlobalOnly();
     await blocked;
+  });
+
+  it('resetForTests clears stateListeners', async () => {
+    const calls: number[] = [];
+    ProjectConcurrencyGate.onStateChange(() => calls.push(1));
+    // don't unsub — reset should clear it
+    ProjectConcurrencyGate.resetForTests();
+
+    await ProjectConcurrencyGate.acquireGlobalOnly();
+    expect(calls).toHaveLength(0);
   });
 });

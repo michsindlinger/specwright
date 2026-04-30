@@ -34,6 +34,8 @@ export interface TerminalSession {
   isSetupSession?: boolean;
   /** Setup type: 'install' for fresh installation, 'migrate' for agent-os migration, 'update' for framework update */
   setupType?: 'install' | 'migrate' | 'update';
+  /** True once the user has explicitly renamed this tab — guards against auto-overwrite from connect/sync handlers. */
+  customNameSet?: boolean;
 }
 
 export interface LoadingState {
@@ -552,6 +554,7 @@ export class AosCloudTerminalSidebar extends LitElement {
         .activeSessionId=${this.activeSessionId}
         @session-select=${this._handleSessionSelect}
         @session-close=${this._handleSessionClose}
+        @session-rename=${this._handleSessionRename}
       ></aos-terminal-tabs>
       <div class="terminal-sessions-container">
         ${this.loadingState.isLoading ? this._renderLoadingOverlay() : ''}
@@ -685,6 +688,16 @@ export class AosCloudTerminalSidebar extends LitElement {
     );
   }
 
+  private _handleSessionRename(e: CustomEvent<{ sessionId: string; name: string }>) {
+    this.dispatchEvent(
+      new CustomEvent('session-rename', {
+        detail: e.detail,
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   /**
    * Handle input-needed event from aos-terminal-session.
    * Forwards the event to parent (app.ts) to update the session's needsInput flag.
@@ -776,6 +789,7 @@ export class AosCloudTerminalSidebar extends LitElement {
       needsInput: false,
       modelId: options?.modelId,
       providerId: options?.providerId,
+      customNameSet: false,
     };
 
     // Add to sessions array

@@ -1,0 +1,295 @@
+{
+  "version": "2.0",
+  "mode": "lean",
+  "spec": {
+    "id": "2026-04-30-auto-plan-review",
+    "name": "Auto-Plan-Review",
+    "prefix": "APR",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-04-30T12:07:37.997Z",
+    "specTier": "M",
+    "implementationPlan": "implementation-plan.md"
+  },
+  "resumeContext": {
+    "currentPhase": "1-complete",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "gitStrategy": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Lean kanban created via MCP",
+    "nextAction": "Setup git worktree or branch",
+    "progressIndex": 0,
+    "totalStories": 12
+  },
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "tasks": [
+    {
+      "id": "APR-001",
+      "title": "Plan-Detection und waitForIdle in cloud-terminal-manager",
+      "description": "TUI-Box-Pattern, session.plan-detected Event, planReviewEnabled Flag, lastDataAt-Tracking und waitForIdle(ms) Method ergänzen.",
+      "planSection": "Phase 1: cloud-terminal-manager.ts erweitern (Detection-POC)",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-002",
+      "title": "PlanBufferExtractor Util",
+      "description": "ANSI-Strip plus TUI-Box-Parsing extrahiert sauberen Plan-Text aus PTY-Buffer-Tail. Wirft bei leerem Result.",
+      "planSection": "Phase 1: PlanBufferExtractor",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-003",
+      "title": "Smoke-Test SDK CLAUDE_CONFIG_DIR (GO/NO-GO)",
+      "description": "Standalone-Skript spawnt SDK query() mit Options.env.CLAUDE_CONFIG_DIR=~/.claude-deepseek und prüft DeepSeek-Antwort.",
+      "planSection": "Phase 1: Reviewer-SDK-Smoke-Test",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-004",
+      "title": "reviewPrompt Field in general-config plus WS-Handler",
+      "description": "Field in GeneralConfig mit Default-Prompt; WS-Handler plan-review:prompt.get|update mit Empty-String-Validierung.",
+      "planSection": "Phase 1: general-config.ts Field-Add",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-005",
+      "title": "ExternalReviewer Service mit Timeout",
+      "description": "SDK-Wrapper mit Options.env.CLAUDE_CONFIG_DIR pro Provider, withTimeout(60s) Helper, Result-only-Ausgabe.",
+      "planSection": "Phase 2: ExternalReviewer",
+      "dependencies": [
+        "APR-003"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-006",
+      "title": "PlanReviewOrchestrator Service",
+      "description": "Subscribed session.plan-detected, parallele Reviewer via Promise.allSettled, Aggregation, Snapshot-Push, Per-Session-Lock.",
+      "planSection": "Phase 2: PlanReviewOrchestrator",
+      "dependencies": [
+        "APR-001",
+        "APR-002",
+        "APR-004",
+        "APR-005"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-007",
+      "title": "WebSocket plan-review Protocol",
+      "description": "plan-review.protocol.ts Types und WS-Handler für alle plan-review:* Messages inkl. Snapshot-Push bei Tab-Connect/Resume.",
+      "planSection": "Phase 2-4: WebSocket-Protokoll",
+      "dependencies": [
+        "APR-006"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-008",
+      "title": "aos-auto-review-toggle Lit Component",
+      "description": "Tab-Header dumb Component: Toggle, Multi-Select Reviewer, Manual-Trigger-Button. Emittiert nur DOM-Events, kein WS.",
+      "planSection": "Phase 3: aos-auto-review-toggle",
+      "dependencies": [
+        "APR-007"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-009",
+      "title": "aos-plan-review-block Lit Component",
+      "description": "Collapsible Container unter dem Terminal-Panel mit Sub-Blöcken pro Reviewer (running/done/failed States).",
+      "planSection": "Phase 3: aos-plan-review-block",
+      "dependencies": [
+        "APR-007"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-010",
+      "title": "aos-review-prompt-editor Lit Component",
+      "description": "Settings-View-Komponente mit Textarea und Save-Button, eingebunden in settings-view.ts. Empty-Validierung.",
+      "planSection": "Phase 3: aos-review-prompt-editor",
+      "dependencies": [
+        "APR-004"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-011",
+      "title": "Frontend Wiring (Sidebar, Tabs, Session)",
+      "description": "Sidebar fetched Provider-Liste einmal; Tabs reicht Toggle durch; Session relayed DOM-Events zu WS und rendert Review-Block.",
+      "planSection": "Phase 3: Wiring",
+      "dependencies": [
+        "APR-008",
+        "APR-009"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "APR-012",
+      "title": "End-to-End Validation",
+      "description": "Real-World-Test: Auto-Detection-Path, Manual-Trigger-Path, Tab-Switch-Path und Alle-Reviewer-Failed-Path verifizieren.",
+      "planSection": "Phase 4: Integration und Validation",
+      "dependencies": [
+        "APR-011",
+        "APR-010"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 12,
+    "ready": 4,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 8
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-04-30T12:07:37.997Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Lean kanban initialized with 12 tasks via MCP tool"
+    },
+    {
+      "timestamp": "2026-04-30T12:09:27.385Z",
+      "action": "models_bulk_changed",
+      "storyId": null,
+      "details": "Model set to sonnet for: APR-001, APR-002, APR-003, APR-004, APR-005, APR-006, APR-007, APR-008, APR-009, APR-010, APR-011, APR-012"
+    }
+  ]
+}

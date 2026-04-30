@@ -8,7 +8,9 @@
  * Events:
  * - 'story.completed' (itemId: string)
  * - 'story.failed'   (itemId: string, error: string)
- * - 'story.stalled'  (itemId: string, silentMs: number)
+ * - 'story.stalled'  (itemId: string, silentMs: number) — fires at 5 min warn
+ *   AND 10 min recovery edges; consumers branch on `silentMs` to decide whether
+ *   to escalate to `stallRecoverSlot`.
  * - 'story.prompt-stuck' (itemId: string, matchedText: string)
  * - 'slot.started'   (itemId: string, sessionId: string)
  * - 'slot.queued'    (itemId: string, title: string)
@@ -139,6 +141,43 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
       title: item.title,
     }));
     return { active, queued };
+  }
+
+  /**
+   * External-trigger version of `handleWatcherCompleted`. Used by the auto-mode
+   * stall handler when a self-heal is detected (kanban transitioned to
+   * `in_review`/`done` but the file watcher hadn't fired yet).
+   * Idempotent: no-op if the slot is no longer tracked.
+   */
+  public completeSlotExternally(itemId: string): void {
+    this.handleWatcherCompleted(itemId);
+  }
+
+  /**
+   * Stall-recovery: free the slot without invoking the failure pipeline
+   * (no `onItemFailed`, no worktree teardown). Caller is responsible for the
+   * kanban status mutation (typically `SpecsReader.forceResetItem`). After
+   * cleanup the orchestrator is re-ticked so the freshly-`ready` item gets
+   * picked up on the next pass.
+   */
+  public async stallRecoverSlot(itemId: string): Promise<boolean> {
+    const slot = this.activeSlots.get(itemId);
+    if (!slot) return false;
+
+    this.activeSlots.delete(itemId);
+    this.kanbanWatcher.removeId(itemId);
+    this.gate.release();
+
+    try {
+      await slot.cancel();
+    } catch (err) {
+      console.error('[OrchestratorBase] stallRecoverSlot cancel error:', err);
+    }
+
+    this.scheduleTick().catch(err =>
+      console.error('[OrchestratorBase] stallRecoverSlot scheduleTick error:', err)
+    );
+    return true;
   }
 
   /** Cancel all active slots (Promise.allSettled — siblings don't block). */

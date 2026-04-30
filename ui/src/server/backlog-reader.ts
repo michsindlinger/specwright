@@ -677,4 +677,32 @@ export class BacklogReader {
       return recovered;
     });
   }
+
+  /**
+   * Force-reset a single in_progress backlog item back to ready.
+   * Mirror of `SpecsReader.forceResetItem` for backlog stall recovery.
+   * Idempotent: no-op when item is missing or not in_progress.
+   */
+  public async forceResetItem(
+    projectPath: string,
+    itemId: string
+  ): Promise<boolean> {
+    const backlogPath = projectDir(projectPath, 'backlog');
+    const backlogJsonPath = join(backlogPath, 'backlog-index.json');
+
+    return await withKanbanLock(backlogPath, async () => {
+      let content: string;
+      try {
+        content = await fs.readFile(backlogJsonPath, 'utf-8');
+      } catch {
+        return false;
+      }
+      const backlogJson: BacklogJson = JSON.parse(content);
+      const item = backlogJson.items.find(i => i.id === itemId);
+      if (!item || item.status !== 'in_progress') return false;
+      item.status = 'ready';
+      await fs.writeFile(backlogJsonPath, JSON.stringify(backlogJson, null, 2));
+      return true;
+    });
+  }
 }

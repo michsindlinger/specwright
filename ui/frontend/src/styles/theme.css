@@ -5023,6 +5023,33 @@ aos-project-selector .loading {
   letter-spacing: 0.02em;
 }
 
+.claude-concurrency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary, rgba(0, 0, 0, 0.04));
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  cursor: default;
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.claude-concurrency-badge.is-full {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.claude-concurrency-badge .queue-count {
+  margin-left: 4px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
 /* Responsive Styles - Tablet and smaller */
 @media (max-width: 900px) {
   :root {

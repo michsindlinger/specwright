@@ -6,7 +6,9 @@
  * Orchestrators (AutoModeOrchestratorBase subclasses) own the lifecycle.
  *
  * Events:
- * - 'stalled' (storyId: string, silentMs: number)
+ * - 'stalled' (storyId: string, silentMs: number) — fires once at 5 min warn
+ *   edge AND once at 10 min recovery edge. Both edges reset on activity.
+ *   Handlers should branch on `silentMs` (>= STALL_RECOVERY_MS triggers recovery).
  * - 'prompt-stuck' (storyId: string, matchedText: string)
  * - 'error' (error: Error) — session crashed unexpectedly
  * - 'closed' () — cleanup complete
@@ -32,7 +34,13 @@ export interface AutoModeStorySlotConfig {
   specId?: string;
 }
 
-const STALL_THRESHOLD_MS = 5 * 60 * 1000;
+export const STALL_THRESHOLD_MS = 5 * 60 * 1000;
+/**
+ * Second stall edge — orchestrator escalates from "warn" to "force-recover" once
+ * a session has been silent past this threshold. Auto-mode workflow-executor
+ * reads `silentMs` from the event payload and triggers `stallRecoverSlot`.
+ */
+export const STALL_RECOVERY_MS = 10 * 60 * 1000;
 const STALL_CHECK_INTERVAL_MS = 60 * 1000;
 
 export class AutoModeStorySlot extends EventEmitter {
@@ -44,6 +52,7 @@ export class AutoModeStorySlot extends EventEmitter {
   private blockerReportedHandler: ((sid: string, reason: string) => void) | null = null;
   private stallWatchdogTimer: ReturnType<typeof setInterval> | null = null;
   private stalledNotified = false;
+  private recoveryNotified = false;
 
   constructor(private readonly config: AutoModeStorySlotConfig) {
     super();
@@ -218,6 +227,7 @@ export class AutoModeStorySlot extends EventEmitter {
   private startStallWatchdog(): void {
     this.stopStallWatchdog();
     this.stalledNotified = false;
+    this.recoveryNotified = false;
 
     this.stallWatchdogTimer = setInterval(() => {
       if (this.isCancelled || !this.sessionId) return;
@@ -227,14 +237,33 @@ export class AutoModeStorySlot extends EventEmitter {
 
       const silentMs = Date.now() - session.lastActivity.getTime();
 
+      // Edge 2: recovery threshold — fire once when crossing 10 min idle.
+      // Workflow-executor handler reads silentMs and decides to force-recover.
+      if (silentMs >= STALL_RECOVERY_MS) {
+        if (!this.recoveryNotified) {
+          this.recoveryNotified = true;
+          this.stalledNotified = true; // suppress duplicate first-edge fire
+          console.warn(`[AutoModeStorySlot] Story ${this.config.storyId} recovery-threshold reached (${Math.round(silentMs / 1000)}s)`);
+          this.emit('stalled', this.config.storyId, silentMs);
+        }
+        return;
+      }
+
+      // Edge 1: warn threshold — fire once when crossing 5 min idle.
       if (silentMs >= STALL_THRESHOLD_MS) {
         if (!this.stalledNotified) {
           this.stalledNotified = true;
           console.warn(`[AutoModeStorySlot] Story ${this.config.storyId} stalled (${Math.round(silentMs / 1000)}s)`);
           this.emit('stalled', this.config.storyId, silentMs);
         }
-      } else if (this.stalledNotified) {
+        return;
+      }
+
+      // Activity resumed below warn threshold — reset both edges so future
+      // stalls re-fire.
+      if (this.stalledNotified || this.recoveryNotified) {
         this.stalledNotified = false;
+        this.recoveryNotified = false;
       }
     }, STALL_CHECK_INTERVAL_MS);
   }
@@ -245,6 +274,7 @@ export class AutoModeStorySlot extends EventEmitter {
       this.stallWatchdogTimer = null;
     }
     this.stalledNotified = false;
+    this.recoveryNotified = false;
   }
 
   private cleanupMcpForSession(sessionId: string): void {

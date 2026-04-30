@@ -1,4 +1,5 @@
-export type GlobalGateState = { running: number; max: number; waiting: number };
+export type { GlobalGateState } from '../../shared/types/concurrency.protocol.js';
+import type { GlobalGateState } from '../../shared/types/concurrency.protocol.js';
 
 export class ProjectConcurrencyGate {
   static readonly MAX_CONCURRENT = 4;
@@ -10,6 +11,7 @@ export class ProjectConcurrencyGate {
   private static _globalRunning = 0;
   private static _globalWaiters: Array<() => void> = [];
   private static _queuedListeners: Set<(state: GlobalGateState) => void> = new Set();
+  private static _stateListeners: Set<(state: GlobalGateState) => void> = new Set();
 
   private readonly maxConcurrent: number;
   private running = 0;
@@ -22,11 +24,15 @@ export class ProjectConcurrencyGate {
 
   async acquire(): Promise<void> {
     if (ProjectConcurrencyGate._globalRunning < ProjectConcurrencyGate._globalMax) {
-      ProjectConcurrencyGate._globalRunning++;
+      ProjectConcurrencyGate._adjustGlobalRunning(+1);
     } else {
       ProjectConcurrencyGate.notifyQueued();
-      await new Promise<void>(res => ProjectConcurrencyGate._globalWaiters.push(res));
+      await new Promise<void>(res => {
+        ProjectConcurrencyGate._globalWaiters.push(res);
+        ProjectConcurrencyGate.notifyStateChange();
+      });
       // Slot was handed off by releaseGlobal — counter NOT incremented to keep cap invariant.
+      // releaseGlobal already fired notifyStateChange when handing off.
     }
     this.globalHeld++;
 
@@ -56,20 +62,34 @@ export class ProjectConcurrencyGate {
     this.waiters.length = 0;
     this.running = 0;
     pending.forEach(r => r());
+
+    let drainedGlobal = false;
     while (this.globalHeld > 0) {
       this.globalHeld--;
-      ProjectConcurrencyGate.releaseGlobal();
+      if (ProjectConcurrencyGate._globalWaiters.length > 0) {
+        ProjectConcurrencyGate._globalWaiters.shift()!();
+      } else {
+        ProjectConcurrencyGate._globalRunning--;
+      }
+      drainedGlobal = true;
+    }
+    if (drainedGlobal) {
+      ProjectConcurrencyGate.notifyStateChange();
     }
   }
 
   static async acquireGlobalOnly(): Promise<void> {
     if (this._globalRunning < this._globalMax) {
-      this._globalRunning++;
+      this._adjustGlobalRunning(+1);
       return;
     }
     this.notifyQueued();
-    await new Promise<void>(res => this._globalWaiters.push(res));
+    await new Promise<void>(res => {
+      this._globalWaiters.push(res);
+      this.notifyStateChange();
+    });
     // Slot was handed off by releaseGlobal — counter NOT incremented to keep cap invariant.
+    // releaseGlobal already fired notifyStateChange when handing off.
   }
 
   static releaseGlobalOnly(): void {
@@ -80,9 +100,15 @@ export class ProjectConcurrencyGate {
     if (this._globalWaiters.length > 0) {
       // Hand off slot to the next waiter without changing the counter.
       this._globalWaiters.shift()!();
+      this.notifyStateChange();
     } else {
-      this._globalRunning--;
+      this._adjustGlobalRunning(-1);
     }
+  }
+
+  private static _adjustGlobalRunning(delta: number): void {
+    this._globalRunning += delta;
+    this.notifyStateChange();
   }
 
   static onQueued(fn: (s: GlobalGateState) => void): () => void {
@@ -99,10 +125,29 @@ export class ProjectConcurrencyGate {
     this._queuedListeners.forEach(fn => { try { fn(state); } catch { /* swallow */ } });
   }
 
+  static onStateChange(fn: (s: GlobalGateState) => void): () => void {
+    this._stateListeners.add(fn);
+    return () => this._stateListeners.delete(fn);
+  }
+
+  private static notifyStateChange(): void {
+    const state = this.getCurrentState();
+    this._stateListeners.forEach(fn => { try { fn(state); } catch { /* swallow */ } });
+  }
+
+  static getCurrentState(): GlobalGateState {
+    return {
+      running: this._globalRunning,
+      max: this._globalMax,
+      waiting: this._globalWaiters.length,
+    };
+  }
+
   static resetForTests(): void {
     this._globalRunning = 0;
     this._globalWaiters.length = 0;
     this._queuedListeners.clear();
+    this._stateListeners.clear();
   }
 
   get activeCount(): number { return this.running; }

@@ -1,6 +1,7 @@
 import { LitElement, html } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import type { TerminalSession } from './aos-cloud-terminal-sidebar.js';
+import { getTabTitle } from './tab-title.js';
 
 /**
  * Terminal Tabs Component
@@ -16,6 +17,8 @@ import type { TerminalSession } from './aos-cloud-terminal-sidebar.js';
 export class AosTerminalTabs extends LitElement {
   @property({ type: Array }) sessions: TerminalSession[] = [];
   @property({ type: String }) activeSessionId: string | null = null;
+  @state() private renamingSessionId: string | null = null;
+  @state() private renameDraft = '';
 
   // Use light DOM for styling compatibility
   override createRenderRoot() {
@@ -112,7 +115,8 @@ export class AosTerminalTabs extends LitElement {
         text-overflow: ellipsis;
       }
 
-      .tab-close {
+      .tab-close,
+      .tab-edit {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -130,18 +134,40 @@ export class AosTerminalTabs extends LitElement {
       }
 
       .tab:hover .tab-close,
-      .tab.active .tab-close {
+      .tab.active .tab-close,
+      .tab:hover .tab-edit,
+      .tab.active .tab-edit {
         opacity: 1;
       }
 
-      .tab-close:hover {
+      .tab-close:hover,
+      .tab-edit:hover {
         background: var(--bg-color-hover, #3c3c3c);
         color: var(--text-color-primary, #e0e0e0);
       }
 
-      .tab-close svg {
+      .tab-close svg,
+      .tab-edit svg {
         width: 12px;
         height: 12px;
+      }
+
+      .tab.editing {
+        max-width: none;
+        min-width: 240px;
+      }
+
+      .tab-rename-input {
+        flex: 1;
+        min-width: 180px;
+        background: transparent;
+        border: 1px solid var(--accent-color, #007acc);
+        border-radius: 3px;
+        padding: 1px 4px;
+        color: var(--text-color-primary, #e0e0e0);
+        font-size: 12px;
+        font-family: inherit;
+        outline: none;
       }
 
       .empty-tabs {
@@ -224,15 +250,16 @@ export class AosTerminalTabs extends LitElement {
           (session) => {
             const isWorkflow = session.isWorkflow ?? false;
             const needsInput = session.needsInput ?? false;
-            // Tab title: "workflowName: argument" for workflows with argument, otherwise workflowName or session.name
-            const tabTitle = isWorkflow && session.workflowName
-              ? (session.workflowContext ? `${session.workflowName}: ${session.workflowContext}` : session.workflowName)
-              : session.name;
+            const tabTitle = getTabTitle(session);
+            const isEditing = this.renamingSessionId === session.id;
 
+            // Note: a single click selects the tab before @dblclick fires.
+            // That's intentional — matches Finder-style "click to select, dblclick to rename".
             return html`
               <div
-                class="tab ${session.id === this.activeSessionId ? 'active' : ''} ${isWorkflow ? 'workflow' : ''} ${needsInput ? 'needs-input' : ''}"
+                class="tab ${session.id === this.activeSessionId ? 'active' : ''} ${isWorkflow ? 'workflow' : ''} ${needsInput ? 'needs-input' : ''} ${isEditing ? 'editing' : ''}"
                 @click=${() => this._handleTabClick(session.id)}
+                @dblclick=${(e: Event) => this._handleRenameStart(e, session, tabTitle)}
                 title="${tabTitle} (${session.status})"
               >
                 ${isWorkflow
@@ -245,9 +272,36 @@ export class AosTerminalTabs extends LitElement {
                   `
                   : html`<span class="tab-status ${session.status}"></span>`
                 }
-                <span class="tab-name">${tabTitle}</span>
+                ${isEditing
+                  ? html`
+                    <input
+                      class="tab-rename-input"
+                      .value=${this.renameDraft}
+                      @click=${(e: Event) => e.stopPropagation()}
+                      @input=${(e: Event) => { this.renameDraft = (e.target as HTMLInputElement).value; }}
+                      @keydown=${(e: KeyboardEvent) => this._handleRenameKey(e, session)}
+                      @blur=${() => this._handleRenameCommit(session)}
+                    />
+                  `
+                  : html`<span class="tab-name">${tabTitle}</span>`
+                }
                 ${needsInput
                   ? html`<span class="input-badge" title="Eingabe erforderlich">!</span>`
+                  : ''
+                }
+                ${!isEditing
+                  ? html`
+                    <button
+                      class="tab-edit"
+                      @click=${(e: Event) => this._handleRenameStart(e, session, tabTitle)}
+                      title="Tab umbenennen"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                    </button>
+                  `
                   : ''
                 }
                 <button
@@ -293,6 +347,49 @@ export class AosTerminalTabs extends LitElement {
         composed: true,
       })
     );
+  }
+
+  private async _handleRenameStart(e: Event, session: TerminalSession, currentTitle: string) {
+    e.stopPropagation();
+    if (this.renamingSessionId === session.id) return;
+    this.renamingSessionId = session.id;
+    this.renameDraft = currentTitle;
+    await this.updateComplete;
+    const input = this.querySelector('.tab-rename-input') as HTMLInputElement | null;
+    input?.focus();
+    input?.select();
+  }
+
+  private _handleRenameCommit(session: TerminalSession) {
+    if (this.renamingSessionId !== session.id) return;
+    const trimmed = this.renameDraft.trim();
+    const currentTitle = getTabTitle(session);
+    if (trimmed && trimmed !== currentTitle) {
+      this.dispatchEvent(
+        new CustomEvent('session-rename', {
+          detail: { sessionId: session.id, name: trimmed },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
+    this.renamingSessionId = null;
+    this.renameDraft = '';
+  }
+
+  private _handleRenameCancel() {
+    this.renamingSessionId = null;
+    this.renameDraft = '';
+  }
+
+  private _handleRenameKey(e: KeyboardEvent, session: TerminalSession) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this._handleRenameCommit(session);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      this._handleRenameCancel();
+    }
   }
 }
 

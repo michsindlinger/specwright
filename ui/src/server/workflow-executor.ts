@@ -24,6 +24,8 @@ import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
 import { AutoModeSpecOrchestrator } from './services/auto-mode-spec-orchestrator.js';
 import { AutoModeBacklogOrchestrator } from './services/auto-mode-backlog-orchestrator.js';
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
+import { STALL_RECOVERY_MS } from './services/auto-mode-story-slot.js';
+import { BacklogReader } from './backlog-reader.js';
 
 export interface WorkflowCommand {
   id: string;
@@ -1555,7 +1557,7 @@ export class WorkflowExecutor {
       }
     });
 
-    orchestrator.on('story.stalled', (storyId: string, silentMs: number) => {
+    orchestrator.on('story.stalled', async (storyId: string, silentMs: number) => {
       console.warn(`[Workflow] Auto-Mode: Story ${storyId} stalled for ${Math.round(silentMs / 1000)}s`);
       this.sendToProject(projectPath, {
         type: 'workflow.auto-mode.stalled',
@@ -1564,13 +1566,69 @@ export class WorkflowExecutor {
         silentMs,
         timestamp: new Date().toISOString()
       });
-      new SpecsReader().setAutoModeIncident(projectPath, specId, {
-        type: 'stall',
-        message: `Auto-Mode inaktiv seit ${Math.round(silentMs / 60000)} Min. (kein Terminal-Output)`,
-        storyId,
-        silentMs,
-        timestamp: new Date().toISOString()
-      }).catch(err => console.error('[Workflow] Auto-Mode: Failed to persist stall incident:', err));
+
+      const specsReader = new SpecsReader();
+
+      // Re-read kanban to decide between three paths:
+      //  (a) Self-heal — Claude already transitioned to in_review/done; the
+      //      file watcher hasn't fired (or fired too late). Force-complete the
+      //      slot so the orchestrator advances.
+      //  (b) Force-recover — silentMs past recovery threshold AND status still
+      //      in_progress. Reset the story to ready and let the orchestrator
+      //      re-pick it on the next tick.
+      //  (c) Warn — first stall edge (5 min). Persist incident only.
+      let storyStatus: string | null = null;
+      try {
+        const kb = await specsReader.getKanbanBoard(projectPath, specId);
+        storyStatus = kb.stories.find(s => s.id === storyId)?.status ?? null;
+      } catch (err) {
+        console.error('[Workflow] Auto-Mode: stall handler getKanbanBoard error:', err);
+      }
+
+      if (storyStatus === 'in_review' || storyStatus === 'done') {
+        console.log(`[Workflow] Auto-Mode: stall self-heal ${storyId} (kanban=${storyStatus})`);
+        orchestrator.completeSlotExternally(storyId);
+        return;
+      }
+
+      if (silentMs >= STALL_RECOVERY_MS && storyStatus === 'in_progress') {
+        console.warn(`[Workflow] Auto-Mode: force-recovery ${storyId} after ${Math.round(silentMs / 60000)}min idle`);
+        const reason = `Stall recovery: no terminal output for ${Math.round(silentMs / 60000)} min — story reset to ready for re-pickup`;
+        try {
+          await specsReader.forceResetItem(projectPath, specId, storyId, reason);
+        } catch (err) {
+          console.error('[Workflow] Auto-Mode: forceResetItem error:', err);
+        }
+        try {
+          await specsReader.setAutoModeIncident(projectPath, specId, {
+            type: 'stall-recovered',
+            message: `Auto-Mode hat hängende Story zurückgesetzt nach ${Math.round(silentMs / 60000)} Min. Stille`,
+            storyId,
+            silentMs,
+            timestamp: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error('[Workflow] Auto-Mode: stall-recovered incident error:', err);
+        }
+        await orchestrator.stallRecoverSlot(storyId);
+        webSocketManager.sendToProject(projectPath, {
+          type: 'backlog.kanban.refresh',
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+
+      try {
+        await specsReader.setAutoModeIncident(projectPath, specId, {
+          type: 'stall',
+          message: `Auto-Mode inaktiv seit ${Math.round(silentMs / 60000)} Min. (kein Terminal-Output)`,
+          storyId,
+          silentMs,
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('[Workflow] Auto-Mode: Failed to persist stall incident:', err);
+      }
     });
 
     orchestrator.on('story.prompt-stuck', (storyId: string, matchedText: string) => {
@@ -1740,13 +1798,33 @@ export class WorkflowExecutor {
       });
     });
 
-    orchestrator.on('story.stalled', (itemId: string, silentMs: number) => {
+    orchestrator.on('story.stalled', async (itemId: string, silentMs: number) => {
       this.sendToProject(projectPath, {
         type: 'workflow.auto-mode.stalled',
         storyId: itemId,
         silentMs,
         timestamp: new Date().toISOString()
       });
+
+      // Backlog parallel of the spec-stall handler. Self-heal is handled by
+      // the kanban watcher (BacklogReader marks items 'completed' on done);
+      // here we only act on the second edge: 10 min idle + still in_progress.
+      if (silentMs < STALL_RECOVERY_MS) return;
+
+      const backlogReader = new BacklogReader();
+      try {
+        const reset = await backlogReader.forceResetItem(projectPath, itemId);
+        if (reset) {
+          console.warn(`[Workflow] Backlog Auto-Mode: force-recovery ${itemId} after ${Math.round(silentMs / 60000)}min idle`);
+          await orchestrator.stallRecoverSlot(itemId);
+          webSocketManager.sendToProject(projectPath, {
+            type: 'backlog.kanban.refresh',
+            timestamp: new Date().toISOString()
+          });
+        }
+      } catch (err) {
+        console.error('[Workflow] Backlog Auto-Mode: stall-recovery error:', err);
+      }
     });
 
     orchestrator.on('story.prompt-stuck', (itemId: string, matchedText: string) => {

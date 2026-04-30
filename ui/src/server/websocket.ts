@@ -40,6 +40,7 @@ import { loadVoiceConfigStatus, updateVoiceConfig } from './voice-config.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
 import { VoiceCallService } from './services/voice-call.service.js';
 import { setupService, type StepOutput, type StepComplete } from './services/setup.service.js';
+import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 import type {
   CloudTerminalSessionId,
   CloudTerminalType,
@@ -79,6 +80,7 @@ export class WebSocketHandler {
   private cloudTerminalManager: CloudTerminalManager;
   private voiceCallService: VoiceCallService;
   private previewWatcher: PreviewWatcher;
+  private unsubscribeConcurrency: (() => void) | null = null;
 
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server });
@@ -102,6 +104,17 @@ export class WebSocketHandler {
     this.setupCloudTerminalListeners();
     this.setupVoiceCallListeners();
     this.setupSetupListeners();
+    this.setupConcurrencyBroadcast();
+  }
+
+  private setupConcurrencyBroadcast(): void {
+    this.unsubscribeConcurrency = ProjectConcurrencyGate.onStateChange((state) => {
+      this.broadcast({
+        type: 'claude.concurrency.state',
+        state,
+        timestamp: new Date().toISOString(),
+      });
+    });
   }
 
   /**
@@ -135,6 +148,13 @@ export class WebSocketHandler {
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(connectedMessage));
+
+      // Initial sync: send current Claude concurrency state to this client
+      client.send(JSON.stringify({
+        type: 'claude.concurrency.state',
+        state: ProjectConcurrencyGate.getCurrentState(),
+        timestamp: new Date().toISOString(),
+      }));
 
       console.log(`Client connected: ${client.clientId}`);
 
@@ -1431,6 +1451,8 @@ export class WebSocketHandler {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
     }
+    this.unsubscribeConcurrency?.();
+    this.unsubscribeConcurrency = null;
     this.wss.clients.forEach((client) => {
       client.close();
     });

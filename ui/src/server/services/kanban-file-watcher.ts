@@ -46,7 +46,13 @@ function extractItems(data: unknown): WatchableItem[] {
 }
 
 function isCompletedStatus(status: string, filename: WatchFilename): boolean {
-  return status === 'done' || (filename === 'backlog-index.json' && status === 'completed');
+  if (status === 'done') return true;
+  // kanban_complete_story sets in_review (per spec 2026-02-12-kanban-in-review-column).
+  // Orchestrator must release the slot at this transition, even though manual approval
+  // (in_review → done) is still pending.
+  if (status === 'in_review') return true;
+  if (filename === 'backlog-index.json' && status === 'completed') return true;
+  return false;
 }
 
 function isFailedStatus(status: string, filename: WatchFilename): boolean {

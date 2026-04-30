@@ -31,6 +31,7 @@ import type { QueueItem } from './components/queue/aos-queue-item.js';
 import type { TerminalSession } from './components/terminal/aos-cloud-terminal-sidebar.js';
 import type { ProjectSelectedDetail } from './components/aos-project-add-modal.js';
 import type { GitStatusData, GitBranchEntry, GitPrInfo } from '../../src/shared/types/git.protocol.js';
+import type { GlobalGateState } from '../../src/shared/types/concurrency.protocol.js';
 import type { MenuSelectEventDetail } from './components/aos-context-menu.js';
 import { recentlyOpenedService } from './services/recently-opened.service.js';
 import { projectStateService } from './services/project-state.service.js';
@@ -194,6 +195,9 @@ export class AosApp extends LitElement {
 
   @state()
   private isQueueRunning = false;
+
+  @state()
+  private claudeConcurrency: GlobalGateState | null = null;
 
   private toastRef: AosToastNotification | null = null;
 
@@ -419,6 +423,9 @@ export class AosApp extends LitElement {
       this.isQueueRunning = isQueueRunning;
     }
   };
+  private boundClaudeConcurrencyHandler: MessageHandler = (msg) => {
+    this.claudeConcurrency = msg.state as GlobalGateState;
+  };
   private boundQueueStartAckHandler: MessageHandler = (msg) => {
     const isQueueRunning = msg.isQueueRunning as boolean | undefined;
     if (isQueueRunning !== undefined) {
@@ -523,6 +530,8 @@ export class AosApp extends LitElement {
     gateway.on('queue.state', this.boundQueueStateHandler);
     gateway.on('queue.start.ack', this.boundQueueStartAckHandler);
     gateway.on('queue.complete', this.boundQueueCompleteHandler);
+    // CCB: Global Claude concurrency state
+    gateway.on('claude.concurrency.state', this.boundClaudeConcurrencyHandler);
     // GSQ-005: Keyboard shortcut
     document.addEventListener('keydown', this.boundKeydownHandler);
 
@@ -591,6 +600,8 @@ export class AosApp extends LitElement {
     gateway.off('queue.state', this.boundQueueStateHandler);
     gateway.off('queue.start.ack', this.boundQueueStartAckHandler);
     gateway.off('queue.complete', this.boundQueueCompleteHandler);
+    // CCB: Global Claude concurrency state
+    gateway.off('claude.concurrency.state', this.boundClaudeConcurrencyHandler);
     document.removeEventListener('keydown', this.boundKeydownHandler);
     // WTT-003: Remove workflow-terminal-request listener
     document.removeEventListener('workflow-terminal-request', this._handleWorkflowTerminalRequest as EventListener);
@@ -882,6 +893,7 @@ export class AosApp extends LitElement {
       status: 'active',
       createdAt: new Date(),
       projectPath,
+      customNameSet: false,
     };
     this.terminalSessions = [...this.terminalSessions, newSession];
     this.activeTerminalSessionId = newSession.id;
@@ -941,6 +953,13 @@ export class AosApp extends LitElement {
     );
   }
 
+  private _handleTerminalSessionRename(e: CustomEvent<{ sessionId: string; name: string }>): void {
+    const { sessionId, name } = e.detail;
+    this.terminalSessions = this.terminalSessions.map(s =>
+      s.id === sessionId ? { ...s, name, customNameSet: true } : s
+    );
+  }
+
   private _handleTerminalSessionClose(e: CustomEvent<{ sessionId: string }>): void {
     const sessionId = e.detail.sessionId;
     const session = this.terminalSessions.find(s => s.id === sessionId);
@@ -967,14 +986,15 @@ export class AosApp extends LitElement {
     const { sessionId, terminalSessionId, terminalType } = e.detail;
     const resolvedType = terminalType || 'claude-code';
 
-    // Update session with backend ID, terminalType, and type-specific name
+    // Update session with backend ID, terminalType, and type-specific name.
+    // Skip the auto-name overwrite if the user has already renamed this tab.
     this.terminalSessions = this.terminalSessions.map(s => {
       if (s.id !== sessionId) return s;
       return {
         ...s,
         terminalSessionId,
         terminalType: resolvedType,
-        name: this._generateSessionName(s.projectPath, resolvedType),
+        ...(s.customNameSet ? {} : { name: this._generateSessionName(s.projectPath, resolvedType) }),
       };
     });
   }
@@ -1131,6 +1151,7 @@ export class AosApp extends LitElement {
       terminalType: 'shell',
       isSetupSession: true,
       setupType,
+      customNameSet: false,
     };
 
     this.terminalSessions = [...this.terminalSessions, newSession];
@@ -1498,6 +1519,7 @@ export class AosApp extends LitElement {
           projectPath: backendSession.projectPath,
           terminalSessionId: backendSession.sessionId,
           terminalType: type,
+          customNameSet: false,
         } as TerminalSession;
       });
 
@@ -1718,6 +1740,7 @@ export class AosApp extends LitElement {
       needsInput: false,
       modelId: modelConfig.modelId,
       providerId: modelConfig.providerId,
+      customNameSet: false,
     };
 
     // Add to app's terminalSessions (flows down to sidebar via projectTerminalSessions)
@@ -1938,6 +1961,12 @@ export class AosApp extends LitElement {
             ${this.frameworkInstalledVersion ? html`
               <span class="version-label">v${this.frameworkInstalledVersion}</span>
             ` : ''}
+            ${this.claudeConcurrency && (this.claudeConcurrency.running > 0 || this.claudeConcurrency.waiting > 0) ? html`
+              <span
+                class="claude-concurrency-badge ${this.claudeConcurrency.running >= this.claudeConcurrency.max ? 'is-full' : ''}"
+                title="${this.claudeConcurrency.running}/${this.claudeConcurrency.max} aktive Claude-Sessions${this.claudeConcurrency.waiting > 0 ? ` · ${this.claudeConcurrency.waiting} in Warteschlange` : ''}"
+              >⚡ ${this.claudeConcurrency.running}/${this.claudeConcurrency.max}${this.claudeConcurrency.waiting > 0 ? html`<span class="queue-count">+${this.claudeConcurrency.waiting}</span>` : ''}</span>
+            ` : ''}
             <button
               class="terminal-btn ${this.terminalSessions.length > 0 ? 'has-sessions' : ''}"
               @click=${this._handleTerminalToggle}
@@ -2036,6 +2065,7 @@ export class AosApp extends LitElement {
         @new-session=${this._handleNewTerminalSession}
         @session-select=${this._handleTerminalSessionSelect}
         @session-close=${this._handleTerminalSessionClose}
+        @session-rename=${this._handleTerminalSessionRename}
         @session-connected=${this._handleTerminalSessionConnected}
         @input-needed=${this._handleTerminalInputNeeded}
       ></aos-cloud-terminal-sidebar>
