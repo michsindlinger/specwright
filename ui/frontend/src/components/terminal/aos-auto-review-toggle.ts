@@ -33,6 +33,7 @@ export class AosAutoReviewToggle extends LitElement {
   @property({ type: Array }) availableProviders: AvailableProvider[] = [];
 
   @state() private dropdownOpen = false;
+  @state() private dropdownPos: { top: number; right: number } | null = null;
 
   override createRenderRoot() {
     return this;
@@ -135,9 +136,7 @@ export class AosAutoReviewToggle extends LitElement {
       }
 
       .art-dropdown {
-        position: absolute;
-        top: calc(100% + 4px);
-        right: 0;
+        position: fixed;
         min-width: 180px;
         background: var(--bg-color-secondary, #1e1e1e);
         border: 1px solid var(--border-color, #404040);
@@ -243,14 +242,36 @@ export class AosAutoReviewToggle extends LitElement {
 
   private handleOutsideClick = (e: MouseEvent) => {
     if (!e.composedPath().includes(this)) {
-      this.dropdownOpen = false;
-      document.removeEventListener('click', this.handleOutsideClick);
+      this.closeDropdown();
     }
   };
 
+  private handleReposition = () => {
+    if (!this.dropdownOpen) return;
+    this.updateDropdownPos();
+  };
+
+  private updateDropdownPos() {
+    const btn = this.querySelector<HTMLElement>('.art-reviewers-btn');
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    this.dropdownPos = {
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    };
+  }
+
+  private closeDropdown() {
+    this.dropdownOpen = false;
+    this.dropdownPos = null;
+    document.removeEventListener('click', this.handleOutsideClick);
+    window.removeEventListener('resize', this.handleReposition);
+    window.removeEventListener('scroll', this.handleReposition, true);
+  }
+
   override disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener('click', this.handleOutsideClick);
+    this.closeDropdown();
   }
 
   private toggleEnabled() {
@@ -264,12 +285,15 @@ export class AosAutoReviewToggle extends LitElement {
 
   private toggleDropdown(e: Event) {
     e.stopPropagation();
-    this.dropdownOpen = !this.dropdownOpen;
     if (this.dropdownOpen) {
-      document.addEventListener('click', this.handleOutsideClick);
-    } else {
-      document.removeEventListener('click', this.handleOutsideClick);
+      this.closeDropdown();
+      return;
     }
+    this.dropdownOpen = true;
+    this.updateDropdownPos();
+    document.addEventListener('click', this.handleOutsideClick);
+    window.addEventListener('resize', this.handleReposition);
+    window.addEventListener('scroll', this.handleReposition, true);
   }
 
   private isProviderSelected(providerId: string): boolean {
@@ -303,9 +327,12 @@ export class AosAutoReviewToggle extends LitElement {
     if (!this.dropdownOpen) return '';
 
     const hasProviders = this.availableProviders.length > 0;
+    const posStyle = this.dropdownPos
+      ? `top:${this.dropdownPos.top}px;right:${this.dropdownPos.right}px;`
+      : '';
 
     return html`
-      <div class="art-dropdown" @click=${(e: Event) => e.stopPropagation()}>
+      <div class="art-dropdown" style=${posStyle} @click=${(e: Event) => e.stopPropagation()}>
         <div class="art-dropdown-header">Reviewers</div>
         ${hasProviders
           ? this.availableProviders.map(provider => html`
