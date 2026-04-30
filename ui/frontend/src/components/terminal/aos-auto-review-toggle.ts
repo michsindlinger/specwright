@@ -1,4 +1,4 @@
-import { LitElement, html } from 'lit';
+import { LitElement, html, render } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
 export interface ReviewerConfig {
@@ -33,7 +33,7 @@ export class AosAutoReviewToggle extends LitElement {
   @property({ type: Array }) availableProviders: AvailableProvider[] = [];
 
   @state() private dropdownOpen = false;
-  @state() private dropdownPos: { top: number; right: number } | null = null;
+  private dropdownEl: HTMLDivElement | null = null;
 
   override createRenderRoot() {
     return this;
@@ -137,24 +137,27 @@ export class AosAutoReviewToggle extends LitElement {
 
       .art-dropdown {
         position: fixed;
-        min-width: 180px;
-        background: var(--bg-color-secondary, #1e1e1e);
-        border: 1px solid var(--border-color, #404040);
+        min-width: 200px;
+        max-height: 60vh;
+        overflow-y: auto;
+        background: #2a2a2a;
+        border: 1px solid #555;
         border-radius: 4px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-        z-index: 2000;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+        z-index: 99999;
         padding: 4px 0;
+        color: #e0e0e0;
       }
 
       .art-dropdown-header {
-        padding: 4px 10px 2px;
+        padding: 6px 12px 4px;
         font-size: 10px;
-        font-weight: 600;
-        color: var(--text-color-muted, #606060);
+        font-weight: 700;
+        color: #c0c0c0;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
-        border-bottom: 1px solid var(--border-color, #404040);
-        margin-bottom: 2px;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid #444;
+        margin-bottom: 4px;
       }
 
       .art-provider-group {
@@ -173,17 +176,17 @@ export class AosAutoReviewToggle extends LitElement {
       .art-model-row {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 3px 10px;
+        gap: 8px;
+        padding: 6px 12px;
         cursor: pointer;
-        font-size: 11px;
-        color: var(--text-color-secondary, #a0a0a0);
+        font-size: 12px;
+        color: #d0d0d0;
         transition: background 0.1s;
       }
 
       .art-model-row:hover {
-        background: var(--bg-color-hover, #3c3c3c);
-        color: var(--text-color-primary, #e0e0e0);
+        background: #3a3a3a;
+        color: #ffffff;
       }
 
       .art-model-row input[type="checkbox"] {
@@ -196,9 +199,9 @@ export class AosAutoReviewToggle extends LitElement {
       }
 
       .art-empty {
-        padding: 6px 10px;
-        font-size: 11px;
-        color: var(--text-color-muted, #606060);
+        padding: 10px 12px;
+        font-size: 12px;
+        color: #b0b0b0;
         font-style: italic;
       }
 
@@ -241,32 +244,48 @@ export class AosAutoReviewToggle extends LitElement {
   }
 
   private handleOutsideClick = (e: MouseEvent) => {
-    if (!e.composedPath().includes(this)) {
+    const path = e.composedPath();
+    if (!path.includes(this) && (!this.dropdownEl || !path.includes(this.dropdownEl))) {
       this.closeDropdown();
     }
   };
 
   private handleReposition = () => {
     if (!this.dropdownOpen) return;
-    this.updateDropdownPos();
+    this.positionDropdown();
   };
 
-  private updateDropdownPos() {
+  private positionDropdown() {
+    if (!this.dropdownEl) return;
     const btn = this.querySelector<HTMLElement>('.art-reviewers-btn');
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
-    this.dropdownPos = {
-      top: rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-    };
+    this.dropdownEl.style.top = `${rect.bottom + 4}px`;
+    this.dropdownEl.style.right = `${window.innerWidth - rect.right}px`;
+  }
+
+  private renderPortal() {
+    if (!this.dropdownEl) return;
+    render(this.renderDropdownContent(), this.dropdownEl);
+    this.positionDropdown();
   }
 
   private closeDropdown() {
     this.dropdownOpen = false;
-    this.dropdownPos = null;
+    if (this.dropdownEl) {
+      render(html``, this.dropdownEl);
+      this.dropdownEl.remove();
+      this.dropdownEl = null;
+    }
     document.removeEventListener('click', this.handleOutsideClick);
     window.removeEventListener('resize', this.handleReposition);
     window.removeEventListener('scroll', this.handleReposition, true);
+  }
+
+  override updated() {
+    if (this.dropdownOpen) {
+      this.renderPortal();
+    }
   }
 
   override disconnectedCallback() {
@@ -290,7 +309,10 @@ export class AosAutoReviewToggle extends LitElement {
       return;
     }
     this.dropdownOpen = true;
-    this.updateDropdownPos();
+    this.dropdownEl = document.createElement('div');
+    this.dropdownEl.className = 'art-dropdown';
+    document.body.appendChild(this.dropdownEl);
+    this.renderPortal();
     document.addEventListener('click', this.handleOutsideClick);
     window.addEventListener('resize', this.handleReposition);
     window.addEventListener('scroll', this.handleReposition, true);
@@ -323,17 +345,12 @@ export class AosAutoReviewToggle extends LitElement {
     }));
   }
 
-  private renderDropdown() {
-    if (!this.dropdownOpen) return '';
-
+  private renderDropdownContent() {
     const hasProviders = this.availableProviders.length > 0;
-    const posStyle = this.dropdownPos
-      ? `top:${this.dropdownPos.top}px;right:${this.dropdownPos.right}px;`
-      : '';
 
     return html`
-      <div class="art-dropdown" style=${posStyle} @click=${(e: Event) => e.stopPropagation()}>
-        <div class="art-dropdown-header">Reviewers</div>
+      <div @click=${(e: Event) => e.stopPropagation()}>
+        <div class="art-dropdown-header">Reviewers (${this.availableProviders.length})</div>
         ${hasProviders
           ? this.availableProviders.map(provider => html`
             <div class="art-provider-group">
@@ -388,7 +405,6 @@ export class AosAutoReviewToggle extends LitElement {
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </button>
-        ${this.renderDropdown()}
       </div>
 
       <button
