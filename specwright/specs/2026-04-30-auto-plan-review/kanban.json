@@ -37,11 +37,11 @@
       "description": "TUI-Box-Pattern, session.plan-detected Event, planReviewEnabled Flag, lastDataAt-Tracking und waitForIdle(ms) Method ergänzen.",
       "planSection": "Phase 1: cloud-terminal-manager.ts erweitern (Detection-POC)",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "in_progress",
+      "phase": "in_progress",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
+        "startedAt": "2026-04-30T12:10:21.122Z",
         "completedAt": null
       },
       "implementation": {
@@ -271,8 +271,8 @@
   ],
   "boardStatus": {
     "total": 12,
-    "ready": 4,
-    "inProgress": 0,
+    "ready": 3,
+    "inProgress": 1,
     "inReview": 0,
     "testing": 0,
     "done": 0,
@@ -290,6 +290,12 @@
       "action": "models_bulk_changed",
       "storyId": null,
       "details": "Model set to sonnet for: APR-001, APR-002, APR-003, APR-004, APR-005, APR-006, APR-007, APR-008, APR-009, APR-010, APR-011, APR-012"
+    },
+    {
+      "timestamp": "2026-04-30T12:10:21.122Z",
+      "action": "status_changed",
+      "storyId": "APR-001",
+      "details": "Moved from ready to in_progress"
     }
   ]
 }
