@@ -12,23 +12,25 @@
     "implementationPlan": "implementation-plan.md"
   },
   "resumeContext": {
-    "currentPhase": "1-complete",
-    "nextPhase": "2-worktree-setup",
-    "worktreePath": null,
-    "gitBranch": null,
-    "gitStrategy": null,
+    "currentPhase": "task-complete",
+    "nextPhase": "3-execute-task",
+    "worktreePath": "/Users/michaelsindlinger/Entwicklung/specwright-worktrees/auto-plan-review",
+    "gitBranch": "feature/auto-plan-review",
+    "gitStrategy": "worktree",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Lean kanban created via MCP",
-    "nextAction": "Setup git worktree or branch",
-    "progressIndex": 0,
+    "lastAction": "Completed APR-001: Plan-Detection und waitForIdle in cloud-terminal-manager",
+    "nextAction": "Execute next task",
+    "progressIndex": 1,
     "totalStories": 12
   },
   "execution": {
     "status": "not_started",
     "startedAt": null,
     "completedAt": null,
-    "model": null
+    "model": null,
+    "activeIncidents": [],
+    "lastIncident": null
   },
   "tasks": [
     {
@@ -37,15 +39,17 @@
       "description": "TUI-Box-Pattern, session.plan-detected Event, planReviewEnabled Flag, lastDataAt-Tracking und waitForIdle(ms) Method ergänzen.",
       "planSection": "Phase 1: cloud-terminal-manager.ts erweitern (Detection-POC)",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-30T12:10:21.769Z",
+        "completedAt": "2026-04-30T14:17:00.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/services/cloud-terminal-manager.ts"
+        ],
         "commits": []
       }
     },
@@ -55,15 +59,18 @@
       "description": "ANSI-Strip plus TUI-Box-Parsing extrahiert sauberen Plan-Text aus PTY-Buffer-Tail. Wirft bei leerem Result.",
       "planSection": "Phase 1: PlanBufferExtractor",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-04-30T12:10:21.808Z",
+        "completedAt": "2026-04-30T12:16:52.000Z"
       },
       "implementation": {
-        "filesModified": [],
+        "filesModified": [
+          "ui/src/server/utils/plan-buffer-extractor.ts",
+          "ui/tests/unit/plan-buffer-extractor.test.ts"
+        ],
         "commits": []
       }
     },
@@ -73,11 +80,11 @@
       "description": "Standalone-Skript spawnt SDK query() mit Options.env.CLAUDE_CONFIG_DIR=~/.claude-deepseek und prüft DeepSeek-Antwort.",
       "planSection": "Phase 1: Reviewer-SDK-Smoke-Test",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "in_progress",
+      "phase": "in_progress",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
+        "startedAt": "2026-04-30T12:14:42.375Z",
         "completedAt": null
       },
       "implementation": {
@@ -91,11 +98,11 @@
       "description": "Field in GeneralConfig mit Default-Prompt; WS-Handler plan-review:prompt.get|update mit Empty-String-Validierung.",
       "planSection": "Phase 1: general-config.ts Field-Add",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "in_progress",
+      "phase": "in_progress",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
+        "startedAt": "2026-04-30T12:17:08.437Z",
         "completedAt": null
       },
       "implementation": {
@@ -271,11 +278,11 @@
   ],
   "boardStatus": {
     "total": 12,
-    "ready": 4,
-    "inProgress": 0,
+    "ready": 1,
+    "inProgress": 2,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 8
   },
   "changeLog": [
@@ -290,6 +297,66 @@
       "action": "models_bulk_changed",
       "storyId": null,
       "details": "Model set to sonnet for: APR-001, APR-002, APR-003, APR-004, APR-005, APR-006, APR-007, APR-008, APR-009, APR-010, APR-011, APR-012"
+    },
+    {
+      "timestamp": "2026-04-30T12:10:21.122Z",
+      "action": "status_changed",
+      "storyId": "APR-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-30T12:10:21.723Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git worktree setup via UI: feature/auto-plan-review (worktree: /Users/michaelsindlinger/Entwicklung/specwright-worktrees/auto-plan-review)"
+    },
+    {
+      "timestamp": "2026-04-30T12:10:21.737Z",
+      "action": "stale_recovery",
+      "storyId": "APR-001",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-04-30T12:10:21.769Z",
+      "action": "status_changed",
+      "storyId": "APR-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-30T12:10:21.808Z",
+      "action": "status_changed",
+      "storyId": "APR-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-30T12:14:42.233Z",
+      "action": "auto-mode-incident",
+      "storyId": "APR-001",
+      "details": "error: Blocker: reason"
+    },
+    {
+      "timestamp": "2026-04-30T12:14:42.233Z",
+      "action": "status_changed",
+      "storyId": "APR-001",
+      "details": "Moved from in_progress to blocked"
+    },
+    {
+      "timestamp": "2026-04-30T12:14:42.375Z",
+      "action": "status_changed",
+      "storyId": "APR-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-30T12:17:08.437Z",
+      "action": "status_changed",
+      "storyId": "APR-004",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-04-30T14:17:00.000Z",
+      "action": "task_completed",
+      "storyId": "APR-001",
+      "details": "Progress: 1/12 — PLAN_BOX_PATTERN, planReviewEnabled, lastDataAt, waitForIdle, triggerManualReview, detectPlanBox added to cloud-terminal-manager.ts"
     }
   ]
 }

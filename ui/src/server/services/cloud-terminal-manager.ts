@@ -29,6 +29,7 @@ import {
 } from '../../shared/types/cloud-terminal.protocol.js';
 import { TerminalManager } from './terminal-manager.js';
 import { getCliCommandForModel, getProviderCommand, checkCliAvailability } from '../model-config.js';
+import { PlanBufferExtractor } from '../utils/plan-buffer-extractor.js';
 
 /**
  * Extended cloud terminal session with internal state
@@ -51,6 +52,15 @@ interface ManagedCloudSession extends CloudTerminalSession {
 
   /** True once `<<BLOCKER:reason>>` was detected — prevents duplicate emissions. */
   blockerReported?: boolean;
+
+  /** True when plan-review mode is active for this session. */
+  planReviewEnabled?: boolean;
+
+  /** Timestamp of most recent terminal.data event — used by waitForIdle. */
+  lastDataAt?: Date;
+
+  /** Dedup timestamp: last time a plan box was detected. */
+  lastPlanDetectedAt?: Date;
 }
 
 /**
@@ -74,9 +84,26 @@ export const PROMPT_PATTERN = /\((?:y|yes)\/(?:n|no)\)\??\s*$|\[(?:Y|y)\/(?:N|n)
 export const BLOCKER_PATTERN = /<<BLOCKER:([^>]+)>>/;
 
 /**
+ * Detects the closing bar of a Claude Code TUI plan box (╰──...──╯).
+ * Checked per terminal.data chunk; extraction uses the full buffer.
+ * Detection is best-effort — manual trigger is the reliable fallback.
+ */
+export const PLAN_BOX_PATTERN = /╰─{10,}╯/;
+
+/**
  * Cool-down between prompt-detected emissions for the same session (ms).
  */
 const PROMPT_DEDUP_MS = 60 * 1000;
+
+/**
+ * Cool-down between plan-detected emissions for the same session (ms).
+ */
+const PLAN_DEDUP_MS = 30 * 1000;
+
+/**
+ * Max time waitForIdle will wait before resolving regardless of activity (ms).
+ */
+const PLAN_IDLE_TIMEOUT_MS = 5000;
 
 /**
  * CloudTerminalManager - Multi-session terminal manager
@@ -90,6 +117,7 @@ const PROMPT_DEDUP_MS = 60 * 1000;
  * - 'session.error' (CloudTerminalSessionId, Error) - Session error
  * - 'session.prompt-detected' (CloudTerminalSessionId, matchedText) - Interactive prompt detected in output (auto-mode only)
  * - 'session.blocker-reported' (CloudTerminalSessionId, reason) - LLM emitted <<BLOCKER:reason>> marker (auto-mode only)
+ * - 'session.plan-detected' (CloudTerminalSessionId, planText, source: 'auto'|'manual') - Plan box detected; planText is extracted buffer content (plan-review only)
  */
 export class CloudTerminalManager extends EventEmitter {
   /**
@@ -526,6 +554,11 @@ export class CloudTerminalManager extends EventEmitter {
         this.detectBlocker(session, data);
       }
 
+      if (session.planReviewEnabled) {
+        session.lastDataAt = new Date();
+        this.detectPlanBox(session, data);
+      }
+
       // Emit data event
       this.emit('session.data', session.sessionId, data);
     });
@@ -570,6 +603,65 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
+   * Enable or disable plan-review scanning for a session.
+   * When disabled, resets plan-detection state.
+   */
+  public setPlanReviewEnabled(sessionId: CloudTerminalSessionId, enabled: boolean): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return;
+    }
+    session.planReviewEnabled = enabled;
+    if (!enabled) {
+      session.lastPlanDetectedAt = undefined;
+      session.lastDataAt = undefined;
+    }
+  }
+
+  /**
+   * Manually trigger plan detection on the current buffer.
+   * Extracts plan text and emits `session.plan-detected` with source='manual'.
+   * Does not apply the dedup window — manual triggers always fire.
+   */
+  public triggerManualReview(sessionId: CloudTerminalSessionId): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return;
+    }
+    try {
+      const planText = new PlanBufferExtractor().extract(session.buffer.join(''));
+      console.log(`[CloudTerminalManager] Manual plan review triggered for session ${sessionId}`);
+      this.emit('session.plan-detected', sessionId, planText, 'manual');
+    } catch (e) {
+      console.warn(`[CloudTerminalManager] plan-detected-failed-no-pattern-match for session ${sessionId}: ${e}`);
+    }
+  }
+
+  /**
+   * Resolves when the session has been idle (no terminal.data) for at least
+   * `idleMs` milliseconds, or after PLAN_IDLE_TIMEOUT_MS total wait — whichever
+   * comes first. Used by PlanReviewOrchestrator before injecting review text.
+   */
+  public waitForIdle(sessionId: CloudTerminalSessionId, idleMs: number): Promise<void> {
+    return new Promise((resolve) => {
+      const deadline = Date.now() + PLAN_IDLE_TIMEOUT_MS;
+      const interval = setInterval(() => {
+        const session = this.sessions.get(sessionId);
+        if (!session || Date.now() >= deadline) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        const lastData = session.lastDataAt?.getTime() ?? 0;
+        if (Date.now() - lastData >= idleMs) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 50);
+    });
+  }
+
+  /**
    * Scan an output chunk for interactive prompt patterns.
    * Emits `session.prompt-detected` at most once per PROMPT_DEDUP_MS per session.
    */
@@ -606,6 +698,29 @@ export class CloudTerminalManager extends EventEmitter {
     const reason = match[1].trim();
     console.warn(`[CloudTerminalManager] Blocker reported in session ${session.sessionId}: ${reason}`);
     this.emit('session.blocker-reported', session.sessionId, reason);
+  }
+
+  /**
+   * Scan an output chunk for the TUI plan-box closing marker.
+   * On match, extracts plan text from buffer and emits `session.plan-detected`.
+   * Emits at most once per PLAN_DEDUP_MS per session.
+   */
+  private detectPlanBox(session: ManagedCloudSession, data: string): void {
+    if (!PLAN_BOX_PATTERN.exec(data)) {
+      return;
+    }
+    const now = Date.now();
+    if (session.lastPlanDetectedAt && now - session.lastPlanDetectedAt.getTime() < PLAN_DEDUP_MS) {
+      return;
+    }
+    session.lastPlanDetectedAt = new Date(now);
+    try {
+      const planText = new PlanBufferExtractor().extract(session.buffer.join(''));
+      console.log(`[CloudTerminalManager] Plan box detected in session ${session.sessionId} (auto)`);
+      this.emit('session.plan-detected', session.sessionId, planText, 'auto');
+    } catch (e) {
+      console.warn(`[CloudTerminalManager] plan-detected-failed-no-pattern-match for session ${session.sessionId}: ${e}`);
+    }
   }
 
   /**
