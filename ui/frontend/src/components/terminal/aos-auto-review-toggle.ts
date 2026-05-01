@@ -160,17 +160,23 @@ export class AosAutoReviewToggle extends LitElement {
         margin-bottom: 4px;
       }
 
-      .art-provider-group {
-        padding: 2px 0;
+      .art-provider-section {
+        padding: 4px 0 6px;
+        border-bottom: 1px solid #383838;
       }
 
-      .art-provider-label {
-        padding: 3px 10px 1px;
+      .art-provider-section:last-child {
+        border-bottom: none;
+      }
+
+      .art-provider-header-label {
+        padding: 4px 12px 2px;
         font-size: 10px;
-        font-weight: 600;
-        color: var(--text-color-muted, #606060);
+        font-weight: 700;
+        color: #a0a0a0;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.05em;
+        user-select: none;
       }
 
       .art-model-row {
@@ -318,17 +324,15 @@ export class AosAutoReviewToggle extends LitElement {
     window.addEventListener('scroll', this.handleReposition, true);
   }
 
-  private isProviderSelected(providerId: string): boolean {
-    return this.reviewers.some(r => r.providerId === providerId);
+  private isReviewerSelected(providerId: string, modelId: string | undefined): boolean {
+    return this.reviewers.some(r => r.providerId === providerId && r.modelId === modelId);
   }
 
-  private toggleProvider(providerId: string) {
-    let updated: ReviewerConfig[];
-    if (this.isProviderSelected(providerId)) {
-      updated = this.reviewers.filter(r => r.providerId !== providerId);
-    } else {
-      updated = [...this.reviewers, { providerId, modelId: undefined }];
-    }
+  private toggleReviewer(providerId: string, modelId: string | undefined) {
+    const exists = this.isReviewerSelected(providerId, modelId);
+    const updated = exists
+      ? this.reviewers.filter(r => !(r.providerId === providerId && r.modelId === modelId))
+      : [...this.reviewers, { providerId, modelId }];
     this.dispatchEvent(new CustomEvent('auto-review-config-changed', {
       detail: { sessionId: this.sessionId, enabled: this.enabled, reviewers: updated },
       bubbles: true,
@@ -345,6 +349,41 @@ export class AosAutoReviewToggle extends LitElement {
     }));
   }
 
+  private renderProviderSection(provider: AvailableProvider) {
+    const models = provider.models ?? [];
+
+    if (models.length === 0) {
+      return html`
+        <div class="art-model-row" @click=${() => this.toggleReviewer(provider.id, undefined)}>
+          <input
+            type="checkbox"
+            .checked=${this.isReviewerSelected(provider.id, undefined)}
+            @change=${(e: Event) => { e.stopPropagation(); this.toggleReviewer(provider.id, undefined); }}
+            @click=${(e: Event) => e.stopPropagation()}
+          />
+          <span>${provider.name}</span>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="art-provider-section">
+        <div class="art-provider-header-label">${provider.name}</div>
+        ${models.map(m => html`
+          <div class="art-model-row" @click=${() => this.toggleReviewer(provider.id, m.id)}>
+            <input
+              type="checkbox"
+              .checked=${this.isReviewerSelected(provider.id, m.id)}
+              @change=${(e: Event) => { e.stopPropagation(); this.toggleReviewer(provider.id, m.id); }}
+              @click=${(e: Event) => e.stopPropagation()}
+            />
+            <span>${m.name}</span>
+          </div>
+        `)}
+      </div>
+    `;
+  }
+
   private renderDropdownContent() {
     const hasProviders = this.availableProviders.length > 0;
 
@@ -352,19 +391,7 @@ export class AosAutoReviewToggle extends LitElement {
       <div @click=${(e: Event) => e.stopPropagation()}>
         <div class="art-dropdown-header">Reviewers (${this.availableProviders.length})</div>
         ${hasProviders
-          ? this.availableProviders.map(provider => html`
-            <div class="art-provider-group">
-              <div class="art-model-row" @click=${() => this.toggleProvider(provider.id)}>
-                <input
-                  type="checkbox"
-                  .checked=${this.isProviderSelected(provider.id)}
-                  @change=${(e: Event) => { e.stopPropagation(); this.toggleProvider(provider.id); }}
-                  @click=${(e: Event) => e.stopPropagation()}
-                />
-                <span>${provider.name}</span>
-              </div>
-            </div>
-          `)
+          ? this.availableProviders.map(provider => this.renderProviderSection(provider))
           : html`<div class="art-empty">No providers configured</div>`
         }
       </div>

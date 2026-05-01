@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.12.0
+version: 3.13.0
 encoding: UTF-8
 ---
 
@@ -11,6 +11,10 @@ encoding: UTF-8
 ## Overview
 
 Create detailed feature specifications: Main agent gathers fachliche requirements (PO role), then either generates V2 Lean Tasks (default) or V1 Classic Stories with technical refinement (`--classic` flag).
+
+**v3.13 Changes (Template Extraction):**
+- **CHANGED: Step 2.2 — clarification template extracted to `specwright/templates/docs/requirements-clarification-template.md`** — shared with `transfer-and-create-spec.md` v2.0+. Loaded via hybrid lookup (project → global fallback). Eliminates drift risk between create-spec and transfer flow.
+- **Setup impact:** `setup-devteam-global.sh` now ships the new template.
 
 **v3.12 Changes (Description-Cap + Story-Size-Awareness):**
 - **CHANGED: Step 2.6-lean description rule** — description = 1 sentence (max ~150 chars), subject-line only. Detail lives in `planSection`. Eliminates plan/description duplication.
@@ -402,63 +406,17 @@ Before generating user stories, create a summary document for user approval.
 
   3. CREATE requirements-clarification.md:
 
-     <clarification_template>
-       # Requirements Clarification - [SPEC_NAME]
+     **Template Load (hybrid lookup — same pattern as other templates):**
+     1. TRY READ: specwright/templates/docs/requirements-clarification-template.md
+     2. IF file not found: READ: ~/.specwright/templates/docs/requirements-clarification-template.md
+     3. IF still not found: Error — run setup-devteam-global.sh
 
-       **Created:** [DATE]
-       **Status:** Pending User Approval
+     **Substitutions when writing the file:**
+     - `[SPEC_NAME]` → human-readable spec name
+     - `[DATE]` → today's date (YYYY-MM-DD from date-checker)
+     - All bracketed placeholders → content gathered in Step 2.1 dialog
 
-       ## Feature Overview
-       [1-2 sentence summary of the feature]
-
-       ## Target Users
-       [Who will use this feature]
-
-       ## Business Value
-       [Why this feature matters]
-
-       ## Functional Requirements
-       [List of WHAT the feature should do - user-facing]
-
-       ## Affected Areas & Dependencies
-       [Where this feature impacts the system]
-       - [Component 1] - [Impact description]
-       - [Component 2] - [Impact description]
-       - [External System] - [Integration point]
-
-       ## Edge Cases & Error Scenarios
-       [What happens when things go wrong]
-       - [Edge case 1] - [Expected behavior]
-       - [Edge case 2] - [Expected behavior]
-
-       ## Security & Permissions
-       [Who can access what]
-
-       ## Performance Considerations
-       [Any performance requirements]
-
-       ## Scope Boundaries
-       **IN SCOPE:**
-       - [Item 1]
-       - [Item 2]
-
-       **OUT OF SCOPE:**
-       - [Item 1]
-       - [Item 2]
-
-       ## Open Questions (if any)
-       - [Question 1]
-       - [Question 2]
-
-       ## Proposed User Stories (High Level)
-       [List of story titles with brief descriptions - NOT full stories yet]
-       1. [Story 1 Title] - [Brief description]
-       2. [Story 2 Title] - [Brief description]
-       3. [Story 3 Title] - [Brief description]
-
-       ---
-       *Review this document carefully. Once approved, detailed user stories will be generated.*
-     </clarification_template>
+     The template is shared with `transfer-and-create-spec.md` (v2.0+) — keep them in sync via the template file, not by editing inline.
 
   4. PRESENT clarification document to user
   5. OPEN document preview via MCP tool `document_preview_open`:

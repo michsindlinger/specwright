@@ -27,8 +27,7 @@ function buildInjectText(
     .map((r) => `## Reviewer: ${r.providerId}:${r.modelId}\n${r.output}`)
     .join('\n\n');
   return (
-    'Please review your previous plan against the following external review feedback and update your plan accordingly.' +
-    ' Focus on legitimate concerns; ignore feedback that conflicts with the original requirements.\n\n' +
+    "Please address these issues coming from review agents. Don't follow everything blind, if you have good arguments against a recommendation, argue for it.\n\n" +
     '===== External Review =====\n' +
     sections +
     '\n==========================='

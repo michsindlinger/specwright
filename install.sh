@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.25.0"
+FRAMEWORK_VERSION="3.26.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -622,14 +622,14 @@ install_global() {
     done
     substep_done
 
-    # --- Documentation templates (22) ---
-    substep "Documentation templates" "22"
+    # --- Documentation templates (23) ---
+    substep "Documentation templates" "23"
     local doc_files=(
         spec-template.md spec-lite-template.md user-stories-template.md story-template.md
         story-index-template.md backlog-story-index-template.md cross-cutting-decisions-template.md
         bug-description-template.md kanban-board-template.md handover-doc-template.md
         changelog-entry-template.md dod-template.md dor-template.md effort-estimation-template.md
-        implementation-plan-template.md test-scenarios-template.md user-todos-template.md
+        implementation-plan-template.md requirements-clarification-template.md test-scenarios-template.md user-todos-template.md
         bug-fix-implementation-plan-template.md skill-index-template.md
         system-story-997-code-review-template.md system-story-998-integration-validation-template.md
         system-story-999-finalize-pr-template.md

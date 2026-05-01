@@ -838,13 +838,59 @@ export class AosCloudTerminalSidebar extends LitElement {
   private _handleConfigSnapshot(msg: WebSocketMessage): void {
     const sessionId = msg.sessionId as string | undefined;
     if (!sessionId) return;
+    const enabled = (msg.enabled as boolean) ?? false;
+    const incomingReviewers = (msg.reviewers as ReviewerConfig[]) ?? [];
+    const migrated = this._migrateLegacyReviewers(incomingReviewers);
+
+    const didMigrate = migrated.length !== incomingReviewers.length
+      || migrated.some((r, i) => r.modelId !== incomingReviewers[i]?.modelId
+        || r.providerId !== incomingReviewers[i]?.providerId);
+
     this.sessionReviewConfigs = {
       ...this.sessionReviewConfigs,
-      [sessionId]: {
-        enabled: (msg.enabled as boolean) ?? false,
-        reviewers: (msg.reviewers as ReviewerConfig[]) ?? [],
-      },
+      [sessionId]: { enabled, reviewers: migrated },
     };
+
+    if (didMigrate) {
+      const session = this.sessions.find(s => s.terminalSessionId === sessionId);
+      if (session) {
+        const el = this.querySelector(`[data-session-id="${session.id}"]`) as AosTerminalSession | null;
+        el?.sendPlanReviewConfigUpdate(enabled, migrated);
+      }
+    }
+  }
+
+  private _migrateLegacyReviewers(reviewers: ReviewerConfig[]): ReviewerConfig[] {
+    const result: ReviewerConfig[] = [];
+    const seen = new Set<string>();
+
+    for (const r of reviewers) {
+      if (r.modelId !== undefined) {
+        const key = `${r.providerId}:${r.modelId}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.push(r);
+        }
+        continue;
+      }
+
+      const provider = this.availableProviders.find(p => p.id === r.providerId);
+      if (provider && provider.models && provider.models.length > 0) {
+        const firstModel = provider.models[0];
+        const key = `${r.providerId}:${firstModel.id}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.push({ providerId: r.providerId, modelId: firstModel.id });
+        }
+      } else {
+        const key = `${r.providerId}:undefined`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.push(r);
+        }
+      }
+    }
+    return result;
   }
 
   private _handleGatewayConnectedForProviders(): void {

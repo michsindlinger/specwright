@@ -283,6 +283,7 @@ download_file "$REPO_URL/specwright/templates/docs/dod-template.md" "$GLOBAL_DIR
 download_file "$REPO_URL/specwright/templates/docs/dor-template.md" "$GLOBAL_DIR/templates/docs/dor-template.md"
 download_file "$REPO_URL/specwright/templates/docs/effort-estimation-template.md" "$GLOBAL_DIR/templates/docs/effort-estimation-template.md"
 download_file "$REPO_URL/specwright/templates/docs/implementation-plan-template.md" "$GLOBAL_DIR/templates/docs/implementation-plan-template.md"
+download_file "$REPO_URL/specwright/templates/docs/requirements-clarification-template.md" "$GLOBAL_DIR/templates/docs/requirements-clarification-template.md"
 download_file "$REPO_URL/specwright/templates/docs/test-scenarios-template.md" "$GLOBAL_DIR/templates/docs/test-scenarios-template.md"
 download_file "$REPO_URL/specwright/templates/docs/user-todos-template.md" "$GLOBAL_DIR/templates/docs/user-todos-template.md"
 download_file "$REPO_URL/specwright/templates/docs/bug-fix-implementation-plan-template.md" "$GLOBAL_DIR/templates/docs/bug-fix-implementation-plan-template.md"

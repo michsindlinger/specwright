@@ -31,27 +31,75 @@ export class ExternalReviewer {
   ): Promise<string> {
     return withTimeout(async (ac) => {
       const configDir = expandTilde(`~/.claude-${providerId}`);
+      const stderrBuf: string[] = [];
+
+      console.log(
+        `[ExternalReviewer] ${providerId}${modelId ? ':' + modelId : ''} prompt-head=${JSON.stringify(prompt.slice(0, 240))} totalLen=${prompt.length}`
+      );
+
+      const baseEnv: Record<string, string | undefined> = { ...process.env };
+      delete baseEnv.ANTHROPIC_API_KEY;
+      delete baseEnv.ANTHROPIC_AUTH_TOKEN;
+      delete baseEnv.ANTHROPIC_BASE_URL;
 
       const session = claudeQuery({
         prompt,
         options: {
-          maxTurns: 1,
+          maxTurns: 5,
+          tools: [],
           cwd: projectPath,
           abortController: ac,
-          env: { ...process.env, CLAUDE_CONFIG_DIR: configDir },
+          env: { ...baseEnv, CLAUDE_CONFIG_DIR: configDir },
+          settingSources: ['user'],
+          stderr: (data: string) => {
+            stderrBuf.push(data);
+          },
           ...(modelId ? { model: modelId } : {}),
         },
       });
 
       let result = '';
-      for await (const event of session) {
-        if (event.type === 'result' && event.subtype === 'success') {
-          result = event.result;
+      let errorDetail = '';
+      let streamError: unknown = null;
+
+      try {
+        for await (const event of session) {
+          if (event.type === 'result') {
+            const ev = event as Record<string, unknown>;
+            const subtype = typeof ev.subtype === 'string' ? ev.subtype : '';
+            const isError = Boolean(ev.is_error);
+            const resultText = typeof ev.result === 'string' ? ev.result : '';
+
+            if (subtype === 'success' && !isError) {
+              result = resultText;
+            } else {
+              errorDetail = `${subtype || 'unknown'}${isError ? ' (is_error)' : ''}${resultText ? ': ' + resultText : ''}`;
+            }
+          }
+        }
+      } catch (err) {
+        streamError = err;
+      } finally {
+        try {
+          await session.return?.(undefined);
+        } catch {
+          // ignore — generator already closed
         }
       }
 
-      if (!result) throw new Error('No result from reviewer');
+      if (!result || streamError) {
+        const stderr = stderrBuf.join('').trim();
+        const ref = `${providerId}${modelId ? ':' + modelId : ''}`;
+        const parts: string[] = [`Reviewer ${ref} failed`];
+        if (streamError) {
+          parts.push(streamError instanceof Error ? streamError.message : String(streamError));
+        }
+        if (errorDetail) parts.push(errorDetail);
+        if (stderr) parts.push(`stderr: ${stderr.slice(0, 800)}`);
+        throw new Error(parts.join(' — '));
+      }
+
       return result;
-    }, 60_000);
+    }, 180_000);
   }
 }
