@@ -2,7 +2,7 @@ import { AutoModeOrchestratorBase, type OrchestratorBaseConfig, type ReadyItem }
 import { SpecsReader } from '../specs-reader.js';
 import { projectDir } from '../utils/project-dirs.js';
 import { CloudTerminalManager } from './cloud-terminal-manager.js';
-import { storyBranchName } from '../utils/worktree-story.js';
+import { isWorktreeClean, storyBranchName } from '../utils/worktree-story.js';
 
 type GitStrategy = 'branch' | 'worktree' | 'current-branch';
 
@@ -40,6 +40,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
   constructor(config: AutoModeSpecOrchestratorConfig) {
     super({
       projectPath: config.projectPath,
+      mainProjectPath: config.mainProjectPath,
       kanbanPath: config.kanbanPath,
       watchFilename: 'kanban.json',
       maxConcurrent: config.maxConcurrent,
@@ -79,6 +80,13 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
       worktreeOps,
     });
   }
+
+  // ── Public introspection (used by workflow-executor finalize path) ─────────
+
+  public getGitStrategy(): GitStrategy { return this.gitStrategy; }
+  public getSpecBranch(): string | undefined { return this.specBranch; }
+  public getSpecWorkingDirectory(): string { return this.config.projectPath; }
+  public getMainProjectPath(): string { return this.mainProjectPath; }
 
   // ── Slot project path: create per-story worktree when gitStrategy=worktree ──
 
@@ -138,6 +146,39 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
 
     if (wtPath && this.gitStrategy === 'worktree' && this.specBranch && this.worktreeOps) {
       const branch = storyBranchName(this.specId, itemId);
+
+      // Pre-merge cleanliness gate: any uncommitted/untracked file in the story
+      // worktree means Claude finished without committing. Auto-committing would
+      // pollute history; --force-removing would lose data. Surface as incident,
+      // revert story to in_progress, halt orchestrator so the user can inspect.
+      if (!isWorktreeClean(wtPath)) {
+        const errMsg = `Story-Worktree hat uncommittete Änderungen — Story auf in_progress zurückgesetzt. Worktree unter ${wtPath} prüfen.`;
+        console.warn(`[SpecOrchestrator] ${errMsg}`);
+        try {
+          await this.specsReader.updateStoryStatus(
+            this.config.projectPath,
+            this.specId,
+            itemId,
+            'in_progress'
+          );
+        } catch (err) {
+          console.error('[SpecOrchestrator] revert-to-in_progress (dirty) error:', err);
+        }
+        try {
+          await this.specsReader.setAutoModeIncident(this.config.projectPath, this.specId, {
+            type: 'error',
+            message: errMsg,
+            storyId: itemId,
+            timestamp: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error('[SpecOrchestrator] setAutoModeIncident (dirty) error:', err);
+        }
+        this.emit('story.dirty-worktree', itemId, wtPath, errMsg);
+        this.haltScheduling();
+        return;
+      }
+
       try {
         await this.worktreeOps.mergeStoryBranchIntoSpec(this.config.projectPath, this.specBranch, branch);
         console.log(`[SpecOrchestrator] Merged ${branch} into ${this.specBranch}`);
@@ -146,10 +187,22 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
         const baseMsg = err instanceof Error ? err.message : `Merge conflict: ${branch} → ${this.specBranch}`;
         const errMsg = `${baseMsg} (worktree kept at ${wtPath})`;
         console.warn(`[SpecOrchestrator] ${errMsg}`);
+        // Revert story to in_progress so kanban reflects unresolved state.
+        try {
+          await this.specsReader.updateStoryStatus(
+            this.config.projectPath,
+            this.specId,
+            itemId,
+            'in_progress'
+          );
+        } catch (revertErr) {
+          console.error('[SpecOrchestrator] revert-to-in_progress (conflict) error:', revertErr);
+        }
         this.emit('story.merge-conflict', itemId, wtPath, errMsg);
         this.storyWorktrees.delete(itemId);
-        // Don't run normal completion cleanup — story stays "done" in kanban but incident recorded
-        await this.scheduleTick();
+        // Halt orchestrator — sibling stories on a conflicted spec branch would
+        // compound the problem. User must resolve and re-trigger auto-mode.
+        this.haltScheduling();
         return;
       }
       this.storyWorktrees.delete(itemId);
@@ -169,8 +222,6 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     } catch (err) {
       console.error('[SpecOrchestrator] resolveDependencies error:', err);
     }
-
-    await this.scheduleTick();
   }
 
   protected async onItemFailed(itemId: string, _error: string): Promise<void> {
@@ -184,11 +235,29 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
 
   public override async cancel(): Promise<void> {
     if (this.worktreeOps) {
+      // Story sub-worktrees: remove only if clean. Dirty ones stay so the user
+      // can recover work via `git worktree list` + manual commit/push.
       for (const [, wtPath] of this.storyWorktrees) {
-        await this.worktreeOps.removeStoryWorktree(this.config.projectPath, wtPath);
+        if (isWorktreeClean(wtPath)) {
+          await this.worktreeOps.removeStoryWorktree(this.config.projectPath, wtPath);
+        } else {
+          console.warn(`[SpecOrchestrator] cancel: keeping dirty story worktree ${wtPath}`);
+        }
       }
     }
     this.storyWorktrees.clear();
+
+    // Spec-level worktree: only cleaned by `finalizeSpecExecution` on the success
+    // path. On user-initiated cancel we leave it alone — there may be merged
+    // commits the user wants to push manually. We log its state for debugging.
+    if (this.gitStrategy === 'worktree') {
+      const specWtPath = this.config.projectPath;
+      if (specWtPath !== this.mainProjectPath) {
+        const clean = isWorktreeClean(specWtPath);
+        console.log(`[SpecOrchestrator] cancel: spec worktree ${specWtPath} clean=${clean} (kept)`);
+      }
+    }
+
     await super.cancel();
   }
 }

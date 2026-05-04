@@ -25,6 +25,12 @@ import type { CloudTerminalSessionId, CloudTerminalModelConfig } from '../../sha
 
 export interface AutoModeStorySlotConfig {
   projectPath: string;
+  /**
+   * Main project path when `projectPath` is a worktree. Routed to the kanban MCP
+   * server via `SPECWRIGHT_MAIN_PROJECT_PATH` so kanban/backlog reads + writes
+   * land in the main repo and the UI sees them. Omit for in-place execution.
+   */
+  mainProjectPath?: string;
   storyId: string;
   title: string;
   executeArgs: string;
@@ -81,6 +87,9 @@ export class AutoModeStorySlot extends EventEmitter {
 
     const modelConfig: CloudTerminalModelConfig = { model: this.config.model };
     const extraCliArgs = [...mcpFlags, ...AUTO_MODE_CLI_FLAGS];
+    const extraEnv = this.config.mainProjectPath && this.config.mainProjectPath !== this.config.projectPath
+      ? { SPECWRIGHT_MAIN_PROJECT_PATH: this.config.mainProjectPath }
+      : undefined;
     const session = this.config.cloudTerminalManager.createSession(
       this.config.projectPath,
       'claude-code',
@@ -88,7 +97,8 @@ export class AutoModeStorySlot extends EventEmitter {
       undefined,
       undefined,
       command,
-      extraCliArgs
+      extraCliArgs,
+      extraEnv
     );
 
     if (mcpFlags.length > 0) {

@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { readdir, readFile, writeFile, mkdir, rm, symlink } from 'fs/promises';
+import { readdir, readFile, writeFile, mkdir } from 'fs/promises';
 import { join, basename, dirname } from 'path';
 import { existsSync } from 'fs';
 import { spawn, ChildProcess, execSync } from 'child_process';
@@ -15,8 +15,10 @@ import { resolveCommandDir, projectDir } from './utils/project-dirs.js';
 import {
   storyWorktreePath,
   storyBranchName,
-  setupSpecSymlinkInWorktree,
-  setupBacklogSymlinkInWorktree,
+  seedSpecDirInWorktree,
+  seedBacklogDirInWorktree,
+  copyMcpConfigToWorktree,
+  isWorktreeClean,
 } from './utils/worktree-story.js';
 import { buildMcpFlags, cleanupMcpTempFile } from './utils/mcp-profile.js';
 import { gitService } from './services/git.service.js';
@@ -642,14 +644,16 @@ export class WorkflowExecutor {
 
           console.log(`[Workflow] Created worktree at ${worktreePath}`);
 
-          // Create symlink for spec folder so Claude writes to main project
-          // This ensures the UI sees all kanban updates immediately
-          await this.createSpecSymlink(projectPath, worktreePath, specId);
+          // Seed spec dir into worktree (real copy, committed). Mutable kanban files
+          // stay in main and are routed via SPECWRIGHT_MAIN_PROJECT_PATH so the UI
+          // sees updates without symlinks polluting git state.
+          await seedSpecDirInWorktree(projectPath, worktreePath, specId);
+          await copyMcpConfigToWorktree(projectPath, worktreePath);
         } else {
           console.log(`[Workflow] Worktree already exists at ${worktreePath}`);
-
-          // Ensure symlink exists even for existing worktrees
-          await this.createSpecSymlink(projectPath, worktreePath, specId);
+          // Idempotent: migrates legacy symlinks to a real seed if needed.
+          await seedSpecDirInWorktree(projectPath, worktreePath, specId);
+          await copyMcpConfigToWorktree(projectPath, worktreePath);
         }
 
         // Update kanban board with git strategy info
@@ -1140,6 +1144,193 @@ export class WorkflowExecutor {
       }, projectPath);
     }
 
+    return result;
+  }
+
+  /**
+   * Finalize a spec's auto-mode run with `gitStrategy=worktree`.
+   *
+   * Mirrors `handleBacklogPostExecution` for spec-level work:
+   *  - verify spec worktree clean (Claude leftovers in spec worktree → incident, no PR)
+   *  - require substantive commits on spec branch (mirrors backlog Zeilen 998-1024)
+   *  - dedupe against an existing open PR for that branch
+   *  - push spec branch; failure → keep worktree, no PR
+   *  - create PR (or reuse existing); failure → keep worktree (push already succeeded)
+   *  - on full success: checkout base, remove spec worktree (non-force)
+   *
+   * Only runs for `gitStrategy === 'worktree'` with a defined `specBranch`.
+   */
+  private async finalizeSpecExecution(
+    mainProjectPath: string,
+    specWorktreePath: string,
+    specBranch: string,
+    specId: string
+  ): Promise<{ prUrl?: string; warning?: string }> {
+    const result: { prUrl?: string; warning?: string } = {};
+    const baseBranch = getBaseBranch(mainProjectPath);
+    const specsReader = new SpecsReader();
+
+    const reportIncident = async (message: string): Promise<void> => {
+      try {
+        await specsReader.setAutoModeIncident(mainProjectPath, specId, {
+          type: 'error',
+          message,
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('[Workflow] finalizeSpec setAutoModeIncident error:', err);
+      }
+    };
+
+    // 1. Spec-Worktree clean? Otherwise leftover commits would be lost on remove.
+    if (existsSync(specWorktreePath) && !isWorktreeClean(specWorktreePath)) {
+      const msg = `Spec-Worktree hat uncommittete Änderungen — Auto-Finalize abgebrochen. Worktree unter ${specWorktreePath} prüfen.`;
+      console.warn(`[Workflow] finalizeSpec: ${msg}`);
+      await reportIncident(msg);
+      this.sendToProject(mainProjectPath, {
+        type: 'workflow.spec-finalize.dirty-worktree',
+        specId,
+        specBranch,
+        worktreePath: specWorktreePath,
+        message: msg,
+        timestamp: new Date().toISOString()
+      });
+      result.warning = msg;
+      return result;
+    }
+
+    // 2. Substantive-Commits-Check — exact predicate from handleBacklogPostExecution.
+    let hasSubstantive = false;
+    try {
+      const commitMsgs = execSync(
+        `git log ${baseBranch}..${specBranch} --no-merges --pretty=format:%s`,
+        { cwd: mainProjectPath, encoding: 'utf-8' }
+      );
+      hasSubstantive = commitMsgs
+        .split('\n')
+        .some(line => line.trim() && !line.trim().startsWith('chore:'));
+    } catch (err) {
+      const msg = `Commit-Verifikation auf ${specBranch} fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`;
+      console.warn(`[Workflow] finalizeSpec: ${msg}`);
+      await reportIncident(msg);
+      result.warning = msg;
+      return result;
+    }
+    if (!hasSubstantive) {
+      const msg = `Keine substanziellen Commits auf ${specBranch} (nur chore/merges) — kein PR erstellt.`;
+      console.warn(`[Workflow] finalizeSpec: ${msg}`);
+      await reportIncident(msg);
+      this.sendToProject(mainProjectPath, {
+        type: 'workflow.spec-finalize.no-commits',
+        specId,
+        specBranch,
+        message: msg,
+        timestamp: new Date().toISOString()
+      });
+      result.warning = msg;
+      return result;
+    }
+
+    // 3. Existing-PR-Check — direct gh call (getPrInfo doesn't expose head ref).
+    let existingPrUrl: string | undefined;
+    try {
+      const out = execSync(
+        `gh pr list --head ${specBranch} --state open --json url,number`,
+        { cwd: mainProjectPath, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }
+      );
+      const parsed = JSON.parse(out.trim() || '[]') as Array<{ url: string; number: number }>;
+      if (parsed.length > 0) {
+        existingPrUrl = parsed[0].url;
+        console.log(`[Workflow] finalizeSpec: existing PR for ${specBranch}: ${existingPrUrl}`);
+      }
+    } catch (err) {
+      console.warn(`[Workflow] finalizeSpec: existing-PR check failed (continuing):`, err instanceof Error ? err.message : err);
+    }
+
+    // 4. Push — Failure → Early Return, keep worktree.
+    try {
+      const pushResult = await gitService.pushBranch(mainProjectPath, specBranch);
+      console.log(`[Workflow] finalizeSpec: pushed ${specBranch}, commits=${pushResult.commitsPushed}`);
+    } catch (err) {
+      const msg = `Push fehlgeschlagen für ${specBranch}: ${err instanceof Error ? err.message : String(err)}`;
+      console.warn(`[Workflow] finalizeSpec: ${msg}`);
+      await reportIncident(msg);
+      this.sendToProject(mainProjectPath, {
+        type: 'workflow.spec-finalize.push-failed',
+        specId,
+        specBranch,
+        worktreePath: specWorktreePath,
+        message: msg,
+        timestamp: new Date().toISOString()
+      });
+      result.warning = msg;
+      return result;
+    }
+
+    // 5. Create PR (skip if existing).
+    let prUrl = existingPrUrl;
+    if (!existingPrUrl) {
+      try {
+        const prResult = await gitService.createPullRequest(
+          mainProjectPath,
+          specBranch,
+          `feat: ${specId}`,
+          undefined,
+          baseBranch
+        );
+        prUrl = prResult.prUrl;
+        if (prResult.warning) {
+          console.warn(`[Workflow] finalizeSpec: PR-create warning: ${prResult.warning}`);
+          result.warning = prResult.warning;
+        }
+      } catch (err) {
+        const msg = `PR-Erstellung fehlgeschlagen für ${specBranch}: ${err instanceof Error ? err.message : String(err)}`;
+        console.warn(`[Workflow] finalizeSpec: ${msg}`);
+        await reportIncident(msg);
+        this.sendToProject(mainProjectPath, {
+          type: 'workflow.spec-finalize.pr-failed',
+          specId,
+          specBranch,
+          message: msg,
+          timestamp: new Date().toISOString()
+        });
+        result.warning = msg;
+        // Push succeeded; keep worktree so user can retry PR manually.
+        return result;
+      }
+    }
+    result.prUrl = prUrl;
+
+    // 6. Cleanup spec worktree — only after push + PR success.
+    try {
+      await gitService.checkoutMain(mainProjectPath, baseBranch);
+    } catch (err) {
+      console.warn('[Workflow] finalizeSpec: checkoutMain failed:', err instanceof Error ? err.message : err);
+    }
+    if (existsSync(specWorktreePath)) {
+      // Re-check cleanliness right before remove — defensive against late writes.
+      if (!isWorktreeClean(specWorktreePath)) {
+        const msg = `Spec-Worktree wurde unsauber zwischen Check und Cleanup — behalten unter ${specWorktreePath}`;
+        console.warn(`[Workflow] finalizeSpec: ${msg}`);
+        await reportIncident(msg);
+      } else {
+        try {
+          execSync(`git worktree remove "${specWorktreePath}"`, { cwd: mainProjectPath, stdio: 'pipe' });
+          execSync('git worktree prune', { cwd: mainProjectPath, stdio: 'pipe' });
+          console.log(`[Workflow] finalizeSpec: removed spec worktree at ${specWorktreePath}`);
+        } catch (err) {
+          console.warn('[Workflow] finalizeSpec: worktree remove failed (kept):', err instanceof Error ? err.message : err);
+        }
+      }
+    }
+
+    this.sendToProject(mainProjectPath, {
+      type: 'workflow.spec-finalize.success',
+      specId,
+      specBranch,
+      prUrl,
+      timestamp: new Date().toISOString()
+    });
     return result;
   }
 
@@ -1665,6 +1856,31 @@ export class WorkflowExecutor {
       );
 
       if (!specComplete) return;
+
+      // Finalize: push spec branch + create PR + cleanup spec worktree.
+      // Only relevant for worktree strategy with a known spec branch.
+      if (orchestrator.getGitStrategy() === 'worktree') {
+        const specBranch = orchestrator.getSpecBranch();
+        const specWorktreePath = orchestrator.getSpecWorkingDirectory();
+        const mainProjectPath = orchestrator.getMainProjectPath();
+        if (specBranch) {
+          try {
+            const finalizeResult = await this.finalizeSpecExecution(
+              mainProjectPath,
+              specWorktreePath,
+              specBranch,
+              specId
+            );
+            if (finalizeResult.prUrl) {
+              console.log(`[Workflow] Auto-Mode: spec PR ready: ${finalizeResult.prUrl}`);
+            }
+          } catch (err) {
+            console.error(`[Workflow] Auto-Mode: finalizeSpecExecution threw:`, err);
+          }
+        } else {
+          console.warn(`[Workflow] Auto-Mode: spec ${specId} done but no specBranch on orchestrator — skipping finalize`);
+        }
+      }
 
       const queueState = queueHandler.getState();
       if (queueState.isQueueRunning) {
@@ -2849,68 +3065,6 @@ export class WorkflowExecutor {
   }
 
 
-  /**
-   * Create a symlink for the spec folder in the worktree.
-   * This ensures Claude writes to the main project's kanban board,
-   * so the UI sees all updates immediately.
-   */
-  private async createSpecSymlink(
-    projectPath: string,
-    worktreePath: string,
-    specId: string
-  ): Promise<void> {
-    const mainSpecPath = projectDir(projectPath, 'specs', specId);
-    const worktreeSpecPath = projectDir(worktreePath, 'specs', specId);
-
-    // Check if main spec folder exists
-    if (!existsSync(mainSpecPath)) {
-      console.log(`[Workflow] Main spec folder not found at ${mainSpecPath}, skipping symlink`);
-      return;
-    }
-
-    try {
-      // Check if it's already a symlink
-      const { lstatSync } = await import('fs');
-      if (existsSync(worktreeSpecPath)) {
-        const stats = lstatSync(worktreeSpecPath);
-        if (stats.isSymbolicLink()) {
-          console.log(`[Workflow] Symlink already exists at ${worktreeSpecPath}`);
-          return;
-        }
-
-        // Remove the directory in worktree (it's a copy, not a symlink)
-        console.log(`[Workflow] Removing spec copy in worktree: ${worktreeSpecPath}`);
-        await rm(worktreeSpecPath, { recursive: true, force: true });
-      }
-
-      // Create symlink from worktree to main project
-      // Use relative path for portability
-      const projDirName = resolveCommandDir(projectPath) === 'specwright' ? 'specwright' : 'agent-os';
-      const relativePath = join('..', '..', '..', '..', basename(projectPath), projDirName, 'specs', specId);
-      console.log(`[Workflow] Creating symlink: ${worktreeSpecPath} -> ${relativePath}`);
-      await symlink(relativePath, worktreeSpecPath, 'dir');
-
-      console.log(`[Workflow] Spec symlink created successfully`);
-
-      // Also symlink .mcp.json so Claude CLI can find the Kanban MCP server
-      const mcpConfigSource = join(projectPath, '..', '.mcp.json');
-      const mcpConfigTarget = join(worktreePath, '.mcp.json');
-
-      if (existsSync(mcpConfigSource) && !existsSync(mcpConfigTarget)) {
-        try {
-          const relativeMcpPath = join('..', '..', '..', basename(projectPath), '..', '.mcp.json');
-          await symlink(relativeMcpPath, mcpConfigTarget);
-          console.log(`[Workflow] .mcp.json symlink created for MCP server discovery`);
-        } catch (mcpError) {
-          console.warn(`[Workflow] Failed to symlink .mcp.json (non-critical):`, mcpError);
-        }
-      }
-    } catch (error) {
-      console.error(`[Workflow] Failed to create spec symlink:`, error);
-      // Don't fail the workflow, just log the error
-    }
-  }
-
   // ── PAM-005: Per-story worktree helpers ────────────────────────────────────
 
   /**
@@ -2956,20 +3110,26 @@ export class WorkflowExecutor {
       console.log(`[Workflow] PAM-005: Story worktree already exists at ${wtPath}`);
     }
 
-    await setupSpecSymlinkInWorktree(projectPath, wtPath, specId);
+    // Story worktree branched off the spec branch — spec dir already there via
+    // the spec-level seed commit. Only need to copy .mcp.json so Claude in the
+    // story worktree can discover the MCP server.
+    await copyMcpConfigToWorktree(projectPath, wtPath);
     return wtPath;
   }
 
   /**
-   * Remove a story sub-worktree after successful completion. Best-effort.
+   * Remove a story sub-worktree after successful completion. Non-force: the
+   * caller (AutoModeSpecOrchestrator.onItemCompleted) gates on
+   * `isWorktreeClean()` first, so any failure here means git itself sees state
+   * we shouldn't silently discard — keep the worktree and surface a warning.
    */
   public async removeStoryWorktree(projectPath: string, worktreePath: string): Promise<void> {
     try {
-      execSync(`git worktree remove --force "${worktreePath}"`, { cwd: projectPath, stdio: 'pipe' });
+      execSync(`git worktree remove "${worktreePath}"`, { cwd: projectPath, stdio: 'pipe' });
       execSync('git worktree prune', { cwd: projectPath, stdio: 'pipe' });
       console.log(`[Workflow] PAM-005: Removed story worktree at ${worktreePath}`);
     } catch (err) {
-      console.warn('[Workflow] PAM-005: removeStoryWorktree best-effort failed:', err instanceof Error ? err.message : err);
+      console.warn('[Workflow] PAM-005: removeStoryWorktree failed (worktree kept):', err instanceof Error ? err.message : err);
     }
   }
 
@@ -2997,22 +3157,13 @@ export class WorkflowExecutor {
   }
 
   /**
-   * Create (or repair) the backlog-folder symlink in a backlog sub-worktree.
-   * Also symlinks .mcp.json for MCP server discovery (best-effort).
+   * Seed the backlog dir + copy .mcp.json into a backlog sub-worktree.
+   * Mutable `backlog-index.json` stays in main and is routed via
+   * SPECWRIGHT_MAIN_PROJECT_PATH so the UI sees status updates without symlinks.
    */
   public async setupBacklogSymlink(projectPath: string, worktreePath: string): Promise<void> {
-    await setupBacklogSymlinkInWorktree(projectPath, worktreePath);
-
-    const mcpConfigSource = join(projectPath, '..', '.mcp.json');
-    const mcpConfigTarget = join(worktreePath, '.mcp.json');
-    if (existsSync(mcpConfigSource) && !existsSync(mcpConfigTarget)) {
-      try {
-        const relativeMcpPath = join('..', '..', '..', basename(projectPath), '..', '.mcp.json');
-        await symlink(relativeMcpPath, mcpConfigTarget);
-      } catch (err) {
-        console.warn('[Workflow] PAM-005: .mcp.json symlink failed (non-critical):', err instanceof Error ? err.message : err);
-      }
-    }
+    await seedBacklogDirInWorktree(projectPath, worktreePath);
+    await copyMcpConfigToWorktree(projectPath, worktreePath);
   }
 
   // ── End PAM-005 ────────────────────────────────────────────────────────────

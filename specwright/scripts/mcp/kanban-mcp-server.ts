@@ -815,8 +815,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   try {
-    // Resolve paths from working directory with legacy fallback
-    const cwd = process.cwd();
+    // SPECWRIGHT_MAIN_PROJECT_PATH is set by the UI server (cloud-terminal-manager.ts)
+    // when Claude runs inside a git worktree. It pins kanban/backlog reads + writes
+    // to the main project so worktree git state stays clean and the UI sees updates.
+    // Coupling: env-var name is duplicated in cloud-terminal-manager.ts — keep in sync.
+    const cwd = process.env.SPECWRIGHT_MAIN_PROJECT_PATH ?? process.cwd();
     const specId = (args as { specId?: string }).specId;
     let specPath = specId ? join(cwd, 'specwright', 'specs', specId) : cwd;
 

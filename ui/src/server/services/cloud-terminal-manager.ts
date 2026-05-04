@@ -161,7 +161,8 @@ export class CloudTerminalManager extends EventEmitter {
     cols?: number,
     rows?: number,
     initialPrompt?: string,
-    extraCliArgs?: string[]
+    extraCliArgs?: string[],
+    extraEnv?: Record<string, string>
   ): CloudTerminalSession {
     // Check max sessions limit
     if (this.sessions.size >= CLOUD_TERMINAL_CONFIG.MAX_SESSIONS) {
@@ -236,6 +237,7 @@ export class CloudTerminalManager extends EventEmitter {
           ...baseEnv,
           CLAUDE_MODEL: modelConfig.model,
           CLAUDE_PROVIDER: modelConfig.provider || 'anthropic',
+          ...(extraEnv ?? {}),
         };
       }
 

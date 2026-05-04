@@ -1,12 +1,38 @@
 /**
- * Pure path helpers and symlink setup for per-story sub-worktrees.
+ * Pure path helpers and seed setup for per-story sub-worktrees.
  * Used by WorkflowExecutor helpers: createStoryWorktree, setupBacklogSymlink.
  */
 
 import { join, basename, dirname } from 'path';
-import { existsSync, lstatSync } from 'fs';
-import { mkdir, rm, symlink } from 'fs/promises';
+import { execSync } from 'child_process';
+import { existsSync, lstatSync, cpSync } from 'fs';
+import { mkdir, rm, copyFile } from 'fs/promises';
 import { resolveProjectDir, projectDir } from './project-dirs.js';
+
+// ── Cleanliness check ────────────────────────────────────────────────────────
+
+/**
+ * Returns true when `git status --porcelain` is empty in the given worktree —
+ * no staged, unstaged, or untracked changes. Used as a gate before
+ * worktree-remove and before merging into a parent branch so Claude-generated
+ * leftovers are surfaced as incidents instead of silently force-removed.
+ *
+ * On git failure (not a repo, missing path) returns `false` defensively so the
+ * caller treats the worktree as "needs attention" rather than risking removal.
+ */
+export function isWorktreeClean(worktreePath: string): boolean {
+  if (!existsSync(worktreePath)) return false;
+  try {
+    const out = execSync('git status --porcelain', {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return out.trim().length === 0;
+  } catch {
+    return false;
+  }
+}
 
 // ── Path calculation (pure, no I/O) ──────────────────────────────────────────
 
@@ -38,17 +64,28 @@ export function backlogBranchName(itemId: string): string {
   return `feature/${slug}`;
 }
 
-// ── Symlink setup ─────────────────────────────────────────────────────────────
+// ── Seed setup ───────────────────────────────────────────────────────────────
 
 /**
- * Create (or repair) the spec-folder symlink inside a story sub-worktree so
- * kanban writes go to the main project and are visible to the UI immediately.
- *
- * Symlink lives at:  `${worktreePath}/${projDir}/specs/${specId}`
- * Points relative to its parent dir (4 levels up + main project path):
- *   `../../../../${projDir}/specs/${specId}`
+ * Mutable kanban files routed to main via SPECWRIGHT_MAIN_PROJECT_PATH env var
+ * (kanban-mcp-server.ts) — never copy them into the worktree, they would
+ * shadow the canonical state and produce merge conflicts on multi-story specs.
  */
-export async function setupSpecSymlinkInWorktree(
+const MUTABLE_SPEC_FILES = ['kanban.json', 'kanban-board.md'] as const;
+const MUTABLE_BACKLOG_FILES = ['backlog-index.json'] as const;
+
+/**
+ * Copy spec dir from main into worktree (excluding mutable kanban files which
+ * stay in main and are written via MCP env-var routing). Commits the seed on
+ * the worktree's current branch as `chore:` so downstream `isWorktreeClean()`
+ * gates pass. Idempotent: skips if a non-symlink dir already exists in worktree
+ * (committed seed from a previous run); migrates away from any pre-existing
+ * symlink (legacy from versions ≤ 3.26.0).
+ *
+ * On commit failure: removes the copied dir so the worktree doesn't get left
+ * in a dirty state.
+ */
+export async function seedSpecDirInWorktree(
   projectPath: string,
   worktreePath: string,
   specId: string
@@ -60,24 +97,36 @@ export async function setupSpecSymlinkInWorktree(
   if (!existsSync(mainSpecPath)) return;
 
   if (existsSync(worktreeSpecPath)) {
-    if (lstatSync(worktreeSpecPath).isSymbolicLink()) return;
-    await rm(worktreeSpecPath, { recursive: true, force: true });
+    if (lstatSync(worktreeSpecPath).isSymbolicLink()) {
+      // Legacy symlink → remove and re-seed
+      await rm(worktreeSpecPath, { force: true });
+    } else {
+      // Real dir already present (committed seed from earlier run) → done
+      return;
+    }
   }
 
-  // Parent of worktreeSpecPath = `${worktreePath}/${projDir}/specs/`
-  // 4 × `..` reaches the parent of worktreeBase, then descend into main project.
-  const relativePath = join('..', '..', '..', '..', basename(projectPath), projDirName, 'specs', specId);
-  await symlink(relativePath, worktreeSpecPath, 'dir');
+  await mkdir(dirname(worktreeSpecPath), { recursive: true });
+  cpSync(mainSpecPath, worktreeSpecPath, { recursive: true });
+  for (const f of MUTABLE_SPEC_FILES) {
+    const p = join(worktreeSpecPath, f);
+    if (existsSync(p)) await rm(p, { force: true });
+  }
+
+  await commitSeedOrRollback(
+    worktreePath,
+    worktreeSpecPath,
+    join(projDirName, 'specs', specId),
+    `chore: seed spec ${specId} into worktree`
+  );
 }
 
 /**
- * Create (or repair) the backlog-folder symlink inside a backlog sub-worktree.
- *
- * Symlink lives at:  `${worktreePath}/${projDir}/backlog`
- * Points relative to its parent dir (3 levels up + main project path):
- *   `../../../${projDir}/backlog`
+ * Copy backlog dir from main into worktree (excluding `backlog-index.json` which
+ * stays in main via MCP env-var routing). Same idempotent + migration behaviour
+ * as `seedSpecDirInWorktree`.
  */
-export async function setupBacklogSymlinkInWorktree(
+export async function seedBacklogDirInWorktree(
   projectPath: string,
   worktreePath: string
 ): Promise<void> {
@@ -88,15 +137,71 @@ export async function setupBacklogSymlinkInWorktree(
   if (!existsSync(mainBacklogPath)) return;
 
   if (existsSync(worktreeBacklogPath)) {
-    if (lstatSync(worktreeBacklogPath).isSymbolicLink()) return;
-    await rm(worktreeBacklogPath, { recursive: true, force: true });
+    if (lstatSync(worktreeBacklogPath).isSymbolicLink()) {
+      await rm(worktreeBacklogPath, { force: true });
+    } else {
+      return;
+    }
   }
 
-  // Ensure parent dir (${worktreePath}/${projDir}/) exists in case worktree is empty
   await mkdir(dirname(worktreeBacklogPath), { recursive: true });
+  cpSync(mainBacklogPath, worktreeBacklogPath, { recursive: true });
+  for (const f of MUTABLE_BACKLOG_FILES) {
+    const p = join(worktreeBacklogPath, f);
+    if (existsSync(p)) await rm(p, { force: true });
+  }
 
-  // Parent of worktreeBacklogPath = `${worktreePath}/${projDir}/`
-  // 3 × `..` reaches the parent of worktreeBase, then descend into main project.
-  const relativePath = join('..', '..', '..', basename(projectPath), projDirName, 'backlog');
-  await symlink(relativePath, worktreeBacklogPath, 'dir');
+  await commitSeedOrRollback(
+    worktreePath,
+    worktreeBacklogPath,
+    join(projDirName, 'backlog'),
+    'chore: seed backlog into worktree'
+  );
+}
+
+/**
+ * Copy `.mcp.json` (lives one level above the project root) into the worktree
+ * root so Claude in the worktree can discover the MCP server. Not committed —
+ * `.mcp.json` is repo-local config, not part of the feature branch. Replaces a
+ * stale legacy symlink if present.
+ */
+export async function copyMcpConfigToWorktree(
+  projectPath: string,
+  worktreePath: string
+): Promise<void> {
+  const src = join(dirname(projectPath), '.mcp.json');
+  const dst = join(worktreePath, '.mcp.json');
+  if (!existsSync(src)) return;
+  if (existsSync(dst)) {
+    if (lstatSync(dst).isSymbolicLink()) {
+      await rm(dst, { force: true });
+    } else {
+      return; // already a real file copy
+    }
+  }
+  await copyFile(src, dst);
+}
+
+// ── Internal ─────────────────────────────────────────────────────────────────
+
+async function commitSeedOrRollback(
+  worktreePath: string,
+  copiedPath: string,
+  pathspec: string,
+  commitMessage: string
+): Promise<void> {
+  try {
+    execSync(`git add "${pathspec}"`, { cwd: worktreePath, stdio: 'pipe' });
+    // Empty-diff guard: branch already contains identical content → no commit needed.
+    try {
+      execSync('git diff --cached --quiet', { cwd: worktreePath, stdio: 'pipe' });
+      return; // exit 0 = no diff staged → tree is clean
+    } catch {
+      // exit 1 = diff present → fall through to commit
+    }
+    execSync(`git commit -m "${commitMessage}"`, { cwd: worktreePath, stdio: 'pipe' });
+  } catch (err) {
+    await rm(copiedPath, { recursive: true, force: true });
+    throw err;
+  }
 }

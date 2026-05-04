@@ -9,7 +9,8 @@ import { CloudTerminalManager } from './cloud-terminal-manager.js';
 import {
   backlogWorktreePath,
   backlogBranchName,
-  setupBacklogSymlinkInWorktree,
+  seedBacklogDirInWorktree,
+  copyMcpConfigToWorktree,
 } from '../utils/worktree-story.js';
 
 export interface AutoModeBacklogOrchestratorConfig extends OrchestratorBaseConfig {
@@ -77,7 +78,8 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
         console.log(`[BacklogOrchestrator] Backlog worktree already exists: ${wtPath}`);
       }
 
-      await setupBacklogSymlinkInWorktree(this.config.projectPath, wtPath);
+      await seedBacklogDirInWorktree(this.config.projectPath, wtPath);
+      await copyMcpConfigToWorktree(this.config.projectPath, wtPath);
       this.itemWorktrees.set(item.id, wtPath);
       return wtPath;
     } catch (err) {

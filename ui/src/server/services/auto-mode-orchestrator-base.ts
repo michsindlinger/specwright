@@ -47,6 +47,12 @@ export interface OrchestratorSnapshot {
 export interface OrchestratorBaseConfig {
   /** CWD for PTY sessions (may be worktree path for gitStrategy=worktree). */
   projectPath: string;
+  /**
+   * Main project path when `projectPath` is a worktree. Forwarded to slots so
+   * the kanban MCP server can route writes to main via SPECWRIGHT_MAIN_PROJECT_PATH.
+   * Optional — omitted for in-place execution.
+   */
+  mainProjectPath?: string;
   /** Directory that contains the kanban file to watch. */
   kanbanPath: string;
   watchFilename: WatchFilename;
@@ -61,6 +67,7 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
   protected readonly kanbanWatcher: KanbanFileWatcher;
   protected isCancelling = false;
   private tickRunning = false;
+  private readonly pendingCompletions = new Set<string>();
 
   constructor(protected readonly config: OrchestratorBaseConfig) {
     super();
@@ -186,11 +193,35 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
     this.kanbanWatcher.unwatch();
     this.gate.drain();
 
+    // Drain in-flight onItemCompleted bodies (best-effort, 5s cap) so external
+    // callers see a quiescent orchestrator. Skipped when called from within a
+    // completion body — use halt() for that path.
+    const drainStart = Date.now();
+    while (this.pendingCompletions.size > 0 && Date.now() - drainStart < 5000) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+
     await Promise.allSettled(
       [...this.activeSlots.values()].map(slot => slot.cancel())
     );
     this.activeSlots.clear();
     this.emit('cancelled');
+  }
+
+  /**
+   * Halt scheduling without drain. Safe to call from within `onItemCompleted`
+   * (does not deadlock on its own pendingCompletions entry). Cancels sibling
+   * slots fire-and-forget; does NOT emit 'cancelled'.
+   */
+  public haltScheduling(): void {
+    this.isCancelling = true;
+    this.kanbanWatcher.unwatch();
+    this.gate.drain();
+    for (const slot of this.activeSlots.values()) {
+      slot.cancel().catch(err =>
+        console.error('[OrchestratorBase] haltScheduling slot.cancel error:', err)
+      );
+    }
   }
 
   // ── Private scheduling ──────────────────────────────────────────────────────
@@ -219,7 +250,12 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
       this.emit('slot.queued', readyItems[i].id, readyItems[i].title);
     }
 
-    if (!this.isCancelling && this.activeSlots.size === 0 && readyItems.length === 0) {
+    if (
+      !this.isCancelling &&
+      this.activeSlots.size === 0 &&
+      readyItems.length === 0 &&
+      this.pendingCompletions.size === 0
+    ) {
       this.emit('all-items-done');
     }
   }
@@ -232,8 +268,12 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
     }
 
     const slotProjectPath = await this.resolveSlotProjectPath(item);
+    // Slot CWD ≠ main project → propagate main path so the kanban MCP routes
+    // writes to main (env var SPECWRIGHT_MAIN_PROJECT_PATH).
+    const mainProjectPath = this.config.mainProjectPath ?? this.config.projectPath;
     const slot = new AutoModeStorySlot({
       projectPath: slotProjectPath,
+      mainProjectPath: slotProjectPath !== mainProjectPath ? mainProjectPath : undefined,
       specId: this.getSpecIdForSlot(item),
       storyId: item.id,
       title: item.title,
@@ -334,10 +374,16 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
     slot.cancel().catch(err => console.error('[OrchestratorBase] cancel on complete error:', err));
     this.gate.release();
 
+    this.pendingCompletions.add(itemId);
     this.emit('story.completed', itemId);
-    this.onItemCompleted(itemId).catch(err =>
-      console.error('[OrchestratorBase] onItemCompleted error:', err)
-    );
+    this.onItemCompleted(itemId)
+      .catch(err => console.error('[OrchestratorBase] onItemCompleted error:', err))
+      .finally(() => {
+        this.pendingCompletions.delete(itemId);
+        this.scheduleTick().catch(err =>
+          console.error('[OrchestratorBase] post-completion scheduleTick error:', err)
+        );
+      });
   }
 
   private handleWatcherFailed(itemId: string, error: string): void {
