@@ -150,6 +150,39 @@ EOF
 fi
 
 # ============================================================================
+# Gitignore: Mutable Kanban State Files
+# ============================================================================
+
+echo "📄 Installing gitignore entries for mutable kanban state files..."
+
+GITIGNORE_SENTINEL="# Specwright mutable kanban state"
+
+if [ -f ".gitignore" ]; then
+  if grep -qF "$GITIGNORE_SENTINEL" ".gitignore"; then
+    echo "   ⚠️  Gitignore entries already present — skipping"
+  else
+    cat >> ".gitignore" <<'GITIGNORE_BLOCK'
+
+# Specwright mutable kanban state
+# These files change on every story start/complete and must not be committed
+# from worktrees or parallel sessions. Managed via kanban MCP server.
+specwright/specs/*/kanban.json
+specwright/specs/*/kanban-board.md
+specwright/backlog/backlog-index.json
+GITIGNORE_BLOCK
+    echo "   ✅ Gitignore entries added"
+  fi
+else
+  echo "   ⚠️  No .gitignore found — add these entries manually:"
+  echo "   # Specwright mutable kanban state"
+  echo "   specwright/specs/*/kanban.json"
+  echo "   specwright/specs/*/kanban-board.md"
+  echo "   specwright/backlog/backlog-index.json"
+fi
+
+echo ""
+
+# ============================================================================
 # Memory Database Setup
 # ============================================================================
 
