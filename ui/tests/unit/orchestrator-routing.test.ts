@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
+import { promises as fs } from 'fs';
+import { execSync } from 'child_process';
+import { join } from 'path';
+import { tmpdir } from 'os';
 import { SpecsReader } from '../../src/server/specs-reader.js';
 import { BacklogReader } from '../../src/server/backlog-reader.js';
 import { AutoModeSpecOrchestrator } from '../../src/server/services/auto-mode-spec-orchestrator.js';
@@ -332,5 +336,149 @@ describe('AutoModeBacklogOrchestrator path routing', () => {
     await (orch as unknown as { getReadySet: (e: Set<string>) => Promise<unknown[]> }).getReadySet(new Set());
 
     expect(spy.mock.calls[0][0]).toBe('/tmp/main-repo');
+  });
+});
+
+// ============================================================================
+// onItemFailed cleanliness gate (BPAM-007)
+// ============================================================================
+
+describe('AutoModeSpecOrchestrator.onItemFailed cleanliness gate (BPAM-007)', () => {
+  let tmpDir: string;
+  let cleanWtPath: string;
+  let dirtyWtPath: string;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    tmpDir = await fs.mkdtemp(join(tmpdir(), 'onfail-gate-'));
+
+    // Clean git repo — `isWorktreeClean` returns true
+    cleanWtPath = join(tmpDir, 'clean-wt');
+    await fs.mkdir(cleanWtPath, { recursive: true });
+    execSync('git init -q', { cwd: cleanWtPath });
+    execSync('git config user.email test@test.com', { cwd: cleanWtPath });
+    execSync('git config user.name test', { cwd: cleanWtPath });
+    await fs.writeFile(join(cleanWtPath, 'README.md'), 'init');
+    execSync('git add . && git commit -q -m init', { cwd: cleanWtPath });
+
+    // Dirty git repo — has uncommitted file; `isWorktreeClean` returns false
+    dirtyWtPath = join(tmpDir, 'dirty-wt');
+    await fs.mkdir(dirtyWtPath, { recursive: true });
+    execSync('git init -q', { cwd: dirtyWtPath });
+    execSync('git config user.email test@test.com', { cwd: dirtyWtPath });
+    execSync('git config user.name test', { cwd: dirtyWtPath });
+    await fs.writeFile(join(dirtyWtPath, 'README.md'), 'init');
+    execSync('git add . && git commit -q -m init', { cwd: dirtyWtPath });
+    await fs.writeFile(join(dirtyWtPath, 'uncommitted.txt'), 'dirty work left by LLM');
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  function makeOrch(wtPath: string) {
+    const removeSpy = vi.fn().mockResolvedValue(undefined);
+    const worktreeOps = {
+      createStoryWorktree: vi.fn().mockResolvedValue(wtPath),
+      removeStoryWorktree: removeSpy,
+      mergeStoryBranchIntoSpec: vi.fn().mockResolvedValue(undefined),
+    };
+    const orch = AutoModeSpecOrchestrator.create(
+      '/tmp/spec-wt',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      2,
+      'worktree',
+      '/tmp/main-repo',
+      'feature/x',
+      worktreeOps
+    );
+    // Inject the story worktree path as if resolveSlotProjectPath had already run
+    (orch as unknown as { storyWorktrees: Map<string, string> }).storyWorktrees.set('T-001', wtPath);
+    return { orch, removeSpy };
+  }
+
+  it('dirty worktree: sets incident, emits story.dirty-worktree, halts, skips removeStoryWorktree', async () => {
+    const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
+    const { orch, removeSpy } = makeOrch(dirtyWtPath);
+    const haltSpy = vi.spyOn(orch, 'haltScheduling').mockImplementation(() => {});
+    const schedSpy = vi.spyOn(orch, 'scheduleTick').mockResolvedValue(undefined);
+
+    const emitted: unknown[][] = [];
+    orch.on('story.dirty-worktree', (...args) => emitted.push(args));
+
+    await (orch as unknown as { onItemFailed: (id: string, err: string) => Promise<void> })
+      .onItemFailed('T-001', 'execution failed');
+
+    // Incident must be recorded
+    expect(incidentSpy).toHaveBeenCalledTimes(1);
+    const incident = incidentSpy.mock.calls[0][2] as { type: string; storyId: string; message: string };
+    expect(incident.type).toBe('error');
+    expect(incident.storyId).toBe('T-001');
+    expect(incident.message).toContain('uncommittete Änderungen');
+
+    // Event emitted so UI can surface the incident
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0][0]).toBe('T-001');   // itemId
+    expect(emitted[0][1]).toBe(dirtyWtPath); // wtPath
+
+    // Scheduling halted — dirty worktree must not be silently discarded
+    expect(haltSpy).toHaveBeenCalledTimes(1);
+
+    // Worktree NOT removed — user needs to inspect and recover data
+    expect(removeSpy).not.toHaveBeenCalled();
+
+    // No further tick scheduled
+    expect(schedSpy).not.toHaveBeenCalled();
+  });
+
+  it('clean worktree: removes worktree, schedules next tick, no incident', async () => {
+    const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
+    const { orch, removeSpy } = makeOrch(cleanWtPath);
+    const haltSpy = vi.spyOn(orch, 'haltScheduling').mockImplementation(() => {});
+    const schedSpy = vi.spyOn(orch, 'scheduleTick').mockResolvedValue(undefined);
+
+    await (orch as unknown as { onItemFailed: (id: string, err: string) => Promise<void> })
+      .onItemFailed('T-001', 'execution failed');
+
+    // Clean failure → remove worktree, continue scheduling
+    expect(removeSpy).toHaveBeenCalledWith('/tmp/main-repo', cleanWtPath);
+    expect(schedSpy).toHaveBeenCalledTimes(1);
+
+    // No halt, no incident for a clean failure
+    expect(haltSpy).not.toHaveBeenCalled();
+    expect(incidentSpy).not.toHaveBeenCalled();
+  });
+
+  it('no worktree registered for story: schedules next tick only (no-op worktree path)', async () => {
+    const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
+    const removeSpy = vi.fn().mockResolvedValue(undefined);
+    const worktreeOps = {
+      createStoryWorktree: vi.fn(),
+      removeStoryWorktree: removeSpy,
+      mergeStoryBranchIntoSpec: vi.fn(),
+    };
+    const orch = AutoModeSpecOrchestrator.create(
+      '/tmp/spec-wt',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      2,
+      'worktree',
+      '/tmp/main-repo',
+      'feature/x',
+      worktreeOps
+    );
+    // No entry in storyWorktrees for T-002
+    const schedSpy = vi.spyOn(orch, 'scheduleTick').mockResolvedValue(undefined);
+
+    await (orch as unknown as { onItemFailed: (id: string, err: string) => Promise<void> })
+      .onItemFailed('T-002', 'fail');
+
+    expect(removeSpy).not.toHaveBeenCalled();
+    expect(incidentSpy).not.toHaveBeenCalled();
+    expect(schedSpy).toHaveBeenCalledTimes(1);
   });
 });

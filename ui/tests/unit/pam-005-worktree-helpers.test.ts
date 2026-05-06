@@ -602,6 +602,77 @@ describe('seedSpecDirInWorktree (v3.27.3 strip via git rm)', () => {
 });
 
 // ============================================================================
+// commitMainKanbanIfDirty — concurrent callers, BPAM-003 dual-lock regression
+// ============================================================================
+
+describe('commitMainKanbanIfDirty (concurrent / BPAM-003 dual-lock)', () => {
+  let tmpDir: string;
+  let projectPath: string;
+
+  async function initConcurrentRepo(): Promise<void> {
+    tmpDir = await fs.mkdtemp(join(tmpdir(), 'commit-concurrent-'));
+    projectPath = join(tmpDir, 'myproject');
+    await fs.mkdir(join(projectPath, 'specwright', 'specs', 'my-spec'), { recursive: true });
+
+    execSync('git init -q -b main', { cwd: projectPath });
+    execSync('git config user.email test@test.com', { cwd: projectPath });
+    execSync('git config user.name test', { cwd: projectPath });
+    await fs.writeFile(join(projectPath, 'README.md'), 'init');
+    await fs.writeFile(
+      join(projectPath, 'specwright', 'specs', 'my-spec', 'kanban.json'),
+      '{"version":"2.0","tasks":[]}'
+    );
+    execSync('git add . && git commit -q -m init', { cwd: projectPath });
+  }
+
+  beforeEach(async () => { await initConcurrentRepo(); });
+  afterEach(async () => { await fs.rm(tmpDir, { recursive: true, force: true }); });
+
+  it('two concurrent callers: first commits, second returns false (no duplicate commit)', async () => {
+    // Regression: pre-BPAM-003 the function was synchronous and callers could
+    // race on `git add` → `git commit`, causing index.lock contention.
+    // Post-BPAM-003 withMainProjectLock + withKanbanLock serializes them.
+    const kanbanPath = join(projectPath, 'specwright', 'specs', 'my-spec', 'kanban.json');
+    await fs.writeFile(kanbanPath, '{"version":"2.0","tasks":[{"id":"X1"}]}');
+
+    const headBefore = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+
+    const [r1, r2] = await Promise.all([
+      commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: [X1] A'),
+      commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: [X1] B'),
+    ]);
+
+    // Mutex ensures exactly one commits; the other sees a clean index
+    expect(r1 || r2).toBe(true);
+    expect(r1 && r2).toBe(false);
+
+    const headAfter = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+    expect(headAfter).not.toBe(headBefore);
+
+    const commitCount = execSync('git rev-list --count HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+    expect(Number(commitCount)).toBe(2); // init + one sync commit
+
+    // Main working tree is clean after both calls complete
+    const status = execSync('git status --porcelain', { cwd: projectPath, encoding: 'utf-8' });
+    expect(status.trim()).toBe('');
+  });
+
+  it('three concurrent callers all resolve without throwing', async () => {
+    const kanbanPath = join(projectPath, 'specwright', 'specs', 'my-spec', 'kanban.json');
+    await fs.writeFile(kanbanPath, '{"version":"2.0","tasks":[{"id":"Y1"}]}');
+
+    const results = await Promise.all([
+      commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: [Y1] A'),
+      commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: [Y1] B'),
+      commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: [Y1] C'),
+    ]);
+
+    expect(results).toHaveLength(3);
+    expect(results.filter(Boolean)).toHaveLength(1); // exactly one commit produced
+  });
+});
+
+// ============================================================================
 // MUTABLE constants — exported as single source of truth (v3.27.1)
 // ============================================================================
 
