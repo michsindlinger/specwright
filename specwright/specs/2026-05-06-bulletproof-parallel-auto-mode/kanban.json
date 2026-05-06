@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed BPAM-001",
-    "nextAction": "Execute next task: BPAM-002",
-    "progressIndex": 1,
+    "lastAction": "Completed BPAM-002",
+    "nextAction": "Execute next task: BPAM-003",
+    "progressIndex": 2,
     "totalStories": 10
   },
   "execution": {
@@ -65,16 +65,27 @@
       "description": "Set timeouts 15s/20s/100ms+jitter in both kanban-lock copies, add module-init invariant assert, add byte-equality CI test.",
       "planSection": "Architektur D2 + Phase A; Test Strategy kanban-lock-sync.test.ts + extended kanban-lock.test.ts",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-06T13:34:46.060Z",
+        "completedAt": "2026-05-06T13:39:19.948Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/utils/kanban-lock.ts",
+          "specwright/scripts/mcp/kanban-lock.ts",
+          "ui/tests/unit/kanban-lock.test.ts",
+          "ui/tests/unit/kanban-lock-sync.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "b5c71c9fef74ea6b8a777ddc2edc38826bab395c",
+            "message": "feat: BPAM-002 Tune kanban-lock + module-init invariant + sync CI test",
+            "timestamp": "2026-05-06T15:39:07+02:00"
+          }
+        ]
       }
     },
     {
@@ -85,7 +96,7 @@
       "dependencies": [
         "BPAM-001"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": "sonnet",
       "timing": {
@@ -105,7 +116,7 @@
       "dependencies": [
         "BPAM-001"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": "sonnet",
       "timing": {
@@ -125,7 +136,7 @@
       "dependencies": [
         "BPAM-001"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": "sonnet",
       "timing": {
@@ -145,7 +156,7 @@
       "dependencies": [
         "BPAM-001"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": "sonnet",
       "timing": {
@@ -243,12 +254,12 @@
   ],
   "boardStatus": {
     "total": 10,
-    "ready": 3,
+    "ready": 6,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
-    "blocked": 6
+    "done": 2,
+    "blocked": 2
   },
   "changeLog": [
     {
@@ -297,6 +308,42 @@
       "timestamp": "2026-05-06T13:34:45.669Z",
       "action": "status_changed",
       "storyId": "BPAM-001",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-06T13:34:46.059Z",
+      "action": "dependency_resolved",
+      "storyId": "BPAM-003",
+      "details": "Unblocked: all dependencies done/in_review (BPAM-001)"
+    },
+    {
+      "timestamp": "2026-05-06T13:34:46.059Z",
+      "action": "dependency_resolved",
+      "storyId": "BPAM-004",
+      "details": "Unblocked: all dependencies done/in_review (BPAM-001)"
+    },
+    {
+      "timestamp": "2026-05-06T13:34:46.059Z",
+      "action": "dependency_resolved",
+      "storyId": "BPAM-005",
+      "details": "Unblocked: all dependencies done/in_review (BPAM-001)"
+    },
+    {
+      "timestamp": "2026-05-06T13:34:46.059Z",
+      "action": "dependency_resolved",
+      "storyId": "BPAM-006",
+      "details": "Unblocked: all dependencies done/in_review (BPAM-001)"
+    },
+    {
+      "timestamp": "2026-05-06T13:34:46.060Z",
+      "action": "status_changed",
+      "storyId": "BPAM-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T13:39:19.949Z",
+      "action": "status_changed",
+      "storyId": "BPAM-002",
       "details": "Task completed: in_progress → done"
     }
   ]
