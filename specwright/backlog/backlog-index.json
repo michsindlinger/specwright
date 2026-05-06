@@ -1,5 +1,5 @@
 {
-  "nextId": 11,
+  "nextId": 12,
   "items": [
     {
       "id": "BUG-001",
@@ -110,11 +110,21 @@
       "createdAt": "2026-02-27T04:32:30.202Z",
       "updatedAt": "2026-02-27T05:19:40.827Z",
       "completedAt": "2026-02-27T05:19:40.827Z"
+    },
+    {
+      "id": "BUG-011",
+      "type": "bug",
+      "title": "Plan-Review Reviewer ohne Codebase-Zugriff (tools: [] hartcodiert) + leerer Output gilt als gueltig",
+      "priority": "high",
+      "status": "open",
+      "file": "stories/bug-2026-05-05-001-plan-review-reviewer-ohne-codebase-zugriff.md",
+      "createdAt": "2026-05-05T00:00:00.000Z",
+      "updatedAt": "2026-05-05T00:00:00.000Z"
     }
   ],
   "statistics": {
     "byStatus": {
-      "open": 0,
+      "open": 1,
       "in_progress": 0,
       "in_review": 0,
       "blocked": 0,
@@ -246,6 +256,12 @@
       "from": "open",
       "to": "done",
       "details": "Completed in kanban-2026-02-27"
+    },
+    {
+      "timestamp": "2026-05-05T00:00:00.000Z",
+      "action": "item_created",
+      "itemId": "BUG-011",
+      "details": "Created via /add-bug — plan-review reviewers without codebase access"
     }
   ]
 }

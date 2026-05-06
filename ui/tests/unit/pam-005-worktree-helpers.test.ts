@@ -19,6 +19,9 @@ import {
   seedBacklogDirInWorktree,
   copyMcpConfigToWorktree,
   isWorktreeClean,
+  commitMainKanbanIfDirty,
+  MUTABLE_SPEC_FILES,
+  MUTABLE_BACKLOG_FILES,
 } from '../../src/server/utils/worktree-story.js';
 
 // ============================================================================
@@ -280,6 +283,31 @@ describe('seedSpecDirInWorktree', () => {
     const head2 = execSync('git rev-parse HEAD', { cwd: fixture.worktreePath, encoding: 'utf-8' }).trim();
     expect(head2).toBe(head1);
   });
+
+  it('strips mutable files even when worktree spec dir already exists with shadow kanban (v3.27.1 fix)', async () => {
+    // Reproduce the v3.27.0 bug class: feature branch has a tracked kanban.json
+    // (e.g. from auto-commit-before-worktree). Worktree-add brings it in. Pre-fix
+    // seed early-returned and never stripped → MCP-routed updates went to the
+    // worktree shadow file instead of main → UI saw stale state.
+    const wtSpecDir = join(fixture.worktreePath, 'specwright', 'specs', 'my-spec');
+    await fs.mkdir(wtSpecDir, { recursive: true });
+    await fs.writeFile(join(wtSpecDir, 'kanban.json'), '{"shadow":true}');
+    await fs.writeFile(join(wtSpecDir, 'kanban-board.md'), '# shadow');
+    await fs.writeFile(join(wtSpecDir, 'planning.md'), '# Plan from branch');
+    execSync('git add specwright && git commit -q -m "spec on branch"', { cwd: fixture.worktreePath });
+
+    await seedSpecDirInWorktree(fixture.projectPath, fixture.worktreePath, 'my-spec');
+
+    // Mutable files removed; non-mutable preserved.
+    await expect(fs.access(join(wtSpecDir, 'kanban.json'))).rejects.toThrow();
+    await expect(fs.access(join(wtSpecDir, 'kanban-board.md'))).rejects.toThrow();
+    expect(await fs.readFile(join(wtSpecDir, 'planning.md'), 'utf-8')).toBe('# Plan from branch');
+
+    // Strip is committed (so subsequent isWorktreeClean gates pass).
+    expect(isWorktreeClean(fixture.worktreePath)).toBe(true);
+    const log = execSync('git log --pretty=%s', { cwd: fixture.worktreePath, encoding: 'utf-8' }).trim();
+    expect(log).toContain('chore: seed spec my-spec into worktree');
+  });
 });
 
 // ============================================================================
@@ -319,6 +347,127 @@ describe('seedBacklogDirInWorktree', () => {
     await expect(
       seedBacklogDirInWorktree(fixture.projectPath, fixture.worktreePath)
     ).resolves.toBeUndefined();
+  });
+
+  it('strips backlog-index.json even when worktree backlog dir already exists (v3.27.1 fix)', async () => {
+    const wtBacklogDir = join(fixture.worktreePath, 'specwright', 'backlog');
+    await fs.mkdir(wtBacklogDir, { recursive: true });
+    await fs.writeFile(join(wtBacklogDir, 'backlog-index.json'), '{"shadow":true}');
+    await fs.writeFile(join(wtBacklogDir, 'archive.md'), '# from branch');
+    execSync('git add specwright && git commit -q -m "backlog on branch"', { cwd: fixture.worktreePath });
+
+    await seedBacklogDirInWorktree(fixture.projectPath, fixture.worktreePath);
+
+    await expect(fs.access(join(wtBacklogDir, 'backlog-index.json'))).rejects.toThrow();
+    expect(await fs.readFile(join(wtBacklogDir, 'archive.md'), 'utf-8')).toBe('# from branch');
+    expect(isWorktreeClean(fixture.worktreePath)).toBe(true);
+  });
+});
+
+// ============================================================================
+// commitMainKanbanIfDirty — main-side commit pathway for mutable kanban.json
+// ============================================================================
+
+describe('commitMainKanbanIfDirty', () => {
+  let tmpDir: string;
+  let projectPath: string;
+
+  async function initRepo(): Promise<void> {
+    tmpDir = await fs.mkdtemp(join(tmpdir(), 'commit-kanban-'));
+    projectPath = join(tmpDir, 'myproject');
+    await fs.mkdir(join(projectPath, 'specwright', 'specs', 'my-spec'), { recursive: true });
+
+    execSync('git init -q -b main', { cwd: projectPath });
+    execSync('git config user.email test@test.com', { cwd: projectPath });
+    execSync('git config user.name test', { cwd: projectPath });
+    await fs.writeFile(join(projectPath, 'README.md'), 'init');
+    await fs.writeFile(
+      join(projectPath, 'specwright', 'specs', 'my-spec', 'kanban.json'),
+      '{"version":"2.0","tasks":[]}'
+    );
+    execSync('git add . && git commit -q -m init', { cwd: projectPath });
+  }
+
+  beforeEach(async () => {
+    await initRepo();
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns true and creates a commit when kanban.json is modified', async () => {
+    await fs.writeFile(
+      join(projectPath, 'specwright', 'specs', 'my-spec', 'kanban.json'),
+      '{"version":"2.0","tasks":[{"id":"T1"}]}'
+    );
+
+    const headBefore = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+    const result = commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: [T1] kanban sync');
+    const headAfter = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+
+    expect(result).toBe(true);
+    expect(headAfter).not.toBe(headBefore);
+    const lastMsg = execSync('git log -1 --pretty=%s', { cwd: projectPath, encoding: 'utf-8' }).trim();
+    expect(lastMsg).toBe('chore: [T1] kanban sync');
+  });
+
+  it('returns false and creates no commit when kanban.json is clean', () => {
+    const headBefore = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+    const result = commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: kanban sync');
+    const headAfter = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+
+    expect(result).toBe(false);
+    expect(headAfter).toBe(headBefore);
+  });
+
+  it('returns false without throwing when kanban.json does not exist', async () => {
+    await fs.rm(join(projectPath, 'specwright', 'specs', 'my-spec', 'kanban.json'));
+    execSync('git add . && git commit -q -m "remove kanban"', { cwd: projectPath });
+
+    const headBefore = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+    const result = commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: kanban sync');
+    const headAfter = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+
+    expect(result).toBe(false);
+    expect(headAfter).toBe(headBefore);
+  });
+
+  it('returns false without throwing when path is not a git repo', async () => {
+    const nonRepo = join(tmpDir, 'not-a-repo');
+    await fs.mkdir(join(nonRepo, 'specwright', 'specs', 'my-spec'), { recursive: true });
+    await fs.writeFile(join(nonRepo, 'specwright', 'specs', 'my-spec', 'kanban.json'), '{}');
+
+    expect(commitMainKanbanIfDirty(nonRepo, 'my-spec', 'chore: kanban sync')).toBe(false);
+  });
+
+  it('only commits kanban.json — leaves other dirty files unstaged', async () => {
+    await fs.writeFile(
+      join(projectPath, 'specwright', 'specs', 'my-spec', 'kanban.json'),
+      '{"version":"2.0","tasks":[{"id":"T1"}]}'
+    );
+    await fs.writeFile(join(projectPath, 'README.md'), 'modified');
+
+    const result = commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: kanban only');
+    expect(result).toBe(true);
+
+    const status = execSync('git status --porcelain', { cwd: projectPath, encoding: 'utf-8' });
+    expect(status).toContain('README.md');
+    expect(status).not.toContain('kanban.json');
+  });
+});
+
+// ============================================================================
+// MUTABLE constants — exported as single source of truth (v3.27.1)
+// ============================================================================
+
+describe('MUTABLE_SPEC_FILES + MUTABLE_BACKLOG_FILES exports', () => {
+  it('MUTABLE_SPEC_FILES contains kanban.json and kanban-board.md', () => {
+    expect([...MUTABLE_SPEC_FILES]).toEqual(['kanban.json', 'kanban-board.md']);
+  });
+
+  it('MUTABLE_BACKLOG_FILES contains backlog-index.json', () => {
+    expect([...MUTABLE_BACKLOG_FILES]).toEqual(['backlog-index.json']);
   });
 });
 

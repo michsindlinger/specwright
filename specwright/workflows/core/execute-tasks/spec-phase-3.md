@@ -1,6 +1,6 @@
 ---
-description: Spec Phase 3 - Execute one user story (JSON v5.5)
-version: 5.5
+description: Spec Phase 3 - Execute one user story (JSON v5.6)
+version: 5.6
 ---
 
 # Spec Phase 3: Execute Story (Direct Execution)
@@ -16,9 +16,14 @@ to dedicated workflow files — load them only when needed:
 - `spec-phase-3-integration-validation.md` — Story 998
 - `spec-phase-3-finalize-pr.md` — Story 999
 
+> **MCP routing note:** kanban.json is a *mutable* file and lives in the main
+> project (never copied into worktrees). All reads/writes MUST go through the
+> kanban MCP server, which routes to `SPECWRIGHT_MAIN_PROJECT_PATH` when the
+> CWD is a worktree. Never `ls`/`READ`/`WRITE`/`git add` kanban.json directly.
+
 ## Entry Condition
 
-- kanban.json exists
+- kanban.json exists in main repo
 - resumeContext.currentPhase = "2-complete" OR "story-complete"
 - Stories remain with status = "ready"
 
@@ -352,12 +357,13 @@ to dedicated workflow files — load them only when needed:
   **WORKING_DIR:** {PROJECT_ROOT} (or {WORKTREE_PATH} if resumeContext.gitStrategy = worktree)
 
   - Message: feat/fix: {SELECTED_STORY.id} {SELECTED_STORY.title}
-  - Stage ALL changes including:
+  - Stage ALL worktree-side changes including:
     - Implementation files
     - Story file with Status: Done
-    - kanban.json
     - integration-context.md updates
     - Any dos-and-donts.md / domain doc updates
+  - DO NOT stage kanban.json — it lives in the main repo only and is committed
+    main-side by the auto-mode orchestrator after each story-complete event.
   - Push to remote"
 </step>
 
@@ -365,7 +371,8 @@ to dedicated workflow files — load them only when needed:
   ### Update Integration Context (Tier-Aware)
 
   **Tier gating:**
-  READ: specTier from kanban.json → spec.specTier (default "M")
+  REUSE: specTier from resumeInfo.specTier (loaded earlier via
+         kanban_get_next_task in load_next_task step; default "M")
   IF specTier = "S" AND no Full-stack stories:
     LOG: "S-Spec single-layer: integration-context.md update skipped"
     SKIP this step entirely; GOTO: story_commit
@@ -424,28 +431,23 @@ to dedicated workflow files — load them only when needed:
 ## Phase Completion
 
 <phase_complete>
-  ### Check Remaining Stories
+  ### Check Remaining Stories (via MCP)
 
-  READ: specwright/specs/{SELECTED_SPEC}/kanban.json
-  COUNT: Stories where status = "ready" OR "blocked"
+  REUSE: response.remaining captured from kanban_complete_story in the
+         update_kanban_json_done step.
 
-  IF ready stories remain:
-    UPDATE: kanban.json
-    - resumeContext.currentPhase = "story-complete"
-    - resumeContext.nextPhase = "3-execute-story"
-    - resumeContext.nextAction = "Execute next story"
-
-    ADD changeLog entry:
-    ```json
+  IF response.remaining > 0:
+    CALL MCP TOOL: kanban_update_phase
+    Input:
     {
-      "timestamp": "{NOW}",
-      "action": "story_completed",
-      "storyId": "{SELECTED_STORY.id}",
-      "details": "Progress: {boardStatus.done}/{boardStatus.total}"
+      "specId": "{SELECTED_SPEC}",
+      "currentPhase": "story-complete",
+      "nextPhase": "3-execute-story",
+      "lastAction": "Completed {SELECTED_STORY.id}",
+      "nextAction": "Execute next story"
     }
-    ```
-
-    WRITE: kanban.json
+    NOTE: kanban_update_phase appends a changeLog entry automatically. No
+          direct file I/O is needed.
 
     OUTPUT to user:
     ---
@@ -467,24 +469,11 @@ to dedicated workflow files — load them only when needed:
 
     STOP: Do not proceed to next story
 
-  ELSE (all stories done):
-    UPDATE: kanban.json
-    - resumeContext.currentPhase = "all-stories-done"
-    - resumeContext.nextPhase = "3-execute-story"
-    - resumeContext.nextAction = "Execute System Stories (997, 998, 999)"
-    - execution.status = "stories-complete"
-
-    ADD changeLog entry:
-    ```json
-    {
-      "timestamp": "{NOW}",
-      "action": "all_stories_completed",
-      "storyId": null,
-      "details": "All {boardStatus.total} stories completed"
-    }
-    ```
-
-    WRITE: kanban.json
+  ELSE (response.remaining = 0):
+    NOTE: kanban_complete_story already set currentPhase="complete" +
+          execution.status="completed" internally when remaining hit 0
+          (see kanban-mcp-server.ts handleKanbanCompleteStory). No
+          additional MCP call is required for that transition.
 
     OUTPUT to user:
     ---

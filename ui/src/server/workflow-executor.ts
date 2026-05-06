@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { readdir, readFile, writeFile, mkdir } from 'fs/promises';
+import { readdir, readFile, writeFile, mkdir, rm } from 'fs/promises';
 import { join, basename, dirname } from 'path';
 import { existsSync } from 'fs';
 import { spawn, ChildProcess, execSync } from 'child_process';
@@ -19,7 +19,9 @@ import {
   seedBacklogDirInWorktree,
   copyMcpConfigToWorktree,
   isWorktreeClean,
+  MUTABLE_SPEC_FILES,
 } from './utils/worktree-story.js';
+import { resolveMainWorktreePath } from './utils/worktree-detect.js';
 import { buildMcpFlags, cleanupMcpTempFile } from './utils/mcp-profile.js';
 import { gitService } from './services/git.service.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
@@ -470,7 +472,8 @@ export class WorkflowExecutor {
           projectPath,
           cmdDir,
           this.cloudTerminalManager,
-          2
+          2,
+          resolveMainWorktreePath(projectPath)
         );
         this.setupBacklogOrchestratorListeners(orchestrator, projectPath);
         this.autoModeBacklogOrchestrators.set(projectPath, orchestrator);
@@ -779,6 +782,7 @@ export class WorkflowExecutor {
             timestamp: new Date().toISOString()
           });
         }
+        const mainProjectPath = resolveMainWorktreePath(projectPath);
         orchestrator = AutoModeSpecOrchestrator.create(
           workingDirectory,
           specId,
@@ -786,7 +790,7 @@ export class WorkflowExecutor {
           this.cloudTerminalManager,
           effectiveConcurrent,
           gitStrategy,
-          projectPath,
+          mainProjectPath,
           branchName,
           this
         );
@@ -1182,7 +1186,32 @@ export class WorkflowExecutor {
       }
     };
 
+    // Drop mutable kanban drift before cleanliness gates. Mutable files live in
+    // main (MCP env-var routing) and only ever appear in the worktree as stale
+    // shadows from base-branch checkouts or pre-3.27.1 seed runs. `rm` (not
+    // `git checkout`) — fix #2 strips them from the seed commit, so they are
+    // not tracked anymore on fresh worktrees and `git checkout` would fail.
+    const stripMutableDrift = async (when: string): Promise<void> => {
+      if (!existsSync(specWorktreePath)) return;
+      const specSubdir = projectDir(specWorktreePath, 'specs', specId);
+      for (const f of MUTABLE_SPEC_FILES) {
+        const p = join(specSubdir, f);
+        if (existsSync(p)) {
+          try {
+            await rm(p, { force: true });
+            console.log(`[Workflow] finalizeSpec(${when}): stripped stale ${f} from worktree`);
+          } catch (err) {
+            console.warn(
+              `[Workflow] finalizeSpec(${when}): failed to strip ${p}:`,
+              err instanceof Error ? err.message : err
+            );
+          }
+        }
+      }
+    };
+
     // 1. Spec-Worktree clean? Otherwise leftover commits would be lost on remove.
+    await stripMutableDrift('pre-clean');
     if (existsSync(specWorktreePath) && !isWorktreeClean(specWorktreePath)) {
       const msg = `Spec-Worktree hat uncommittete Änderungen — Auto-Finalize abgebrochen. Worktree unter ${specWorktreePath} prüfen.`;
       console.warn(`[Workflow] finalizeSpec: ${msg}`);
@@ -1309,6 +1338,7 @@ export class WorkflowExecutor {
     }
     if (existsSync(specWorktreePath)) {
       // Re-check cleanliness right before remove — defensive against late writes.
+      await stripMutableDrift('pre-remove');
       if (!isWorktreeClean(specWorktreePath)) {
         const msg = `Spec-Worktree wurde unsauber zwischen Check und Cleanup — behalten unter ${specWorktreePath}`;
         console.warn(`[Workflow] finalizeSpec: ${msg}`);
@@ -3367,7 +3397,8 @@ export class WorkflowExecutor {
         projectPath,
         cmdDir,
         this.cloudTerminalManager,
-        2
+        2,
+        resolveMainWorktreePath(projectPath)
       );
       this.setupBacklogOrchestratorListeners(orchestrator, projectPath);
       this.autoModeBacklogOrchestrators.set(projectPath, orchestrator);

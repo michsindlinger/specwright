@@ -34,6 +34,54 @@ export function isWorktreeClean(worktreePath: string): boolean {
   }
 }
 
+// ── Main-side commit pathway for mutable kanban files ───────────────────────
+
+/**
+ * Commits `specwright/specs/<specId>/kanban.json` in the main repo if it has
+ * uncommitted changes. Returns `true` when a new commit was created, `false`
+ * when the file was already clean, missing, or git failed.
+ *
+ * Why this exists: kanban.json is in `MUTABLE_SPEC_FILES` and lives only in
+ * the main repo (not in worktrees — see `seedSpecDirInWorktree`). The kanban
+ * MCP server writes it on every story start/complete/phase update, but never
+ * commits. Workflow markdown can't `git add` it from a worktree CWD because
+ * the file isn't there. The orchestrator (`auto-mode-spec-orchestrator.ts`)
+ * calls this helper after each successful story-complete event to keep the
+ * main working tree clean.
+ *
+ * Never throws — auto-mode must keep going even if the commit fails (next
+ * story-complete will re-sync any pending kanban changes).
+ *
+ * TODO(parity-with-backlog): `auto-mode-backlog-orchestrator.ts` has the same
+ * gap for `backlog-index.json` (also in `MUTABLE_BACKLOG_FILES`). Mirror this
+ * helper for backlog when the same blocker shows up there.
+ */
+export function commitMainKanbanIfDirty(
+  mainProjectPath: string,
+  specId: string,
+  commitMessage: string
+): boolean {
+  const projDirName = resolveProjectDir(mainProjectPath);
+  const pathspec = join(projDirName, 'specs', specId, 'kanban.json');
+  try {
+    execSync(`git add "${pathspec}"`, { cwd: mainProjectPath, stdio: 'pipe' });
+    try {
+      execSync('git diff --cached --quiet', { cwd: mainProjectPath, stdio: 'pipe' });
+      return false; // exit 0 = nothing staged for this file
+    } catch {
+      // exit 1 = diff present → commit
+    }
+    execSync(`git commit -m "${commitMessage}" -- "${pathspec}"`, {
+      cwd: mainProjectPath,
+      stdio: 'pipe',
+    });
+    return true;
+  } catch (err) {
+    console.error('[worktree-story] commitMainKanbanIfDirty failed:', err);
+    return false;
+  }
+}
+
 // ── Path calculation (pure, no I/O) ──────────────────────────────────────────
 
 /** Sub-worktree path for a spec story: `${proj}-worktrees/${feature}-${storyId}` */
@@ -70,9 +118,13 @@ export function backlogBranchName(itemId: string): string {
  * Mutable kanban files routed to main via SPECWRIGHT_MAIN_PROJECT_PATH env var
  * (kanban-mcp-server.ts) — never copy them into the worktree, they would
  * shadow the canonical state and produce merge conflicts on multi-story specs.
+ *
+ * Commits to these files happen orchestrator-side via `commitMainKanbanIfDirty`
+ * after each story-complete event — workflow markdown must NOT `git add` them
+ * from worktree CWDs (the files are not present there).
  */
-const MUTABLE_SPEC_FILES = ['kanban.json', 'kanban-board.md'] as const;
-const MUTABLE_BACKLOG_FILES = ['backlog-index.json'] as const;
+export const MUTABLE_SPEC_FILES = ['kanban.json', 'kanban-board.md'] as const;
+export const MUTABLE_BACKLOG_FILES = ['backlog-index.json'] as const;
 
 /**
  * Copy spec dir from main into worktree (excluding mutable kanban files which
@@ -96,18 +148,23 @@ export async function seedSpecDirInWorktree(
 
   if (!existsSync(mainSpecPath)) return;
 
+  let needsCopy = true;
   if (existsSync(worktreeSpecPath)) {
     if (lstatSync(worktreeSpecPath).isSymbolicLink()) {
-      // Legacy symlink → remove and re-seed
+      // Legacy symlink (≤ 3.26.0) → remove and re-seed
       await rm(worktreeSpecPath, { force: true });
     } else {
-      // Real dir already present (committed seed from earlier run) → done
-      return;
+      // Real dir from base-branch checkout or prior seed → keep, only strip mutables.
+      needsCopy = false;
     }
   }
 
-  await mkdir(dirname(worktreeSpecPath), { recursive: true });
-  cpSync(mainSpecPath, worktreeSpecPath, { recursive: true });
+  if (needsCopy) {
+    await mkdir(dirname(worktreeSpecPath), { recursive: true });
+    cpSync(mainSpecPath, worktreeSpecPath, { recursive: true });
+  }
+
+  // Strip mutable files unconditionally — they only live in main (MCP env-var routing).
   for (const f of MUTABLE_SPEC_FILES) {
     const p = join(worktreeSpecPath, f);
     if (existsSync(p)) await rm(p, { force: true });
@@ -136,16 +193,21 @@ export async function seedBacklogDirInWorktree(
 
   if (!existsSync(mainBacklogPath)) return;
 
+  let needsCopy = true;
   if (existsSync(worktreeBacklogPath)) {
     if (lstatSync(worktreeBacklogPath).isSymbolicLink()) {
       await rm(worktreeBacklogPath, { force: true });
     } else {
-      return;
+      needsCopy = false;
     }
   }
 
-  await mkdir(dirname(worktreeBacklogPath), { recursive: true });
-  cpSync(mainBacklogPath, worktreeBacklogPath, { recursive: true });
+  if (needsCopy) {
+    await mkdir(dirname(worktreeBacklogPath), { recursive: true });
+    cpSync(mainBacklogPath, worktreeBacklogPath, { recursive: true });
+  }
+
+  // Strip mutable files unconditionally — they only live in main (MCP env-var routing).
   for (const f of MUTABLE_BACKLOG_FILES) {
     const p = join(worktreeBacklogPath, f);
     if (existsSync(p)) await rm(p, { force: true });

@@ -1,6 +1,6 @@
 ---
 description: Spec Phase 3 — System Story 998 (Integration Validation, Tier-Aware)
-version: 1.0
+version: 1.1
 ---
 
 # System Story 998: Integration Validation
@@ -11,10 +11,18 @@ version: 1.0
 - Skipped 998 entirely (S-Spec, single-layer) → this file not loaded
 - Set `SIMPLIFIED_998 = true` (S-Spec, Full-stack) → run simplified mode below
 
+> **MCP routing note:** kanban.json is a *mutable* file and lives in the main
+> project (never copied into worktrees). All reads/writes MUST go through the
+> kanban MCP server, which routes to `SPECWRIGHT_MAIN_PROJECT_PATH` when the
+> CWD is a worktree. Never `ls`/`READ`/`WRITE`/`git add` kanban.json directly.
+
 <integration_validation_execution>
-  1. UPDATE: kanban.json
-     - MOVE: story-998 to "In Progress"
-     - UPDATE resumeContext
+  1. CALL MCP TOOL: kanban_start_story
+     Input: { specId: "{SELECTED_SPEC}", storyId: "{STORY-998-ID}", model: "{CURRENT_MODEL_ID}" }
+     VERIFY: Returns {"success": true}
+
+     The tool atomically updates story.status, story.phase, timing.startedAt,
+     model, resumeContext, boardStatus counters, execution.status, changeLog.
 
   2. **CHECK: Simplified Mode**
      IF SIMPLIFIED_998 = true:
@@ -68,14 +76,23 @@ version: 1.0
        IF fix: Fix + re-run failed tests
        IF skip: WARN and proceed
 
-  8. MARK: story-998 as Done (UPDATE kanban.json)
+  8. CALL MCP TOOL: kanban_complete_story
+     Input:
+     {
+       "specId": "{SELECTED_SPEC}",
+       "storyId": "{STORY-998-ID}",
+       "filesModified": [...],
+       "commits": [...]
+     }
+     VERIFY: Returns {"success": true, "remaining": N}
 
-     STAGE + COMMIT (integration validation is read-only but still modifies
-     the story markdown — DoD checkboxes, validation results, and kanban.json
-     updates must be captured):
+     NOTE: kanban.json is committed main-side by the auto-mode orchestrator
+     after each story-complete event — never `git add` it from the worktree.
+
+     STAGE + COMMIT (worktree-side files only — integration validation
+     touches story-998 markdown for DoD checkboxes and validation results):
      ```bash
-     git add specwright/specs/{SELECTED_SPEC}/kanban.json \
-             specwright/specs/{SELECTED_SPEC}/stories/story-998-*.md 2>/dev/null || true
+     git add specwright/specs/{SELECTED_SPEC}/stories/story-998-*.md 2>/dev/null || true
      git diff --cached --quiet || git commit -m "feat: [story-998] Integration Validation completed"
      ```
 

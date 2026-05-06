@@ -1692,6 +1692,11 @@ export class AosApp extends LitElement {
       e.preventDefault();
       this.isBottomPanelOpen = !this.isBottomPanelOpen;
     }
+    // Cmd/Ctrl+D toggles cloud terminal sidebar
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 'd') {
+      e.preventDefault();
+      this.isTerminalSidebarOpen = !this.isTerminalSidebarOpen;
+    }
   }
 
   // WTT-003: Open a workflow terminal tab from UI triggers (kanban, dashboard, queue)

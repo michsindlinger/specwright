@@ -2,7 +2,7 @@ import { AutoModeOrchestratorBase, type OrchestratorBaseConfig, type ReadyItem }
 import { SpecsReader } from '../specs-reader.js';
 import { projectDir } from '../utils/project-dirs.js';
 import { CloudTerminalManager } from './cloud-terminal-manager.js';
-import { isWorktreeClean, storyBranchName } from '../utils/worktree-story.js';
+import { commitMainKanbanIfDirty, isWorktreeClean, storyBranchName } from '../utils/worktree-story.js';
 
 type GitStrategy = 'branch' | 'worktree' | 'current-branch';
 
@@ -66,15 +66,16 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     specBranch?: string,
     worktreeOps?: SpecWorktreeOps
   ): AutoModeSpecOrchestrator {
+    const resolvedMainPath = mainProjectPath ?? projectPath;
     return new AutoModeSpecOrchestrator({
       projectPath,
-      kanbanPath: projectDir(projectPath, 'specs', specId),
+      kanbanPath: projectDir(resolvedMainPath, 'specs', specId),
       watchFilename: 'kanban.json',
       maxConcurrent,
       commandPrefix,
       cloudTerminalManager,
       specId,
-      mainProjectPath: mainProjectPath ?? projectPath,
+      mainProjectPath: resolvedMainPath,
       gitStrategy,
       specBranch,
       worktreeOps,
@@ -110,12 +111,12 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
   // ── Abstract implementations ────────────────────────────────────────────────
 
   protected async getReadySet(excludeIds: Set<string>): Promise<ReadyItem[]> {
-    return this.specsReader.getReadyStories(this.config.projectPath, this.specId, excludeIds);
+    return this.specsReader.getReadyStories(this.mainProjectPath, this.specId, excludeIds);
   }
 
   protected async recoverStaleInProgress(activeIds: Set<string>): Promise<void> {
     const recovered = await this.specsReader.resetStaleInProgress(
-      this.config.projectPath,
+      this.mainProjectPath,
       this.specId,
       activeIds
     );
@@ -126,7 +127,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
 
   protected async markItemInProgress(itemId: string): Promise<void> {
     await this.specsReader.updateStoryStatus(
-      this.config.projectPath,
+      this.mainProjectPath,
       this.specId,
       itemId,
       'in_progress'
@@ -156,7 +157,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
         console.warn(`[SpecOrchestrator] ${errMsg}`);
         try {
           await this.specsReader.updateStoryStatus(
-            this.config.projectPath,
+            this.mainProjectPath,
             this.specId,
             itemId,
             'in_progress'
@@ -165,7 +166,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
           console.error('[SpecOrchestrator] revert-to-in_progress (dirty) error:', err);
         }
         try {
-          await this.specsReader.setAutoModeIncident(this.config.projectPath, this.specId, {
+          await this.specsReader.setAutoModeIncident(this.mainProjectPath, this.specId, {
             type: 'error',
             message: errMsg,
             storyId: itemId,
@@ -180,9 +181,9 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
       }
 
       try {
-        await this.worktreeOps.mergeStoryBranchIntoSpec(this.config.projectPath, this.specBranch, branch);
+        await this.worktreeOps.mergeStoryBranchIntoSpec(this.mainProjectPath, this.specBranch, branch);
         console.log(`[SpecOrchestrator] Merged ${branch} into ${this.specBranch}`);
-        await this.worktreeOps.removeStoryWorktree(this.config.projectPath, wtPath);
+        await this.worktreeOps.removeStoryWorktree(this.mainProjectPath, wtPath);
       } catch (err) {
         const baseMsg = err instanceof Error ? err.message : `Merge conflict: ${branch} → ${this.specBranch}`;
         const errMsg = `${baseMsg} (worktree kept at ${wtPath})`;
@@ -190,7 +191,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
         // Revert story to in_progress so kanban reflects unresolved state.
         try {
           await this.specsReader.updateStoryStatus(
-            this.config.projectPath,
+            this.mainProjectPath,
             this.specId,
             itemId,
             'in_progress'
@@ -209,13 +210,29 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     }
 
     try {
-      await this.specsReader.clearAutoModeIncident(this.config.projectPath, this.specId, itemId);
+      await this.specsReader.clearAutoModeIncident(this.mainProjectPath, this.specId, itemId);
     } catch (err) {
       console.error('[SpecOrchestrator] clearAutoModeIncident error:', err);
     }
 
+    // kanban.json lives only in main repo — workflow markdown can't `git add`
+    // it from a worktree CWD. Commit pending kanban mutations here so the main
+    // working tree stays clean across story boundaries.
     try {
-      const unblocked = await this.specsReader.resolveDependencies(this.config.projectPath, this.specId);
+      const committed = commitMainKanbanIfDirty(
+        this.mainProjectPath,
+        this.specId,
+        `chore: [${itemId}] kanban.json post-completion sync`
+      );
+      if (committed) {
+        console.log(`[SpecOrchestrator] Committed kanban.json for ${itemId}`);
+      }
+    } catch (err) {
+      console.error('[SpecOrchestrator] commitMainKanbanIfDirty error:', err);
+    }
+
+    try {
+      const unblocked = await this.specsReader.resolveDependencies(this.mainProjectPath, this.specId);
       if (unblocked.length > 0) {
         console.log(`[SpecOrchestrator] Resolved deps: ${unblocked.join(', ')} now ready`);
       }
@@ -227,7 +244,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
   protected async onItemFailed(itemId: string, _error: string): Promise<void> {
     const wtPath = this.storyWorktrees.get(itemId);
     if (wtPath && this.worktreeOps) {
-      await this.worktreeOps.removeStoryWorktree(this.config.projectPath, wtPath);
+      await this.worktreeOps.removeStoryWorktree(this.mainProjectPath, wtPath);
       this.storyWorktrees.delete(itemId);
     }
     await this.scheduleTick();
@@ -239,7 +256,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
       // can recover work via `git worktree list` + manual commit/push.
       for (const [, wtPath] of this.storyWorktrees) {
         if (isWorktreeClean(wtPath)) {
-          await this.worktreeOps.removeStoryWorktree(this.config.projectPath, wtPath);
+          await this.worktreeOps.removeStoryWorktree(this.mainProjectPath, wtPath);
         } else {
           console.warn(`[SpecOrchestrator] cancel: keeping dirty story worktree ${wtPath}`);
         }

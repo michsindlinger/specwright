@@ -1,16 +1,24 @@
 ---
 description: Spec Phase 3 — System Story 999 (Finalize PR + Project Knowledge Update)
-version: 1.0
+version: 1.1
 ---
 
 # System Story 999: Finalize PR
 
 **Purpose:** User-Todos, Project Knowledge Update, PR creation, Worktree cleanup.
 
+> **MCP routing note:** kanban.json is a *mutable* file and lives in the main
+> project (never copied into worktrees). All reads/writes MUST go through the
+> kanban MCP server, which routes to `SPECWRIGHT_MAIN_PROJECT_PATH` when the
+> CWD is a worktree. Never `ls`/`READ`/`WRITE`/`git add` kanban.json directly.
+
 <finalize_pr_execution>
-  1. UPDATE: kanban.json
-     - MOVE: story-999 to "In Progress"
-     - UPDATE resumeContext
+  1. CALL MCP TOOL: kanban_start_story
+     Input: { specId: "{SELECTED_SPEC}", storyId: "{STORY-999-ID}", model: "{CURRENT_MODEL_ID}" }
+     VERIFY: Returns {"success": true}
+
+     The tool atomically updates story.status, story.phase, timing.startedAt,
+     model, resumeContext, boardStatus counters, execution.status, changeLog.
 
   2. FINALIZE: user-todos.md (if exists)
      ```bash
@@ -104,17 +112,39 @@ version: 1.0
      afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || true
      ```
 
-  8. MARK: story-999 as Done
-     UPDATE: kanban.json
-     - resumeContext.currentPhase: complete
-     - resumeContext.lastAction: PR created - [PR URL]
+  8. CALL MCP TOOL: kanban_complete_story
+     Input:
+     {
+       "specId": "{SELECTED_SPEC}",
+       "storyId": "{STORY-999-ID}",
+       "filesModified": [...],
+       "commits": [...]
+     }
+     VERIFY: Returns {"success": true, "remaining": N}
 
-     STAGE + COMMIT (final sweep — captures all spec housekeeping that
-     accumulated after previous story commits: the just-updated kanban.json,
-     story-xxx.md status markers written post-commit, integration-context.md
-     additions, and any residual markdown from non-committing stories):
+     NOTE: when remaining=0, the tool itself sets currentPhase="complete"
+     + execution.status="completed" — no follow-up phase update for that
+     transition is needed.
+
+  8b. CALL MCP TOOL: kanban_update_phase
+      Input:
+      {
+        "specId": "{SELECTED_SPEC}",
+        "currentPhase": "complete",
+        "lastAction": "PR created - {PR_URL}"
+      }
+      (idempotent overwrite of lastAction with the PR URL)
+
+     NOTE: kanban.json is committed main-side by the auto-mode orchestrator
+     after each story-complete event — never `git add` it from the worktree.
+
+     STAGE + COMMIT (worktree-side final sweep — story-xxx.md status
+     markers, integration-context.md additions, user-todos.md, residual
+     markdown from non-committing stories):
      ```bash
-     git add specwright/specs/{SELECTED_SPEC}/ 2>/dev/null || true
+     git add specwright/specs/{SELECTED_SPEC}/stories/ \
+             specwright/specs/{SELECTED_SPEC}/integration-context.md \
+             specwright/specs/{SELECTED_SPEC}/user-todos.md 2>/dev/null || true
      git diff --cached --quiet || git commit -m "feat: [story-999] PR finalized"
      ```
 

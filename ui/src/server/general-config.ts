@@ -25,6 +25,7 @@ export const DEFAULT_REVIEW_PROMPT =
   '- Missing edge cases\n' +
   '- Inconsistencies between requirements and implementation\n' +
   '- Simpler alternatives that preserve all features\n\n' +
+  'You have read-only access to the project codebase via the Read, Grep, and Glob tools. You MAY use them to spot-check critical plan claims (file paths, function names) when uncertainty is material. If a tool fails or is unavailable, continue with prose-only review — do not retry indefinitely. Do not emit raw <tool_call> XML; if a tool is unavailable, state that in prose instead.\n\n' +
   'Be specific and reference parts of the plan. Be concise.';
 
 const DEFAULT_CONFIG: GeneralConfig = {

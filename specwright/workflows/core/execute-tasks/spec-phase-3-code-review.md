@@ -1,16 +1,24 @@
 ---
 description: Spec Phase 3 — System Story 997 (Code Review + Spec-Conformance)
-version: 1.1
+version: 1.2
 ---
 
 # System Story 997: Code Review
 
 **Purpose:** Strong model reviews the complete feature diff and auto-fixes findings.
 
+> **MCP routing note:** kanban.json is a *mutable* file and lives in the main
+> project (never copied into worktrees). All reads/writes MUST go through the
+> kanban MCP server, which routes to `SPECWRIGHT_MAIN_PROJECT_PATH` when the
+> CWD is a worktree. Never `ls`/`READ`/`WRITE`/`git add` kanban.json directly.
+
 <code_review_execution>
-  1. UPDATE: kanban.json
-     - MOVE: story-997 to "In Progress"
-     - UPDATE resumeContext
+  1. CALL MCP TOOL: kanban_start_story
+     Input: { specId: "{SELECTED_SPEC}", storyId: "{STORY-997-ID}", model: "{CURRENT_MODEL_ID}" }
+     VERIFY: Returns {"success": true}
+
+     The tool atomically updates story.status, story.phase, timing.startedAt,
+     model, resumeContext, boardStatus counters, execution.status, changeLog.
 
   2. GET: Full diff between main and current branch
      ```bash
@@ -267,14 +275,23 @@ version: 1.1
        </step_997_update_report>
 
   <step_997_mark_done>
-  7. MARK: story-997 as Done (UPDATE kanban.json)
+  7. CALL MCP TOOL: kanban_complete_story
+     Input:
+     {
+       "specId": "{SELECTED_SPEC}",
+       "storyId": "{STORY-997-ID}",
+       "filesModified": [...],
+       "commits": [...]
+     }
+     VERIFY: Returns {"success": true, "remaining": N}
 
-     STAGE + COMMIT (housekeeping — kanban.json and story-997 markdown
-     are written AFTER feature commits and would otherwise leak as
-     uncommitted changes at the end of the spec):
+     NOTE: kanban.json is committed main-side by the auto-mode orchestrator
+     after each story-complete event — never `git add` it from the worktree.
+
+     STAGE + COMMIT (worktree-side housekeeping — story-997 markdown +
+     review-report.md, both live in the worktree's filesystem):
      ```bash
-     git add specwright/specs/{SELECTED_SPEC}/kanban.json \
-             specwright/specs/{SELECTED_SPEC}/stories/story-997-*.md \
+     git add specwright/specs/{SELECTED_SPEC}/stories/story-997-*.md \
              specwright/specs/{SELECTED_SPEC}/review-report.md 2>/dev/null || true
      git diff --cached --quiet || git commit -m "feat: [story-997] Code Review completed"
      ```

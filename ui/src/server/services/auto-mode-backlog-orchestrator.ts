@@ -25,6 +25,7 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
   constructor(config: AutoModeBacklogOrchestratorConfig) {
     super({
       projectPath: config.projectPath,
+      mainProjectPath: config.mainProjectPath,
       kanbanPath: config.kanbanPath,
       watchFilename: 'backlog-index.json',
       maxConcurrent: config.maxConcurrent,
@@ -34,15 +35,23 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
     this.backlogReader = new BacklogReader();
   }
 
+  /** Canonical main repo path. Falls back to projectPath when no sub-worktree is involved. */
+  private get mainPath(): string {
+    return this.config.mainProjectPath ?? this.config.projectPath;
+  }
+
   static create(
     projectPath: string,
     commandPrefix: string,
     cloudTerminalManager: CloudTerminalManager,
-    maxConcurrent = 2
+    maxConcurrent = 2,
+    mainProjectPath?: string
   ): AutoModeBacklogOrchestrator {
+    const resolvedMainPath = mainProjectPath ?? projectPath;
     return new AutoModeBacklogOrchestrator({
       projectPath,
-      kanbanPath: projectDir(projectPath, 'backlog'),
+      mainProjectPath: resolvedMainPath,
+      kanbanPath: projectDir(resolvedMainPath, 'backlog'),
       watchFilename: 'backlog-index.json',
       maxConcurrent,
       commandPrefix,
@@ -53,7 +62,7 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
   // ── Per-item sub-worktree (FS-isolation for parallel slots) ─────────────────
 
   protected override async resolveSlotProjectPath(item: ReadyItem): Promise<string> {
-    const wtPath = backlogWorktreePath(this.config.projectPath, item.id);
+    const wtPath = backlogWorktreePath(this.mainPath, item.id);
     const branch = backlogBranchName(item.id);
     const wtBase = dirname(wtPath);
 
@@ -65,21 +74,21 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
       if (!existsSync(wtPath)) {
         let branchExists = false;
         try {
-          execSync(`git rev-parse --verify ${branch}`, { cwd: this.config.projectPath, stdio: 'pipe' });
+          execSync(`git rev-parse --verify ${branch}`, { cwd: this.mainPath, stdio: 'pipe' });
           branchExists = true;
         } catch { branchExists = false; }
 
         const args = branchExists
           ? `worktree add "${wtPath}" ${branch}`
           : `worktree add "${wtPath}" -b ${branch}`;
-        execSync(`git ${args}`, { cwd: this.config.projectPath, stdio: 'pipe' });
+        execSync(`git ${args}`, { cwd: this.mainPath, stdio: 'pipe' });
         console.log(`[BacklogOrchestrator] Created backlog worktree: ${wtPath} (${branch})`);
       } else {
         console.log(`[BacklogOrchestrator] Backlog worktree already exists: ${wtPath}`);
       }
 
-      await seedBacklogDirInWorktree(this.config.projectPath, wtPath);
-      await copyMcpConfigToWorktree(this.config.projectPath, wtPath);
+      await seedBacklogDirInWorktree(this.mainPath, wtPath);
+      await copyMcpConfigToWorktree(this.mainPath, wtPath);
       this.itemWorktrees.set(item.id, wtPath);
       return wtPath;
     } catch (err) {
@@ -89,12 +98,12 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
   }
 
   protected async getReadySet(excludeIds: Set<string>): Promise<ReadyItem[]> {
-    return this.backlogReader.getReadyBacklogItems(this.config.projectPath, excludeIds);
+    return this.backlogReader.getReadyBacklogItems(this.mainPath, excludeIds);
   }
 
   protected async recoverStaleInProgress(activeIds: Set<string>): Promise<void> {
     const recovered = await this.backlogReader.resetStaleInProgressItems(
-      this.config.projectPath,
+      this.mainPath,
       activeIds
     );
     if (recovered.length > 0) {
@@ -103,7 +112,7 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
   }
 
   protected async markItemInProgress(itemId: string): Promise<void> {
-    await this.backlogReader.markItemInProgress(this.config.projectPath, itemId);
+    await this.backlogReader.markItemInProgress(this.mainPath, itemId);
   }
 
   protected buildExecuteArgs(item: ReadyItem): string {
@@ -138,8 +147,8 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
 
   private removeItemWorktree(wtPath: string): void {
     try {
-      execSync(`git worktree remove --force "${wtPath}"`, { cwd: this.config.projectPath, stdio: 'pipe' });
-      execSync('git worktree prune', { cwd: this.config.projectPath, stdio: 'pipe' });
+      execSync(`git worktree remove --force "${wtPath}"`, { cwd: this.mainPath, stdio: 'pipe' });
+      execSync('git worktree prune', { cwd: this.mainPath, stdio: 'pipe' });
       console.log(`[BacklogOrchestrator] Removed backlog worktree: ${wtPath}`);
     } catch (err) {
       console.warn('[BacklogOrchestrator] removeItemWorktree best-effort failed:', err instanceof Error ? err.message : err);
