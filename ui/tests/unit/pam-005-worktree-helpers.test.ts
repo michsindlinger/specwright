@@ -854,9 +854,12 @@ describe('createStoryWorktree branch base (D11 / v3.28.1)', () => {
     }).trim();
     execSync('git checkout -q main', { cwd: projectPath });
 
+    // D14 / v3.28.3: merge runs in spec worktree, not main repo. Set one up.
+    const specWtPath = `${projectPath}-spec-wt`;
+    execSync(`git worktree add "${specWtPath}" ${specBranch}`, { cwd: projectPath, stdio: 'pipe' });
+
     const executor = new WorkflowExecutor();
 
-    // Story A branches off spec tip, appends to TOP section, merges back.
     const storyAId = 'STORY-A';
     const storyA = `story/x/${storyAId}`;
     const wtA = await executor.createStoryWorktree(projectPath, specId, storyAId, specBranch);
@@ -864,15 +867,13 @@ describe('createStoryWorktree branch base (D11 / v3.28.1)', () => {
     let content = await fs.readFile(docPath, 'utf-8');
     await fs.writeFile(docPath, content.replace('## TOP\n- baseline', '## TOP\n- baseline\n- A line'));
     execSync('git add sharedDoc.md && git commit -q -m "A: append top"', { cwd: wtA });
-    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyA, wtA);
+    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyA, wtA, specWtPath);
 
     const specTipAfterA = execSync(`git rev-parse ${specBranch}`, {
       cwd: projectPath, encoding: 'utf-8',
     }).trim();
-    expect(specTipAfterA).not.toBe(baseSpecTip); // spec advanced
+    expect(specTipAfterA).not.toBe(baseSpecTip);
 
-    // Story B branched BEFORE A merged — base ref = baseSpecTip. Appends to
-    // BOTTOM section (disjoint from A).
     const storyBId = 'STORY-B';
     const storyB = `story/x/${storyBId}`;
     const wtBBase = `${projectPath}-worktrees/x-${storyBId}`;
@@ -882,34 +883,32 @@ describe('createStoryWorktree branch base (D11 / v3.28.1)', () => {
     await fs.writeFile(docPathB, content.replace('## BOTTOM\n- baseline', '## BOTTOM\n- baseline\n- B line'));
     execSync('git add sharedDoc.md && git commit -q -m "B: append bottom"', { cwd: wtBBase });
 
-    // Without D13 rebase: this would conflict (B's merge-base = baseSpecTip;
-    // A's merge added a line above; both modified the same file). With D13,
-    // B is rebased onto specTipAfterA (sees A's edit), then merges fast-forward.
-    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyB, wtBBase);
+    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyB, wtBBase, specWtPath);
 
     const specTipAfterB = execSync(`git rev-parse ${specBranch}`, {
       cwd: projectPath, encoding: 'utf-8',
     }).trim();
     expect(specTipAfterB).not.toBe(specTipAfterA);
 
-    // Final shared doc has both stories' edits.
-    execSync(`git checkout -q ${specBranch}`, { cwd: projectPath });
-    const merged = await fs.readFile(join(projectPath, 'sharedDoc.md'), 'utf-8');
+    const merged = await fs.readFile(join(specWtPath, 'sharedDoc.md'), 'utf-8');
     expect(merged).toContain('A line');
     expect(merged).toContain('B line');
-    execSync('git checkout -q main', { cwd: projectPath });
 
     execSync(`git worktree remove --force "${wtBBase}"`, { cwd: projectPath, stdio: 'pipe' });
+    execSync(`git worktree remove --force "${specWtPath}"`, { cwd: projectPath, stdio: 'pipe' });
   });
 
   it('throws "Rebase conflict" when story + spec touched same line', async () => {
+    const specWtPath = `${projectPath}-spec-wt-c`;
+    execSync(`git worktree add "${specWtPath}" ${specBranch}`, { cwd: projectPath, stdio: 'pipe' });
+
     const executor = new WorkflowExecutor();
     const storyAId = 'STORY-CA';
     const storyA = `story/x/${storyAId}`;
     const wtA = await executor.createStoryWorktree(projectPath, specId, storyAId, specBranch);
     await fs.writeFile(join(wtA, 'samefile.md'), 'CONTENT-FROM-A\n');
     execSync('git add samefile.md && git commit -q -m "A: write file"', { cwd: wtA });
-    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyA, wtA);
+    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyA, wtA, specWtPath);
 
     const storyBId = 'STORY-CB';
     const storyB = `story/x/${storyBId}`;
@@ -919,14 +918,44 @@ describe('createStoryWorktree branch base (D11 / v3.28.1)', () => {
     execSync('git add samefile.md && git commit -q -m "B: write file"', { cwd: wtB });
 
     await expect(
-      executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyB, wtB)
+      executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyB, wtB, specWtPath)
     ).rejects.toThrow(/Rebase conflict/);
 
-    // Worktree must be left in a clean state (rebase --abort ran).
     const status = execSync('git status --porcelain', { cwd: wtB, encoding: 'utf-8' }).trim();
     expect(status).toBe('');
 
     execSync(`git worktree remove --force "${wtB}"`, { cwd: projectPath, stdio: 'pipe' });
+    execSync(`git worktree remove --force "${specWtPath}"`, { cwd: projectPath, stdio: 'pipe' });
+  });
+
+  it('D14: merges in spec worktree dir (not main repo) — supports worktree strategy', async () => {
+    // Setup: spec branch checked out in spec worktree, main repo on `main`.
+    // Main repo CANNOT checkout specBranch (already used by worktree). Old
+    // mergeStoryBranchIntoSpec did `git checkout specBranch` from cwd: projectPath
+    // → silent failure. D14 routes ops to spec worktree dir instead.
+    const specWtPath = `${projectPath}-spec-wt-d14`;
+    execSync(`git worktree add "${specWtPath}" ${specBranch}`, { cwd: projectPath, stdio: 'pipe' });
+    expect(execSync('git rev-parse --abbrev-ref HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim()).toBe('main');
+    expect(execSync('git rev-parse --abbrev-ref HEAD', { cwd: specWtPath, encoding: 'utf-8' }).trim()).toBe(specBranch);
+
+    const executor = new WorkflowExecutor();
+    const storyAId = 'STORY-D14';
+    const storyA = `story/x/${storyAId}`;
+    const wtA = await executor.createStoryWorktree(projectPath, specId, storyAId, specBranch);
+    await fs.writeFile(join(wtA, 'd14.md'), 'd14 work\n');
+    execSync('git add d14.md && git commit -q -m "D14 story work"', { cwd: wtA });
+
+    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyA, wtA, specWtPath);
+
+    // Main repo still on main (untouched).
+    expect(execSync('git rev-parse --abbrev-ref HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim()).toBe('main');
+    // Spec branch advanced.
+    const specTipAfter = execSync(`git rev-parse ${specBranch}`, { cwd: projectPath, encoding: 'utf-8' }).trim();
+    expect(specTipAfter).not.toBe(specSha);
+    // Merged file present in spec worktree.
+    expect(await fs.readFile(join(specWtPath, 'd14.md'), 'utf-8')).toBe('d14 work\n');
+
+    execSync(`git worktree remove --force "${specWtPath}"`, { cwd: projectPath, stdio: 'pipe' });
   });
 
   it('reuses existing story branch (does not re-base off specBranch)', async () => {

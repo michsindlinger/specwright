@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.28.3 - 2026-05-06
+
+### Behoben
+- **Merge läuft jetzt im Spec-Worktree, nicht im Main-Repo (D14):** `mergeStoryBranchIntoSpec` machte vorher `git checkout ${specBranch}` mit `cwd: projectPath` (= Main-Repo). Wenn `gitStrategy=worktree` aktiv ist, lebt die Spec-Branch im Spec-Sub-Worktree → `git checkout` failed mit `branch already used by worktree`. Try/Catch hat den echten Fehler verschluckt und `Merge conflict: ...` geworfen — irreführende Fehlermeldung. Folge: ALLE automatisierten Merges im Worktree-Mode failed silent. "Erfolgreiche" Merges in der Vergangenheit waren entweder LLM-seitig im Story-Worktree oder manuell. v3.28.0/.1/.2 Race-/Base-Fixes hatten daher nie eine Chance, weil die Merge-Funktion grundsätzlich falsche `cwd` benutzte.
+- **Fix:** `mergeStoryBranchIntoSpec` akzeptiert neuen Pflicht-Parameter `specWorktreePath` und führt rebase + merge in dieser Working-Tree-Direktory aus. `git checkout` Schritt komplett entfernt — Spec-Worktree ist per Definition schon auf `specBranch`. Für Non-Worktree-Strategy bleibt `specWorktreePath === projectPath` (Caller-Verantwortung), Verhalten unverändert.
+
+### Geändert
+- `SpecWorktreeOps.mergeStoryBranchIntoSpec` Interface erweitert: 5. Parameter `specWorktreePath: string`. Caller in `auto-mode-spec-orchestrator.ts:resolveSlotProjectPath` reicht `this.config.projectPath` durch (= Spec-Worktree-Pfad bei `gitStrategy=worktree`).
+
+### Tests
+- `pam-005-worktree-helpers.test.ts`: D14-Regression (Merge läuft in Spec-Worktree, Main-Repo bleibt auf `main`, Spec-Branch advanced). Existing D11/D13-Tests auf Spec-Worktree umgestellt. 60/60 passing.
+
 ## 3.28.2 - 2026-05-06
 
 ### Behoben

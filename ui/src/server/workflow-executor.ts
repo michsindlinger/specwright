@@ -3264,9 +3264,19 @@ export class WorkflowExecutor {
     projectPath: string,
     specBranch: string,
     storyBranch: string,
-    storyWorktreePath: string
+    storyWorktreePath: string,
+    specWorktreePath: string
   ): Promise<void> {
     return withMainProjectLock(projectPath, 'merge-story-branch', async () => {
+      // D14 / v3.28.3: when spec uses worktree strategy, the spec branch is
+      // checked out in `specWorktreePath` (sub-worktree), NOT in the main repo.
+      // `git checkout specBranch` from `cwd: projectPath` (main repo) fails
+      // with "branch already used by worktree" — silent merge failure that
+      // surfaced as transient conflicts. Run all merge ops in the spec
+      // worktree dir; rebase still happens in the story sub-worktree.
+      // For non-worktree strategy callers, specWorktreePath === projectPath.
+      const mergeCwd = specWorktreePath || projectPath;
+
       // D13 / v3.28.2: rebase story branch onto current spec tip BEFORE merge.
       // D11 ensures a story branches off the spec tip *at creation time*, but
       // sibling stories may merge into the spec branch while this story is
@@ -3275,10 +3285,10 @@ export class WorkflowExecutor {
       // explodes as a merge conflict that a clean rebase resolves trivially.
       // Skip when already up-to-date (fast-path no-op).
       const specTip = execSync(`git rev-parse ${specBranch}`, {
-        cwd: projectPath, encoding: 'utf-8',
+        cwd: mergeCwd, encoding: 'utf-8',
       }).trim();
       const mergeBase = execSync(`git merge-base ${specBranch} ${storyBranch}`, {
-        cwd: projectPath, encoding: 'utf-8',
+        cwd: mergeCwd, encoding: 'utf-8',
       }).trim();
       if (mergeBase !== specTip) {
         console.log(`[Workflow] D13: Rebasing ${storyBranch} onto ${specBranch} (merge-base ${mergeBase.slice(0, 8)} → spec tip ${specTip.slice(0, 8)})`);
@@ -3291,14 +3301,17 @@ export class WorkflowExecutor {
       }
 
       try {
-        execSync(`git checkout ${specBranch}`, { cwd: projectPath, stdio: 'pipe' });
+        // No `git checkout` needed — spec worktree is already on specBranch.
+        // For non-worktree callers (mergeCwd === projectPath / main repo),
+        // the spec branch must already be checked out there too. Either way,
+        // skipping checkout avoids the worktree-collision bug entirely.
         execSync(
           `git merge --no-ff ${storyBranch} -m "merge: ${storyBranch} into ${specBranch}"`,
-          { cwd: projectPath, stdio: 'pipe' }
+          { cwd: mergeCwd, stdio: 'pipe' }
         );
         console.log(`[Workflow] PAM-005: Merged ${storyBranch} into ${specBranch}`);
       } catch {
-        try { execSync('git merge --abort', { cwd: projectPath, stdio: 'pipe' }); } catch { /* ignore */ }
+        try { execSync('git merge --abort', { cwd: mergeCwd, stdio: 'pipe' }); } catch { /* ignore */ }
         throw new Error(`Merge conflict: ${storyBranch} → ${specBranch}`);
       }
     });
