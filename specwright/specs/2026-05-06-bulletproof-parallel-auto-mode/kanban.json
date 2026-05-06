@@ -12,21 +12,21 @@
     "implementationPlan": "implementation-plan.md"
   },
   "resumeContext": {
-    "currentPhase": "1-complete",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "2-complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
-    "gitStrategy": null,
+    "gitBranch": "main",
+    "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Lean kanban created via MCP",
-    "nextAction": "Setup git worktree or branch",
-    "progressIndex": 0,
+    "lastAction": "Completed BPAM-001",
+    "nextAction": "Execute next task: BPAM-002",
+    "progressIndex": 1,
     "totalStories": 10
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-05-06T13:32:03.277Z",
     "completedAt": null,
     "model": null
   },
@@ -37,16 +37,26 @@
       "description": "New in-memory async mutex per main project path with rejection-safe Promise-chain pattern and soft 30s/60s warn-not-throw.",
       "planSection": "Architektur D1 + Phase A; Test Strategy main-project-mutex.test.ts",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-06T13:32:03.277Z",
+        "completedAt": "2026-05-06T13:34:45.669Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/utils/main-project-mutex.ts",
+          "ui/tests/unit/main-project-mutex.test.ts",
+          "specwright/specs/2026-05-06-bulletproof-parallel-auto-mode/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "8582aa85f905020c03a8393835451709c430f200",
+            "message": "feat: BPAM-001 Add main-project-mutex helper + unit tests",
+            "timestamp": "2026-05-06T15:34:35+02:00"
+          }
+        ]
       }
     },
     {
@@ -233,11 +243,11 @@
   ],
   "boardStatus": {
     "total": 10,
-    "ready": 4,
+    "ready": 3,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 6
   },
   "changeLog": [
@@ -252,6 +262,42 @@
       "action": "models_bulk_changed",
       "storyId": null,
       "details": "Model set to sonnet for: BPAM-001, BPAM-002, BPAM-007, BPAM-008, BPAM-003, BPAM-004, BPAM-005, BPAM-006, BPAM-009, BPAM-010"
+    },
+    {
+      "timestamp": "2026-05-06T13:31:15.519Z",
+      "action": "status_changed",
+      "storyId": "BPAM-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T13:31:15.649Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git current-branch setup via UI: main"
+    },
+    {
+      "timestamp": "2026-05-06T13:31:15.688Z",
+      "action": "stale_recovery",
+      "storyId": "BPAM-001",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-05-06T13:31:15.689Z",
+      "action": "status_changed",
+      "storyId": "BPAM-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T13:32:03.278Z",
+      "action": "status_changed",
+      "storyId": "BPAM-001",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T13:34:45.669Z",
+      "action": "status_changed",
+      "storyId": "BPAM-001",
+      "details": "Task completed: in_progress → done"
     }
   ]
 }
