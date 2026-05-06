@@ -270,7 +270,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     // it from a worktree CWD. Commit pending kanban mutations here so the main
     // working tree stays clean across story boundaries.
     try {
-      const committed = commitMainKanbanIfDirty(
+      const committed = await commitMainKanbanIfDirty(
         this.mainProjectPath,
         this.specId,
         `chore: [${itemId}] kanban.json post-completion sync`

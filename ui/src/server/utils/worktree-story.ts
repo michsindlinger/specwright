@@ -8,6 +8,8 @@ import { execSync } from 'child_process';
 import { existsSync, lstatSync, cpSync, rmSync } from 'fs';
 import { mkdir, rm, copyFile } from 'fs/promises';
 import { resolveProjectDir, projectDir } from './project-dirs.js';
+import { withMainProjectLock } from './main-project-mutex.js';
+import { withKanbanLock } from './kanban-lock.js';
 
 // ── Cleanliness check ────────────────────────────────────────────────────────
 
@@ -56,26 +58,31 @@ export function isWorktreeClean(worktreePath: string): boolean {
  * gap for `backlog-index.json` (also in `MUTABLE_BACKLOG_FILES`). Mirror this
  * helper for backlog when the same blocker shows up there.
  */
-export function commitMainKanbanIfDirty(
+export async function commitMainKanbanIfDirty(
   mainProjectPath: string,
   specId: string,
   commitMessage: string
-): boolean {
+): Promise<boolean> {
   const projDirName = resolveProjectDir(mainProjectPath);
   const pathspec = join(projDirName, 'specs', specId, 'kanban.json');
+  const specPath = projectDir(mainProjectPath, 'specs', specId);
   try {
-    execSync(`git add "${pathspec}"`, { cwd: mainProjectPath, stdio: 'pipe' });
-    try {
-      execSync('git diff --cached --quiet', { cwd: mainProjectPath, stdio: 'pipe' });
-      return false; // exit 0 = nothing staged for this file
-    } catch {
-      // exit 1 = diff present → commit
-    }
-    execSync(`git commit -m "${commitMessage}" -- "${pathspec}"`, {
-      cwd: mainProjectPath,
-      stdio: 'pipe',
-    });
-    return true;
+    return await withMainProjectLock(mainProjectPath, `commit-kanban-${specId}`, () =>
+      withKanbanLock(specPath, async () => {
+        execSync(`git add "${pathspec}"`, { cwd: mainProjectPath, stdio: 'pipe' });
+        try {
+          execSync('git diff --cached --quiet', { cwd: mainProjectPath, stdio: 'pipe' });
+          return false; // exit 0 = nothing staged for this file
+        } catch {
+          // exit 1 = diff present → commit
+        }
+        execSync(`git commit -m "${commitMessage}" -- "${pathspec}"`, {
+          cwd: mainProjectPath,
+          stdio: 'pipe',
+        });
+        return true;
+      })
+    );
   } catch (err) {
     console.error('[worktree-story] commitMainKanbanIfDirty failed:', err);
     return false;

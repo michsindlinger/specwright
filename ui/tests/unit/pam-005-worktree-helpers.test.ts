@@ -413,7 +413,7 @@ describe('commitMainKanbanIfDirty', () => {
     );
 
     const headBefore = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
-    const result = commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: [T1] kanban sync');
+    const result = await commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: [T1] kanban sync');
     const headAfter = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
 
     expect(result).toBe(true);
@@ -422,9 +422,9 @@ describe('commitMainKanbanIfDirty', () => {
     expect(lastMsg).toBe('chore: [T1] kanban sync');
   });
 
-  it('returns false and creates no commit when kanban.json is clean', () => {
+  it('returns false and creates no commit when kanban.json is clean', async () => {
     const headBefore = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
-    const result = commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: kanban sync');
+    const result = await commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: kanban sync');
     const headAfter = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
 
     expect(result).toBe(false);
@@ -436,7 +436,7 @@ describe('commitMainKanbanIfDirty', () => {
     execSync('git add . && git commit -q -m "remove kanban"', { cwd: projectPath });
 
     const headBefore = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
-    const result = commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: kanban sync');
+    const result = await commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: kanban sync');
     const headAfter = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
 
     expect(result).toBe(false);
@@ -448,7 +448,7 @@ describe('commitMainKanbanIfDirty', () => {
     await fs.mkdir(join(nonRepo, 'specwright', 'specs', 'my-spec'), { recursive: true });
     await fs.writeFile(join(nonRepo, 'specwright', 'specs', 'my-spec', 'kanban.json'), '{}');
 
-    expect(commitMainKanbanIfDirty(nonRepo, 'my-spec', 'chore: kanban sync')).toBe(false);
+    expect(await commitMainKanbanIfDirty(nonRepo, 'my-spec', 'chore: kanban sync')).toBe(false);
   });
 
   it('only commits kanban.json — leaves other dirty files unstaged', async () => {
@@ -458,7 +458,7 @@ describe('commitMainKanbanIfDirty', () => {
     );
     await fs.writeFile(join(projectPath, 'README.md'), 'modified');
 
-    const result = commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: kanban only');
+    const result = await commitMainKanbanIfDirty(projectPath, 'my-spec', 'chore: kanban only');
     expect(result).toBe(true);
 
     const status = execSync('git status --porcelain', { cwd: projectPath, encoding: 'utf-8' });
