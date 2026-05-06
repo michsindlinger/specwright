@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed BPAM-005",
-    "nextAction": "Execute next task: BPAM-006",
-    "progressIndex": 5,
+    "lastAction": "Completed BPAM-006",
+    "nextAction": "Execute next task: BPAM-007",
+    "progressIndex": 6,
     "totalStories": 10
   },
   "execution": {
@@ -182,16 +182,24 @@
       "dependencies": [
         "BPAM-001"
       ],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-06T13:48:39.377Z",
+        "completedAt": "2026-05-06T13:50:44.154Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/workflow-executor.ts"
+        ],
+        "commits": [
+          {
+            "hash": "3bdb7e092a5ee67ac13f426bbd3bfebee3317bc3",
+            "message": "feat: BPAM-006 setupSpecWorktree auto-commit wrapped in withMainProjectLock",
+            "timestamp": "2026-05-06T15:50:37+02:00"
+          }
+        ]
       }
     },
     {
@@ -280,11 +288,11 @@
   ],
   "boardStatus": {
     "total": 10,
-    "ready": 3,
+    "ready": 2,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 5,
+    "done": 6,
     "blocked": 2
   },
   "changeLog": [
@@ -406,6 +414,18 @@
       "timestamp": "2026-05-06T13:48:38.983Z",
       "action": "status_changed",
       "storyId": "BPAM-005",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-06T13:48:39.377Z",
+      "action": "status_changed",
+      "storyId": "BPAM-006",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T13:50:44.155Z",
+      "action": "status_changed",
+      "storyId": "BPAM-006",
       "details": "Task completed: in_progress → done"
     }
   ]
