@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed BPAM-003",
-    "nextAction": "Execute next task: BPAM-004",
-    "progressIndex": 3,
+    "lastAction": "Completed BPAM-004",
+    "nextAction": "Execute next task: BPAM-005",
+    "progressIndex": 4,
     "totalStories": 10
   },
   "execution": {
@@ -126,16 +126,24 @@
       "dependencies": [
         "BPAM-001"
       ],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-06T13:43:25.141Z",
+        "completedAt": "2026-05-06T13:46:07.222Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/workflow-executor.ts"
+        ],
+        "commits": [
+          {
+            "hash": "b4c0da8",
+            "message": "feat: BPAM-004 mergeStoryBranchIntoSpec wrapped in main-project mutex",
+            "timestamp": "2026-05-06T15:45:00+02:00"
+          }
+        ]
       }
     },
     {
@@ -264,11 +272,11 @@
   ],
   "boardStatus": {
     "total": 10,
-    "ready": 5,
+    "ready": 4,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 3,
+    "done": 4,
     "blocked": 2
   },
   "changeLog": [
@@ -366,6 +374,18 @@
       "timestamp": "2026-05-06T13:43:24.764Z",
       "action": "status_changed",
       "storyId": "BPAM-003",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-06T13:43:25.141Z",
+      "action": "status_changed",
+      "storyId": "BPAM-004",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T13:46:07.223Z",
+      "action": "status_changed",
+      "storyId": "BPAM-004",
       "details": "Task completed: in_progress → done"
     }
   ]
