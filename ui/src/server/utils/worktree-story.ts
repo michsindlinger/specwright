@@ -338,24 +338,41 @@ export async function seedBacklogDirInWorktree(
 }
 
 /**
- * Copy `.mcp.json` (lives one level above the project root) into the worktree
- * root so Claude in the worktree can discover the MCP server. Not committed —
- * `.mcp.json` is repo-local config, not part of the feature branch. Replaces a
- * stale legacy symlink if present.
+ * Copy `.mcp.json` into the worktree root so Claude can discover the MCP
+ * server. Not committed — `.mcp.json` is repo-local config (typically
+ * gitignored), not part of the feature branch. Replaces a stale legacy
+ * symlink if present.
+ *
+ * Source resolution (in order):
+ *   1. `${projectPath}/.mcp.json` — Claude Code convention (file lives at the
+ *      project root the user opened). This is the canonical location and the
+ *      one most projects, including those configured by `setup-mcp.sh`, use.
+ *   2. `${dirname(projectPath)}/.mcp.json` — legacy fallback for setups where
+ *      `.mcp.json` lives one level above the project root (workspace-level
+ *      config used by some early Specwright projects).
+ *
+ * Pre-v3.27.6 only checked (2), missing the kanban MCP server entirely when
+ * the project followed convention (1). LLMs in worktrees couldn't reach the
+ * kanban MCP, fell back to direct kanban.json file edits in their CWD —
+ * shadowed the canonical main copy and stalled out.
  */
 export async function copyMcpConfigToWorktree(
   projectPath: string,
   worktreePath: string
 ): Promise<void> {
-  const src = join(dirname(projectPath), '.mcp.json');
+  const candidates = [
+    join(projectPath, '.mcp.json'),          // project root (Claude Code convention)
+    join(dirname(projectPath), '.mcp.json'), // legacy: one level above project root
+  ];
+  const src = candidates.find(existsSync);
+  if (!src) return;
+
   const dst = join(worktreePath, '.mcp.json');
-  if (!existsSync(src)) return;
+  // Always overwrite: `.mcp.json` is config that must match the project root.
+  // Stale copies from earlier setups (e.g. lacking the `kanban` MCP server)
+  // silently break MCP routing — the LLM falls back to direct file edits.
   if (existsSync(dst)) {
-    if (lstatSync(dst).isSymbolicLink()) {
-      await rm(dst, { force: true });
-    } else {
-      return; // already a real file copy
-    }
+    await rm(dst, { force: true });
   }
   await copyFile(src, dst);
 }

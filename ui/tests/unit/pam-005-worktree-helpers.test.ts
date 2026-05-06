@@ -624,26 +624,49 @@ describe('copyMcpConfigToWorktree', () => {
 
   beforeEach(async () => {
     fixture = await mkRepoWithWorktree('mcp-test');
-    // .mcp.json lives one level above the project root
-    await fs.writeFile(join(fixture.base, '.mcp.json'), '{"mcpServers":{}}');
   });
 
   afterEach(async () => {
     await tearDown(fixture);
   });
 
-  it('copies .mcp.json into worktree root as a regular file', async () => {
+  it('prefers .mcp.json at project root (Claude Code convention, v3.27.6)', async () => {
+    // Project root .mcp.json (with kanban) and parent dir .mcp.json (without).
+    // The project-root one must win — pre-v3.27.6 used parent and silently
+    // missed the kanban MCP server, breaking MCP routing in worktrees.
+    await fs.writeFile(join(fixture.projectPath, '.mcp.json'), '{"mcpServers":{"kanban":{}}}');
+    await fs.writeFile(join(fixture.base, '.mcp.json'), '{"mcpServers":{"trello":{}}}');
+
     await copyMcpConfigToWorktree(fixture.projectPath, fixture.worktreePath);
+
+    const dst = join(fixture.worktreePath, '.mcp.json');
+    expect(await fs.readFile(dst, 'utf-8')).toBe('{"mcpServers":{"kanban":{}}}');
+  });
+
+  it('falls back to parent dir .mcp.json when project root has none (legacy setup)', async () => {
+    await fs.writeFile(join(fixture.base, '.mcp.json'), '{"mcpServers":{"legacy":{}}}');
+
+    await copyMcpConfigToWorktree(fixture.projectPath, fixture.worktreePath);
+
+    const dst = join(fixture.worktreePath, '.mcp.json');
+    expect(await fs.readFile(dst, 'utf-8')).toBe('{"mcpServers":{"legacy":{}}}');
+  });
+
+  it('copies .mcp.json into worktree root as a regular file (not symlink)', async () => {
+    await fs.writeFile(join(fixture.projectPath, '.mcp.json'), '{"mcpServers":{}}');
+
+    await copyMcpConfigToWorktree(fixture.projectPath, fixture.worktreePath);
+
     const dst = join(fixture.worktreePath, '.mcp.json');
     const stat = await fs.lstat(dst);
     expect(stat.isSymbolicLink()).toBe(false);
     expect(stat.isFile()).toBe(true);
-    expect(await fs.readFile(dst, 'utf-8')).toBe('{"mcpServers":{}}');
   });
 
   it('replaces a stale legacy symlink with a file copy', async () => {
+    await fs.writeFile(join(fixture.projectPath, '.mcp.json'), '{"mcpServers":{}}');
     const dst = join(fixture.worktreePath, '.mcp.json');
-    await fs.symlink(join(fixture.base, '.mcp.json'), dst);
+    await fs.symlink(join(fixture.projectPath, '.mcp.json'), dst);
     expect((await fs.lstat(dst)).isSymbolicLink()).toBe(true);
 
     await copyMcpConfigToWorktree(fixture.projectPath, fixture.worktreePath);
@@ -653,21 +676,22 @@ describe('copyMcpConfigToWorktree', () => {
     expect(stat.isFile()).toBe(true);
   });
 
-  it('is idempotent — leaves existing file copy alone', async () => {
-    await copyMcpConfigToWorktree(fixture.projectPath, fixture.worktreePath);
+  it('overwrites stale .mcp.json copy (drift fix, v3.27.6)', async () => {
+    // Pre-v3.27.6 was idempotent and skipped overwriting — so an old copy
+    // missing newly-added MCP servers (e.g. kanban) would silently persist.
     const dst = join(fixture.worktreePath, '.mcp.json');
-    const mtime1 = (await fs.stat(dst)).mtimeMs;
+    await fs.writeFile(dst, '{"mcpServers":{"old":{}}}');
 
-    await new Promise(r => setTimeout(r, 10));
+    await fs.writeFile(join(fixture.projectPath, '.mcp.json'), '{"mcpServers":{"new":{}}}');
     await copyMcpConfigToWorktree(fixture.projectPath, fixture.worktreePath);
-    const mtime2 = (await fs.stat(dst)).mtimeMs;
-    expect(mtime2).toBe(mtime1);
+
+    expect(await fs.readFile(dst, 'utf-8')).toBe('{"mcpServers":{"new":{}}}');
   });
 
-  it('skips when source .mcp.json does not exist', async () => {
-    await fs.rm(join(fixture.base, '.mcp.json'));
+  it('skips when no .mcp.json exists in project root or parent dir', async () => {
     await expect(
       copyMcpConfigToWorktree(fixture.projectPath, fixture.worktreePath)
     ).resolves.toBeUndefined();
+    await expect(fs.access(join(fixture.worktreePath, '.mcp.json'))).rejects.toThrow();
   });
 });

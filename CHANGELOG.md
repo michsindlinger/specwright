@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.27.6 - 2026-05-06
+
+### Behoben
+- **`copyMcpConfigToWorktree` kopierte falsche `.mcp.json`:** Helper las immer aus `dirname(projectPath)/.mcp.json` (eine Ebene über dem Project-Root). Wenn das Projekt der Claude-Code-Konvention folgt und `.mcp.json` IM Project-Root liegt (Standard, auch von `setup-mcp.sh` so eingerichtet), wurde stattdessen eine ggf. existierende `.mcp.json` im Parent-Verzeichnis kopiert — typisch eine Workspace-Level-Config (BrowserTools, trello, …) ohne `kanban`-Server. Folge: LLMs in Worktrees konnten kanban-MCP-Tools nicht aufrufen → Fallback auf direkte File-Edits → Shadow-`kanban.json` im Worktree-CWD, MCP-Routing zu main brach.
+- Helper sucht jetzt in dieser Reihenfolge: (1) `${projectPath}/.mcp.json` (Claude-Code-Konvention), (2) `${dirname(projectPath)}/.mcp.json` (Legacy-Fallback). Erste Existenz gewinnt.
+- **Idempotenz-Bug:** Bestehende `.mcp.json` im Worktree wurde nicht überschrieben (`if existsSync(dst) return`). Stale Kopien aus früheren Setups (z.B. ohne `kanban`-Server) blieben silent erhalten. Jetzt wird immer überschrieben — `.mcp.json` ist Config, muss zu Project-Root passen.
+
+### Behaviour-Change
+- Bestehende Worktrees mit falscher `.mcp.json` werden beim nächsten `setupSpecWorktree`/`createStoryWorktree`-Aufruf automatisch korrigiert (overwrite). Manuelle Migration nicht nötig.
+
+### Tests
+- `pam-005-worktree-helpers.test.ts > copyMcpConfigToWorktree`: 6 Tests (2 neu für project-root-priority + overwrite, 4 angepasst). 52/52 passing.
+
 ## 3.27.5 - 2026-05-06
 
 ### Behoben
