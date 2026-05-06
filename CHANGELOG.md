@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.28.4 - 2026-05-06
+
+### Geändert
+- **Worktree-Strategy = Sequential per Default (D15):** `AutoModeSpecOrchestrator.create()` zwingt `maxConcurrent=1` wenn `gitStrategy=worktree`, unabhängig vom Caller-Request. v3.28.0..3 haben individuelle Parallel-Race-Bugs (Mutex, Branch-Base, Auto-Rebase, Merge-CWD) gefixt, aber Real-World-Runs zeigen weiterhin Edge-Cases (LLM-side Hangs maskiert als Parallel-Probleme, stale-base-detection-Lücken). Sequential ist der sichere Default. Branch-Strategy bleibt beliebig parallelisierbar — kein Worktree-Overhead, kein Race-Surface.
+- Log-Hint: Wenn Force-Down passiert, loggt Backend `[SpecOrchestrator] D15: gitStrategy=worktree → forcing maxConcurrent=1 (was N)`.
+
+### Tests
+- `orchestrator-routing.test.ts`: D15 Force-Down assertion. Existing parallel-mode-Tests (`parallel mode + missing worktreeOps`, `parallel mode + createStoryWorktree throws/succeeds`, `parallel mode + missing specBranch`) jetzt via `makeParallelWorktreeOrch` Helper über Constructor — bypassen D15 um Parallel-Mode-Code-Pfad weiterhin testbar zu halten. 20/20 passing.
+
+### Nicht-Ziel
+- D15 ist eine **konservative Default-Wahl**, kein Verbot. Wer Parallel-Worktree-Mode will, kann via direktem Constructor (`new AutoModeSpecOrchestrator({...})`) bypass'en — Production-Caller benutzt aber `.create()` und kriegt Sequential. Wenn Parallel-Mode bullet-proof ist (alle Edge-Cases gefixt + breite Test-Coverage), kann D15 entfernt werden.
+
 ## 3.28.3 - 2026-05-06
 
 ### Behoben

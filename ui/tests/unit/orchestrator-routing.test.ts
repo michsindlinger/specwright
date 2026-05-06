@@ -16,6 +16,29 @@ function makeStubCtm(): CloudTerminalManager {
   return emitter as unknown as CloudTerminalManager;
 }
 
+// D15 / v3.28.4: AutoModeSpecOrchestrator.create() force-downs maxConcurrent
+// to 1 when gitStrategy='worktree'. Tests for parallel-mode behavior bypass
+// the force-down by constructing via ctor directly. Production uses .create().
+function makeParallelWorktreeOrch(opts: {
+  worktreeOps?: import('../../src/server/services/auto-mode-spec-orchestrator.js').SpecWorktreeOps;
+  maxConcurrent?: number;
+  specBranch?: string;
+}): AutoModeSpecOrchestrator {
+  return new AutoModeSpecOrchestrator({
+    projectPath: '/tmp/spec-worktree',
+    mainProjectPath: '/tmp/main-repo',
+    kanbanPath: '/tmp/main-repo/specwright/specs/2026-05-05-x',
+    watchFilename: 'kanban.json',
+    maxConcurrent: opts.maxConcurrent ?? 2,
+    commandPrefix: 'specwright',
+    cloudTerminalManager: makeStubCtm(),
+    specId: '2026-05-05-x',
+    gitStrategy: 'worktree',
+    specBranch: opts.specBranch,
+    worktreeOps: opts.worktreeOps,
+  });
+}
+
 describe('AutoModeSpecOrchestrator path routing', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -140,17 +163,7 @@ describe('AutoModeSpecOrchestrator.resolveSlotProjectPath (v3.27.4 hardening)', 
 
   it('parallel mode + missing worktreeOps → halt + incident + throw', async () => {
     const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
-    const orch = AutoModeSpecOrchestrator.create(
-      '/tmp/spec-worktree',
-      '2026-05-05-x',
-      'specwright',
-      makeStubCtm(),
-      2,                  // maxConcurrent > 1 (parallel)
-      'worktree',
-      '/tmp/main-repo',
-      'feature/x',
-      undefined           // worktreeOps missing
-    );
+    const orch = makeParallelWorktreeOrch({ specBranch: 'feature/x', worktreeOps: undefined });
     const haltSpy = vi.spyOn(orch, 'haltScheduling').mockImplementation(() => {});
 
     await expect(callResolve(orch, 'WCAG-012')).rejects.toThrow();
@@ -190,17 +203,7 @@ describe('AutoModeSpecOrchestrator.resolveSlotProjectPath (v3.27.4 hardening)', 
       removeStoryWorktree: vi.fn().mockResolvedValue(undefined),
       mergeStoryBranchIntoSpec: vi.fn().mockResolvedValue(undefined),
     };
-    const orch = AutoModeSpecOrchestrator.create(
-      '/tmp/spec-worktree',
-      '2026-05-05-x',
-      'specwright',
-      makeStubCtm(),
-      2,
-      'worktree',
-      '/tmp/main-repo',
-      'feature/x',
-      failingWorktreeOps
-    );
+    const orch = makeParallelWorktreeOrch({ specBranch: 'feature/x', worktreeOps: failingWorktreeOps });
     const haltSpy = vi.spyOn(orch, 'haltScheduling').mockImplementation(() => {});
 
     await expect(callResolve(orch, 'WCAG-012')).rejects.toThrow('git worktree add failed');
@@ -243,22 +246,10 @@ describe('AutoModeSpecOrchestrator.resolveSlotProjectPath (v3.27.4 hardening)', 
       removeStoryWorktree: vi.fn().mockResolvedValue(undefined),
       mergeStoryBranchIntoSpec: vi.fn().mockResolvedValue(undefined),
     };
-    const orch = AutoModeSpecOrchestrator.create(
-      '/tmp/spec-worktree',
-      '2026-05-05-x',
-      'specwright',
-      makeStubCtm(),
-      2,
-      'worktree',
-      '/tmp/main-repo',
-      'feature/x',
-      ops
-    );
+    const orch = makeParallelWorktreeOrch({ specBranch: 'feature/x', worktreeOps: ops });
 
     const path = await callResolve(orch, 'WCAG-012');
     expect(path).toBe('/tmp/sub-worktree-WCAG-012');
-    // BPAM-011 / D11: specBranch passed as 4th arg so story branch forks off
-    // spec branch tip (not main HEAD).
     expect(ops.createStoryWorktree).toHaveBeenCalledWith('/tmp/main-repo', '2026-05-05-x', 'WCAG-012', 'feature/x');
   });
 
@@ -269,23 +260,55 @@ describe('AutoModeSpecOrchestrator.resolveSlotProjectPath (v3.27.4 hardening)', 
       removeStoryWorktree: vi.fn().mockResolvedValue(undefined),
       mergeStoryBranchIntoSpec: vi.fn().mockResolvedValue(undefined),
     };
-    const orch = AutoModeSpecOrchestrator.create(
-      '/tmp/spec-worktree',
-      '2026-05-05-x',
-      'specwright',
-      makeStubCtm(),
-      2,                  // parallel
-      'worktree',
-      '/tmp/main-repo',
-      undefined,          // specBranch missing — orchestrator construction inconsistent
-      ops
-    );
+    const orch = makeParallelWorktreeOrch({ specBranch: undefined, worktreeOps: ops });
     const haltSpy = vi.spyOn(orch, 'haltScheduling').mockImplementation(() => {});
 
     await expect(callResolve(orch, 'WCAG-012')).rejects.toThrow(/specBranch/);
     expect(ops.createStoryWorktree).not.toHaveBeenCalled();
     expect(haltSpy).toHaveBeenCalledTimes(1);
     expect(incidentSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('D15: gitStrategy=worktree + maxConcurrent>1 → force-down to 1 (no parallel via .create)', () => {
+    const ops = {
+      createStoryWorktree: vi.fn(),
+      removeStoryWorktree: vi.fn(),
+      mergeStoryBranchIntoSpec: vi.fn(),
+    };
+    const orch = AutoModeSpecOrchestrator.create(
+      '/tmp/spec-worktree',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      5,                  // user requested parallel
+      'worktree',
+      '/tmp/main-repo',
+      'feature/x',
+      ops
+    );
+    // Internal config not directly exposed — assert behavior via isParallel
+    // path: serial mode skips parallel-only halt. We rely on resolveSlotProjectPath
+    // taking the silent-fallback branch when worktreeOps absent (already covered
+    // in serial-mode tests). Here we just confirm the maxConcurrent override
+    // happened by checking that an absent worktreeOps does NOT halt.
+    const orchNoOps = AutoModeSpecOrchestrator.create(
+      '/tmp/spec-worktree',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      5,
+      'worktree',
+      '/tmp/main-repo',
+      'feature/x',
+      undefined  // no worktreeOps
+    );
+    const haltSpy = vi.spyOn(orchNoOps, 'haltScheduling').mockImplementation(() => {});
+    return callResolve(orchNoOps, 'WCAG-012').then(path => {
+      expect(path).toBe('/tmp/spec-worktree');  // silent fallback (serial mode)
+      expect(haltSpy).not.toHaveBeenCalled();
+      // Confirm the parallel-construction path also worked end-to-end (no throw).
+      expect(orch).toBeDefined();
+    });
   });
 
   it('serial mode + missing specBranch → silent fallback to projectPath', async () => {
