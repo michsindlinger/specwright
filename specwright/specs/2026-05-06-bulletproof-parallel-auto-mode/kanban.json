@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed BPAM-006",
-    "nextAction": "Execute next task: BPAM-007",
-    "progressIndex": 6,
+    "lastAction": "Completed BPAM-007",
+    "nextAction": "Execute next task: BPAM-008",
+    "progressIndex": 7,
     "totalStories": 10
   },
   "execution": {
@@ -208,16 +208,24 @@
       "description": "Mirror isWorktreeClean gate from onItemCompleted into onItemFailed; surface incident and halt on dirty worktree.",
       "planSection": "Architektur D8 + Phase C",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-06T13:50:44.552Z",
+        "completedAt": "2026-05-06T13:53:17.114Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/services/auto-mode-spec-orchestrator.ts"
+        ],
+        "commits": [
+          {
+            "hash": "3e957b3d959555d409012b7060654bf9a481b9ce",
+            "message": "feat: BPAM-007 onItemFailed cleanliness gate parity",
+            "timestamp": "2026-05-06T15:53:01+02:00"
+          }
+        ]
       }
     },
     {
@@ -288,11 +296,11 @@
   ],
   "boardStatus": {
     "total": 10,
-    "ready": 2,
+    "ready": 1,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 6,
+    "done": 7,
     "blocked": 2
   },
   "changeLog": [
@@ -426,6 +434,18 @@
       "timestamp": "2026-05-06T13:50:44.155Z",
       "action": "status_changed",
       "storyId": "BPAM-006",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-06T13:50:44.552Z",
+      "action": "status_changed",
+      "storyId": "BPAM-007",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T13:53:17.115Z",
+      "action": "status_changed",
+      "storyId": "BPAM-007",
       "details": "Task completed: in_progress → done"
     }
   ]
