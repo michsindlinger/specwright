@@ -92,10 +92,22 @@ export function storyWorktreePath(projectPath: string, specId: string, storyId: 
   return join(worktreeBase, `${featureName}-${storyId}`);
 }
 
-/** Branch name for a spec story: `feature/${feature}/${storyId}` */
+/**
+ * Branch name for a spec story: `story/${feature}/${storyId}`.
+ *
+ * Separate namespace from the spec branch (`feature/${feature}`) to avoid the
+ * git ref hierarchy collision: when `refs/heads/feature/${feature}` exists as
+ * a file, git refuses to create `refs/heads/feature/${feature}/${storyId}`
+ * because the parent path is already a ref ("cannot lock ref ... exists;
+ * cannot create ..."). Putting story branches under `story/...` sidesteps it.
+ *
+ * Pre-v3.27.5 worktrees on `feature/${feature}/${storyId}` were impossible to
+ * create when the spec branch already existed — `createStoryWorktree` would
+ * throw and (≥ v3.27.4) halt parallel mode.
+ */
 export function storyBranchName(specId: string, storyId: string): string {
   const featureName = specId.replace(/^\d{4}-\d{2}-\d{2}-/, '');
-  return `feature/${featureName}/${storyId}`;
+  return `story/${featureName}/${storyId}`;
 }
 
 /** Sub-worktree path for a backlog item: `${proj}-worktrees/backlog-${slug}` */

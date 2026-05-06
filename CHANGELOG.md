@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.27.5 - 2026-05-06
+
+### Behoben
+- **Story-Sub-Branches kollidierten mit Spec-Branch (git ref hierarchy):** `storyBranchName(specId, storyId)` baute `feature/${feature}/${storyId}` — kollidierte mit der Spec-Branch `feature/${feature}`. Git-Refs sind hierarchisch und `git worktree add -b feature/foo/STORY` failed mit `fatal: cannot lock ref 'refs/heads/feature/foo/STORY': 'refs/heads/feature/foo' exists; cannot create 'refs/heads/feature/foo/STORY'`. Folge: jeder Parallel-Auto-Mode-Lauf (`maxConcurrent > 1`) hängte unmittelbar nach `git_strategy_set` (siehe v3.27.4-Halt-Mechanik).
+- Story-Branches leben jetzt in eigenem Namespace `story/${feature}/${storyId}` — keine Kollision mit Spec-Branch.
+
+### Behaviour-Change
+- Bestehende Story-Sub-Worktrees aus Pre-v3.27.5 (Branch `feature/${feature}/${storyId}`) gibt es in der Praxis nicht — die Branch-Erstellung schlug ja immer fehl. Migration daher trivial: bei nächstem Auto-Mode-Run werden Sub-Worktrees mit neuem `story/...`-Branch-Schema erstellt.
+
+### Tests
+- `pam-005-worktree-helpers.test.ts > storyBranchName`: Erwartungen auf `story/...`-Format aktualisiert. +1 Regression-Test (`does NOT collide with spec branch`). 50/50 passing.
+
 ## 3.27.4 - 2026-05-06
 
 ### Behoben

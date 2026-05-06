@@ -103,16 +103,25 @@ describe('storyWorktreePath', () => {
 });
 
 describe('storyBranchName', () => {
-  it('builds feature/${feature}/${storyId} format', () => {
-    expect(storyBranchName('2026-01-15-my-feature', 'PAM-005')).toBe('feature/my-feature/PAM-005');
+  it('builds story/${feature}/${storyId} format (v3.27.5: separate namespace from spec branch)', () => {
+    expect(storyBranchName('2026-01-15-my-feature', 'PAM-005')).toBe('story/my-feature/PAM-005');
   });
 
   it('strips only leading date prefix (YYYY-MM-DD-)', () => {
-    expect(storyBranchName('2026-04-27-parallel-auto-mode', 'PAM-007')).toBe('feature/parallel-auto-mode/PAM-007');
+    expect(storyBranchName('2026-04-27-parallel-auto-mode', 'PAM-007')).toBe('story/parallel-auto-mode/PAM-007');
   });
 
   it('handles specId without date prefix', () => {
-    expect(storyBranchName('my-feature', 'T-001')).toBe('feature/my-feature/T-001');
+    expect(storyBranchName('my-feature', 'T-001')).toBe('story/my-feature/T-001');
+  });
+
+  it('does NOT collide with spec branch feature/${feature} (git ref hierarchy)', () => {
+    // Regression test: pre-v3.27.5 used `feature/{feature}/{storyId}` which
+    // collides with the spec branch `feature/{feature}` because git refs
+    // are hierarchical. story/... lives in a separate namespace.
+    const branch = storyBranchName('2026-05-05-ifdb-wcag-2-2-aa-remediation', 'WCAG-014');
+    expect(branch.startsWith('feature/ifdb-wcag-2-2-aa-remediation/')).toBe(false);
+    expect(branch).toBe('story/ifdb-wcag-2-2-aa-remediation/WCAG-014');
   });
 });
 
