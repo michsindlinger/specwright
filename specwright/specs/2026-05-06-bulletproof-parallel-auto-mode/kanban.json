@@ -12,22 +12,22 @@
     "implementationPlan": "implementation-plan.md"
   },
   "resumeContext": {
-    "currentPhase": "2-complete",
+    "currentPhase": "complete",
     "nextPhase": "3-execute-story",
     "worktreePath": null,
     "gitBranch": "main",
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed BPAM-009",
-    "nextAction": "Wait for blocked tasks to become ready",
-    "progressIndex": 9,
+    "lastAction": "Completed BPAM-010",
+    "nextAction": "All tasks complete",
+    "progressIndex": 10,
     "totalStories": 10
   },
   "execution": {
-    "status": "executing",
+    "status": "completed",
     "startedAt": "2026-05-06T13:32:03.277Z",
-    "completedAt": null,
+    "completedAt": "2026-05-06T14:07:57.005Z",
     "model": null
   },
   "tasks": [
@@ -293,16 +293,28 @@
       "dependencies": [
         "BPAM-009"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-06T14:04:22.252Z",
+        "completedAt": "2026-05-06T14:07:57.005Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "CHANGELOG.md",
+          "CLAUDE.md",
+          "VERSION",
+          "install.sh",
+          "ui/src/server/specs-reader.ts"
+        ],
+        "commits": [
+          {
+            "hash": "aff4d2bb7af819deaadceb0931cd592f2326ba86",
+            "message": "feat: BPAM-010 Docs + release VERSION 3.28.0",
+            "timestamp": "2026-05-06T16:07:50+02:00"
+          }
+        ]
       }
     }
   ],
@@ -312,8 +324,8 @@
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 9,
-    "blocked": 1
+    "done": 10,
+    "blocked": 0
   },
   "changeLog": [
     {
@@ -488,6 +500,24 @@
       "timestamp": "2026-05-06T14:04:21.846Z",
       "action": "status_changed",
       "storyId": "BPAM-009",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-06T14:04:22.251Z",
+      "action": "dependency_resolved",
+      "storyId": "BPAM-010",
+      "details": "Unblocked: all dependencies done/in_review (BPAM-009)"
+    },
+    {
+      "timestamp": "2026-05-06T14:04:22.252Z",
+      "action": "status_changed",
+      "storyId": "BPAM-010",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T14:07:57.006Z",
+      "action": "status_changed",
+      "storyId": "BPAM-010",
       "details": "Task completed: in_progress → done"
     }
   ]
