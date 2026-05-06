@@ -18,6 +18,10 @@ describe('PROMPT_PATTERN — anchored variant (PAM-FIX-008)', () => {
       'I noticed you might want to keep both options. Continue?',
       'The user said "Do you want to keep this?" earlier in the conversation.',
       '> note: type something. into the field, then proceed',
+      // v3.27.7: prose mention of bash-permission concept must not match.
+      // Real prompt has "Do you want to proceed?" and "Esc to cancel · Tab to amend"
+      // close together (within 500 chars); narrative text separates them by paragraphs.
+      'Do you want to proceed?\n\n' + 'X'.repeat(600) + '\n\nEsc to cancel · Tab to amend',
     ])('Claude commentary: %s', (sample) => {
       expect(PROMPT_PATTERN.test(sample)).toBe(false);
     });
@@ -34,6 +38,11 @@ describe('PROMPT_PATTERN — anchored variant (PAM-FIX-008)', () => {
       ['AskUserQuestion-UI footer', 'Enter to select · ↑/↓ to navigate · Esc to cancel'],
       ['numbered AskUserQuestion-UI option (Chat)', '3. Chat about this'],
       ['numbered AskUserQuestion-UI option (Type)', '4. Type something.'],
+      // v3.27.7: Claude Code's bash-permission prompt
+      ['bash-permission prompt (3-option)',
+        'Do you want to proceed?\n❯ 1. Yes\n  2. Yes, and don\'t ask again\n  3. No\n\nEsc to cancel · Tab to amend · ctrl+e to explain'],
+      ['bash-permission prompt (compact)',
+        'Do you want to proceed?\n  1. Yes\n  2. No\nEsc to cancel · Tab to amend'],
     ])('%s: %s', (_label, sample) => {
       expect(PROMPT_PATTERN.test(sample)).toBe(true);
     });

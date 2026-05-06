@@ -75,7 +75,7 @@ interface ManagedCloudSession extends CloudTerminalSession {
  *   Layer 2 — `<<BLOCKER:reason>>` marker for Auto-Mode-aware blockers
  *   Layer 3 — this pattern, anchored to actual prompt-shaped output
  */
-export const PROMPT_PATTERN = /\((?:y|yes)\/(?:n|no)\)\??\s*$|\[(?:Y|y)\/(?:N|n)\]\??\s*$|^\s*Press\s+(?:Enter|Return)(?:\s+to\s+continue)?\s*\.?\s*$|Enter to select.*navigate.*Esc to cancel|^\s*\d+\.\s+(?:Chat about this|Type something\.)\s*$/im;
+export const PROMPT_PATTERN = /\((?:y|yes)\/(?:n|no)\)\??\s*$|\[(?:Y|y)\/(?:N|n)\]\??\s*$|^\s*Press\s+(?:Enter|Return)(?:\s+to\s+continue)?\s*\.?\s*$|Enter to select.*navigate.*Esc to cancel|^\s*\d+\.\s+(?:Chat about this|Type something\.)\s*$|Do you want to proceed\?[\s\S]{0,500}?Esc to cancel.*?Tab to amend/im;
 
 /**
  * Marker the LLM is instructed to emit on unrecoverable blockers in Auto-Mode.

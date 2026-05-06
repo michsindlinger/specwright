@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.27.7 - 2026-05-06
+
+### Behoben
+- **Auto-Mode-Slots stallen am Bash-Permission-Prompt:** Wenn Claude Code für einen Bash-Befehl Erlaubnis braucht, zeigt es interaktiv `Do you want to proceed?\n❯ 1. Yes / 2. Yes, and don't ask again / 3. No\nEsc to cancel · Tab to amend`. Auto-Mode kann Prompts nicht beantworten — Slot stallt indefinitely. Existing `AUTO_MODE_CLI_FLAGS` disabled `AskUserQuestion`, aber NICHT Bash-Permissions. Existing `PROMPT_PATTERN` deckte dieses neue Format nicht ab. Stall-Recovery resettete in Endlosschleife (LLM trifft denselben Befehl, prompt feuert wieder).
+- Konkret beobachtet: LLM versuchte `python3 -c "import json,sys;..."` für kanban-Introspection (statt MCP `kanban_read`), Permission-Prompt fired, Slot hung. Spec `2026-05-05-ifdb-wcag-2-2-aa-remediation` WCAG-015.
+
+### Geändert
+- **`AUTO_MODE_CLI_FLAGS` (`auto-mode-cli-flags.ts`)** ergänzt um `--dangerously-skip-permissions`. Auto-Mode bypasst alle Bash-Tool-Approval-Prompts. Trade-off bewusst: Auto-Mode ist explizite User-Opt-in (UI-Toggle), ohne Flag stallt Slot beim ersten nicht-allowlisteten Bash-Command.
+- **`PROMPT_PATTERN` (`cloud-terminal-manager.ts:78`)** Layer-3-Detector erweitert um `Do you want to proceed?[\s\S]{0,500}?Esc to cancel.*?Tab to amend` — non-greedy mit max 500-Zeichen-Gap, damit Prosa-Mentions des Begriffs ("Do you want to proceed?" über Absätze hinweg) nicht fälschlich matchen.
+
+### Behaviour-Change
+- **Sicherheitsrelevant:** Auto-Mode-Sessions führen Bash-Commands ohne User-Approval aus. Standard für CLI-Auto-Mode-Tools, aber bewusst: User aktiviert Auto-Mode nur wenn er dem LLM in dem Repo trustet.
+
+### Tests
+- `pam-fix-008-prompt-pattern-anchored.test.ts`: +2 positive (3-option + compact bash-permission prompts), +1 negative (Prosa-Mention mit großem Gap). 20/20 passing.
+
 ## 3.27.6 - 2026-05-06
 
 ### Behoben
