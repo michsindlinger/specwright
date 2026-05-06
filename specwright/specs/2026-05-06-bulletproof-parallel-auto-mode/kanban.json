@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed BPAM-002",
-    "nextAction": "Execute next task: BPAM-003",
-    "progressIndex": 2,
+    "lastAction": "Completed BPAM-003",
+    "nextAction": "Execute next task: BPAM-004",
+    "progressIndex": 3,
     "totalStories": 10
   },
   "execution": {
@@ -96,16 +96,26 @@
       "dependencies": [
         "BPAM-001"
       ],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-06T13:39:20.337Z",
+        "completedAt": "2026-05-06T13:43:24.763Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/utils/worktree-story.ts",
+          "ui/src/server/services/auto-mode-spec-orchestrator.ts",
+          "ui/tests/unit/pam-005-worktree-helpers.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "268de14",
+            "message": "feat: BPAM-003 commitMainKanbanIfDirty async + dual-locked",
+            "timestamp": "2026-05-06T15:44:00+02:00"
+          }
+        ]
       }
     },
     {
@@ -254,11 +264,11 @@
   ],
   "boardStatus": {
     "total": 10,
-    "ready": 6,
+    "ready": 5,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 2,
+    "done": 3,
     "blocked": 2
   },
   "changeLog": [
@@ -344,6 +354,18 @@
       "timestamp": "2026-05-06T13:39:19.949Z",
       "action": "status_changed",
       "storyId": "BPAM-002",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-06T13:39:20.337Z",
+      "action": "status_changed",
+      "storyId": "BPAM-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T13:43:24.764Z",
+      "action": "status_changed",
+      "storyId": "BPAM-003",
       "details": "Task completed: in_progress → done"
     }
   ]
