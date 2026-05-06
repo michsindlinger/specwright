@@ -310,6 +310,26 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
   protected async onItemFailed(itemId: string, _error: string): Promise<void> {
     const wtPath = this.storyWorktrees.get(itemId);
     if (wtPath && this.worktreeOps) {
+      // Cleanliness gate: uncommitted changes after a failure mean Claude left
+      // data in the worktree. Silently force-removing would lose that data.
+      // Surface as incident and halt so the user can inspect and recover.
+      if (!isWorktreeClean(wtPath)) {
+        const errMsg = `Story-Worktree hat uncommittete Änderungen nach Fehler — Worktree unter ${wtPath} prüfen.`;
+        console.warn(`[SpecOrchestrator] ${errMsg}`);
+        try {
+          await this.specsReader.setAutoModeIncident(this.mainProjectPath, this.specId, {
+            type: 'error',
+            message: errMsg,
+            storyId: itemId,
+            timestamp: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error('[SpecOrchestrator] setAutoModeIncident (dirty-on-fail) error:', err);
+        }
+        this.emit('story.dirty-worktree', itemId, wtPath, errMsg);
+        this.haltScheduling();
+        return;
+      }
       await this.worktreeOps.removeStoryWorktree(this.mainProjectPath, wtPath);
       this.storyWorktrees.delete(itemId);
     }
