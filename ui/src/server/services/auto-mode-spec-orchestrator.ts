@@ -3,6 +3,7 @@ import { SpecsReader } from '../specs-reader.js';
 import { projectDir } from '../utils/project-dirs.js';
 import { CloudTerminalManager } from './cloud-terminal-manager.js';
 import { commitMainKanbanIfDirty, isWorktreeClean, purgeShadowSpecMutables, storyBranchName } from '../utils/worktree-story.js';
+import { withMainProjectLock } from '../utils/main-project-mutex.js';
 
 type GitStrategy = 'branch' | 'worktree' | 'current-branch';
 
@@ -288,7 +289,9 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     // only runs at orchestrator start; this catches drift at item boundaries.
     if (this.gitStrategy === 'worktree' && this.config.projectPath !== this.mainProjectPath) {
       try {
-        purgeShadowSpecMutables(this.config.projectPath, this.specId);
+        await withMainProjectLock(this.mainProjectPath, 'purge-shadow-spec-mutables', async () => {
+          purgeShadowSpecMutables(this.config.projectPath, this.specId);
+        });
       } catch (err) {
         console.error('[SpecOrchestrator] purgeShadowSpecMutables error:', err);
       }
