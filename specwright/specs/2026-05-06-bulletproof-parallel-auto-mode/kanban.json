@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed BPAM-004",
-    "nextAction": "Execute next task: BPAM-005",
-    "progressIndex": 4,
+    "lastAction": "Completed BPAM-005",
+    "nextAction": "Execute next task: BPAM-006",
+    "progressIndex": 5,
     "totalStories": 10
   },
   "execution": {
@@ -154,16 +154,24 @@
       "dependencies": [
         "BPAM-001"
       ],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-06T13:46:07.616Z",
+        "completedAt": "2026-05-06T13:48:38.982Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/services/auto-mode-spec-orchestrator.ts"
+        ],
+        "commits": [
+          {
+            "hash": "9f452694a228a66ec47e27257ee59fc57e160878",
+            "message": "feat: BPAM-005 Post-merge purgeShadowSpecMutables call wrapped",
+            "timestamp": "2026-05-06T15:48:23+02:00"
+          }
+        ]
       }
     },
     {
@@ -272,11 +280,11 @@
   ],
   "boardStatus": {
     "total": 10,
-    "ready": 4,
+    "ready": 3,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 4,
+    "done": 5,
     "blocked": 2
   },
   "changeLog": [
@@ -386,6 +394,18 @@
       "timestamp": "2026-05-06T13:46:07.223Z",
       "action": "status_changed",
       "storyId": "BPAM-004",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-06T13:46:07.617Z",
+      "action": "status_changed",
+      "storyId": "BPAM-005",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T13:48:38.983Z",
+      "action": "status_changed",
+      "storyId": "BPAM-005",
       "details": "Task completed: in_progress → done"
     }
   ]
