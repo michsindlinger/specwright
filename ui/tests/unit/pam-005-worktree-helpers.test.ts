@@ -20,6 +20,7 @@ import {
   copyMcpConfigToWorktree,
   isWorktreeClean,
   commitMainKanbanIfDirty,
+  purgeShadowSpecMutables,
   MUTABLE_SPEC_FILES,
   MUTABLE_BACKLOG_FILES,
 } from '../../src/server/utils/worktree-story.js';
@@ -454,6 +455,140 @@ describe('commitMainKanbanIfDirty', () => {
     const status = execSync('git status --porcelain', { cwd: projectPath, encoding: 'utf-8' });
     expect(status).toContain('README.md');
     expect(status).not.toContain('kanban.json');
+  });
+});
+
+// ============================================================================
+// purgeShadowSpecMutables — drift defense for tracked-or-on-disk mutables
+// ============================================================================
+
+describe('purgeShadowSpecMutables', () => {
+  let fixture: RepoFixture;
+
+  beforeEach(async () => {
+    fixture = await mkRepoWithWorktree('shadow-purge', { specId: 'shadow-spec' });
+    await seedSpecDirInWorktree(fixture.projectPath, fixture.worktreePath, 'shadow-spec');
+  });
+
+  afterEach(async () => {
+    await tearDown(fixture);
+  });
+
+  it('returns false when no mutables are present (idempotent)', () => {
+    const result = purgeShadowSpecMutables(fixture.worktreePath, 'shadow-spec');
+    expect(result).toBe(false);
+    expect(isWorktreeClean(fixture.worktreePath)).toBe(true);
+  });
+
+  it('removes shadow kanban.json that was committed to worktree (restore-commit drift)', async () => {
+    // Reproduce the bug: someone re-introduces kanban.json into the worktree
+    // branch via a manual commit (e.g. `git restore` from base branch + commit).
+    const wtSpecDir = join(fixture.worktreePath, 'specwright', 'specs', 'shadow-spec');
+    await fs.writeFile(join(wtSpecDir, 'kanban.json'), '{"shadow":true}');
+    execSync('git add . && git commit -q -m "restore: kanban.json"', { cwd: fixture.worktreePath });
+
+    const result = purgeShadowSpecMutables(fixture.worktreePath, 'shadow-spec');
+    expect(result).toBe(true);
+    await expect(fs.access(join(wtSpecDir, 'kanban.json'))).rejects.toThrow();
+    expect(isWorktreeClean(fixture.worktreePath)).toBe(true);
+
+    const log = execSync('git log --pretty=%s', { cwd: fixture.worktreePath, encoding: 'utf-8' });
+    expect(log).toContain('chore: drop shadow kanban.json');
+  });
+
+  it('removes both kanban.json and kanban-board.md when both are tracked', async () => {
+    const wtSpecDir = join(fixture.worktreePath, 'specwright', 'specs', 'shadow-spec');
+    await fs.writeFile(join(wtSpecDir, 'kanban.json'), '{}');
+    await fs.writeFile(join(wtSpecDir, 'kanban-board.md'), '# shadow board');
+    execSync('git add . && git commit -q -m "restore: both shadows"', { cwd: fixture.worktreePath });
+
+    const result = purgeShadowSpecMutables(fixture.worktreePath, 'shadow-spec');
+    expect(result).toBe(true);
+
+    const log = execSync('git log -1 --pretty=%s', { cwd: fixture.worktreePath, encoding: 'utf-8' }).trim();
+    expect(log).toContain('kanban.json');
+    expect(log).toContain('kanban-board.md');
+    expect(isWorktreeClean(fixture.worktreePath)).toBe(true);
+  });
+
+  it('removes untracked kanban.json from disk but does not commit (no staged diff)', async () => {
+    // Edge case: file present on filesystem (e.g. orphaned write from LLM)
+    // but not yet committed. fs.rm removes it; git rm --cached is a no-op
+    // (file isn't in the index) → no staged diff → no commit.
+    const wtSpecDir = join(fixture.worktreePath, 'specwright', 'specs', 'shadow-spec');
+    await fs.writeFile(join(wtSpecDir, 'kanban.json'), '{"orphan":true}');
+
+    const result = purgeShadowSpecMutables(fixture.worktreePath, 'shadow-spec');
+    expect(result).toBe(false);
+    await expect(fs.access(join(wtSpecDir, 'kanban.json'))).rejects.toThrow();
+  });
+
+  it('returns false when worktree path does not exist', () => {
+    expect(purgeShadowSpecMutables('/tmp/does-not-exist-worktree', 'shadow-spec')).toBe(false);
+  });
+
+  it('does not throw when path is not a git repo', async () => {
+    const nonRepo = join(fixture.base, 'not-a-repo');
+    await fs.mkdir(join(nonRepo, 'specwright', 'specs', 'shadow-spec'), { recursive: true });
+    await fs.writeFile(join(nonRepo, 'specwright', 'specs', 'shadow-spec', 'kanban.json'), '{}');
+
+    expect(() => purgeShadowSpecMutables(nonRepo, 'shadow-spec')).not.toThrow();
+  });
+});
+
+// ============================================================================
+// seedSpecDirInWorktree — drift catch via git rm -f --ignore-unmatch (v3.27.3)
+// ============================================================================
+
+describe('seedSpecDirInWorktree (v3.27.3 strip via git rm)', () => {
+  let fixture: RepoFixture;
+
+  beforeEach(async () => {
+    fixture = await mkRepoWithWorktree('strip-via-git-rm', { specId: 'restore-spec' });
+  });
+
+  afterEach(async () => {
+    await tearDown(fixture);
+  });
+
+  it('catches restore-commit drift on second seed run', async () => {
+    // Simulate the production bug: first seed runs cleanly, then a "restore"
+    // commit re-introduces kanban.json, then user re-triggers auto-mode and
+    // expects seed to clean it up again.
+    await seedSpecDirInWorktree(fixture.projectPath, fixture.worktreePath, 'restore-spec');
+
+    const wtSpecDir = join(fixture.worktreePath, 'specwright', 'specs', 'restore-spec');
+    await fs.writeFile(join(wtSpecDir, 'kanban.json'), '{"v1":"shadow"}');
+    execSync('git add . && git commit -q -m "chore: restore kanban.json"', { cwd: fixture.worktreePath });
+
+    // Second seed run should strip the restored kanban.json + commit.
+    await seedSpecDirInWorktree(fixture.projectPath, fixture.worktreePath, 'restore-spec');
+
+    await expect(fs.access(join(wtSpecDir, 'kanban.json'))).rejects.toThrow();
+    expect(isWorktreeClean(fixture.worktreePath)).toBe(true);
+
+    const log = execSync('git log --pretty=%s', { cwd: fixture.worktreePath, encoding: 'utf-8' });
+    expect(log).toContain('chore: seed spec restore-spec into worktree');
+  });
+
+  it('handles tracked-but-missing kanban.json (file deleted but not committed)', async () => {
+    await seedSpecDirInWorktree(fixture.projectPath, fixture.worktreePath, 'restore-spec');
+
+    // Manually re-introduce + commit kanban.json
+    const wtSpecDir = join(fixture.worktreePath, 'specwright', 'specs', 'restore-spec');
+    await fs.writeFile(join(wtSpecDir, 'kanban.json'), '{}');
+    execSync('git add . && git commit -q -m "restore"', { cwd: fixture.worktreePath });
+
+    // Then delete from disk (mimics partial cleanup) without committing
+    await fs.rm(join(wtSpecDir, 'kanban.json'));
+
+    // Seed should still strip the index entry + commit cleanly
+    await seedSpecDirInWorktree(fixture.projectPath, fixture.worktreePath, 'restore-spec');
+
+    expect(isWorktreeClean(fixture.worktreePath)).toBe(true);
+    // ls-files should not list kanban.json anymore
+    const tracked = execSync('git ls-files specwright/', { cwd: fixture.worktreePath, encoding: 'utf-8' });
+    expect(tracked).not.toContain('kanban.json');
   });
 });
 

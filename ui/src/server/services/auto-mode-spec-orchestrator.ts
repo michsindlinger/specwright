@@ -2,7 +2,7 @@ import { AutoModeOrchestratorBase, type OrchestratorBaseConfig, type ReadyItem }
 import { SpecsReader } from '../specs-reader.js';
 import { projectDir } from '../utils/project-dirs.js';
 import { CloudTerminalManager } from './cloud-terminal-manager.js';
-import { commitMainKanbanIfDirty, isWorktreeClean, storyBranchName } from '../utils/worktree-story.js';
+import { commitMainKanbanIfDirty, isWorktreeClean, purgeShadowSpecMutables, storyBranchName } from '../utils/worktree-story.js';
 
 type GitStrategy = 'branch' | 'worktree' | 'current-branch';
 
@@ -229,6 +229,18 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
       }
     } catch (err) {
       console.error('[SpecOrchestrator] commitMainKanbanIfDirty error:', err);
+    }
+
+    // Drift defense: re-purge any shadow kanban.json/kanban-board.md that crept
+    // back into the spec-level worktree between stories (e.g. via a stray
+    // `git restore`, branch merge, or LLM mistake). `seedSpecDirInWorktree`
+    // only runs at orchestrator start; this catches drift at item boundaries.
+    if (this.gitStrategy === 'worktree' && this.config.projectPath !== this.mainProjectPath) {
+      try {
+        purgeShadowSpecMutables(this.config.projectPath, this.specId);
+      } catch (err) {
+        console.error('[SpecOrchestrator] purgeShadowSpecMutables error:', err);
+      }
     }
 
     try {

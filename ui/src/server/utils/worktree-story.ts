@@ -5,7 +5,7 @@
 
 import { join, basename, dirname } from 'path';
 import { execSync } from 'child_process';
-import { existsSync, lstatSync, cpSync } from 'fs';
+import { existsSync, lstatSync, cpSync, rmSync } from 'fs';
 import { mkdir, rm, copyFile } from 'fs/promises';
 import { resolveProjectDir, projectDir } from './project-dirs.js';
 
@@ -122,9 +122,93 @@ export function backlogBranchName(itemId: string): string {
  * Commits to these files happen orchestrator-side via `commitMainKanbanIfDirty`
  * after each story-complete event — workflow markdown must NOT `git add` them
  * from worktree CWDs (the files are not present there).
+ *
+ * Drift defense: any commit that re-introduces these into the worktree (manual
+ * `git restore`, branch merges that revive the file, LLM-side mistake) is
+ * caught by `purgeShadowSpecMutables` — called from
+ * `seedSpecDirInWorktree` at orchestrator start AND from
+ * `AutoModeSpecOrchestrator.onItemCompleted` between stories.
  */
 export const MUTABLE_SPEC_FILES = ['kanban.json', 'kanban-board.md'] as const;
 export const MUTABLE_BACKLOG_FILES = ['backlog-index.json'] as const;
+
+/**
+ * Defensive purge: removes mutable spec files (`MUTABLE_SPEC_FILES`) from a
+ * worktree if they are present on disk OR tracked in HEAD, then commits the
+ * deletion. Returns `true` when a purge commit was created.
+ *
+ * Why: `seedSpecDirInWorktree` only runs at orchestrator start. If something
+ * re-introduces the file between orchestrator runs (manual `git restore`,
+ * stale base-branch merge, LLM-side commit mistake), the shadow file diverges
+ * from the canonical main copy and breaks MCP-routed updates. This helper is
+ * idempotent and safe to call at any time — call it whenever you suspect drift.
+ *
+ * Never throws — auto-mode must keep going if purge fails (the next run will
+ * try again).
+ */
+export function purgeShadowSpecMutables(
+  worktreePath: string,
+  specId: string
+): boolean {
+  if (!existsSync(worktreePath)) return false;
+  let projDirName: string;
+  try {
+    projDirName = resolveProjectDir(worktreePath);
+  } catch {
+    return false;
+  }
+
+  const handled: string[] = [];
+
+  for (const f of MUTABLE_SPEC_FILES) {
+    const rel = join(projDirName, 'specs', specId, f);
+    const abs = join(worktreePath, rel);
+    let touched = false;
+
+    // (1) Drop from working tree if present.
+    if (existsSync(abs)) {
+      try {
+        rmSync(abs, { force: true });
+        touched = true;
+      } catch (err) {
+        console.error(`[worktree-story] purgeShadowSpecMutables: fs.rm failed for ${rel}:`, err);
+      }
+    }
+
+    // (2) Drop from index if tracked. `--cached --ignore-unmatch` is a no-op
+    // for files not in the index (no error). Index removal is what catches
+    // restore-commit drift even when the working tree was already clean.
+    try {
+      execSync(`git rm --cached --ignore-unmatch -- "${rel}"`, { cwd: worktreePath, stdio: 'pipe' });
+    } catch (err) {
+      console.error(`[worktree-story] purgeShadowSpecMutables: git rm --cached failed for ${rel}:`, err);
+      continue;
+    }
+
+    if (touched) handled.push(f);
+  }
+
+  // Only commit if there's actually something staged. `git rm --cached` on
+  // already-untracked files leaves the index unchanged, so the diff may be
+  // empty even when we touched the working tree.
+  try {
+    execSync('git diff --cached --quiet', { cwd: worktreePath, stdio: 'pipe' });
+    return false; // exit 0 = nothing staged → silent no-op
+  } catch {
+    // exit 1 = staged diff present → commit
+  }
+
+  try {
+    const label = handled.length > 0 ? handled.join('+') : MUTABLE_SPEC_FILES.join('+');
+    const msg = `chore: drop shadow ${label} — mutable files live in main only`;
+    execSync(`git commit -m "${msg}"`, { cwd: worktreePath, stdio: 'pipe' });
+    console.log(`[worktree-story] Purged shadow mutables in ${worktreePath}: ${label}`);
+    return true;
+  } catch (err) {
+    console.error('[worktree-story] purgeShadowSpecMutables: commit failed:', err);
+    return false;
+  }
+}
 
 /**
  * Copy spec dir from main into worktree (excluding mutable kanban files which
@@ -165,9 +249,21 @@ export async function seedSpecDirInWorktree(
   }
 
   // Strip mutable files unconditionally — they only live in main (MCP env-var routing).
+  // Two-phase: (1) fs.rm to drop from working tree (handles untracked files copied
+  // in via cpSync); (2) `git rm --cached --ignore-unmatch` to drop from index when
+  // a previous "restore"-style commit re-introduced the file into HEAD. The
+  // subsequent `git add specwright/specs/{specId}` in commitSeedOrRollback then
+  // captures any deletion as a staged change for the seed commit.
   for (const f of MUTABLE_SPEC_FILES) {
     const p = join(worktreeSpecPath, f);
     if (existsSync(p)) await rm(p, { force: true });
+    try {
+      execSync(`git rm --cached --ignore-unmatch -- "${join(projDirName, 'specs', specId, f)}"`, {
+        cwd: worktreePath, stdio: 'pipe'
+      });
+    } catch (err) {
+      console.error(`[worktree-story] seed strip: git rm --cached failed for ${f}:`, err);
+    }
   }
 
   await commitSeedOrRollback(
@@ -208,9 +304,17 @@ export async function seedBacklogDirInWorktree(
   }
 
   // Strip mutable files unconditionally — they only live in main (MCP env-var routing).
+  // Two-phase: fs.rm + `git rm --cached --ignore-unmatch` (see seedSpecDirInWorktree).
   for (const f of MUTABLE_BACKLOG_FILES) {
     const p = join(worktreeBacklogPath, f);
     if (existsSync(p)) await rm(p, { force: true });
+    try {
+      execSync(`git rm --cached --ignore-unmatch -- "${join(projDirName, 'backlog', f)}"`, {
+        cwd: worktreePath, stdio: 'pipe'
+      });
+    } catch (err) {
+      console.error(`[worktree-story] backlog seed strip: git rm --cached failed for ${f}:`, err);
+    }
   }
 
   await commitSeedOrRollback(

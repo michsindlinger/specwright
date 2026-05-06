@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.27.3 - 2026-05-06
+
+### Behoben
+- Auto-Mode-Spec hängt erneut bei `<<BLOCKER:kanban.json-missing-V2-lean-spec-cannot-track-status>>` wenn ein manueller `git restore`-Style-Commit (oder ein Branch-Merge der einen alten kanban.json wiederbelebt) zwischen Auto-Mode-Stop und -Restart das gestrippte `kanban.json` ins Worktree zurückbringt. Die v3.27.0-Strip-Logik in `seedSpecDirInWorktree` lief nur einmalig beim Worktree-Setup und nutzte `fs.rm` — Index-Einträge aus späteren Commits blieben unberührt.
+- Strip in `seedSpecDirInWorktree` + `seedBacklogDirInWorktree` ist jetzt zweistufig: `fs.rm` für Working-Tree + `git rm --cached --ignore-unmatch` für den Index. Catcht Restore-Commit-Drift beim nächsten Seed-Run.
+- Neuer Helper `purgeShadowSpecMutables(worktreePath, specId)` (`worktree-story.ts`) als idempotente Drift-Defense. Wird nach jedem `onItemCompleted` in `auto-mode-spec-orchestrator.ts` aufgerufen — fängt Drift zwischen Stories ab (LLM-Fehler, Branch-Merges während Auto-Mode-Lauf).
+
+### Geändert
+- Spec-Orchestrator `onItemCompleted` (auto-mode-spec-orchestrator.ts): nach `commitMainKanbanIfDirty` zusätzlich `purgeShadowSpecMutables` für Spec-Worktree (skip wenn `gitStrategy !== 'worktree'` oder `projectPath === mainProjectPath`).
+- JSDoc auf `MUTABLE_SPEC_FILES` erweitert um Drift-Defense-Hinweis (Doppel-Schutz: Seed + per-item Purge).
+
+### Behaviour-Change
+- Worktree-Branches die per `git restore`/Merge ein `kanban.json`/`kanban-board.md` (oder `backlog-index.json`) zurückgebracht hatten, bekommen beim nächsten Seed ODER nach jedem Story-Done einen `chore: drop shadow ...`-Commit. Architektur-bedingt korrekt — diese Files leben nur in main.
+
+### Tests
+- `pam-005-worktree-helpers.test.ts`: +6 Tests für `purgeShadowSpecMutables` (idempotent, restore-commit drift, both files, untracked-on-disk, missing path, non-repo) und +2 Tests für `seedSpecDirInWorktree` v3.27.3 strip-via-git-rm (restore-commit, tracked-but-missing). 49/49 passing.
+
 ## 3.27.2 - 2026-05-06
 
 ### Behoben
