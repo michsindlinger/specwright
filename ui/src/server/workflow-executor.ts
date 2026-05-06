@@ -7,6 +7,7 @@ import { webSocketManager, type WebSocketMessage } from './websocket-manager.ser
 import { TerminalManager } from './services/terminal-manager.js';
 import { SpecsReader, KanbanJsonCorruptedError, type ModelSelection } from './specs-reader.js';
 import { withKanbanLock } from './utils/kanban-lock.js';
+import { withMainProjectLock } from './utils/main-project-mutex.js';
 import { getCliCommandForModel } from './model-config.js';
 import { getBaseBranch } from './general-config.js';
 import { queueHandler } from './handlers/queue.handler.js';
@@ -3182,17 +3183,19 @@ export class WorkflowExecutor {
     specBranch: string,
     storyBranch: string
   ): Promise<void> {
-    try {
-      execSync(`git checkout ${specBranch}`, { cwd: projectPath, stdio: 'pipe' });
-      execSync(
-        `git merge --no-ff ${storyBranch} -m "merge: ${storyBranch} into ${specBranch}"`,
-        { cwd: projectPath, stdio: 'pipe' }
-      );
-      console.log(`[Workflow] PAM-005: Merged ${storyBranch} into ${specBranch}`);
-    } catch {
-      try { execSync('git merge --abort', { cwd: projectPath, stdio: 'pipe' }); } catch { /* ignore */ }
-      throw new Error(`Merge conflict: ${storyBranch} → ${specBranch}`);
-    }
+    return withMainProjectLock(projectPath, 'merge-story-branch', async () => {
+      try {
+        execSync(`git checkout ${specBranch}`, { cwd: projectPath, stdio: 'pipe' });
+        execSync(
+          `git merge --no-ff ${storyBranch} -m "merge: ${storyBranch} into ${specBranch}"`,
+          { cwd: projectPath, stdio: 'pipe' }
+        );
+        console.log(`[Workflow] PAM-005: Merged ${storyBranch} into ${specBranch}`);
+      } catch {
+        try { execSync('git merge --abort', { cwd: projectPath, stdio: 'pipe' }); } catch { /* ignore */ }
+        throw new Error(`Merge conflict: ${storyBranch} → ${specBranch}`);
+      }
+    });
   }
 
   /**
