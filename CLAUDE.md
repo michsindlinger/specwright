@@ -111,6 +111,12 @@ specwright/                          # Repository root
 - Run `cd ui && npm run lint` to check for errors
 - Use `projectDir()` / `projectDotDir()` from `project-dirs.ts` for project paths
 
+**Parallel Auto-Mode Locking (v3.28.0+):**
+- Main-repo git ops serialized via `withMainProjectLock` (`utils/main-project-mutex.ts`) — intra-process async mutex per main-project path.
+- `kanban.json` writes serialized via `withKanbanLock` (`utils/kanban-lock.ts`) — cross-process file-based mutex (MCP server runs as subprocess).
+- **Lock hierarchy (invariant):** `withMainProjectLock` (outer) → `withKanbanLock` (inner). Never reverse — ABBA deadlock.
+- New git index ops on the main repo must be wrapped in `withMainProjectLock`.
+
 **When modifying UI frontend:**
 - Follow Lit component patterns from `.claude/skills/frontend-lit/`
 - Use `aos-` prefix for all new components

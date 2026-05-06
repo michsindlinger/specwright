@@ -4,6 +4,12 @@ import { withKanbanLock } from './utils/kanban-lock.js';
 import { projectDir } from './utils/project-dirs.js';
 import { attachmentStorageService } from './services/attachment-storage.service.js';
 
+// Writer-invariant: every kanban.json mutation in this file is wrapped in
+// withKanbanLock (inner lock). Orchestrator call sites that invoke write-path
+// methods must already hold withMainProjectLock (outer) before this module
+// acquires withKanbanLock. Lock hierarchy: withMainProjectLock → withKanbanLock
+// (never reverse — ABBA deadlock). See main-project-mutex.ts JSDoc for rationale.
+
 // MSK-003-FIX: Changed from 'opus' | 'sonnet' | 'haiku' to string
 // to support all models from model-config.json (Anthropic + GLM)
 export type ModelSelection = string;

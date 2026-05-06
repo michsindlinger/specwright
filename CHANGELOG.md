@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.28.0 - 2026-05-06
+
+### Neu
+- **`withMainProjectLock` — in-memory async Mutex pro Main-Project-Pfad:** Serialisiert alle Orchestrator-Git-Index-Operationen gegen das Main-Repo (`commitMainKanbanIfDirty`, `mergeStoryBranchIntoSpec`, `purgeShadowSpecMutables` post-merge, `setupSpecWorktree` auto-commit). Promise-Chain-Pattern mit `prev.catch(()=>{}).then(fn)` — Rejection eines Callers blockiert nachfolgende Waiters nicht (`ui/src/server/utils/main-project-mutex.ts`).
+- **`setup-mcp.sh` gitignore-Installer:** Idempotenter Append-Block für Kanban-Mutable-State (`kanban.json`, `kanban-board.md`, `backlog-index.json`) in `.gitignore`. Verhindert, dass nach Parallel-Executions Tracking-Files versehentlich committed werden.
+
+### Geändert
+- **`withKanbanLock` Timeouts getuned:** 15s Acquire-Timeout, 20s Stale-Lock-Threshold, 100ms+Jitter Retry-Interval. Module-Init-Invariant-Assertion (`LOCK_TIMEOUT_MS < STALE_LOCK_MS`). Beide Kopien (`ui/src/server/utils/kanban-lock.ts` + `specwright/scripts/mcp/kanban-lock.ts`) byte-identisch.
+- **`commitMainKanbanIfDirty` async + dual-locked:** Outer `withMainProjectLock` + inner `withKanbanLock`. Sole Caller in `onItemCompleted` awaitet jetzt (`worktree-story.ts`).
+- **`mergeStoryBranchIntoSpec` wrapped:** Gesamter Body in `withMainProjectLock` — kein paralleles Git-Merge auf demselben Main-Repo möglich (`workflow-executor.ts`).
+- **`purgeShadowSpecMutables` post-merge wrapped:** `onItemCompleted`-Purge nach Merge in `withMainProjectLock` (`auto-mode-spec-orchestrator.ts`).
+- **`setupSpecWorktree` auto-commit wrapped:** Initiales `git add -A` + commit vor Worktree-Erstellung in `withMainProjectLock` — Race mit Completion-Handlers geschlossen (`workflow-executor.ts`).
+- **`onItemFailed` Cleanliness-Gate-Parity:** `isWorktreeClean`-Check vor `removeStoryWorktree` spiegelt `onItemCompleted`-Verhalten. Dirty Worktree bei Failure triggert Incident statt silent force-remove (`auto-mode-spec-orchestrator.ts`).
+
+### Technisch
+- **Lock-Hierarchie-Invariant:** `withMainProjectLock` (outer) → `withKanbanLock` (inner). Nie umgekehrt — ABBA-Deadlock. Dokumentiert in `main-project-mutex.ts` JSDoc + `specs-reader.ts` writer-invariant comment.
+- **`execSync` blockiert Event Loop während Mutex-Hold** — akzeptiert, da scoped per Main-Project-Pfad; andere Projects unberührt. Sub-second per Call.
+
+### Tests
+- `main-project-mutex.test.ts`: Mutex-Semantik + Rejection-Poisoning-Regression + Soft-30s-Warn. Neu.
+- `kanban-lock-sync.test.ts`: Byte-Equality CI-Test für UI + MCP `kanban-lock.ts` Kopien. Neu.
+- `parallel-completion.test.ts`: Concurrent commit/merge/purge/updateStatus Race-Szenarien. Neu.
+- `pam-005-worktree-helpers.test.ts`: `onItemFailed`-Cleanliness-Gate-Regression ergänzt.
+- `orchestrator-routing.test.ts`: `onItemFailed` dirty-worktree path ergänzt.
+
 ## 3.27.7 - 2026-05-06
 
 ### Behoben
