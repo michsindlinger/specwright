@@ -6,7 +6,7 @@
 import { join, basename, dirname } from 'path';
 import { execSync } from 'child_process';
 import { existsSync, lstatSync, cpSync, rmSync } from 'fs';
-import { mkdir, rm, copyFile } from 'fs/promises';
+import { mkdir, rm, copyFile, readFile, writeFile } from 'fs/promises';
 import { resolveProjectDir, projectDir } from './project-dirs.js';
 import { withMainProjectLock } from './main-project-mutex.js';
 import { withKanbanLock } from './kanban-lock.js';
@@ -149,6 +149,21 @@ export function backlogBranchName(itemId: string): string {
  * `AutoModeSpecOrchestrator.onItemCompleted` between stories.
  */
 export const MUTABLE_SPEC_FILES = ['kanban.json', 'kanban-board.md'] as const;
+
+/**
+ * D17 / v3.28.6: Append-only spec docs that multiple stories may extend
+ * independently. We install a `.gitattributes` line per file marking it
+ * `merge=union` so concurrent additions auto-concat instead of producing a
+ * rebase/merge conflict that would halt auto-mode (see plan-d17 / BPAM-017).
+ *
+ * Caveat: `merge=union` is line-level concat with no awareness of structure,
+ * so duplicate header lines may appear. Periodic manual cleanup is fine —
+ * append-only docs tolerate this in exchange for no halts.
+ */
+export const SHARED_SPEC_DOCS = ['integration-context.md', 'user-todos.md'] as const;
+
+/** Sentinel header in the managed `.gitattributes` block — used for idempotent install. */
+const GITATTRIBUTES_SENTINEL = '# Specwright: append-only spec docs use union merge driver';
 export const MUTABLE_BACKLOG_FILES = ['backlog-index.json'] as const;
 
 /**
@@ -285,12 +300,40 @@ export async function seedSpecDirInWorktree(
     }
   }
 
+  // D17 / v3.28.6: install `.gitattributes` so append-only spec docs use git's
+  // built-in `merge=union` driver. Without this, concurrent stories that each
+  // append a section to integration-context.md or user-todos.md produce
+  // unresolvable rebase conflicts that halt auto-mode. Idempotent: only
+  // appends the managed block when the sentinel header is missing.
+  await ensureGitattributesUnion(worktreeSpecPath);
+
   await commitSeedOrRollback(
     worktreePath,
     worktreeSpecPath,
     join(projDirName, 'specs', specId),
     `chore: seed spec ${specId} into worktree`
   );
+}
+
+/**
+ * D17 / v3.28.6: idempotent `.gitattributes` installer for a spec dir.
+ * Appends managed block (sentinel-grep) marking `SHARED_SPEC_DOCS` as
+ * `merge=union`. Safe to call repeatedly — does nothing on subsequent runs.
+ */
+async function ensureGitattributesUnion(specDir: string): Promise<void> {
+  const path = join(specDir, '.gitattributes');
+  let existing = '';
+  try { existing = await readFile(path, 'utf-8'); } catch { /* none */ }
+  if (existing.includes(GITATTRIBUTES_SENTINEL)) return;
+
+  const block = [
+    GITATTRIBUTES_SENTINEL,
+    '# (concurrent stories add their own sections; concat resolves conflicts)',
+    ...SHARED_SPEC_DOCS.map(f => `${f.padEnd(28)} merge=union`),
+    ''
+  ].join('\n');
+  const sep = existing === '' ? '' : (existing.endsWith('\n') ? '' : '\n');
+  await writeFile(path, existing + sep + block, 'utf-8');
 }
 
 /**

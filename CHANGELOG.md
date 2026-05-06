@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.28.6 - 2026-05-06
+
+### Behoben
+- **Append-only Spec-Docs auto-concat via `merge=union` (D17):** Stories die unabhängig `integration-context.md` oder `user-todos.md` anlegen oder erweitern, kollidierten beim Auto-Rebase mit add/add- oder modify/modify-Conflicts → Halt. Beobachtet bei TITLE-001 in `2026-05-06-title-substring-search`: TITLE-001 added `integration-context.md` (Story-Inhalt), Spec-Branch hatte denselben File aus TITLE-002-Merge — D13 Auto-Rebase failed, Orchestrator halted. Fix: `seedSpecDirInWorktree` installiert idempotent eine `.gitattributes`-Datei im Spec-Dir, die `integration-context.md` und `user-todos.md` als `merge=union` markiert. Git's built-in Union-Driver concat'd beide Seiten bei Conflict statt zu failen.
+- Backfill: existing Spec-Worktrees re-runnen `seedSpecDirInWorktree` bei jedem Orchestrator-Init via `setupSpecWorktree` → `.gitattributes` wird beim ersten Post-D17-Init committed und propagiert via Story-Branch-Fork zu allen neuen Story-Branches.
+
+### Geändert
+- Neue Const `SHARED_SPEC_DOCS = ['integration-context.md', 'user-todos.md']` in `worktree-story.ts`. Pattern wie `MUTABLE_SPEC_FILES` — Future-Erweiterung (z.B. `glossary.md`) ist One-Line-Change.
+- Neue private Helper `ensureGitattributesUnion(specDir)` — sentinel-grep idempotent install, append-only auf existing `.gitattributes` (überschreibt nichts).
+
+### Tests
+- `pam-005-worktree-helpers.test.ts`: D17-Regression — Story branched off altem Spec-Tip mit eigenem `integration-context.md`-Append; Spec-Tip advanced mit Sibling-Append; `mergeStoryBranchIntoSpec` (mit D13 Auto-Rebase) muss erfolgreich concat'en (alle drei Sections in finaler Datei). 61/61 passing.
+
+### Caveats
+- `merge=union` ist line-level concat ohne Struktur-Awareness. Duplikate möglich (z.B. doppelte Header-Zeilen). Akzeptabel für append-only Docs; periodische manuelle Konsolidierung bleibt User-Verantwortung. Alternative wäre Markdown-Section-Parser, aber Overengineering vs. surgical D17-Fix.
+- D17 schützt NICHT vor echten Code-Conflicts (zwei Stories editieren gleiche Source-Line). Source-Files brauchen weiterhin Human-Resolution wenn Rebase-Conflict fired.
+
 ## 3.28.5 - 2026-05-06
 
 ### Behoben

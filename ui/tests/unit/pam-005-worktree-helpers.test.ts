@@ -958,6 +958,68 @@ describe('createStoryWorktree branch base (D11 / v3.28.1)', () => {
     execSync(`git worktree remove --force "${specWtPath}"`, { cwd: projectPath, stdio: 'pipe' });
   });
 
+  it('D17: rebase auto-concats append-only spec docs via union merge driver', async () => {
+    // D17 / v3.28.6: integration-context.md is an append-only spec doc — both
+    // the spec branch and a story branch may add their own sections. Without
+    // .gitattributes(merge=union), rebase fails with add/add or modify/modify
+    // conflict on this file → orchestrator halts. D17 installs the union
+    // driver via .gitattributes during seedSpecDirInWorktree; this test
+    // mirrors that setup and asserts the auto-rebase concat.
+    const specSubdir = `specwright/specs/${specId}`;
+    execSync(`git checkout -q ${specBranch}`, { cwd: projectPath });
+    await fs.mkdir(join(projectPath, specSubdir), { recursive: true });
+    // .gitattributes block as installed by ensureGitattributesUnion
+    await fs.writeFile(
+      join(projectPath, specSubdir, '.gitattributes'),
+      '# Specwright: append-only spec docs use union merge driver\n' +
+      '# (concurrent stories add their own sections; concat resolves conflicts)\n' +
+      'integration-context.md       merge=union\n' +
+      'user-todos.md                merge=union\n'
+    );
+    await fs.writeFile(
+      join(projectPath, specSubdir, 'integration-context.md'),
+      '# Integration Context\n\n## TITLE-002\n- spec doc baseline\n'
+    );
+    execSync(`git add specwright && git commit -q -m "seed spec"`, { cwd: projectPath });
+    const baseSpecTip = execSync(`git rev-parse ${specBranch}`, { cwd: projectPath, encoding: 'utf-8' }).trim();
+    execSync('git checkout -q main', { cwd: projectPath });
+
+    const specWtPath = `${projectPath}-spec-wt-d17`;
+    execSync(`git worktree add "${specWtPath}" ${specBranch}`, { cwd: projectPath, stdio: 'pipe' });
+
+    const executor = new WorkflowExecutor();
+    const storyD17 = 'STORY-D17';
+    const storyBranchD17 = `story/x/${storyD17}`;
+    const wtA = await executor.createStoryWorktree(projectPath, specId, storyD17, specBranch);
+
+    // Story appends its own section (story-side modify).
+    const docInStory = join(wtA, specSubdir, 'integration-context.md');
+    const baseContent = await fs.readFile(docInStory, 'utf-8');
+    await fs.writeFile(docInStory, baseContent + '\n## STORY-D17\n- story work line\n');
+    execSync('git add specwright && git commit -q -m "STORY-D17 doc append"', { cwd: wtA });
+
+    // Sibling story merged into spec branch in the meantime — spec tip advanced
+    // with a different append to the same file. Without union driver, rebase
+    // would conflict here.
+    execSync(`git checkout -q ${specBranch}`, { cwd: specWtPath });
+    await fs.appendFile(
+      join(specWtPath, specSubdir, 'integration-context.md'),
+      '\n## SIBLING\n- sibling story addition\n'
+    );
+    execSync('git add specwright && git commit -q -m "SIBLING doc append"', { cwd: specWtPath });
+    expect(execSync(`git rev-parse ${specBranch}`, { cwd: projectPath, encoding: 'utf-8' }).trim()).not.toBe(baseSpecTip);
+
+    // Auto-rebase + merge — should succeed via union driver.
+    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyBranchD17, wtA, specWtPath);
+
+    const finalDoc = await fs.readFile(join(specWtPath, specSubdir, 'integration-context.md'), 'utf-8');
+    expect(finalDoc).toContain('TITLE-002');
+    expect(finalDoc).toContain('STORY-D17');
+    expect(finalDoc).toContain('SIBLING');
+
+    execSync(`git worktree remove --force "${specWtPath}"`, { cwd: projectPath, stdio: 'pipe' });
+  });
+
   it('reuses existing story branch (does not re-base off specBranch)', async () => {
     const executor = new WorkflowExecutor();
     // First create — branch forked from spec tip.
