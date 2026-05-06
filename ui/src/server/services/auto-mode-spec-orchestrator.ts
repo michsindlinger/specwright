@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import { AutoModeOrchestratorBase, type OrchestratorBaseConfig, type ReadyItem } from './auto-mode-orchestrator-base.js';
 import { SpecsReader } from '../specs-reader.js';
 import { projectDir } from '../utils/project-dirs.js';
@@ -221,36 +222,42 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     if (wtPath && this.gitStrategy === 'worktree' && this.specBranch && this.worktreeOps) {
       const branch = storyBranchName(this.specId, itemId);
 
-      // Pre-merge cleanliness gate: any uncommitted/untracked file in the story
-      // worktree means Claude finished without committing. Auto-committing would
-      // pollute history; --force-removing would lose data. Surface as incident,
-      // revert story to in_progress, halt orchestrator so the user can inspect.
+      // D16 / v3.28.5: Pre-merge cleanliness — if story worktree has
+      // uncommitted/untracked files (Claude finished without committing,
+      // typically integration-context.md or similar spec-doc updates),
+      // auto-commit them with a descriptive message instead of halting.
+      // Halting here is too punitive: it interrupts the orchestrator over
+      // what is almost always a forgotten doc edit. Auto-commit is safe
+      // because (a) story-branch isolation means the commit lands only on
+      // the story branch + merge into spec, (b) commit message identifies
+      // it as auto-commit so user can audit / revert later, (c) no data
+      // loss — vs. halt which leaves files in a dirty state until user
+      // manually intervenes.
       if (!isWorktreeClean(wtPath)) {
-        const errMsg = `Story-Worktree hat uncommittete Änderungen — Story auf in_progress zurückgesetzt. Worktree unter ${wtPath} prüfen.`;
-        console.warn(`[SpecOrchestrator] ${errMsg}`);
         try {
-          await this.specsReader.updateStoryStatus(
-            this.mainProjectPath,
-            this.specId,
-            itemId,
-            'in_progress'
+          execSync('git add -A', { cwd: wtPath, stdio: 'pipe' });
+          execSync(
+            `git commit -m "chore(${itemId}): auto-commit forgotten changes (D16)"`,
+            { cwd: wtPath, stdio: 'pipe' }
           );
+          console.log(`[SpecOrchestrator] D16: auto-committed forgotten changes for ${itemId}`);
         } catch (err) {
-          console.error('[SpecOrchestrator] revert-to-in_progress (dirty) error:', err);
+          // Even auto-commit failed (rare — git index lock, hook reject,
+          // etc.). Fall through to old halt behavior so user can investigate.
+          const errMsg = `Auto-commit fehlgeschlagen für ${itemId}: ${err instanceof Error ? err.message : err}. Worktree unter ${wtPath} prüfen.`;
+          console.warn(`[SpecOrchestrator] ${errMsg}`);
+          try {
+            await this.specsReader.updateStoryStatus(this.mainProjectPath, this.specId, itemId, 'in_progress');
+          } catch (e) { console.error('[SpecOrchestrator] revert-to-in_progress error:', e); }
+          try {
+            await this.specsReader.setAutoModeIncident(this.mainProjectPath, this.specId, {
+              type: 'error', message: errMsg, storyId: itemId, timestamp: new Date().toISOString()
+            });
+          } catch (e) { console.error('[SpecOrchestrator] setAutoModeIncident error:', e); }
+          this.emit('story.dirty-worktree', itemId, wtPath, errMsg);
+          this.haltScheduling();
+          return;
         }
-        try {
-          await this.specsReader.setAutoModeIncident(this.mainProjectPath, this.specId, {
-            type: 'error',
-            message: errMsg,
-            storyId: itemId,
-            timestamp: new Date().toISOString()
-          });
-        } catch (err) {
-          console.error('[SpecOrchestrator] setAutoModeIncident (dirty) error:', err);
-        }
-        this.emit('story.dirty-worktree', itemId, wtPath, errMsg);
-        this.haltScheduling();
-        return;
       }
 
       // Pre-merge shadow purge: drop any kanban.json/kanban-board.md the LLM

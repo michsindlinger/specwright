@@ -530,6 +530,58 @@ describe('AutoModeSpecOrchestrator.onItemFailed cleanliness gate (BPAM-007)', ()
     expect(incidentSpy).not.toHaveBeenCalled();
   });
 
+  it('D16 onItemCompleted: dirty worktree → auto-commit + merge (no halt)', async () => {
+    const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
+    const updateStatusSpy = vi.spyOn(SpecsReader.prototype, 'updateStoryStatus').mockResolvedValue(undefined);
+    const clearIncidentSpy = vi.spyOn(SpecsReader.prototype, 'clearAutoModeIncident').mockResolvedValue(undefined);
+    const mergeSpy = vi.fn().mockResolvedValue(undefined);
+    const removeSpy = vi.fn().mockResolvedValue(undefined);
+    const worktreeOps = {
+      createStoryWorktree: vi.fn().mockResolvedValue(dirtyWtPath),
+      removeStoryWorktree: removeSpy,
+      mergeStoryBranchIntoSpec: mergeSpy,
+    };
+    const orch = AutoModeSpecOrchestrator.create(
+      '/tmp/spec-wt',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      1,
+      'worktree',
+      '/tmp/main-repo',
+      'feature/x',
+      worktreeOps
+    );
+    (orch as unknown as { storyWorktrees: Map<string, string> }).storyWorktrees.set('T-001', dirtyWtPath);
+    const haltSpy = vi.spyOn(orch, 'haltScheduling').mockImplementation(() => {});
+    const schedSpy = vi.spyOn(orch, 'scheduleTick').mockResolvedValue(undefined);
+    // commitMainKanbanIfDirty hits real git on mainProjectPath which doesn't
+    // exist; mock it out — this test focuses on the dirty-gate auto-commit.
+    vi.doMock('../../src/server/utils/worktree-story.js', async (orig) => {
+      const actual = await orig() as Record<string, unknown>;
+      return { ...actual, commitMainKanbanIfDirty: vi.fn().mockResolvedValue(undefined) };
+    });
+
+    await (orch as unknown as { onItemCompleted: (id: string) => Promise<void> })
+      .onItemCompleted('T-001');
+
+    // Auto-commit happened — worktree now clean
+    const status = execSync('git status --porcelain', { cwd: dirtyWtPath, encoding: 'utf-8' }).trim();
+    expect(status).toBe('');
+    // Last commit message identifies as D16 auto-commit
+    const lastMsg = execSync('git log -1 --pretty=%s', { cwd: dirtyWtPath, encoding: 'utf-8' }).trim();
+    expect(lastMsg).toContain('T-001');
+    expect(lastMsg).toContain('D16');
+
+    // No halt, no dirty incident — orchestrator proceeds to merge
+    expect(haltSpy).not.toHaveBeenCalled();
+    expect(incidentSpy).not.toHaveBeenCalled();
+    expect(mergeSpy).toHaveBeenCalledTimes(1);
+
+    // Suppress unused-var warnings
+    void updateStatusSpy; void clearIncidentSpy; void schedSpy;
+  });
+
   it('no worktree registered for story: schedules next tick only (no-op worktree path)', async () => {
     const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
     const removeSpy = vi.fn().mockResolvedValue(undefined);

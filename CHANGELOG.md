@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.28.5 - 2026-05-06
+
+### Behoben
+- **Auto-Commit forgotten changes statt halt-on-dirty (D16):** `onItemCompleted` halt'te bisher das gesamte Auto-Mode wenn LLM eine Story als done markierte aber Datei-Änderungen uncommitted ließ (typisch: `integration-context.md` Update vergessen). Mit Sequential-Mode (D15) reicht ein vergessenes Doc-Update um den ganzen Run zu stoppen — extrem fragil. Fix: Wenn Story-Worktree dirty bei Completion → `git add -A && git commit -m "chore(${storyId}): auto-commit forgotten changes (D16)"` automatisch, dann normal weiter zum Merge. Auto-Commit ist sicher: Story-Branch-Isolation, descriptive message für Audit, keine Data-Loss vs. dem alten Halt der nichts löste sondern nur User-Intervention erforderte. Beobachtet: WCAG-010/011 hingen weil LLM `integration-context.md` doc-only-updates ohne commit ließ.
+- Fallback bleibt: wenn Auto-Commit selbst failt (git index lock, hook reject, etc.) → alte Halt-Behavior mit Incident.
+
+### Tests
+- `orchestrator-routing.test.ts`: D16 Test — `onItemCompleted` mit dirty worktree triggert auto-commit + merge, kein halt, kein incident. 21/21 passing.
+
+### Behaviour-Change
+- Story-Branch-Historie kann jetzt zusätzliche `chore(${storyId}): auto-commit forgotten changes (D16)` Commits enthalten. User kann nach Run via `git log --grep "D16"` auditen welche Stories Auto-Commit getriggert haben — Hinweis auf LLM-Workflow-Verbesserungspotential.
+
 ## 3.28.4 - 2026-05-06
 
 ### Geändert
