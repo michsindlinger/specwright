@@ -1,9 +1,17 @@
 import { mkdir, rmdir, stat } from 'fs/promises';
 import { join } from 'path';
 
-const LOCK_TIMEOUT_MS = 5000;
+const LOCK_TIMEOUT_MS = 15000;
 const LOCK_RETRY_MS = 100;
-const STALE_LOCK_MS = 30000; // 30 seconds
+const LOCK_RETRY_JITTER_MS = 50;
+const STALE_LOCK_MS = 20000; // 20 seconds
+
+// Module-init invariant: caller timeout must expire before stale threshold.
+if (LOCK_TIMEOUT_MS >= STALE_LOCK_MS) {
+  throw new Error(
+    `[KanbanLock] invariant violation: LOCK_TIMEOUT_MS (${LOCK_TIMEOUT_MS}) must be < STALE_LOCK_MS (${STALE_LOCK_MS})`
+  );
+}
 
 /**
  * File-based lock using mkdir as atomic operation.
@@ -12,9 +20,13 @@ const STALE_LOCK_MS = 30000; // 30 seconds
  * atomic on Unix/macOS filesystems. This works across processes without
  * requiring external dependencies.
  *
+ * This utility uses the SAME locking protocol as the Kanban MCP Server
+ * in agent-os-extended, ensuring the Express server and Claude CLI
+ * subprocesses coordinate properly when accessing kanban.json.
+ *
  * @param specPath - Path to the spec directory containing kanban.json
  * @param fn - Function to execute while holding the lock
- * @param timeout - Maximum time to wait for lock acquisition (default: 5000ms)
+ * @param timeout - Maximum time to wait for lock acquisition (default: 15000ms)
  * @returns Result of the executed function
  * @throws Error if lock cannot be acquired within timeout
  */
@@ -56,8 +68,9 @@ export async function withKanbanLock<T>(
           throw new Error(`Kanban lock timeout after ${timeout}ms: ${lockPath}`);
         }
 
-        // Wait and retry
-        await new Promise(resolve => setTimeout(resolve, LOCK_RETRY_MS));
+        // Wait and retry with jitter to reduce thundering herd
+        const delay = LOCK_RETRY_MS + Math.floor(Math.random() * LOCK_RETRY_JITTER_MS);
+        await new Promise(resolve => setTimeout(resolve, delay));
       } else {
         // Other error (permission, etc.)
         throw error;
