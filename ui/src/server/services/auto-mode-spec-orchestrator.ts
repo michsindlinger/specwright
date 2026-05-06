@@ -12,7 +12,17 @@ type GitStrategy = 'branch' | 'worktree' | 'current-branch';
  * Avoids circular import on the full WorkflowExecutor type.
  */
 export interface SpecWorktreeOps {
-  createStoryWorktree(projectPath: string, specId: string, storyId: string): Promise<string>;
+  /**
+   * Create a per-story sub-worktree for parallel auto-mode.
+   *
+   * @param specBranch - Branch name (typically `feature/${feature}`) used as
+   *   the BASE for the new story branch. Critical for parallel mode: without
+   *   this, story branches would fork off the main repo's HEAD (typically
+   *   `main`), missing already-merged sibling work — guaranteed merge
+   *   conflicts on overlapping files when stories merge back into spec branch.
+   *   v3.28.1+: explicit base required to fix BPAM-011 / D11.
+   */
+  createStoryWorktree(projectPath: string, specId: string, storyId: string, specBranch: string): Promise<string>;
   removeStoryWorktree(projectPath: string, worktreePath: string): Promise<void>;
   mergeStoryBranchIntoSpec(projectPath: string, specBranch: string, storyBranch: string): Promise<void>;
 }
@@ -112,8 +122,21 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
       return this.config.projectPath;
     }
 
+    if (!this.specBranch) {
+      // Mirrors the strict-failure pattern from worktreeOps-missing case.
+      // specBranch is set during setupSpecWorktree for gitStrategy=worktree;
+      // missing it here means orchestrator was constructed inconsistently.
+      const msg = `gitStrategy=worktree but no specBranch configured (cannot derive story branch base)`;
+      if (isParallel) {
+        await this.handleSubWorktreeFailure(item.id, msg);
+        throw new Error(`[SpecOrchestrator] ${msg} (parallel mode — halted)`);
+      }
+      console.warn(`[SpecOrchestrator] ${msg} — falling back to project path (serial mode, safe)`);
+      return this.config.projectPath;
+    }
+
     try {
-      const wtPath = await this.worktreeOps.createStoryWorktree(this.mainProjectPath, this.specId, item.id);
+      const wtPath = await this.worktreeOps.createStoryWorktree(this.mainProjectPath, this.specId, item.id, this.specBranch);
       this.storyWorktrees.set(item.id, wtPath);
       return wtPath;
     } catch (err) {

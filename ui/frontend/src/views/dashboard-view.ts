@@ -456,6 +456,10 @@ export class AosDashboardView extends LitElement {
       // Auto-mode hang detection (prompt + stall warnings)
       ['workflow.auto-mode.prompt-detected', (msg) => this.onAutoModePromptDetected(msg)],
       ['workflow.auto-mode.stalled', (msg) => this.onAutoModeStalled(msg)],
+      // D12 / v3.28.1: halt-state events (orchestrator stopped scheduling)
+      ['workflow.auto-mode.merge-conflict', (msg) => this.onAutoModeHalted(msg, 'Merge-Konflikt')],
+      ['workflow.auto-mode.dirty-worktree', (msg) => this.onAutoModeHalted(msg, 'Dirty Worktree')],
+      ['workflow.auto-mode.sub-worktree-failure', (msg) => this.onAutoModeHalted(msg, 'Sub-Worktree-Fehler')],
       // PAM-008: Multi-slot board events (spec)
       ['workflow.auto-mode.slot.update', (msg) => this.onAutoModeSlotUpdate(msg)],
       ['workflow.auto-mode.slot.queued', (msg) => this.onAutoModeSlotQueued(msg)],
@@ -802,6 +806,28 @@ export class AosDashboardView extends LitElement {
       detail: {
         message: `Story-Execution inaktiv${storyPart}: seit ${minutes} Min. kein Output vom Claude CLI. Bitte prüfen.`,
         type: 'warning'
+      },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  /**
+   * D12 / v3.28.1: Handle the orchestrator's "halt scheduling" events
+   * (merge-conflict, dirty-worktree, sub-worktree-failure). Shows a persistent
+   * toast — the spec kanban modal will follow once `specs.kanban.updated`
+   * round-trips and `activeIncidents` is reloaded.
+   */
+  private onAutoModeHalted(msg: WebSocketMessage, kind: string): void {
+    const specId = msg.specId as string;
+    if (this.selectedSpec && this.selectedSpec.id !== specId) return;
+    const storyId = (msg.storyId as string) || 'unbekannt';
+    const error = (msg.error as string) || '';
+    const summary = error.length > 160 ? error.slice(0, 160) + '…' : error;
+    this.dispatchEvent(new CustomEvent('show-toast', {
+      detail: {
+        message: `Auto-Mode angehalten (${kind}, ${storyId}): ${summary}`,
+        type: 'error'
       },
       bubbles: true,
       composed: true
@@ -2407,6 +2433,7 @@ export class AosDashboardView extends LitElement {
         .assignedToBot=${this.kanban.assignedToBot ?? false}
         .isReady=${this.kanban.isReady ?? false}
         .initialGitStrategy=${this.selectedSpec.gitStrategy ?? null}
+        .projectPath=${this.projectCtx?.activeProject?.path ?? null}
         @kanban-back=${this.handleKanbanBack}
         @auto-mode-toggle=${this.handleAutoModeToggle}
         @auto-mode-error=${this.handleAutoModeError}

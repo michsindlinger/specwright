@@ -21,6 +21,7 @@ import { CloudTerminalManager } from './cloud-terminal-manager.js';
 import { KanbanFileWatcher } from './kanban-file-watcher.js';
 import { projectDir } from '../utils/project-dirs.js';
 import { buildMcpFlags, cleanupMcpTempFile } from '../utils/mcp-profile.js';
+import { archiveSessionLog } from '../utils/auto-mode-logs.js';
 import { AUTO_MODE_CLI_FLAGS } from './auto-mode-cli-flags.js';
 import type { GitStrategy } from '../workflow-executor.js';
 import type { CloudTerminalSessionId, CloudTerminalModelConfig } from '../../shared/types/cloud-terminal.protocol.js';
@@ -124,6 +125,7 @@ export class AutoModeCloudSession extends EventEmitter {
       this.unregisterPromptDetectedListener();
       this.unregisterBlockerReportedListener();
       this.stopStallWatchdog();
+      await this.archiveLogsBeforeClose(this.sessionId);
       this.config.cloudTerminalManager.closeSession(this.sessionId);
       this.cleanupMcpForSession(this.sessionId);
     }
@@ -158,6 +160,7 @@ export class AutoModeCloudSession extends EventEmitter {
       this.unregisterSessionClosedListener();
       this.unregisterPromptDetectedListener();
       this.unregisterBlockerReportedListener();
+      await this.archiveLogsBeforeClose(this.sessionId);
       this.config.cloudTerminalManager.closeSession(this.sessionId);
       this.cleanupMcpForSession(this.sessionId);
       this.sessionId = null;
@@ -322,6 +325,12 @@ export class AutoModeCloudSession extends EventEmitter {
       if (closedSessionId === this.sessionId) {
         console.warn(`[AutoModeCloudSession] Session ${closedSessionId} closed unexpectedly (exit code: ${exitCode})`);
 
+        // D12: archive buffer so the halted-state UI can show "Logs (archived)".
+        // cloud-terminal-manager keeps the session in its Map for ~5s after
+        // emitting session.closed, so getSession() still returns the buffer.
+        // Fire-and-forget: failures inside archive are logged, not thrown.
+        void this.archiveLogsBeforeClose(closedSessionId);
+
         // Clean up
         this.kanbanWatcher.unwatch();
         this.cleanupMcpForSession(closedSessionId);
@@ -433,6 +442,29 @@ export class AutoModeCloudSession extends EventEmitter {
       this.stallWatchdogTimer = null;
     }
     this.stalledNotified = false;
+  }
+
+  /**
+   * D12 / v3.28.1: Persist tail of session buffer to disk so the halted-state
+   * UI can fetch logs after the cloud session is gone. Best-effort — failures
+   * are logged, not thrown. Skipped silently if the buffer is empty or the
+   * session is already absent (cloud-terminal-manager evicted it).
+   */
+  private async archiveLogsBeforeClose(sessionId: string): Promise<void> {
+    if (!this.currentStoryId) {
+      return;
+    }
+    const session = this.config.cloudTerminalManager.getSession(sessionId);
+    if (!session || session.buffer.length === 0) {
+      return;
+    }
+    await archiveSessionLog(
+      this.config.projectPath,
+      this.config.specId,
+      this.currentStoryId,
+      sessionId,
+      session.buffer
+    );
   }
 
   /**

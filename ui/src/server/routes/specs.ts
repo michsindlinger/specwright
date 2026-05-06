@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { SpecsReader } from '../specs-reader.js';
+import { readLatestArchivedLog } from '../utils/auto-mode-logs.js';
 
 const router = Router();
 
@@ -83,6 +84,37 @@ router.post('/initialize-board', async (req: Request, res: Response) => {
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error'
     } as InitializeBoardResponse);
+  }
+});
+
+/**
+ * GET /api/specs/:specId/stories/:storyId/logs?projectPath=<encoded-path>
+ *
+ * D12 / v3.28.1: Returns the most recent archived log for a story. Used by the
+ * halted-state UI when the live cloud-terminal session has ended.
+ *
+ * 200: { content: string, path: string }
+ * 404: { error: 'No archived log found' } when nothing has been persisted.
+ */
+router.get('/stories/:storyId/logs', async (req: Request, res: Response) => {
+  try {
+    const { specId, storyId } = req.params;
+    const projectPath = (req.query.projectPath as string | undefined) ?? process.env.PROJECT_ROOT ?? process.cwd();
+
+    if (!specId || !storyId) {
+      return res.status(400).json({ error: 'specId and storyId required' });
+    }
+
+    const result = await readLatestArchivedLog(projectPath, specId, storyId);
+    if (!result) {
+      return res.status(404).json({ error: 'No archived log found' });
+    }
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Error reading archived log:', error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Internal server error'
+    });
   }
 });
 

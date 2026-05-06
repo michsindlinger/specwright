@@ -1984,6 +1984,75 @@ export class WorkflowExecutor {
         type: 'backlog.kanban.refresh',
         timestamp: new Date().toISOString()
       });
+      webSocketManager.sendToProject(projectPath, {
+        type: 'specs.kanban.updated',
+        specId,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // D12 / v3.28.1: dirty-worktree and sub-worktree-failure halt scheduling
+    // server-side. Broadcast so the UI can show "Halted: <reason>" badges
+    // instead of leaving stories stuck in "in_progress" with no signal.
+    orchestrator.on('story.dirty-worktree', async (storyId: string, worktreePath: string, errMsg: string) => {
+      console.warn(`[Workflow] Auto-Mode: Dirty worktree for story ${storyId}: ${errMsg}`);
+      try {
+        await new SpecsReader().setAutoModeIncident(projectPath, specId, {
+          type: 'error',
+          message: errMsg,
+          storyId,
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('[Workflow] Auto-Mode: Failed to persist dirty-worktree incident:', err);
+      }
+      this.sendToProject(projectPath, {
+        type: 'workflow.auto-mode.dirty-worktree',
+        specId,
+        storyId,
+        worktreePath,
+        error: errMsg,
+        timestamp: new Date().toISOString()
+      });
+      webSocketManager.sendToProject(projectPath, {
+        type: 'backlog.kanban.refresh',
+        timestamp: new Date().toISOString()
+      });
+      webSocketManager.sendToProject(projectPath, {
+        type: 'specs.kanban.updated',
+        specId,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    orchestrator.on('story.sub-worktree-failure', async (storyId: string, errMsg: string) => {
+      console.warn(`[Workflow] Auto-Mode: Sub-worktree failure for story ${storyId}: ${errMsg}`);
+      try {
+        await new SpecsReader().setAutoModeIncident(projectPath, specId, {
+          type: 'error',
+          message: errMsg,
+          storyId,
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('[Workflow] Auto-Mode: Failed to persist sub-worktree-failure incident:', err);
+      }
+      this.sendToProject(projectPath, {
+        type: 'workflow.auto-mode.sub-worktree-failure',
+        specId,
+        storyId,
+        error: errMsg,
+        timestamp: new Date().toISOString()
+      });
+      webSocketManager.sendToProject(projectPath, {
+        type: 'backlog.kanban.refresh',
+        timestamp: new Date().toISOString()
+      });
+      webSocketManager.sendToProject(projectPath, {
+        type: 'specs.kanban.updated',
+        specId,
+        timestamp: new Date().toISOString()
+      });
     });
 
     orchestrator.on('cancelled', () => {
@@ -3104,13 +3173,20 @@ export class WorkflowExecutor {
   /**
    * Create a per-story sub-worktree for parallel auto-mode spec execution.
    * Path:   ${proj}-worktrees/${feature}-${storyId}
-   * Branch: feature/${feature}/${storyId}
+   * Branch: story/${feature}/${storyId} (forked from `specBranch`)
    * Idempotent — returns existing path without error.
+   *
+   * @param specBranch - REQUIRED base branch for the new story branch.
+   *   Without this, `git worktree add -b NEW path` would fork off the cwd's
+   *   HEAD (= main project's main branch), missing already-merged sibling
+   *   work and producing guaranteed merge conflicts when the story branch
+   *   merges back into the spec branch. v3.28.1+ (BPAM-011 / D11).
    */
   public async createStoryWorktree(
     projectPath: string,
     specId: string,
-    storyId: string
+    storyId: string,
+    specBranch: string
   ): Promise<string> {
     const wtPath = storyWorktreePath(projectPath, specId, storyId);
     const branchName = storyBranchName(specId, storyId);
@@ -3127,9 +3203,13 @@ export class WorkflowExecutor {
         branchExists = true;
       } catch { branchExists = false; }
 
+      // For new branches, explicitly pass `specBranch` as the base so the
+      // story branch tip starts from the latest spec branch (with sibling
+      // merges already applied). For existing branches, git worktree add
+      // attaches to the existing tip.
       const args = branchExists
         ? ['worktree', 'add', wtPath, branchName]
-        : ['worktree', 'add', wtPath, '-b', branchName];
+        : ['worktree', 'add', wtPath, '-b', branchName, specBranch];
 
       await new Promise<void>((resolve, reject) => {
         const proc = spawn('git', args, { cwd: projectPath, stdio: 'pipe' });

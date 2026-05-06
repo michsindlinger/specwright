@@ -158,6 +158,8 @@ export class AosKanbanBoard extends LitElement {
   @property({ type: Boolean }) showAutoMode = true;
   // Pre-set git strategy from spec's resumeContext to skip git strategy dialog
   @property({ type: String }) initialGitStrategy: GitStrategy | null = null;
+  /** D12 / v3.28.1: project path forwarded to error modal so it can fetch archived logs. */
+  @property({ type: String }) projectPath: string | null = null;
   @state() private draggedStoryId: string | null = null;
   @state() private dropZoneActive: KanbanStatus | null = null;
   @state() private dropValidation: MoveValidation = { valid: true };
@@ -2271,11 +2273,13 @@ export class AosKanbanBoard extends LitElement {
         ></aos-git-strategy-dialog>
       ` : ''}
 
-      <!-- KAE-004 / PAM-008: Auto-Mode Error Modal -->
+      <!-- KAE-004 / PAM-008 / D12: Auto-Mode Error Modal -->
       <aos-auto-mode-error-modal
         .open=${this.showErrorModal || (this.autoModeEnabled && !!(this.kanban.activeIncidents?.length))}
         .error=${this.autoModeError}
         .activeIncidents=${(this.kanban.activeIncidents ?? []) as AutoModeIncident[]}
+        .specId=${this.mode === 'spec' ? this.kanban.specId : null}
+        .projectPath=${this.projectPath}
         @auto-mode-resume=${this.handleErrorModalResume}
         @auto-mode-stop=${this.handleErrorModalStop}
         @incident-dismiss=${this.handleIncidentDismiss}

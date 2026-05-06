@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.28.1 - 2026-05-06
+
+### Behoben
+- **Story-Sub-Worktrees branchen jetzt vom Spec-Branch-Tip (D11 / BPAM-011):** `WorkflowExecutor.createStoryWorktree` akzeptiert einen neuen Pflicht-Parameter `specBranch` und übergibt ihn als expliziten Base-Ref an `git worktree add -b storyBranch path specBranch`. Vorher branchte Git implizit von `cwd: mainProjectPath` HEAD = main-Branch — Story-Branches starteten ohne bereits gemergte Sibling-Stories und kollidierten deterministisch beim Re-Merge bei jeder Datei-Überschneidung. Beobachtet: WCAG-003-Story-Branch ohne WCAG-001's `globals.css`-Fix → garantierter Merge-Conflict beim `mergeStoryBranchIntoSpec`. Mit D11 startet jeder neue Story-Branch vom aktuellen Spec-Branch-Tip, alle bereits-gemergten Sibling-Commits sind vorhanden, Re-Merge ist no-op. (`workflow-executor.ts createStoryWorktree`, `auto-mode-spec-orchestrator.ts resolveSlotProjectPath`)
+- **`gitStrategy=worktree` ohne `specBranch` halt-fast statt silent fallback:** Wenn `this.specBranch` undefined ist (sollte bei `setupSpecWorktree` gesetzt werden), wirft die Orchestrator-Logik im Parallel-Modus einen Setup-Error und triggert Sub-Worktree-Failure-Incident statt unbemerkt auf die Project-Root-Path zu fallen. Im Serial-Modus bleibt der safe Fallback auf `projectPath` (mit Warning).
+
+### Geändert (D12 — Halted-State UI Parity)
+- **Cloud-Terminal-Buffer wird vor Session-Close persistiert:** Vor jedem `closeSession`-Call (normaler Story-Übergang, Cancel, Crash via `session.closed`) schreibt `AutoModeCloudSession.archiveLogsBeforeClose` den Tail (max 200 KB) des PTY-Buffers nach `${specPath}/auto-mode-logs/${storyId}-${sessionId}.log`. Best-effort: Disk-Failures loggen nur, throwen nicht. Existenz-Check verhindert Spurious-Writes für leere Buffer.
+- **GET `/api/specs/:specId/stories/:storyId/logs?projectPath=...`** liefert den jüngsten archivierten Log eines Stories. 200 mit `{content, path}`, 404 wenn kein Log existiert. Lex-largest sessionId gewinnt — sessionIds enthalten `Date.now()`, also de-facto neueste Session.
+- **Halt-Events werden jetzt als WS-Broadcasts emittiert:** `story.dirty-worktree` und `story.sub-worktree-failure` (von `auto-mode-spec-orchestrator.ts haltScheduling`-Pfaden) werden als `workflow.auto-mode.dirty-worktree` / `workflow.auto-mode.sub-worktree-failure` Frontend-seitig zugestellt — vorher fehlten WS-Listener komplett, UI hatte keinerlei Halt-Signal. Außerdem werden `setAutoModeIncident`-Persistierungen jetzt mit `specs.kanban.updated`-Broadcast begleitet, damit der Spec-Kanban-Modal sofort aktualisiert.
+- **`aos-auto-mode-error-modal` zeigt pro Incident "Logs anzeigen"-Button:** Toggle-fetcht den archivierten Log via neuem Endpoint und expandiert inline (max 240 px scrollable pre-block). Modal nimmt neue Properties `specId` + `projectPath` (von `aos-kanban-board` durchgereicht). Persistent-Toast auf Halt-Event-Empfang.
+
+### Tests
+- `pam-005-worktree-helpers.test.ts`: D11-Regression (Story-Branch-Parent === Spec-Branch-Tip, NICHT main HEAD), Existing-Branch-Reuse (kein Reset auf specBranch bei zweitem Worktree-Add), Nonexistent-Base-Branch wirft. +3 Tests, 57/57 passing.
+- `orchestrator-routing.test.ts`: D11-Strict-Failure (parallel ohne specBranch → halt+incident; serial ohne specBranch → silent fallback). 4-arg-Update für bestehende `createStoryWorktree`-Mocks. +2 Tests.
+- `auto-mode-logs.test.ts`: Tail-Trim, Path-Sanitization, Latest-Selection, Disk-Failure-Best-Effort. Neu, 11 Tests passing.
+
+### Technisch
+- **Lock-Hierarchie unverändert:** `withMainProjectLock` (outer) → `withKanbanLock` (inner). D11 ist eine Branch-Base-Korrektur, kein neuer Lock.
+- **Auto-mode-logs-Verzeichnis wächst monoton:** Pro Story × Session ein File. Sessions sind kurz (eine pro Story-Run). Keine Rotation implementiert — Disk-Cleanup user-/CI-responsibility.
+
 ## 3.28.0 - 2026-05-06
 
 ### Neu

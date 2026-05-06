@@ -24,6 +24,7 @@ import {
   MUTABLE_SPEC_FILES,
   MUTABLE_BACKLOG_FILES,
 } from '../../src/server/utils/worktree-story.js';
+import { WorkflowExecutor } from '../../src/server/workflow-executor.js';
 
 // ============================================================================
 // Helpers
@@ -764,5 +765,101 @@ describe('copyMcpConfigToWorktree', () => {
       copyMcpConfigToWorktree(fixture.projectPath, fixture.worktreePath)
     ).resolves.toBeUndefined();
     await expect(fs.access(join(fixture.worktreePath, '.mcp.json'))).rejects.toThrow();
+  });
+});
+
+// ============================================================================
+// D11 / BPAM-011: createStoryWorktree branches off spec branch tip, not main
+// ============================================================================
+
+describe('createStoryWorktree branch base (D11 / v3.28.1)', () => {
+  let base: string;
+  let projectPath: string;
+  let mainSha: string;
+  let specSha: string;
+  const specId = '2026-05-05-x';
+  const storyId = 'STORY-007';
+  const specBranch = 'feature/x';
+  const expectedStoryBranch = `story/x/STORY-007`;
+
+  beforeEach(async () => {
+    base = await fs.mkdtemp(join(tmpdir(), 'd11-'));
+    projectPath = join(base, 'myproject');
+    await fs.mkdir(projectPath, { recursive: true });
+
+    execSync('git init -q -b main', { cwd: projectPath });
+    execSync('git config user.email test@test.com', { cwd: projectPath });
+    execSync('git config user.name test', { cwd: projectPath });
+    await fs.writeFile(join(projectPath, 'README.md'), 'init');
+    execSync('git add . && git commit -q -m init', { cwd: projectPath });
+    mainSha = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+
+    // Spec branch advances beyond main (= sibling story already merged).
+    execSync(`git checkout -q -b ${specBranch}`, { cwd: projectPath });
+    await fs.writeFile(join(projectPath, 'sibling.txt'), 'merged sibling work');
+    execSync('git add sibling.txt && git commit -q -m "sibling story merged"', { cwd: projectPath });
+    specSha = execSync('git rev-parse HEAD', { cwd: projectPath, encoding: 'utf-8' }).trim();
+
+    // Switch back to main so cwd HEAD = mainSha — proves D11 behavior is not
+    // an artifact of cwd happening to point at the spec branch.
+    execSync('git checkout -q main', { cwd: projectPath });
+  });
+
+  afterEach(async () => {
+    // Clean up any worktrees the executor created.
+    try {
+      const wtPath = storyWorktreePath(projectPath, specId, storyId);
+      execSync(`git worktree remove --force "${wtPath}"`, { cwd: projectPath, stdio: 'pipe' });
+    } catch { /* best-effort */ }
+    await fs.rm(base, { recursive: true, force: true });
+  });
+
+  it('story branch parent is spec branch tip, not main HEAD (BPAM-011 regression)', async () => {
+    expect(mainSha).not.toBe(specSha); // sanity: branches diverged
+
+    const executor = new WorkflowExecutor();
+    const wtPath = await executor.createStoryWorktree(projectPath, specId, storyId, specBranch);
+
+    expect(wtPath).toBe(storyWorktreePath(projectPath, specId, storyId));
+    expect(storyBranchName(specId, storyId)).toBe(expectedStoryBranch);
+
+    // The story branch tip MUST equal spec branch tip (no new commits yet, and
+    // git worktree add -b from spec branch attaches a fresh ref at that SHA).
+    const storyTip = execSync(`git rev-parse ${expectedStoryBranch}`, {
+      cwd: projectPath, encoding: 'utf-8',
+    }).trim();
+    expect(storyTip).toBe(specSha);
+    expect(storyTip).not.toBe(mainSha);
+  });
+
+  it('throws clear error when specBranch ref does not exist (catches caller bugs)', async () => {
+    const executor = new WorkflowExecutor();
+    await expect(
+      executor.createStoryWorktree(projectPath, specId, storyId, 'feature/nonexistent')
+    ).rejects.toThrow(/git worktree add failed/);
+  });
+
+  it('reuses existing story branch (does not re-base off specBranch)', async () => {
+    const executor = new WorkflowExecutor();
+    // First create — branch forked from spec tip.
+    const wtPath1 = await executor.createStoryWorktree(projectPath, specId, storyId, specBranch);
+    // Advance the story branch with a commit.
+    await fs.writeFile(join(wtPath1, 'story.txt'), 'in-progress story work');
+    execSync('git add story.txt && git commit -q -m "story progress"', { cwd: wtPath1 });
+    const storyAfterCommit = execSync(`git rev-parse ${expectedStoryBranch}`, {
+      cwd: projectPath, encoding: 'utf-8',
+    }).trim();
+    expect(storyAfterCommit).not.toBe(specSha); // branch advanced
+
+    // Remove just the worktree dir (branch ref persists).
+    execSync(`git worktree remove --force "${wtPath1}"`, { cwd: projectPath, stdio: 'pipe' });
+
+    // Second create — must attach to existing branch tip, NOT reset to specSha.
+    const wtPath2 = await executor.createStoryWorktree(projectPath, specId, storyId, specBranch);
+    expect(wtPath2).toBe(wtPath1);
+    const storyTipAfterReuse = execSync(`git rev-parse ${expectedStoryBranch}`, {
+      cwd: projectPath, encoding: 'utf-8',
+    }).trim();
+    expect(storyTipAfterReuse).toBe(storyAfterCommit);
   });
 });
