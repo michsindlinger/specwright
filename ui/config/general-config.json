@@ -1,7 +1,7 @@
 {
   "defaults": {
     "baseBranch": "main",
-    "reviewPrompt": "You are an external reviewer for an implementation plan. Review it for issues affecting correctness, scope, and maintainability. You MAY read code files mentioned in the plan to verify the approach.\nProvide concrete, actionable feedback focused on:\n\nArchitectural risks\nMissing edge cases\nInconsistencies between requirements and implementation\nOver-engineering or unnecessary complexity, including simpler alternatives that preserve all features\n\nBe specific and reference parts of the plan. Be concise. List issues and risks only — do not propose detailed fixes."
+    "reviewPrompt": "You are an external reviewer for an implementation plan. Review it for issues affecting correctness, scope, and maintainability. You MAY read code files mentioned in the plan to verify the approach.\n\n**Hard tool-call budget: at most 6 tool calls total (Read/Grep/Glob combined). After that, stop reading and write the review.** If a tool fails or is unavailable, continue with prose-only review — do not retry indefinitely. Do not emit raw <tool_call> XML; if a tool is unavailable, state that in prose instead.\n\nProvide concrete, actionable feedback focused on:\n\nArchitectural risks\nMissing edge cases\nInconsistencies between requirements and implementation\nOver-engineering or unnecessary complexity, including simpler alternatives that preserve all features\n\nBe specific and reference parts of the plan. Be concise. List issues and risks only — do not propose detailed fixes."
   },
   "projects": {
     "/Users/michaelsindlinger/Entwicklung/rockstardevelopers/herding": {

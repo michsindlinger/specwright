@@ -19,6 +19,7 @@ import {
   seedBacklogDirInWorktree,
   copyMcpConfigToWorktree,
   isWorktreeClean,
+  purgeShadowSpecMutables,
   MUTABLE_SPEC_FILES,
 } from './utils/worktree-story.js';
 import { resolveMainWorktreePath } from './utils/worktree-detect.js';
@@ -3141,9 +3142,17 @@ export class WorkflowExecutor {
     }
 
     // Story worktree branched off the spec branch — spec dir already there via
-    // the spec-level seed commit. Only need to copy .mcp.json so Claude in the
-    // story worktree can discover the MCP server.
+    // the spec-level seed commit. Copy .mcp.json so Claude in the story
+    // worktree can discover the MCP server, and defensively strip any shadow
+    // kanban.json that may have leaked into the spec-branch tip (e.g. via
+    // `git add -A` auto-commit-before-worktree before the gitignore was
+    // updated).
     await copyMcpConfigToWorktree(projectPath, wtPath);
+    try {
+      purgeShadowSpecMutables(wtPath, specId);
+    } catch (err) {
+      console.warn('[Workflow] PAM-005: post-create purgeShadowSpecMutables failed:', err instanceof Error ? err.message : err);
+    }
     return wtPath;
   }
 
@@ -3429,6 +3438,18 @@ export class WorkflowExecutor {
       console.error('[Workflow] Auto-Mode: Cancel error:', err)
     );
     return true;
+  }
+
+  /**
+   * Stall-recover a single spec auto-mode story slot. Used by manual user
+   * drag of an actively-running story (e.g. resetting a stuck ticket).
+   * Closes the PTY session and frees the gate but preserves the worktree
+   * for debug. No-op if no orchestrator or slot is tracked.
+   */
+  public async stallRecoverSpecSlot(specId: string, storyId: string): Promise<boolean> {
+    const orchestrator = this.autoModeSpecOrchestrators.get(specId);
+    if (!orchestrator) return false;
+    return await orchestrator.stallRecoverSlot(storyId);
   }
 
   /**

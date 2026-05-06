@@ -299,17 +299,26 @@ export class SpecsReader {
    */
   private async readKanbanJson(specPath: string): Promise<KanbanJson | null> {
     const jsonPath = join(specPath, 'kanban.json');
-    try {
-      const content = await fs.readFile(jsonPath, 'utf-8');
-      return JSON.parse(content) as KanbanJsonV1;
-    } catch (error) {
-      // File not found -> return null (normal, triggers MD fallback)
-      if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return null;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const content = await fs.readFile(jsonPath, 'utf-8');
+        return JSON.parse(content) as KanbanJsonV1;
+      } catch (error) {
+        // File not found -> return null (normal, triggers MD fallback)
+        if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+          return null;
+        }
+        lastError = error;
+        // Transient parse error (concurrent write) -> brief retry
+        if (attempt < 2 && error instanceof SyntaxError) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+          continue;
+        }
+        break;
       }
-      // Any other error (JSON parse, permission, etc.) -> corrupted
-      throw new KanbanJsonCorruptedError(jsonPath, error);
     }
+    throw new KanbanJsonCorruptedError(jsonPath, lastError);
   }
 
   /**
@@ -320,7 +329,9 @@ export class SpecsReader {
   private async writeKanbanJson(specPath: string, kanban: KanbanJson): Promise<void> {
     await withKanbanLock(specPath, async () => {
       const jsonPath = join(specPath, 'kanban.json');
-      await fs.writeFile(jsonPath, JSON.stringify(kanban, null, 2), 'utf-8');
+      const tmpPath = `${jsonPath}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`;
+      await fs.writeFile(tmpPath, JSON.stringify(kanban, null, 2), 'utf-8');
+      await fs.rename(tmpPath, jsonPath);
     });
   }
 
@@ -330,15 +341,24 @@ export class SpecsReader {
    */
   private async readKanbanJsonUnlocked(specPath: string): Promise<KanbanJson | null> {
     const jsonPath = join(specPath, 'kanban.json');
-    try {
-      const content = await fs.readFile(jsonPath, 'utf-8');
-      return JSON.parse(content) as KanbanJsonV1;
-    } catch (error) {
-      if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return null;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const content = await fs.readFile(jsonPath, 'utf-8');
+        return JSON.parse(content) as KanbanJsonV1;
+      } catch (error) {
+        if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+          return null;
+        }
+        lastError = error;
+        if (attempt < 2 && error instanceof SyntaxError) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+          continue;
+        }
+        break;
       }
-      throw new KanbanJsonCorruptedError(jsonPath, error);
     }
+    throw new KanbanJsonCorruptedError(jsonPath, lastError);
   }
 
   /**
@@ -347,7 +367,9 @@ export class SpecsReader {
    */
   private async writeKanbanJsonUnlocked(specPath: string, kanban: KanbanJson): Promise<void> {
     const jsonPath = join(specPath, 'kanban.json');
-    await fs.writeFile(jsonPath, JSON.stringify(kanban, null, 2), 'utf-8');
+    const tmpPath = `${jsonPath}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`;
+    await fs.writeFile(tmpPath, JSON.stringify(kanban, null, 2), 'utf-8');
+    await fs.rename(tmpPath, jsonPath);
   }
 
   /**

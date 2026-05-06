@@ -1,0 +1,257 @@
+{
+  "version": "2.0",
+  "mode": "lean",
+  "spec": {
+    "id": "2026-05-06-bulletproof-parallel-auto-mode",
+    "name": "Bulletproof Parallel Auto-Mode (v3.28.0)",
+    "prefix": "BPAM",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-05-06T13:29:27.159Z",
+    "specTier": "L",
+    "implementationPlan": "implementation-plan.md"
+  },
+  "resumeContext": {
+    "currentPhase": "1-complete",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "gitStrategy": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Lean kanban created via MCP",
+    "nextAction": "Setup git worktree or branch",
+    "progressIndex": 0,
+    "totalStories": 10
+  },
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "tasks": [
+    {
+      "id": "BPAM-001",
+      "title": "Add main-project-mutex helper + unit tests",
+      "description": "New in-memory async mutex per main project path with rejection-safe Promise-chain pattern and soft 30s/60s warn-not-throw.",
+      "planSection": "Architektur D1 + Phase A; Test Strategy main-project-mutex.test.ts",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "BPAM-002",
+      "title": "Tune kanban-lock + module-init invariant + sync CI test",
+      "description": "Set timeouts 15s/20s/100ms+jitter in both kanban-lock copies, add module-init invariant assert, add byte-equality CI test.",
+      "planSection": "Architektur D2 + Phase A; Test Strategy kanban-lock-sync.test.ts + extended kanban-lock.test.ts",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "BPAM-003",
+      "title": "commitMainKanbanIfDirty async + dual-locked",
+      "description": "Convert function to async; wrap body in withMainProjectLock (outer) + withKanbanLock (inner); update sole caller to await.",
+      "planSection": "Architektur D3 + Phase B; Komponenten-Verbindung Source main-project-mutex.ts → worktree-story.ts",
+      "dependencies": [
+        "BPAM-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "BPAM-004",
+      "title": "mergeStoryBranchIntoSpec wrapped in main-project mutex",
+      "description": "Wrap entire mergeStoryBranchIntoSpec body in withMainProjectLock keyed on path.resolve(projectPath).",
+      "planSection": "Architektur D4 + Phase B; Komponenten-Verbindung Source main-project-mutex.ts → workflow-executor.ts",
+      "dependencies": [
+        "BPAM-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "BPAM-005",
+      "title": "Post-merge purgeShadowSpecMutables call wrapped",
+      "description": "Wrap onItemCompleted post-merge spec-worktree purge in withMainProjectLock keyed on this.mainProjectPath.",
+      "planSection": "Architektur D5 + Phase B; Komponenten-Verbindung Source main-project-mutex.ts → auto-mode-spec-orchestrator.ts",
+      "dependencies": [
+        "BPAM-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "BPAM-006",
+      "title": "setupSpecWorktree auto-commit wrapped",
+      "description": "Wrap setupSpecWorktree pre-worktree git add -A + commit block in withMainProjectLock with label setup-auto-commit.",
+      "planSection": "Architektur D6 + Phase B; Komponenten-Verbindung Source main-project-mutex.ts → workflow-executor.ts",
+      "dependencies": [
+        "BPAM-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "BPAM-007",
+      "title": "onItemFailed cleanliness gate parity",
+      "description": "Mirror isWorktreeClean gate from onItemCompleted into onItemFailed; surface incident and halt on dirty worktree.",
+      "planSection": "Architektur D8 + Phase C",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "BPAM-008",
+      "title": "setup-mcp.sh gitignore installer",
+      "description": "Append idempotent gitignore block for kanban.json + kanban-board.md + backlog-index.json to project .gitignore via setup-mcp.sh.",
+      "planSection": "Architektur D7 + Phase D",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "BPAM-009",
+      "title": "Integration tests: parallel-completion + extensions",
+      "description": "New parallel-completion.test.ts + extend pam-005-worktree-helpers + add onItemFailed cleanliness regression test.",
+      "planSection": "Phase E — Test Strategy section in implementation-plan.md",
+      "dependencies": [
+        "BPAM-001",
+        "BPAM-002",
+        "BPAM-003",
+        "BPAM-004",
+        "BPAM-005",
+        "BPAM-006",
+        "BPAM-007",
+        "BPAM-008"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "BPAM-010",
+      "title": "Docs + release VERSION 3.28.0",
+      "description": "specs-reader writer-invariant comment + JSDoc updates + CLAUDE.md mutex paragraph + CHANGELOG entry + VERSION 3.28.0 + install.sh sync.",
+      "planSection": "Architektur D9 + D10 + Versioning + Release section",
+      "dependencies": [
+        "BPAM-009"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 10,
+    "ready": 4,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 6
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-05-06T13:29:27.159Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Lean kanban initialized with 10 tasks via MCP tool"
+    },
+    {
+      "timestamp": "2026-05-06T13:30:26.861Z",
+      "action": "models_bulk_changed",
+      "storyId": null,
+      "details": "Model set to sonnet for: BPAM-001, BPAM-002, BPAM-007, BPAM-008, BPAM-003, BPAM-004, BPAM-005, BPAM-006, BPAM-009, BPAM-010"
+    }
+  ]
+}

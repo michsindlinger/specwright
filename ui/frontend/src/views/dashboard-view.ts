@@ -1529,13 +1529,14 @@ export class AosDashboardView extends LitElement {
    * Updates local state immediately and sends update to backend.
    */
   private handleStoryMove(e: CustomEvent): void {
-    const { storyId, fromStatus, toStatus } = e.detail as {
+    const { storyId, fromStatus, toStatus, abortActiveSlot } = e.detail as {
       storyId: string;
       fromStatus: string;
       toStatus: 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked';
+      abortActiveSlot?: boolean;
     };
 
-    console.log('[Dashboard] handleStoryMove called:', { storyId, fromStatus, toStatus });
+    console.log('[Dashboard] handleStoryMove called:', { storyId, fromStatus, toStatus, abortActiveSlot });
 
     if (!this.selectedSpec || !this.kanban) {
       console.log('[Dashboard] handleStoryMove: missing selectedSpec or kanban');
@@ -1553,7 +1554,8 @@ export class AosDashboardView extends LitElement {
       type: 'specs.story.updateStatus',
       specId: this.selectedSpec.id,
       storyId,
-      status: toStatus
+      status: toStatus,
+      abortActiveSlot: abortActiveSlot === true
     });
   }
 

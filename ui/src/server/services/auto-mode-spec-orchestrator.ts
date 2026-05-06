@@ -219,6 +219,18 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
         return;
       }
 
+      // Pre-merge shadow purge: drop any kanban.json/kanban-board.md the LLM
+      // re-introduced into the story sub-worktree (despite SPECWRIGHT_MAIN_PROJECT_PATH
+      // routing). Without this, the merge into the spec branch fails with
+      // "deleted in HEAD and modified in story-branch" — the spec branch already
+      // has these files stripped (seedSpecDirInWorktree). Idempotent: no-op if
+      // sub-worktree never picked up a shadow.
+      try {
+        purgeShadowSpecMutables(wtPath, this.specId);
+      } catch (purgeErr) {
+        console.error('[SpecOrchestrator] pre-merge purgeShadowSpecMutables error:', purgeErr);
+      }
+
       try {
         await this.worktreeOps.mergeStoryBranchIntoSpec(this.mainProjectPath, this.specBranch, branch);
         console.log(`[SpecOrchestrator] Merged ${branch} into ${this.specBranch}`);

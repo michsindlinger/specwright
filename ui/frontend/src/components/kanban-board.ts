@@ -1405,14 +1405,23 @@ export class AosKanbanBoard extends LitElement {
   };
 
   /**
-   * Drag is disabled when auto-mode is active or any workflow is currently running.
+   * Drag is disabled only when a non-auto-mode workflow is running (e.g. manual
+   * /execute-tasks via terminal). Auto-mode no longer hard-locks drag — moving
+   * an actively running story triggers a confirm + slot abort in handleDrop.
    */
   private get isDragDisabled(): boolean {
-    if (this.autoModeEnabled) return true;
     for (const [, state] of this.workflowStates) {
       if (state.status === 'working') return true;
     }
     return false;
+  }
+
+  private getActiveAutoModeStoryIds(): Set<string> {
+    const ids = new Set<string>();
+    for (const slot of this.autoModeProgressBoard?.slots ?? []) {
+      if (slot.slotState !== 'waiting') ids.add(slot.storyId);
+    }
+    return ids;
   }
 
   private getStoriesByStatus(status: 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked'): StoryInfo[] {
@@ -1569,13 +1578,31 @@ export class AosKanbanBoard extends LitElement {
       }
     }
 
+    // Auto-mode: if story currently runs in an active slot, confirm abort.
+    // Worktree is preserved (stallRecoverSlot does not tear it down).
+    const activeIds = this.getActiveAutoModeStoryIds();
+    const isStoryActive = activeIds.has(storyId);
+    if (isStoryActive) {
+      const ok = window.confirm(
+        `Story ${storyId} läuft gerade im Auto-Mode.\n` +
+        `Verschieben nach "${targetStatus}" bricht die Ausführung ab.\n` +
+        `Worktree und Branch bleiben erhalten.\n\nFortfahren?`
+      );
+      if (!ok) {
+        this.draggedStoryId = null;
+        this.dropValidation = { valid: true };
+        return;
+      }
+    }
+
     // Dispatch story-move event for local state update
     this.dispatchEvent(
       new CustomEvent('story-move', {
         detail: {
           storyId,
           fromStatus: story.status,
-          toStatus: targetStatus
+          toStatus: targetStatus,
+          abortActiveSlot: isStoryActive
         },
         bubbles: true,
         composed: true

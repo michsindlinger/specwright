@@ -1620,29 +1620,40 @@ export class WebSocketHandler {
       return;
     }
 
-    // First check if kanban board exists, if not initialize it
-    let kanban = await this.specsReader.getKanbanBoard(projectPath, specId);
+    try {
+      // First check if kanban board exists, if not initialize it
+      let kanban = await this.specsReader.getKanbanBoard(projectPath, specId);
 
-    if (!kanban.hasKanbanFile && kanban.stories.length > 0) {
-      // Auto-initialize kanban board on first view
-      try {
-        await this.specsReader.initializeKanbanBoard(projectPath, specId);
-        // Re-fetch the kanban board after initialization
-        kanban = await this.specsReader.getKanbanBoard(projectPath, specId);
-      } catch (error) {
-        console.error('Failed to auto-initialize kanban board:', error);
-        // Continue with uninitialized board as fallback
+      if (!kanban.hasKanbanFile && kanban.stories.length > 0) {
+        // Auto-initialize kanban board on first view
+        try {
+          await this.specsReader.initializeKanbanBoard(projectPath, specId);
+          // Re-fetch the kanban board after initialization
+          kanban = await this.specsReader.getKanbanBoard(projectPath, specId);
+        } catch (error) {
+          console.error('Failed to auto-initialize kanban board:', error);
+          // Continue with uninitialized board as fallback
+        }
       }
-    }
 
-    const autoMode = await this.workflowExecutor.getSpecAutoModeSnapshot(specId);
-    const response: WebSocketMessage = {
-      type: 'specs.kanban',
-      kanban,
-      autoMode,
-      timestamp: new Date().toISOString()
-    };
-    client.send(JSON.stringify(response));
+      const autoMode = await this.workflowExecutor.getSpecAutoModeSnapshot(specId);
+      const response: WebSocketMessage = {
+        type: 'specs.kanban',
+        kanban,
+        autoMode,
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      console.error('[WebSocket] handleSpecsKanban error:', error);
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.error',
+        specId,
+        error: error instanceof Error ? error.message : 'Failed to load kanban board',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
   }
 
   private async handleSpecsStory(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
@@ -1704,6 +1715,7 @@ export class WebSocketHandler {
     const specId = message.specId as string;
     const storyId = message.storyId as string;
     const status = message.status as 'backlog' | 'in_progress' | 'in_review' | 'done' | 'blocked';
+    const abortActiveSlot = message.abortActiveSlot === true;
 
     if (!specId || !storyId || !status) {
       const errorResponse: WebSocketMessage = {
@@ -1727,18 +1739,41 @@ export class WebSocketHandler {
     }
 
     try {
-      await this.specsReader.updateStoryStatus(
-        projectPath,
-        specId,
-        storyId,
-        status
-      );
+      // 1. Abort active auto-mode slot first (closes PTY, frees gate, preserves worktree).
+      if (abortActiveSlot) {
+        const recovered = await this.workflowExecutor.stallRecoverSpecSlot(specId, storyId);
+        console.log(
+          `[WebSocket] Manual move ${storyId} → ${status}: stallRecoverSpecSlot=${recovered}`
+        );
+      }
+
+      // 2. Persist status. For target=backlog, prefer forceResetItem so timing/execution
+      //    fields are cleared (story is restart-ready). forceResetItem is a no-op if
+      //    the item is not currently in_progress; in that case fall through to the
+      //    plain status update.
+      if (status === 'backlog') {
+        const reason = abortActiveSlot
+          ? `Manueller Abbruch durch User → backlog`
+          : `Manueller Reset durch User → backlog`;
+        const reset = await this.specsReader.forceResetItem(
+          projectPath,
+          specId,
+          storyId,
+          reason
+        );
+        if (!reset) {
+          await this.specsReader.updateStoryStatus(projectPath, specId, storyId, status);
+        }
+      } else {
+        await this.specsReader.updateStoryStatus(projectPath, specId, storyId, status);
+      }
 
       const response: WebSocketMessage = {
         type: 'specs.story.updateStatus.ack',
         specId,
         storyId,
         status,
+        abortActiveSlot,
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(response));

@@ -57,7 +57,7 @@ export class ExternalReviewer {
       const session = claudeQuery({
         prompt,
         options: {
-          maxTurns: 20,
+          maxTurns: 40,
           tools: REVIEWER_TOOLS,
           allowedTools: REVIEWER_TOOLS,
           permissionMode: 'bypassPermissions',
