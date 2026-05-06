@@ -267,7 +267,26 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
       return;
     }
 
-    const slotProjectPath = await this.resolveSlotProjectPath(item);
+    let slotProjectPath: string;
+    try {
+      slotProjectPath = await this.resolveSlotProjectPath(item);
+    } catch (err) {
+      // Subclass signalled "this slot can't run safely" (e.g. parallel mode lost
+      // its per-story sub-worktree → race condition guaranteed). Subclass is
+      // expected to have called `haltScheduling()` already. Release gate, let
+      // the halt unwind the orchestrator. Don't add to activeSlots.
+      this.gate.release();
+      console.error(
+        `[OrchestratorBase] resolveSlotProjectPath failed for ${item.id} — slot abandoned:`,
+        err instanceof Error ? err.message : err
+      );
+      return;
+    }
+    if (this.isCancelling) {
+      // Halt was triggered between acquire and resolve — skip launch.
+      this.gate.release();
+      return;
+    }
     // Slot CWD ≠ main project → propagate main path so the kanban MCP routes
     // writes to main (env var SPECWRIGHT_MAIN_PROJECT_PATH).
     const mainProjectPath = this.config.mainProjectPath ?? this.config.projectPath;

@@ -93,8 +93,21 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
 
   protected override async resolveSlotProjectPath(item: ReadyItem): Promise<string> {
     if (this.gitStrategy !== 'worktree') return this.config.projectPath;
+
+    // Two stories sharing the same CWD = guaranteed race condition. When parallel
+    // mode is active and per-story worktree creation is impossible (worktreeOps
+    // missing or createStoryWorktree throws), halt instead of silently degrading
+    // — the previous fallback let two concurrent LLMs interfere mutually until
+    // both stalled out.
+    const isParallel = this.config.maxConcurrent > 1;
+
     if (!this.worktreeOps) {
-      console.warn('[SpecOrchestrator] gitStrategy=worktree but no worktreeOps configured — falling back to project path');
+      const msg = `gitStrategy=worktree but no worktreeOps configured`;
+      if (isParallel) {
+        await this.handleSubWorktreeFailure(item.id, msg);
+        throw new Error(`[SpecOrchestrator] ${msg} (parallel mode — halted)`);
+      }
+      console.warn(`[SpecOrchestrator] ${msg} — falling back to project path (serial mode, safe)`);
       return this.config.projectPath;
     }
 
@@ -103,9 +116,35 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
       this.storyWorktrees.set(item.id, wtPath);
       return wtPath;
     } catch (err) {
-      console.error(`[SpecOrchestrator] Failed to create story worktree for ${item.id}, falling back:`, err instanceof Error ? err.message : err);
+      const msg = `createStoryWorktree failed for ${item.id}: ${err instanceof Error ? err.message : err}`;
+      if (isParallel) {
+        await this.handleSubWorktreeFailure(item.id, msg);
+        throw err instanceof Error ? err : new Error(String(err));
+      }
+      console.warn(`[SpecOrchestrator] ${msg} — falling back to project path (serial mode, safe)`);
       return this.config.projectPath;
     }
+  }
+
+  /** Halt scheduling + record incident when parallel mode can't get a per-story worktree. */
+  private async handleSubWorktreeFailure(itemId: string, reason: string): Promise<void> {
+    const errMsg =
+      `Per-story worktree konnte nicht erstellt werden (parallel mode, maxConcurrent=${this.config.maxConcurrent}). ` +
+      `Auto-Mode angehalten — ohne Sub-Worktrees teilen sich Stories denselben CWD und blockieren sich gegenseitig. ` +
+      `Detail: ${reason}`;
+    console.error(`[SpecOrchestrator] ${errMsg}`);
+    try {
+      await this.specsReader.setAutoModeIncident(this.mainProjectPath, this.specId, {
+        type: 'error',
+        message: errMsg,
+        storyId: itemId,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('[SpecOrchestrator] setAutoModeIncident (sub-worktree-failure) error:', err);
+    }
+    this.emit('story.sub-worktree-failure', itemId, errMsg);
+    this.haltScheduling();
   }
 
   // ── Abstract implementations ────────────────────────────────────────────────

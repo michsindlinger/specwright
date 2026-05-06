@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.27.4 - 2026-05-06
+
+### Behoben
+- **Race-Condition bei Parallel-Auto-Mode ohne Story-Sub-Worktrees:** Wenn `gitStrategy='worktree'` + `maxConcurrent > 1` und `createStoryWorktree` fehlschlug (oder `worktreeOps` fehlte), fiel `AutoModeSpecOrchestrator.resolveSlotProjectPath` silent auf den geteilten Spec-Worktree-CWD zurück. Zwei parallele Stories landeten dann im selben CWD und blockierten sich gegenseitig — beide LLMs stallten in Endlosschleife (Stall-Recovery → Reset → Pickup → Stall …), Code-Fixes wurden zwar committed aber `kanban_complete_story` nie erreicht. Konkret beobachtet bei Spec `2026-05-05-ifdb-wcag-2-2-aa-remediation` (WCAG-012 + WCAG-013).
+- Fallback-Verhalten ist jetzt strict: bei `maxConcurrent > 1` + Sub-Worktree-Failure halt + Incident + Throw (`story.sub-worktree-failure` Event). Bei `maxConcurrent === 1` bleibt der Silent-Fallback erlaubt (serial in geteiltem CWD = unproblematisch).
+
+### Geändert
+- `auto-mode-spec-orchestrator.ts:resolveSlotProjectPath`: neue Hilfsmethode `handleSubWorktreeFailure(itemId, reason)` setzt Auto-Mode-Incident, emittet `story.sub-worktree-failure`, ruft `haltScheduling()`. Throws nach Setup, damit der aufrufende `launchSlot` die Slot-Erstellung abbricht.
+- `auto-mode-orchestrator-base.ts:launchSlot`: `resolveSlotProjectPath` Aufruf jetzt in try/catch — bei Throw wird `gate` released und der Slot wird nicht gestartet (kein Leak, kein activeSlots-Eintrag). Zusätzlicher `isCancelling`-Check zwischen `acquire` und Slot-Start.
+
+### Behaviour-Change
+- Auto-Mode-Halts wegen Sub-Worktree-Failure produzieren neuen Event-Type `story.sub-worktree-failure` (zusätzlich zu `story.dirty-worktree`, `story.merge-conflict`). UI-Handler sollten ihn ggf. spezifisch anzeigen — Default-Incident-Banner reicht aus.
+
+### Tests
+- `orchestrator-routing.test.ts`: +6 Tests für `resolveSlotProjectPath` (parallel + missing ops, serial + missing ops, parallel + throw, serial + throw, parallel + success, non-worktree). 14/14 passing.
+- Bestehende Tests `pam-005-worktree-helpers` (49) + `orchestrator-routing` (existierende 8) unverändert grün.
+
 ## 3.27.3 - 2026-05-06
 
 ### Behoben

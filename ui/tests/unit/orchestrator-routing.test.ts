@@ -116,6 +116,170 @@ describe('AutoModeSpecOrchestrator path routing', () => {
   });
 });
 
+// ============================================================================
+// resolveSlotProjectPath — sub-worktree creation in parallel mode (v3.27.4)
+// ============================================================================
+
+describe('AutoModeSpecOrchestrator.resolveSlotProjectPath (v3.27.4 hardening)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function callResolve(orch: AutoModeSpecOrchestrator, itemId: string): Promise<string> {
+    return (orch as unknown as { resolveSlotProjectPath: (item: { id: string; title: string }) => Promise<string> })
+      .resolveSlotProjectPath({ id: itemId, title: itemId });
+  }
+
+  it('parallel mode + missing worktreeOps → halt + incident + throw', async () => {
+    const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
+    const orch = AutoModeSpecOrchestrator.create(
+      '/tmp/spec-worktree',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      2,                  // maxConcurrent > 1 (parallel)
+      'worktree',
+      '/tmp/main-repo',
+      'feature/x',
+      undefined           // worktreeOps missing
+    );
+    const haltSpy = vi.spyOn(orch, 'haltScheduling').mockImplementation(() => {});
+
+    await expect(callResolve(orch, 'WCAG-012')).rejects.toThrow();
+    expect(haltSpy).toHaveBeenCalledTimes(1);
+    expect(incidentSpy).toHaveBeenCalledTimes(1);
+    const incident = incidentSpy.mock.calls[0][2] as { type: string; storyId: string; message: string };
+    expect(incident.type).toBe('error');
+    expect(incident.storyId).toBe('WCAG-012');
+    expect(incident.message).toContain('Per-story worktree konnte nicht erstellt werden');
+  });
+
+  it('serial mode + missing worktreeOps → silent fallback to projectPath (no halt)', async () => {
+    const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
+    const orch = AutoModeSpecOrchestrator.create(
+      '/tmp/spec-worktree',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      1,                  // maxConcurrent = 1 (serial — fallback safe)
+      'worktree',
+      '/tmp/main-repo',
+      'feature/x',
+      undefined
+    );
+    const haltSpy = vi.spyOn(orch, 'haltScheduling').mockImplementation(() => {});
+
+    const path = await callResolve(orch, 'WCAG-012');
+    expect(path).toBe('/tmp/spec-worktree');
+    expect(haltSpy).not.toHaveBeenCalled();
+    expect(incidentSpy).not.toHaveBeenCalled();
+  });
+
+  it('parallel mode + createStoryWorktree throws → halt + incident + rethrow', async () => {
+    const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
+    const failingWorktreeOps = {
+      createStoryWorktree: vi.fn().mockRejectedValue(new Error('git worktree add failed')),
+      removeStoryWorktree: vi.fn().mockResolvedValue(undefined),
+      mergeStoryBranchIntoSpec: vi.fn().mockResolvedValue(undefined),
+    };
+    const orch = AutoModeSpecOrchestrator.create(
+      '/tmp/spec-worktree',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      2,
+      'worktree',
+      '/tmp/main-repo',
+      'feature/x',
+      failingWorktreeOps
+    );
+    const haltSpy = vi.spyOn(orch, 'haltScheduling').mockImplementation(() => {});
+
+    await expect(callResolve(orch, 'WCAG-012')).rejects.toThrow('git worktree add failed');
+    expect(haltSpy).toHaveBeenCalledTimes(1);
+    expect(incidentSpy).toHaveBeenCalledTimes(1);
+    const incident = incidentSpy.mock.calls[0][2] as { storyId: string; message: string };
+    expect(incident.storyId).toBe('WCAG-012');
+    expect(incident.message).toContain('git worktree add failed');
+  });
+
+  it('serial mode + createStoryWorktree throws → silent fallback (no halt)', async () => {
+    const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
+    const failingWorktreeOps = {
+      createStoryWorktree: vi.fn().mockRejectedValue(new Error('boom')),
+      removeStoryWorktree: vi.fn().mockResolvedValue(undefined),
+      mergeStoryBranchIntoSpec: vi.fn().mockResolvedValue(undefined),
+    };
+    const orch = AutoModeSpecOrchestrator.create(
+      '/tmp/spec-worktree',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      1,                  // serial
+      'worktree',
+      '/tmp/main-repo',
+      'feature/x',
+      failingWorktreeOps
+    );
+    const haltSpy = vi.spyOn(orch, 'haltScheduling').mockImplementation(() => {});
+
+    const path = await callResolve(orch, 'WCAG-012');
+    expect(path).toBe('/tmp/spec-worktree');
+    expect(haltSpy).not.toHaveBeenCalled();
+    expect(incidentSpy).not.toHaveBeenCalled();
+  });
+
+  it('parallel mode + createStoryWorktree succeeds → returns sub-worktree path', async () => {
+    const ops = {
+      createStoryWorktree: vi.fn().mockResolvedValue('/tmp/sub-worktree-WCAG-012'),
+      removeStoryWorktree: vi.fn().mockResolvedValue(undefined),
+      mergeStoryBranchIntoSpec: vi.fn().mockResolvedValue(undefined),
+    };
+    const orch = AutoModeSpecOrchestrator.create(
+      '/tmp/spec-worktree',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      2,
+      'worktree',
+      '/tmp/main-repo',
+      'feature/x',
+      ops
+    );
+
+    const path = await callResolve(orch, 'WCAG-012');
+    expect(path).toBe('/tmp/sub-worktree-WCAG-012');
+    expect(ops.createStoryWorktree).toHaveBeenCalledWith('/tmp/main-repo', '2026-05-05-x', 'WCAG-012');
+  });
+
+  it('non-worktree gitStrategy → returns projectPath without calling worktreeOps', async () => {
+    const ops = {
+      createStoryWorktree: vi.fn(),
+      removeStoryWorktree: vi.fn(),
+      mergeStoryBranchIntoSpec: vi.fn(),
+    };
+    const orch = AutoModeSpecOrchestrator.create(
+      '/tmp/main-repo',
+      '2026-05-05-x',
+      'specwright',
+      makeStubCtm(),
+      2,
+      'branch',           // not worktree
+      undefined,
+      'feature/x',
+      ops
+    );
+
+    const path = await callResolve(orch, 'WCAG-012');
+    expect(path).toBe('/tmp/main-repo');
+    expect(ops.createStoryWorktree).not.toHaveBeenCalled();
+  });
+});
+
 describe('AutoModeBacklogOrchestrator path routing', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
