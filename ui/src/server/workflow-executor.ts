@@ -592,20 +592,22 @@ export class WorkflowExecutor {
           // KAE-005: Auto-commit uncommitted changes ONLY before creating NEW worktree
           // This ensures the spec and all current work is included in the worktree
           try {
-            const status = execSync('git status --porcelain', {
-              cwd: projectPath,
-              encoding: 'utf-8',
-              stdio: ['pipe', 'pipe', 'pipe']
+            await withMainProjectLock(projectPath, 'setup-auto-commit', async () => {
+              const status = execSync('git status --porcelain', {
+                cwd: projectPath,
+                encoding: 'utf-8',
+                stdio: ['pipe', 'pipe', 'pipe']
+              });
+              if (status.trim()) {
+                console.log('[Workflow] Uncommitted changes detected, auto-committing before worktree creation...');
+                execSync('git add -A', { cwd: projectPath, stdio: 'pipe' });
+                const commitMessage = `chore: auto-commit before worktree for ${specId}`;
+                execSync(`git commit -m "${commitMessage}"`, { cwd: projectPath, stdio: 'pipe' });
+                console.log('[Workflow] Auto-commit successful');
+              } else {
+                console.log('[Workflow] No uncommitted changes, proceeding with worktree creation');
+              }
             });
-            if (status.trim()) {
-              console.log('[Workflow] Uncommitted changes detected, auto-committing before worktree creation...');
-              execSync('git add -A', { cwd: projectPath, stdio: 'pipe' });
-              const commitMessage = `chore: auto-commit before worktree for ${specId}`;
-              execSync(`git commit -m "${commitMessage}"`, { cwd: projectPath, stdio: 'pipe' });
-              console.log('[Workflow] Auto-commit successful');
-            } else {
-              console.log('[Workflow] No uncommitted changes, proceeding with worktree creation');
-            }
           } catch (commitError) {
             // Log but don't fail - the worktree creation might still work
             console.log('[Workflow] Auto-commit skipped or failed:', commitError instanceof Error ? commitError.message : commitError);
