@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed BPAM-007",
-    "nextAction": "Execute next task: BPAM-008",
-    "progressIndex": 7,
+    "lastAction": "Completed BPAM-008",
+    "nextAction": "Wait for blocked tasks to become ready",
+    "progressIndex": 8,
     "totalStories": 10
   },
   "execution": {
@@ -234,16 +234,24 @@
       "description": "Append idempotent gitignore block for kanban.json + kanban-board.md + backlog-index.json to project .gitignore via setup-mcp.sh.",
       "planSection": "Architektur D7 + Phase D",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-06T13:53:17.509Z",
+        "completedAt": "2026-05-06T13:55:02.700Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "setup-mcp.sh"
+        ],
+        "commits": [
+          {
+            "hash": "303eac070cc3541fc347e22327efe47f72096aa6",
+            "message": "feat: BPAM-008 setup-mcp.sh gitignore installer",
+            "timestamp": "2026-05-06T15:54:56+02:00"
+          }
+        ]
       }
     },
     {
@@ -296,11 +304,11 @@
   ],
   "boardStatus": {
     "total": 10,
-    "ready": 1,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 7,
+    "done": 8,
     "blocked": 2
   },
   "changeLog": [
@@ -446,6 +454,18 @@
       "timestamp": "2026-05-06T13:53:17.115Z",
       "action": "status_changed",
       "storyId": "BPAM-007",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-06T13:53:17.509Z",
+      "action": "status_changed",
+      "storyId": "BPAM-008",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-06T13:55:02.701Z",
+      "action": "status_changed",
+      "storyId": "BPAM-008",
       "details": "Task completed: in_progress → done"
     }
   ]
