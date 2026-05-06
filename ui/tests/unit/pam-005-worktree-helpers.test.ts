@@ -839,6 +839,96 @@ describe('createStoryWorktree branch base (D11 / v3.28.1)', () => {
     ).rejects.toThrow(/git worktree add failed/);
   });
 
+  it('auto-rebases stale story branch onto spec tip before merge (D13 / BPAM-013)', async () => {
+    // Seed shared doc on spec branch BEFORE either story branches, so each
+    // story sees a common base file and only appends its own line — disjoint
+    // edits that diff3 can resolve cleanly under rebase.
+    execSync(`git checkout -q ${specBranch}`, { cwd: projectPath });
+    await fs.writeFile(
+      join(projectPath, 'sharedDoc.md'),
+      '# Stories\n\n## TOP\n- baseline\n\n## BOTTOM\n- baseline\n'
+    );
+    execSync('git add sharedDoc.md && git commit -q -m "seed sharedDoc"', { cwd: projectPath });
+    const baseSpecTip = execSync(`git rev-parse ${specBranch}`, {
+      cwd: projectPath, encoding: 'utf-8',
+    }).trim();
+    execSync('git checkout -q main', { cwd: projectPath });
+
+    const executor = new WorkflowExecutor();
+
+    // Story A branches off spec tip, appends to TOP section, merges back.
+    const storyAId = 'STORY-A';
+    const storyA = `story/x/${storyAId}`;
+    const wtA = await executor.createStoryWorktree(projectPath, specId, storyAId, specBranch);
+    const docPath = join(wtA, 'sharedDoc.md');
+    let content = await fs.readFile(docPath, 'utf-8');
+    await fs.writeFile(docPath, content.replace('## TOP\n- baseline', '## TOP\n- baseline\n- A line'));
+    execSync('git add sharedDoc.md && git commit -q -m "A: append top"', { cwd: wtA });
+    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyA, wtA);
+
+    const specTipAfterA = execSync(`git rev-parse ${specBranch}`, {
+      cwd: projectPath, encoding: 'utf-8',
+    }).trim();
+    expect(specTipAfterA).not.toBe(baseSpecTip); // spec advanced
+
+    // Story B branched BEFORE A merged — base ref = baseSpecTip. Appends to
+    // BOTTOM section (disjoint from A).
+    const storyBId = 'STORY-B';
+    const storyB = `story/x/${storyBId}`;
+    const wtBBase = `${projectPath}-worktrees/x-${storyBId}`;
+    execSync(`git worktree add "${wtBBase}" -b ${storyB} ${baseSpecTip}`, { cwd: projectPath, stdio: 'pipe' });
+    const docPathB = join(wtBBase, 'sharedDoc.md');
+    content = await fs.readFile(docPathB, 'utf-8');
+    await fs.writeFile(docPathB, content.replace('## BOTTOM\n- baseline', '## BOTTOM\n- baseline\n- B line'));
+    execSync('git add sharedDoc.md && git commit -q -m "B: append bottom"', { cwd: wtBBase });
+
+    // Without D13 rebase: this would conflict (B's merge-base = baseSpecTip;
+    // A's merge added a line above; both modified the same file). With D13,
+    // B is rebased onto specTipAfterA (sees A's edit), then merges fast-forward.
+    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyB, wtBBase);
+
+    const specTipAfterB = execSync(`git rev-parse ${specBranch}`, {
+      cwd: projectPath, encoding: 'utf-8',
+    }).trim();
+    expect(specTipAfterB).not.toBe(specTipAfterA);
+
+    // Final shared doc has both stories' edits.
+    execSync(`git checkout -q ${specBranch}`, { cwd: projectPath });
+    const merged = await fs.readFile(join(projectPath, 'sharedDoc.md'), 'utf-8');
+    expect(merged).toContain('A line');
+    expect(merged).toContain('B line');
+    execSync('git checkout -q main', { cwd: projectPath });
+
+    execSync(`git worktree remove --force "${wtBBase}"`, { cwd: projectPath, stdio: 'pipe' });
+  });
+
+  it('throws "Rebase conflict" when story + spec touched same line', async () => {
+    const executor = new WorkflowExecutor();
+    const storyAId = 'STORY-CA';
+    const storyA = `story/x/${storyAId}`;
+    const wtA = await executor.createStoryWorktree(projectPath, specId, storyAId, specBranch);
+    await fs.writeFile(join(wtA, 'samefile.md'), 'CONTENT-FROM-A\n');
+    execSync('git add samefile.md && git commit -q -m "A: write file"', { cwd: wtA });
+    await executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyA, wtA);
+
+    const storyBId = 'STORY-CB';
+    const storyB = `story/x/${storyBId}`;
+    const wtB = `${projectPath}-worktrees/x-${storyBId}`;
+    execSync(`git worktree add "${wtB}" -b ${storyB} ${specSha}`, { cwd: projectPath, stdio: 'pipe' });
+    await fs.writeFile(join(wtB, 'samefile.md'), 'CONTENT-FROM-B\n');
+    execSync('git add samefile.md && git commit -q -m "B: write file"', { cwd: wtB });
+
+    await expect(
+      executor.mergeStoryBranchIntoSpec(projectPath, specBranch, storyB, wtB)
+    ).rejects.toThrow(/Rebase conflict/);
+
+    // Worktree must be left in a clean state (rebase --abort ran).
+    const status = execSync('git status --porcelain', { cwd: wtB, encoding: 'utf-8' }).trim();
+    expect(status).toBe('');
+
+    execSync(`git worktree remove --force "${wtB}"`, { cwd: projectPath, stdio: 'pipe' });
+  });
+
   it('reuses existing story branch (does not re-base off specBranch)', async () => {
     const executor = new WorkflowExecutor();
     // First create — branch forked from spec tip.

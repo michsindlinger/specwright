@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.28.2 - 2026-05-06
+
+### Behoben
+- **Auto-Rebase vor Merge (D13 / BPAM-013):** `mergeStoryBranchIntoSpec` rebased Story-Branch auf aktuellen Spec-Tip BEVOR der Merge versucht wird. D11 stellt sicher, dass eine Story zum Erstellungszeitpunkt vom Spec-Tip abzweigt — D13 schließt die Lücke, dass Sibling-Stories den Spec-Tip währenddessen advancen können. Common ancestor ist dann der ALTE Spec-Tip; ein Inhalt-Overlap auf shared Spec-Docs (z.B. `integration-context.md`) explodiert als Merge-Conflict, den ein sauberer Rebase trivial löst. Beobachtet bei `2026-05-05-ifdb-wcag-2-2-aa-remediation` WCAG-005: WCAG-005's Merge-Base war stale → Conflict trotz D11. Mit D13: Rebase repliziert WCAG-005's Diff auf Spec-Tip mit bereits gemergten Sibling-Commits, danach Fast-Forward-Merge.
+- **Echter Rebase-Conflict halt-fast:** Wenn Rebase wirklich nicht auflösbar ist (zwei Stories editieren exakt dieselbe Zeile), wirft `Rebase conflict: ${storyBranch} → ${specBranch} (manual resolve required)`. `git rebase --abort` cleant Worktree, Orchestrator hält an statt fragwürdigen Half-Merge zu produzieren.
+- **Fast-path no-op:** Wenn `git merge-base specBranch storyBranch === specBranch` (Story-Branch ist bereits up-to-date), wird Rebase übersprungen — keine unnötige Commit-Replay.
+
+### Geändert
+- `SpecWorktreeOps.mergeStoryBranchIntoSpec` Interface erweitert um `storyWorktreePath: string` Parameter. Caller in `auto-mode-spec-orchestrator.ts:resolveSlotProjectPath` reicht den Story-Worktree-Pfad durch, damit Rebase im richtigen Working-Tree läuft.
+
+### Tests
+- `pam-005-worktree-helpers.test.ts`: Auto-Rebase-Happy-Path (zwei Stories editieren disjoint sections derselben Datei → clean rebase), Rebase-Conflict-Halt (zwei Stories editieren exakt dieselbe Zeile → throw + worktree clean). +2 Tests, 59/59 passing.
+
 ## 3.28.1 - 2026-05-06
 
 ### Behoben

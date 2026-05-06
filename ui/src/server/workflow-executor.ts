@@ -3263,9 +3263,33 @@ export class WorkflowExecutor {
   public async mergeStoryBranchIntoSpec(
     projectPath: string,
     specBranch: string,
-    storyBranch: string
+    storyBranch: string,
+    storyWorktreePath: string
   ): Promise<void> {
     return withMainProjectLock(projectPath, 'merge-story-branch', async () => {
+      // D13 / v3.28.2: rebase story branch onto current spec tip BEFORE merge.
+      // D11 ensures a story branches off the spec tip *at creation time*, but
+      // sibling stories may merge into the spec branch while this story is
+      // running — leaving its merge-base stale. Common ancestor is the OLD
+      // spec tip; real content overlap on shared docs (e.g. integration-context.md)
+      // explodes as a merge conflict that a clean rebase resolves trivially.
+      // Skip when already up-to-date (fast-path no-op).
+      const specTip = execSync(`git rev-parse ${specBranch}`, {
+        cwd: projectPath, encoding: 'utf-8',
+      }).trim();
+      const mergeBase = execSync(`git merge-base ${specBranch} ${storyBranch}`, {
+        cwd: projectPath, encoding: 'utf-8',
+      }).trim();
+      if (mergeBase !== specTip) {
+        console.log(`[Workflow] D13: Rebasing ${storyBranch} onto ${specBranch} (merge-base ${mergeBase.slice(0, 8)} → spec tip ${specTip.slice(0, 8)})`);
+        try {
+          execSync(`git rebase ${specBranch}`, { cwd: storyWorktreePath, stdio: 'pipe' });
+        } catch {
+          try { execSync('git rebase --abort', { cwd: storyWorktreePath, stdio: 'pipe' }); } catch { /* ignore */ }
+          throw new Error(`Rebase conflict: ${storyBranch} → ${specBranch} (sibling stories changed overlapping files — manual resolve required)`);
+        }
+      }
+
       try {
         execSync(`git checkout ${specBranch}`, { cwd: projectPath, stdio: 'pipe' });
         execSync(

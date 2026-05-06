@@ -24,7 +24,7 @@ export interface SpecWorktreeOps {
    */
   createStoryWorktree(projectPath: string, specId: string, storyId: string, specBranch: string): Promise<string>;
   removeStoryWorktree(projectPath: string, worktreePath: string): Promise<void>;
-  mergeStoryBranchIntoSpec(projectPath: string, specBranch: string, storyBranch: string): Promise<void>;
+  mergeStoryBranchIntoSpec(projectPath: string, specBranch: string, storyBranch: string, storyWorktreePath: string): Promise<void>;
 }
 
 export interface AutoModeSpecOrchestratorConfig extends OrchestratorBaseConfig {
@@ -256,7 +256,7 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
       }
 
       try {
-        await this.worktreeOps.mergeStoryBranchIntoSpec(this.mainProjectPath, this.specBranch, branch);
+        await this.worktreeOps.mergeStoryBranchIntoSpec(this.mainProjectPath, this.specBranch, branch, wtPath);
         console.log(`[SpecOrchestrator] Merged ${branch} into ${this.specBranch}`);
         await this.worktreeOps.removeStoryWorktree(this.mainProjectPath, wtPath);
       } catch (err) {
