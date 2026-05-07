@@ -9,6 +9,7 @@
 **Type**: [STORY_TYPE]
 **Estimated Effort**: [EFFORT_ESTIMATE]
 **Dependencies**: [DEPENDENCIES]
+**Requires User Action**: [REQUIRES_USER_ACTION]  <!-- v3.14: true|false. true → AI cannot complete autonomously (manual step). Auto-mode skips; user confirms via UI button. -->
 
 ---
 

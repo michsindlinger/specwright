@@ -228,6 +228,11 @@
         "complexity": {
           "type": "string",
           "enum": ["XS", "S", "M", "L", "XL"]
+        },
+        "requiresUserAction": {
+          "type": "boolean",
+          "default": false,
+          "description": "True when the story needs a manual user step the AI cannot perform autonomously (e.g. obtaining external credentials, 3rd-party UI configuration). Auto-mode skips such stories and waits for explicit user confirmation. CONVENTION: only interpreted when status === 'ready'. After confirmation the story lands in 'done' but the flag is preserved for audit; consumers must combine status + flag."
         }
       }
     },
@@ -370,7 +375,7 @@
         },
         "action": {
           "type": "string",
-          "enum": ["kanban_created", "execution_started", "execution_paused", "execution_resumed", "execution_completed", "status_changed", "phase_changed", "dependency_resolved", "story_added", "story_modified", "model_changed", "commit_created"]
+          "enum": ["kanban_created", "execution_started", "execution_paused", "execution_resumed", "execution_completed", "status_changed", "phase_changed", "dependency_resolved", "story_added", "story_modified", "model_changed", "commit_created", "user_action_flagged", "user_action_completed"]
         },
         "storyId": {
           "type": ["string", "null"]

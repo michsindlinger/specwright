@@ -2,7 +2,7 @@
 description: Add new user story to existing specification
 globs:
 alwaysApply: false
-version: 2.0
+version: 2.1
 encoding: UTF-8
 ---
 
@@ -320,6 +320,29 @@ Main agent does technical refinement guided by architect-refinement skill.
      }
 
      LOG: "Story {STORY_ID} added to kanban via MCP tool. Total stories: {newTotal}"
+
+  3. **DETECT USER-ACTION (v3.14):**
+
+     LOAD shared rules via hybrid lookup (project → global):
+     - Try: `specwright/templates/docs/user-action-detection-rules.md`
+     - Fallback: `~/.specwright/templates/docs/user-action-detection-rules.md`
+
+     Apply rules to the new story. If the rules match, ASK user inline:
+     ```
+     Story {STORY_ID} sieht nach User-Action aus (Grund: [reason]).
+     Auto-Mode soll diese Story überspringen und auf manuelle Bestätigung warten?
+       [j] flaggen / [n] nicht flaggen
+     ```
+
+     IF user agrees: CALL MCP TOOL `kanban_set_user_action`
+     Input:
+     {
+       "specId": "[SELECTED_SPEC]",
+       "storyId": "[STORY_ID]",
+       "mode": "flag"
+     }
+
+     LOG result. The story now appears in the kanban UI with a `⚠ Aktion nötig` badge and a confirm button; auto-mode will skip it.
 
      NOTE: The MCP tool automatically:
      - Validates story ID is unique

@@ -44,7 +44,12 @@ import { existsSync } from 'fs';
 import { createHash } from 'crypto';
 import { withKanbanLock } from './kanban-lock.js';
 import { parseStoryFile } from './story-parser.js';
-import { validateTaskDescriptions } from './kanban-validation.js';
+import {
+  validateTaskDescriptions,
+  hasUserActionFlag,
+  applyUserActionMutation,
+  type UserActionMutationKind,
+} from './kanban-validation.js';
 import {
   generateStoryTemplate,
   generateBugTemplate,
@@ -133,6 +138,7 @@ interface KanbanJsonStory {
     priority: string;
     effort: string;
     complexity?: string;
+    requiresUserAction?: boolean;
   };
   type?: string;
   priority?: string;
@@ -215,6 +221,7 @@ interface KanbanJsonV2Task {
   model: string | null;
   timing: { startedAt: string | null; completedAt: string | null };
   implementation: { filesModified: string[]; commits: KanbanJsonCommit[] };
+  requiresUserAction?: boolean;
 }
 
 interface KanbanJsonV2 {
@@ -426,13 +433,15 @@ const TOOLS: Tool[] = [
                   type: { type: 'string' },
                   priority: { type: 'string' },
                   effort: { type: 'string' },
-                  complexity: { type: 'string' }
+                  complexity: { type: 'string' },
+                  requiresUserAction: { type: 'boolean', description: 'True if story needs a manual user step the AI cannot perform autonomously.' }
                 }
               },
               status: { type: 'string', enum: ['ready', 'blocked'] },
               dorStatus: { type: 'string', description: 'DoR status (ready/incomplete)' },
               dependencies: { type: 'array', items: { type: 'string' } },
-              integration: { type: 'array', items: { type: 'string' }, description: 'Integration notes' }
+              integration: { type: 'array', items: { type: 'string' }, description: 'Integration notes' },
+              requiresUserAction: { type: 'boolean', description: 'V1 alternative: top-level flag (otherwise nested under classification.requiresUserAction).' }
             },
             required: ['id', 'title', 'status', 'dependencies']
           }
@@ -448,7 +457,8 @@ const TOOLS: Tool[] = [
               description: { type: 'string', description: '2-3 sentences: what to implement' },
               planSection: { type: 'string', description: 'Reference to implementation plan section (e.g., "Phase 1, Component X")' },
               dependencies: { type: 'array', items: { type: 'string' }, description: 'Task IDs this depends on' },
-              status: { type: 'string', enum: ['ready', 'blocked'] }
+              status: { type: 'string', enum: ['ready', 'blocked'] },
+              requiresUserAction: { type: 'boolean', description: 'True if task needs a manual user step the AI cannot perform autonomously; auto-mode skips and waits for explicit user confirm.' }
             },
             required: ['id', 'title', 'description', 'planSection', 'dependencies', 'status']
           }
@@ -565,6 +575,19 @@ const TOOLS: Tool[] = [
         storyId: { type: 'string', description: 'Optional: specific story ID to fetch instead of next ready story' }
       },
       required: ['specId']
+    }
+  },
+  {
+    name: 'kanban_set_user_action',
+    description: 'Set or clear the requiresUserAction flag, or confirm completion. mode=flag/unflag toggles the flag on a ready item. mode=complete confirms a flagged ready item → done (status transition only the user is allowed to perform). All modes are idempotent and atomic.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        specId: { type: 'string', description: 'Spec ID' },
+        storyId: { type: 'string', description: 'Story / task ID' },
+        mode: { type: 'string', enum: ['flag', 'unflag', 'complete'], description: 'flag=mark as user-action; unflag=clear flag; complete=confirm user action done (ready → done)' }
+      },
+      required: ['specId', 'storyId', 'mode']
     }
   },
   {
@@ -851,11 +874,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             type?: string;
             priority?: string;
             effort?: number;
-            classification?: { type: string; priority: string; effort: string; complexity?: string };
+            classification?: { type: string; priority: string; effort: string; complexity?: string; requiresUserAction?: boolean };
             status: 'ready' | 'blocked';
             dorStatus?: string;
             dependencies: string[];
             integration?: string[];
+            requiresUserAction?: boolean;
           }>;
           executionPlan?: {
             strategy: string;
@@ -894,6 +918,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'kanban_get_next_task':
         return await handleKanbanGetNextTask(specPath, (args as { storyId?: string }).storyId);
+
+      case 'kanban_set_user_action':
+        return await handleKanbanSetUserAction(specPath, args as {
+          storyId: string;
+          mode: UserActionMutationKind;
+        });
 
       case 'kanban_add_item':
         return await handleKanbanAddItem(specPath, args as {
@@ -1104,11 +1134,12 @@ async function handleKanbanCreate(
       type?: string;
       priority?: string;
       effort?: number;
-      classification?: { type: string; priority: string; effort: string; complexity?: string };
+      classification?: { type: string; priority: string; effort: string; complexity?: string; requiresUserAction?: boolean };
       status: 'ready' | 'blocked';
       dorStatus?: string;
       dependencies: string[];
       integration?: string[];
+      requiresUserAction?: boolean;
     }>;
     tasks?: Array<{
       id: string;
@@ -1117,6 +1148,7 @@ async function handleKanbanCreate(
       planSection: string;
       dependencies: string[];
       status: 'ready' | 'blocked';
+      requiresUserAction?: boolean;
     }>;
     executionPlan?: {
       strategy: string;
@@ -1138,6 +1170,7 @@ async function handleKanbanCreate(
         planSection: string;
         dependencies: string[];
         status: 'ready' | 'blocked';
+        requiresUserAction?: boolean;
       }>;
     });
   }
@@ -1183,11 +1216,21 @@ async function handleKanbanCreate(
 
       // Pass through classification or flat fields as provided
       if (s.classification) {
-        story.classification = s.classification;
+        story.classification = { ...s.classification };
       } else {
         story.type = storyType;
         story.priority = storyPriority;
         story.effort = typeof storyEffort === 'string' ? storyEffort : storyEffort as number;
+      }
+
+      // v3.14: requiresUserAction flag — accept either nested or top-level input.
+      // Persist into classification (canonical V1 location) so consumers have a single read path.
+      const flag = s.classification?.requiresUserAction ?? (s as { requiresUserAction?: boolean }).requiresUserAction;
+      if (flag === true) {
+        story.classification = {
+          ...(story.classification ?? { type: storyType, priority: storyPriority, effort: String(storyEffort) }),
+          requiresUserAction: true,
+        };
       }
 
       // Pass through optional fields
@@ -1318,6 +1361,7 @@ async function handleKanbanCreateV2(
       planSection: string;
       dependencies: string[];
       status: 'ready' | 'blocked';
+      requiresUserAction?: boolean;
     }>;
   }
 ) {
@@ -1330,18 +1374,22 @@ async function handleKanbanCreateV2(
       console.warn('[KanbanCreateV2] Description warnings:\n' + warnings.join('\n'));
     }
 
-    const tasks: KanbanJsonV2Task[] = args.tasks.map(t => ({
-      id: t.id,
-      title: t.title,
-      description: t.description,
-      planSection: t.planSection,
-      dependencies: t.dependencies,
-      status: t.status as KanbanJsonStatus,
-      phase: 'pending' as KanbanJsonPhase,
-      model: null,
-      timing: { startedAt: null, completedAt: null },
-      implementation: { filesModified: [], commits: [] }
-    }));
+    const tasks: KanbanJsonV2Task[] = args.tasks.map(t => {
+      const task: KanbanJsonV2Task = {
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        planSection: t.planSection,
+        dependencies: t.dependencies,
+        status: t.status as KanbanJsonStatus,
+        phase: 'pending' as KanbanJsonPhase,
+        model: null,
+        timing: { startedAt: null, completedAt: null },
+        implementation: { filesModified: [], commits: [] }
+      };
+      if (t.requiresUserAction === true) task.requiresUserAction = true;
+      return task;
+    });
 
     const boardStatus: KanbanJsonBoardStatus = {
       total: tasks.length,
@@ -1425,6 +1473,14 @@ async function handleKanbanStartStory(
       if (!task) {
         throw new Error(`Task ${args.storyId} not found in kanban.json`);
       }
+      // v3.14: bypass guard — flagged ready items can only be progressed by the user
+      // via kanban_set_user_action mode='complete'. Refuse here so an auto-mode agent
+      // cannot accidentally start it.
+      if (hasUserActionFlag(task) && task.status === 'ready') {
+        throw new Error(
+          `Task ${task.id} requires user action. Use kanban_set_user_action mode='complete' once the user has confirmed the manual step.`
+        );
+      }
       const now = new Date().toISOString();
       const oldStatus = task.status;
 
@@ -1458,6 +1514,13 @@ async function handleKanbanStartStory(
 
     if (!story) {
       throw new Error(`Story ${args.storyId} not found in kanban.json`);
+    }
+
+    // v3.14: bypass guard — see V2 branch above for rationale.
+    if (hasUserActionFlag(story) && story.status === 'ready') {
+      throw new Error(
+        `Story ${story.id} requires user action. Use kanban_set_user_action mode='complete' once the user has confirmed the manual step.`
+      );
     }
 
     const now = new Date().toISOString();
@@ -1524,6 +1587,12 @@ async function handleKanbanCompleteStory(
       if (!task) {
         throw new Error(`Task ${args.storyId} not found in kanban.json`);
       }
+      // v3.14: bypass guard — flagged ready items must go through user-action confirm.
+      if (hasUserActionFlag(task) && task.status === 'ready') {
+        throw new Error(
+          `Task ${task.id} requires user action. Use kanban_set_user_action mode='complete' instead of kanban_complete_story.`
+        );
+      }
       const now = new Date().toISOString();
       const oldStatus = task.status;
 
@@ -1572,6 +1641,13 @@ async function handleKanbanCompleteStory(
 
     if (!story) {
       throw new Error(`Story ${args.storyId} not found in kanban.json`);
+    }
+
+    // v3.14: bypass guard — see V2 branch above.
+    if (hasUserActionFlag(story) && story.status === 'ready') {
+      throw new Error(
+        `Story ${story.id} requires user action. Use kanban_set_user_action mode='complete' instead of kanban_complete_story.`
+      );
     }
 
     const now = new Date().toISOString();
@@ -1625,6 +1701,100 @@ async function handleKanbanCompleteStory(
           },
           remaining: remainingStories.length
         }, null, 2)
+      }]
+    };
+  });
+}
+
+/**
+ * v3.14: Atomic user-action transition. mode=flag/unflag toggles requiresUserAction
+ * on a `ready` item; mode=complete confirms a flagged ready item → done. The flag
+ * is preserved on done items for audit (callers must combine status + flag when
+ * filtering for "needs attention").
+ */
+async function handleKanbanSetUserAction(
+  specPath: string,
+  args: { storyId: string; mode: UserActionMutationKind }
+) {
+  return await withKanbanLock(specPath, async () => {
+    const kanban = await readKanbanJson(specPath);
+    const now = new Date().toISOString();
+
+    if (isV2Kanban(kanban)) {
+      const task = kanban.tasks.find(t => t.id === args.storyId);
+      if (!task) {
+        throw new Error(`Task ${args.storyId} not found in kanban.json`);
+      }
+      const result = applyUserActionMutation(task as unknown as Parameters<typeof applyUserActionMutation>[0], args.mode, true, now);
+      if (!result.changed) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, changed: false, reason: result.reason }, null, 2) }]
+        };
+      }
+      updateV2BoardStatus(kanban);
+      if (args.mode === 'complete') {
+        kanban.resumeContext.currentStory = null;
+        kanban.resumeContext.currentStoryPhase = null;
+        kanban.resumeContext.progressIndex += 1;
+        kanban.resumeContext.lastAction = `User confirmed ${task.id}`;
+        const remaining = kanban.tasks.filter(t => t.status !== 'done');
+        if (remaining.length === 0) {
+          kanban.resumeContext.nextAction = 'All tasks complete';
+          kanban.resumeContext.currentPhase = 'complete';
+          kanban.execution.status = 'completed';
+          kanban.execution.completedAt = now;
+        }
+      }
+      const action = args.mode === 'complete' ? 'user_action_completed' : 'user_action_flagged';
+      const details = args.mode === 'complete'
+        ? `User confirmed manual action: ${result.oldStatus} → done`
+        : args.mode === 'flag' ? 'Flagged as requires-user-action' : 'Cleared requires-user-action flag';
+      kanban.changeLog.push({ timestamp: now, action, storyId: task.id, details });
+      await writeKanbanJson(specPath, kanban);
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({ success: true, changed: true, item: { id: task.id, status: task.status }, mode: args.mode }, null, 2)
+        }]
+      };
+    }
+
+    // V1
+    const story = kanban.stories.find(s => s.id === args.storyId);
+    if (!story) {
+      throw new Error(`Story ${args.storyId} not found in kanban.json`);
+    }
+    const result = applyUserActionMutation(story as unknown as Parameters<typeof applyUserActionMutation>[0], args.mode, false, now);
+    if (!result.changed) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ success: true, changed: false, reason: result.reason }, null, 2) }]
+      };
+    }
+    updateBoardStatus(kanban);
+    if (args.mode === 'complete') {
+      updateStatistics(kanban);
+      kanban.resumeContext.currentStory = null;
+      kanban.resumeContext.currentStoryPhase = null;
+      kanban.resumeContext.progressIndex += 1;
+      kanban.resumeContext.lastAction = `User confirmed ${story.id}`;
+      const remaining = kanban.stories.filter(s => s.status !== 'done');
+      if (remaining.length === 0) {
+        kanban.resumeContext.nextAction = 'All stories complete';
+        kanban.resumeContext.currentPhase = 'complete';
+        kanban.execution.status = 'completed';
+        kanban.execution.completedAt = now;
+      }
+    }
+    const action = args.mode === 'complete' ? 'user_action_completed' : 'user_action_flagged';
+    const details = args.mode === 'complete'
+      ? `User confirmed manual action: ${result.oldStatus} → done`
+      : args.mode === 'flag' ? 'Flagged as requires-user-action' : 'Cleared requires-user-action flag';
+    addChangeLogEntry(kanban, action, story.id, details);
+    await writeKanbanJson(specPath, kanban);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ success: true, changed: true, item: { id: story.id, status: story.status }, mode: args.mode }, null, 2)
       }]
     };
   });
@@ -1749,7 +1919,8 @@ async function handleKanbanGetNextTask(specPath: string, storyId?: string) {
       };
     }
   } else {
-    nextStory = kanban.stories.find(s => s.status === 'ready');
+    // v3.14: skip user-action items — they require explicit user confirm via kanban_set_user_action.
+    nextStory = kanban.stories.find(s => s.status === 'ready' && !hasUserActionFlag(s));
   }
 
   if (!nextStory) {
@@ -1758,7 +1929,20 @@ async function handleKanbanGetNextTask(specPath: string, storyId?: string) {
         type: 'text',
         text: JSON.stringify({
           success: false,
-          message: 'No ready stories found. All stories are either in_progress, done, or blocked.'
+          message: 'No ready stories found (excluding user-action items). All stories are either in_progress, done, blocked, or awaiting user action.'
+        }, null, 2)
+      }]
+    };
+  }
+
+  // v3.14: explicit-by-id requests for a flagged item must go through user-action confirm, not implementation.
+  if (hasUserActionFlag(nextStory) && nextStory.status === 'ready') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          message: `Story ${nextStory.id} requires user action. Use kanban_set_user_action mode='complete' once the user has confirmed the manual step.`
         }, null, 2)
       }]
     };
@@ -1962,7 +2146,8 @@ async function handleKanbanGetNextTaskV2(
       };
     }
   } else {
-    nextTask = kanban.tasks.find(t => t.status === 'ready');
+    // v3.14: skip user-action tasks — they require explicit user confirm via kanban_set_user_action.
+    nextTask = kanban.tasks.find(t => t.status === 'ready' && !hasUserActionFlag(t));
   }
 
   if (!nextTask) {
@@ -1971,7 +2156,20 @@ async function handleKanbanGetNextTaskV2(
         type: 'text',
         text: JSON.stringify({
           success: false,
-          message: 'No ready tasks found. All tasks are either in_progress, done, or blocked.'
+          message: 'No ready tasks found (excluding user-action items). All tasks are either in_progress, done, blocked, or awaiting user action.'
+        }, null, 2)
+      }]
+    };
+  }
+
+  // v3.14: explicit-by-id requests for a flagged task must go through user-action confirm.
+  if (hasUserActionFlag(nextTask) && nextTask.status === 'ready') {
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: false,
+          message: `Task ${nextTask.id} requires user action. Use kanban_set_user_action mode='complete' once the user has confirmed the manual step.`
         }, null, 2)
       }]
     };

@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.13.0
+version: 3.14.0
 encoding: UTF-8
 ---
 
@@ -11,6 +11,13 @@ encoding: UTF-8
 ## Overview
 
 Create detailed feature specifications: Main agent gathers fachliche requirements (PO role), then either generates V2 Lean Tasks (default) or V1 Classic Stories with technical refinement (`--classic` flag).
+
+**v3.14 Changes (User-Action Flag):**
+- **NEW: `requiresUserAction` flag** — stories/tasks that require a manual user step the AI cannot perform autonomously (external credentials, 3rd-party UI config, etc.) are flagged at creation time.
+- **NEW: Step 6.5 (V2 Lean) and Step 8.15 (V1 Classic)** — detect user-action items based on the shared `user-action-detection-rules.md` template, confirm with user, persist the flag.
+- **NEW: Shared template** — `specwright/templates/docs/user-action-detection-rules.md` is the single source of truth, also used by `add-story`, `change-spec`, and `flag-user-actions`.
+- **Auto-mode integration:** flagged items are skipped by auto-mode; the kanban UI shows a `⚠ Aktion nötig` badge plus a `✓ Aktion erledigt` button. Confirming the button moves the item directly to `done`.
+- **Setup impact:** `setup-devteam-global.sh` ships the new template.
 
 **v3.13 Changes (Template Extraction):**
 - **CHANGED: Step 2.2 — clarification template extracted to `specwright/templates/docs/requirements-clarification-template.md`** — shared with `transfer-and-create-spec.md` v2.0+. Loaded via hybrid lookup (project → global fallback). Eliminates drift risk between create-spec and transfer flow.
@@ -967,6 +974,20 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
 
      Consistency check with Step 2.3.1 pre-classification (same as V1).
 
+  6.5. **DETECT USER-ACTION TASKS (v3.14):**
+
+     LOAD shared rules via hybrid lookup (project → global):
+     - Try: `specwright/templates/docs/user-action-detection-rules.md`
+     - Fallback: `~/.specwright/templates/docs/user-action-detection-rules.md`
+
+     READ the loaded file. Apply rules to **each derived task** (business tasks only — system tasks 997/998/999 are NEVER user-action). For each candidate, capture {id, title, reason}.
+
+     PRESENT the candidate list to the user using the confirmation UX defined in the template (numbered list, allow deselect / add / cancel). Wait for explicit user response before proceeding.
+
+     RECORD the final user-confirmed set on each task object as `requiresUserAction: true|false` (default false). If the user adds a task that wasn't auto-detected, the final answer wins.
+
+     OUTPUT this list inline in spec.md under a section "User-Action Tasks" (one bullet per flagged task with its reason) so future readers know which tasks require manual steps.
+
   7. **CREATE kanban.json via MCP tool `kanban_create`:**
 
      **IMPORTANT: Use MCP tool `kanban_create` — never write kanban.json manually.**
@@ -984,6 +1005,7 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
        - planSection (exact heading string)
        - dependencies (array of task ids)
        - status ("ready" or "blocked")
+       - requiresUserAction (true|false from Step 6.5; omit when false)
 
      The MCP tool:
      - Creates V2 schema (version "2.0", mode "lean")
@@ -1221,6 +1243,18 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
      - M-Spec: Optional (as before)
      - L-Spec: MANDATORY (must be created even if no obvious cross-cutting concerns)
 
+  8.15 **DETECT USER-ACTION STORIES (v3.14):**
+
+     LOAD shared rules via hybrid lookup (project → global):
+     - Try: `specwright/templates/docs/user-action-detection-rules.md`
+     - Fallback: `~/.specwright/templates/docs/user-action-detection-rules.md`
+
+     READ the loaded file. Apply rules to **each business story** (system stories 997/998/999 are NEVER user-action). For each candidate, capture {id, title, reason}.
+
+     PRESENT the candidate list using the confirmation UX defined in the template (numbered list, allow deselect / add / cancel). Wait for explicit user response before proceeding.
+
+     RECORD the final user-confirmed set on each story. The flag will be passed into `kanban_create` (Step 8.2) under `classification.requiresUserAction: true`. Append a "User-Action Stories" bullet list to spec.md so future readers see which stories require manual steps.
+
   8.2 CREATE kanban.json (Single Source of Truth for /execute-tasks):
 
      **IMPORTANT: Use MCP tool `kanban_create` - NEVER write kanban.json manually via Write tool!**
@@ -1236,7 +1270,7 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
          - id: PREFIX-NNN (e.g., WSD-001)
          - title: story title
          - slug: url-safe title (optional)
-         - classification: { type, priority, effort, complexity }
+         - classification: { type, priority, effort, complexity, requiresUserAction }
            (alternative: flat fields type, priority, effort)
          - dependencies: [] (initially empty)
          - status: "ready" (or "blocked" if missing DoR)

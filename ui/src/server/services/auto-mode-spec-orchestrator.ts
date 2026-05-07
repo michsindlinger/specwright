@@ -188,6 +188,10 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     return this.specsReader.getReadyStories(this.mainProjectPath, this.specId, excludeIds);
   }
 
+  protected override async getUserActionPendingSet(excludeIds: Set<string>): Promise<ReadyItem[]> {
+    return this.specsReader.getUserActionPendingStories(this.mainProjectPath, this.specId, excludeIds);
+  }
+
   protected async recoverStaleInProgress(activeIds: Set<string>): Promise<void> {
     const recovered = await this.specsReader.resetStaleInProgress(
       this.mainProjectPath,

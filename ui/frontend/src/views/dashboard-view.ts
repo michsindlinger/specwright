@@ -434,6 +434,12 @@ export class AosDashboardView extends LitElement {
       ['specs.story', (msg) => this.onSpecsStory(msg)],
       ['specs.error', (msg) => this.onSpecsError(msg)],
       ['specs.story.updateStatus.ack', (msg) => this.onStoryStatusUpdateAck(msg)],
+      // v3.14: user-action workflow
+      ['specs.story.user-action.required', (msg) => this.onUserActionRequired(msg)],
+      ['specs.story.user-action.confirm.ack', (msg) => this.onUserActionConfirmAck(msg)],
+      ['specs.story.user-action.confirm.error', (msg) => this.onUserActionConfirmError(msg)],
+      ['specs.auto-mode.paused-awaiting-user', (msg) => this.onAutoModePausedAwaitingUser(msg)],
+      ['specs.user-action.snapshot.ack', (msg) => this.onUserActionSnapshot(msg)],
       ['specs.story.save', (msg) => this.onSpecStorySaveSuccess(msg)],
       ['specs.story.save.error', (msg) => this.onSpecStorySaveError(msg)],
       ['backlog.error', (msg) => this.onBacklogError(msg)],
@@ -1586,6 +1592,98 @@ export class AosDashboardView extends LitElement {
   }
 
   /**
+   * v3.14: user clicked "✓ Aktion erledigt" on a flagged story card.
+   * Optimistic UI: flip local status to 'done' immediately, then send confirm
+   * over the WebSocket. If the backend rejects (item not flagged or not ready
+   * anymore), the next kanban refresh restores truth.
+   */
+  private handleStoryUserActionConfirm(e: CustomEvent): void {
+    const { storyId, specId } = e.detail as { storyId: string; specId: string };
+    if (!this.selectedSpec || !this.kanban) return;
+    if (specId && specId !== this.selectedSpec.id) return;
+
+    const updatedStories = this.kanban.stories.map(story =>
+      story.id === storyId ? { ...story, status: 'done' as const } : story
+    );
+    this.kanban = { ...this.kanban, stories: updatedStories };
+
+    gateway.send({
+      type: 'specs.story.user-action.confirm',
+      specId: this.selectedSpec.id,
+      storyId
+    });
+  }
+
+  /**
+   * v3.14: orchestrator emitted `item.awaiting-user-action` for a story.
+   * UI already shows the badge (kanban payload carries the flag); we just
+   * surface a brief toast so the user sees an explicit prompt.
+   */
+  private onUserActionRequired(msg: WebSocketMessage): void {
+    const storyId = msg.storyId as string | undefined;
+    const title = msg.title as string | undefined;
+    if (!storyId) return;
+    this.dispatchEvent(new CustomEvent('show-toast', {
+      detail: {
+        message: `Story ${storyId}${title ? ` "${title}"` : ''} benötigt deine Aktion.`,
+        type: 'info'
+      },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  /**
+   * v3.14: backend acknowledged the user-action confirm. If `changed === false`
+   * the item wasn't actually flagged or already in a non-ready state — refresh
+   * to re-sync local state.
+   */
+  private onUserActionConfirmAck(msg: WebSocketMessage): void {
+    const changed = msg.changed === true;
+    if (!changed && this.selectedSpec) {
+      gateway.send({ type: 'specs.kanban', specId: this.selectedSpec.id });
+    }
+  }
+
+  private onUserActionConfirmError(msg: WebSocketMessage): void {
+    this.dispatchEvent(new CustomEvent('show-toast', {
+      detail: {
+        message: `User-Action konnte nicht bestätigt werden: ${msg.error ?? 'unknown error'}`,
+        type: 'error'
+      },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  /**
+   * v3.14: emitted when normal-ready set is empty but user-action items remain.
+   * Show a banner-style toast so the user sees auto-mode is paused waiting on them.
+   */
+  private onAutoModePausedAwaitingUser(msg: WebSocketMessage): void {
+    const items = (msg.pendingItems as Array<{ id: string; title: string }>) ?? [];
+    if (items.length === 0) return;
+    const summary = items.length === 1
+      ? `Story ${items[0].id} wartet auf deine Aktion.`
+      : `${items.length} Stories warten auf deine Aktion.`;
+    this.dispatchEvent(new CustomEvent('show-toast', {
+      detail: {
+        message: `Auto-Mode pausiert — ${summary}`,
+        type: 'warning'
+      },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  private onUserActionSnapshot(_msg: WebSocketMessage): void {
+    // No-op: kanban payload already carries `requiresUserAction` per story, so
+    // badges render correctly without separate hydration. Hook kept so the
+    // server can route a consistent reply when the client requests a snapshot
+    // (future-proof: e.g., when reconnect-after-flap loses kanban state).
+  }
+
+  /**
    * KAE-002: Handle auto-mode toggle from kanban board.
    * When enabled, immediately start processing if no story is in progress.
    * When disabled, clear any pending auto-execution timer.
@@ -2445,6 +2543,7 @@ export class AosDashboardView extends LitElement {
         @story-move=${this.handleStoryMove}
         @story-model-change=${this.handleStoryModelChange}
         @stories-bulk-model-change=${this.handleStoriesBulkModelChange}
+        @story-user-action-confirm=${this.handleStoryUserActionConfirm}
       ></aos-kanban-board>
     `;
   }

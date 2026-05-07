@@ -2,7 +2,7 @@
 description: Manage changes to existing specifications with verification and story adjustment
 globs:
 alwaysApply: false
-version: 2.0
+version: 2.1
 encoding: UTF-8
 installation: global
 ---
@@ -484,6 +484,23 @@ STORE: Current date for changelog
      - Reflect all status changes
      - Update dependency graph
      - Mark deleted stories
+
+  3. **DETECT USER-ACTION (v3.14) for new stories:**
+
+     FOR each newly created story (from Step 10.a "FOR new stories"):
+       LOAD shared rules via hybrid lookup (project → global):
+       - Try: `specwright/templates/docs/user-action-detection-rules.md`
+       - Fallback: `~/.specwright/templates/docs/user-action-detection-rules.md`
+
+       Apply rules to the story title + description.
+
+     IF any candidates found:
+       PRESENT the numbered list to the user (UX defined in template) and wait for confirmation.
+
+     FOR each user-confirmed story:
+       CALL MCP TOOL `kanban_set_user_action` with mode='flag' (after Step 11 has persisted the story to kanban.json).
+
+     The flag prevents auto-mode from picking up the story; UI shows badge + confirm button.
 </mandatory_actions>
 
 </step>

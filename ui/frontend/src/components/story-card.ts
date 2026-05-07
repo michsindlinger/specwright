@@ -36,6 +36,13 @@ export interface StoryInfo {
   attachmentCount?: number; // SCA-004: Number of attachments on this story
   commentCount?: number; // BLC-005: Number of comments on this story
   assignedToBot?: boolean; // Backlog item assignment
+  /**
+   * v3.14: true when the story/task needs a manual user step the AI cannot perform
+   * autonomously. Auto-mode skips it; the card shows a warning badge and (when
+   * still pending in `backlog`) a confirm button. Flag is preserved on `done`
+   * items for audit; consumers must combine flag + status when filtering.
+   */
+  requiresUserAction?: boolean;
 }
 
 // Default fallback providers (used if none provided)
@@ -355,6 +362,44 @@ export class AosStoryCard extends LitElement {
     .priority-low {
       color: #94A3B8;
       background: rgba(100, 116, 139, 0.15);
+    }
+
+    /* v3.14: user-action badge + card treatment */
+    .user-action-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: var(--radius-sm, 0.25rem);
+      color: #FBBF24;
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      cursor: help;
+    }
+
+    .story-card.user-action {
+      border-left: 3px solid #FBBF24;
+    }
+    .story-card.user-action-pending {
+      border-color: rgba(251, 191, 36, 0.5);
+      box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.08);
+    }
+
+    .user-action-confirm {
+      align-self: flex-start;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm, 0.25rem);
+      background: rgba(34, 197, 94, 0.12);
+      color: #22C55E;
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      cursor: pointer;
+      transition: background 150ms ease, color 150ms ease;
+    }
+    .user-action-confirm:hover {
+      background: rgba(34, 197, 94, 0.22);
     }
 
     .story-dor-status {
@@ -726,6 +771,21 @@ export class AosStoryCard extends LitElement {
     this.logExpanded = !this.logExpanded;
   }
 
+  /**
+   * v3.14: user clicked "✓ Aktion erledigt". Bubbles up to kanban-board which
+   * sends `specs.story.user-action.confirm` over the WebSocket.
+   */
+  private handleUserActionConfirm(e: Event): void {
+    e.stopPropagation();
+    this.dispatchEvent(
+      new CustomEvent('story-user-action-confirm', {
+        detail: { storyId: this.story.id, specId: this.specId },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
   private getTypeVariant(): string {
     const type = (this.story.type || '').toLowerCase();
     if (type.includes('bug') || type.includes('fix')) return 'type-bug';
@@ -786,12 +846,17 @@ export class AosStoryCard extends LitElement {
     const isActive = this.story.status === 'in_progress' || this.workflowStatus === 'working';
     const isWorking = this.workflowStatus === 'working';
     const isBlocked = this.story.status === 'blocked';
+    // v3.14: user-action items get a distinctive look. `userActionPending` means
+    // it's still ready (frontend status === 'backlog') AND flagged — confirm
+    // button shown. Items already in `done` keep the badge as audit hint.
+    const userActionFlagged = this.story.requiresUserAction === true;
+    const userActionPending = userActionFlagged && this.story.status === 'backlog';
     // TODO(backend): design also shows tag/category chip, size+SP, agent drafting %, blocked reason, assignee/PR/reviewers.
     // We use story.type for the tag, story.effort for the size label. The rest skip when not present.
 
     return html`
       <div
-        class="story-card ${this.isDragging ? 'dragging' : ''} ${this.dropdownOpen ? 'dropdown-open' : ''} ${this.dragDisabled ? 'drag-disabled' : ''} ${isActive ? 'active-ring' : ''}"
+        class="story-card ${this.isDragging ? 'dragging' : ''} ${this.dropdownOpen ? 'dropdown-open' : ''} ${this.dragDisabled ? 'drag-disabled' : ''} ${isActive ? 'active-ring' : ''} ${userActionFlagged ? 'user-action' : ''} ${userActionPending ? 'user-action-pending' : ''}"
         draggable="${this.dragDisabled ? 'false' : 'true'}"
         @click=${this.handleClick}
         @dragstart=${this.handleDragStart}
@@ -869,6 +934,11 @@ export class AosStoryCard extends LitElement {
           ${this.story.priority ? html`
             <span class="priority-badge ${this.getPriorityClass()}">${this.story.priority}</span>
           ` : ''}
+          ${userActionFlagged ? html`
+            <span class="user-action-badge" title="Diese Story benötigt eine manuelle Aktion durch den Benutzer. Auto-Mode überspringt sie.">
+              ⚠ Aktion nötig
+            </span>
+          ` : ''}
         </div>
 
         <div class="story-dor-status">
@@ -878,6 +948,17 @@ export class AosStoryCard extends LitElement {
             .errorMessage="${this.workflowError}"
           ></aos-story-status-badge>
         </div>
+
+        ${userActionPending ? html`
+          <button
+            class="user-action-confirm"
+            type="button"
+            title="Bestätigen, dass die manuelle Aktion erledigt ist — Story wird direkt nach Done verschoben."
+            @click=${this.handleUserActionConfirm}
+          >
+            ✓ Aktion erledigt
+          </button>
+        ` : ''}
 
         ${this.sessionId ? html`
           <div class="log-toggle-row" @click=${(e: Event) => e.stopPropagation()}>

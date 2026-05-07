@@ -73,6 +73,8 @@ command_files=(
     "add-story.md"
     "add-bug.md"
     "add-todo.md"
+    # User-action flag (v3.14): retroactive migration command
+    "flag-user-actions.md"
 
     # Task execution
     "execute-tasks.md"

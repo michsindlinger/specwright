@@ -1542,6 +1542,29 @@ export class AosKanbanBoard extends LitElement {
       }
     }
 
+    // v3.14: user-action items must be confirmed via the dedicated button.
+    // Block manual drag from `backlog` to `in_progress` / `in_review` / `done`.
+    // Drag back from `done` to `backlog` is still allowed (rollback path).
+    if (
+      story.requiresUserAction === true &&
+      story.status === 'backlog' &&
+      targetStatus !== 'backlog'
+    ) {
+      this.dispatchEvent(
+        new CustomEvent('show-toast', {
+          detail: {
+            message: `${storyId} benötigt eine User-Action — bitte über '✓ Aktion erledigt' bestätigen.`,
+            type: 'error'
+          },
+          bubbles: true,
+          composed: true
+        })
+      );
+      this.draggedStoryId = null;
+      this.dropValidation = { valid: true };
+      return;
+    }
+
     // Validate move to in_progress (skip DoR/dependency check for in_review rejection)
     if (targetStatus === 'in_progress' && story.status !== 'in_progress') {
       const fromInReview = story.status === 'in_review';

@@ -54,6 +54,14 @@ export interface StoryInfo {
   model: ModelSelection;
   file?: string; // Relative path to the story file within the spec folder (e.g., "stories/story-001.md")
   attachmentCount?: number;
+  /**
+   * v3.14: true when the story/task is flagged as requiring manual user action.
+   * Auto-mode never schedules these; UI shows a confirm button. Convention:
+   * the flag is preserved on `done` items for audit, so consumers must combine
+   * `requiresUserAction === true` with `status === 'backlog'` (frontend mapping
+   * for kanban `ready`) to identify items that still need user attention.
+   */
+  requiresUserAction?: boolean;
 }
 
 /**
@@ -209,6 +217,8 @@ interface KanbanJsonStory {
   timing: KanbanJsonStoryTiming;
   implementation: KanbanJsonStoryImplementation;
   verification: KanbanJsonStoryVerification;
+  classification?: { type?: string; priority?: string; effort?: string; complexity?: string; requiresUserAction?: boolean };
+  requiresUserAction?: boolean;
 }
 
 interface KanbanJsonBoardStatus {
@@ -273,6 +283,7 @@ interface KanbanJsonV2Task {
   model?: string | null;
   phase?: KanbanJsonPhase;
   timing?: { startedAt: string | null; completedAt: string | null };
+  requiresUserAction?: boolean;
   [key: string]: unknown;
 }
 
@@ -292,6 +303,19 @@ type KanbanJson = KanbanJsonV1 | KanbanJsonV2;
 
 function isV2Kanban(kanban: KanbanJson): kanban is KanbanJsonV2 {
   return 'mode' in kanban && (kanban as KanbanJsonV2).mode === 'lean' || 'version' in kanban && (kanban as KanbanJsonV2).version === '2.0';
+}
+
+/**
+ * v3.14: True when the story/task is flagged as requiring manual user action.
+ * Handles V1 (nested under classification) and V2 (top-level) asymmetry.
+ *
+ * CONVENTION: callers must combine this with `status === 'ready'` when filtering
+ * for "needs attention" — flagged items in `done` are kept for audit.
+ */
+export function hasUserActionFlag(item: { requiresUserAction?: boolean; classification?: { requiresUserAction?: boolean } }): boolean {
+  if (item.requiresUserAction === true) return true;
+  if (item.classification?.requiresUserAction === true) return true;
+  return false;
 }
 
 export class SpecsReader {
@@ -454,8 +478,11 @@ export class SpecsReader {
   }
 
   /**
-   * Returns stories/tasks with status 'ready', excluding any in excludeIds.
-   * Used by AutoModeSpecOrchestrator to find the next schedulable items.
+   * Returns stories/tasks with status 'ready' that auto-mode may schedule.
+   * v3.14: items flagged `requiresUserAction` are excluded — auto-mode never picks
+   * them; the user must confirm via `kanban_set_user_action mode='complete'`.
+   * Use `getUserActionPendingStories` to surface those to the UI.
+   *
    * Works for both V1 (stories[]) and V2/Lean (tasks[]) kanban formats.
    */
   public async getReadyStories(
@@ -469,12 +496,106 @@ export class SpecsReader {
 
     if (isV2Kanban(kanban)) {
       return kanban.tasks
-        .filter(t => t.status === 'ready' && !excludeIds.has(t.id))
+        .filter(t => t.status === 'ready' && !excludeIds.has(t.id) && !hasUserActionFlag(t))
         .map(t => ({ id: t.id, title: t.title || '', model: t.model ?? undefined }));
     }
     return kanban.stories
-      .filter(s => s.status === 'ready' && !excludeIds.has(s.id))
+      .filter(s => s.status === 'ready' && !excludeIds.has(s.id) && !hasUserActionFlag(s))
       .map(s => ({ id: s.id, title: s.title, model: s.model ?? undefined }));
+  }
+
+  /**
+   * v3.14: returns stories/tasks that are `ready` AND flagged as user-action.
+   * Auto-mode emits an `awaiting-user-action` event for each item in this set.
+   * After the user clicks "✓ Aktion erledigt" the item leaves the set (status → done).
+   */
+  public async getUserActionPendingStories(
+    projectPath: string,
+    specId: string,
+    excludeIds: Set<string> = new Set()
+  ): Promise<ReadyStoryInfo[]> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+    const kanban = await this.readKanbanJson(specPath);
+    if (!kanban) return [];
+
+    if (isV2Kanban(kanban)) {
+      return kanban.tasks
+        .filter(t => t.status === 'ready' && !excludeIds.has(t.id) && hasUserActionFlag(t))
+        .map(t => ({ id: t.id, title: t.title || '', model: t.model ?? undefined }));
+    }
+    return kanban.stories
+      .filter(s => s.status === 'ready' && !excludeIds.has(s.id) && hasUserActionFlag(s))
+      .map(s => ({ id: s.id, title: s.title, model: s.model ?? undefined }));
+  }
+
+  /**
+   * v3.14: confirm a flagged user-action item — flips status `ready` → `done`.
+   * Idempotent: returns false when the item is missing, not flagged, or not in `ready`.
+   * Mirrors the locking + persistence pattern of `updateStoryStatus`.
+   *
+   * NOTE: the `requiresUserAction` flag is preserved on the done item for audit.
+   * Callers that want a clean "needs attention" list must combine status + flag.
+   */
+  public async markUserActionComplete(
+    projectPath: string,
+    specId: string,
+    itemId: string
+  ): Promise<boolean> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+    return await withKanbanLock(specPath, async () => {
+      const kanban = await this.readKanbanJsonUnlocked(specPath);
+      if (!kanban) return false;
+      const now = new Date().toISOString();
+
+      if (isV2Kanban(kanban)) {
+        const task = kanban.tasks.find(t => t.id === itemId);
+        if (!task) return false;
+        if (!hasUserActionFlag(task)) return false;
+        if (task.status !== 'ready') return false;
+        task.status = 'done';
+        task.phase = 'done';
+        if (!task.timing) task.timing = { startedAt: null, completedAt: null };
+        task.timing.completedAt = now;
+        kanban.resumeContext.currentStory = null;
+        kanban.resumeContext.currentStoryPhase = null;
+        kanban.resumeContext.progressIndex += 1;
+        kanban.resumeContext.lastAction = `User confirmed ${itemId}`;
+        const remaining = kanban.tasks.filter(t => t.status !== 'done');
+        if (remaining.length === 0) {
+          kanban.resumeContext.nextAction = 'All tasks complete';
+          kanban.resumeContext.currentPhase = 'complete';
+          kanban.execution.status = 'completed';
+          kanban.execution.completedAt = now;
+        }
+        this.updateBoardStatus(kanban);
+        kanban.changeLog.push({ timestamp: now, action: 'user_action_completed', storyId: itemId, details: 'User confirmed manual action: ready → done' });
+        await this.writeKanbanJsonUnlocked(specPath, kanban);
+        return true;
+      }
+
+      const story = kanban.stories.find(s => s.id === itemId);
+      if (!story) return false;
+      if (!hasUserActionFlag(story)) return false;
+      if (story.status !== 'ready') return false;
+      story.status = 'done';
+      story.phase = 'done';
+      story.timing.completedAt = now;
+      kanban.resumeContext.currentStory = null;
+      kanban.resumeContext.currentStoryPhase = null;
+      kanban.resumeContext.progressIndex += 1;
+      kanban.resumeContext.lastAction = `User confirmed ${itemId}`;
+      const remaining = kanban.stories.filter(s => s.status !== 'done');
+      if (remaining.length === 0) {
+        kanban.resumeContext.nextAction = 'All stories complete';
+        kanban.resumeContext.currentPhase = 'complete';
+        kanban.execution.status = 'completed';
+        kanban.execution.completedAt = now;
+      }
+      this.updateBoardStatus(kanban);
+      kanban.changeLog.push({ timestamp: now, action: 'user_action_completed', storyId: itemId, details: 'User confirmed manual action: ready → done' });
+      await this.writeKanbanJsonUnlocked(specPath, kanban);
+      return true;
+    });
   }
 
   /**
@@ -713,7 +834,8 @@ export class SpecsReader {
         dorComplete: deps.length === 0 || dorComplete,
         model: task.model ?? 'opus',
         file: undefined,
-        attachmentCount: 0
+        attachmentCount: 0,
+        ...(hasUserActionFlag(task) ? { requiresUserAction: true } : {})
       };
     });
 
@@ -755,7 +877,8 @@ export class SpecsReader {
         // Use dorComplete from story files if available, otherwise derive from status
         dorComplete: storiesFromFiles.get(s.id)?.dorComplete ?? (s.status !== 'blocked'),
         model: s.model || 'opus',
-        file: (s as { storyFile?: string }).storyFile || s.file || undefined
+        file: (s as { storyFile?: string }).storyFile || s.file || undefined,
+        ...(hasUserActionFlag(s) ? { requiresUserAction: true } : {})
       };
     });
 

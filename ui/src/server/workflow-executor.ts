@@ -1707,6 +1707,32 @@ export class WorkflowExecutor {
       });
     });
 
+    // v3.14: user-action awaiting — surface a dedicated UI state so the user
+    // sees a confirm button on the card instead of letting auto-mode pick it up.
+    orchestrator.on('item.awaiting-user-action', (itemId: string, title: string) => {
+      this.sendToProject(projectPath, {
+        type: 'specs.story.user-action.required',
+        specId,
+        storyId: itemId,
+        title,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // v3.14: emitted when normal-ready set is empty but user-action items remain.
+    // Auto-mode stays alive (does not declare 'all-items-done') until user confirms.
+    orchestrator.on(
+      'auto-mode.paused-awaiting-user',
+      (pendingItems: Array<{ id: string; title: string }>) => {
+        this.sendToProject(projectPath, {
+          type: 'specs.auto-mode.paused-awaiting-user',
+          specId,
+          pendingItems,
+          timestamp: new Date().toISOString()
+        });
+      }
+    );
+
     orchestrator.on('story.completed', (storyId: string) => {
       console.log(`[Workflow] Auto-Mode: Story ${storyId} completed`);
       this.sendToProject(projectPath, {
@@ -3560,6 +3586,54 @@ export class WorkflowExecutor {
       console.error('[Workflow] Auto-Mode: Cancel error:', err)
     );
     return true;
+  }
+
+  /**
+   * v3.14: confirm a user-action item — flips kanban status `ready` → `done`
+   * via SpecsReader.markUserActionComplete, then re-ticks the orchestrator so
+   * any items unblocked by the completion get scheduled.
+   *
+   * Returns false when the item is missing, not flagged, or not in `ready`
+   * (idempotent — safe to call from a UI button click that may race with
+   * concurrent updates).
+   */
+  public async confirmUserActionDone(
+    projectPath: string,
+    specId: string,
+    storyId: string
+  ): Promise<boolean> {
+    const reader = new SpecsReader();
+    const ok = await reader.markUserActionComplete(projectPath, specId, storyId);
+    if (!ok) return false;
+
+    const orchestrator = this.autoModeSpecOrchestrators.get(specId);
+    if (orchestrator) {
+      orchestrator.forgetAwaitingItem(storyId);
+      orchestrator.scheduleTick().catch(err =>
+        console.error('[Workflow] confirmUserActionDone scheduleTick error:', err)
+      );
+    }
+
+    // Broadcast so all connected clients refresh their kanban view.
+    this.sendToProject(projectPath, {
+      type: 'backlog.kanban.refresh',
+      timestamp: new Date().toISOString()
+    });
+    return true;
+  }
+
+  /**
+   * v3.14: snapshot of all currently flagged + ready user-action items for a spec.
+   * Used by the WebSocket layer on (re)connect so the client can hydrate the
+   * "user action required" state without waiting for the next orchestrator tick.
+   */
+  public async getUserActionPendingSnapshot(
+    projectPath: string,
+    specId: string
+  ): Promise<Array<{ id: string; title: string }>> {
+    const reader = new SpecsReader();
+    const items = await reader.getUserActionPendingStories(projectPath, specId);
+    return items.map(i => ({ id: i.id, title: i.title }));
   }
 
   /**

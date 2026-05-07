@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.28.6"
+FRAMEWORK_VERSION="3.29.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -622,8 +622,8 @@ install_global() {
     done
     substep_done
 
-    # --- Documentation templates (23) ---
-    substep "Documentation templates" "23"
+    # --- Documentation templates (24) ---
+    substep "Documentation templates" "24"
     local doc_files=(
         spec-template.md spec-lite-template.md user-stories-template.md story-template.md
         story-index-template.md backlog-story-index-template.md cross-cutting-decisions-template.md
@@ -633,6 +633,7 @@ install_global() {
         bug-fix-implementation-plan-template.md skill-index-template.md
         system-story-997-code-review-template.md system-story-998-integration-validation-template.md
         system-story-999-finalize-pr-template.md
+        user-action-detection-rules.md
     )
     for f in "${doc_files[@]}"; do
         download_file "$REPO_URL/specwright/templates/docs/$f" "$G/templates/docs/$f"
@@ -834,6 +835,8 @@ install_project() {
     # Spec management
     download_file "$REPO_URL/specwright/workflows/core/change-spec.md" "specwright/workflows/core/change-spec.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/document-feature.md" "specwright/workflows/core/document-feature.md" "workflow"
+    # User-action flag (v3.14): retroactive migration command
+    download_file "$REPO_URL/specwright/workflows/core/flag-user-actions.md" "specwright/workflows/core/flag-user-actions.md" "workflow"
     # Analysis & Estimation
     download_file "$REPO_URL/specwright/workflows/core/analyze-product.md" "specwright/workflows/core/analyze-product.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/analyze-feasibility.md" "specwright/workflows/core/analyze-feasibility.md" "workflow"
@@ -1204,8 +1207,8 @@ install_claude_code() {
         mkdir -p .claude/skills/manage-memory
     fi
 
-    # Commands (39)
-    substep "Commands" "39"
+    # Commands (40)
+    substep "Commands" "40"
     local command_files=(
         plan-product.md plan-platform.md
         create-spec.md change-spec.md
@@ -1226,6 +1229,7 @@ install_claude_code() {
         save-memory.md
         recall-memory.md
         manage-memory.md
+        flag-user-actions.md
     )
     for f in "${command_files[@]}"; do
         download_file "$REPO_URL/.claude/commands/specwright/$f" ".claude/commands/specwright/$f" "command"

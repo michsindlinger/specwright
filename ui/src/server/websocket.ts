@@ -284,6 +284,16 @@ export class WebSocketHandler {
         case 'specs.story.updateStatus':
           this.handleSpecsStoryUpdateStatus(client, message);
           break;
+        case 'specs.story.user-action.confirm':
+          this.handleSpecsStoryUserActionConfirm(client, message).catch((err) => {
+            console.error('[WS] specs.story.user-action.confirm error:', err);
+          });
+          break;
+        case 'specs.user-action.snapshot':
+          this.handleSpecsUserActionSnapshot(client, message).catch((err) => {
+            console.error('[WS] specs.user-action.snapshot error:', err);
+          });
+          break;
         case 'specs.story.updateModel':
           this.handleSpecsStoryUpdateModel(client, message);
           break;
@@ -1784,6 +1794,93 @@ export class WebSocketHandler {
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * v3.14: confirm a user-action item is done — flips kanban `ready` → `done`
+   * via WorkflowExecutor.confirmUserActionDone, which also re-ticks the
+   * orchestrator if running. Idempotent — returns false in `changed` field
+   * when the item is missing, not flagged, or not in `ready`.
+   */
+  private async handleSpecsStoryUserActionConfirm(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
+    const specId = message.specId as string;
+    const storyId = message.storyId as string;
+
+    if (!specId || !storyId) {
+      client.send(JSON.stringify({
+        type: 'specs.story.user-action.confirm.error',
+        error: 'Spec ID and Story ID are required',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      client.send(JSON.stringify({
+        type: 'specs.story.user-action.confirm.error',
+        error: 'No project selected',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+
+    try {
+      const changed = await this.workflowExecutor.confirmUserActionDone(projectPath, specId, storyId);
+      client.send(JSON.stringify({
+        type: 'specs.story.user-action.confirm.ack',
+        specId,
+        storyId,
+        changed,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      client.send(JSON.stringify({
+        type: 'specs.story.user-action.confirm.error',
+        error: error instanceof Error ? error.message : 'Failed to confirm user action',
+        timestamp: new Date().toISOString()
+      }));
+    }
+  }
+
+  /**
+   * v3.14: hydrate the UI's user-action state on connect / spec-open. Returns
+   * the full pending list (status=ready + flag=true) so the client doesn't have
+   * to wait for the next orchestrator tick before showing badges.
+   */
+  private async handleSpecsUserActionSnapshot(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
+    const specId = message.specId as string;
+    if (!specId) {
+      client.send(JSON.stringify({
+        type: 'specs.user-action.snapshot.error',
+        error: 'Spec ID is required',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      client.send(JSON.stringify({
+        type: 'specs.user-action.snapshot.error',
+        error: 'No project selected',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+    try {
+      const pendingItems = await this.workflowExecutor.getUserActionPendingSnapshot(projectPath, specId);
+      client.send(JSON.stringify({
+        type: 'specs.user-action.snapshot.ack',
+        specId,
+        pendingItems,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      client.send(JSON.stringify({
+        type: 'specs.user-action.snapshot.error',
+        error: error instanceof Error ? error.message : 'Failed to fetch user-action snapshot',
+        timestamp: new Date().toISOString()
+      }));
     }
   }
 

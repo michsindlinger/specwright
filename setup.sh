@@ -188,6 +188,8 @@ download_file "$REPO_URL/specwright/workflows/core/add-domain.md" "specwright/wo
 # Spec management
 download_file "$REPO_URL/specwright/workflows/core/change-spec.md" "specwright/workflows/core/change-spec.md" "workflows"
 download_file "$REPO_URL/specwright/workflows/core/document-feature.md" "specwright/workflows/core/document-feature.md" "workflows"
+# User-action flag (v3.14): retroactive migration command
+download_file "$REPO_URL/specwright/workflows/core/flag-user-actions.md" "specwright/workflows/core/flag-user-actions.md" "workflows"
 
 # Analysis & Estimation
 download_file "$REPO_URL/specwright/workflows/core/analyze-product.md" "specwright/workflows/core/analyze-product.md" "workflows"

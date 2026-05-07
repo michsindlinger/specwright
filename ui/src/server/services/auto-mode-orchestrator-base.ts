@@ -16,6 +16,13 @@
  * - 'slot.queued'    (itemId: string, title: string)
  * - 'all-items-done' ()
  * - 'cancelled'      ()
+ * - 'item.awaiting-user-action' (itemId: string, title: string) — v3.14 transition-only
+ *   emit per orchestrator lifetime; fires once per id when first observed in the
+ *   user-action pending set. UI can dedupe on id.
+ * - 'auto-mode.paused-awaiting-user' (pendingItems: Array<{id, title}>) — v3.14
+ *   fires when normal-ready set is empty but user-action set is non-empty.
+ *   Auto-mode stays alive; orchestrator does NOT declare 'all-items-done' until
+ *   both sets are empty. UI shows banner.
  */
 
 import { EventEmitter } from 'events';
@@ -68,6 +75,14 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
   protected isCancelling = false;
   private tickRunning = false;
   private readonly pendingCompletions = new Set<string>();
+  /**
+   * v3.14: ids for which `item.awaiting-user-action` has already been emitted on
+   * this orchestrator instance. Prevents per-tick spam — UI gets the event once
+   * per item per lifetime; reconnect snapshots happen at WebSocket level.
+   * Cleared by `forgetAwaitingItem` when the item leaves the pending pool
+   * (e.g. after user confirm), so future re-flag re-emits.
+   */
+  private readonly emittedAwaiting = new Set<string>();
 
   constructor(protected readonly config: OrchestratorBaseConfig) {
     super();
@@ -104,6 +119,24 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
   /** Override to resolve the working directory for a slot (e.g., per-story worktree). */
   protected async resolveSlotProjectPath(_item: ReadyItem): Promise<string> {
     return this.config.projectPath;
+  }
+
+  /**
+   * v3.14: Override to expose user-action pending items. Default returns `[]`
+   * (backward compat for subclasses that don't support the feature).
+   * Auto-mode never schedules these; instead it emits `item.awaiting-user-action`
+   * once per id and surfaces a paused banner via `auto-mode.paused-awaiting-user`.
+   */
+  protected async getUserActionPendingSet(_excludeIds: Set<string>): Promise<ReadyItem[]> {
+    return [];
+  }
+
+  /**
+   * Caller (e.g. workflow-executor.confirmUserActionDone) invokes this so a
+   * future re-flag of the same id re-emits `item.awaiting-user-action`.
+   */
+  public forgetAwaitingItem(itemId: string): void {
+    this.emittedAwaiting.delete(itemId);
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -238,6 +271,25 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
 
     const readyItems = await this.getReadySet(excludeIds);
 
+    // v3.14: pull user-action pending items in parallel with the ready set.
+    // These are NEVER scheduled; they only drive UI events.
+    let userActionPending: ReadyItem[] = [];
+    try {
+      userActionPending = await this.getUserActionPendingSet(excludeIds);
+    } catch (err) {
+      console.error('[OrchestratorBase] getUserActionPendingSet error:', err);
+    }
+
+    // Transition-only emit: each id fires `item.awaiting-user-action` exactly
+    // once per orchestrator lifetime (cleared via forgetAwaitingItem when the
+    // user confirms). UI dedupes on id; full state is restored on reconnect by
+    // workflow-executor's snapshot logic, not by replaying ticks.
+    for (const item of userActionPending) {
+      if (this.emittedAwaiting.has(item.id)) continue;
+      this.emittedAwaiting.add(item.id);
+      this.emit('item.awaiting-user-action', item.id, item.title);
+    }
+
     let launched = 0;
     for (const item of readyItems) {
       if (this.activeSlots.size >= this.config.maxConcurrent) break;
@@ -250,13 +302,22 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
       this.emit('slot.queued', readyItems[i].id, readyItems[i].title);
     }
 
-    if (
-      !this.isCancelling &&
+    if (this.isCancelling) return;
+
+    const allWorkDrained =
       this.activeSlots.size === 0 &&
       readyItems.length === 0 &&
-      this.pendingCompletions.size === 0
-    ) {
+      this.pendingCompletions.size === 0;
+
+    if (allWorkDrained && userActionPending.length === 0) {
       this.emit('all-items-done');
+    } else if (allWorkDrained && userActionPending.length > 0) {
+      // v3.14: nothing left for auto-mode to do, but user-action items remain.
+      // Emit so UI can show "Auto-Mode pausiert — N Tickets warten auf Aktion".
+      this.emit(
+        'auto-mode.paused-awaiting-user',
+        userActionPending.map(i => ({ id: i.id, title: i.title }))
+      );
     }
   }
 
