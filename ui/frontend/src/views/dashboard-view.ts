@@ -1493,6 +1493,30 @@ export class AosDashboardView extends LitElement {
             composed: true
           })
         );
+        return;
+      }
+
+      // v3.29.2: getNextReadyStory may have returned null because every
+      // remaining ready story is flagged `requiresUserAction`. The backend
+      // orchestrator never gets created in that case (no startStoryExecution
+      // call), so it cannot emit `paused-awaiting-user` either. Surface the
+      // pending state directly from the frontend so the user knows why
+      // auto-mode is idle.
+      const pendingUserActions = this.kanban.stories.filter(
+        (s: StoryInfo) => s.status === 'backlog' && s.requiresUserAction === true
+      );
+      if (pendingUserActions.length > 0) {
+        const summary = pendingUserActions.length === 1
+          ? `Story ${pendingUserActions[0].id} wartet auf deine Aktion.`
+          : `${pendingUserActions.length} Stories warten auf deine Aktion.`;
+        this.dispatchEvent(new CustomEvent('show-toast', {
+          detail: {
+            message: `Auto-Mode pausiert — ${summary} Bitte über '✓ Aktion erledigt' auf den Karten bestätigen.`,
+            type: 'warning'
+          },
+          bubbles: true,
+          composed: true
+        }));
       }
       return;
     }
@@ -1642,6 +1666,14 @@ export class AosDashboardView extends LitElement {
     const changed = msg.changed === true;
     if (!changed && this.selectedSpec) {
       gateway.send({ type: 'specs.kanban', specId: this.selectedSpec.id });
+      return;
+    }
+    // v3.29.2: confirming a user-action item may unblock other stories that
+    // auto-mode can now pick up. Re-trigger pickup. The backend kanban refresh
+    // will arrive shortly; defer slightly so processAutoExecution sees the
+    // updated story list.
+    if (this.autoModeEnabled) {
+      setTimeout(() => this.processAutoExecution(), 250);
     }
   }
 
