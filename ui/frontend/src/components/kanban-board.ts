@@ -1843,10 +1843,14 @@ export class AosKanbanBoard extends LitElement {
   /**
    * KAE-002: Get the next ready story from backlog.
    * A story is "ready" if it passes canMoveToInProgress validation.
+   * v3.29.1: stories with requiresUserAction === true are skipped — auto-mode
+   * cannot start them; user must confirm via "✓ Aktion erledigt" button.
    * Returns null if no stories are ready.
    */
   public getNextReadyStory(): StoryInfo | null {
-    const backlogStories = this.kanban.stories.filter(s => s.status === 'backlog');
+    const backlogStories = this.kanban.stories.filter(
+      s => s.status === 'backlog' && s.requiresUserAction !== true
+    );
 
     for (const story of backlogStories) {
       const validation = canMoveToInProgress(story, this.kanban.stories);
@@ -1914,6 +1918,21 @@ export class AosKanbanBoard extends LitElement {
   public startStoryAutoExecution(storyId: string): void {
     const story = this.kanban.stories.find(s => s.id === storyId);
     if (!story || story.status !== 'backlog') return;
+
+    // v3.29.1: belt-and-suspenders — should never get here because
+    // getNextReadyStory already filters, but guard explicitly so a stale
+    // caller (queue, backlog auto-resume, etc.) cannot bypass.
+    if (story.requiresUserAction === true) {
+      this.dispatchEvent(new CustomEvent('show-toast', {
+        detail: {
+          message: `Story ${storyId} benötigt eine User-Action — auto-mode überspringt sie.`,
+          type: 'warning'
+        },
+        bubbles: true,
+        composed: true
+      }));
+      return;
+    }
 
     // KAE-005: Check if this is first story and needs git strategy
     const needsGitStrategySelection = this.isFirstStoryExecution();

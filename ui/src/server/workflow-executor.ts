@@ -553,6 +553,35 @@ export class WorkflowExecutor {
     chainFromBranch?: string  // Branch chaining: create new branch from this branch instead of baseBranch
   ): Promise<string> {
     console.log('[Workflow] startStoryExecution called:', { specId, storyId, projectPath, gitStrategy, model, autoMode });
+
+    // v3.29.1: defense-in-depth guard. Frontend `getNextReadyStory` already
+    // filters user-action items, but this entry point can also be hit by
+    // backlog-auto-resume, queue-replay, or a stale UI sending a stored
+    // execution. Refuse early before any git ops or status writes.
+    try {
+      const reader = new SpecsReader();
+      const userActionPending = await reader.getUserActionPendingStories(projectPath, specId);
+      if (userActionPending.some(item => item.id === storyId)) {
+        const errMsg = `Story ${storyId} benötigt eine User-Action und kann nicht automatisch gestartet werden. Bitte über '✓ Aktion erledigt' im Kanban-Board bestätigen.`;
+        console.warn(`[Workflow] startStoryExecution refused — user-action item: ${storyId}`);
+        this.sendToProject(projectPath, {
+          type: 'workflow.story.start.error',
+          specId,
+          storyId,
+          error: errMsg,
+          timestamp: new Date().toISOString()
+        });
+        throw new Error(errMsg);
+      }
+    } catch (guardErr) {
+      // Re-throw user-action rejection; swallow only the kanban-read error
+      // (spec without kanban yet — let downstream handle).
+      if (guardErr instanceof Error && guardErr.message.includes('User-Action')) {
+        throw guardErr;
+      }
+      console.warn('[Workflow] user-action guard read error (non-fatal):', guardErr instanceof Error ? guardErr.message : guardErr);
+    }
+
     const executionId = crypto.randomUUID();
     const abortController = new AbortController();
 
@@ -1710,6 +1739,7 @@ export class WorkflowExecutor {
     // v3.14: user-action awaiting — surface a dedicated UI state so the user
     // sees a confirm button on the card instead of letting auto-mode pick it up.
     orchestrator.on('item.awaiting-user-action', (itemId: string, title: string) => {
+      console.log(`[Workflow] sending specs.story.user-action.required for ${itemId} on ${specId}`);
       this.sendToProject(projectPath, {
         type: 'specs.story.user-action.required',
         specId,
@@ -1724,6 +1754,7 @@ export class WorkflowExecutor {
     orchestrator.on(
       'auto-mode.paused-awaiting-user',
       (pendingItems: Array<{ id: string; title: string }>) => {
+        console.log(`[Workflow] sending specs.auto-mode.paused-awaiting-user (${pendingItems.length} items) on ${specId}`);
         this.sendToProject(projectPath, {
           type: 'specs.auto-mode.paused-awaiting-user',
           specId,

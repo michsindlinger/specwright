@@ -287,6 +287,7 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
     for (const item of userActionPending) {
       if (this.emittedAwaiting.has(item.id)) continue;
       this.emittedAwaiting.add(item.id);
+      console.log(`[Orchestrator] emit awaiting-user-action: ${item.id} (${item.title})`);
       this.emit('item.awaiting-user-action', item.id, item.title);
     }
 
@@ -314,6 +315,7 @@ export abstract class AutoModeOrchestratorBase extends EventEmitter {
     } else if (allWorkDrained && userActionPending.length > 0) {
       // v3.14: nothing left for auto-mode to do, but user-action items remain.
       // Emit so UI can show "Auto-Mode pausiert — N Tickets warten auf Aktion".
+      console.log(`[Orchestrator] emit paused-awaiting-user: ${userActionPending.length} items`);
       this.emit(
         'auto-mode.paused-awaiting-user',
         userActionPending.map(i => ({ id: i.id, title: i.title }))

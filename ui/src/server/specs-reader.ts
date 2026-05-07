@@ -4,6 +4,10 @@ import { withKanbanLock } from './utils/kanban-lock.js';
 import { projectDir } from './utils/project-dirs.js';
 import { attachmentStorageService } from './services/attachment-storage.service.js';
 
+// Dep-satisfaction set: ['done', 'in_review']. Mirror of SATISFIED_DEP_STATUSES
+// in specwright/scripts/mcp/kanban-validation.ts — keep both in sync. Not a
+// shared import because tsconfig rootDir confines this module to ui/src.
+
 // Writer-invariant: every kanban.json mutation in this file is wrapped in
 // withKanbanLock (inner lock). Orchestrator call sites that invoke write-path
 // methods must already hold withMainProjectLock (outer) before this module
@@ -727,7 +731,7 @@ export class SpecsReader {
           if (task.status !== 'blocked' || !(task.dependencies?.length)) continue;
           const allSatisfied = task.dependencies.every(depId => {
             const dep = jsonKanban.tasks.find(t => t.id === depId);
-            return dep && (dep.status === 'done' || dep.status === 'in_review');
+            return !!dep && (dep.status === 'done' || dep.status === 'in_review');
           });
           if (allSatisfied) {
             task.status = 'ready';
@@ -742,7 +746,7 @@ export class SpecsReader {
           if (story.status !== 'blocked' || !(story.dependencies?.length)) continue;
           const allSatisfied = story.dependencies.every(depId => {
             const dep = jsonKanban.stories.find(s => s.id === depId);
-            return dep && (dep.status === 'done' || dep.status === 'in_review');
+            return !!dep && (dep.status === 'done' || dep.status === 'in_review');
           });
           if (allSatisfied) {
             story.status = 'ready';
@@ -2310,6 +2314,21 @@ _None yet_
         const newJsonStatus = this.mapFrontendStatusToJson(newStatus);
         if (oldStatus === newJsonStatus) return;
 
+        // v3.29.1: refuse ready→in_progress on user-action items.
+        // The optimistic-UI path (frontend story-move + specs.story.updateStatus)
+        // would otherwise flip status before the orchestrator filter runs,
+        // producing brief in_progress flashes. User must use kanban_set_user_action
+        // mode='complete' (via the "✓ Aktion erledigt" button) instead.
+        if (
+          oldStatus === 'ready' &&
+          newJsonStatus === 'in_progress' &&
+          hasUserActionFlag(task)
+        ) {
+          throw new Error(
+            `Task ${storyId} requires user action. Use the "✓ Aktion erledigt" button to mark it complete instead of moving it to In Progress.`
+          );
+        }
+
         task.status = newJsonStatus;
         task.phase = newStatus === 'done' ? 'done' : (newStatus === 'in_progress' || newStatus === 'in_review' ? 'in_progress' : 'pending') as KanbanJsonPhase;
         if (!task.timing) {
@@ -2332,6 +2351,17 @@ _None yet_
         const oldStatus = story.status;
         const newJsonStatus = this.mapFrontendStatusToJson(newStatus);
         if (oldStatus === newJsonStatus) return;
+
+        // v3.29.1: see V2 branch above for rationale.
+        if (
+          oldStatus === 'ready' &&
+          newJsonStatus === 'in_progress' &&
+          hasUserActionFlag(story)
+        ) {
+          throw new Error(
+            `Story ${storyId} requires user action. Use the "✓ Aktion erledigt" button to mark it complete instead of moving it to In Progress.`
+          );
+        }
 
         story.status = newJsonStatus;
         story.phase = newStatus === 'done' ? 'done' : (newStatus === 'in_progress' || newStatus === 'in_review' ? 'in_progress' : 'pending') as KanbanJsonPhase;
