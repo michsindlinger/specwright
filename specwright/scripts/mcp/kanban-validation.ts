@@ -66,6 +66,59 @@ export function computeInitialStatus(
   return areDependenciesSatisfied(deps, knownItems) ? safe : 'blocked';
 }
 
+// ============================================================================
+// kanban_create overwrite guard (v3.29.5)
+// ============================================================================
+
+/**
+ * Minimal shape of an existing kanban.json — enough to detect "already
+ * initialized" without parsing the full V1/V2 schema.
+ */
+export interface ExistingKanbanShape {
+  mode?: string;
+  version?: string;
+  tasks?: ReadonlyArray<unknown>;
+  stories?: ReadonlyArray<unknown>;
+}
+
+/**
+ * True iff `existing` already holds task/story content. An empty object,
+ * a kanban without tasks[]/stories[], or a stub is treated as not-initialized
+ * so legitimate fresh creation still succeeds.
+ */
+export function isInitializedKanban(existing: ExistingKanbanShape | null | undefined): boolean {
+  if (!existing) return false;
+  if (Array.isArray(existing.tasks) && existing.tasks.length > 0) return true;
+  if (Array.isArray(existing.stories) && existing.stories.length > 0) return true;
+  return false;
+}
+
+/**
+ * Defense-in-depth guard for kanban_create. Throws when the call would
+ * silently overwrite an already-initialized kanban (incl. V2→V2 with a
+ * different/smaller task set — the failure mode that destroyed system
+ * stories 997/998/999 in 3.29.4).
+ *
+ * Caller intent for legitimate recreation: delete kanban.json first.
+ */
+export function assertKanbanCreateAllowed(
+  existing: ExistingKanbanShape | null | undefined,
+  specId: string
+): void {
+  if (!isInitializedKanban(existing)) return;
+  const taskCount =
+    (Array.isArray(existing?.tasks) ? existing!.tasks!.length : 0) ||
+    (Array.isArray(existing?.stories) ? existing!.stories!.length : 0);
+  const schema = existing?.mode === 'lean' || existing?.version === '2.0' ? 'V2 Lean' : 'V1 Classic';
+  throw new Error(
+    `Refusing to overwrite existing kanban for spec "${specId}". ` +
+    `kanban.json is already initialized (${schema}, ${taskCount} item${taskCount === 1 ? '' : 's'}). ` +
+    `kanban_create is only valid on a fresh spec. ` +
+    `To extend an existing kanban use kanban_add_item; ` +
+    `to truly recreate, delete kanban.json first (this destroys runtime state — confirm with user).`
+  );
+}
+
 export interface TaskDescriptionInput {
   id: string;
   description: string;

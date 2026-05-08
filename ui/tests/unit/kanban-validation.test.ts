@@ -11,6 +11,8 @@ import {
   areDependenciesSatisfied,
   computeInitialStatus,
   SATISFIED_DEP_STATUSES,
+  isInitializedKanban,
+  assertKanbanCreateAllowed,
 } from '../../../specwright/scripts/mcp/kanban-validation.js';
 
 const A_DONE = { id: 'A', status: 'done' };
@@ -112,5 +114,62 @@ describe('computeInitialStatus', () => {
       { id: 'B', status: 'ready' },
     ];
     expect(computeInitialStatus(['A'], 'ready', input)).toBe('blocked');
+  });
+});
+
+describe('isInitializedKanban (v3.29.5)', () => {
+  it('null/undefined → not initialized', () => {
+    expect(isInitializedKanban(null)).toBe(false);
+    expect(isInitializedKanban(undefined)).toBe(false);
+  });
+
+  it('empty object → not initialized', () => {
+    expect(isInitializedKanban({})).toBe(false);
+  });
+
+  it('empty tasks[] → not initialized (allows fresh creation)', () => {
+    expect(isInitializedKanban({ mode: 'lean', tasks: [] })).toBe(false);
+  });
+
+  it('empty stories[] → not initialized', () => {
+    expect(isInitializedKanban({ stories: [] })).toBe(false);
+  });
+
+  it('V2 with tasks → initialized', () => {
+    expect(isInitializedKanban({ mode: 'lean', tasks: [{}] })).toBe(true);
+  });
+
+  it('V1 with stories → initialized', () => {
+    expect(isInitializedKanban({ stories: [{}, {}] })).toBe(true);
+  });
+});
+
+describe('assertKanbanCreateAllowed (v3.29.5)', () => {
+  it('allows creation when no existing kanban', () => {
+    expect(() => assertKanbanCreateAllowed(null, 'spec-x')).not.toThrow();
+    expect(() => assertKanbanCreateAllowed(undefined, 'spec-x')).not.toThrow();
+  });
+
+  it('allows creation on empty/stub kanban', () => {
+    expect(() => assertKanbanCreateAllowed({}, 'spec-x')).not.toThrow();
+    expect(() => assertKanbanCreateAllowed({ mode: 'lean', tasks: [] }, 'spec-x')).not.toThrow();
+  });
+
+  it('refuses overwrite of initialized V2 Lean kanban (V2→V2 case)', () => {
+    const existing = { mode: 'lean', version: '2.0', tasks: [{}, {}, {}, {}, {}, {}] };
+    expect(() => assertKanbanCreateAllowed(existing, 'spec-y')).toThrow(/Refusing to overwrite/);
+    expect(() => assertKanbanCreateAllowed(existing, 'spec-y')).toThrow(/V2 Lean, 6 items/);
+    expect(() => assertKanbanCreateAllowed(existing, 'spec-y')).toThrow(/spec-y/);
+  });
+
+  it('refuses overwrite of initialized V1 Classic kanban', () => {
+    const existing = { stories: [{ id: 'A' }] };
+    expect(() => assertKanbanCreateAllowed(existing, 'spec-z')).toThrow(/V1 Classic, 1 item/);
+  });
+
+  it('error message points caller to kanban_add_item or manual delete', () => {
+    const existing = { mode: 'lean', tasks: [{}] };
+    expect(() => assertKanbanCreateAllowed(existing, 's')).toThrow(/kanban_add_item/);
+    expect(() => assertKanbanCreateAllowed(existing, 's')).toThrow(/delete kanban\.json/);
   });
 });

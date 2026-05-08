@@ -49,6 +49,7 @@ import {
   hasUserActionFlag,
   applyUserActionMutation,
   computeInitialStatus,
+  assertKanbanCreateAllowed,
   type UserActionMutationKind,
 } from './kanban-validation.js';
 import {
@@ -1159,29 +1160,24 @@ async function handleKanbanCreate(
     };
   }
 ) {
-  // Defense-in-depth: refuse to overwrite an existing V2 Lean kanban with a V1
-  // Classic structure. Without this guard, a stale workflow (e.g., V1 spec-phase-1
-  // run on a V2 Lean kanban) silently destroys all V2 task definitions and
-  // replaces them with story-derived V1 stories.
+  // Defense-in-depth: refuse to overwrite an already-initialized kanban.json.
+  // Covers V1→V2, V2→V1 AND V2→V2 with a different/smaller task set — the
+  // V2→V2 case in 3.29.4 silently destroyed system stories 997/998/999 when a
+  // workflow re-derived only business tasks from the implementation plan.
+  // Legitimate recreation requires the caller to delete kanban.json first.
   const existingPath = join(specPath, 'kanban.json');
   if (existsSync(existingPath)) {
     try {
-      const existing = JSON.parse(await readFile(existingPath, 'utf-8')) as Partial<KanbanJsonV2>;
-      const existingIsV2 =
-        existing?.mode === 'lean' ||
-        existing?.version === '2.0' ||
-        Array.isArray((existing as { tasks?: unknown }).tasks);
-      const incomingIsV2 = args.mode === 'lean' && Array.isArray(args.tasks);
-      if (existingIsV2 && !incomingIsV2) {
-        throw new Error(
-          `Refusing to overwrite V2 Lean kanban with V1 Classic structure for spec "${args.specId}". ` +
-          `Existing kanban.json uses V2 Lean (tasks[]). The kanban_create call did not include mode="lean" + tasks[]. ` +
-          `If you intend to recreate the kanban, delete kanban.json first or use mode="lean" with tasks[].`
-        );
-      }
+      const existing = JSON.parse(await readFile(existingPath, 'utf-8')) as {
+        mode?: string;
+        version?: string;
+        tasks?: unknown[];
+        stories?: unknown[];
+      };
+      assertKanbanCreateAllowed(existing, args.specId);
     } catch (err) {
-      // Re-throw the guard error; ignore parse/read errors so corrupted/missing
-      // files don't block legitimate fresh creation.
+      // Re-throw guard errors; swallow parse/read errors so a corrupted file
+      // does not block legitimate fresh creation after manual cleanup.
       if (err instanceof Error && err.message.startsWith('Refusing to overwrite')) {
         throw err;
       }

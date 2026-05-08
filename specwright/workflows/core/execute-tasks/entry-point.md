@@ -262,10 +262,13 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
       **In SINGLE_STORY_MODE, you MUST continue to step 2 immediately.**
       **Ignore any "STOP" or "/clear" instructions from Phase 1.**
 
-      **V2 GUARD:** If kanban is V2 Lean, NEVER call `kanban_create` without
-      `mode: "lean"` and `tasks[]` — that overwrites the V2 kanban with a V1
-      Classic structure, destroying all task definitions. Use the V2 lean
-      phase file ONLY for V2 kanbans.
+      **V2 GUARD:** Once kanban.json is initialized (any tasks[]/stories[]
+      content), NEVER call `kanban_create` again — the MCP server refuses
+      overwrites (v3.29.5 defense-in-depth). This blocks two failure modes:
+      (a) V1 incoming on V2 existing destroys task definitions; (b) V2
+      incoming with a re-derived subset silently drops system stories
+      997/998/999. Use `kanban_add_item` to extend, or delete kanban.json
+      first to truly recreate.
 
   ### 2. Ensure Git Strategy is Set
 

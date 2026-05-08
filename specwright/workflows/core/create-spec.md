@@ -992,6 +992,36 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
 
      **IMPORTANT: Use MCP tool `kanban_create` — never write kanban.json manually.**
 
+     **Pre-flight overwrite check (v3.29.5 — prevents system-story loss):**
+
+     ```bash
+     ls specwright/specs/[YYYY-MM-DD-spec-name]/kanban.json 2>/dev/null
+     ```
+
+     IF kanban.json EXISTS:
+       READ it via MCP tool `kanban_read` and inspect `tasks[]` length.
+
+       IF tasks[] is non-empty:
+         STOP. Do NOT call kanban_create — the MCP guard refuses overwrites
+         and your call would lose existing system tasks (997/998/999) plus
+         all runtime state.
+
+         ASK the user via AskUserQuestion:
+         "kanban.json für diesen Spec existiert bereits mit [N] Tasks
+         (inkl. System-Stories 997/999, evtl. 998). Was möchtest du tun?
+
+         1. Spec ist schon initialisiert — fertig (recommended)
+         2. Tasks fehlen / Plan hat sich geändert — füge sie via
+            kanban_add_item nach (sag mir welche)
+         3. Komplett neu aufsetzen — lösche kanban.json zuerst (zerstört
+            alle Done-Tasks und Commit-Historie im Board)"
+
+         NEVER call kanban_create on an initialized kanban — the MCP server
+         throws "Refusing to overwrite" defense-in-depth and the call fails.
+
+     ELSE (no kanban.json yet — fresh creation):
+       CONTINUE below.
+
      CALL MCP tool `kanban_create` with:
      - specId = folder name (YYYY-MM-DD-spec-name)
      - specName = human-readable name
@@ -1006,6 +1036,12 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
        - dependencies (array of task ids)
        - status ("ready" or "blocked")
        - requiresUserAction (true|false from Step 6.5; omit when false)
+
+     **CRITICAL: The tasks[] array MUST include the system tasks 997/999
+     (and 998 when applicable) appended in step 5. Verify count before the
+     call: business_task_count + system_task_count = total. Skipping the
+     system block produces a kanban that silently drops Code Review,
+     Integration Validation, and Finalize PR.**
 
      The MCP tool:
      - Creates V2 schema (version "2.0", mode "lean")
@@ -1260,6 +1296,19 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
      **IMPORTANT: Use MCP tool `kanban_create` - NEVER write kanban.json manually via Write tool!**
      Writing JSON manually risks file corruption (trailing brackets, invalid syntax).
      The MCP tool uses JSON.stringify which guarantees valid JSON output.
+
+     **Pre-flight overwrite check (v3.29.5):**
+
+     ```bash
+     ls specwright/specs/[YYYY-MM-DD-spec-name]/kanban.json 2>/dev/null
+     ```
+
+     IF kanban.json already exists with non-empty stories[]:
+       STOP. Do NOT call kanban_create — the MCP guard refuses overwrites
+       (defense-in-depth against silent task loss). ASK the user via
+       AskUserQuestion whether to (1) treat spec as already initialized,
+       (2) extend via kanban_add_item, or (3) delete kanban.json and
+       recreate (destroys runtime state).
 
      CALL MCP tool `kanban_create` with:
        * specId = folder name (YYYY-MM-DD-spec-name)
