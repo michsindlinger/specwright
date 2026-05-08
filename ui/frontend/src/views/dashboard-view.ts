@@ -179,10 +179,14 @@ export class AosDashboardView extends LitElement {
   private currentAutoModeProgress: AutoModeProgress | null = null;
   // PAM-008: Multi-slot boards (specId → storyId → AutoModeProgress)
   private _specAutoModeBoards: Map<string, Map<string, AutoModeProgress>> = new Map();
+  // v3.30: configured slot count per spec (for idle-slot padding)
+  private _specAutoModeMaxConcurrent: Map<string, number> = new Map();
   // PAM-008: Backlog multi-slot board (itemId → AutoModeProgress)
   private _backlogAutoModeBoard: Map<string, AutoModeProgress> = new Map();
   // KAE-004: Auto-mode paused due to error
   @state() private autoModePaused = false;
+  /** v3.30: settings-default for worktree parallelism (cached for git-strategy dialog prefill). */
+  @state() private worktreeMaxConcurrentDefault = 2;
   // Track the last auto-mode incident timestamp shown as toast to avoid duplicates on re-renders
   private _lastShownIncidentTimestamp: string | null = null;
   // FIX: Race condition - track workflow completion waiting for status ACK
@@ -470,6 +474,7 @@ export class AosDashboardView extends LitElement {
       ['workflow.auto-mode.slot.update', (msg) => this.onAutoModeSlotUpdate(msg)],
       ['workflow.auto-mode.slot.queued', (msg) => this.onAutoModeSlotQueued(msg)],
       ['workflow.auto-mode.slot.cleared', (msg) => this.onAutoModeSlotCleared(msg)],
+      ['workflow.auto-mode.slot.config', (msg) => this.onAutoModeSlotConfig(msg)],
       ['workflow.auto-mode.incident.clear.ack', (msg) => this.onAutoModeIncidentClearAck(msg)],
       ['specs.kanban.updated', (msg) => this.onSpecsKanbanUpdated(msg)],
       // PAM-008: Multi-slot board events (backlog)
@@ -485,7 +490,8 @@ export class AosDashboardView extends LitElement {
       ['backlog.assign.error', (msg) => this.onBacklogAssignError(msg)],
       // Bulk model update: confirm via disk refetch on ack, surface + rollback on error
       ['specs.stories.updateModelBulk.ack', (msg) => this.onStoriesBulkModelAck(msg)],
-      ['specs.stories.updateModelBulk.error', (msg) => this.onStoriesBulkModelError(msg)]
+      ['specs.stories.updateModelBulk.error', (msg) => this.onStoriesBulkModelError(msg)],
+      ['settings.general', (msg) => this.onSettingsGeneral(msg)]
     ];
 
     for (const [type, handler] of handlers) {
@@ -518,6 +524,16 @@ export class AosDashboardView extends LitElement {
   private onGatewayConnected(): void {
     this.wsConnected = true;
     gateway.send({ type: 'project.current' });
+    // v3.30: prefetch general config so the git-strategy dialog can prefill
+    // its parallelism select from settings without a load race on first open.
+    gateway.send({ type: 'settings.general.get' });
+  }
+
+  private onSettingsGeneral(msg: WebSocketMessage): void {
+    const config = msg.config as { worktreeMaxConcurrent?: number } | undefined;
+    if (config && typeof config.worktreeMaxConcurrent === 'number') {
+      this.worktreeMaxConcurrentDefault = config.worktreeMaxConcurrent;
+    }
   }
 
   private onGatewayDisconnected(): void {
@@ -927,12 +943,39 @@ export class AosDashboardView extends LitElement {
     }
   }
 
+  private onAutoModeSlotConfig(msg: WebSocketMessage): void {
+    const specId = msg.specId as string;
+    const maxConcurrent = msg.maxConcurrent as number | undefined;
+    if (!specId || !Number.isInteger(maxConcurrent) || maxConcurrent === undefined) return;
+    if (maxConcurrent === 0) {
+      this._specAutoModeMaxConcurrent.delete(specId);
+    } else {
+      this._specAutoModeMaxConcurrent.set(specId, maxConcurrent);
+    }
+    if (this.selectedSpec?.id === specId) {
+      this._pushSpecBoardToKanban(specId);
+    }
+  }
+
   private _pushSpecBoardToKanban(specId: string): void {
     const kanbanBoard = this.querySelector('aos-kanban-board') as AosKanbanBoard | null;
     if (!kanbanBoard) return;
     const board = this._specAutoModeBoards.get(specId);
-    const progressBoard: AutoModeProgressBoard | null =
-      board && board.size > 0 ? { slots: [...board.values()] } : null;
+    const slots: AutoModeProgress[] = board ? [...board.values()] : [];
+    // v3.30: pad with idle slots up to configured maxConcurrent so the user sees
+    // that parallel mode is active even when deps gate further scheduling.
+    const maxConcurrent = this._specAutoModeMaxConcurrent.get(specId) ?? 0;
+    const idleCount = Math.max(0, maxConcurrent - slots.length);
+    for (let i = 0; i < idleCount; i++) {
+      slots.push({
+        storyId: `__idle_${i}`,
+        storyTitle: 'Slot frei — wartet auf ready Story',
+        currentPhase: 0,
+        totalPhases: 5,
+        slotState: 'idle'
+      });
+    }
+    const progressBoard: AutoModeProgressBoard | null = slots.length > 0 ? { slots } : null;
     kanbanBoard.updateAutoModeProgressBoard(progressBoard);
   }
 
@@ -1463,19 +1506,29 @@ export class AosDashboardView extends LitElement {
    * KAE-002: Process auto-execution by finding and starting the next ready story.
    */
   private processAutoExecution(): void {
+    console.log('[Dashboard] processAutoExecution: enter', {
+      autoModeEnabled: this.autoModeEnabled,
+      hasKanban: !!this.kanban,
+      autoModePaused: this.autoModePaused,
+      storyCount: this.kanban?.stories.length ?? 0,
+    });
+
     // KAE-004: Don't process if auto-mode is paused due to error
     if (!this.autoModeEnabled || !this.kanban || this.autoModePaused) {
+      console.log('[Dashboard] processAutoExecution: early-return (gate)');
       return;
     }
 
     // Get reference to kanban board component
     const kanbanBoard = this.querySelector('aos-kanban-board') as AosKanbanBoard | null;
     if (!kanbanBoard) {
+      console.log('[Dashboard] processAutoExecution: no kanbanBoard element');
       return;
     }
 
     // Get next ready story
     const nextStory = kanbanBoard.getNextReadyStory();
+    console.log('[Dashboard] processAutoExecution: nextStory =', nextStory?.id ?? null);
     if (!nextStory) {
       // No more ready stories - check if all done
       const allDone = this.kanban.stories.every((s: StoryInfo) => s.status === 'done');
@@ -1505,10 +1558,16 @@ export class AosDashboardView extends LitElement {
       const pendingUserActions = this.kanban.stories.filter(
         (s: StoryInfo) => s.status === 'backlog' && s.requiresUserAction === true
       );
+      console.log('[Dashboard] processAutoExecution: pendingUserActions =',
+        pendingUserActions.map(s => s.id),
+        'allStoriesSnapshot =',
+        this.kanban.stories.map(s => ({ id: s.id, status: s.status, ua: s.requiresUserAction === true }))
+      );
       if (pendingUserActions.length > 0) {
         const summary = pendingUserActions.length === 1
           ? `Story ${pendingUserActions[0].id} wartet auf deine Aktion.`
           : `${pendingUserActions.length} Stories warten auf deine Aktion.`;
+        console.log('[Dashboard] dispatching show-toast for user-action pause');
         this.dispatchEvent(new CustomEvent('show-toast', {
           detail: {
             message: `Auto-Mode pausiert — ${summary} Bitte über '✓ Aktion erledigt' auf den Karten bestätigen.`,
@@ -1722,6 +1781,7 @@ export class AosDashboardView extends LitElement {
    */
   private handleAutoModeToggle(e: CustomEvent): void {
     const { enabled } = e.detail as { enabled: boolean };
+    console.log('[Dashboard] handleAutoModeToggle: enabled =', enabled);
     this.autoModeEnabled = enabled;
 
     if (enabled) {
@@ -1761,6 +1821,11 @@ export class AosDashboardView extends LitElement {
       // SAMC-001: Tell backend to cancel running spec orchestrator.
       if (this.selectedSpec) {
         gateway.send({ type: 'workflow.auto-mode.cancel', specId: this.selectedSpec.id });
+        // v3.30: drop cached slot-config so idle padding stops on next push.
+        this._specAutoModeMaxConcurrent.delete(this.selectedSpec.id);
+        this._specAutoModeBoards.delete(this.selectedSpec.id);
+        const kanbanBoard = this.querySelector('aos-kanban-board') as AosKanbanBoard | null;
+        kanbanBoard?.updateAutoModeProgressBoard(null);
       }
     }
   }
@@ -2564,6 +2629,7 @@ export class AosDashboardView extends LitElement {
         .isReady=${this.kanban.isReady ?? false}
         .initialGitStrategy=${this.selectedSpec.gitStrategy ?? null}
         .projectPath=${this.projectCtx?.activeProject?.path ?? null}
+        .defaultWorktreeMaxConcurrent=${this.worktreeMaxConcurrentDefault}
         @kanban-back=${this.handleKanbanBack}
         @auto-mode-toggle=${this.handleAutoModeToggle}
         @auto-mode-error=${this.handleAutoModeError}

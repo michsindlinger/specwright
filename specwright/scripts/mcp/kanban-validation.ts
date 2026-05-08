@@ -6,6 +6,66 @@
 
 export const DESCRIPTION_MAX_CHARS = 150;
 
+// ============================================================================
+// Dependency status — single source of truth shared with SpecsReader
+// ============================================================================
+
+export const SATISFIED_DEP_STATUSES = ['done', 'in_review'] as const;
+export type SatisfiedDepStatus = typeof SATISFIED_DEP_STATUSES[number];
+
+export interface DepLookupItem {
+  id: string;
+  status: string;
+}
+
+/**
+ * True iff every dep id resolves to an item whose status is in
+ * SATISFIED_DEP_STATUSES. Missing deps count as unsatisfied (safe default).
+ *
+ * Aligned with SpecsReader.resolveDependencies — keep both call sites in
+ * sync via this helper so a story can be unblocked iff it would be created
+ * unblocked.
+ */
+export function areDependenciesSatisfied(
+  deps: readonly string[],
+  items: ReadonlyArray<DepLookupItem>
+): boolean {
+  if (deps.length === 0) return true;
+  for (const depId of deps) {
+    const dep = items.find(i => i.id === depId);
+    if (!dep) return false;
+    if (!(SATISFIED_DEP_STATUSES as readonly string[]).includes(dep.status)) return false;
+  }
+  return true;
+}
+
+/**
+ * Computes the initial status for a newly-created story/task.
+ *
+ *   - deps empty                  → coerced caller status (default 'ready')
+ *   - deps present + any unmet    → 'blocked' (caller intent ignored — safety wins)
+ *   - deps present + all satisfied → coerced caller status (default 'ready')
+ *
+ * `knownItems` semantics:
+ *   - kanban_add_item: live kanban.tasks/stories (deps already exist)
+ *   - kanban_create:   caller's input array; peer items have no runtime
+ *                      'done'/'in_review' status yet, so any item with deps
+ *                      is forced to 'blocked' — matches create-spec rule
+ *                      "status: blocked if no unmet dependencies".
+ *
+ * Unknown requestedStatus values (anything other than 'ready'|'blocked') are
+ * coerced to 'ready' so a malformed caller cannot leak e.g. 'done' through.
+ */
+export function computeInitialStatus(
+  deps: readonly string[],
+  requestedStatus: string | undefined,
+  knownItems: ReadonlyArray<DepLookupItem>
+): 'ready' | 'blocked' {
+  const safe: 'ready' | 'blocked' = requestedStatus === 'blocked' ? 'blocked' : 'ready';
+  if (deps.length === 0) return safe;
+  return areDependenciesSatisfied(deps, knownItems) ? safe : 'blocked';
+}
+
 export interface TaskDescriptionInput {
   id: string;
   description: string;

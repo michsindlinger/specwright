@@ -269,46 +269,28 @@ describe('AutoModeSpecOrchestrator.resolveSlotProjectPath (v3.27.4 hardening)', 
     expect(incidentSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('D15: gitStrategy=worktree + maxConcurrent>1 → force-down to 1 (no parallel via .create)', () => {
-    const ops = {
-      createStoryWorktree: vi.fn(),
-      removeStoryWorktree: vi.fn(),
-      mergeStoryBranchIntoSpec: vi.fn(),
-    };
-    const orch = AutoModeSpecOrchestrator.create(
-      '/tmp/spec-worktree',
-      '2026-05-05-x',
-      'specwright',
-      makeStubCtm(),
-      5,                  // user requested parallel
-      'worktree',
-      '/tmp/main-repo',
-      'feature/x',
-      ops
-    );
-    // Internal config not directly exposed — assert behavior via isParallel
-    // path: serial mode skips parallel-only halt. We rely on resolveSlotProjectPath
-    // taking the silent-fallback branch when worktreeOps absent (already covered
-    // in serial-mode tests). Here we just confirm the maxConcurrent override
-    // happened by checking that an absent worktreeOps does NOT halt.
+  it('v3.30: D15-clamp removed → maxConcurrent>1 + worktree preserves parallel mode (caller-controlled)', async () => {
+    // Previously create() forced maxConcurrent=1 when gitStrategy=worktree (D15 safety).
+    // From v3.30 the caller (workflow-executor) resolves the effective value from
+    // user-input + settings and create() must respect it. With max=5 + worktree and
+    // no worktreeOps, the parallel-mode invariant kicks in: isParallel=true → halt
+    // with "no worktreeOps configured" (instead of silent serial-fallback).
+    const incidentSpy = vi.spyOn(SpecsReader.prototype, 'setAutoModeIncident').mockResolvedValue(undefined);
     const orchNoOps = AutoModeSpecOrchestrator.create(
       '/tmp/spec-worktree',
       '2026-05-05-x',
       'specwright',
       makeStubCtm(),
-      5,
+      5,                  // user requested parallel — must NOT be clamped to 1
       'worktree',
       '/tmp/main-repo',
       'feature/x',
-      undefined  // no worktreeOps
+      undefined           // no worktreeOps
     );
     const haltSpy = vi.spyOn(orchNoOps, 'haltScheduling').mockImplementation(() => {});
-    return callResolve(orchNoOps, 'WCAG-012').then(path => {
-      expect(path).toBe('/tmp/spec-worktree');  // silent fallback (serial mode)
-      expect(haltSpy).not.toHaveBeenCalled();
-      // Confirm the parallel-construction path also worked end-to-end (no throw).
-      expect(orch).toBeDefined();
-    });
+    await expect(callResolve(orchNoOps, 'WCAG-012')).rejects.toThrow(/no worktreeOps/);
+    expect(haltSpy).toHaveBeenCalledTimes(1);
+    expect(incidentSpy).toHaveBeenCalledTimes(1);
   });
 
   it('serial mode + missing specBranch → silent fallback to projectPath', async () => {

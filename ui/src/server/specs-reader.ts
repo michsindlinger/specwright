@@ -172,6 +172,8 @@ interface KanbanJsonResumeContext {
   worktreePath: string | null;
   gitBranch: string | null;
   gitStrategy: string | null;
+  /** v3.30: user-chosen parallel slots for worktree auto-mode (1–4). */
+  maxConcurrent?: number;
   currentStory: string | null;
   currentStoryPhase: string | null;
   lastAction: string | null;

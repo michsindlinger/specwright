@@ -10,6 +10,8 @@ export interface GitStrategySelection {
   storyId?: string;
   specId: string;
   context?: GitStrategyContext;
+  /** v3.30: only meaningful when strategy === 'worktree'. Integer 1–4. */
+  maxConcurrent?: number;
 }
 
 /**
@@ -23,7 +25,23 @@ export class AosGitStrategyDialog extends LitElement {
   @property({ type: String }) storyId = '';
   @property({ type: String }) specId = '';
   @property({ type: String }) context: GitStrategyContext = 'story-start';
+  /** v3.30: settings-default for parallelism, used to prefill the worktree input. */
+  @property({ type: Number }) defaultMaxConcurrent = 2;
   @state() private selectedStrategy: GitStrategy = 'branch';
+  @state() private maxConcurrentInput = 2;
+
+  override updated(changed: Map<string, unknown>): void {
+    // Reset state on every open transition (false → true) so a previous run's
+    // override does not leak into the next one. Also seed the select from
+    // the latest defaultMaxConcurrent (which may have arrived after first render).
+    if (changed.has('open') && this.open && changed.get('open') === false) {
+      this.selectedStrategy = 'branch';
+      this.maxConcurrentInput = this.defaultMaxConcurrent;
+    }
+    if (changed.has('defaultMaxConcurrent') && !this.open) {
+      this.maxConcurrentInput = this.defaultMaxConcurrent;
+    }
+  }
 
   private handleOptionClick(strategy: GitStrategy): void {
     this.selectedStrategy = strategy;
@@ -46,6 +64,9 @@ export class AosGitStrategyDialog extends LitElement {
       specId: this.specId,
       context: this.context
     };
+    if (this.selectedStrategy === 'worktree') {
+      selection.maxConcurrent = this.maxConcurrentInput;
+    }
 
     this.dispatchEvent(
       new CustomEvent('git-strategy-select', {
@@ -258,6 +279,37 @@ export class AosGitStrategyDialog extends LitElement {
                 Separates Arbeitsverzeichnis - ideal für parallele Arbeit an mehreren Features.
                 Claude Code muss im Worktree-Verzeichnis gestartet werden.
               </p>
+              <div
+                class="git-strategy-parallelism"
+                style="display: ${this.selectedStrategy === 'worktree' ? 'block' : 'none'};
+                       padding: 0.5rem 0 0 28px;"
+                @click=${(e: MouseEvent) => e.stopPropagation()}
+              >
+                <label
+                  for="parallelism-select"
+                  style="font-size: 0.875rem; color: var(--color-text-secondary, #a3a3a3); display: block; margin-bottom: 0.25rem;"
+                >
+                  Parallelität (gleichzeitig laufende Stories):
+                </label>
+                <select
+                  id="parallelism-select"
+                  .value=${String(this.maxConcurrentInput)}
+                  @change=${(e: Event) => { this.maxConcurrentInput = parseInt((e.target as HTMLSelectElement).value, 10); }}
+                  style="padding: 0.25rem 0.5rem; background: var(--color-bg-tertiary, #2d2d2d);
+                         color: var(--color-text-primary, #e5e5e5); border: 1px solid var(--color-border, #404040);
+                         border-radius: 4px;"
+                >
+                  <option value="1">1 (sequentiell, sicher)</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+                ${this.maxConcurrentInput > 1 ? html`
+                  <p style="font-size: 0.75rem; color: var(--color-warning, #f59e0b); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                    ⚠ Parallel-Worktree-Modus ist <strong>experimentell</strong> — bei Konflikten zwischen parallel laufenden Stories kann es zu Merge-Problemen kommen.
+                  </p>
+                ` : ''}
+              </div>
             </div>
 
             <div

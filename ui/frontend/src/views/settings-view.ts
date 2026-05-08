@@ -77,9 +77,10 @@ export class AosSettingsView extends LitElement {
   @state() private saving = false;
   @state() private addingProvider = false;
   @state() private newProvider: NewProviderForm | null = null;
-  @state() private generalConfig: { baseBranch: string } | null = null;
+  @state() private generalConfig: { baseBranch: string; worktreeMaxConcurrent?: number } | null = null;
   @state() private generalSaving = false;
   @state() private baseBranchInput = '';
+  @state() private worktreeMaxConcurrentInput = 2;
   @state() private voiceConfig: VoiceConfigStatus | null = null;
   @state() private voiceSaving = false;
   @state() private deepgramKeyInput = '';
@@ -619,9 +620,10 @@ export class AosSettingsView extends LitElement {
   }
 
   private onGeneralConfigReceived(msg: WebSocketMessage): void {
-    const config = msg.config as { baseBranch: string };
+    const config = msg.config as { baseBranch: string; worktreeMaxConcurrent?: number };
     this.generalConfig = config;
     this.baseBranchInput = config.baseBranch;
+    this.worktreeMaxConcurrentInput = config.worktreeMaxConcurrent ?? 2;
     this.generalSaving = false;
   }
 
@@ -642,6 +644,17 @@ export class AosSettingsView extends LitElement {
     this.error = '';
     this.generalSaving = true;
     gateway.send({ type: 'settings.general.update', baseBranch: value });
+  }
+
+  private handleWorktreeMaxConcurrentSave(): void {
+    const value = this.worktreeMaxConcurrentInput;
+    if (!Number.isInteger(value) || value < 1 || value > 4) {
+      this.error = 'Parallelität muss zwischen 1 und 4 liegen.';
+      return;
+    }
+    this.error = '';
+    this.generalSaving = true;
+    gateway.send({ type: 'settings.general.update', worktreeMaxConcurrent: value });
   }
 
   private onVoiceConfigReceived(msg: WebSocketMessage): void {
@@ -815,6 +828,38 @@ export class AosSettingsView extends LitElement {
                 class="save-btn"
                 @click=${() => this.handleBaseBranchSave()}
                 ?disabled=${this.generalSaving || this.baseBranchInput.trim() === this.generalConfig?.baseBranch}
+              >
+                ${this.generalSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="provider-card">
+          <div class="form-field">
+            <label for="worktree-parallelism-input">Worktree-Parallelität (Auto-Mode Default)</label>
+            <span class="form-hint">
+              Wie viele Stories parallel im Auto-Mode laufen sollen, wenn als Git-Strategie <strong>Worktree</strong> gewählt ist.
+              Gilt nur für Spec-Auto-Mode mit Worktree-Strategie. Werte > 1 sind <strong>experimentell</strong> —
+              bei Konflikten zwischen parallel laufenden Stories können Merge-Probleme auftreten.
+              Pro-Spec überschreibbar im Git-Strategie-Dialog beim Auto-Mode-Start.
+            </span>
+            <div class="general-input-row">
+              <select
+                id="worktree-parallelism-input"
+                .value=${String(this.worktreeMaxConcurrentInput)}
+                @change=${(e: Event) => { this.worktreeMaxConcurrentInput = parseInt((e.target as HTMLSelectElement).value, 10); }}
+                ?disabled=${this.generalSaving}
+              >
+                <option value="1">1 (sequentiell, sicher)</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+              <button
+                class="save-btn"
+                @click=${() => this.handleWorktreeMaxConcurrentSave()}
+                ?disabled=${this.generalSaving || this.worktreeMaxConcurrentInput === (this.generalConfig?.worktreeMaxConcurrent ?? 2)}
               >
                 ${this.generalSaving ? 'Saving...' : 'Save'}
               </button>

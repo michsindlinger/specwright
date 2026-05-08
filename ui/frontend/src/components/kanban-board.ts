@@ -28,7 +28,8 @@ export interface AutoModeProgress {
   storyTitle: string;
   currentPhase: number;
   totalPhases: number;
-  slotState?: 'running' | 'waiting';
+  /** v3.30: 'idle' = configured slot with no ready story (deps gating). */
+  slotState?: 'running' | 'waiting' | 'idle';
   sessionId?: string;
 }
 
@@ -167,6 +168,10 @@ export class AosKanbanBoard extends LitElement {
   @state() private showGitStrategyDialog = false;
   @state() private pendingStoryId: string | null = null;
   @state() private currentGitStrategy: GitStrategy | null = null;
+  /** v3.30: settings-default for worktree parallelism, used to prefill the dialog. */
+  @property({ type: Number }) defaultWorktreeMaxConcurrent = 2;
+  /** v3.30: per-spec override chosen by the user in the git-strategy dialog. */
+  @state() private currentMaxConcurrent: number | null = null;
   @property({ type: Boolean }) autoModeEnabled = false;
   // KAE-003: Auto-mode progress state (single-slot legacy)
   @state() private autoModeProgress: AutoModeProgress | null = null;
@@ -661,6 +666,20 @@ export class AosKanbanBoard extends LitElement {
       background-color: rgba(234, 179, 8, 0.05);
       border-color: rgba(234, 179, 8, 0.25);
       opacity: 0.8;
+    }
+
+    .slot-idle {
+      background-color: rgba(148, 163, 184, 0.05);
+      border-color: rgba(148, 163, 184, 0.2);
+      border-style: dashed;
+      opacity: 0.6;
+    }
+    .slot-idle .progress-waiting-text {
+      color: var(--color-text-secondary, #94a3b8);
+    }
+    .slot-idle .progress-waiting-text::before {
+      background-color: var(--color-text-secondary, #94a3b8);
+      animation: none;
     }
 
     .progress-waiting-text {
@@ -1644,7 +1663,8 @@ export class AosKanbanBoard extends LitElement {
     });
     if (targetStatus === 'in_progress' && (story.status === 'backlog' || story.status === 'blocked')) {
       console.log('[KanbanBoard] Triggering workflow start for story:', storyId);
-      this.triggerWorkflowStart(storyId, this.currentGitStrategy || 'branch');
+      const effStrategy = this.currentGitStrategy || 'branch';
+      this.triggerWorkflowStart(storyId, effStrategy, effStrategy === 'worktree' ? (this.currentMaxConcurrent ?? undefined) : undefined);
     }
 
     this.draggedStoryId = null;
@@ -1669,7 +1689,7 @@ export class AosKanbanBoard extends LitElement {
    * @param storyId - The story ID to start
    * @param gitStrategy - The git strategy to use ('branch' or 'worktree')
    */
-  private triggerWorkflowStart(storyId: string, gitStrategy: GitStrategy = 'branch'): void {
+  private triggerWorkflowStart(storyId: string, gitStrategy: GitStrategy = 'branch', maxConcurrent?: number): void {
     // MSK-003-FIX: Get model from story BEFORE sending, because updateStatus might run first
     const story = this.kanban.stories.find(s => s.id === storyId);
     const model = story?.model || 'opus';
@@ -1679,29 +1699,36 @@ export class AosKanbanBoard extends LitElement {
       storyId,
       gitStrategy,
       model,
-      autoMode: this.autoModeEnabled
+      autoMode: this.autoModeEnabled,
+      maxConcurrent
     });
 
     // Execute-tasks runs in the backend via workflowExecutor (not Cloud Terminal).
     // The backend handles process spawning, git strategy, and auto-continuation.
-    gateway.send({
-      type: 'workflow.story.start',
+    const payload = {
+      type: 'workflow.story.start' as const,
       specId: this.kanban.specId,
       storyId,
       gitStrategy,
       model,  // MSK-003-FIX: Send model from frontend
-      autoMode: this.autoModeEnabled  // Send auto-mode state to control backend auto-continuation
-    });
+      autoMode: this.autoModeEnabled,  // Send auto-mode state to control backend auto-continuation
+      ...(gitStrategy === 'worktree' && maxConcurrent !== undefined ? { maxConcurrent } : {})
+    };
+    gateway.send(payload);
   }
 
   /**
    * KSE-005/KAE-005: Handle git strategy selection from dialog
    */
   private handleGitStrategySelect(e: CustomEvent<GitStrategySelection>): void {
-    const { strategy, storyId } = e.detail;
+    const { strategy, storyId, maxConcurrent } = e.detail;
 
     // Store the selected strategy for subsequent stories
     this.currentGitStrategy = strategy;
+    // v3.30: persist user's per-spec parallelism choice for subsequent triggerWorkflowStart calls
+    if (strategy === 'worktree' && maxConcurrent !== undefined) {
+      this.currentMaxConcurrent = maxConcurrent;
+    }
     this.showGitStrategyDialog = false;
 
     // KAE-005: Check if this was triggered by auto-mode
@@ -1734,8 +1761,8 @@ export class AosKanbanBoard extends LitElement {
       })
     );
 
-    // Now trigger the workflow with the selected strategy
-    this.triggerWorkflowStart(storyId, strategy);
+    // Now trigger the workflow with the selected strategy + parallelism
+    this.triggerWorkflowStart(storyId, strategy, strategy === 'worktree' ? maxConcurrent : undefined);
     this.pendingStoryId = null;
 
     // KAE-005: If auto-mode was waiting, notify that git strategy is now selected
@@ -1958,7 +1985,10 @@ export class AosKanbanBoard extends LitElement {
     );
 
     // Trigger workflow
-    this.triggerWorkflowStart(storyId, this.currentGitStrategy || 'branch');
+    {
+      const effStrategy = this.currentGitStrategy || 'branch';
+      this.triggerWorkflowStart(storyId, effStrategy, effStrategy === 'worktree' ? (this.currentMaxConcurrent ?? undefined) : undefined);
+    }
   }
 
   private renderColumn(
@@ -2198,19 +2228,21 @@ export class AosKanbanBoard extends LitElement {
               `
             : this.autoModeEnabled && this.autoModeProgressBoard?.slots.length
               ? this.autoModeProgressBoard.slots.map(slot => html`
-                  <div class="auto-mode-progress ${slot.slotState === 'waiting' ? 'slot-waiting' : ''}">
+                  <div class="auto-mode-progress ${slot.slotState === 'waiting' ? 'slot-waiting' : ''} ${slot.slotState === 'idle' ? 'slot-idle' : ''}">
                     ${slot.slotState === 'waiting'
                       ? html`<span class="progress-waiting-text">${slot.storyId}: Wartet auf Slot...</span>`
-                      : html`
-                          <span class="progress-story-id">${slot.storyId}</span>
-                          <span class="progress-story-title">${this.truncateTitle(slot.storyTitle)}</span>
-                          <div class="progress-phase">
-                            <span class="progress-phase-label">Phase</span>
-                            <span class="progress-phase-current">${slot.currentPhase}</span>
-                            <span class="progress-phase-separator">/</span>
-                            <span class="progress-phase-total">${slot.totalPhases}</span>
-                          </div>
-                        `}
+                      : slot.slotState === 'idle'
+                        ? html`<span class="progress-waiting-text">${slot.storyTitle}</span>`
+                        : html`
+                            <span class="progress-story-id">${slot.storyId}</span>
+                            <span class="progress-story-title">${this.truncateTitle(slot.storyTitle)}</span>
+                            <div class="progress-phase">
+                              <span class="progress-phase-label">Phase</span>
+                              <span class="progress-phase-current">${slot.currentPhase}</span>
+                              <span class="progress-phase-separator">/</span>
+                              <span class="progress-phase-total">${slot.totalPhases}</span>
+                            </div>
+                          `}
                   </div>
                 `)
               : this.autoModeEnabled && this.autoModeProgress
@@ -2310,6 +2342,7 @@ export class AosKanbanBoard extends LitElement {
           .open=${this.showGitStrategyDialog}
           .storyId=${this.pendingStoryId || ''}
           .specId=${this.kanban.specId}
+          .defaultMaxConcurrent=${this.currentMaxConcurrent ?? this.defaultWorktreeMaxConcurrent}
           @git-strategy-select=${this.handleGitStrategySelect}
           @git-strategy-cancel=${this.handleGitStrategyCancel}
         ></aos-git-strategy-dialog>

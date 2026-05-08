@@ -79,21 +79,15 @@ export class AutoModeSpecOrchestrator extends AutoModeOrchestratorBase {
     worktreeOps?: SpecWorktreeOps
   ): AutoModeSpecOrchestrator {
     const resolvedMainPath = mainProjectPath ?? projectPath;
-    // D15 / v3.28.4: force sequential execution for worktree strategy until
-    // parallel-merge race surface is fully closed. v3.28.0..3 fixed individual
-    // bugs (mutex, branch-base, rebase, merge-cwd) but real-world parallel
-    // runs keep surfacing edge cases (stale base after sibling merge, LLM-side
-    // hangs masquerading as parallel). Sequential is the safe default; user
-    // can opt back into parallel via explicit override once bullet-proof.
-    const effectiveMaxConcurrent = gitStrategy === 'worktree' ? 1 : maxConcurrent;
-    if (gitStrategy === 'worktree' && maxConcurrent !== effectiveMaxConcurrent) {
-      console.log(`[SpecOrchestrator] D15: gitStrategy=worktree → forcing maxConcurrent=1 (was ${maxConcurrent})`);
-    }
+    // v3.30: D15-clamp removed. Caller (workflow-executor) resolves the effective
+    // value from user input + settings. Worktree+parallel is now opt-in per spec
+    // via dialog. ProjectConcurrencyGate (constructor) still clamps to
+    // MAX_CONCURRENT=4 as runtime safety net.
     return new AutoModeSpecOrchestrator({
       projectPath,
       kanbanPath: projectDir(resolvedMainPath, 'specs', specId),
       watchFilename: 'kanban.json',
-      maxConcurrent: effectiveMaxConcurrent,
+      maxConcurrent,
       commandPrefix,
       cloudTerminalManager,
       specId,

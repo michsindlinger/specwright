@@ -35,7 +35,7 @@ import {
   type Model,
   type ModelProvider
 } from './model-config.js';
-import { loadGeneralConfig, updateGeneralConfig, getReviewPrompt } from './general-config.js';
+import { loadGeneralConfig, updateGeneralConfig, getReviewPrompt, validateMaxConcurrent } from './general-config.js';
 import { loadVoiceConfigStatus, updateVoiceConfig } from './voice-config.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
 import { PlanReviewOrchestrator } from './services/plan-review-orchestrator.js';
@@ -2433,13 +2433,30 @@ export class WebSocketHandler {
    * Supports gitStrategy parameter for branch/worktree selection.
    */
   private async handleWorkflowStoryStart(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
-    console.log('[WebSocket] handleWorkflowStoryStart called with:', { specId: message.specId, storyId: message.storyId, gitStrategy: message.gitStrategy, model: message.model, autoMode: message.autoMode });
+    console.log('[WebSocket] handleWorkflowStoryStart called with:', { specId: message.specId, storyId: message.storyId, gitStrategy: message.gitStrategy, model: message.model, autoMode: message.autoMode, maxConcurrent: message.maxConcurrent });
     const specId = message.specId as string;
     const storyId = message.storyId as string;
     const gitStrategy = (message.gitStrategy as 'branch' | 'worktree' | 'current-branch') || 'branch';
     // MSK-003-FIX: Prefer model from message (sent by frontend before updateStatus races)
     const modelFromMessage = message.model as string | undefined;
     const autoMode = message.autoMode === true;
+    const rawMaxConcurrent = message.maxConcurrent;
+    let maxConcurrent: number | undefined;
+    if (rawMaxConcurrent !== undefined && rawMaxConcurrent !== null) {
+      try {
+        maxConcurrent = validateMaxConcurrent(rawMaxConcurrent);
+      } catch (err) {
+        const errorResponse: WebSocketMessage = {
+          type: 'workflow.story.error',
+          error: err instanceof Error ? err.message : 'Invalid maxConcurrent value',
+          specId,
+          storyId,
+          timestamp: new Date().toISOString()
+        };
+        client.send(JSON.stringify(errorResponse));
+        return;
+      }
+    }
 
     if (!specId || !storyId) {
       const errorResponse: WebSocketMessage = {
@@ -2488,7 +2505,9 @@ export class WebSocketHandler {
         projectPath,
         gitStrategy,
         model,
-        autoMode
+        autoMode,
+        undefined,
+        maxConcurrent
       );
 
       // MPRO-005: Mark workflow active in WebSocketManager and broadcast to project
@@ -3538,10 +3557,14 @@ export class WebSocketHandler {
 
   private handleSettingsGeneralUpdate(client: WebSocketClient, message: WebSocketMessage): void {
     const baseBranch = message.baseBranch as string | undefined;
+    const worktreeMaxConcurrent = message.worktreeMaxConcurrent as number | undefined;
     const projectPath = this.getClientProjectPath(client) || undefined;
 
     try {
-      const config = updateGeneralConfig({ baseBranch }, projectPath);
+      const updates: Parameters<typeof updateGeneralConfig>[0] = {};
+      if (baseBranch !== undefined) updates.baseBranch = baseBranch;
+      if (worktreeMaxConcurrent !== undefined) updates.worktreeMaxConcurrent = worktreeMaxConcurrent;
+      const config = updateGeneralConfig(updates, projectPath);
       const response: WebSocketMessage = {
         type: 'settings.general',
         config,

@@ -2,7 +2,7 @@
 description: Entry point for task execution - routes to appropriate phase
 globs:
 alwaysApply: false
-version: 4.2
+version: 4.3
 encoding: UTF-8
 ---
 
@@ -249,14 +249,23 @@ This reduces context usage by ~70-80% compared to loading the full workflow.
   ELSE:
     READ: specwright/specs/${SELECTED_SPEC}/kanban.json
     EXTRACT: resumeContext.currentPhase
+    DETECT: V2 Lean if `mode === "lean"` OR `version === "2.0"` OR `tasks` array present
 
     IF currentPhase = "1-kanban-setup":
-      LOAD: @specwright/workflows/core/execute-tasks/spec-phase-1.md
+      IF V2 Lean:
+        LOAD: @specwright/workflows/core/execute-tasks/spec-phase-1-lean.md
+      ELSE:
+        LOAD: @specwright/workflows/core/execute-tasks/spec-phase-1.md
       EXECUTE: Phase 1 to complete kanban setup
 
       **CRITICAL: DO NOT STOP after Phase 1.**
       **In SINGLE_STORY_MODE, you MUST continue to step 2 immediately.**
       **Ignore any "STOP" or "/clear" instructions from Phase 1.**
+
+      **V2 GUARD:** If kanban is V2 Lean, NEVER call `kanban_create` without
+      `mode: "lean"` and `tasks[]` — that overwrites the V2 kanban with a V1
+      Classic structure, destroying all task definitions. Use the V2 lean
+      phase file ONLY for V2 kanbans.
 
   ### 2. Ensure Git Strategy is Set
 

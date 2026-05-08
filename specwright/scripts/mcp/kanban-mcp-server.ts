@@ -48,6 +48,7 @@ import {
   validateTaskDescriptions,
   hasUserActionFlag,
   applyUserActionMutation,
+  computeInitialStatus,
   type UserActionMutationKind,
 } from './kanban-validation.js';
 import {
@@ -437,7 +438,7 @@ const TOOLS: Tool[] = [
                   requiresUserAction: { type: 'boolean', description: 'True if story needs a manual user step the AI cannot perform autonomously.' }
                 }
               },
-              status: { type: 'string', enum: ['ready', 'blocked'] },
+              status: { type: 'string', enum: ['ready', 'blocked'], description: "Initial status hint. Server forces 'blocked' when dependencies are unmet, regardless of this value." },
               dorStatus: { type: 'string', description: 'DoR status (ready/incomplete)' },
               dependencies: { type: 'array', items: { type: 'string' } },
               integration: { type: 'array', items: { type: 'string' }, description: 'Integration notes' },
@@ -457,7 +458,7 @@ const TOOLS: Tool[] = [
               description: { type: 'string', description: '2-3 sentences: what to implement' },
               planSection: { type: 'string', description: 'Reference to implementation plan section (e.g., "Phase 1, Component X")' },
               dependencies: { type: 'array', items: { type: 'string' }, description: 'Task IDs this depends on' },
-              status: { type: 'string', enum: ['ready', 'blocked'] },
+              status: { type: 'string', enum: ['ready', 'blocked'], description: "Initial status hint. Server forces 'blocked' when dependencies are unmet, regardless of this value." },
               requiresUserAction: { type: 'boolean', description: 'True if task needs a manual user step the AI cannot perform autonomously; auto-mode skips and waits for explicit user confirm.' }
             },
             required: ['id', 'title', 'description', 'planSection', 'dependencies', 'status']
@@ -560,7 +561,8 @@ const TOOLS: Tool[] = [
           description: 'Git strategy being used'
         },
         gitBranch: { type: 'string', description: 'Git branch name' },
-        worktreePath: { type: 'string', description: 'Worktree path (optional, only for worktree strategy)' }
+        worktreePath: { type: 'string', description: 'Worktree path (optional, only for worktree strategy)' },
+        maxConcurrent: { type: 'integer', minimum: 1, maximum: 4, description: 'User-chosen parallel slots for worktree auto-mode (optional, integer 1–4)' }
       },
       required: ['specId', 'gitStrategy', 'gitBranch']
     }
@@ -610,7 +612,7 @@ const TOOLS: Tool[] = [
             type: { type: 'string', description: 'Technical type (frontend/backend/etc.)' },
             priority: { type: 'string', description: 'Priority level' },
             effort: { type: 'number', description: 'Effort in story points' },
-            status: { type: 'string', enum: ['ready', 'blocked'], description: 'Initial status' },
+            status: { type: 'string', enum: ['ready', 'blocked'], description: "Initial status hint. Server forces 'blocked' when dependencies are unmet, regardless of this value." },
             dependencies: { type: 'array', items: { type: 'string' }, description: 'Story IDs this depends on' },
             content: { type: 'string', description: 'Full markdown content (optional, otherwise generated from template)' },
             severity: { type: 'string', description: 'For bugs: critical/high/medium/low' },
@@ -914,6 +916,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           gitStrategy: string;
           gitBranch: string;
           worktreePath?: string;
+          maxConcurrent?: number;
         });
 
       case 'kanban_get_next_task':
@@ -1156,6 +1159,35 @@ async function handleKanbanCreate(
     };
   }
 ) {
+  // Defense-in-depth: refuse to overwrite an existing V2 Lean kanban with a V1
+  // Classic structure. Without this guard, a stale workflow (e.g., V1 spec-phase-1
+  // run on a V2 Lean kanban) silently destroys all V2 task definitions and
+  // replaces them with story-derived V1 stories.
+  const existingPath = join(specPath, 'kanban.json');
+  if (existsSync(existingPath)) {
+    try {
+      const existing = JSON.parse(await readFile(existingPath, 'utf-8')) as Partial<KanbanJsonV2>;
+      const existingIsV2 =
+        existing?.mode === 'lean' ||
+        existing?.version === '2.0' ||
+        Array.isArray((existing as { tasks?: unknown }).tasks);
+      const incomingIsV2 = args.mode === 'lean' && Array.isArray(args.tasks);
+      if (existingIsV2 && !incomingIsV2) {
+        throw new Error(
+          `Refusing to overwrite V2 Lean kanban with V1 Classic structure for spec "${args.specId}". ` +
+          `Existing kanban.json uses V2 Lean (tasks[]). The kanban_create call did not include mode="lean" + tasks[]. ` +
+          `If you intend to recreate the kanban, delete kanban.json first or use mode="lean" with tasks[].`
+        );
+      }
+    } catch (err) {
+      // Re-throw the guard error; ignore parse/read errors so corrupted/missing
+      // files don't block legitimate fresh creation.
+      if (err instanceof Error && err.message.startsWith('Refusing to overwrite')) {
+        throw err;
+      }
+    }
+  }
+
   // V2 (Lean) mode
   if (args.mode === 'lean' && args.tasks) {
     return await handleKanbanCreateV2(specPath, args as {
@@ -1190,10 +1222,15 @@ async function handleKanbanCreate(
       const storyPriority = s.priority || s.classification?.priority || 'medium';
       const storyEffort = s.effort ?? s.classification?.effort ?? 0;
 
+      const computedStatus = computeInitialStatus(s.dependencies, s.status, args.stories);
+      if (s.status && s.status !== computedStatus) {
+        console.error(`[KanbanCreate] ${s.id}: status override '${s.status}' → '${computedStatus}' (deps unmet)`);
+      }
+
       const story: KanbanJsonStory = {
         id: s.id,
         title: s.title,
-        status: s.status as KanbanJsonStatus,
+        status: computedStatus as KanbanJsonStatus,
         phase: 'pending' as KanbanJsonPhase,
         dependencies: s.dependencies,
         blockedBy: [],
@@ -1375,13 +1412,17 @@ async function handleKanbanCreateV2(
     }
 
     const tasks: KanbanJsonV2Task[] = args.tasks.map(t => {
+      const computedStatus = computeInitialStatus(t.dependencies, t.status, args.tasks);
+      if (t.status && t.status !== computedStatus) {
+        console.error(`[KanbanCreateV2] ${t.id}: status override '${t.status}' → '${computedStatus}' (deps unmet)`);
+      }
       const task: KanbanJsonV2Task = {
         id: t.id,
         title: t.title,
         description: t.description,
         planSection: t.planSection,
         dependencies: t.dependencies,
-        status: t.status as KanbanJsonStatus,
+        status: computedStatus,
         phase: 'pending' as KanbanJsonPhase,
         model: null,
         timing: { startedAt: null, completedAt: null },
@@ -1850,6 +1891,7 @@ async function handleKanbanSetGitStrategy(
     gitStrategy: string;
     gitBranch: string;
     worktreePath?: string;
+    maxConcurrent?: number;
   }
 ) {
   return await withKanbanLock(specPath, async () => {
@@ -1859,6 +1901,9 @@ async function handleKanbanSetGitStrategy(
     kanban.resumeContext.gitStrategy = args.gitStrategy;
     kanban.resumeContext.gitBranch = args.gitBranch;
     kanban.resumeContext.worktreePath = args.worktreePath || null;
+    if (args.maxConcurrent !== undefined) {
+      kanban.resumeContext.maxConcurrent = args.maxConcurrent;
+    }
 
     // Advance phase if still at 1-complete
     if (kanban.resumeContext.currentPhase === '1-complete') {
@@ -1869,7 +1914,8 @@ async function handleKanbanSetGitStrategy(
     }
 
     // Add changelog
-    const details = `Git ${args.gitStrategy} setup: ${args.gitBranch}${args.worktreePath ? ` (worktree: ${args.worktreePath})` : ''}`;
+    const concurrencyHint = args.maxConcurrent !== undefined ? `, maxConcurrent: ${args.maxConcurrent}` : '';
+    const details = `Git ${args.gitStrategy} setup: ${args.gitBranch}${args.worktreePath ? ` (worktree: ${args.worktreePath})` : ''}${concurrencyHint}`;
     addChangeLogEntry(kanban, 'git_strategy_set', null, details);
 
     await writeKanbanJson(specPath, kanban);
@@ -2405,13 +2451,17 @@ async function handleKanbanAddItem(
         }
       }
       const now = new Date().toISOString();
+      const computedStatus = computeInitialStatus(deps, data.status as string | undefined, kanban.tasks);
+      if (data.status && data.status !== computedStatus) {
+        console.error(`[KanbanAddItem] ${data.id}: status override '${data.status}' → '${computedStatus}' (deps unmet)`);
+      }
       const newTask: KanbanJsonV2Task = {
         id: data.id as string,
         title: data.title as string,
         description: (data.description as string) || (data.title as string),
         planSection: (data.planSection as string) || '',
         dependencies: deps,
-        status: data.status === 'blocked' ? 'blocked' : 'ready',
+        status: computedStatus,
         phase: 'pending',
         model: null,
         timing: { startedAt: null, completedAt: null },
@@ -2438,7 +2488,8 @@ async function handleKanbanAddItem(
     }
 
     // Validate: Dependencies exist
-    for (const depId of data.dependencies) {
+    const v1Deps = data.dependencies ?? [];
+    for (const depId of v1Deps) {
       if (!kanban.stories.find(s => s.id === depId)) {
         throw new Error(`Dependency ${depId} not found in kanban`);
       }
@@ -2500,6 +2551,10 @@ async function handleKanbanAddItem(
 
     // Add to kanban
     const now = new Date().toISOString();
+    const computedStatus = computeInitialStatus(v1Deps, data.status as string | undefined, kanban.stories);
+    if (data.status && data.status !== computedStatus) {
+      console.error(`[KanbanAddItem] ${data.id}: status override '${data.status}' → '${computedStatus}' (deps unmet)`);
+    }
     const newStory: KanbanJsonStory = {
       id: data.id,
       title: data.title,
@@ -2507,9 +2562,9 @@ async function handleKanbanAddItem(
       type: data.type,
       priority: data.priority,
       effort: data.effort,
-      status: data.status as KanbanJsonStatus,
+      status: computedStatus as KanbanJsonStatus,
       phase: 'pending',
-      dependencies: data.dependencies,
+      dependencies: v1Deps,
       blockedBy: [],
       model: null,
       timing: {

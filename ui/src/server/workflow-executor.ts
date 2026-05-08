@@ -9,7 +9,7 @@ import { SpecsReader, KanbanJsonCorruptedError, type ModelSelection } from './sp
 import { withKanbanLock } from './utils/kanban-lock.js';
 import { withMainProjectLock } from './utils/main-project-mutex.js';
 import { getCliCommandForModel } from './model-config.js';
-import { getBaseBranch } from './general-config.js';
+import { getBaseBranch, getWorktreeMaxConcurrent } from './general-config.js';
 import { queueHandler } from './handlers/queue.handler.js';
 import { queueService } from './services/queue.service.js';
 import { resolveCommandDir, projectDir } from './utils/project-dirs.js';
@@ -550,9 +550,10 @@ export class WorkflowExecutor {
     gitStrategy: GitStrategy = 'branch',
     model: ModelSelection = 'opus',  // MSK-003-FIX: Accept model from caller
     autoMode: boolean = false,  // Whether auto-mode is enabled (controls auto-continue behavior)
-    chainFromBranch?: string  // Branch chaining: create new branch from this branch instead of baseBranch
+    chainFromBranch?: string,  // Branch chaining: create new branch from this branch instead of baseBranch
+    maxConcurrent?: number  // v3.30: explicit user-chosen parallelism (worktree only); fallback to settings default
   ): Promise<string> {
-    console.log('[Workflow] startStoryExecution called:', { specId, storyId, projectPath, gitStrategy, model, autoMode });
+    console.log('[Workflow] startStoryExecution called:', { specId, storyId, projectPath, gitStrategy, model, autoMode, maxConcurrent });
 
     // v3.29.1: defense-in-depth guard. Frontend `getNextReadyStory` already
     // filters user-action items, but this entry point can also be hit by
@@ -804,9 +805,24 @@ export class WorkflowExecutor {
       let orchestrator = this.autoModeSpecOrchestrators.get(specId);
       if (!orchestrator) {
         console.log(`[Workflow] Auto-Mode: Creating spec orchestrator for ${specId}`);
-        // PAM-007: parallel only with worktree strategy — clamp to 1 otherwise
-        const effectiveConcurrent = gitStrategy === 'worktree' ? 2 : 1;
-        if (gitStrategy !== 'worktree') {
+        // v3.30: parallelism is opt-in for worktree strategy; non-worktree always sequential.
+        // Resolution order: explicit param (from dialog) → resumeContext (set on prior worktree
+        // creation) → settings default. Validation already happened at WS-message entry.
+        let effectiveConcurrent = 1;
+        if (gitStrategy === 'worktree') {
+          const resumed = await this.readResumeContextMaxConcurrent(projectPath, specId);
+          const settingsDefault = getWorktreeMaxConcurrent(projectPath);
+          effectiveConcurrent = maxConcurrent ?? resumed ?? settingsDefault;
+          if (effectiveConcurrent > 1) {
+            console.warn(
+              `[Workflow] Auto-Mode: PARALLEL WORKTREE MODE (maxConcurrent=${effectiveConcurrent}) — ` +
+              `experimental. Known race surface: stale-base after sibling-merge, LLM-side hangs. ` +
+              `Sequential mode (=1) remains the safe choice.`
+            );
+          }
+          // Persist effective value into resumeContext so a server restart resumes with same parallelism.
+          await this.persistResumeContextMaxConcurrent(projectPath, specId, effectiveConcurrent);
+        } else {
           this.sendToProject(projectPath, {
             type: 'workflow.auto-mode.parallel-unavailable',
             specId,
@@ -829,6 +845,15 @@ export class WorkflowExecutor {
         );
         this.setupSpecOrchestratorListeners(orchestrator, client, specId, projectPath, model);
         this.autoModeSpecOrchestrators.set(specId, orchestrator);
+        // v3.30: broadcast configured slot count so the frontend can render
+        // idle placeholders when fewer ready stories than slots exist (helps
+        // user see that parallel mode is active even when deps gate scheduling).
+        this.sendToProject(projectPath, {
+          type: 'workflow.auto-mode.slot.config',
+          specId,
+          maxConcurrent: effectiveConcurrent,
+          timestamp: new Date().toISOString()
+        });
       }
 
       orchestrator.scheduleTick().catch(err => {
@@ -1934,6 +1959,13 @@ export class WorkflowExecutor {
     orchestrator.on('all-items-done', async () => {
       console.log(`[Workflow] Auto-Mode: All items done for spec ${specId}`);
       this.autoModeSpecOrchestrators.delete(specId);
+      // v3.30: tell frontend to drop idle-slot padding (orchestrator is dead).
+      this.sendToProject(projectPath, {
+        type: 'workflow.auto-mode.slot.config',
+        specId,
+        maxConcurrent: 0,
+        timestamp: new Date().toISOString()
+      });
 
       const specsReader = new SpecsReader();
       let kanban;
@@ -3519,6 +3551,60 @@ export class WorkflowExecutor {
     // Log if neither file exists
     if (!existsSync(kanbanJsonPath) && !existsSync(kanbanMdPath)) {
       console.log(`[Workflow] No kanban file found in ${specDir}, skipping git strategy update`);
+    }
+  }
+
+  /**
+   * v3.30: read user-chosen parallelism from kanban.resumeContext.maxConcurrent
+   * so that a server restart resumes auto-mode with the same value.
+   * Returns undefined if missing/invalid (caller falls back to settings default).
+   */
+  private async readResumeContextMaxConcurrent(
+    projectPath: string,
+    specId: string
+  ): Promise<number | undefined> {
+    try {
+      const specDir = projectDir(projectPath, 'specs', specId);
+      const kanbanJsonPath = join(specDir, 'kanban.json');
+      if (!existsSync(kanbanJsonPath)) return undefined;
+      const jsonContent = await readFile(kanbanJsonPath, 'utf-8');
+      const kanban = JSON.parse(jsonContent) as Record<string, unknown>;
+      const resumeContext = kanban.resumeContext as Record<string, unknown> | undefined;
+      const value = resumeContext?.maxConcurrent;
+      if (typeof value !== 'number' || !Number.isInteger(value)) return undefined;
+      if (value < 1 || value > ProjectConcurrencyGate.MAX_CONCURRENT) return undefined;
+      return value;
+    } catch (err) {
+      console.warn('[Workflow] readResumeContextMaxConcurrent error:', err instanceof Error ? err.message : err);
+      return undefined;
+    }
+  }
+
+  /**
+   * v3.30: persist user-chosen parallelism into kanban.resumeContext so resume
+   * after server restart picks the same value (otherwise settings-default applies
+   * and parallelism may silently change).
+   */
+  private async persistResumeContextMaxConcurrent(
+    projectPath: string,
+    specId: string,
+    maxConcurrent: number
+  ): Promise<void> {
+    try {
+      const specDir = projectDir(projectPath, 'specs', specId);
+      const kanbanJsonPath = join(specDir, 'kanban.json');
+      if (!existsSync(kanbanJsonPath)) return;
+      await withKanbanLock(specDir, async () => {
+        const jsonContent = await readFile(kanbanJsonPath, 'utf-8');
+        const kanban = JSON.parse(jsonContent) as Record<string, unknown>;
+        const resumeContext = (kanban.resumeContext as Record<string, unknown> | undefined) ?? {};
+        if (resumeContext.maxConcurrent === maxConcurrent) return;
+        resumeContext.maxConcurrent = maxConcurrent;
+        kanban.resumeContext = resumeContext;
+        await writeFile(kanbanJsonPath, JSON.stringify(kanban, null, 2), 'utf-8');
+      });
+    } catch (err) {
+      console.warn('[Workflow] persistResumeContextMaxConcurrent error:', err instanceof Error ? err.message : err);
     }
   }
 
