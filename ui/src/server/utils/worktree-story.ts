@@ -36,12 +36,134 @@ export function isWorktreeClean(worktreePath: string): boolean {
   }
 }
 
+// ── Runtime-state gitignore migration ───────────────────────────────────────
+
+const RUNTIME_IGNORE_SENTINEL = '# Specwright: runtime state (MCP-routed, do not commit)';
+const RUNTIME_IGNORE_BASENAMES = ['kanban.json', 'kanban-board.md', 'backlog-index.json'] as const;
+
+/**
+ * Idempotent: ensures `.gitignore` in `mainProjectPath` lists Specwright
+ * runtime files (kanban.json, kanban-board.md, backlog-index.json) and
+ * untracks any already-committed copies via `git rm --cached`. Resolves the
+ * project directory name via `resolveProjectDir` so both `specwright/` and
+ * legacy `agent-os/` layouts are covered.
+ *
+ * Why this exists: kanban.json is MCP-routed runtime state — written live to
+ * the main repo, never edited from worktrees. Tracking it in git produces
+ * modify/delete conflicts when the spec branch (which has the file deleted by
+ * `seedSpecDirInWorktree`) merges into main (which has the file modified by
+ * `commitMainKanbanIfDirty`). GitHub PR merges cannot apply custom merge
+ * drivers, so the only fix is to stop tracking it. backlog-index.json shares
+ * the same pattern.
+ *
+ * Wrapped in `withMainProjectLock`. Never throws (auto-mode must continue).
+ * Sentinel re-checked **inside** the lock to defend against the race where
+ * concurrent callers all read a stale (sentinel-less) `.gitignore` before
+ * acquiring the lock.
+ */
+export async function ensureSpecwrightRuntimeGitignored(
+  mainProjectPath: string
+): Promise<void> {
+  try {
+    await withMainProjectLock(mainProjectPath, 'ensure-runtime-gitignored', async () => {
+      const gitignorePath = join(mainProjectPath, '.gitignore');
+
+      // Inside-lock sentinel re-check.
+      let existing = '';
+      try { existing = await readFile(gitignorePath, 'utf-8'); } catch { /* ENOENT → empty */ }
+      if (existing.includes(RUNTIME_IGNORE_SENTINEL)) return;
+
+      let projDirName: string;
+      try {
+        projDirName = resolveProjectDir(mainProjectPath);
+      } catch {
+        // Fresh project may have neither dir yet — fall back to specwright.
+        projDirName = 'specwright';
+      }
+
+      // Discover already-tracked runtime files without globs (avoids any
+      // pathspec semantics ambiguity). One ls-files call covers both subtrees.
+      const trackedRuntimeFiles: string[] = [];
+      try {
+        const out = execSync(
+          `git ls-files -- "${projDirName}/specs" "${projDirName}/backlog"`,
+          { cwd: mainProjectPath, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }
+        );
+        for (const line of out.split('\n')) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          const base = trimmed.split('/').pop() ?? '';
+          if ((RUNTIME_IGNORE_BASENAMES as readonly string[]).includes(base)) {
+            trackedRuntimeFiles.push(trimmed);
+          }
+        }
+      } catch {
+        // Not a git repo, or ls-files failed — nothing to untrack.
+      }
+
+      // Stage deletions for any tracked runtime files.
+      for (const rel of trackedRuntimeFiles) {
+        try {
+          execSync(`git rm --cached --ignore-unmatch -- "${rel}"`, {
+            cwd: mainProjectPath, stdio: 'pipe'
+          });
+        } catch (err) {
+          console.error(`[worktree-story] ensureSpecwrightRuntimeGitignored: git rm --cached failed for ${rel}:`, err);
+        }
+      }
+
+      // Append managed `.gitignore` block. Mirror `ensureGitattributesUnion`
+      // line-ending handling so we don't fuse the block onto a trailing line.
+      const block = [
+        RUNTIME_IGNORE_SENTINEL,
+        '# (kanban + backlog files are written live by the kanban MCP server)',
+        `${projDirName}/specs/*/kanban.json`,
+        `${projDirName}/specs/*/kanban-board.md`,
+        `${projDirName}/backlog/backlog-index.json`,
+        ''
+      ].join('\n');
+      const sep = existing === '' ? '' : (existing.endsWith('\n') ? '' : '\n');
+      const next = existing + sep + block;
+      const gitignoreChanged = next !== existing;
+      if (gitignoreChanged) {
+        await writeFile(gitignorePath, next, 'utf-8');
+      }
+
+      // Skip commit when neither files were untracked nor `.gitignore` changed.
+      const stagedRuntimeRemovals = trackedRuntimeFiles.length > 0;
+      if (!gitignoreChanged && !stagedRuntimeRemovals) return;
+
+      try {
+        if (gitignoreChanged) {
+          execSync('git add .gitignore', { cwd: mainProjectPath, stdio: 'pipe' });
+        }
+        // Bail if there's still nothing staged (e.g. .gitignore already had
+        // the patterns sans sentinel and nothing was tracked).
+        try {
+          execSync('git diff --cached --quiet', { cwd: mainProjectPath, stdio: 'pipe' });
+          return; // exit 0 = nothing to commit
+        } catch { /* exit 1 = staged diff present → commit */ }
+
+        execSync(
+          'git commit -m "chore: untrack Specwright runtime state (MCP-routed kanban + backlog)"',
+          { cwd: mainProjectPath, stdio: 'pipe' }
+        );
+        console.log(`[worktree-story] Untracked Specwright runtime state in ${mainProjectPath} (${trackedRuntimeFiles.length} file(s))`);
+      } catch (err) {
+        console.error('[worktree-story] ensureSpecwrightRuntimeGitignored: commit failed:', err);
+      }
+    });
+  } catch (err) {
+    console.error('[worktree-story] ensureSpecwrightRuntimeGitignored: lock acquire failed:', err);
+  }
+}
+
 // ── Main-side commit pathway for mutable kanban files ───────────────────────
 
 /**
  * Commits `specwright/specs/<specId>/kanban.json` in the main repo if it has
  * uncommitted changes. Returns `true` when a new commit was created, `false`
- * when the file was already clean, missing, or git failed.
+ * when the file was already clean, gitignored, missing, or git failed.
  *
  * Why this exists: kanban.json is in `MUTABLE_SPEC_FILES` and lives only in
  * the main repo (not in worktrees — see `seedSpecDirInWorktree`). The kanban
@@ -50,6 +172,10 @@ export function isWorktreeClean(worktreePath: string): boolean {
  * the file isn't there. The orchestrator (`auto-mode-spec-orchestrator.ts`)
  * calls this helper after each successful story-complete event to keep the
  * main working tree clean.
+ *
+ * Post-`ensureSpecwrightRuntimeGitignored` migration the file is gitignored;
+ * the early `git check-ignore -q` gate skips the mutex acquires and the
+ * `git add` invocation that would otherwise fail loudly on every story.
  *
  * Never throws — auto-mode must keep going even if the commit fails (next
  * story-complete will re-sync any pending kanban changes).
@@ -66,6 +192,19 @@ export async function commitMainKanbanIfDirty(
   const projDirName = resolveProjectDir(mainProjectPath);
   const pathspec = join(projDirName, 'specs', specId, 'kanban.json');
   const specPath = projectDir(mainProjectPath, 'specs', specId);
+
+  // Early gate: if the file is gitignored (post-runtime-state migration), the
+  // subsequent `git add` would throw with "ignored by one of your .gitignore
+  // files" and produce a console.error per story completion. Skip silently.
+  try {
+    execSync(`git check-ignore -q -- "${pathspec}"`, {
+      cwd: mainProjectPath, stdio: 'pipe'
+    });
+    return false; // exit 0 = path is ignored → no-op
+  } catch {
+    // exit 1 = not ignored → proceed; exit 128 = no .gitignore / not a repo → also proceed safely.
+  }
+
   try {
     return await withMainProjectLock(mainProjectPath, `commit-kanban-${specId}`, () =>
       withKanbanLock(specPath, async () => {
@@ -266,6 +405,13 @@ export async function seedSpecDirInWorktree(
 
   if (!existsSync(mainSpecPath)) return;
 
+  // Untrack runtime state files in the main repo on first auto-mode-worktree
+  // run. Eliminates the modify/delete merge conflict on PR-merge spec→main:
+  // once gitignored, the seed-strip's `git rm --cached` becomes a no-op and
+  // `commitMainKanbanIfDirty` short-circuits via its check-ignore gate, so
+  // neither side of the merge touches kanban.json in git history.
+  await ensureSpecwrightRuntimeGitignored(projectPath);
+
   let needsCopy = true;
   if (existsSync(worktreeSpecPath)) {
     if (lstatSync(worktreeSpecPath).isSymbolicLink()) {
@@ -350,6 +496,10 @@ export async function seedBacklogDirInWorktree(
   const worktreeBacklogPath = projectDir(worktreePath, 'backlog');
 
   if (!existsSync(mainBacklogPath)) return;
+
+  // Mirror seedSpecDirInWorktree: untrack runtime state files in the main
+  // repo so backlog-index.json no longer participates in merge tracking.
+  await ensureSpecwrightRuntimeGitignored(projectPath);
 
   let needsCopy = true;
   if (existsSync(worktreeBacklogPath)) {
