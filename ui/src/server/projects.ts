@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { resolveStoredPath, toStorablePath } from './utils/projects-root.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -53,10 +54,14 @@ export class ProjectManager {
 
   public listProjects(): ProjectWithStatus[] {
     const config = this.loadConfig();
-    return config.projects.map((project) => ({
-      ...project,
-      exists: this.validatePath(project.path)
-    }));
+    return config.projects.map((project) => {
+      const resolvedPath = resolveStoredPath(project.path);
+      return {
+        name: project.name,
+        path: resolvedPath,
+        exists: this.validatePath(resolvedPath)
+      };
+    });
   }
 
   public validatePath(projectPath: string): boolean {
@@ -88,8 +93,9 @@ export class ProjectManager {
   }
 
   public addProject(name: string, path: string): { success: boolean; error?: string } {
-    if (!this.validatePath(path)) {
-      return { success: false, error: `Path does not exist: ${path}` };
+    const resolvedPath = resolveStoredPath(path);
+    if (!this.validatePath(resolvedPath)) {
+      return { success: false, error: `Path does not exist: ${resolvedPath}` };
     }
 
     const config = this.loadConfig();
@@ -99,11 +105,12 @@ export class ProjectManager {
       return { success: false, error: `Project "${name}" already exists` };
     }
 
-    config.projects.push({ name, path });
+    const storedPath = toStorablePath(resolvedPath);
+    config.projects.push({ name, path: storedPath });
     this.saveConfig(config);
 
     if (!this.currentProject) {
-      this.currentProject = { name, path };
+      this.currentProject = { name, path: resolvedPath };
     }
 
     return { success: true };
