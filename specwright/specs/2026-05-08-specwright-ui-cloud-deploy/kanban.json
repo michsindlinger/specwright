@@ -12,21 +12,21 @@
     "implementationPlan": "implementation-plan.md"
   },
   "resumeContext": {
-    "currentPhase": "1-complete",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "2-complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
-    "gitStrategy": null,
+    "gitBranch": "main",
+    "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Lean kanban created via MCP",
-    "nextAction": "Setup git worktree or branch",
-    "progressIndex": 0,
+    "lastAction": "Completed CLOUD-002",
+    "nextAction": "Execute next task: CLOUD-001",
+    "progressIndex": 1,
     "totalStories": 11
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-05-09T06:00:08.103Z",
     "completedAt": null,
     "model": null
   },
@@ -56,16 +56,27 @@
       "description": "Config-Loader liest SPECWRIGHT_PROJECTS_ROOT als Prefix für Projekt-Pfade; lokal ungesetzt = unverändert",
       "planSection": "A6. Pfad-Konfig-Strategie — Empfehlung: Env-Var-Override `SPECWRIGHT_PROJECTS_ROOT`, optional config.json-Feld als Fallback",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
-      "model": null,
+      "status": "done",
+      "phase": "done",
+      "model": "claude-opus-4-7",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-09T06:00:08.103Z",
+        "completedAt": "2026-05-09T06:04:31.630Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/projects.ts",
+          "ui/src/server/utils/projects-root.ts",
+          "ui/tests/unit/projects-root.test.ts",
+          "specwright/specs/2026-05-08-specwright-ui-cloud-deploy/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "1841f5d",
+            "message": "feat: CLOUD-002 SPECWRIGHT_PROJECTS_ROOT env-var prefix for project paths",
+            "timestamp": "2026-05-09T08:04:00+02:00"
+          }
+        ]
       }
     },
     {
@@ -278,11 +289,11 @@
   ],
   "boardStatus": {
     "total": 11,
-    "ready": 2,
+    "ready": 1,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 9
   },
   "changeLog": [
@@ -291,6 +302,42 @@
       "action": "kanban_created",
       "storyId": null,
       "details": "Lean kanban initialized with 11 tasks via MCP tool"
+    },
+    {
+      "timestamp": "2026-05-09T05:59:26.065Z",
+      "action": "status_changed",
+      "storyId": "CLOUD-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-09T05:59:26.236Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git current-branch setup via UI: main"
+    },
+    {
+      "timestamp": "2026-05-09T05:59:26.282Z",
+      "action": "stale_recovery",
+      "storyId": "CLOUD-002",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-05-09T05:59:26.283Z",
+      "action": "status_changed",
+      "storyId": "CLOUD-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-09T06:00:08.104Z",
+      "action": "status_changed",
+      "storyId": "CLOUD-002",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-05-09T06:04:31.630Z",
+      "action": "status_changed",
+      "storyId": "CLOUD-002",
+      "details": "Task completed: in_progress → done"
     }
   ]
 }
