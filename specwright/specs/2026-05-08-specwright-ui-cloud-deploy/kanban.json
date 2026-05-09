@@ -1,0 +1,296 @@
+{
+  "version": "2.0",
+  "mode": "lean",
+  "spec": {
+    "id": "2026-05-08-specwright-ui-cloud-deploy",
+    "name": "Specwright UI Cloud Deployment",
+    "prefix": "CLOUD",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-05-09T05:28:59.958Z",
+    "specTier": "L",
+    "implementationPlan": "implementation-plan.md"
+  },
+  "resumeContext": {
+    "currentPhase": "1-complete",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "gitStrategy": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Lean kanban created via MCP",
+    "nextAction": "Setup git worktree or branch",
+    "progressIndex": 0,
+    "totalStories": 11
+  },
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "tasks": [
+    {
+      "id": "CLOUD-001",
+      "title": "DigitalOcean Volume provisionieren + Droplet-Mount",
+      "description": "Neues DO-Block-Volume erstellen, an Kompass-Droplet attachen, als /mnt/shared-projects/ mounten",
+      "planSection": "Phase 1: Volume + Path-Config-Foundation",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      },
+      "requiresUserAction": true
+    },
+    {
+      "id": "CLOUD-002",
+      "title": "Env-Var-Path-Config SPECWRIGHT_PROJECTS_ROOT",
+      "description": "Config-Loader liest SPECWRIGHT_PROJECTS_ROOT als Prefix für Projekt-Pfade; lokal ungesetzt = unverändert",
+      "planSection": "A6. Pfad-Konfig-Strategie — Empfehlung: Env-Var-Override `SPECWRIGHT_PROJECTS_ROOT`, optional config.json-Feld als Fallback",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOUD-003",
+      "title": "Mount-Tech-Spike R2 (SSHFS vs. Mutagen)",
+      "description": "Cursor-Indexer-Cold-Open + File-Watcher-Lag messen an Live-Projekt mit node_modules; GO/NO-GO dokumentieren",
+      "planSection": "Phase 2: Mount-Tech-Spike (R2)",
+      "dependencies": [
+        "CLOUD-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      },
+      "requiresUserAction": true
+    },
+    {
+      "id": "CLOUD-004",
+      "title": "Cloud-Deploy-Skeleton (setup-ui-cloud.sh + systemd + Frontend-WS)",
+      "description": "setup-ui-cloud.sh + specwright-ui.service erstellen; Frontend-WS-URL relativ statt localhost:3001",
+      "planSection": "Phase 3: Cloud-Deploy-Skeleton",
+      "dependencies": [
+        "CLOUD-001",
+        "CLOUD-002"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOUD-005",
+      "title": "Cloudflare-Tunnel + Access Auth-Layer",
+      "description": "cloudflared-Daemon mit Tunnel-Hostname specwright.<kompass-host>; Access-Policy auf 1 User-Email; Trust-Proxy in Express",
+      "planSection": "Phase 4: Auth-Layer (Cloudflare-Tunnel + Access)",
+      "dependencies": [
+        "CLOUD-004"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      },
+      "requiresUserAction": true
+    },
+    {
+      "id": "CLOUD-006",
+      "title": "Token-Rotator-Adapter + SDK-Spawn HOME-Override",
+      "description": "Adapter über Kompass-Pattern; HOME-Env an Claude-SDK-Spawn-Stellen (cloud-terminal-manager, claude-handler) setzen",
+      "planSection": "Phase 5: Claude-SDK-Token-Rotator-Integration",
+      "dependencies": [
+        "CLOUD-004"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      },
+      "requiresUserAction": true
+    },
+    {
+      "id": "CLOUD-007",
+      "title": "Mac-Mount-Workflow + Cursor-Verifikation",
+      "description": "Mount-Setup-Doku schreiben (Tech aus Spike); auf Mac installieren, Cursor öffnet Live-Projekt vom Mount",
+      "planSection": "Phase 6: Mac-Mount-Workflow + Cursor-Verifikation",
+      "dependencies": [
+        "CLOUD-003"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      },
+      "requiresUserAction": true
+    },
+    {
+      "id": "CLOUD-008",
+      "title": "Cutover-Smoke-Test",
+      "description": "5 Live-Projekte: Spec-Anlage via Cloud-UI, Kanban-Drag, Execute-Tasks-Run, Stale-Content-Refresh-Check",
+      "planSection": "Phase 7: Cutover (Cloud als Default)",
+      "dependencies": [
+        "CLOUD-001",
+        "CLOUD-002",
+        "CLOUD-003",
+        "CLOUD-004",
+        "CLOUD-005",
+        "CLOUD-006",
+        "CLOUD-007"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      },
+      "requiresUserAction": true
+    },
+    {
+      "id": "CLOUD-997",
+      "title": "Code Review",
+      "description": "Full-feature diff review",
+      "planSection": "System: Code Review",
+      "dependencies": [
+        "CLOUD-001",
+        "CLOUD-002",
+        "CLOUD-003",
+        "CLOUD-004",
+        "CLOUD-005",
+        "CLOUD-006",
+        "CLOUD-007",
+        "CLOUD-008"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOUD-998",
+      "title": "Integration Validation",
+      "description": "End-to-end test execution",
+      "planSection": "System: Integration Validation",
+      "dependencies": [
+        "CLOUD-001",
+        "CLOUD-002",
+        "CLOUD-003",
+        "CLOUD-004",
+        "CLOUD-005",
+        "CLOUD-006",
+        "CLOUD-007",
+        "CLOUD-008"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "CLOUD-999",
+      "title": "Finalize PR",
+      "description": "User-todos, PR creation, cleanup",
+      "planSection": "System: Finalize PR",
+      "dependencies": [
+        "CLOUD-997",
+        "CLOUD-998"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 11,
+    "ready": 2,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 9
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-05-09T05:28:59.958Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Lean kanban initialized with 11 tasks via MCP tool"
+    }
+  ]
+}
