@@ -19,10 +19,10 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed CLOUD-002",
-    "nextAction": "Execute next task: CLOUD-001",
-    "progressIndex": 1,
-    "totalStories": 11
+    "lastAction": "Completed CLOUD-004",
+    "nextAction": "Wait for blocked tasks to become ready",
+    "progressIndex": 5,
+    "totalStories": 12
   },
   "execution": {
     "status": "executing",
@@ -34,15 +34,15 @@
     {
       "id": "CLOUD-001",
       "title": "DigitalOcean Volume provisionieren + Droplet-Mount",
-      "description": "Neues DO-Block-Volume erstellen, an Kompass-Droplet attachen, als /mnt/shared-projects/ mounten",
+      "description": "Neues DO-Block-Volume erstellen, an Kompass-Droplet attachen, als /mnt/shared_projects/ mounten",
       "planSection": "Phase 1: Volume + Path-Config-Foundation",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": null,
       "timing": {
         "startedAt": null,
-        "completedAt": null
+        "completedAt": "2026-05-09T08:59:40.379Z"
       },
       "implementation": {
         "filesModified": [],
@@ -87,12 +87,12 @@
       "dependencies": [
         "CLOUD-001"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": null,
       "timing": {
         "startedAt": null,
-        "completedAt": null
+        "completedAt": "2026-05-10T04:47:17.301Z"
       },
       "implementation": {
         "filesModified": [],
@@ -109,16 +109,28 @@
         "CLOUD-001",
         "CLOUD-002"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": null,
+      "status": "done",
+      "phase": "done",
+      "model": "claude-opus-4-7",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-10T04:48:10.538Z",
+        "completedAt": "2026-05-10T04:53:44.059Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/gateway.ts",
+          "ui/src/server/index.ts",
+          "cloud-deploy/specwright-ui.service",
+          "setup-ui-cloud.sh",
+          "specwright/specs/2026-05-08-specwright-ui-cloud-deploy/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "45be81784330fe8aad8e41ca5c31090baac7f974",
+            "message": "feat: CLOUD-004 cloud-deploy skeleton (systemd + setup-ui-cloud.sh + relative WS)",
+            "timestamp": "2026-05-10T06:53:34+02:00"
+          }
+        ]
       }
     },
     {
@@ -171,12 +183,12 @@
       "dependencies": [
         "CLOUD-003"
       ],
-      "status": "blocked",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": null,
       "timing": {
         "startedAt": null,
-        "completedAt": null
+        "completedAt": "2026-05-10T04:47:38.979Z"
       },
       "implementation": {
         "filesModified": [],
@@ -196,7 +208,8 @@
         "CLOUD-004",
         "CLOUD-005",
         "CLOUD-006",
-        "CLOUD-007"
+        "CLOUD-007",
+        "CLOUD-001b"
       ],
       "status": "blocked",
       "phase": "pending",
@@ -224,7 +237,8 @@
         "CLOUD-005",
         "CLOUD-006",
         "CLOUD-007",
-        "CLOUD-008"
+        "CLOUD-008",
+        "CLOUD-001b"
       ],
       "status": "blocked",
       "phase": "pending",
@@ -251,7 +265,8 @@
         "CLOUD-005",
         "CLOUD-006",
         "CLOUD-007",
-        "CLOUD-008"
+        "CLOUD-008",
+        "CLOUD-001b"
       ],
       "status": "blocked",
       "phase": "pending",
@@ -285,16 +300,37 @@
         "filesModified": [],
         "commits": []
       }
+    },
+    {
+      "id": "CLOUD-001b",
+      "title": "Migrate Kompass git-repos Docker-volume to shared bind-mount",
+      "description": "Stop compass; copy compass_git-repos Docker-volume to /mnt/shared_projects; switch docker-compose bind-mount; UID-recon + perms; restart",
+      "planSection": "Phase 1: Volume + Path-Config-Foundation",
+      "dependencies": [
+        "CLOUD-001"
+      ],
+      "status": "done",
+      "phase": "done",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": "2026-05-09T13:18:52.757Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      },
+      "requiresUserAction": true
     }
   ],
   "boardStatus": {
-    "total": 11,
-    "ready": 1,
+    "total": 12,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
-    "blocked": 9
+    "done": 6,
+    "blocked": 6
   },
   "changeLog": [
     {
@@ -337,6 +373,72 @@
       "timestamp": "2026-05-09T06:04:31.630Z",
       "action": "status_changed",
       "storyId": "CLOUD-002",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-09T08:58:23.576Z",
+      "action": "item_added",
+      "storyId": "CLOUD-001b",
+      "details": "Added story: Migrate Kompass git-repos Docker-volume to shared bind-mount"
+    },
+    {
+      "timestamp": "2026-05-09T08:59:40.379Z",
+      "action": "user_action_completed",
+      "storyId": "CLOUD-001",
+      "details": "User confirmed manual action: ready → done"
+    },
+    {
+      "timestamp": "2026-05-09T09:00:27.109616Z",
+      "action": "manual_dep_fix",
+      "storyId": "CLOUD-001b",
+      "details": "Manual: planSection set, description fixed, requiresUserAction=true, status ready (CLOUD-001 done); CLOUD-001b added to deps of 008/997/998; CLOUD-001 description path-typo fixed"
+    },
+    {
+      "timestamp": "2026-05-09T13:18:52.757Z",
+      "action": "user_action_completed",
+      "storyId": "CLOUD-001b",
+      "details": "User confirmed manual action: ready → done"
+    },
+    {
+      "timestamp": "2026-05-10T04:47:17.301Z",
+      "action": "status_changed",
+      "storyId": "CLOUD-003",
+      "details": "Moved from blocked to done"
+    },
+    {
+      "timestamp": "2026-05-10T04:47:17.304Z",
+      "action": "dependency_resolved",
+      "storyId": "CLOUD-004",
+      "details": "Unblocked: all dependencies done/in_review (CLOUD-001, CLOUD-002)"
+    },
+    {
+      "timestamp": "2026-05-10T04:47:17.304Z",
+      "action": "dependency_resolved",
+      "storyId": "CLOUD-007",
+      "details": "Unblocked: all dependencies done/in_review (CLOUD-003)"
+    },
+    {
+      "timestamp": "2026-05-10T04:47:38.979Z",
+      "action": "user_action_completed",
+      "storyId": "CLOUD-007",
+      "details": "User confirmed manual action: ready → done"
+    },
+    {
+      "timestamp": "2026-05-10T04:47:38.983Z",
+      "action": "status_changed",
+      "storyId": "CLOUD-004",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-10T04:48:10.539Z",
+      "action": "status_changed",
+      "storyId": "CLOUD-004",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-05-10T04:53:44.059Z",
+      "action": "status_changed",
+      "storyId": "CLOUD-004",
       "details": "Task completed: in_progress → done"
     }
   ]
