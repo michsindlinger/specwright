@@ -32,9 +32,13 @@ export class Gateway {
 
   constructor() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname;
-    const port = '3001';
-    this.url = `${protocol}//${host}:${port}`;
+    // Dev (Vite :5173) forces backend port 3001; prod (served by backend or behind a
+    // reverse-proxy/tunnel like Cloudflare) uses window.location.host as-is, so the
+    // WebSocket follows the same hostname/port the page was loaded from.
+    const host = import.meta.env.DEV
+      ? `${window.location.hostname}:3001`
+      : window.location.host;
+    this.url = `${protocol}//${host}`;
   }
 
   public connect(): void {

@@ -1,0 +1,42 @@
+[Unit]
+Description=Specwright Web UI (Cloud)
+Documentation=https://github.com/michsindlinger/specwright
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Set by setup-ui-cloud.sh:
+#   ${SPECWRIGHT_UI_USER}        — system user (default: specwright)
+#   ${SPECWRIGHT_UI_HOME}        — install dir (default: /opt/specwright-ui)
+#   ${SPECWRIGHT_PROJECTS_ROOT}  — shared projects volume (default: /mnt/shared_projects)
+#   ${SPECWRIGHT_UI_PORT}        — loopback port (default: 3001)
+User=__SPECWRIGHT_UI_USER__
+Group=__SPECWRIGHT_UI_USER__
+
+WorkingDirectory=__SPECWRIGHT_UI_HOME__/ui
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=__SPECWRIGHT_UI_PORT__
+Environment=SPECWRIGHT_PROJECTS_ROOT=__SPECWRIGHT_PROJECTS_ROOT__
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+# Bind to loopback only — Cloudflare Tunnel terminates TLS and forwards to 127.0.0.1
+ExecStart=/usr/bin/env npm run start:backend
+Restart=on-failure
+RestartSec=5s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=specwright-ui
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=__SPECWRIGHT_UI_HOME__ __SPECWRIGHT_PROJECTS_ROOT__
+
+[Install]
+WantedBy=multi-user.target

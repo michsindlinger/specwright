@@ -13,6 +13,7 @@ import versionRouter from './routes/version.routes.js';
 import teamRouter from './routes/team.routes.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
+const HOST = process.env.HOST ?? '0.0.0.0';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 interface HealthResponse {
@@ -97,12 +98,12 @@ function startServer(): void {
     throw error;
   });
 
-  server.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  server.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
 
     // Initialize WebSocket handler after server starts
     wsHandler = new WebSocketHandler(server);
-    console.log(`WebSocket server ready on ws://localhost:${PORT}`);
+    console.log(`WebSocket server ready on ws://${HOST}:${PORT}`);
   });
 }
 
