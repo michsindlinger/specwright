@@ -50,6 +50,8 @@ import {
   applyUserActionMutation,
   computeInitialStatus,
   assertKanbanCreateAllowed,
+  ensureV2TaskShape,
+  ensureV1StoryShape,
   type UserActionMutationKind,
 } from './kanban-validation.js';
 import {
@@ -1521,6 +1523,7 @@ async function handleKanbanStartStory(
       const now = new Date().toISOString();
       const oldStatus = task.status;
 
+      ensureV2TaskShape(task);
       task.status = 'in_progress';
       task.phase = 'in_progress';
       task.timing.startedAt = now;
@@ -1564,9 +1567,10 @@ async function handleKanbanStartStory(
     const oldStatus = story.status;
 
     // Update story
+    ensureV1StoryShape(story, now);
     story.status = 'in_progress';
     story.phase = 'in_progress';
-    story.timing.startedAt = now;
+    story.timing!.startedAt = now;
     if (args.model) {
       story.model = args.model;
     }
@@ -1633,6 +1637,7 @@ async function handleKanbanCompleteStory(
       const now = new Date().toISOString();
       const oldStatus = task.status;
 
+      ensureV2TaskShape(task);
       task.status = 'done';
       task.phase = 'done';
       task.timing.completedAt = now;
@@ -1691,12 +1696,13 @@ async function handleKanbanCompleteStory(
     const oldStatus = story.status;
 
     // Update story
+    ensureV1StoryShape(story, now);
     story.status = 'done';
     story.phase = 'done';
-    story.timing.completedAt = now;
-    story.implementation.filesModified = args.filesModified;
-    story.implementation.commits = args.commits;
-    story.verification.dodChecked = true;
+    story.timing!.completedAt = now;
+    story.implementation!.filesModified = args.filesModified;
+    story.implementation!.commits = args.commits;
+    story.verification!.dodChecked = true;
 
     // Update resume context
     kanban.resumeContext.currentStory = null;

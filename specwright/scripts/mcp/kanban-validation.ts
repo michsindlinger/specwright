@@ -247,3 +247,42 @@ export function applyUserActionMutation(
   }
   return { changed: true, oldStatus, newStatus: 'done' };
 }
+
+// ============================================================================
+// Shape defense (v3.31): lazy-init sub-objects that mutator code path assumes
+// to exist. Required because kanban.json can be touched outside MCP (UI
+// orchestrator reset paths, manual edits, partial merges) and those paths do
+// not always re-initialize `timing` / `implementation` / `verification`.
+// Without defense, `kanban_complete_story` and `kanban_start_story` throw on
+// `Cannot set properties of undefined` and the story stays stuck in_progress.
+// ============================================================================
+
+export interface V2TaskShapeLike {
+  timing?: { startedAt: string | null; completedAt: string | null };
+  implementation?: { filesModified: string[]; commits: unknown[] };
+}
+
+/**
+ * Ensures `timing` and `implementation` exist on a V2 task. Idempotent;
+ * preserves any existing values. Mutates in place.
+ */
+export function ensureV2TaskShape(task: V2TaskShapeLike): void {
+  if (!task.timing) task.timing = { startedAt: null, completedAt: null };
+  if (!task.implementation) task.implementation = { filesModified: [], commits: [] };
+}
+
+export interface V1StoryShapeLike {
+  timing?: { createdAt?: string; startedAt: string | null; completedAt: string | null };
+  implementation?: { filesModified: string[]; commits: unknown[]; notes: string | null };
+  verification?: { dodChecked: boolean; integrationVerified: boolean };
+}
+
+/**
+ * Ensures `timing`, `implementation`, `verification` exist on a V1 story.
+ * Idempotent; preserves any existing values. Mutates in place.
+ */
+export function ensureV1StoryShape(story: V1StoryShapeLike, nowIso: string): void {
+  if (!story.timing) story.timing = { createdAt: nowIso, startedAt: null, completedAt: null };
+  if (!story.implementation) story.implementation = { filesModified: [], commits: [], notes: null };
+  if (!story.verification) story.verification = { dodChecked: false, integrationVerified: false };
+}

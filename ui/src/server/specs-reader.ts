@@ -706,8 +706,10 @@ export class SpecsReader {
     if (!story) return false;
     story.status = 'ready';
     story.phase = 'pending';
-    story.timing.startedAt = null;
-    story.timing.completedAt = null;
+    if (story.timing) {
+      story.timing.startedAt = null;
+      story.timing.completedAt = null;
+    }
     this.addChangeLogEntry(kanban, changeAction, story.id, reason);
     return true;
   }
