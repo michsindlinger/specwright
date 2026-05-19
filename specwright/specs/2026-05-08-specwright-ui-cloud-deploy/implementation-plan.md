@@ -41,11 +41,35 @@ Specwright-UI wird als zweite App auf dem bestehenden Kompass-DigitalOcean-Dropl
 
 **Konsequenz für R6 (Re-Sync):** Mutagen hat eingebaute Konfliktbehandlung; SSHFS hat keine — bei Mutagen ist R6 teilweise gemildert.
 
+**Spike-Ergebnis (2026-05-10) — Mutagen-mit-ignore GO:**
+- Initial-Sync: 85 s (1.1 GB lokal, mit `--ignore=node_modules,.git --ignore-vcs`)
+- M1 Cold-Open + UI-Responsiveness: subjektiv flüssig (Cursor + `cmd+P` + Search ohne Lag)
+- M3 Watcher-Lag (Cloud→Mac): < 1 s
+- M4 Edit-Roundtrip (Mac→Cloud): wenige Sekunden
+- SSHFS: NO-GO (operativ — macFUSE-Recovery-Reboot blockiert Setup auf Apple Silicon)
+
+**Finale Mutagen-Sync-Konfiguration (MANDATORY — siehe CLOUD-BUG-001 für Hintergrund):**
+
+```bash
+mutagen sync create --name=specs-shared \
+  --ignore=node_modules,.git --ignore-vcs \
+  --default-owner-beta=id:100 \
+  --default-group-beta=id:102 \
+  --default-file-mode-beta=0660 \
+  --default-directory-mode-beta=0770 \
+  ~/cloud-mount-mutagen \
+  root@<droplet-ip>:/mnt/shared_projects
+```
+
+Die Beta-Side-Overrides sind **Pflicht**. Ohne sie schreibt Mutagen-Portable-Mode Files als `root:root 600/700` auf der Droplet, was Compass-Container (compass:compass UID 100/GID 102) den Read-Access verweigert. Setgid (2775) auf Volume-Root reicht nicht — Mutagen überschreibt Group-Inheritance. **Konsequenz für CLOUD-007:** Mac-Mount-Workflow-Doku muss exakt dieses Command enthalten, kein Minimal-Sync.
+
 ### A3. Volume-Topologie — **Empfehlung: neues, geteiltes DigitalOcean Block-Volume**
 
-**Trade-off:** Erweiterung des bestehenden Kompass-Volumes spart eine Volume-Charge, koppelt aber Lifecycle (Resize/Snapshot/Detach betrifft beide Apps). Neues Volume = saubere Abgrenzung, klare Pfad-Konvention `/mnt/shared-projects/`, Kompass kann das Volume zusätzlich mounten ohne Eigentumsfrage.
+**Trade-off:** Erweiterung des bestehenden Kompass-Volumes spart eine Volume-Charge, koppelt aber Lifecycle (Resize/Snapshot/Detach betrifft beide Apps). Neues Volume = saubere Abgrenzung, klare Pfad-Konvention `/mnt/shared_projects/`, Kompass kann das Volume zusätzlich mounten ohne Eigentumsfrage.
 
-**Empfehlung:** Neues Volume `/mnt/shared-projects/`, Konvention pro Projekt `/mnt/shared-projects/<project-slug>/` (entspricht aktueller Specwright-UI-Konvention "Projekt-Root mit `specwright/` und `.specwright/` Unterordnern"). Kompass-Config bekommt denselben Pfad als `projectRoot`. Initiale Migration: manuelles `git clone` der 5–10 Projekte ins Volume.
+**Empfehlung:** Neues Volume `/mnt/shared_projects/`, Konvention pro Projekt `/mnt/shared_projects/<project-slug>/` (entspricht aktueller Specwright-UI-Konvention "Projekt-Root mit `specwright/` und `.specwright/` Unterordnern").
+
+**Real-World-Update (2026-05-09):** Kompass speichert Projekte aktuell in einem Docker-named-Volume `compass_git-repos` (Container-intern unter `/repos`, Host-Pfad `/var/lib/docker/volumes/compass_git-repos/_data`, 9 Projekte / 4.6 GB). Migration in das neue Shared Volume = Docker-named-volume → Bind-Mount-Wechsel mit Container-Restart und UID-Mapping-Check. **Eigene Task:** `CLOUD-001b` (siehe kanban.json). Trade-off: Kompass-Downtime ~5 min vs. echtes Single-Source-of-Truth. Akzeptiert.
 
 ### A4. Repo-/Branch-Strategie — **Empfehlung: gleiches Repo, eigener Build/Deploy-Pfad, kein Branch-Fork**
 
@@ -62,7 +86,7 @@ Specwright-UI wird als zweite App auf dem bestehenden Kompass-DigitalOcean-Dropl
 **Status quo:** `ui/src/server/utils/project-dirs.ts` arbeitet mit absoluten Projekt-Pfaden, die aus `ui/config.json` (Liste der Projekte) stammen. `projectDir()` und `projectDotDir()` nehmen diesen absoluten Pfad als Argument.
 
 **Empfehlung:** Kein Refactor von `project-dirs.ts` nötig. Stattdessen:
-- Env-Var `SPECWRIGHT_PROJECTS_ROOT=/mnt/shared-projects` definiert Cloud-Root.
+- Env-Var `SPECWRIGHT_PROJECTS_ROOT=/mnt/shared_projects` definiert Cloud-Root.
 - Bei Projekt-Add (UI „Open Project") wird der Pfad relativ zu diesem Root gespeichert in `config.json`.
 - Lokal bleibt `SPECWRIGHT_PROJECTS_ROOT` ungesetzt → existing Verhalten unverändert.
 - Trade-off: kleinste Code-Surface, keine Schema-Migration in `config.json`, keine Risiko-Brüche für lokale User.
@@ -88,7 +112,7 @@ Specwright-UI wird als zweite App auf dem bestehenden Kompass-DigitalOcean-Dropl
 | `cloud-deploy/cloudflared-config.yml` | Cloudflare-Konfig | Tunnel-Hostname → Loopback-Port-Mapping; Access-Policy via Dashboard |
 | Token-Rotator-Adapter (UI-side) | TS-Modul | Dünne Adapter-Schicht über Kompass-`token-rotator.ts`-Pattern; setzt `HOME` für Claude-Code-SDK-Subprocess |
 | Mount-Workflow-Doku | Markdown (specwright/docs/) | Schritt-für-Schritt Mac-Mount-Setup (basierend auf Spike-Ergebnis) |
-| Cloud-Volume-Konvention | Filesystem-Layout | `/mnt/shared-projects/<project>/` mit `specwright/`, `.specwright/`, `.git/` |
+| Cloud-Volume-Konvention | Filesystem-Layout | `/mnt/shared_projects/<project>/` mit `specwright/`, `.specwright/`, `.git/` |
 
 ### Zu ändernde Komponenten
 
@@ -118,13 +142,13 @@ Specwright-UI wird als zweite App auf dem bestehenden Kompass-DigitalOcean-Dropl
 | `setup-ui-cloud.sh` | systemd-Unit | erzeugt Service-Datei, lädt sie | Story 1: Cloud-Deploy-Skeleton | `systemctl status specwright-ui` |
 | systemd-Unit | `ui/src/server/index.ts` (Node-Process) | startet Prozess, übergibt Env-Vars | Story 1 | `journalctl -u specwright-ui` |
 | Env-Var `SPECWRIGHT_PROJECTS_ROOT` | config.json-Pfad-Resolver | Prefix-Auflösung pro Projekt-Eintrag | Story 2: Volume + Path-Config | grep für Env-Read in config-Loader |
-| `/mnt/shared-projects/` (Volume-Mount) | `projectDir()` / `projectDotDir()` (via konfigurierter Project-Path) | Filesystem-Read/Write | Story 2 | `ls /mnt/shared-projects` auf Droplet, Specwright-UI listet Projekte |
-| Kompass-Agent-Filesystem-Schreiber | `/mnt/shared-projects/<project>/specwright/` | direkter FS-Write | Story 2 | Spec aus Kompass-Konversation taucht in Specwright-UI auf, ohne Git-Pull |
+| `/mnt/shared_projects/` (Volume-Mount) | `projectDir()` / `projectDotDir()` (via konfigurierter Project-Path) | Filesystem-Read/Write | Story 2 | `ls /mnt/shared_projects` auf Droplet, Specwright-UI listet Projekte |
+| Kompass-Agent-Filesystem-Schreiber | `/mnt/shared_projects/<project>/specwright/` | direkter FS-Write | Story 2 | Spec aus Kompass-Konversation taucht in Specwright-UI auf, ohne Git-Pull |
 | Cloudflare-Tunnel | Loopback `:3001` (Specwright-UI) | TCP-Forward, TLS-Termination außerhalb | Story 1 + Story 4: Auth-Layer | Browser-Login an Subdomain → Specwright-UI |
 | Cloudflare-Access-Policy | Browser-Request | Auth-Gate vor Backend | Story 4 | nicht eingeloggter Browser kriegt Cloudflare-Login-Page |
 | Token-Rotator-Adapter | Claude-Code-SDK-Subprocess (`cloud-terminal-manager.ts` / `claude-handler.ts`) | setzt `HOME=<token-profile-dir>` vor spawn | Story 5: Claude-SDK-Auth | Funktionstest: Claude-Chat in Cloud-UI antwortet |
 | Mac-Mount-Tool (Mutagen oder SSHFS) | Mac-Cursor-Filesystem | präsentiert Cloud-Volume als lokalen Pfad | Story 3 + Spike-R2 | Cursor öffnet `<projekt>` und kann Spec editieren |
-| Specwright-UI File-Watcher (existing) | `/mnt/shared-projects/<project>/` | erkennt externe Schreiber | Story 2 | Edge-Case: Kompass schreibt Spec → UI zeigt sofort |
+| Specwright-UI File-Watcher (existing) | `/mnt/shared_projects/<project>/` | erkennt externe Schreiber | Story 2 | Edge-Case: Kompass schreibt Spec → UI zeigt sofort |
 
 **Verbindungs-Checkliste:**
 - [x] Jede neue Komponente hat mindestens eine Verbindung — geprüft, keine Orphans.
@@ -136,8 +160,9 @@ Specwright-UI wird als zweite App auf dem bestehenden Kompass-DigitalOcean-Dropl
 ## Umsetzungsphasen
 
 ### Phase 1: Volume + Path-Config-Foundation
-**Ziel:** Cloud-Volume provisioniert, Pfad-Resolver versteht Env-Var-Prefix, Kompass kann denselben Pfad nutzen.
-**Komponenten:** DigitalOcean-Volume, `/mnt/shared-projects/`, `SPECWRIGHT_PROJECTS_ROOT`-Env-Read in config-Loader.
+**Ziel:** Cloud-Volume provisioniert, Pfad-Resolver versteht Env-Var-Prefix, Kompass-Projekte ins Shared Volume migriert.
+**Komponenten:** DigitalOcean-Volume, `/mnt/shared_projects/`, `SPECWRIGHT_PROJECTS_ROOT`-Env-Read in config-Loader, Kompass-`docker-compose.yml`-Bind-Mount.
+**Tasks:** CLOUD-001 (Volume + Mount + Perms, ✅ done 2026-05-09), CLOUD-001b (Kompass `compass_git-repos` Docker-volume → Bind-Mount-Migration), CLOUD-002 (Specwright-UI Path-Config).
 **Abhängig von:** Nichts.
 
 ### Phase 2: Mount-Tech-Spike (R2)
@@ -197,7 +222,9 @@ Phase 1 (Volume + Path) ──> Phase 2 (Mount-Spike) ──> Phase 6 (Mac-Mount
 | Risiko | W'keit | Impact | Mitigation |
 |--------|--------|--------|------------|
 | **R1** Cross-Machine-Race auf `kanban.json`/Git-Index (Cloud-UI, Kompass-Agent, Mac-via-Mount) | Niedrig (Single-User, selten parallel) | Mittel (Datenkorruption möglich) | **V1 akzeptiert** (Brainstorming-Entscheidung). Doku-Hinweis im Mount-Workflow: „Mac-Cursor schreibt nur, wenn Cloud-UI nicht aktiv editiert dieselbe Datei". Restrisiko-Eintrag im Plan. **V2:** Redis-Lease oder Cloud-only-Schreibrecht für `kanban.json`. |
-| **R2** Mount-Performance (Cursor + node_modules) | Mittel-Hoch | Hoch (Workflow unbenutzbar) | **Spike Phase 2** mit GO/NO-GO-Kriterium. Mutagen-Sync als Default-Fallback strukturell sicher. |
+| **R2** Mount-Performance (Cursor + node_modules) | Mittel-Hoch | Hoch (Workflow unbenutzbar) | **MITIGATED (2026-05-10):** Spike CLOUD-003 ergab Mutagen-mit-ignore GO (M1 flüssig, M3 < 1 s, 1.1 GB lokal). SSHFS NO-GO (macFUSE-Recovery-Reboot blockiert). |
+| **R9** Cross-Machine-Ownership-Drift via Sync-Tool (CLOUD-BUG-001) | Hoch (default), Niedrig (mit Mitigation) | Hoch (Cloud-Agents blind, 30%+ Codebasis nicht lesbar) | **Pflicht:** Mutagen-Sync mit `--default-owner-beta=id:100 --default-group-beta=id:102 --default-file-mode-beta=0660 --default-directory-mode-beta=0770`. Setgid-2775 auf Volume-Root reicht nicht (Mutagen-Portable überschreibt). Beta-Overrides in CLOUD-007 Mac-Mount-Workflow-Doku mandatory dokumentiert. |
+| **R10** Git-State-Divergence Mac↔Droplet (CLOUD-BUG-002) | Hoch (default), 0 (mit Mitigation) | Mittel-Hoch (Cloud-Agents arbeiten auf altem Stand, reproduzierbares Branch/HEAD-Chaos) | **Policy: Cloud-`.git` ist Source-of-Truth.** Mutagen ignoriert `.git/` (richtig, Lock-Korruption-Schutz). Mac-`.git` wird komplett entfernt — Cursor edits Files via Mutagen-Mount, alle Git-Ops (commit/pull/push/checkout) ausschließlich Cloud-side via Compass-Container oder SSH. Pilot dein-rueckhalt.de done 2026-05-14; andere 8 Projekte folgen. Salvage-Check-One-Liner Pflicht vor jedem `.git`-Delete. |
 | **R5** SPOF Droplet-Down | Niedrig | Hoch (alles weg) | Lokale Specwright-UI-Installation bleibt installierbar (A7). Manueller Recovery: User clont aus Git, arbeitet lokal weiter. **Doku** des Recovery-Workflows als Story-Acceptance. **Backup/DR/Monitoring deferred** (V1-Scope). |
 | **R6** Re-Sync nach Lokal-Fallback | Mittel | Niedrig-Mittel | Manueller Git-Diff-basierter Reconciliation-Workflow. Bei Mutagen-Wahl strukturell gemildert. **V1 akzeptiert manuell.** |
 | **Auth-Bypass** | Niedrig (mit Cloudflare-Access) | Hoch (Code-Execution) | Cloudflare-Access-Policy Pflicht-Gating, kein Public-Mode. Als Story-Acceptance: nicht eingeloggter Browser kriegt 403 vor jedem Request. |

@@ -19,10 +19,10 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed CLOUD-004",
+    "lastAction": "User confirmed CLOUD-BUG-002",
     "nextAction": "Wait for blocked tasks to become ready",
-    "progressIndex": 5,
-    "totalStories": 12
+    "progressIndex": 7,
+    "totalStories": 14
   },
   "execution": {
     "status": "executing",
@@ -141,7 +141,7 @@
       "dependencies": [
         "CLOUD-004"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": null,
       "timing": {
@@ -162,7 +162,7 @@
       "dependencies": [
         "CLOUD-004"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": null,
       "timing": {
@@ -321,16 +321,54 @@
         "commits": []
       },
       "requiresUserAction": true
+    },
+    {
+      "id": "CLOUD-BUG-001",
+      "title": "Shared-Volume Ownership-Drift via Mutagen-Default-Perms",
+      "description": "Shared-Volume Ownership-Drift via Mutagen-Default-Perms",
+      "planSection": "",
+      "dependencies": [],
+      "status": "done",
+      "phase": "done",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": "2026-05-12T07:14:43.748Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      },
+      "requiresUserAction": true
+    },
+    {
+      "id": "CLOUD-BUG-002",
+      "title": "Mac-`.git` Decommission — Cloud-Git Authoritative Policy (Pilot dein-rueckhalt.de)",
+      "description": "Mac-`.git` Decommission — Cloud-Git Authoritative Policy (Pilot dein-rueckhalt.de)",
+      "planSection": "",
+      "dependencies": [],
+      "status": "done",
+      "phase": "done",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": "2026-05-14T20:11:50.933Z"
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      },
+      "requiresUserAction": true
     }
   ],
   "boardStatus": {
-    "total": 12,
-    "ready": 0,
+    "total": 14,
+    "ready": 2,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 6,
-    "blocked": 6
+    "done": 8,
+    "blocked": 4
   },
   "changeLog": [
     {
@@ -440,6 +478,54 @@
       "action": "status_changed",
       "storyId": "CLOUD-004",
       "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-10T04:53:44.430Z",
+      "action": "dependency_resolved",
+      "storyId": "CLOUD-005",
+      "details": "Unblocked: all dependencies done/in_review (CLOUD-004)"
+    },
+    {
+      "timestamp": "2026-05-10T04:53:44.430Z",
+      "action": "dependency_resolved",
+      "storyId": "CLOUD-006",
+      "details": "Unblocked: all dependencies done/in_review (CLOUD-004)"
+    },
+    {
+      "timestamp": "2026-05-12T07:14:31.647Z",
+      "action": "item_added",
+      "storyId": "CLOUD-BUG-001",
+      "details": "Added bug: Shared-Volume Ownership-Drift via Mutagen-Default-Perms"
+    },
+    {
+      "timestamp": "2026-05-12T07:14:38.711Z",
+      "action": "user_action_flagged",
+      "storyId": "CLOUD-BUG-001",
+      "details": "Flagged as requires-user-action"
+    },
+    {
+      "timestamp": "2026-05-12T07:14:43.748Z",
+      "action": "user_action_completed",
+      "storyId": "CLOUD-BUG-001",
+      "details": "User confirmed manual action: ready → done"
+    },
+    {
+      "timestamp": "2026-05-14T20:11:40.706Z",
+      "action": "item_added",
+      "storyId": "CLOUD-BUG-002",
+      "details": "Added bug: Mac-`.git` Decommission — Cloud-Git Authoritative Policy (Pilot dein-rueckhalt.de)"
+    },
+    {
+      "timestamp": "2026-05-14T20:11:50.337Z",
+      "action": "user_action_flagged",
+      "storyId": "CLOUD-BUG-002",
+      "details": "Flagged as requires-user-action"
+    },
+    {
+      "timestamp": "2026-05-14T20:11:50.933Z",
+      "action": "user_action_completed",
+      "storyId": "CLOUD-BUG-002",
+      "details": "User confirmed manual action: ready → done"
     }
   ]
 }

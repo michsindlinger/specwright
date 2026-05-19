@@ -8,7 +8,7 @@
 
 ## Overview
 
-Specwright-UI wird als zweite App auf dem bestehenden Kompass-DigitalOcean-Droplet deployed und nutzt ein geteiltes Cloud-Volume `/mnt/shared-projects/` als gemeinsamen Projekt-Root. Damit sehen Specwright-UI und Kompass-Cloud-Agents dieselben Files ohne Git-Pull-Tanz; vom Mac, vom zweiten Laptop und unterwegs erreichbar.
+Specwright-UI wird als zweite App auf dem bestehenden Kompass-DigitalOcean-Droplet deployed und nutzt ein geteiltes Cloud-Volume `/mnt/shared_projects/` als gemeinsamen Projekt-Root. Damit sehen Specwright-UI und Kompass-Cloud-Agents dieselben Files ohne Git-Pull-Tanz; vom Mac, vom zweiten Laptop und unterwegs erreichbar.
 
 Browser-Auth via Cloudflare Tunnel + Access (Plan-A). Claude-SDK-Auth in der Cloud via Token-Rotator-Pattern aus Kompass. Mac mounted dasselbe Volume für Cursor-IDE-Zugriff (Mount-Tech via R2-Spike entschieden — Default Mutagen-Sync).
 
@@ -16,7 +16,8 @@ Browser-Auth via Cloudflare Tunnel + Access (Plan-A). Claude-SDK-Auth in der Clo
 
 Tasks sind in `kanban.json` (V2 Lean, mode="lean"); Detail-Kontext lädt `/execute-tasks` on-the-fly aus `implementation-plan.md` über `planSection`.
 
-- **CLOUD-001** — DigitalOcean Volume provisionieren + Droplet-Mount
+- **CLOUD-001** — DigitalOcean Volume provisionieren + Droplet-Mount ✅ (2026-05-09)
+- **CLOUD-001b** — Kompass `compass_git-repos` Docker-Volume → Bind-Mount-Migration
 - **CLOUD-002** — Env-Var-Path-Config (`SPECWRIGHT_PROJECTS_ROOT`) im Config-Loader
 - **CLOUD-003** — Mount-Tech-Spike (R2: SSHFS vs. Mutagen) mit GO/NO-GO-Doku
 - **CLOUD-004** — Cloud-Deploy-Skeleton (setup-ui-cloud.sh + systemd-Unit + Frontend-WS-URL)
@@ -35,7 +36,7 @@ Tasks sind in `kanban.json` (V2 Lean, mode="lean"); Detail-Kontext lädt `/execu
 ## Spec Scope
 
 - Specwright-UI als systemd-Service auf Kompass-DigitalOcean-Droplet (Vollparität: Chat, Kanban-Drag, Spec-Editing, Execute-Tasks)
-- Geteiltes DigitalOcean-Block-Volume `/mnt/shared-projects/` für 5–10 Projekte (~300–400 MB pro Projekt)
+- Geteiltes DigitalOcean-Block-Volume `/mnt/shared_projects/` für 5–10 Projekte (~300–400 MB pro Projekt)
 - `SPECWRIGHT_PROJECTS_ROOT`-Env-Var-Prefix im Config-Loader (kein Refactor von `project-dirs.ts`)
 - Mount-Tech-Spike R2: SSHFS vs. Mutagen-Sync, GO/NO-GO via Indexer-Cold-Open + File-Watcher-Lag
 - Mac-Mount des Volumes für Cursor-IDE
@@ -86,7 +87,7 @@ Tasks sind in `kanban.json` (V2 Lean, mode="lean"); Detail-Kontext lädt `/execu
    - Requires MCP: no
 
 - [ ] **Integration Test 3:** Geteiltes Volume sichtbar für beide Apps
-   - Command: `ssh kompass-droplet 'ls /mnt/shared-projects/ && stat -c "%U %G %a" /mnt/shared-projects/'`
+   - Command: `ssh kompass-droplet 'ls /mnt/shared_projects/ && stat -c "%U %G %a" /mnt/shared_projects/'`
    - Validates: Volume gemountet, Permissions erlauben Read/Write für Specwright-UI- und Kompass-User
    - Requires MCP: no
 

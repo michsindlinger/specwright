@@ -8,7 +8,7 @@ Specwright-UI wird auf demselben DigitalOcean-Droplet wie Kompass deployed und g
 ## Key Points
 
 - Cloud-UI als Default-Zugang vom Mac und unterwegs (Vollparität zur lokalen UI)
-- Geteiltes DigitalOcean-Block-Volume `/mnt/shared-projects/` für 5–10 Projekte
+- Geteiltes DigitalOcean-Block-Volume `/mnt/shared_projects/` für 5–10 Projekte
 - Auth via Cloudflare Tunnel + Access (kein Express-Session-Layer in UI)
 - Mount-Tech-Spike (R2): SSHFS vs. Mutagen-Sync; Default Mutagen falls SSHFS-Indexer schlecht
 - Pfad-Config via Env-Var `SPECWRIGHT_PROJECTS_ROOT` (kein Refactor von `project-dirs.ts`)
