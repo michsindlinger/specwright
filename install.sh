@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.29.6"
+FRAMEWORK_VERSION="3.30.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -476,6 +476,7 @@ install_global() {
         mkdir -p "$G/templates/skills/quality-gates"
         mkdir -p "$G/templates/skills/po-requirements"
         mkdir -p "$G/templates/skills/architect-refinement"
+        mkdir -p "$G/templates/skills/atomicity-validator"
         mkdir -p "$G/templates/skills/frontend/angular"
         mkdir -p "$G/templates/skills/frontend/react"
         mkdir -p "$G/templates/skills/frontend/vue"
@@ -504,11 +505,12 @@ install_global() {
     fi
 
     # --- Standards (4) ---
-    substep "Standards" "4"
+    substep "Standards" "5"
     download_file "$REPO_URL/specwright/standards/code-style.md" "$G/standards/code-style.md" "standard"
     download_file "$REPO_URL/specwright/standards/best-practices.md" "$G/standards/best-practices.md" "standard"
     download_file "$REPO_URL/specwright/standards/tech-stack.md" "$G/standards/tech-stack.md" "standard"
     download_file "$REPO_URL/specwright/standards/plan-review-guidelines.md" "$G/standards/plan-review-guidelines.md" "standard"
+    download_file "$REPO_URL/specwright/standards/atomicity-guidelines.md" "$G/standards/atomicity-guidelines.md" "standard"
     substep_done
 
     # --- CLAUDE templates (2) ---
@@ -554,12 +556,13 @@ install_global() {
     done
     substep_done
 
-    # --- Skill templates (~60) ---
-    substep "Skill templates" "60"
-    # Quality gates, PO, Architect
+    # --- Skill templates (~61) ---
+    substep "Skill templates" "61"
+    # Quality gates, PO, Architect, Atomicity-Validator
     download_file "$REPO_URL/specwright/templates/skills/quality-gates/SKILL.md" "$G/templates/skills/quality-gates/SKILL.md"
     download_file "$REPO_URL/specwright/templates/skills/po-requirements/SKILL.md" "$G/templates/skills/po-requirements/SKILL.md"
     download_file "$REPO_URL/specwright/templates/skills/architect-refinement/SKILL.md" "$G/templates/skills/architect-refinement/SKILL.md"
+    download_file "$REPO_URL/specwright/templates/skills/atomicity-validator/SKILL.md" "$G/templates/skills/atomicity-validator/SKILL.md"
 
     # Frontend: angular, react, vue (6 each)
     local frontend_frameworks=(angular react vue)
@@ -764,11 +767,12 @@ install_project() {
         mkdir -p specwright/mcp-profiles
     fi
 
-    # Standards (3)
-    substep "Standards" "3"
+    # Standards (4)
+    substep "Standards" "4"
     download_file "$REPO_URL/specwright/standards/code-style.md" "specwright/standards/code-style.md" "standard"
     download_file "$REPO_URL/specwright/standards/best-practices.md" "specwright/standards/best-practices.md" "standard"
     download_file "$REPO_URL/specwright/standards/plan-review-guidelines.md" "specwright/standards/plan-review-guidelines.md" "standard"
+    download_file "$REPO_URL/specwright/standards/atomicity-guidelines.md" "specwright/standards/atomicity-guidelines.md" "standard"
     substep_done
 
     # Documentation (3)

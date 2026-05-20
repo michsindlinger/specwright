@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.14.0
+version: 3.15.0
 encoding: UTF-8
 ---
 
@@ -11,6 +11,15 @@ encoding: UTF-8
 ## Overview
 
 Create detailed feature specifications: Main agent gathers fachliche requirements (PO role), then either generates V2 Lean Tasks (default) or V1 Classic Stories with technical refinement (`--classic` flag).
+
+**v3.15 Changes (Atomicity Validator — Six-Sigma §4.2):**
+- **NEW: Step 3.5.1 Atomicity Validation (V1 Classic)** — checks each story for Minimality, Verifiability, Functional Determinism per the Six-Sigma Agent paper (arXiv:2601.22290). Advisory-only, max 3 re-decompose retries before forced-proceed with audit-log.
+- **RENAMED: Step 3.5.1 (Effort Estimation Decision) → Step 3.5.2** to make room for Atomicity. Internal cross-references updated.
+- **NEW: Inline Atomicity criteria in Step 2.6-lean size-awareness block** (V2 Lean — Minimality + Determinism only, Verifiability is implied via planSection reference; no skill load, no separate substep, preserves Lean's token economy).
+- **NEW: Skill `atomicity-validator`** — single source `specwright/templates/skills/atomicity-validator/SKILL.md` (installed locally via `setup-claude-code.sh`).
+- **NEW: Standards `specwright/standards/atomicity-guidelines.md`** — formal criteria, oracle taxonomy, subjective-vocab list (EN+DE), atomic-vs-non-atomic examples.
+- **NEW: Phase-Detection CHECK_F** — Resume recognizes completed atomicity validation via `[spec-folder]/.atomicity-validated` marker file; re-runs skip Step 3.5.1 cleanly.
+- **NEW: Frontmatter fields** — `atomicity_status`, `atomicity_accepted_on`, `atomicity_override` (added to story frontmatter when validator flags + user decides).
 
 **v3.14 Changes (User-Action Flag):**
 - **NEW: `requiresUserAction` flag** — stories/tasks that require a manual user step the AI cannot perform autonomously (external credentials, 3rd-party UI config, etc.) are flagged at creation time.
@@ -92,7 +101,7 @@ Create detailed feature specifications: Main agent gathers fachliche requirement
 - **KEPT: Step 2.5 Plan Agent** - Plan delegation preserved (documented input, benefits from focused context)
 
 **v3.4 Changes:**
-- **NEW: Optional Effort Estimation** - Step 3.5.1 asks user (default: skip)
+- **NEW: Optional Effort Estimation** - Step 3.5.2 asks user (default: skip) [renamed from 3.5.1 in v3.15]
 - **ENHANCED: Model Parameters** - Use haiku for simple tasks to reduce costs
 - **CHANGED: Step 4 Summary** - Handles both with/without effort estimation
 
@@ -190,6 +199,7 @@ The user can provide a spec folder path as argument to resume where they left of
        CHECK_C: [spec-folder]/stories/ (directory exists and contains .md files)
        CHECK_D: First story file has filled "WAS:" section (technical refinement done)
        CHECK_E: [spec-folder]/kanban.json → read `spec.specTier` (if exists)
+       CHECK_F: [spec-folder]/.atomicity-validated (file exists → Step 3.5.1 already done in prior session) — v3.15
 
     4. DETERMINE resume point:
 
@@ -257,6 +267,11 @@ The user can provide a spec folder path as argument to resume where they left of
             Spec appears to be mostly complete. Running final validations.
             ```
           → JUMP TO: Step 3.4 (DoR Validation)
+          → NOTE (v3.15): Step 3.4 → 3.5 → 3.5.1 chain. CHECK_F may short-circuit 3.5.1 to skip Atomicity.
+
+       g. (Atomicity-skip shortcut, v3.15) IF CHECK_F = true AND we are about to enter Step 3.5.1:
+          → INFORM user: "Atomicity validation already complete (.atomicity-validated marker found). Skipping Step 3.5.1."
+          → Step 3.5.1 itself enforces this guard internally; CHECK_F is documented here for transparency.
 
   ELSE (no argument provided):
     → Start from Step 1 (Feature Selection) - normal flow
@@ -861,7 +876,7 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
 <branch_logic>
   IF SPEC_MODE = "lean" (default):
     PROCEED TO: Step 2.6-lean (Generate Tasks)
-    SKIP: Step 2.6 (Stories), Step 3 (Technical Refinement), Step 3.4 (DoR), Step 3.5 (Story Size), Step 3.5.1/3.6 (Effort Estimation)
+    SKIP: Step 2.6 (Stories), Step 3 (Technical Refinement), Step 3.4 (DoR), Step 3.5 (Story Size), Step 3.5.1 (Atomicity), Step 3.5.2/3.6 (Effort Estimation)
     AFTER Step 2.6-lean: JUMP TO Step 4 (Spec Complete - V2 Summary)
 
   ELSE (SPEC_MODE = "classic"):
@@ -924,16 +939,19 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
      - Anchored to a plan section (phase, component, or heading)
      - **Single-concern:** prefer one of {refactor, new-code, migration, schema-change}. AVOID mixing 3+ concerns in one task (e.g. "rename existing + new base + 2 subclasses + new utility + PTY-migration" → 3 tasks: refactor, new-code, migration).
 
-     **Size-Awareness (inline, agent-judgment):**
+     **Size-Awareness + Atomicity (inline, agent-judgment):**
      For each derived task, briefly assess based on plan-section content:
      - Touches ≤5 distinct files in scope?
      - Single dominant concern (not 3+ mixed)?
      - Cohesive enough that fresh-context LLM can complete in one /execute-tasks run?
+     - **Minimality (v3.15, Six-Sigma §4.2):** plan-section ≤5 files AND no "AND"/"sowie" connecting 3+ distinct verbs?
+     - **Determinism (v3.15):** task description avoids subjective vocab without a measurable metric? Banned without metric: `improve, polish, clean up, refactor for clarity, verbessern, aufräumen, optimieren, schöner, sauberer`. Allowed when paired with metric or oracle reference (e.g. "optimize to <100ms").
+     - **Verifiability (v3.15, implied):** planSection content names a Build/Test/Lint command or testable acceptance criterion. If planSection is pure prose without any concrete check → flag. (No full skill-load in Lean mode — this is a sanity check, not the full V1 oracle audit.)
 
-     If a task looks oversized (e.g. plan-section lists 7+ files OR mixes rename+new+migrate), FLAG inline:
-       "[TASK-ID] looks oversized. Plan-Section "[X]" mixes [N] concerns: [list].
-        Suggested split: [TASK-A] (concern 1) → [TASK-B] (concern 2, deps TASK-A).
-        Confirm split or keep as-is?"
+     If a task fails any of {size, minimality, determinism, verifiability}, FLAG inline:
+       "[TASK-ID] [criterion]: [reason]. Suggested fix: [..]
+        For size/minimality concerns: suggested split [TASK-A] (concern 1) → [TASK-B] (concern 2, deps TASK-A).
+        Confirm split / accept-with-warning / fix-now?"
 
      Tier-Awareness: For S-tier specs (1-2 tasks total), stricter — split rather than ship oversized.
      For L-tier specs (6+ tasks), tasks naturally larger — only flag when 7+ files OR clear concern-mixing.
@@ -2243,9 +2261,118 @@ Validate that all stories comply with size guidelines to prevent mid-execution c
 
 </step>
 
-<substep number="3.5.1" name="effort_estimation_choice">
+<substep number="3.5.1" name="atomicity_validation">
 
-### Step 3.5.1: Effort Estimation Decision — V1 Classic only
+### Step 3.5.1: Atomicity Validation — V1 Classic only (v3.15)
+
+**GUARD (v3.11):** If SPEC_MODE = "lean", SKIP. V2 Lean handles Atomicity inline in Step 2.6-lean (Minimality + Determinism bullets in the size-awareness block).
+
+**GUARD (v3.15):** If `[spec-folder]/.atomicity-validated` exists, SKIP (already validated in a prior session).
+
+**LOAD skill (hybrid lookup):**
+  1. TRY: `.claude/skills/atomicity-validator/SKILL.md`
+  2. FALLBACK: `~/.specwright/templates/skills/atomicity-validator/SKILL.md`
+  3. IF both fail: WARN user "atomicity-validator skill not installed — skipping advisory. Run `bash setup-claude-code.sh` from project root to install."
+                   WRITE `[spec-folder]/.atomicity-validated` (marker so re-runs do not loop on the warning)
+                   PROCEED to Step 3.5.2
+
+**LOAD standards** (hybrid lookup, advisory — proceed if missing):
+  1. TRY: `specwright/standards/atomicity-guidelines.md`
+  2. FALLBACK: `~/.specwright/standards/atomicity-guidelines.md`
+
+<validation_process>
+  LIST stories: ls specwright/specs/[spec-name]/stories/
+
+  IF directory is empty:
+    INFORM user: "No stories to validate — proceeding."
+    WRITE `[spec-folder]/.atomicity-validated`
+    PROCEED to Step 3.5.2
+
+  READ retry_count from `[spec-folder]/.atomicity-retry-count` (default 0 if file missing).
+
+  IF retry_count >= 3:
+    INFORM user: "Atomicity validation has been retried 3 times. Forcing proceed with audit-log."
+    APPEND to spec.md tail-section:
+      ```
+      ## Atomicity Audit
+      Validated on YYYY-MM-DD. Forced-proceed after 3 retries.
+      Remaining flags: [list of story IDs and FAIL types]
+      ```
+    WRITE `[spec-folder]/.atomicity-validated`
+    PROCEED to Step 3.5.2
+
+  FOR each story file:
+    READ: full story content (YAML frontmatter + Akzeptanzkriterien + Technische Verifikation + WAS/WIE/WO)
+    APPLY skill heuristics:
+      - checkDecomposability(story) → Minimality PASS/FAIL
+      - hasConcreteOracle(story) → Verifiability PASS/FAIL
+      - containsSubjectiveVocab(story) → Determinism PASS/FAIL
+    IF story frontmatter has `atomicity_override: <reason>`: SKIP determinism check (treat as PASS).
+    RECORD per-criterion result.
+
+  PRINT Atomicity Report (Markdown table as defined in SKILL.md).
+</validation_process>
+
+<advisory_prompts>
+  IF any story has Verifiability-FAIL:
+    FOR each FAIL story:
+      PROMPT user via AskUserQuestion:
+        Question: "Story [ID]: '[title]' has no concrete Test-Oracle.
+                   Acceptable oracles (from story-template):
+                     LINT_PASS:
+                     TEST_PASS: <path>
+                     MCP_PLAYWRIGHT: <scenario>
+                     FILE_EXISTS: <path>
+                     CONTAINS: <path> <text>"
+        Options:
+          1. "Add oracle now" — agent will ask for type + argument and append to Technische Verifikation
+          2. "Skip — accept warning"
+
+      IF "Add oracle now":
+        ASK user for oracle type + argument
+        EDIT story file: append line to `## Technische Verifikation` section
+                         (CREATE the section if missing — heading + blank line + oracle line)
+
+      IF "Skip — accept warning":
+        EDIT story YAML frontmatter to add or update:
+          atomicity_status: warn-no-oracle
+          atomicity_accepted_on: YYYY-MM-DD
+    END FOR
+
+  AFTER Verifiability loop:
+    RE-COMPUTE classifications for Minimality and Determinism only (Verifiability flags resolved above).
+
+    IF any Minimality-FAIL or Determinism-FAIL remains:
+      DISPLAY: advisory per finding using SKILL.md "Common Pitfalls" section verbatim.
+      PROMPT user via AskUserQuestion:
+        Question: "Atomicity flags remain (Minimality/Determinism). What now?"
+        Options:
+          1. "Continue (accept flags, write audit-log)"
+          2. "Re-decompose stories (jump back to Step 2.6)"
+
+      IF "Re-decompose stories":
+        INCREMENT retry_count in `[spec-folder]/.atomicity-retry-count` (write integer)
+        JUMP TO Step 2.6 with hint:
+          "Re-decompose: focus on stories [list of FAIL IDs]. Common pitfalls from SKILL.md: [paste section]"
+
+      IF "Continue":
+        APPEND audit-log to spec.md tail-section:
+          ```
+          ## Atomicity Audit
+          Validated on YYYY-MM-DD. Accepted flags:
+          - [story-ID]: [FAIL types]
+          Retry count: [N]
+          ```
+</advisory_prompts>
+
+WRITE: `[spec-folder]/.atomicity-validated` (idempotency marker; phase-detection skips this step on resume)
+PROCEED: To Step 3.5.2 (Effort Estimation Decision)
+
+</substep>
+
+<substep number="3.5.2" name="effort_estimation_choice">
+
+### Step 3.5.2: Effort Estimation Decision — V1 Classic only (renamed from 3.5.1 in v3.15 to make room for Atomicity Validation)
 
 **GUARD (v3.11):** If SPEC_MODE = "lean", SKIP. V2 Lean does not run effort estimation during spec creation (user can run `/estimate-spec` separately after execution if needed).
 

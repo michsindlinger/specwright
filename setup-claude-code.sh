@@ -147,11 +147,13 @@ mkdir -p .claude/skills/review-implementation-plan
 mkdir -p .claude/skills/save-memory
 mkdir -p .claude/skills/recall-memory
 mkdir -p .claude/skills/manage-memory
+mkdir -p .claude/skills/atomicity-validator
 
 download_file "$REPO_URL/.claude/skills/review-implementation-plan/SKILL.md" ".claude/skills/review-implementation-plan/SKILL.md"
 download_file "$REPO_URL/specwright/templates/skills/save-memory/SKILL.md" ".claude/skills/save-memory/SKILL.md"
 download_file "$REPO_URL/specwright/templates/skills/recall-memory/SKILL.md" ".claude/skills/recall-memory/SKILL.md"
 download_file "$REPO_URL/specwright/templates/skills/manage-memory/SKILL.md" ".claude/skills/manage-memory/SKILL.md"
+download_file "$REPO_URL/specwright/templates/skills/atomicity-validator/SKILL.md" ".claude/skills/atomicity-validator/SKILL.md"
 
 # ===============================================================
 # AGENTS - Utility Agents

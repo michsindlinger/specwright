@@ -95,6 +95,7 @@ echo "=== Installing Standards ==="
 download_file "$REPO_URL/specwright/standards/code-style.md" "specwright/standards/code-style.md" "standards"
 download_file "$REPO_URL/specwright/standards/best-practices.md" "specwright/standards/best-practices.md" "standards"
 download_file "$REPO_URL/specwright/standards/plan-review-guidelines.md" "specwright/standards/plan-review-guidelines.md" "standards"
+download_file "$REPO_URL/specwright/standards/atomicity-guidelines.md" "specwright/standards/atomicity-guidelines.md" "standards"
 
 # ===============================================================
 # DOCS - Documentation and Guides

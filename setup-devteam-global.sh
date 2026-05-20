@@ -62,6 +62,7 @@ mkdir -p "$GLOBAL_DIR/agents"
 mkdir -p "$GLOBAL_DIR/templates/skills/quality-gates"
 mkdir -p "$GLOBAL_DIR/templates/skills/po-requirements"
 mkdir -p "$GLOBAL_DIR/templates/skills/architect-refinement"
+mkdir -p "$GLOBAL_DIR/templates/skills/atomicity-validator"
 mkdir -p "$GLOBAL_DIR/templates/skills/frontend/angular"
 mkdir -p "$GLOBAL_DIR/templates/skills/frontend/react"
 mkdir -p "$GLOBAL_DIR/templates/skills/frontend/vue"
@@ -106,6 +107,9 @@ download_file "$REPO_URL/specwright/standards/tech-stack.md" \
 
 download_file "$REPO_URL/specwright/standards/plan-review-guidelines.md" \
   "$GLOBAL_DIR/standards/plan-review-guidelines.md" "plan-review-guidelines"
+
+download_file "$REPO_URL/specwright/standards/atomicity-guidelines.md" \
+  "$GLOBAL_DIR/standards/atomicity-guidelines.md" "atomicity-guidelines"
 
 # ===============================================================
 # TEMPLATES
@@ -162,6 +166,9 @@ download_file "$REPO_URL/specwright/templates/skills/po-requirements/SKILL.md" "
 
 echo "-> Architect Refinement skill (1 file)..."
 download_file "$REPO_URL/specwright/templates/skills/architect-refinement/SKILL.md" "$GLOBAL_DIR/templates/skills/architect-refinement/SKILL.md"
+
+echo "-> Atomicity Validator skill (1 file)..."
+download_file "$REPO_URL/specwright/templates/skills/atomicity-validator/SKILL.md" "$GLOBAL_DIR/templates/skills/atomicity-validator/SKILL.md"
 
 echo "-> Frontend Angular skill (6 files)..."
 download_file "$REPO_URL/specwright/templates/skills/frontend/angular/SKILL.md" "$GLOBAL_DIR/templates/skills/frontend/angular/SKILL.md"
