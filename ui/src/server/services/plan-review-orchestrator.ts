@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import { WebSocket } from 'ws';
 import { CloudTerminalManager } from './cloud-terminal-manager.js';
 import { ExternalReviewer } from './external-reviewer.js';
+import { aggregateFindings, formatInject } from './finding-aggregator.js';
 import { getReviewPrompt } from '../general-config.js';
 import { CloudTerminalSessionId } from '../../shared/types/cloud-terminal.protocol.js';
 
@@ -187,13 +188,21 @@ export class PlanReviewOrchestrator extends EventEmitter {
         return;
       }
 
-      const aggregatedText = buildInjectText(
-        fulfilled.map((f) => ({
-          providerId: f.reviewer.providerId,
-          modelId: f.reviewer.modelId ?? f.reviewer.providerId,
-          output: f.output,
-        }))
-      );
+      const mapped = fulfilled.map((f) => ({
+        providerId: f.reviewer.providerId,
+        modelId: f.reviewer.modelId ?? f.reviewer.providerId,
+        output: f.output,
+      }));
+
+      let aggregatedText: string;
+      if (mapped.length === 1) {
+        aggregatedText = buildInjectText(mapped);
+      } else {
+        const { clusters, fallbackUsed } = await aggregateFindings(mapped, projectPath);
+        aggregatedText = fallbackUsed
+          ? buildInjectText(mapped)
+          : formatInject(clusters, mapped, reviewers.length);
+      }
 
       this.emit('plan-review:aggregated', sessionId, aggregatedText);
 
