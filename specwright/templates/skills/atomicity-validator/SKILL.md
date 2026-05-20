@@ -32,6 +32,28 @@ In Specwright terms: each story/task must be small enough, must name a concrete 
 
 ## Heuristic Algorithms
 
+### `checkPlanSectionFormat(task)` — Format Validation (v3.16+)
+
+Applies only to V2 Lean tasks (tasks with `planSection` field). Checks that the
+`planSection` reference is well-formed and resolvable. The check uses the plan's
+anchor set if available (built by Step 2.6-lean pre-scan).
+
+```
+Given task.planSection and planAnchors (Set<string>):
+
+1. IF planSection matches /^System: / → PASS (system task; routes to hardcoded handler)
+2. IF planSection contains '\n' → FAIL ("planSection must be a single string — never concatenate headings")
+3. IF planSection matches /^[a-z0-9][a-z0-9-]{0,79}$/ (anchor-ID format):
+   - IF planSection IN planAnchors → PASS (valid anchor reference)
+   - ELSE → FAIL ("anchor ID '<id>' not present in implementation-plan.md; typo or stale reference")
+4. IF planSection starts with '## ' or '### ' (heading-string format):
+   - WARN deprecated ("plan should provide <!-- section:id --> anchors; falling back to heading-match (v3.15 compat mode)")
+   - Treat as PASS for the purpose of atomicity, but emit warning so user can upgrade plan
+5. ELSE → FAIL ("planSection format unknown — use anchor-ID slug or single heading string")
+```
+
+This catches the `\n`-mid-planSection class of bugs (real example from MWDS-2026-05-20) and prevents Strategy-0 silent-fallback (which would hide typos in anchor-IDs).
+
 ### `checkDecomposability(story)` — Minimality
 
 Inspect the story's `WO:` section (file paths) and `WAS:` field (work description).

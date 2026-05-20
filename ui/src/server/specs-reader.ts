@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import { join, basename, resolve, relative } from 'path';
 import { withKanbanLock } from './utils/kanban-lock.js';
 import { projectDir } from './utils/project-dirs.js';
+import { lookupPlanSection, PlanSectionLookupError } from './utils/plan-section-lookup.js';
 import { attachmentStorageService } from './services/attachment-storage.service.js';
 
 // Dep-satisfaction set: ['done', 'in_review']. Mirror of SATISFIED_DEP_STATUSES
@@ -1628,37 +1629,26 @@ export class SpecsReader {
         // Build content from task description + implementation plan section
         let content = `# ${task.id}: ${task.title}\n\n${task.description || ''}`;
 
-        // Try to read the implementation plan section
+        // Try to read the implementation plan section (v3.16+: via shared lookup helper).
         try {
           const planPath = join(specPath, 'implementation-plan.md');
           const planContent = await fs.readFile(planPath, 'utf-8');
           const planSection = task.planSection || '';
 
-          // Use same robust parsing as MCP server: try exact heading, then Phase N, then fallback
-          let matched = false;
-          const exactHeading = planSection.trim();
-          if (exactHeading) {
-            const escapedHeading = exactHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const exactRegex = new RegExp(
-              `^#{2,3}\\s+${escapedHeading}\\s*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s|$(?![\\s\\S]))`, 'im'
-            );
-            const sectionContent = planContent.match(exactRegex);
-            if (sectionContent) {
-              content += `\n\n---\n\n## Implementation Plan: ${planSection}\n\n${sectionContent[0].trim()}`;
-              matched = true;
-            }
-          }
-
-          if (!matched) {
-            const phaseMatch = planSection.match(/Phase\s+(\d+)/i);
-            if (phaseMatch) {
-              const phaseNum = phaseMatch[1];
-              const sectionRegex = new RegExp(
-                `^#{2,3}\\s+(?:Phase\\s*)?${phaseNum}[\\s.:\\-–—]*[^\\n]*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s+(?:Phase\\s*)?\\d|\\n##\\s|$(?![\\s\\S]))`, 'im'
-              );
-              const sectionContent = planContent.match(sectionRegex);
-              if (sectionContent) {
-                content += `\n\n---\n\n## Implementation Plan: ${planSection}\n\n${sectionContent[0].trim()}`;
+          if (planSection) {
+            try {
+              const lookup = lookupPlanSection(planContent, planSection);
+              if (lookup.found) {
+                content += `\n\n---\n\n## Implementation Plan: ${planSection}\n\n${lookup.content}`;
+              }
+            } catch (err) {
+              if (err instanceof PlanSectionLookupError) {
+                // Strict-mode failure from Strategy 0 (anchor-not-found, duplicate, empty-body).
+                // Surface as visible warning in story content rather than throwing — UI can still display task.
+                console.warn(`[plan-section-lookup] ${err.message}`);
+                content += `\n\n---\n\n## Implementation Plan: ${planSection}\n\n⚠️ ${err.message}`;
+              } else {
+                throw err;
               }
             }
           }

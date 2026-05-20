@@ -44,6 +44,7 @@ import { existsSync } from 'fs';
 import { createHash } from 'crypto';
 import { withKanbanLock } from './kanban-lock.js';
 import { parseStoryFile } from './story-parser.js';
+import { lookupPlanSection, PlanSectionLookupError } from './plan-section-lookup.js';
 import {
   validateTaskDescriptions,
   hasUserActionFlag,
@@ -2369,53 +2370,19 @@ async function parseImplementationPlanSection(
     );
     const componentConnections = connectionsMatch ? connectionsMatch[1].trim() : '';
 
-    // Extract relevant section based on planSection reference
+    // Extract relevant section via shared lookup helper (v3.16+).
+    // Strategy 0 (anchor-ID) is strict-mode: throws if slug looks like anchor format but is not in plan.
+    // Strategies 1-3 (legacy heading-match) remain for backward-compat.
     let relevantSection = '';
-
-    // Strategy 1: Try exact heading match (e.g. planSection = "Phase 1: Authentication")
-    const exactHeading = planSection.trim();
-    const escapedHeading = exactHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const exactRegex = new RegExp(
-      `^#{2,3}\\s+${escapedHeading}\\s*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s|$(?![\\s\\S]))`,
-      'im'
-    );
-    let sectionContent = planContent.match(exactRegex);
-    if (sectionContent) {
-      relevantSection = sectionContent[0].trim();
-    }
-
-    // Strategy 2: Try "Phase N" with flexible heading level and format
-    if (!relevantSection) {
-      const phaseMatch = planSection.match(/Phase\s+(\d+)/i);
-      if (phaseMatch) {
-        const phaseNum = phaseMatch[1];
-        // Match ## or ###, with optional "Phase" label and flexible formatting
-        // Handles: "### Phase 1", "## Phase 1:", "### 1. Foundation", "## Phase 1 - Auth"
-        const sectionRegex = new RegExp(
-          `^#{2,3}\\s+(?:Phase\\s*)?${phaseNum}[\\s.:\\-–—]*[^\\n]*\\n+([\\s\\S]*?)(?=\\n#{2,3}\\s+(?:Phase\\s*)?\\d|\\n##\\s|$(?![\\s\\S]))`,
-          'im'
-        );
-        sectionContent = planContent.match(sectionRegex);
-        if (sectionContent) {
-          relevantSection = sectionContent[0].trim();
-        }
+    try {
+      const lookup = lookupPlanSection(planContent, planSection);
+      relevantSection = lookup.found ? lookup.content : '';
+    } catch (err) {
+      if (err instanceof PlanSectionLookupError) {
+        console.warn(`[plan-section-lookup] ${err.message}`);
+        throw err; // propagate strict-mode failures (anchor-not-found / duplicate-anchor / empty-anchor-body)
       }
-    }
-
-    // Strategy 3: Search for component name in tables or subsections
-    if (!relevantSection) {
-      const componentMatch = planSection.match(/(?:Component|Komponente)[:\s]+(.+)/i);
-      if (componentMatch) {
-        const componentName = componentMatch[1].trim();
-        const compRegex = new RegExp(
-          `\\|\\s*\\*?${componentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b[^|]*\\|[\\s\\S]*?(?=\\n(?!\\s*\\|)|$)`,
-          'i'
-        );
-        const compContent = planContent.match(compRegex);
-        if (compContent) {
-          relevantSection = compContent[0].trim();
-        }
-      }
+      throw err;
     }
 
     // Fallback: if no specific section found, use executive summary

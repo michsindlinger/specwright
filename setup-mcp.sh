@@ -45,6 +45,7 @@ cp specwright/scripts/mcp/kanban-validation.ts "$MCP_DIR/"
 cp specwright/scripts/mcp/story-parser.ts "$MCP_DIR/"
 cp specwright/scripts/mcp/item-templates.ts "$MCP_DIR/"
 cp specwright/scripts/mcp/memory-store.ts "$MCP_DIR/"
+cp specwright/scripts/mcp/plan-section-lookup.ts "$MCP_DIR/"
 echo "   ✅ Files copied"
 echo ""
 

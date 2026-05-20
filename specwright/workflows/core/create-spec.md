@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.15.0
+version: 3.16.0
 encoding: UTF-8
 ---
 
@@ -11,6 +11,15 @@ encoding: UTF-8
 ## Overview
 
 Create detailed feature specifications: Main agent gathers fachliche requirements (PO role), then either generates V2 Lean Tasks (default) or V1 Classic Stories with technical refinement (`--classic` flag).
+
+**v3.16 Changes (HTML-Comment Anchors for stable planSection IDs):**
+- **NEW: Anchor-comment convention** — Plan-Agent prepends `<!-- section:<slug> -->` before each `## ` and `### ` heading in `implementation-plan.md`. Slug format `[a-z0-9-]+`, deduplicated per plan.
+- **NEW: Strategy-0 lookup in MCP + UI** — `parseImplementationPlanSection` (kanban-mcp-server.ts) and V2 Task-Detail-Loader (specs-reader.ts) both route through new shared helper `plan-section-lookup.ts`. Strategy-0 (anchor-ID) wins before legacy heading-match strategies.
+- **NEW: Strict-mode failures** — When `planSection` is anchor-ID format but slug is missing/duplicated/empty in plan, lookup throws `PlanSectionLookupError` instead of silently falling through to executive-summary. Prevents stale `\n`-bug and typo-class issues seen in MWDS-2026-05-20.
+- **CHANGED: Step 2.5 Plan-Agent prompt** — adds ANCHOR-RULES (slug format, placement, dedup).
+- **CHANGED: Step 2.6-lean** — pre-scans plan for anchors, validates dedup, generates tasks with `planSection: "anchor-id-slug"` instead of heading-string. Legacy heading-string fallback retained for plans without anchors.
+- **NEW: Atomicity-Validator `checkPlanSectionFormat`** — verifies planSection is anchor-ID + in plan-anchor-set, or `^System: `, or heading-string (deprecated WARN). Catches `\n` in planSection.
+- **Backward-compat:** existing specs without anchors keep working via Strategy-1+ legacy heading-match. No migration required.
 
 **v3.15 Changes (Atomicity Validator — Six-Sigma §4.2):**
 - **NEW: Step 3.5.1 Atomicity Validation (V1 Classic)** — checks each story for Minimality, Verifiability, Functional Determinism per the Six-Sigma Agent paper (arXiv:2601.22290). Advisory-only, max 3 re-decompose retries before forced-proceed with audit-log.
@@ -674,6 +683,29 @@ or an S-Spec, preventing unnecessary overhead for simple features.
   IMPORTANT: NO detailed file paths or story breakdown yet!
   This is architectural/strategic, not tactical.
 
+  **ANCHOR-RULES (v3.16 — required):**
+
+  Prepend EVERY `## ` and `### ` heading in the plan with an HTML-comment anchor on its own line:
+
+  ```
+  <!-- section:<slug> -->
+  ### 1. Domain-Model (`assistant-service/domain/`)
+  ```
+
+  Rules:
+  - Slug format: `^[a-z0-9][a-z0-9-]{0,79}$` (lowercase, kebab-case, max 80 chars, must start with letter or digit)
+  - Slug derivation: `<scope-prefix>-<index?>-<short-descriptor>`. Examples:
+    - `<!-- section:backend-1-domain-model -->`
+    - `<!-- section:backend-3-fastapi-adapter -->`
+    - `<!-- section:frontend-3-sections-gating -->`
+    - `<!-- section:migration-legacy-script -->`
+  - DEDUPLICATE slugs within the plan. If natural slug collides with an earlier one, append `-2`, `-3` (e.g. `backend-helpers-2`).
+  - Anchor on its own line, directly before the heading (no blank line between).
+  - Anchor ONLY `## ` (h2) and `### ` (h3) headings. Do NOT anchor `# ` (h1) or `####+` (h4+).
+  - DO NOT skip any `##` or `###` heading — every one must be anchored for stable referencing from kanban tasks.
+
+  Why: Step 2.6-lean uses these slugs as `planSection` values in kanban.json. Stable IDs survive heading-rename and prevent the `\n`-in-planSection class of bugs (see MWDS-2026-05-20 incident).
+
   **Step 4: Critical Self-Review (Kollegen-Methode)**
 
   Perform a critical review of your plan:
@@ -932,6 +964,30 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
 
   5. **DERIVE TASKS from Implementation Plan:**
 
+     **5a. PRE-SCAN PLAN for anchors (v3.16):**
+
+     READ: implementation-plan.md (full text into memory)
+
+     EXTRACT all anchor comments matching `<!--\s*section:([a-z0-9][a-z0-9-]{0,79})\s*-->` (global, case-sensitive).
+
+     BUILD: `planAnchors` = Set of unique anchor IDs found.
+
+     **Duplicate check:**
+       IF same anchor-ID appears more than once → **ABORT** with message:
+         "Plan has duplicate anchors: [list of duplicates]. Fix implementation-plan.md before continuing task-derivation. (Anchor IDs must be unique per plan.)"
+
+     **Anchor presence check:**
+       IF planAnchors is empty:
+         WARN user: "Plan has no `<!-- section:id -->` anchors (legacy plan format v3.15 or earlier).
+                     Falling back to heading-string planSection values for this task derivation.
+                     For robust lookups recommend re-running Step 2.5 with v3.16 ANCHOR-RULES, or use /change-spec to upgrade the plan."
+         SET: USE_ANCHOR_MODE = false
+       ELSE:
+         SET: USE_ANCHOR_MODE = true
+         LOG: "Found [N] unique anchors in plan: [first 5 IDs, ...]"
+
+     **5b. DERIVE TASKS:**
+
      READ: implementation-plan.md
 
      IDENTIFY each task from plan phases/components. A task is:
@@ -962,11 +1018,11 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
      - id: [SPEC_PREFIX]-NNN (e.g., AUTH-001, AUTH-002 — same format as V1)
      - title: short descriptive title (max ~60 chars)
      - description: **1 sentence (max ~150 chars).** Subject-line — names WHAT in 1 phrase. NO multi-sentence prose, NO TL;DR, NO technical detail (that's in `planSection`). Rule: if you need a second sentence, your title is too vague → rename title instead. Detail lives ONLY in implementation-plan.md.
-     - planSection: exact heading as it appears in implementation-plan.md (e.g., "Phase 1: Authentication Foundation" or "Component: SessionManager"). The V2 plan parser tries:
-       1. Exact heading match (## or ### anywhere)
-       2. "Phase N" extraction with flexible format
-       3. Component-name match in tables
-       Prefer giving the exact heading string for robust lookup.
+     - planSection (v3.16):
+       - **IF USE_ANCHOR_MODE = true (preferred):** anchor-ID slug from `planAnchors` set (e.g. `"backend-1-domain-model"`). Pick the slug whose section most directly corresponds to the task. MUST be in `planAnchors` — no typos, no fabricated slugs, no `\n`.
+       - **IF USE_ANCHOR_MODE = false (legacy):** exact heading string from implementation-plan.md (e.g., `"Phase 1: Authentication Foundation"`). The legacy plan parser tries: (1) exact heading match, (2) "Phase N" extraction, (3) Component-name in tables.
+       - **NEVER** concatenate two headings with `\n`. planSection must be a single, atomic reference.
+       - **System tasks** (997/998/999) keep their `System: ...` strings — routed by hardcoded handler, not via lookup.
      - dependencies: list of task ids that must complete first (empty array for independent tasks)
      - status: "ready" if no unmet dependencies, else "blocked"
 
