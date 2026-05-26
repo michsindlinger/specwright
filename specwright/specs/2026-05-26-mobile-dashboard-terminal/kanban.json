@@ -19,9 +19,9 @@
     "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed MOB-018",
-    "nextAction": "Execute next task: MOB-019",
-    "progressIndex": 18,
+    "lastAction": "Completed MOB-019",
+    "nextAction": "Execute next task: MOB-022",
+    "progressIndex": 19,
     "totalStories": 24
   },
   "execution": {
@@ -557,16 +557,26 @@
       "dependencies": [
         "MOB-001"
       ],
-      "status": "ready",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-26T15:35:37.136Z",
+        "completedAt": "2026-05-26T15:39:03.107Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/components/mobile/aos-mobile-story-card.ts",
+          "ui/frontend/src/components/mobile/aos-mobile-story-list.ts",
+          "ui/frontend/src/app.ts"
+        ],
+        "commits": [
+          {
+            "hash": "317a3d3",
+            "message": "feat: MOB-019 aos-mobile-story-list + story-card",
+            "timestamp": "2026-05-26T00:00:00+02:00"
+          }
+        ]
       }
     },
     {
@@ -634,7 +644,7 @@
         "MOB-017",
         "MOB-018"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": "sonnet",
       "timing": {
@@ -714,8 +724,8 @@
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 18,
-    "blocked": 5
+    "done": 19,
+    "blocked": 4
   },
   "changeLog": [
     {
@@ -1160,6 +1170,30 @@
       "timestamp": "2026-05-26T15:35:05.413Z",
       "action": "status_changed",
       "storyId": "MOB-018",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-26T15:35:05.832Z",
+      "action": "dependency_resolved",
+      "storyId": "MOB-022",
+      "details": "Unblocked: all dependencies done/in_review (MOB-002, MOB-014, MOB-015, MOB-016, MOB-017, MOB-018)"
+    },
+    {
+      "timestamp": "2026-05-26T15:35:05.833Z",
+      "action": "status_changed",
+      "storyId": "MOB-019",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T15:35:37.137Z",
+      "action": "status_changed",
+      "storyId": "MOB-019",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T15:39:03.107Z",
+      "action": "status_changed",
+      "storyId": "MOB-019",
       "details": "Task completed: in_progress → done"
     }
   ]
