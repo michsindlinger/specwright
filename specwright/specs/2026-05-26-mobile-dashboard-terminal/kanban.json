@@ -19,9 +19,9 @@
     "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed MOB-020",
+    "lastAction": "Completed MOB-021",
     "nextAction": "Execute next task: MOB-022",
-    "progressIndex": 20,
+    "progressIndex": 21,
     "totalStories": 24
   },
   "execution": {
@@ -628,16 +628,24 @@
         "MOB-019",
         "MOB-020"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-26T15:42:54.052Z",
+        "completedAt": "2026-05-26T15:50:38.668Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/views/dashboard-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "860660a",
+            "message": "feat: MOB-021 aos-dashboard-view renderMobile() + Wiring",
+            "timestamp": "2026-05-26T17:49:00+02:00"
+          }
+        ]
       }
     },
     {
@@ -733,8 +741,8 @@
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 20,
-    "blocked": 3
+    "done": 21,
+    "blocked": 2
   },
   "changeLog": [
     {
@@ -1227,6 +1235,30 @@
       "timestamp": "2026-05-26T15:42:15.097Z",
       "action": "status_changed",
       "storyId": "MOB-020",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-26T15:42:15.563Z",
+      "action": "dependency_resolved",
+      "storyId": "MOB-021",
+      "details": "Unblocked: all dependencies done/in_review (MOB-002, MOB-004, MOB-005, MOB-006, MOB-007, MOB-009, MOB-010, MOB-011, MOB-012, MOB-013, MOB-019, MOB-020)"
+    },
+    {
+      "timestamp": "2026-05-26T15:42:15.564Z",
+      "action": "status_changed",
+      "storyId": "MOB-021",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T15:42:54.054Z",
+      "action": "status_changed",
+      "storyId": "MOB-021",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T15:50:38.668Z",
+      "action": "status_changed",
+      "storyId": "MOB-021",
       "details": "Task completed: in_progress → done"
     }
   ]
