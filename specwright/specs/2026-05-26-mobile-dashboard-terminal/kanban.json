@@ -1,0 +1,565 @@
+{
+  "version": "2.0",
+  "mode": "lean",
+  "spec": {
+    "id": "2026-05-26-mobile-dashboard-terminal",
+    "name": "Mobile View für Dashboard, Cloud Terminal und Spec-Detail",
+    "prefix": "MOB",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-05-26T13:11:38.611Z",
+    "specTier": "L",
+    "implementationPlan": "implementation-plan.md"
+  },
+  "resumeContext": {
+    "currentPhase": "1-complete",
+    "nextPhase": "2-worktree-setup",
+    "worktreePath": null,
+    "gitBranch": null,
+    "gitStrategy": null,
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Lean kanban created via MCP",
+    "nextAction": "Setup git worktree or branch",
+    "progressIndex": 0,
+    "totalStories": 24
+  },
+  "execution": {
+    "status": "not_started",
+    "startedAt": null,
+    "completedAt": null,
+    "model": null
+  },
+  "tasks": [
+    {
+      "id": "MOB-001",
+      "title": "Mobile Design-Tokens & .touch-target Utility",
+      "description": "Mobile-Tokens (--breakpoint-mobile, --space-mobile-*, --touch-target-min etc.) und .touch-target Utility additiv in theme.css.",
+      "planSection": "phase-1-foundation",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-002",
+      "title": "MobileBreakpointController (Lit ReactiveController)",
+      "description": "Lit ReactiveController kapselt matchMedia('(max-width: 767px)'), exposed isMobile + onChange für Resize-Cleanup.",
+      "planSection": "phase-1-foundation",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-003",
+      "title": "aos-mobile-sheet Primitiv",
+      "description": "Generic Sheet (position bottom/top/left, Backdrop, Focus-Trap, Escape/Outside-Click-Dismiss, optional Swipe).",
+      "planSection": "phase-1-foundation",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-004",
+      "title": "aos-mobile-top-bar",
+      "description": "Mobile-Header: Hamburger, Logo, Breadcrumb, Workspace, Bell (visual), Avatar — dispatcht menu-open / avatar-tap.",
+      "planSection": "phase-2-dashboard-chrome",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-005",
+      "title": "aos-mobile-project-scroller + chip + branch-row",
+      "description": "Horizontal scrollende Project-Chips + Branch/PR/Commit-Row, konsumiert projectContext + projectStateService.",
+      "planSection": "phase-2-dashboard-chrome",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-006",
+      "title": "aos-mobile-segmented Tabs",
+      "description": "Specs/Backlog/Docs Tab-Switcher für Mobile-Dashboard — dispatcht tab-change.",
+      "planSection": "phase-2-dashboard-chrome",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-007",
+      "title": "aos-mobile-bottom-nav",
+      "description": "Sticky Bottom-Nav (Home/Specs/FAB/Terminal/Me), Terminal Live-Badge sessions-count, FAB dispatcht fab-tap.",
+      "planSection": "phase-2-dashboard-chrome",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-008",
+      "title": "focus-strip.derive.ts Pure-Function + Vitest",
+      "description": "deriveFocusItems(specs, backlog, autoMode) → FocusItem[] (blocked stories, paused auto-mode, unread incidents) plus Unit-Tests.",
+      "planSection": "phase-3-dashboard-content",
+      "dependencies": [],
+      "status": "ready",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-009",
+      "title": "aos-mobile-focus-strip + focus-card",
+      "description": "Eyebrow+Counter+horizontal scrollbare Cards, auto-hide bei items.length===0, Tap navigiert via routerService.",
+      "planSection": "phase-3-dashboard-content",
+      "dependencies": [
+        "MOB-001",
+        "MOB-008"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-010",
+      "title": "aos-mobile-project-card",
+      "description": "Mobile Spec-Card mit Stage-Pill, PR-Counter, 2-Story-Preview, Progress-Bar, Owner-Avatar, Agent Live-Dot, ChevronRight.",
+      "planSection": "phase-3-dashboard-content",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-011",
+      "title": "aos-mobile-terminal-pill",
+      "description": "Floating CTA rechts unten, Sessions-Count + Live-Dot, Tap → routerService.navigate('cloud-terminal').",
+      "planSection": "phase-3-dashboard-content",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-012",
+      "title": "aos-mobile-side-drawer",
+      "description": "Hamburger-Drawer (wraps aos-mobile-sheet pos=left): Avatar, Projekt-Liste, Nav-Items, Logout.",
+      "planSection": "phase-4-drawer-actionsheet",
+      "dependencies": [
+        "MOB-003"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-013",
+      "title": "aos-mobile-action-sheet",
+      "description": "FAB-Action-Sheet (wraps sheet pos=bottom): New Spec/Bug/Todo triggert existierende Workflows/Modals.",
+      "planSection": "phase-4-drawer-actionsheet",
+      "dependencies": [
+        "MOB-003"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-014",
+      "title": "aos-mobile-terminal-header",
+      "description": "Back-Button + Icon-Tile + Title 'Cloud Terminal' + Subtext sessions·model + '+ Neue'-Button.",
+      "planSection": "phase-5-mobile-terminal",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-015",
+      "title": "aos-mobile-session-tabs + connection-bar",
+      "description": "Horizontal scrollbare Session-Tabs (Status-Dot+Name+Close-X) + Verbunden-Badge + cloud-host·branch + Kebab.",
+      "planSection": "phase-5-mobile-terminal",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-016",
+      "title": "aos-mobile-quick-replies + parseNumberedOptions",
+      "description": "Tap-friendly Option-Cards aus aktivem Terminal-Output (numbered Options), inkl. parseNumberedOptions Vitest.",
+      "planSection": "phase-5-mobile-terminal",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-017",
+      "title": "aos-mobile-input-bar-idle",
+      "description": "Keyboard-Toggle + Placeholder + Mic-Button disabled (aria-disabled, Toast-Trigger), text-send Event an Session.",
+      "planSection": "phase-5-mobile-terminal",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-018",
+      "title": "aos-claude-log-panel Mobile-Padding (CSS-only)",
+      "description": "@media (max-width: 767px) Override für Padding/Font-Size im static styles — keine Logik-Änderung.",
+      "planSection": "phase-5-mobile-terminal",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-019",
+      "title": "aos-mobile-story-list + story-card",
+      "description": "Vertikale Story-Liste für Mobile Spec-Detail (Status-Icon+ID+Title+Owner+Provider), dispatcht story-open.",
+      "planSection": "phase-6-spec-detail-wiring",
+      "dependencies": [
+        "MOB-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-020",
+      "title": "aos-mobile-story-sheet",
+      "description": "Bottom-Sheet Wrapper über aos-mobile-sheet: Story-Description, Tasks, Status-Badge, Action-Buttons.",
+      "planSection": "phase-6-spec-detail-wiring",
+      "dependencies": [
+        "MOB-003",
+        "MOB-019"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-021",
+      "title": "aos-dashboard-view renderMobile() + Wiring",
+      "description": "Additiver renderMobile()-Branch + MobileBreakpointController + Resize-Close-Handler in dashboard-view.ts; Desktop unverändert.",
+      "planSection": "phase-6-spec-detail-wiring",
+      "dependencies": [
+        "MOB-002",
+        "MOB-004",
+        "MOB-005",
+        "MOB-006",
+        "MOB-007",
+        "MOB-009",
+        "MOB-010",
+        "MOB-011",
+        "MOB-012",
+        "MOB-013",
+        "MOB-019",
+        "MOB-020"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-022",
+      "title": "aos-cloud-terminal-sidebar Mobile-Branch",
+      "description": "Mobile-Full-Screen-Branch (statt rechtem Drawer) + Controller-Wiring + Resize-Close-Handler in aos-cloud-terminal-sidebar.ts.",
+      "planSection": "phase-6-spec-detail-wiring",
+      "dependencies": [
+        "MOB-002",
+        "MOB-014",
+        "MOB-015",
+        "MOB-016",
+        "MOB-017",
+        "MOB-018"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-997",
+      "title": "Code Review",
+      "description": "Full-feature diff review.",
+      "planSection": "System: Code Review",
+      "dependencies": [
+        "MOB-001",
+        "MOB-002",
+        "MOB-003",
+        "MOB-004",
+        "MOB-005",
+        "MOB-006",
+        "MOB-007",
+        "MOB-008",
+        "MOB-009",
+        "MOB-010",
+        "MOB-011",
+        "MOB-012",
+        "MOB-013",
+        "MOB-014",
+        "MOB-015",
+        "MOB-016",
+        "MOB-017",
+        "MOB-018",
+        "MOB-019",
+        "MOB-020",
+        "MOB-021",
+        "MOB-022"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "MOB-999",
+      "title": "Finalize PR",
+      "description": "User-todos, PR creation, cleanup.",
+      "planSection": "System: Finalize PR",
+      "dependencies": [
+        "MOB-997"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": null,
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 24,
+    "ready": 3,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 0,
+    "blocked": 21
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-05-26T13:11:38.611Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Lean kanban initialized with 24 tasks via MCP tool"
+    }
+  ]
+}
