@@ -39,7 +39,7 @@
       "dependencies": [],
       "status": "ready",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -57,7 +57,7 @@
       "dependencies": [],
       "status": "ready",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -77,7 +77,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -97,7 +97,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -117,7 +117,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -137,7 +137,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -157,7 +157,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -175,7 +175,7 @@
       "dependencies": [],
       "status": "ready",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -196,7 +196,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -216,7 +216,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -236,7 +236,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -256,7 +256,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -276,7 +276,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -296,7 +296,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -316,7 +316,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -336,7 +336,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -356,7 +356,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -376,7 +376,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -396,7 +396,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -417,7 +417,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -448,7 +448,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -473,7 +473,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -514,7 +514,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "opus",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -534,7 +534,7 @@
       ],
       "status": "blocked",
       "phase": "pending",
-      "model": null,
+      "model": "sonnet",
       "timing": {
         "startedAt": null,
         "completedAt": null
@@ -560,6 +560,18 @@
       "action": "kanban_created",
       "storyId": null,
       "details": "Lean kanban initialized with 24 tasks via MCP tool"
+    },
+    {
+      "timestamp": "2026-05-26T13:27:58.908Z",
+      "action": "models_bulk_changed",
+      "storyId": null,
+      "details": "Model set to sonnet for: MOB-001, MOB-002, MOB-008, MOB-003, MOB-004, MOB-005, MOB-006, MOB-007, MOB-009, MOB-010, MOB-011, MOB-012, MOB-013, MOB-014, MOB-015, MOB-016, MOB-017, MOB-018, MOB-019, MOB-020, MOB-021, MOB-022, MOB-997, MOB-999"
+    },
+    {
+      "timestamp": "2026-05-26T13:28:03.020Z",
+      "action": "model_changed",
+      "storyId": "MOB-997",
+      "details": "Model changed from sonnet to opus"
     }
   ]
 }
