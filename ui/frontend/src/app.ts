@@ -33,6 +33,7 @@ import './components/mobile/aos-mobile-connection-bar.js';
 import './components/mobile/aos-mobile-quick-replies.js';
 import './components/mobile/aos-mobile-story-card.js';
 import './components/mobile/aos-mobile-story-list.js';
+import './components/mobile/aos-mobile-story-sheet.js';
 import './components/file-editor/aos-file-tree-sidebar.js';
 import './components/file-editor/aos-file-editor-panel.js';
 import './components/document-preview/aos-document-preview-panel.js';
