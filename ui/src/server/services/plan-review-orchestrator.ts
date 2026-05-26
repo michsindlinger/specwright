@@ -19,6 +19,10 @@ export interface TabReviewConfig {
 interface SessionState {
   config: TabReviewConfig;
   locked: boolean;
+  /** Resolved plan-file path of the most recently injected review.
+   *  Used to suppress repeat reviews of the same plan (e.g., when TUI boxes
+   *  re-fire plan detection during plan execution). Reset on toggle-off. */
+  lastInjectedPlanPath: string | null;
 }
 
 function buildInjectText(
@@ -66,6 +70,10 @@ export class PlanReviewOrchestrator extends EventEmitter {
         });
       }
     );
+
+    cloudTerminalManager.on('session.closed', (sessionId: CloudTerminalSessionId) => {
+      this.sessions.delete(sessionId);
+    });
   }
 
   /** Update per-session toggle + reviewer selection; syncs planReviewEnabled flag in CTM. */
@@ -74,6 +82,7 @@ export class PlanReviewOrchestrator extends EventEmitter {
     this.sessions.set(sessionId, {
       config,
       locked: existing?.locked ?? false,
+      lastInjectedPlanPath: config.enabled ? (existing?.lastInjectedPlanPath ?? null) : null,
     });
     this.cloudTerminalManager.setPlanReviewEnabled(sessionId, config.enabled);
   }
@@ -102,7 +111,11 @@ export class PlanReviewOrchestrator extends EventEmitter {
   private getOrCreateState(sessionId: CloudTerminalSessionId): SessionState {
     let state = this.sessions.get(sessionId);
     if (!state) {
-      state = { config: { enabled: false, reviewers: [] }, locked: false };
+      state = {
+        config: { enabled: false, reviewers: [] },
+        locked: false,
+        lastInjectedPlanPath: null,
+      };
       this.sessions.set(sessionId, state);
     }
     return state;
@@ -127,6 +140,15 @@ export class PlanReviewOrchestrator extends EventEmitter {
       return;
     }
 
+    const session = this.cloudTerminalManager.getSession(sessionId);
+    const planPath = session?.lastDetectedPlanPath ?? null;
+    if (planPath && state.lastInjectedPlanPath === planPath) {
+      console.log(
+        `[PlanReviewOrchestrator] Skipping ${source} re-review for already-injected plan: ${planPath}`
+      );
+      return;
+    }
+
     const { reviewers } = state.config;
     if (reviewers.length === 0) {
       return;
@@ -135,7 +157,6 @@ export class PlanReviewOrchestrator extends EventEmitter {
     state.locked = true;
 
     try {
-      const session = this.cloudTerminalManager.getSession(sessionId);
       const projectPath = session?.projectPath ?? process.cwd();
 
       this.emit('plan-review:started', sessionId, source, reviewers.length);
@@ -207,7 +228,10 @@ export class PlanReviewOrchestrator extends EventEmitter {
       this.emit('plan-review:aggregated', sessionId, aggregatedText);
 
       await this.cloudTerminalManager.waitForIdle(sessionId, 500);
-      this.cloudTerminalManager.sendInput(sessionId, aggregatedText + '\n');
+      const written = this.cloudTerminalManager.sendInput(sessionId, aggregatedText + '\n');
+      if (written && planPath) {
+        state.lastInjectedPlanPath = planPath;
+      }
 
       this.emit('plan-review:injected', sessionId);
     } finally {

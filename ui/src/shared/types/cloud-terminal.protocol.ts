@@ -74,6 +74,9 @@ export interface CloudTerminalSession {
 
   /** Timestamp when session was paused (if applicable) */
   pausedAt?: Date;
+
+  /** Resolved file path of the most recently detected plan (~/.claude/plans/<slug>.md). */
+  lastDetectedPlanPath?: string;
 }
 
 /**

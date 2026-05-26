@@ -1,0 +1,206 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { EventEmitter } from 'events';
+import { PlanReviewOrchestrator } from '../../src/server/services/plan-review-orchestrator.js';
+import type { CloudTerminalManager } from '../../src/server/services/cloud-terminal-manager.js';
+
+/**
+ * Builds a mock CloudTerminalManager that satisfies the dependencies used by
+ * PlanReviewOrchestrator (EventEmitter + a handful of methods). Returns the
+ * mock + handles to control session metadata and capture sendInput calls.
+ */
+function buildMockCtm(opts: { lastDetectedPlanPath?: string | null; sendInputReturns?: boolean } = {}) {
+  const emitter = new EventEmitter();
+  const sendInput = vi.fn().mockReturnValue(opts.sendInputReturns ?? true);
+  const setPlanReviewEnabled = vi.fn();
+  const triggerManualReview = vi.fn();
+  const waitForIdle = vi.fn().mockResolvedValue(undefined);
+  let planPath: string | null = opts.lastDetectedPlanPath ?? null;
+
+  const ctm = Object.assign(emitter, {
+    sendInput,
+    setPlanReviewEnabled,
+    triggerManualReview,
+    waitForIdle,
+    getSession: vi.fn(() => ({
+      sessionId: 'sess-1',
+      projectPath: '/tmp/project',
+      terminalType: 'claude-code' as const,
+      status: 'active' as const,
+      buffer: [],
+      createdAt: new Date(),
+      lastActivity: new Date(),
+      lastDetectedPlanPath: planPath ?? undefined,
+    })),
+  }) as unknown as CloudTerminalManager;
+
+  return {
+    ctm,
+    emitter,
+    sendInput,
+    setPlanReviewEnabled,
+    setPlanPath: (p: string | null) => {
+      planPath = p;
+    },
+  };
+}
+
+function buildOrchestratorWithMockReviewer(ctm: CloudTerminalManager, reviewerOutput = 'Mock reviewer findings') {
+  const orchestrator = new PlanReviewOrchestrator(ctm);
+  // Inject reviewer mock to avoid real SDK calls
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (orchestrator as any).externalReviewer = {
+    reviewPlan: vi.fn().mockResolvedValue(reviewerOutput),
+  };
+  return orchestrator;
+}
+
+async function waitForNextTick(): Promise<void> {
+  await new Promise((resolve) => setImmediate(resolve));
+}
+
+describe('PlanReviewOrchestrator dedup by planPath', () => {
+  let mock: ReturnType<typeof buildMockCtm>;
+
+  beforeEach(() => {
+    mock = buildMockCtm();
+  });
+
+  it('first trigger with a planPath injects review and remembers the path', async () => {
+    mock.setPlanPath('/p/foo.md');
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+    const started = vi.fn();
+    const injected = vi.fn();
+    orch.on('plan-review:started', started);
+    orch.on('plan-review:injected', injected);
+
+    orch.setTabConfig('sess-1', {
+      enabled: true,
+      reviewers: [{ providerId: 'mock', modelId: 'mock-1' }],
+    });
+
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    // Let the async handlePlanDetected pipeline drain
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(started).toHaveBeenCalledOnce();
+    expect(injected).toHaveBeenCalledOnce();
+    expect(mock.sendInput).toHaveBeenCalledOnce();
+  });
+
+  it('second trigger with the same planPath is silently skipped (no review, no inject)', async () => {
+    mock.setPlanPath('/p/foo.md');
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+    const started = vi.fn();
+    orch.on('plan-review:started', started);
+
+    orch.setTabConfig('sess-1', {
+      enabled: true,
+      reviewers: [{ providerId: 'mock', modelId: 'mock-1' }],
+    });
+
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(started).toHaveBeenCalledTimes(1);
+    expect(mock.sendInput).toHaveBeenCalledTimes(1);
+
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text again', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(started).toHaveBeenCalledTimes(1);
+    expect(mock.sendInput).toHaveBeenCalledTimes(1);
+  });
+
+  it('second trigger with a different planPath runs a fresh review', async () => {
+    mock.setPlanPath('/p/foo.md');
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+    const started = vi.fn();
+    orch.on('plan-review:started', started);
+
+    orch.setTabConfig('sess-1', {
+      enabled: true,
+      reviewers: [{ providerId: 'mock', modelId: 'mock-1' }],
+    });
+
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    mock.setPlanPath('/p/bar.md');
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text 2', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(started).toHaveBeenCalledTimes(2);
+    expect(mock.sendInput).toHaveBeenCalledTimes(2);
+  });
+
+  it('setTabConfig(enabled:false) clears lastInjectedPlanPath so the same plan can be re-reviewed', async () => {
+    mock.setPlanPath('/p/foo.md');
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+    const started = vi.fn();
+    orch.on('plan-review:started', started);
+
+    orch.setTabConfig('sess-1', {
+      enabled: true,
+      reviewers: [{ providerId: 'mock', modelId: 'mock-1' }],
+    });
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(started).toHaveBeenCalledTimes(1);
+
+    // User toggles plan-review off (should clear remembered path)
+    orch.setTabConfig('sess-1', { enabled: false, reviewers: [] });
+    // ... then back on with reviewers
+    orch.setTabConfig('sess-1', {
+      enabled: true,
+      reviewers: [{ providerId: 'mock', modelId: 'mock-1' }],
+    });
+
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(started).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not remember the path when sendInput fails (allows retry on next trigger)', async () => {
+    mock = buildMockCtm({ sendInputReturns: false });
+    mock.setPlanPath('/p/foo.md');
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+    const started = vi.fn();
+    orch.on('plan-review:started', started);
+
+    orch.setTabConfig('sess-1', {
+      enabled: true,
+      reviewers: [{ providerId: 'mock', modelId: 'mock-1' }],
+    });
+
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(started).toHaveBeenCalledTimes(1);
+
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text retry', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    // Since sendInput failed first time, lastInjectedPlanPath stays null, retry proceeds
+    expect(started).toHaveBeenCalledTimes(2);
+  });
+
+  it('removes session state on session.closed (no memory leak)', async () => {
+    mock.setPlanPath('/p/foo.md');
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+    orch.setTabConfig('sess-1', {
+      enabled: true,
+      reviewers: [{ providerId: 'mock', modelId: 'mock-1' }],
+    });
+
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sessionsMap = (orch as any).sessions as Map<string, unknown>;
+    expect(sessionsMap.has('sess-1')).toBe(true);
+
+    mock.emitter.emit('session.closed', 'sess-1', 0);
+    await waitForNextTick();
+
+    expect(sessionsMap.has('sess-1')).toBe(false);
+  });
+});
