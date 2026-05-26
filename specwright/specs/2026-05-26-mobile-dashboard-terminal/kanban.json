@@ -19,9 +19,9 @@
     "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed MOB-007",
-    "nextAction": "Execute next task: MOB-008",
-    "progressIndex": 7,
+    "lastAction": "Completed MOB-008",
+    "nextAction": "Execute next task: MOB-010",
+    "progressIndex": 8,
     "totalStories": 24
   },
   "execution": {
@@ -235,16 +235,25 @@
       "description": "deriveFocusItems(specs, backlog, autoMode) → FocusItem[] (blocked stories, paused auto-mode, unread incidents) plus Unit-Tests.",
       "planSection": "phase-3-dashboard-content",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-26T14:51:52.151Z",
+        "completedAt": "2026-05-26T14:57:25.001Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/utils/focus-strip.derive.ts",
+          "ui/tests/unit/focus-strip.derive.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "cf5d4d3b85b209efc086609787268b742ee11c9d",
+            "message": "feat: MOB-008 focus-strip.derive.ts pure function + Vitest",
+            "timestamp": "2026-05-26T16:57:07+02:00"
+          }
+        ]
       }
     },
     {
@@ -609,11 +618,11 @@
   ],
   "boardStatus": {
     "total": 24,
-    "ready": 11,
+    "ready": 10,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 7,
+    "done": 8,
     "blocked": 6
   },
   "changeLog": [
@@ -861,6 +870,18 @@
       "timestamp": "2026-05-26T14:51:51.733Z",
       "action": "status_changed",
       "storyId": "MOB-007",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-26T14:51:52.151Z",
+      "action": "status_changed",
+      "storyId": "MOB-008",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T14:57:25.004Z",
+      "action": "status_changed",
+      "storyId": "MOB-008",
       "details": "Task completed: in_progress → done"
     }
   ]
