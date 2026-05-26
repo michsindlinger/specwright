@@ -204,6 +204,17 @@ echo "==> Configuring host-scoped credential helper for github.com"
 sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
     git config --global "credential.https://github.com.helper" "$GITHUB_HELPER_VALUE"
 
+# Rewrite SSH-style GitHub remotes (`git@github.com:owner/repo.git` and
+# `ssh://git@github.com/owner/repo.git`) to HTTPS so the credential helper above
+# applies to them. Without this, projects cloned via SSH bypass the helper and
+# fail with "Permission denied (publickey)" because the cloud droplet has no
+# SSH key. Other Git hosts are unaffected.
+echo "==> Configuring insteadOf rewrite for SSH GitHub remotes"
+sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
+    git config --global "url.https://github.com/.insteadOf" "git@github.com:"
+sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
+    git config --global --add "url.https://github.com/.insteadOf" "ssh://git@github.com/"
+
 # -----------------------------------------------------------------------------
 # systemd unit
 # -----------------------------------------------------------------------------
