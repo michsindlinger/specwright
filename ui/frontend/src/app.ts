@@ -22,6 +22,7 @@ import './components/mobile/aos-mobile-top-bar.js';
 import './components/mobile/aos-mobile-project-scroller.js';
 import './components/mobile/aos-mobile-segmented.js';
 import './components/mobile/aos-mobile-bottom-nav.js';
+import './components/mobile/aos-mobile-focus-strip.js';
 import './components/file-editor/aos-file-tree-sidebar.js';
 import './components/file-editor/aos-file-editor-panel.js';
 import './components/document-preview/aos-document-preview-panel.js';
