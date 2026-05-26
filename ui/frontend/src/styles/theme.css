@@ -12877,3 +12877,16 @@ aos-model-selector .model-option.selected .model-name {
   align-items: center;
   justify-content: center;
 }
+
+@media (max-width: 767px) {
+  aos-app .sidebar {
+    display: none;
+  }
+  aos-app .main-content {
+    margin-left: 0;
+    padding-left: 0;
+  }
+  aos-app .header {
+    display: none;
+  }
+}

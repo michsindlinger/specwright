@@ -1870,7 +1870,10 @@ export class AosApp extends LitElement {
   private renderView() {
     switch (this.currentRoute) {
       case 'dashboard':
-        return html`<aos-dashboard-view @show-toast=${this._handleShowToast}></aos-dashboard-view>`;
+        return html`<aos-dashboard-view
+          @show-toast=${this._handleShowToast}
+          @terminal-pill-tap=${this._handleTerminalToggle}
+        ></aos-dashboard-view>`;
       case 'getting-started':
         return html`<aos-getting-started-view
           .hasProductBrief=${this.projectHasProductBrief}

@@ -1,12 +1,42 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
+import { cloudTerminalService } from '../../services/cloud-terminal.service.js';
 
 export type BottomNavItem = 'home' | 'specs' | 'terminal' | 'me';
 
 @customElement('aos-mobile-bottom-nav')
 export class AosMobileBottomNav extends LitElement {
   @property({ type: String, reflect: true }) activeItem: BottomNavItem = 'home';
+  /** Session count override (when > 0). Otherwise live-subscribed via cloudTerminalService. */
   @property({ type: Number }) sessionsCount = 0;
+
+  @state() private _liveSessions = 0;
+
+  private readonly _onSessionEvent = () => {
+    void this._refreshSessions();
+  };
+
+  private async _refreshSessions(): Promise<void> {
+    const sessions = await cloudTerminalService.getAllSessions();
+    this._liveSessions = sessions.filter(s => s.status === 'active').length;
+  }
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    void this._refreshSessions();
+    window.addEventListener('cloud-terminal-session-paused', this._onSessionEvent);
+    window.addEventListener('cloud-terminal-session-resumed', this._onSessionEvent);
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener('cloud-terminal-session-paused', this._onSessionEvent);
+    window.removeEventListener('cloud-terminal-session-resumed', this._onSessionEvent);
+  }
+
+  private get _effectiveSessionsCount(): number {
+    return Math.max(this.sessionsCount, this._liveSessions);
+  }
 
   private _onNavTap(item: BottomNavItem): void {
     if (item === this.activeItem) return;
@@ -68,7 +98,7 @@ export class AosMobileBottomNav extends LitElement {
 
         <button
           class="nav-item ${this.activeItem === 'terminal' ? 'nav-item--active' : ''}"
-          aria-label="Terminal${this.sessionsCount > 0 ? `, ${this.sessionsCount} active session${this.sessionsCount !== 1 ? 's' : ''}` : ''}"
+          aria-label="Terminal${this._effectiveSessionsCount > 0 ? `, ${this._effectiveSessionsCount} active session${this._effectiveSessionsCount !== 1 ? 's' : ''}` : ''}"
           aria-current=${this.activeItem === 'terminal' ? 'page' : nothing}
           @click=${() => this._onNavTap('terminal')}
         >
@@ -77,7 +107,7 @@ export class AosMobileBottomNav extends LitElement {
               <rect x="2" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
               <path d="M6 9l3 3-3 3M12 15h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            ${this._badge(this.sessionsCount)}
+            ${this._badge(this._effectiveSessionsCount)}
           </span>
           <span class="nav-label">Terminal</span>
         </button>

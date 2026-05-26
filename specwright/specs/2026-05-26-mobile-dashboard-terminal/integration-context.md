@@ -13,6 +13,7 @@
 | MOB-007 | aos-mobile-bottom-nav sticky nav with FAB and Terminal badge | `ui/frontend/src/components/mobile/aos-mobile-bottom-nav.ts` |
 | MOB-008 | focus-strip.derive.ts pure function + 16 Vitest tests | `ui/frontend/src/utils/focus-strip.derive.ts`, `ui/tests/unit/focus-strip.derive.test.ts` |
 | MOB-015 | aos-mobile-session-tabs + aos-mobile-connection-bar | `ui/frontend/src/components/mobile/aos-mobile-session-tabs.ts`, `aos-mobile-connection-bar.ts` |
+| MOB-019 | aos-mobile-story-list + story-card for spec-detail | `ui/frontend/src/components/mobile/aos-mobile-story-list.ts`, `aos-mobile-story-card.ts` |
 
 ## New Exports & APIs
 
@@ -24,6 +25,8 @@
 - `ui/frontend/src/components/mobile/aos-mobile-branch-row.ts` → `<aos-mobile-branch-row .gitStatus .prInfo>` — displays branch, ahead/behind pills, open PR badge, changed-files count
 - `ui/frontend/src/components/mobile/aos-mobile-session-tabs.ts` → `<aos-mobile-session-tabs .sessions .activeSessionId>` — emits `session-select` (detail: `{ sessionId }`), `session-close` (detail: `{ sessionId, status, isWorkflow }`)
 - `ui/frontend/src/components/mobile/aos-mobile-connection-bar.ts` → `<aos-mobile-connection-bar ?connected cloudHost branch>` — emits `kebab-tap`
+- `ui/frontend/src/components/mobile/aos-mobile-story-card.ts` → `<aos-mobile-story-card .story=${storyInfo}>` — emits `story-open` (detail: `{ story: StoryInfo }`); shows status-dot, id, title, model·provider badge, bot-badge
+- `ui/frontend/src/components/mobile/aos-mobile-story-list.ts` → `<aos-mobile-story-list .stories=${storyInfoArray}>` — vertical list of story-cards; empty-state when stories.length === 0; container border + radius
 
 ### Services
 _None yet_
@@ -48,3 +51,6 @@ _None yet_
 - `FocusAutoModeSnapshot.paused` maps to `dashboard-view.autoModePaused` state; `incidents` maps to `KanbanBoard.activeIncidents` (filter per spec).
 - `aos-mobile-session-tabs` accepts `TerminalSession[]` from `aos-cloud-terminal-sidebar.ts` — import type from `'../terminal/aos-cloud-terminal-sidebar.js'`. Uses `getTabTitle()` from `tab-title.js` for display.
 - `aos-mobile-connection-bar`: `connected` = gateway.isConnected; `cloudHost` = active session's `projectPath` (or server hostname); `branch` = active git branch. All strings optional — component renders gracefully with empty values.
+- `aos-mobile-story-card` uses CSS custom property `--story-card-divider` for the row separator — `aos-mobile-story-list` sets it to `none` on the last `li` to remove the bottom divider. Custom properties pierce shadow DOM; no JS needed.
+- `story-open` event bubbles + composed. Parent (MOB-020 story-sheet, MOB-021 dashboard-view wiring) listens and opens the sheet with `event.detail.story`.
+- `StoryInfo` type imported from `'../story-card.js'`; compatible with kanban-board's exported type.

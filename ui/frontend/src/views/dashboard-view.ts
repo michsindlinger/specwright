@@ -2826,8 +2826,9 @@ export class AosDashboardView extends LitElement {
           ${mainContent}
         </div>
 
+        <aos-mobile-terminal-pill></aos-mobile-terminal-pill>
+
         <aos-mobile-bottom-nav
-          .sessionsCount=${0}
           @nav-tap=${this._handleMobileNavTap}
           @fab-tap=${() => { this._mobileActionSheetOpen = true; }}
         ></aos-mobile-bottom-nav>
