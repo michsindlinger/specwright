@@ -16,6 +16,21 @@ import type { ProviderInfo } from '../components/story-card.js';
 import { AosKanbanBoard } from '../components/kanban-board.js';
 import type { AosDocsPanel } from '../components/docs/aos-docs-panel.js';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
+import { MobileBreakpointController } from '../controllers/mobile-breakpoint-controller.js';
+import { deriveFocusItems } from '../utils/focus-strip.derive.js';
+import type { FocusBacklogBoard } from '../utils/focus-strip.derive.js';
+import type { MobileTab } from '../components/mobile/aos-mobile-segmented.js';
+import type { BottomNavItem } from '../components/mobile/aos-mobile-bottom-nav.js';
+import '../components/mobile/aos-mobile-top-bar.js';
+import '../components/mobile/aos-mobile-project-scroller.js';
+import '../components/mobile/aos-mobile-segmented.js';
+import '../components/mobile/aos-mobile-bottom-nav.js';
+import '../components/mobile/aos-mobile-focus-strip.js';
+import '../components/mobile/aos-mobile-project-card.js';
+import '../components/mobile/aos-mobile-side-drawer.js';
+import '../components/mobile/aos-mobile-action-sheet.js';
+import '../components/mobile/aos-mobile-story-list.js';
+import '../components/mobile/aos-mobile-story-sheet.js';
 
 interface StoryDetail {
   id: string;
@@ -185,6 +200,13 @@ export class AosDashboardView extends LitElement {
   private _backlogAutoModeBoard: Map<string, AutoModeProgress> = new Map();
   // KAE-004: Auto-mode paused due to error
   @state() private autoModePaused = false;
+
+  // MOB-021: Mobile responsive controller + overlay state
+  private readonly _breakpoint = new MobileBreakpointController(this);
+  @state() private _mobileDrawerOpen = false;
+  @state() private _mobileActionSheetOpen = false;
+  @state() private _mobileStorySheetOpen = false;
+  @state() private _mobileStorySheetStory: StoryInfo | null = null;
   /** v3.30: settings-default for worktree parallelism (cached for git-strategy dialog prefill). */
   @state() private worktreeMaxConcurrentDefault = 2;
   // Track the last auto-mode incident timestamp shown as toast to avoid duplicates on re-renders
@@ -232,6 +254,13 @@ export class AosDashboardView extends LitElement {
     this.checkConnection();
     this.restoreRouteState();
     this.restoreAutoModeState();
+    this._breakpoint.onChange((isMobile) => {
+      if (!isMobile) {
+        this._mobileDrawerOpen = false;
+        this._mobileActionSheetOpen = false;
+        this._mobileStorySheetOpen = false;
+      }
+    });
   }
 
   override updated(changedProperties: Map<string, unknown>) {
@@ -2139,6 +2168,10 @@ export class AosDashboardView extends LitElement {
 
 
   override render() {
+    if (this._breakpoint.isMobile) {
+      return this.renderMobile();
+    }
+
     if (!this.wsConnected) {
       return this.renderConnectionError();
     }
@@ -2741,6 +2774,188 @@ export class AosDashboardView extends LitElement {
   }
 
   // UKB-004: formatStatus removed - was only used by inline backlog rendering
+
+  // ── Mobile rendering ──────────────────────────────────────────────────────
+
+  private get _mobileActiveTab(): MobileTab {
+    if (this.viewMode === 'backlog' || this.viewMode === 'backlog-story') return 'backlog';
+    if (this.viewMode === 'docs') return 'docs';
+    return 'specs';
+  }
+
+  private renderMobile() {
+    if (!this.wsConnected) {
+      return this.renderConnectionError();
+    }
+    if (!this.projectCtx?.activeProject) {
+      return this.renderNoProject();
+    }
+
+    const workspaceName = this.projectCtx.activeProject.name ?? '';
+    const mobileTab = this._mobileActiveTab;
+
+    let mainContent;
+    if (this.viewMode === 'kanban') {
+      mainContent = this.renderMobileSpecDetail();
+    } else if (mobileTab === 'backlog') {
+      mainContent = this.renderBacklogView();
+    } else if (mobileTab === 'docs') {
+      mainContent = html`<aos-docs-panel .active=${true}></aos-docs-panel>`;
+    } else {
+      mainContent = this.renderMobileSpecsList();
+    }
+
+    return html`
+      <div class="mobile-dashboard">
+        <aos-mobile-top-bar
+          .workspaceName=${workspaceName}
+          .breadcrumb=${this.selectedSpec?.name ?? ''}
+          @menu-open=${() => { this._mobileDrawerOpen = true; }}
+        ></aos-mobile-top-bar>
+
+        ${this.viewMode !== 'kanban' ? html`
+          <aos-mobile-segmented
+            .activeTab=${mobileTab}
+            .specsCount=${this.specs.length}
+            .backlogCount=${this.backlogKanban?.stories.length ?? 0}
+            @tab-change=${this._handleMobileTabChange}
+          ></aos-mobile-segmented>
+        ` : ''}
+
+        <div class="mobile-content">
+          ${mainContent}
+        </div>
+
+        <aos-mobile-bottom-nav
+          .sessionsCount=${0}
+          @nav-tap=${this._handleMobileNavTap}
+          @fab-tap=${() => { this._mobileActionSheetOpen = true; }}
+        ></aos-mobile-bottom-nav>
+
+        <aos-mobile-side-drawer
+          .open=${this._mobileDrawerOpen}
+          .workspaceName=${workspaceName}
+          .activeRoute=${'dashboard'}
+          @drawer-close=${() => { this._mobileDrawerOpen = false; }}
+        ></aos-mobile-side-drawer>
+
+        <aos-mobile-action-sheet
+          .open=${this._mobileActionSheetOpen}
+          @action-sheet-close=${() => { this._mobileActionSheetOpen = false; }}
+          @action-select=${this._handleMobileActionSelect}
+        ></aos-mobile-action-sheet>
+
+        <aos-mobile-story-sheet
+          .open=${this._mobileStorySheetOpen}
+          .story=${this._mobileStorySheetStory}
+          @story-sheet-close=${() => {
+            this._mobileStorySheetOpen = false;
+            this._mobileStorySheetStory = null;
+          }}
+        ></aos-mobile-story-sheet>
+
+        ${this.renderCreateSpecModal()}
+      </div>
+    `;
+  }
+
+  private renderMobileSpecsList() {
+    if (this.loading) {
+      return html`<div class="loading-state"><div class="loading-spinner"></div><p>Loading...</p></div>`;
+    }
+    if (this.error) {
+      return this.renderError();
+    }
+
+    const sortedSpecs = this.getSortedSpecs();
+    const focusItems = deriveFocusItems(
+      this.specs.map(s => ({ id: s.id, name: s.name, assignedToBot: s.assignedToBot })),
+      this.backlogKanban as FocusBacklogBoard | null,
+      { enabled: this.autoModeEnabled, paused: this.autoModePaused }
+    );
+
+    return html`
+      <aos-mobile-focus-strip .items=${focusItems}></aos-mobile-focus-strip>
+      <div class="mobile-spec-list">
+        ${sortedSpecs.length === 0 ? html`
+          <div class="mobile-empty-state">
+            <p>No specs found</p>
+            <button class="primary-btn" @click=${this.handleOpenCreateSpecModal}>Create First Spec</button>
+          </div>
+        ` : sortedSpecs.map(spec => html`
+          <aos-mobile-project-card
+            .spec=${spec}
+            @spec-select=${this.handleSpecSelect}
+          ></aos-mobile-project-card>
+        `)}
+      </div>
+    `;
+  }
+
+  private renderMobileSpecDetail() {
+    if (!this.kanban) {
+      return this.renderLoading();
+    }
+    return html`
+      <div class="mobile-spec-detail">
+        <div class="mobile-spec-detail-header">
+          <button
+            class="mobile-back-btn touch-target"
+            @click=${this.handleKanbanBack}
+            aria-label="Back to specs"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <span class="mobile-spec-detail-name">${this.selectedSpec?.name ?? ''}</span>
+        </div>
+        <aos-mobile-story-list
+          .stories=${this.kanban.stories}
+          @story-open=${this._handleMobileStoryOpen}
+        ></aos-mobile-story-list>
+      </div>
+    `;
+  }
+
+  private _handleMobileTabChange(e: CustomEvent<{ tab: MobileTab }>): void {
+    this.handleTabChange(e.detail.tab);
+  }
+
+  private _handleMobileNavTap(e: CustomEvent<{ item: BottomNavItem }>): void {
+    const { item } = e.detail;
+    if (item === 'home') {
+      if (this.viewMode === 'kanban' || this.viewMode === 'story') {
+        this.handleKanbanBack();
+      } else {
+        routerService.navigate('dashboard');
+      }
+    } else if (item === 'specs') {
+      this.handleTabChange('specs');
+    } else if (item === 'terminal') {
+      this.dispatchEvent(new CustomEvent('terminal-pill-tap', {
+        bubbles: true, composed: true, detail: { route: 'cloud-terminal' }
+      }));
+    } else if (item === 'me') {
+      routerService.navigate('settings');
+    }
+  }
+
+  private _handleMobileActionSelect(e: CustomEvent<{ action: string }>): void {
+    const { action } = e.detail;
+    if (action === 'create-spec') {
+      this.handleOpenCreateSpecModal();
+    } else if (action === 'create-todo') {
+      this.dispatchEvent(new CustomEvent('mobile-open-quick-todo', { bubbles: true, composed: true }));
+    } else if (action === 'create-bug') {
+      this.handleTabChange('backlog');
+    }
+  }
+
+  private _handleMobileStoryOpen(e: CustomEvent<{ story: StoryInfo }>): void {
+    this._mobileStorySheetStory = e.detail.story;
+    this._mobileStorySheetOpen = true;
+  }
 
   protected override createRenderRoot() {
     return this;
