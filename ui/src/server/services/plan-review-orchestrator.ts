@@ -162,7 +162,7 @@ export class PlanReviewOrchestrator extends EventEmitter {
       this.emit('plan-review:started', sessionId, source, reviewers.length);
 
       const reviewPrompt = getReviewPrompt(projectPath);
-      const fullPrompt = `${reviewPrompt}\n\n${planText}`;
+      const fullPrompt = `${reviewPrompt}\n\nIMPORTANT: Respond in English only, regardless of the plan's language.\n\n${planText}`;
 
       const results = await Promise.allSettled(
         reviewers.map((r) =>
