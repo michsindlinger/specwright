@@ -1,4 +1,4 @@
-import { LitElement, html, type PropertyValues } from 'lit';
+import { LitElement, html, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { repeat } from 'lit/directives/repeat.js';
@@ -7,6 +7,13 @@ import './aos-terminal-session.js';
 import type { AosTerminalSession } from './aos-terminal-session.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
+import { MobileBreakpointController } from '../../controllers/mobile-breakpoint-controller.js';
+import '../mobile/aos-mobile-terminal-header.js';
+import '../mobile/aos-mobile-session-tabs.js';
+import '../mobile/aos-mobile-connection-bar.js';
+import '../mobile/aos-mobile-quick-replies.js';
+import '../mobile/aos-mobile-input-bar-idle.js';
+import '../aos-claude-log-panel.js';
 
 export interface TerminalSession {
   id: string;
@@ -71,6 +78,8 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   @state() private availableProviders: AvailableProvider[] = [];
   @state() private sessionReviewConfigs: Record<string, { enabled: boolean; reviewers: ReviewerConfig[] }> = {};
+
+  private readonly _mobileController = new MobileBreakpointController(this);
 
   private boundHandleProvidersListResponse = this._handleProvidersListResponse.bind(this);
   private boundHandleConfigSnapshot = this._handleConfigSnapshot.bind(this);
@@ -450,12 +459,107 @@ export class AosCloudTerminalSidebar extends LitElement {
       .resume-btn:hover {
         background: var(--accent-color-hover, #005a9e);
       }
+
+      .mobile-terminal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1001;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-color-secondary, #1e1e1e);
+      }
+
+      .mobile-log-area {
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        min-height: 0;
+      }
+
+      .mobile-log-area aos-claude-log-panel {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+      }
     `;
     document.head.appendChild(style);
   }
 
+  private renderMobile() {
+    if (!this.isOpen) return nothing;
+
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    const isPaused = activeSession?.status === 'paused';
+
+    return html`
+      <div class="mobile-terminal-overlay">
+        <aos-mobile-terminal-header
+          .sessionsCount=${this.sessions.length}
+          .activeModel=${activeSession?.modelId ?? ''}
+          @back-tap=${this._handleClose}
+          @new-session=${this._handleNewSession}
+        ></aos-mobile-terminal-header>
+
+        ${this.sessions.length > 0 ? html`
+          <aos-mobile-session-tabs
+            .sessions=${this.sessions}
+            .activeSessionId=${this.activeSessionId}
+            @session-select=${this._handleSessionSelect}
+            @session-close=${this._handleSessionClose}
+          ></aos-mobile-session-tabs>
+        ` : nothing}
+
+        <aos-mobile-connection-bar
+          ?connected=${gateway.getConnectionStatus()}
+          cloudHost=${activeSession?.projectPath ?? ''}
+          branch=""
+        ></aos-mobile-connection-bar>
+
+        <div class="mobile-log-area">
+          ${this.errorMessage ? this._renderErrorBanner() : nothing}
+          ${this.loadingState.isLoading ? this._renderLoadingOverlay() : nothing}
+          ${isPaused && activeSession ? this._renderPausedIndicator(activeSession) : nothing}
+          ${activeSession
+            ? html`<aos-claude-log-panel
+                .sessionId=${activeSession.terminalSessionId ?? ''}
+              ></aos-claude-log-panel>`
+            : this._renderEmptyState()}
+        </div>
+
+        ${activeSession?.terminalSessionId ? html`
+          <aos-mobile-quick-replies
+            .sessionId=${activeSession.terminalSessionId}
+            @reply-send=${this._handleMobileTextSend}
+          ></aos-mobile-quick-replies>
+        ` : nothing}
+
+        <aos-mobile-input-bar-idle
+          .sessionId=${activeSession?.terminalSessionId ?? ''}
+          @text-send=${this._handleMobileTextSend}
+        ></aos-mobile-input-bar-idle>
+      </div>
+    `;
+  }
+
+  private _handleMobileTextSend(e: CustomEvent<{ text: string }>) {
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    if (!activeSession?.terminalSessionId) return;
+    gateway.send({
+      type: 'cloud-terminal:input',
+      sessionId: activeSession.terminalSessionId,
+      data: e.detail.text + '\n',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   override render() {
     this.ensureStyles();
+
+    if (this._mobileController.isMobile) {
+      return this.renderMobile();
+    }
 
     const sidebarStyles = {
       '--sidebar-width': `${this.sidebarWidth}px`,
@@ -947,7 +1051,7 @@ export class AosCloudTerminalSidebar extends LitElement {
    * pattern used by aos-file-tree-sidebar.
    */
   private updateContentOffset(): void {
-    const width = this.isOpen ? this.sidebarWidth : 0;
+    const width = (this.isOpen && !this._mobileController.isMobile) ? this.sidebarWidth : 0;
     document.documentElement.style.setProperty('--terminal-open-width', `${width}px`);
   }
 
@@ -990,8 +1094,8 @@ export class AosCloudTerminalSidebar extends LitElement {
     if (changed.has('isOpen')) {
       this.updateContentOffset();
     }
-    // Refresh terminal rendering after sidebar opens (wait for CSS transition to finish)
-    if (changed.has('isOpen') && this.isOpen) {
+    // Refresh terminal rendering after sidebar opens (desktop only — mobile uses aos-claude-log-panel)
+    if (changed.has('isOpen') && this.isOpen && !this._mobileController.isMobile) {
       this._refreshScheduled = false;
       const sidebar = this.querySelector('.terminal-sidebar') as HTMLElement | null;
       if (sidebar) {
@@ -1030,6 +1134,12 @@ export class AosCloudTerminalSidebar extends LitElement {
     } catch {
       // localStorage unavailable
     }
+
+    this._mobileController.onChange((isMobile) => {
+      if (!isMobile && this.isOpen) {
+        this._handleClose();
+      }
+    });
 
     gateway.on('model.providers.list', this.boundHandleProvidersListResponse);
     gateway.on('plan-review:config.snapshot', this.boundHandleConfigSnapshot);
