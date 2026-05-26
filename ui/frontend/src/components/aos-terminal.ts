@@ -5,6 +5,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { gateway } from '../gateway';
 import type { MessageHandler } from '../gateway';
 import { themeService, type ResolvedTheme } from '../services/theme.service.js';
+import { CLOUD_TERMINAL_CONFIG } from '../../../src/shared/types/cloud-terminal.protocol.js';
 import '@xterm/xterm/css/xterm.css';
 
 const DARK_THEME = {
@@ -115,6 +116,10 @@ export class AosTerminal extends LitElement {
   private terminalDataHandler: MessageHandler | null = null;
   private terminalExitHandler: MessageHandler | null = null;
   private terminalBufferResponseHandler: MessageHandler | null = null;
+  private pasteImageSavedHandler: MessageHandler | null = null;
+  private pasteImageErrorHandler: MessageHandler | null = null;
+  /** Guard so concurrent Cmd+V presses don't fire multiple uploads */
+  private _pasteInFlight = false;
   private boundThemeChangeHandler = (theme: ResolvedTheme) => this.onThemeChanged(theme);
   /** Guard to prevent multiple concurrent refreshTerminal() calls */
   private _refreshInProgress = false;
@@ -272,6 +277,17 @@ export class AosTerminal extends LitElement {
         // No selection → let xterm handle (sends SIGINT / \x03)
       }
 
+      // Cmd/Ctrl+V in cloud mode: bridge browser clipboard images to the remote PTY.
+      // Cloud Claude Code runs on the droplet — it can't reach the user's local
+      // clipboard. We intercept the keypress, read the image via the Async Clipboard
+      // API, and upload it. xterm's standard text-paste path stays intact (return true),
+      // so non-image clipboards still work the usual way.
+      if (this.cloudMode && event.key === 'v' && (event.metaKey || event.ctrlKey)
+          && !event.shiftKey && event.type === 'keydown') {
+        void this._tryHandleCloudImagePaste();
+        return true;
+      }
+
       // Shift+Enter → send newline to PTY (cloud mode only)
       // Must return false for ALL event types (keydown, keypress, keyup) to fully
       // block xterm. Previously only keydown was blocked, but keypress leaked through.
@@ -380,6 +396,25 @@ export class AosTerminal extends LitElement {
       }
     };
     gateway.on('cloud-terminal:buffer-response', this.terminalBufferResponseHandler);
+
+    this.pasteImageSavedHandler = (message) => {
+      if (message.sessionId !== this.terminalSessionId) return;
+      this._pasteInFlight = false;
+      this._showPasteStatus('Screenshot eingefügt', 'success');
+    };
+    gateway.on('cloud-terminal:paste-image-saved', this.pasteImageSavedHandler);
+
+    this.pasteImageErrorHandler = (message) => {
+      if (message.sessionId !== this.terminalSessionId) return;
+      const code = (message as { code?: string }).code ?? '';
+      if (!code.startsWith('PASTE_IMAGE_')) return;
+      this._pasteInFlight = false;
+      this._showPasteStatus(
+        `Screenshot-Paste fehlgeschlagen: ${(message as { message?: string }).message ?? code}`,
+        'error',
+      );
+    };
+    gateway.on('cloud-terminal:error', this.pasteImageErrorHandler);
   }
 
   /** Debounce timer for input-needed detection */
@@ -501,6 +536,83 @@ export class AosTerminal extends LitElement {
     gateway.on('terminal.buffer.response', this.terminalBufferResponseHandler);
   }
 
+  /**
+   * Cloud-mode paste bridge: read an image from the browser clipboard and ship it
+   * to the server. The text-paste path is not blocked — this is a best-effort
+   * additional handler that no-ops when no image is on the clipboard.
+   */
+  private async _tryHandleCloudImagePaste(): Promise<void> {
+    if (!this.terminalSessionId) return;
+    if (this._pasteInFlight) return;
+    if (!navigator.clipboard?.read) return;
+
+    let items: ClipboardItem[];
+    try {
+      items = await navigator.clipboard.read();
+    } catch {
+      // Permission denied or no access → silently fall back to xterm's text path
+      return;
+    }
+
+    const allowed = CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME;
+    const item = items.find((i) => allowed.some((mt) => i.types.includes(mt)));
+    if (!item) return;
+
+    const mimeType = allowed.find((mt) => item.types.includes(mt))!;
+    const blob = await item.getType(mimeType);
+    const maxBytes = CLOUD_TERMINAL_CONFIG.MAX_PASTE_IMAGE_BYTES;
+    if (blob.size > maxBytes) {
+      this._showPasteStatus(
+        `Screenshot ist zu groß (${(blob.size / 1024 / 1024).toFixed(1)} MB, Limit ${maxBytes / 1024 / 1024} MB)`,
+        'error',
+      );
+      return;
+    }
+
+    this._pasteInFlight = true;
+    this._showPasteStatus('Screenshot wird hochgeladen…', 'info');
+    let base64: string;
+    try {
+      base64 = await this._blobToBase64(blob);
+    } catch (err) {
+      this._pasteInFlight = false;
+      this._showPasteStatus(
+        `Screenshot konnte nicht gelesen werden: ${err instanceof Error ? err.message : String(err)}`,
+        'error',
+      );
+      return;
+    }
+
+    gateway.send({
+      type: 'cloud-terminal:paste-image',
+      sessionId: this.terminalSessionId,
+      base64,
+      mimeType,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  private _blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const r = reader.result as string;
+        const comma = r.indexOf(',');
+        resolve(comma >= 0 ? r.slice(comma + 1) : r);
+      };
+      reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  private _showPasteStatus(message: string, type: 'info' | 'success' | 'error'): void {
+    this.dispatchEvent(new CustomEvent('show-toast', {
+      detail: { message, type },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
   private cleanupGatewayListeners(): void {
     if (this.terminalDataHandler) {
       const dataEvent = this.cloudMode ? 'cloud-terminal:data' : 'terminal.data';
@@ -516,6 +628,14 @@ export class AosTerminal extends LitElement {
       const bufferEvent = this.cloudMode ? 'cloud-terminal:buffer-response' : 'terminal.buffer.response';
       gateway.off(bufferEvent, this.terminalBufferResponseHandler);
       this.terminalBufferResponseHandler = null;
+    }
+    if (this.pasteImageSavedHandler) {
+      gateway.off('cloud-terminal:paste-image-saved', this.pasteImageSavedHandler);
+      this.pasteImageSavedHandler = null;
+    }
+    if (this.pasteImageErrorHandler) {
+      gateway.off('cloud-terminal:error', this.pasteImageErrorHandler);
+      this.pasteImageErrorHandler = null;
     }
   }
 

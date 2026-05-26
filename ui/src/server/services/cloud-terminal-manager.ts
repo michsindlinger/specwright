@@ -18,6 +18,9 @@
  */
 
 import { EventEmitter } from 'events';
+import * as fs from 'fs';
+import * as path from 'path';
+import { randomUUID } from 'crypto';
 import {
   CloudTerminalSession,
   CloudTerminalSessionId,
@@ -31,6 +34,22 @@ import { TerminalManager } from './terminal-manager.js';
 import { getCliCommandForModel, getProviderCommand, checkCliAvailability } from '../model-config.js';
 import { PlanBufferExtractor } from '../utils/plan-buffer-extractor.js';
 import { loadGithubConfigStatus, loadGithubPat } from '../github-config.js';
+
+/** MIME type → filename extension for pasted-image persistence */
+const PASTE_MIME_TO_EXT: ReadonlyMap<string, string> = new Map([
+  ['image/png', 'png'],
+  ['image/jpeg', 'jpg'],
+  ['image/gif', 'gif'],
+  ['image/webp', 'webp'],
+]);
+
+/** Error thrown by savePastedImage; carries a CLOUD_TERMINAL_ERROR_CODES value */
+class PasteImageError extends Error {
+  constructor(public code: string, message: string) {
+    super(message);
+    this.name = 'PasteImageError';
+  }
+}
 
 /**
  * Extended cloud terminal session with internal state
@@ -365,6 +384,13 @@ export class CloudTerminalManager extends EventEmitter {
     // Remove from sessions
     this.sessions.delete(sessionId);
 
+    // Remove any pasted-image files belonging to this session
+    const pasteDir = path.join(CLOUD_TERMINAL_CONFIG.PASTE_IMAGE_ROOT, sessionId);
+    fs.promises.rm(pasteDir, { recursive: true, force: true })
+      .catch((err) => console.warn(
+        `[CloudTerminalManager] Failed to clean up paste dir for ${sessionId}:`, err,
+      ));
+
     console.log(`[CloudTerminalManager] Closed session ${sessionId}`);
 
     // Emit session closed event
@@ -460,6 +486,69 @@ export class CloudTerminalManager extends EventEmitter {
     }
 
     return written;
+  }
+
+  /**
+   * Persist a pasted image (e.g. screenshot) and inject its absolute path into the PTY.
+   *
+   * The cloud Claude Code CLI cannot read the user's local clipboard (it runs on the
+   * droplet, no display server). This method bridges that gap: the browser uploads the
+   * image bytes; we write them to /tmp/cloud-terminal-paste/<sessionId>/ and feed the
+   * resulting path into stdin so the user can reference it from the prompt.
+   *
+   * @throws PasteImageError with a CLOUD_TERMINAL_ERROR_CODES code on any validation failure
+   */
+  public async savePastedImage(
+    sessionId: CloudTerminalSessionId,
+    base64: string,
+    mimeType: string,
+  ): Promise<{ absolutePath: string }> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new PasteImageError(
+        CLOUD_TERMINAL_ERROR_CODES.SESSION_NOT_FOUND,
+        `Session not found: ${sessionId}`,
+      );
+    }
+    if (session.status !== 'active') {
+      throw new PasteImageError(
+        CLOUD_TERMINAL_ERROR_CODES.SESSION_NOT_ACTIVE,
+        `Session not active: ${session.status}`,
+      );
+    }
+    const ext = PASTE_MIME_TO_EXT.get(mimeType);
+    if (!ext) {
+      throw new PasteImageError(
+        CLOUD_TERMINAL_ERROR_CODES.PASTE_IMAGE_UNSUPPORTED_TYPE,
+        `Unsupported MIME type: ${mimeType}`,
+      );
+    }
+
+    const buf = Buffer.from(base64, 'base64');
+    if (buf.length === 0) {
+      throw new PasteImageError(
+        CLOUD_TERMINAL_ERROR_CODES.PASTE_IMAGE_FAILED,
+        'Decoded image is empty',
+      );
+    }
+    if (buf.length > CLOUD_TERMINAL_CONFIG.MAX_PASTE_IMAGE_BYTES) {
+      throw new PasteImageError(
+        CLOUD_TERMINAL_ERROR_CODES.PASTE_IMAGE_TOO_LARGE,
+        `Image too large: ${buf.length} bytes`,
+      );
+    }
+
+    const dir = path.join(CLOUD_TERMINAL_CONFIG.PASTE_IMAGE_ROOT, sessionId);
+    await fs.promises.mkdir(dir, { recursive: true, mode: 0o700 });
+    const absolutePath = path.join(dir, `img-${randomUUID()}.${ext}`);
+    await fs.promises.writeFile(absolutePath, buf, { mode: 0o600 });
+
+    // Inject path directly into the PTY with surrounding spaces so it sits as a
+    // distinct token regardless of where the user's cursor currently is.
+    this.terminalManager.write(session.executionId, ` ${absolutePath} `);
+    session.lastActivity = new Date();
+
+    return { absolutePath };
   }
 
   /**
@@ -863,5 +952,9 @@ export class CloudTerminalManager extends EventEmitter {
 
     this.sessions.clear();
     this.removeAllListeners();
+
+    // Sweep the paste root in case any per-session dirs survived a crash
+    fs.promises.rm(CLOUD_TERMINAL_CONFIG.PASTE_IMAGE_ROOT, { recursive: true, force: true })
+      .catch((err) => console.warn('[CloudTerminalManager] Failed to clean up paste root:', err));
   }
 }

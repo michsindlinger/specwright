@@ -50,6 +50,7 @@ import type {
   CloudTerminalModelConfig,
   CloudTerminalWorkflowMetadata
 } from '../shared/types/cloud-terminal.protocol.js';
+import { CLOUD_TERMINAL_ERROR_CODES } from '../shared/types/cloud-terminal.protocol.js';
 
 interface WebSocketClient extends WebSocket {
   clientId: string;
@@ -554,6 +555,9 @@ export class WebSocketHandler {
           break;
         case 'cloud-terminal:input':
           this.handleCloudTerminalInput(client, message);
+          break;
+        case 'cloud-terminal:paste-image':
+          void this.handleCloudTerminalPasteImage(client, message);
           break;
         case 'cloud-terminal:resize':
           this.handleCloudTerminalResize(client, message);
@@ -5242,6 +5246,56 @@ export class WebSocketHandler {
         message: `Session not found or not active: ${sessionId}`,
         sessionId,
         timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * Handle cloud-terminal:paste-image
+   * Persists the uploaded image bytes and injects the resulting absolute path into the PTY.
+   * Ownership: matches handleCloudTerminalInput — sessionId acts as the capability token.
+   */
+  private async handleCloudTerminalPasteImage(
+    client: WebSocketClient,
+    message: WebSocketMessage,
+  ): Promise<void> {
+    const sessionId = message.sessionId as string;
+    const base64 = (message as { base64?: unknown }).base64;
+    const mimeType = (message as { mimeType?: unknown }).mimeType;
+
+    if (!sessionId || typeof base64 !== 'string' || typeof mimeType !== 'string') {
+      const errorResponse: WebSocketMessage = {
+        type: 'cloud-terminal:error',
+        code: CLOUD_TERMINAL_ERROR_CODES.INVALID_MESSAGE,
+        message: 'sessionId, base64, and mimeType are required',
+        sessionId,
+        timestamp: new Date().toISOString(),
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    try {
+      const { absolutePath } = await this.cloudTerminalManager.savePastedImage(
+        sessionId, base64, mimeType,
+      );
+      const savedResponse: WebSocketMessage = {
+        type: 'cloud-terminal:paste-image-saved',
+        sessionId,
+        absolutePath,
+        timestamp: new Date().toISOString(),
+      };
+      client.send(JSON.stringify(savedResponse));
+    } catch (err) {
+      const code = (err as { code?: string }).code
+        ?? CLOUD_TERMINAL_ERROR_CODES.PASTE_IMAGE_FAILED;
+      const errorResponse: WebSocketMessage = {
+        type: 'cloud-terminal:error',
+        code,
+        message: err instanceof Error ? err.message : String(err),
+        sessionId,
+        timestamp: new Date().toISOString(),
       };
       client.send(JSON.stringify(errorResponse));
     }

@@ -204,6 +204,35 @@ export interface CloudTerminalInputMessage {
 }
 
 /**
+ * Paste an image (e.g. screenshot) into a Cloud Terminal session.
+ * The browser reads the image via the Async Clipboard API, then the server
+ * persists it under PASTE_IMAGE_ROOT and injects its absolute path into the PTY.
+ */
+export interface CloudTerminalPasteImageMessage {
+  type: 'cloud-terminal:paste-image';
+  /** Target session ID */
+  sessionId: CloudTerminalSessionId;
+  /** Base64-encoded image bytes (no data URL prefix) */
+  base64: string;
+  /** MIME type — must be in CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME */
+  mimeType: string;
+  timestamp: string;
+}
+
+/**
+ * Acknowledgement that a pasted image was saved + injected into the PTY.
+ * The path is already written to the terminal; this message exists so the
+ * frontend can clear its "uploading" indicator and release the in-flight lock.
+ */
+export interface CloudTerminalPasteImageSavedMessage {
+  type: 'cloud-terminal:paste-image-saved';
+  sessionId: CloudTerminalSessionId;
+  /** Absolute path of the persisted image on the server */
+  absolutePath: string;
+  timestamp: string;
+}
+
+/**
  * Resize a Cloud Terminal session
  */
 export interface CloudTerminalResizeMessage {
@@ -337,6 +366,7 @@ export type CloudTerminalClientMessage =
   | CloudTerminalPauseMessage
   | CloudTerminalResumeMessage
   | CloudTerminalInputMessage
+  | CloudTerminalPasteImageMessage
   | CloudTerminalResizeMessage
   | CloudTerminalListMessage;
 
@@ -350,7 +380,8 @@ export type CloudTerminalServerMessage =
   | CloudTerminalResumedMessage
   | CloudTerminalErrorMessage
   | CloudTerminalListResponseMessage
-  | CloudTerminalDataMessage;
+  | CloudTerminalDataMessage
+  | CloudTerminalPasteImageSavedMessage;
 
 /**
  * Union type of all Cloud Terminal messages
@@ -391,6 +422,15 @@ export const CLOUD_TERMINAL_CONFIG = {
 
   /** Max timeout for CLI readiness detection before sending workflow command (ms) */
   WORKFLOW_COMMAND_READY_TIMEOUT_MS: 10_000,
+
+  /** Maximum decoded size of a pasted screenshot (10 MB) */
+  MAX_PASTE_IMAGE_BYTES: 10 * 1024 * 1024,
+
+  /** Allowed MIME types for pasted images */
+  ALLOWED_PASTE_IMAGE_MIME: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const,
+
+  /** Filesystem root for persisted paste images (per-session subdirectories) */
+  PASTE_IMAGE_ROOT: '/tmp/cloud-terminal-paste',
 } as const;
 
 /**
@@ -411,4 +451,12 @@ export const CLOUD_TERMINAL_ERROR_CODES = {
   INVALID_MESSAGE: 'INVALID_MESSAGE',
   /** CLI command not found in PATH */
   CLI_NOT_FOUND: 'CLI_NOT_FOUND',
+  /** Session is paused or otherwise not accepting input */
+  SESSION_NOT_ACTIVE: 'SESSION_NOT_ACTIVE',
+  /** Generic failure while persisting a pasted image */
+  PASTE_IMAGE_FAILED: 'PASTE_IMAGE_FAILED',
+  /** Pasted image exceeds MAX_PASTE_IMAGE_BYTES */
+  PASTE_IMAGE_TOO_LARGE: 'PASTE_IMAGE_TOO_LARGE',
+  /** Pasted image MIME type not in ALLOWED_PASTE_IMAGE_MIME */
+  PASTE_IMAGE_UNSUPPORTED_TYPE: 'PASTE_IMAGE_UNSUPPORTED_TYPE',
 } as const;
