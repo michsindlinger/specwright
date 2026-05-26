@@ -18,6 +18,7 @@ import './components/aos-context-menu.js';
 import './components/aos-quick-todo-modal.js';
 import './components/terminal/aos-cloud-terminal-sidebar.js';
 import './components/mobile/aos-mobile-sheet.js';
+import './components/mobile/aos-mobile-top-bar.js';
 import './components/file-editor/aos-file-tree-sidebar.js';
 import './components/file-editor/aos-file-editor-panel.js';
 import './components/document-preview/aos-document-preview-panel.js';
