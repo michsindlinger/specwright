@@ -129,6 +129,17 @@ export class AosClaudeLogPanel extends LitElement {
       right: 24px;
       margin-top: 0;
     }
+    @media (max-width: 767px) {
+      .log-panel {
+        padding: var(--space-mobile-sm, 0.5rem);
+        font-size: 12px;
+        max-height: none;
+      }
+      .icon-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+      }
+    }
   `;
 
   override connectedCallback(): void {
