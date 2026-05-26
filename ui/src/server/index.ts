@@ -27,6 +27,10 @@ const app = express();
 let server: Server;
 let wsHandler: WebSocketHandler;
 
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', true);
+}
+
 // Middleware
 app.use(express.json({ limit: '30mb' }));
 

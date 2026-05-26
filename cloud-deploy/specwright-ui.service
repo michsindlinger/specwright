@@ -20,6 +20,7 @@ Environment=NODE_ENV=production
 Environment=HOST=127.0.0.1
 Environment=PORT=__SPECWRIGHT_UI_PORT__
 Environment=SPECWRIGHT_PROJECTS_ROOT=__SPECWRIGHT_PROJECTS_ROOT__
+Environment=TRUST_PROXY=true
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 
 # Bind to loopback only — Cloudflare Tunnel terminates TLS and forwards to 127.0.0.1
