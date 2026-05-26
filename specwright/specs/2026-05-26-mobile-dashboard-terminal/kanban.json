@@ -19,9 +19,9 @@
     "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed MOB-021",
-    "nextAction": "Execute next task: MOB-022",
-    "progressIndex": 21,
+    "lastAction": "Completed MOB-022",
+    "nextAction": "Wait for blocked tasks to become ready",
+    "progressIndex": 22,
     "totalStories": 24
   },
   "execution": {
@@ -661,16 +661,24 @@
         "MOB-017",
         "MOB-018"
       ],
-      "status": "ready",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-26T15:51:21.942Z",
+        "completedAt": "2026-05-26T15:57:38.985Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts"
+        ],
+        "commits": [
+          {
+            "hash": "86db62c",
+            "message": "feat: MOB-022 aos-cloud-terminal-sidebar Mobile-Branch",
+            "timestamp": "2026-05-26T17:57:00+02:00"
+          }
+        ]
       }
     },
     {
@@ -737,11 +745,11 @@
   ],
   "boardStatus": {
     "total": 24,
-    "ready": 1,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 21,
+    "done": 22,
     "blocked": 2
   },
   "changeLog": [
@@ -1259,6 +1267,24 @@
       "timestamp": "2026-05-26T15:50:38.668Z",
       "action": "status_changed",
       "storyId": "MOB-021",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-26T15:50:39.084Z",
+      "action": "status_changed",
+      "storyId": "MOB-022",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T15:51:21.943Z",
+      "action": "status_changed",
+      "storyId": "MOB-022",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T15:57:38.985Z",
+      "action": "status_changed",
+      "storyId": "MOB-022",
       "details": "Task completed: in_progress → done"
     }
   ]
