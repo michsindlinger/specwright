@@ -19,9 +19,9 @@
     "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed MOB-004",
-    "nextAction": "Execute next task: MOB-005",
-    "progressIndex": 4,
+    "lastAction": "Completed MOB-005",
+    "nextAction": "Execute next task: MOB-006",
+    "progressIndex": 5,
     "totalStories": 24
   },
   "execution": {
@@ -149,16 +149,27 @@
       "dependencies": [
         "MOB-001"
       ],
-      "status": "ready",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-26T14:41:04.556Z",
+        "completedAt": "2026-05-26T14:44:35.591Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/components/mobile/aos-mobile-project-chip.ts",
+          "ui/frontend/src/components/mobile/aos-mobile-project-scroller.ts",
+          "ui/frontend/src/components/mobile/aos-mobile-branch-row.ts",
+          "ui/frontend/src/app.ts"
+        ],
+        "commits": [
+          {
+            "hash": "c10af88ef3563f10491dba29adcc1093df93ca9a",
+            "message": "feat: MOB-005 aos-mobile-project-scroller + chip + branch-row",
+            "timestamp": "2026-05-26T16:44:02+02:00"
+          }
+        ]
       }
     },
     {
@@ -581,11 +592,11 @@
   ],
   "boardStatus": {
     "total": 24,
-    "ready": 14,
+    "ready": 13,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 4,
+    "done": 5,
     "blocked": 6
   },
   "changeLog": [
@@ -779,6 +790,24 @@
       "timestamp": "2026-05-26T14:40:16.194Z",
       "action": "status_changed",
       "storyId": "MOB-004",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-26T14:40:16.654Z",
+      "action": "status_changed",
+      "storyId": "MOB-005",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T14:41:04.559Z",
+      "action": "status_changed",
+      "storyId": "MOB-005",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T14:44:35.591Z",
+      "action": "status_changed",
+      "storyId": "MOB-005",
       "details": "Task completed: in_progress → done"
     }
   ]
