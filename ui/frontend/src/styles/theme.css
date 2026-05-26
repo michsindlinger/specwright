@@ -66,6 +66,25 @@
   --attachment-item-bg: var(--color-bg-tertiary, #262626);
   --attachment-delete-color: var(--color-text-muted, #737373);
   --attachment-delete-hover-bg: var(--color-accent-error, #ef4444);
+
+  /* Mobile */
+  --breakpoint-mobile: 767px;
+
+  --space-mobile-xs: 0.25rem;
+  --space-mobile-sm: 0.5rem;
+  --space-mobile-md: 0.75rem;
+  --space-mobile-lg: 1rem;
+  --space-mobile-xl: 1.25rem;
+  --space-mobile-2xl: 1.5rem;
+
+  --touch-target-min: 44px;
+
+  --mobile-top-bar-height: 52px;
+  --mobile-bottom-nav-height: 56px;
+
+  --mobile-sheet-radius: 16px;
+  --mobile-sheet-handle-height: 4px;
+  --mobile-sheet-handle-width: 32px;
 }
 
 /* Dark Theme (Navy-based, Compass) */
@@ -12846,4 +12865,15 @@ aos-model-selector .model-option.selected .model-name {
   border-color: var(--color-border-hover) !important;
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* ============================================================
+   Mobile Utilities
+   ============================================================ */
+.touch-target {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
