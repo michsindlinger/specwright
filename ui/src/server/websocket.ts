@@ -37,6 +37,7 @@ import {
 } from './model-config.js';
 import { loadGeneralConfig, updateGeneralConfig, getReviewPrompt, validateMaxConcurrent } from './general-config.js';
 import { loadVoiceConfigStatus, updateVoiceConfig } from './voice-config.js';
+import { loadGithubConfigStatus, updateGithubPat, clearGithubPat } from './github-config.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
 import { PlanReviewOrchestrator } from './services/plan-review-orchestrator.js';
 import type { TabReviewConfig } from './services/plan-review-orchestrator.js';
@@ -403,6 +404,15 @@ export class WebSocketHandler {
           break;
         case 'settings.voice.update':
           this.handleSettingsVoiceUpdate(client, message);
+          break;
+        case 'settings.github.get':
+          this.handleSettingsGithubGet(client);
+          break;
+        case 'settings.github.update':
+          this.handleSettingsGithubUpdate(client, message);
+          break;
+        case 'settings.github.clear':
+          this.handleSettingsGithubClear(client);
           break;
         case 'queue.add':
           this.handleQueueAdd(client, message);
@@ -3608,6 +3618,65 @@ export class WebSocketHandler {
       const errorResponse: WebSocketMessage = {
         type: 'settings.error',
         error: error instanceof Error ? error.message : 'Failed to update voice settings',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  private handleSettingsGithubGet(client: WebSocketClient): void {
+    const config = loadGithubConfigStatus();
+    const response: WebSocketMessage = {
+      type: 'settings.github',
+      config,
+      timestamp: new Date().toISOString()
+    };
+    client.send(JSON.stringify(response));
+  }
+
+  private handleSettingsGithubUpdate(client: WebSocketClient, message: WebSocketMessage): void {
+    const pat = message.pat as string | undefined;
+    if (typeof pat !== 'string' || pat.length === 0) {
+      const errorResponse: WebSocketMessage = {
+        type: 'settings.error',
+        error: 'GitHub PAT is required',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    try {
+      const config = updateGithubPat(pat);
+      const response: WebSocketMessage = {
+        type: 'settings.github',
+        config,
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'settings.error',
+        error: error instanceof Error ? error.message : 'Failed to update GitHub settings',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  private handleSettingsGithubClear(client: WebSocketClient): void {
+    try {
+      clearGithubPat();
+      const response: WebSocketMessage = {
+        type: 'settings.github',
+        config: loadGithubConfigStatus(),
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'settings.error',
+        error: error instanceof Error ? error.message : 'Failed to clear GitHub settings',
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));

@@ -29,7 +29,7 @@ interface ModelConfig {
   providers: ModelProvider[];
 }
 
-type SettingsSection = 'models' | 'general' | 'voice' | 'appearance' | 'setup';
+type SettingsSection = 'models' | 'general' | 'voice' | 'git' | 'appearance' | 'setup';
 
 type VoiceInputMode = 'push-to-talk' | 'voice-activity';
 
@@ -38,6 +38,13 @@ interface VoiceConfigStatus {
   elevenLabsConfigured: boolean;
   defaultInputMode: VoiceInputMode;
   voicePersonas: Array<{ id: string; name: string; voiceId: string }>;
+}
+
+type GithubTokenPrefix = 'ghp' | 'github_pat';
+
+interface GithubConfigStatus {
+  patConfigured: boolean;
+  tokenPrefix?: GithubTokenPrefix;
 }
 
 interface EditingProvider {
@@ -86,10 +93,14 @@ export class AosSettingsView extends LitElement {
   @state() private deepgramKeyInput = '';
   @state() private elevenLabsKeyInput = '';
   @state() private voiceInputMode: VoiceInputMode = 'push-to-talk';
+  @state() private githubConfig: GithubConfigStatus | null = null;
+  @state() private githubSaving = false;
+  @state() private githubPatInput = '';
+  @state() private githubRestartHint = false;
 
   private boundHandlers: Map<string, (msg: WebSocketMessage) => void> = new Map();
   private readonly BUILT_IN_PROVIDERS = ['anthropic', 'glm', 'gemini'];
-  private readonly VALID_TABS: readonly SettingsSection[] = ['models', 'general', 'voice', 'appearance', 'setup'] as const;
+  private readonly VALID_TABS: readonly SettingsSection[] = ['models', 'general', 'voice', 'git', 'appearance', 'setup'] as const;
   private boundRouteChangeHandler = (route: ParsedRoute) => this.onRouteChanged(route);
   private lastActiveProjectId: string | null = null;
 
@@ -128,6 +139,7 @@ export class AosSettingsView extends LitElement {
       ['settings.config', (msg) => this.onConfigReceived(msg)],
       ['settings.general', (msg) => this.onGeneralConfigReceived(msg)],
       ['settings.voice', (msg) => this.onVoiceConfigReceived(msg)],
+      ['settings.github', (msg) => this.onGithubConfigReceived(msg)],
       ['settings.error', (msg) => this.onSettingsError(msg)],
       ['gateway.connected', () => this.onGatewayConnected()]
     ];
@@ -152,6 +164,9 @@ export class AosSettingsView extends LitElement {
     }
     if (this.activeSection === 'voice') {
       this.loadVoiceConfig();
+    }
+    if (this.activeSection === 'git') {
+      this.loadGithubConfig();
     }
   }
 
@@ -183,6 +198,9 @@ export class AosSettingsView extends LitElement {
     if (section === 'voice' && !this.voiceConfig) {
       this.loadVoiceConfig();
     }
+    if (section === 'git' && !this.githubConfig) {
+      this.loadGithubConfig();
+    }
   }
 
   private restoreRouteState(): void {
@@ -198,6 +216,9 @@ export class AosSettingsView extends LitElement {
         }
         if (tab === 'voice' && !this.voiceConfig) {
           this.loadVoiceConfig();
+        }
+        if (tab === 'git' && !this.githubConfig) {
+          this.loadGithubConfig();
         }
       } else {
         routerService.navigate('settings');
@@ -221,6 +242,9 @@ export class AosSettingsView extends LitElement {
       }
       if (tab === 'voice' && !this.voiceConfig) {
         this.loadVoiceConfig();
+      }
+      if (tab === 'git' && !this.githubConfig) {
+        this.loadGithubConfig();
       }
     } else {
       routerService.navigate('settings');
@@ -511,6 +535,14 @@ export class AosSettingsView extends LitElement {
             </li>
             <li>
               <button
+                class="settings-nav-item ${this.activeSection === 'git' ? 'active' : ''}"
+                @click=${() => this.handleSectionChange('git')}
+              >
+                Git Integration
+              </button>
+            </li>
+            <li>
+              <button
                 class="settings-nav-item ${this.activeSection === 'appearance' ? 'active' : ''}"
                 @click=${() => this.handleSectionChange('appearance')}
               >
@@ -550,6 +582,8 @@ export class AosSettingsView extends LitElement {
         return this.renderGeneralSection();
       case 'voice':
         return this.renderVoiceSection();
+      case 'git':
+        return this.renderGitSection();
       case 'appearance':
         return this.renderAppearanceSection();
       case 'setup':
@@ -694,6 +728,117 @@ export class AosSettingsView extends LitElement {
     this.voiceSaving = true;
     this.error = '';
     gateway.send({ type: 'settings.voice.update', defaultInputMode: this.voiceInputMode });
+  }
+
+  private onGithubConfigReceived(msg: WebSocketMessage): void {
+    this.githubConfig = msg.config as GithubConfigStatus;
+    this.githubSaving = false;
+    this.githubPatInput = '';
+  }
+
+  private loadGithubConfig(): void {
+    gateway.send({ type: 'settings.github.get' });
+  }
+
+  private handleGithubPatSave(): void {
+    const pat = this.githubPatInput.trim();
+    if (!pat) return;
+    this.githubSaving = true;
+    this.error = '';
+    this.githubRestartHint = true;
+    gateway.send({ type: 'settings.github.update', pat });
+  }
+
+  private handleGithubPatClear(): void {
+    this.githubSaving = true;
+    this.error = '';
+    this.githubRestartHint = true;
+    gateway.send({ type: 'settings.github.clear' });
+  }
+
+  private renderGitSection() {
+    if (!this.githubConfig) {
+      return html`
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>Loading Git settings...</p>
+        </div>
+      `;
+    }
+
+    const configured = this.githubConfig.patConfigured;
+    const prefix = this.githubConfig.tokenPrefix;
+    return html`
+      <div class="general-section">
+        <div class="section-header">
+          <div>
+            <h3>Git Integration</h3>
+            <p class="section-description">
+              Configure a GitHub Personal Access Token (PAT) so <code>git push</code> works from
+              cloud terminals and from background git operations. The PAT is used only for
+              <code>https://github.com/*</code>; SSH remotes and other hosts are unaffected.
+            </p>
+          </div>
+        </div>
+
+        <div class="provider-card">
+          <h4 style="margin: 0 0 var(--spacing-md) 0">GitHub PAT</h4>
+
+          <div class="form-field">
+            <label for="github-pat-input">Personal Access Token</label>
+            <span class="form-hint">
+              Status: ${configured
+                ? html`<span style="color: var(--color-success, #22c55e)">Configured (${prefix}_...)</span>`
+                : html`<span style="color: var(--color-warning, #f59e0b)">Not configured</span>`}
+            </span>
+            <input
+              id="github-pat-input"
+              type="password"
+              autocomplete="off"
+              .value=${this.githubPatInput}
+              @input=${(e: Event) => { this.githubPatInput = (e.target as HTMLInputElement).value; }}
+              ?disabled=${this.githubSaving}
+              placeholder="ghp_... or github_pat_..."
+            />
+            <span class="form-hint" style="margin-top: var(--spacing-xs); display: block; opacity: 0.8;">
+              Needs the <code>repo</code> scope to push to private repositories. Generate one at
+              github.com/settings/tokens.
+            </span>
+          </div>
+
+          ${this.githubRestartHint
+            ? html`
+              <div class="form-hint" style="background: var(--color-info-bg, #1e3a5f); padding: var(--spacing-sm); border-radius: 4px; margin-top: var(--spacing-md);">
+                <strong>Heads-up:</strong> active terminal sessions keep their previous token until restarted.
+                Open a new terminal to apply the change.
+              </div>
+            `
+            : ''}
+
+          <div class="form-actions" style="margin-top: var(--spacing-md); display: flex; gap: var(--spacing-sm);">
+            <button
+              class="save-btn"
+              @click=${() => this.handleGithubPatSave()}
+              ?disabled=${this.githubSaving || !this.githubPatInput.trim()}
+            >
+              ${this.githubSaving ? 'Saving...' : 'Save PAT'}
+            </button>
+            ${configured
+              ? html`
+                <button
+                  class="save-btn"
+                  style="background: var(--color-danger, #ef4444);"
+                  @click=${() => this.handleGithubPatClear()}
+                  ?disabled=${this.githubSaving}
+                >
+                  Clear PAT
+                </button>
+              `
+              : ''}
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   private renderVoiceSection() {

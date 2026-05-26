@@ -490,6 +490,8 @@ export const GIT_ERROR_CODES = {
   DIVERGENT_BRANCHES: 'DIVERGENT_BRANCHES',
   /** Push rejected - remote has commits that local doesn't have */
   PUSH_REJECTED: 'PUSH_REJECTED',
+  /** Git authentication failed (missing/expired PAT, missing SSH key, insufficient scope) */
+  AUTH_FAILED: 'AUTH_FAILED',
 } as const;
 
 // ============================================================================
@@ -500,6 +502,8 @@ export const GIT_ERROR_CODES = {
  * Git operation configuration
  */
 export const GIT_CONFIG = {
-  /** Timeout for git operations in milliseconds (10 seconds) */
+  /** Timeout for local git operations in milliseconds (10 seconds) */
   OPERATION_TIMEOUT_MS: 10_000,
+  /** Timeout for network git operations (push/pull/fetch) in milliseconds (60 seconds) */
+  NETWORK_OPERATION_TIMEOUT_MS: 60_000,
 } as const;

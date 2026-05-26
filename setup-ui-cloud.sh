@@ -156,6 +156,55 @@ if [[ -d "$SPECWRIGHT_PROJECTS_ROOT" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
+# Master key for secret encryption (used by github-config / secret-crypto)
+# -----------------------------------------------------------------------------
+SECRET_ENV_DIR="/etc/specwright-ui"
+SECRET_ENV_FILE="$SECRET_ENV_DIR/secret.env"
+
+if [[ ! -f "$SECRET_ENV_FILE" ]]; then
+    if ! command -v openssl &>/dev/null; then
+        echo "Warning: openssl not found; skipping master-key generation." >&2
+        echo "         GitHub PAT will be stored unencrypted until SPECWRIGHT_SECRET_KEY is provided." >&2
+    else
+        echo "==> Generating master key at $SECRET_ENV_FILE"
+        mkdir -p "$SECRET_ENV_DIR"
+        chmod 0700 "$SECRET_ENV_DIR"
+        SPECWRIGHT_KEY="$(openssl rand -hex 32)"
+        umask 077
+        printf 'SPECWRIGHT_SECRET_KEY=%s\n' "$SPECWRIGHT_KEY" > "$SECRET_ENV_FILE"
+        chmod 0600 "$SECRET_ENV_FILE"
+        chown "$SPECWRIGHT_UI_USER:$SPECWRIGHT_UI_USER" "$SECRET_ENV_FILE"
+        unset SPECWRIGHT_KEY
+    fi
+else
+    echo "==> Master key already present at $SECRET_ENV_FILE"
+    chmod 0600 "$SECRET_ENV_FILE"
+    chown "$SPECWRIGHT_UI_USER:$SPECWRIGHT_UI_USER" "$SECRET_ENV_FILE"
+fi
+
+# -----------------------------------------------------------------------------
+# Git credential helper (host-scoped to github.com) for the service user.
+# Reads the PAT from $GITHUB_TOKEN — which the UI injects into PTY sessions
+# only when a PAT is configured. Other hosts (e.g. SSH remotes, non-GitHub
+# HTTPS remotes) are not affected.
+# -----------------------------------------------------------------------------
+GITHUB_HELPER_VALUE='!f() { test "$1" = "get" && printf "username=x-access-token\npassword=%s\n" "$GITHUB_TOKEN"; }; f'
+
+# Cleanup: remove any un-scoped global credential helper a prior install may
+# have set (we now use only the host-scoped variant).
+OLD_HELPER=$(sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
+    git config --global --get credential.helper 2>/dev/null || true)
+if [[ -n "$OLD_HELPER" && "$OLD_HELPER" == *GITHUB_TOKEN* ]]; then
+    echo "==> Removing legacy un-scoped credential.helper"
+    sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
+        git config --global --unset credential.helper || true
+fi
+
+echo "==> Configuring host-scoped credential helper for github.com"
+sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
+    git config --global "credential.https://github.com.helper" "$GITHUB_HELPER_VALUE"
+
+# -----------------------------------------------------------------------------
 # systemd unit
 # -----------------------------------------------------------------------------
 UNIT_TEMPLATE="$SPECWRIGHT_UI_HOME/cloud-deploy/specwright-ui.service"

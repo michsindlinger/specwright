@@ -30,6 +30,7 @@ import {
 import { TerminalManager } from './terminal-manager.js';
 import { getCliCommandForModel, getProviderCommand, checkCliAvailability } from '../model-config.js';
 import { PlanBufferExtractor } from '../utils/plan-buffer-extractor.js';
+import { loadGithubConfigStatus, loadGithubPat } from '../github-config.js';
 
 /**
  * Extended cloud terminal session with internal state
@@ -61,6 +62,9 @@ interface ManagedCloudSession extends CloudTerminalSession {
 
   /** Dedup timestamp: last time a plan box was detected. */
   lastPlanDetectedAt?: Date;
+
+  /** Resolved file path of the most recently detected plan (~/.claude/plans/<slug>.md). */
+  lastDetectedPlanPath?: string;
 }
 
 /**
@@ -208,6 +212,19 @@ export class CloudTerminalManager extends EventEmitter {
       }
       if (!baseEnv.LC_CTYPE) {
         baseEnv.LC_CTYPE = 'UTF-8';
+      }
+
+      // GitHub PAT injection for `git push` against github.com from the terminal.
+      // A host-scoped credential helper provisioned by setup-ui-cloud.sh reads
+      // $GITHUB_TOKEN and only fires for https://github.com/* — SSH and other
+      // hosts are unaffected. If no PAT is configured, nothing is injected.
+      if (loadGithubConfigStatus().patConfigured) {
+        const pat = loadGithubPat();
+        if (pat) {
+          baseEnv.GITHUB_TOKEN = pat;
+          baseEnv.GIT_ASKPASS = '/dev/null';
+          baseEnv.GIT_TERMINAL_PROMPT = '0';
+        }
       }
 
       if (terminalType === 'shell') {
@@ -630,13 +647,14 @@ export class CloudTerminalManager extends EventEmitter {
     if (!session) {
       return;
     }
-    try {
-      const planText = new PlanBufferExtractor().extract(session.buffer.join(''));
-      console.log(`[CloudTerminalManager] Manual plan review triggered for session ${sessionId}`);
-      this.emit('session.plan-detected', sessionId, planText, 'manual');
-    } catch (e) {
-      console.warn(`[CloudTerminalManager] plan-detected-failed-no-pattern-match for session ${sessionId}: ${e}`);
+    const result = new PlanBufferExtractor().extract(session.buffer.join(''));
+    if (!result) {
+      console.warn(`[CloudTerminalManager] plan-detected-skipped-no-plan-path session=${sessionId} source=manual`);
+      return;
     }
+    session.lastDetectedPlanPath = result.planPath;
+    console.log(`[CloudTerminalManager] Manual plan review triggered for session ${sessionId} (path=${result.planPath})`);
+    this.emit('session.plan-detected', sessionId, result.planText, 'manual');
   }
 
   /**
@@ -716,13 +734,14 @@ export class CloudTerminalManager extends EventEmitter {
       return;
     }
     session.lastPlanDetectedAt = new Date(now);
-    try {
-      const planText = new PlanBufferExtractor().extract(session.buffer.join(''));
-      console.log(`[CloudTerminalManager] Plan box detected in session ${session.sessionId} (auto)`);
-      this.emit('session.plan-detected', session.sessionId, planText, 'auto');
-    } catch (e) {
-      console.warn(`[CloudTerminalManager] plan-detected-failed-no-pattern-match for session ${session.sessionId}: ${e}`);
+    const result = new PlanBufferExtractor().extract(session.buffer.join(''));
+    if (!result) {
+      console.warn(`[CloudTerminalManager] plan-detected-skipped-no-plan-path session=${session.sessionId} source=auto`);
+      return;
     }
+    session.lastDetectedPlanPath = result.planPath;
+    console.log(`[CloudTerminalManager] Plan box detected in session ${session.sessionId} (auto, path=${result.planPath})`);
+    this.emit('session.plan-detected', session.sessionId, result.planText, 'auto');
   }
 
   /**
@@ -828,6 +847,7 @@ export class CloudTerminalManager extends EventEmitter {
       createdAt: session.createdAt,
       lastActivity: session.lastActivity,
       pausedAt: session.pausedAt,
+      lastDetectedPlanPath: session.lastDetectedPlanPath,
     };
   }
 

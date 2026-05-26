@@ -28,6 +28,8 @@ import type {
   GitGenerateCommitMessageResult,
 } from '../../shared/types/git.protocol.js';
 import { GIT_CONFIG, GIT_ERROR_CODES } from '../../shared/types/git.protocol.js';
+import { buildGithubAuthOverrides, detectAuthError } from './git-auth.js';
+import { redactGithubTokens } from '../utils/redact-secrets.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -54,18 +56,44 @@ export class GitError extends Error {
 export class GitService {
 
   /**
-   * Execute a git command safely using execFile
+   * Execute a git command safely using execFile.
+   *
+   * Options:
+   * - `env`: extra environment variables merged on top of process.env (e.g., GITHUB_TOKEN)
+   * - `extraGitArgs`: arguments prepended before the main args (e.g., `-c credential.helper=...`)
+   * - `timeoutMs`: override the default operation timeout (network ops use NETWORK_OPERATION_TIMEOUT_MS)
    */
-  private async execGit(args: string[], cwd: string): Promise<{ stdout: string; stderr: string }> {
+  private async execGit(
+    args: string[],
+    cwd: string,
+    options?: {
+      env?: Record<string, string>;
+      extraGitArgs?: string[];
+      timeoutMs?: number;
+    },
+  ): Promise<{ stdout: string; stderr: string }> {
+    const fullArgs = options?.extraGitArgs ? [...options.extraGitArgs, ...args] : args;
+    const execOptions: Parameters<typeof execFileAsync>[2] = {
+      cwd,
+      timeout: options?.timeoutMs ?? GIT_CONFIG.OPERATION_TIMEOUT_MS,
+      maxBuffer: 1024 * 1024, // 1MB
+      encoding: 'utf-8',
+    };
+    if (options?.env) {
+      (execOptions as { env?: NodeJS.ProcessEnv }).env = {
+        ...process.env,
+        ...options.env,
+      };
+    }
+
     try {
-      const result = await execFileAsync('git', args, {
-        cwd,
-        timeout: GIT_CONFIG.OPERATION_TIMEOUT_MS,
-        maxBuffer: 1024 * 1024, // 1MB
-      });
-      return result;
+      const result = await execFileAsync('git', fullArgs, execOptions);
+      return {
+        stdout: typeof result.stdout === 'string' ? result.stdout : result.stdout.toString('utf-8'),
+        stderr: typeof result.stderr === 'string' ? result.stderr : result.stderr.toString('utf-8'),
+      };
     } catch (error) {
-      const err = error as Error & { code?: string; stderr?: string; killed?: boolean };
+      const err = error as Error & { code?: string; stderr?: string; stdout?: string; killed?: boolean };
 
       // Check if git is not installed
       if (err.code === 'ENOENT') {
@@ -79,11 +107,17 @@ export class GitService {
       // Check for timeout
       if (err.killed) {
         throw new GitError(
-          `Git operation timed out after ${GIT_CONFIG.OPERATION_TIMEOUT_MS}ms`,
+          `Git operation timed out after ${execOptions.timeout}ms`,
           GIT_ERROR_CODES.TIMEOUT,
           'execGit',
         );
       }
+
+      // Redact any PAT-shaped substring before re-throwing so subsequent error
+      // mapping in callers cannot leak the token into wrapped messages.
+      if (err.stderr) err.stderr = redactGithubTokens(err.stderr);
+      if (err.stdout) err.stdout = redactGithubTokens(err.stdout);
+      if (err.message) err.message = redactGithubTokens(err.message);
 
       throw error;
     }
@@ -293,7 +327,12 @@ export class GitService {
       } else {
         args = rebase ? ['pull', '--rebase'] : ['pull'];
       }
-      const { stdout, stderr } = await this.execGit(args, projectPath);
+      const auth = buildGithubAuthOverrides();
+      const { stdout, stderr } = await this.execGit(args, projectPath, {
+        env: auth?.env,
+        extraGitArgs: auth?.extraGitArgs,
+        timeoutMs: GIT_CONFIG.NETWORK_OPERATION_TIMEOUT_MS,
+      });
 
       // Check for "Already up to date"
       const combined = stdout + stderr;
@@ -339,6 +378,12 @@ export class GitService {
         );
       }
 
+      // Authentication errors
+      const authMessage = detectAuthError(combined);
+      if (authMessage) {
+        throw new GitError(authMessage, GIT_ERROR_CODES.AUTH_FAILED, 'pull');
+      }
+
       // Network errors
       if (combined.includes('Could not resolve host') || combined.includes('Connection refused')) {
         throw new GitError(
@@ -349,7 +394,7 @@ export class GitService {
       }
 
       throw new GitError(
-        err.stderr || err.message,
+        redactGithubTokens(err.stderr || err.message),
         GIT_ERROR_CODES.OPERATION_FAILED,
         'pull',
       );
@@ -584,7 +629,12 @@ export class GitService {
     await this.ensureGitRepo(projectPath, 'push');
 
     try {
-      const { stdout, stderr } = await this.execGit(['push'], projectPath);
+      const auth = buildGithubAuthOverrides();
+      const { stdout, stderr } = await this.execGit(['push'], projectPath, {
+        env: auth?.env,
+        extraGitArgs: auth?.extraGitArgs,
+        timeoutMs: GIT_CONFIG.NETWORK_OPERATION_TIMEOUT_MS,
+      });
       const combined = stdout + stderr;
 
       // Check for "Everything up-to-date"
@@ -620,6 +670,12 @@ export class GitService {
       const err = error as Error & { stderr?: string };
       const stderr = err.stderr || '';
 
+      // Authentication errors (PAT missing/invalid/insufficient-scope, no SSH key)
+      const authMessage = detectAuthError(stderr);
+      if (authMessage) {
+        throw new GitError(authMessage, GIT_ERROR_CODES.AUTH_FAILED, 'push');
+      }
+
       // Network errors
       if (stderr.includes('Could not resolve host') || stderr.includes('Connection refused')) {
         throw new GitError(
@@ -639,7 +695,7 @@ export class GitService {
       }
 
       throw new GitError(
-        err.stderr || err.message,
+        redactGithubTokens(err.stderr || err.message),
         GIT_ERROR_CODES.OPERATION_FAILED,
         'push',
       );
@@ -987,9 +1043,15 @@ export class GitService {
     await this.ensureGitRepo(projectPath, 'pushBranch');
 
     try {
+      const auth = buildGithubAuthOverrides();
       const { stdout, stderr } = await this.execGit(
         ['push', '-u', 'origin', branchName],
         projectPath,
+        {
+          env: auth?.env,
+          extraGitArgs: auth?.extraGitArgs,
+          timeoutMs: GIT_CONFIG.NETWORK_OPERATION_TIMEOUT_MS,
+        },
       );
       const combined = stdout + stderr;
 
@@ -1029,6 +1091,12 @@ export class GitService {
       const err = error as Error & { stderr?: string };
       const stderr = err.stderr || '';
 
+      // Authentication errors
+      const authMessage = detectAuthError(stderr);
+      if (authMessage) {
+        throw new GitError(authMessage, GIT_ERROR_CODES.AUTH_FAILED, 'pushBranch');
+      }
+
       // Network errors
       if (stderr.includes('Could not resolve host') || stderr.includes('Connection refused')) {
         throw new GitError(
@@ -1039,7 +1107,7 @@ export class GitService {
       }
 
       throw new GitError(
-        err.stderr || err.message,
+        redactGithubTokens(err.stderr || err.message),
         GIT_ERROR_CODES.OPERATION_FAILED,
         'pushBranch',
       );
