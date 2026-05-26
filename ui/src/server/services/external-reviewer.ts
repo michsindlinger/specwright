@@ -42,7 +42,6 @@ export class ExternalReviewer {
     projectPath: string
   ): Promise<string> {
     return withTimeout(async (ac) => {
-      const configDir = expandTilde(`~/.claude-${providerId}`);
       const stderrBuf: string[] = [];
 
       console.log(
@@ -54,6 +53,16 @@ export class ExternalReviewer {
       delete baseEnv.ANTHROPIC_AUTH_TOKEN;
       delete baseEnv.ANTHROPIC_BASE_URL;
 
+      // For Anthropic provider, reuse the default ~/.claude config dir which
+      // holds the OAuth login (.credentials.json) used by the cloud terminal.
+      // The provider-scoped ~/.claude-anthropic dir has no login session.
+      // For non-Anthropic providers (glm, deepseek, ...), the scoped config dir
+      // carries the third-party CLI settings/keys.
+      const envOverride: Record<string, string | undefined> =
+        providerId === 'anthropic'
+          ? { ...baseEnv }
+          : { ...baseEnv, CLAUDE_CONFIG_DIR: expandTilde(`~/.claude-${providerId}`) };
+
       const session = claudeQuery({
         prompt,
         options: {
@@ -64,7 +73,7 @@ export class ExternalReviewer {
           allowDangerouslySkipPermissions: true,
           cwd: projectPath,
           abortController: ac,
-          env: { ...baseEnv, CLAUDE_CONFIG_DIR: configDir },
+          env: envOverride,
           settingSources: ['user'],
           stderr: (data: string) => {
             stderrBuf.push(data);
