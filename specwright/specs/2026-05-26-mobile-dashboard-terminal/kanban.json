@@ -19,9 +19,9 @@
     "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed MOB-015",
-    "nextAction": "Execute next task: MOB-016",
-    "progressIndex": 15,
+    "lastAction": "Completed MOB-016",
+    "nextAction": "Execute next task: MOB-017",
+    "progressIndex": 16,
     "totalStories": 24
   },
   "execution": {
@@ -470,16 +470,27 @@
       "dependencies": [
         "MOB-001"
       ],
-      "status": "ready",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-26T15:23:16.497Z",
+        "completedAt": "2026-05-26T15:28:07.826Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/utils/parse-numbered-options.ts",
+          "ui/frontend/src/components/mobile/aos-mobile-quick-replies.ts",
+          "ui/tests/unit/parse-numbered-options.test.ts",
+          "ui/frontend/src/app.ts"
+        ],
+        "commits": [
+          {
+            "hash": "fbf977ff914c3790ec2069ec5e22b8fc69f6d5d2",
+            "message": "feat: MOB-016 aos-mobile-quick-replies + parseNumberedOptions",
+            "timestamp": "2026-05-26T17:27:52+02:00"
+          }
+        ]
       }
     },
     {
@@ -683,11 +694,11 @@
   ],
   "boardStatus": {
     "total": 24,
-    "ready": 4,
+    "ready": 3,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 15,
+    "done": 16,
     "blocked": 5
   },
   "changeLog": [
@@ -1079,6 +1090,24 @@
       "timestamp": "2026-05-26T15:22:35.887Z",
       "action": "status_changed",
       "storyId": "MOB-015",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-26T15:22:36.289Z",
+      "action": "status_changed",
+      "storyId": "MOB-016",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T15:23:16.500Z",
+      "action": "status_changed",
+      "storyId": "MOB-016",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T15:28:07.826Z",
+      "action": "status_changed",
+      "storyId": "MOB-016",
       "details": "Task completed: in_progress → done"
     }
   ]
