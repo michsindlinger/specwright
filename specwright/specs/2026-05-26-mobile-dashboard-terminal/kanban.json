@@ -12,21 +12,21 @@
     "implementationPlan": "implementation-plan.md"
   },
   "resumeContext": {
-    "currentPhase": "1-complete",
-    "nextPhase": "2-worktree-setup",
+    "currentPhase": "2-complete",
+    "nextPhase": "3-execute-story",
     "worktreePath": null,
-    "gitBranch": null,
-    "gitStrategy": null,
+    "gitBranch": "feature/mobile-dashboard-terminal",
+    "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Lean kanban created via MCP",
-    "nextAction": "Setup git worktree or branch",
-    "progressIndex": 0,
+    "lastAction": "Completed MOB-001",
+    "nextAction": "Execute next task: MOB-002",
+    "progressIndex": 1,
     "totalStories": 24
   },
   "execution": {
-    "status": "not_started",
-    "startedAt": null,
+    "status": "executing",
+    "startedAt": "2026-05-26T14:27:43.167Z",
     "completedAt": null,
     "model": null
   },
@@ -37,16 +37,24 @@
       "description": "Mobile-Tokens (--breakpoint-mobile, --space-mobile-*, --touch-target-min etc.) und .touch-target Utility additiv in theme.css.",
       "planSection": "phase-1-foundation",
       "dependencies": [],
-      "status": "ready",
-      "phase": "pending",
+      "status": "done",
+      "phase": "done",
       "model": "sonnet",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-26T14:27:43.167Z",
+        "completedAt": "2026-05-26T14:29:41.004Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/styles/theme.css"
+        ],
+        "commits": [
+          {
+            "hash": "2519b9e1e72fd3f4b73a27f433a7572a45ee25c6",
+            "message": "feat: MOB-001 Mobile design tokens & .touch-target utility",
+            "timestamp": "2026-05-26T16:29:21+02:00"
+          }
+        ]
       }
     },
     {
@@ -547,11 +555,11 @@
   ],
   "boardStatus": {
     "total": 24,
-    "ready": 3,
+    "ready": 2,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 0,
+    "done": 1,
     "blocked": 21
   },
   "changeLog": [
@@ -572,6 +580,42 @@
       "action": "model_changed",
       "storyId": "MOB-997",
       "details": "Model changed from sonnet to opus"
+    },
+    {
+      "timestamp": "2026-05-26T14:26:08.752Z",
+      "action": "status_changed",
+      "storyId": "MOB-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T14:26:09.519Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git branch setup via UI: feature/mobile-dashboard-terminal"
+    },
+    {
+      "timestamp": "2026-05-26T14:26:09.548Z",
+      "action": "stale_recovery",
+      "storyId": "MOB-001",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-05-26T14:26:09.549Z",
+      "action": "status_changed",
+      "storyId": "MOB-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T14:27:43.168Z",
+      "action": "status_changed",
+      "storyId": "MOB-001",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T14:29:41.004Z",
+      "action": "status_changed",
+      "storyId": "MOB-001",
+      "details": "Task completed: in_progress → done"
     }
   ]
 }
