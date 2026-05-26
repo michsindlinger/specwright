@@ -31,6 +31,8 @@ import './components/mobile/aos-mobile-terminal-header.js';
 import './components/mobile/aos-mobile-session-tabs.js';
 import './components/mobile/aos-mobile-connection-bar.js';
 import './components/mobile/aos-mobile-quick-replies.js';
+import './components/mobile/aos-mobile-story-card.js';
+import './components/mobile/aos-mobile-story-list.js';
 import './components/file-editor/aos-file-tree-sidebar.js';
 import './components/file-editor/aos-file-editor-panel.js';
 import './components/document-preview/aos-document-preview-panel.js';
