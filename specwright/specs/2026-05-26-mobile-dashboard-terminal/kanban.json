@@ -19,9 +19,9 @@
     "gitStrategy": "branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed MOB-022",
+    "lastAction": "Completed MOB-997",
     "nextAction": "Wait for blocked tasks to become ready",
-    "progressIndex": 22,
+    "progressIndex": 23,
     "totalStories": 24
   },
   "execution": {
@@ -710,16 +710,29 @@
         "MOB-021",
         "MOB-022"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "opus",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-opus-4-7",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-05-26T15:58:28.855Z",
+        "completedAt": "2026-05-26T16:08:28.499Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "specwright/specs/2026-05-26-mobile-dashboard-terminal/integration-context.md",
+          "specwright/specs/2026-05-26-mobile-dashboard-terminal/review-report.md",
+          "ui/frontend/src/app.ts",
+          "ui/frontend/src/components/mobile/aos-mobile-bottom-nav.ts",
+          "ui/frontend/src/styles/theme.css",
+          "ui/frontend/src/views/dashboard-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "55f501ccfa973cedba2b9ec5b7b6242d006d00bf",
+            "message": "feat: [story-997] Code Review completed (Mobile Dashboard, Cloud Terminal & Spec-Detail)",
+            "timestamp": "2026-05-26T18:08:19+02:00"
+          }
+        ]
       }
     },
     {
@@ -749,8 +762,8 @@
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 22,
-    "blocked": 2
+    "done": 23,
+    "blocked": 1
   },
   "changeLog": [
     {
@@ -1285,6 +1298,30 @@
       "timestamp": "2026-05-26T15:57:38.985Z",
       "action": "status_changed",
       "storyId": "MOB-022",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-05-26T15:57:39.407Z",
+      "action": "dependency_resolved",
+      "storyId": "MOB-997",
+      "details": "Unblocked: all dependencies done/in_review (MOB-001, MOB-002, MOB-003, MOB-004, MOB-005, MOB-006, MOB-007, MOB-008, MOB-009, MOB-010, MOB-011, MOB-012, MOB-013, MOB-014, MOB-015, MOB-016, MOB-017, MOB-018, MOB-019, MOB-020, MOB-021, MOB-022)"
+    },
+    {
+      "timestamp": "2026-05-26T15:57:39.408Z",
+      "action": "status_changed",
+      "storyId": "MOB-997",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T15:58:28.856Z",
+      "action": "status_changed",
+      "storyId": "MOB-997",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-05-26T16:08:28.499Z",
+      "action": "status_changed",
+      "storyId": "MOB-997",
       "details": "Task completed: in_progress → done"
     }
   ]
