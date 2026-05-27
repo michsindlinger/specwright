@@ -1,7 +1,8 @@
 import { LitElement, html } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, state, property } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { gateway, WebSocketMessage } from '../gateway.js';
+import type { GitStatusData, GitPrInfo } from '../../../src/shared/types/git.protocol.js';
 import { routerService } from '../services/router.service.js';
 import type { ParsedRoute } from '../types/route.types.js';
 import '../components/spec-card.js';
@@ -16,6 +17,23 @@ import type { ProviderInfo } from '../components/story-card.js';
 import { AosKanbanBoard } from '../components/kanban-board.js';
 import type { AosDocsPanel } from '../components/docs/aos-docs-panel.js';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
+import { MobileBreakpointController } from '../controllers/mobile-breakpoint-controller.js';
+import { deriveFocusItems } from '../utils/focus-strip.derive.js';
+import type { FocusBacklogBoard } from '../utils/focus-strip.derive.js';
+import type { MobileTab } from '../components/mobile/aos-mobile-segmented.js';
+import type { BottomNavItem } from '../components/mobile/aos-mobile-bottom-nav.js';
+import '../components/mobile/aos-mobile-top-bar.js';
+import '../components/mobile/aos-mobile-project-scroller.js';
+import '../components/mobile/aos-mobile-segmented.js';
+import '../components/mobile/aos-mobile-bottom-nav.js';
+import '../components/mobile/aos-mobile-focus-strip.js';
+import '../components/mobile/aos-mobile-project-card.js';
+import '../components/mobile/aos-mobile-side-drawer.js';
+import '../components/mobile/aos-mobile-action-sheet.js';
+import '../components/mobile/aos-mobile-story-list.js';
+import '../components/mobile/aos-mobile-story-sheet.js';
+import '../components/mobile/aos-mobile-spec-top-bar.js';
+import '../components/mobile/aos-mobile-spec-kanban.js';
 
 interface StoryDetail {
   id: string;
@@ -149,6 +167,9 @@ export class AosDashboardView extends LitElement {
   @consume({ context: projectContext, subscribe: true })
   private projectCtx!: ProjectContextValue;
 
+  @property({ type: Object }) gitStatus: GitStatusData | null = null;
+  @property({ type: Array }) gitPrInfo: GitPrInfo[] = [];
+
   @state() private specs: SpecInfo[] = [];
   @state() private loading = true;
   @state() private error = '';
@@ -185,6 +206,13 @@ export class AosDashboardView extends LitElement {
   private _backlogAutoModeBoard: Map<string, AutoModeProgress> = new Map();
   // KAE-004: Auto-mode paused due to error
   @state() private autoModePaused = false;
+
+  // MOB-021: Mobile responsive controller + overlay state
+  private readonly _breakpoint = new MobileBreakpointController(this);
+  @state() private _mobileDrawerOpen = false;
+  @state() private _mobileActionSheetOpen = false;
+  @state() private _mobileStorySheetOpen = false;
+  @state() private _mobileStorySheetStory: StoryInfo | null = null;
   /** v3.30: settings-default for worktree parallelism (cached for git-strategy dialog prefill). */
   @state() private worktreeMaxConcurrentDefault = 2;
   // Track the last auto-mode incident timestamp shown as toast to avoid duplicates on re-renders
@@ -232,6 +260,13 @@ export class AosDashboardView extends LitElement {
     this.checkConnection();
     this.restoreRouteState();
     this.restoreAutoModeState();
+    this._breakpoint.onChange((isMobile) => {
+      if (!isMobile) {
+        this._mobileDrawerOpen = false;
+        this._mobileActionSheetOpen = false;
+        this._mobileStorySheetOpen = false;
+      }
+    });
   }
 
   override updated(changedProperties: Map<string, unknown>) {
@@ -2139,6 +2174,10 @@ export class AosDashboardView extends LitElement {
 
 
   override render() {
+    if (this._breakpoint.isMobile) {
+      return this.renderMobile();
+    }
+
     if (!this.wsConnected) {
       return this.renderConnectionError();
     }
@@ -2741,6 +2780,224 @@ export class AosDashboardView extends LitElement {
   }
 
   // UKB-004: formatStatus removed - was only used by inline backlog rendering
+
+  // ── Mobile rendering ──────────────────────────────────────────────────────
+
+  private get _mobileActiveTab(): MobileTab {
+    if (this.viewMode === 'backlog' || this.viewMode === 'backlog-story') return 'backlog';
+    if (this.viewMode === 'docs') return 'docs';
+    return 'specs';
+  }
+
+  private renderMobile() {
+    if (!this.wsConnected) {
+      return this.renderConnectionError();
+    }
+    if (!this.projectCtx?.activeProject) {
+      return this.renderNoProject();
+    }
+
+    const workspaceName = this.projectCtx.activeProject.name ?? '';
+    const mobileTab = this._mobileActiveTab;
+
+    let mainContent;
+    if (this.viewMode === 'kanban') {
+      mainContent = this.renderMobileSpecDetail();
+    } else if (mobileTab === 'backlog') {
+      mainContent = this.renderBacklogView();
+    } else if (mobileTab === 'docs') {
+      mainContent = html`<aos-docs-panel .active=${true}></aos-docs-panel>`;
+    } else {
+      mainContent = this.renderMobileSpecsList();
+    }
+
+    return html`
+      <div class="mobile-dashboard">
+        ${this.viewMode !== 'kanban' ? html`
+          <aos-mobile-top-bar
+            .workspaceName=${workspaceName}
+            .breadcrumb=${this.selectedSpec?.name ?? ''}
+            @menu-open=${() => { this._mobileDrawerOpen = true; }}
+          ></aos-mobile-top-bar>
+        ` : ''}
+
+        ${this.viewMode !== 'kanban' ? html`
+          <aos-mobile-project-scroller
+            .gitStatus=${this.gitStatus}
+            .prInfo=${this.gitPrInfo}
+          ></aos-mobile-project-scroller>
+        ` : ''}
+
+        ${this.viewMode !== 'kanban' ? html`
+          <aos-mobile-segmented
+            .activeTab=${mobileTab}
+            .specsCount=${this.specs.length}
+            .backlogCount=${this.backlogKanban?.stories.length ?? 0}
+            @tab-change=${this._handleMobileTabChange}
+          ></aos-mobile-segmented>
+        ` : ''}
+
+        <div class="mobile-content">
+          ${mainContent}
+        </div>
+
+        <aos-mobile-terminal-pill></aos-mobile-terminal-pill>
+
+        <aos-mobile-bottom-nav
+          @nav-tap=${this._handleMobileNavTap}
+          @fab-tap=${() => { this._mobileActionSheetOpen = true; }}
+        ></aos-mobile-bottom-nav>
+
+        <aos-mobile-side-drawer
+          .open=${this._mobileDrawerOpen}
+          .workspaceName=${workspaceName}
+          .activeRoute=${'dashboard'}
+          @drawer-close=${() => { this._mobileDrawerOpen = false; }}
+        ></aos-mobile-side-drawer>
+
+        <aos-mobile-action-sheet
+          .open=${this._mobileActionSheetOpen}
+          @action-sheet-close=${() => { this._mobileActionSheetOpen = false; }}
+          @action-select=${this._handleMobileActionSelect}
+        ></aos-mobile-action-sheet>
+
+        <aos-mobile-story-sheet
+          .open=${this._mobileStorySheetOpen}
+          .story=${this._mobileStorySheetStory}
+          @story-sheet-close=${() => {
+            this._mobileStorySheetOpen = false;
+            this._mobileStorySheetStory = null;
+          }}
+        ></aos-mobile-story-sheet>
+
+        ${this.renderCreateSpecModal()}
+      </div>
+    `;
+  }
+
+  private renderMobileSpecsList() {
+    if (this.loading) {
+      return html`<div class="loading-state"><div class="loading-spinner"></div><p>Loading...</p></div>`;
+    }
+    if (this.error) {
+      return this.renderError();
+    }
+
+    const sortedSpecs = this.getSortedSpecs();
+    const focusItems = deriveFocusItems(
+      this.specs.map(s => ({ id: s.id, name: s.name, assignedToBot: s.assignedToBot })),
+      this.backlogKanban as FocusBacklogBoard | null,
+      { enabled: this.autoModeEnabled, paused: this.autoModePaused }
+    );
+
+    return html`
+      ${sortedSpecs.length > 0
+        ? html`<aos-mobile-focus-strip .items=${focusItems}></aos-mobile-focus-strip>`
+        : ''}
+      <div class="mobile-spec-list">
+        ${sortedSpecs.length === 0 ? html`
+          <div class="mobile-empty-state">
+            <div class="mobile-empty-state__icon" aria-hidden="true">
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                <rect x="10" y="6" width="32" height="44" rx="6"
+                      stroke="currentColor" stroke-width="2" fill="none" opacity="0.55"/>
+                <line x1="17" y1="20" x2="35" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+                <line x1="17" y1="28" x2="35" y2="28" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+                <line x1="17" y1="36" x2="27" y2="36" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.25"/>
+                <circle cx="44" cy="44" r="9" fill="var(--color-accent-primary, #00d4ff)"/>
+                <line x1="44" y1="40" x2="44" y2="48" stroke="var(--color-bg-sidebar, #0b1929)" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="40" y1="44" x2="48" y2="44" stroke="var(--color-bg-sidebar, #0b1929)" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h2 class="mobile-empty-state__title">No specs yet</h2>
+            <p class="mobile-empty-state__body">
+              Start by drafting your first spec — describe a feature, fix, or experiment and Specwright takes it from there.
+            </p>
+            <button class="mobile-empty-state__cta" @click=${this.handleOpenCreateSpecModal}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              Create first spec
+            </button>
+          </div>
+        ` : sortedSpecs.map(spec => html`
+          <aos-mobile-project-card
+            .spec=${spec}
+            @spec-select=${this.handleSpecSelect}
+          ></aos-mobile-project-card>
+        `)}
+      </div>
+    `;
+  }
+
+  private renderMobileSpecDetail() {
+    if (!this.kanban) {
+      return this.renderLoading();
+    }
+    const spec = this.selectedSpec;
+    const stories = this.kanban.stories ?? [];
+    const total = stories.length;
+    const done = stories.filter(s => s.status === 'done').length;
+    const progress = total ? Math.round((done / total) * 100) : 0;
+    const idMatch = spec?.id?.match(/^[A-Za-z]+/);
+    const idPrefix = idMatch ? idMatch[0] : (spec?.id ?? '');
+    return html`
+      <div class="mobile-spec-kanban-host">
+        <aos-mobile-spec-top-bar
+          .projectLabel=${spec?.name ?? ''}
+          .idPrefix=${idPrefix}
+          .progress=${progress}
+          .storiesDone=${done}
+          .storiesTotal=${total}
+          @back-tap=${this.handleKanbanBack}
+        ></aos-mobile-spec-top-bar>
+        <aos-mobile-spec-kanban
+          .stories=${stories}
+          @story-open=${this._handleMobileStoryOpen}
+        ></aos-mobile-spec-kanban>
+      </div>
+    `;
+  }
+
+  private _handleMobileTabChange(e: CustomEvent<{ tab: MobileTab }>): void {
+    this.handleTabChange(e.detail.tab);
+  }
+
+  private _handleMobileNavTap(e: CustomEvent<{ item: BottomNavItem }>): void {
+    const { item } = e.detail;
+    if (item === 'home') {
+      if (this.viewMode === 'kanban' || this.viewMode === 'story') {
+        this.handleKanbanBack();
+      } else {
+        routerService.navigate('dashboard');
+      }
+    } else if (item === 'specs') {
+      this.handleTabChange('specs');
+    } else if (item === 'terminal') {
+      this.dispatchEvent(new CustomEvent('terminal-pill-tap', {
+        bubbles: true, composed: true, detail: { route: 'cloud-terminal' }
+      }));
+    } else if (item === 'me') {
+      routerService.navigate('settings');
+    }
+  }
+
+  private _handleMobileActionSelect(e: CustomEvent<{ action: string }>): void {
+    const { action } = e.detail;
+    if (action === 'create-spec') {
+      this.handleOpenCreateSpecModal();
+    } else if (action === 'create-todo') {
+      this.dispatchEvent(new CustomEvent('mobile-open-quick-todo', { bubbles: true, composed: true }));
+    } else if (action === 'create-bug') {
+      this.handleTabChange('backlog');
+    }
+  }
+
+  private _handleMobileStoryOpen(e: CustomEvent<{ story: StoryInfo }>): void {
+    this._mobileStorySheetStory = e.detail.story;
+    this._mobileStorySheetOpen = true;
+  }
 
   protected override createRenderRoot() {
     return this;

@@ -66,6 +66,25 @@
   --attachment-item-bg: var(--color-bg-tertiary, #262626);
   --attachment-delete-color: var(--color-text-muted, #737373);
   --attachment-delete-hover-bg: var(--color-accent-error, #ef4444);
+
+  /* Mobile */
+  --breakpoint-mobile: 767px;
+
+  --space-mobile-xs: 0.25rem;
+  --space-mobile-sm: 0.5rem;
+  --space-mobile-md: 0.75rem;
+  --space-mobile-lg: 1rem;
+  --space-mobile-xl: 1.25rem;
+  --space-mobile-2xl: 1.5rem;
+
+  --touch-target-min: 44px;
+
+  --mobile-top-bar-height: 52px;
+  --mobile-bottom-nav-height: 56px;
+
+  --mobile-sheet-radius: 16px;
+  --mobile-sheet-handle-height: 4px;
+  --mobile-sheet-handle-width: 32px;
 }
 
 /* Dark Theme (Navy-based, Compass) */
@@ -12846,4 +12865,138 @@ aos-model-selector .model-option.selected .model-name {
   border-color: var(--color-border-hover) !important;
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* ============================================================
+   Mobile Utilities
+   ============================================================ */
+.touch-target {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 767px) {
+  aos-app .sidebar {
+    display: none;
+  }
+  aos-app .main-content {
+    margin-left: 0;
+    padding-left: 0;
+  }
+  aos-app .header {
+    display: none;
+  }
+
+  /* Mobile dashboard layout — full-viewport flex column so bottom-nav stays sticky */
+  .mobile-dashboard {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg-primary, #0a1422);
+    overflow: hidden;
+  }
+
+  .mobile-dashboard > aos-mobile-top-bar,
+  .mobile-dashboard > aos-mobile-project-scroller,
+  .mobile-dashboard > aos-mobile-segmented,
+  .mobile-dashboard > aos-mobile-bottom-nav {
+    flex-shrink: 0;
+  }
+
+  .mobile-dashboard > .mobile-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Spec-kanban screen owns its own internal scroll — disable wrapper scroll */
+  .mobile-dashboard > .mobile-content:has(.mobile-spec-kanban-host) {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .mobile-spec-kanban-host {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Mobile empty state — centered, calm, with breathing room */
+  .mobile-dashboard .mobile-spec-list:has(.mobile-empty-state) {
+    display: flex;
+    flex: 1;
+    min-height: 60vh;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-mobile-2xl, 1.5rem);
+  }
+
+  .mobile-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-mobile-md, 0.75rem);
+    max-width: 22rem;
+    padding: var(--space-mobile-xl, 1.25rem) 0;
+  }
+
+  .mobile-empty-state__icon {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-accent-primary, #00d4ff) 8%, transparent);
+    color: var(--color-text-secondary, #94a3b8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--space-mobile-xs, 0.25rem);
+  }
+
+  .mobile-empty-state__title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text-primary, #e8edf2);
+    letter-spacing: -0.01em;
+  }
+
+  .mobile-empty-state__body {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--color-text-muted, #64748b);
+  }
+
+  .mobile-empty-state__cta {
+    margin-top: var(--space-mobile-sm, 0.5rem);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: var(--touch-target-min, 44px);
+    padding: 0 1.25rem;
+    background: var(--color-accent-primary, #00d4ff);
+    color: var(--color-bg-sidebar, #0b1929);
+    border: none;
+    border-radius: 999px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--color-accent-primary, #00d4ff) 30%, transparent);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  }
+
+  .mobile-empty-state__cta:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
 }

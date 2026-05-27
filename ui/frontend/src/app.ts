@@ -17,6 +17,23 @@ import './components/aos-project-add-modal.js';
 import './components/aos-context-menu.js';
 import './components/aos-quick-todo-modal.js';
 import './components/terminal/aos-cloud-terminal-sidebar.js';
+import './components/mobile/aos-mobile-sheet.js';
+import './components/mobile/aos-mobile-top-bar.js';
+import './components/mobile/aos-mobile-project-scroller.js';
+import './components/mobile/aos-mobile-segmented.js';
+import './components/mobile/aos-mobile-bottom-nav.js';
+import './components/mobile/aos-mobile-focus-strip.js';
+import './components/mobile/aos-mobile-project-card.js';
+import './components/mobile/aos-mobile-terminal-pill.js';
+import './components/mobile/aos-mobile-side-drawer.js';
+import './components/mobile/aos-mobile-action-sheet.js';
+import './components/mobile/aos-mobile-terminal-header.js';
+import './components/mobile/aos-mobile-session-tabs.js';
+import './components/mobile/aos-mobile-connection-bar.js';
+import './components/mobile/aos-mobile-quick-replies.js';
+import './components/mobile/aos-mobile-story-card.js';
+import './components/mobile/aos-mobile-story-list.js';
+import './components/mobile/aos-mobile-story-sheet.js';
 import './components/file-editor/aos-file-tree-sidebar.js';
 import './components/file-editor/aos-file-editor-panel.js';
 import './components/document-preview/aos-document-preview-panel.js';
@@ -1853,7 +1870,12 @@ export class AosApp extends LitElement {
   private renderView() {
     switch (this.currentRoute) {
       case 'dashboard':
-        return html`<aos-dashboard-view @show-toast=${this._handleShowToast}></aos-dashboard-view>`;
+        return html`<aos-dashboard-view
+          .gitStatus=${this.gitStatus}
+          .gitPrInfo=${this.gitPrInfo}
+          @show-toast=${this._handleShowToast}
+          @terminal-pill-tap=${this._handleTerminalToggle}
+        ></aos-dashboard-view>`;
       case 'getting-started':
         return html`<aos-getting-started-view
           .hasProductBrief=${this.projectHasProductBrief}
