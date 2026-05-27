@@ -22,6 +22,12 @@ export class AosMobileProjectScroller extends LitElement {
     this._projectCtx.switchProject(e.detail.projectId);
   }
 
+  private _onAddProject(): void {
+    this.dispatchEvent(
+      new CustomEvent('add-project', { bubbles: true, composed: true })
+    );
+  }
+
   override render() {
     const { openProjects, activeProject } = this._projectCtx;
 
@@ -44,6 +50,17 @@ export class AosMobileProjectScroller extends LitElement {
               ></aos-mobile-project-chip>
             `
           )}
+          <button
+            class="add-btn touch-target"
+            @click=${this._onAddProject}
+            aria-label="Add project"
+            title="Add project"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              <line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
         </div>
         <aos-mobile-branch-row
           .gitStatus=${this.gitStatus}
@@ -77,6 +94,33 @@ export class AosMobileProjectScroller extends LitElement {
 
     .chips::-webkit-scrollbar {
       display: none;
+    }
+
+    .add-btn {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px dashed var(--color-border, #1e3a5f);
+      border-radius: var(--radius-full, 999px);
+      color: var(--color-accent-primary, #00d4ff);
+      cursor: pointer;
+      font-family: inherit;
+      margin-left: var(--space-mobile-xs, 0.25rem);
+    }
+
+    .add-btn:active {
+      background: rgba(0, 212, 255, 0.12);
+      border-style: solid;
+    }
+
+    .touch-target {
+      min-height: var(--touch-target-min, 44px);
+      min-width: var(--touch-target-min, 44px);
     }
   `;
 }

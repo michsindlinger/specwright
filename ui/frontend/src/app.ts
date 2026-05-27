@@ -1875,6 +1875,7 @@ export class AosApp extends LitElement {
           .gitPrInfo=${this.gitPrInfo}
           @show-toast=${this._handleShowToast}
           @terminal-pill-tap=${this._handleTerminalToggle}
+          @add-project=${this.handleAddProject}
         ></aos-dashboard-view>`;
       case 'getting-started':
         return html`<aos-getting-started-view
