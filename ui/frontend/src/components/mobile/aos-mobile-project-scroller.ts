@@ -69,7 +69,7 @@ export class AosMobileProjectScroller extends LitElement {
       display: flex;
       align-items: center;
       gap: var(--space-mobile-xs, 0.25rem);
-      padding: var(--space-mobile-xs, 0.25rem) var(--space-mobile-sm, 0.5rem);
+      padding: var(--space-mobile-md, 0.75rem) var(--space-mobile-sm, 0.5rem) var(--space-mobile-sm, 0.5rem);
       overflow-x: auto;
       scrollbar-width: none;
       -webkit-overflow-scrolling: touch;

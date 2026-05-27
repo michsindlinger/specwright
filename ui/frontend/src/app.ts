@@ -1871,6 +1871,8 @@ export class AosApp extends LitElement {
     switch (this.currentRoute) {
       case 'dashboard':
         return html`<aos-dashboard-view
+          .gitStatus=${this.gitStatus}
+          .gitPrInfo=${this.gitPrInfo}
           @show-toast=${this._handleShowToast}
           @terminal-pill-tap=${this._handleTerminalToggle}
         ></aos-dashboard-view>`;

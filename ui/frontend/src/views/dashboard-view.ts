@@ -1,7 +1,8 @@
 import { LitElement, html } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, state, property } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { gateway, WebSocketMessage } from '../gateway.js';
+import type { GitStatusData, GitPrInfo } from '../../../src/shared/types/git.protocol.js';
 import { routerService } from '../services/router.service.js';
 import type { ParsedRoute } from '../types/route.types.js';
 import '../components/spec-card.js';
@@ -31,6 +32,8 @@ import '../components/mobile/aos-mobile-side-drawer.js';
 import '../components/mobile/aos-mobile-action-sheet.js';
 import '../components/mobile/aos-mobile-story-list.js';
 import '../components/mobile/aos-mobile-story-sheet.js';
+import '../components/mobile/aos-mobile-spec-top-bar.js';
+import '../components/mobile/aos-mobile-spec-kanban.js';
 
 interface StoryDetail {
   id: string;
@@ -163,6 +166,9 @@ const DEFAULT_PROVIDERS: ProviderInfo[] = [
 export class AosDashboardView extends LitElement {
   @consume({ context: projectContext, subscribe: true })
   private projectCtx!: ProjectContextValue;
+
+  @property({ type: Object }) gitStatus: GitStatusData | null = null;
+  @property({ type: Array }) gitPrInfo: GitPrInfo[] = [];
 
   @state() private specs: SpecInfo[] = [];
   @state() private loading = true;
@@ -2807,11 +2813,20 @@ export class AosDashboardView extends LitElement {
 
     return html`
       <div class="mobile-dashboard">
-        <aos-mobile-top-bar
-          .workspaceName=${workspaceName}
-          .breadcrumb=${this.selectedSpec?.name ?? ''}
-          @menu-open=${() => { this._mobileDrawerOpen = true; }}
-        ></aos-mobile-top-bar>
+        ${this.viewMode !== 'kanban' ? html`
+          <aos-mobile-top-bar
+            .workspaceName=${workspaceName}
+            .breadcrumb=${this.selectedSpec?.name ?? ''}
+            @menu-open=${() => { this._mobileDrawerOpen = true; }}
+          ></aos-mobile-top-bar>
+        ` : ''}
+
+        ${this.viewMode !== 'kanban' ? html`
+          <aos-mobile-project-scroller
+            .gitStatus=${this.gitStatus}
+            .prInfo=${this.gitPrInfo}
+          ></aos-mobile-project-scroller>
+        ` : ''}
 
         ${this.viewMode !== 'kanban' ? html`
           <aos-mobile-segmented
@@ -2876,12 +2891,35 @@ export class AosDashboardView extends LitElement {
     );
 
     return html`
-      <aos-mobile-focus-strip .items=${focusItems}></aos-mobile-focus-strip>
+      ${sortedSpecs.length > 0
+        ? html`<aos-mobile-focus-strip .items=${focusItems}></aos-mobile-focus-strip>`
+        : ''}
       <div class="mobile-spec-list">
         ${sortedSpecs.length === 0 ? html`
           <div class="mobile-empty-state">
-            <p>No specs found</p>
-            <button class="primary-btn" @click=${this.handleOpenCreateSpecModal}>Create First Spec</button>
+            <div class="mobile-empty-state__icon" aria-hidden="true">
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                <rect x="10" y="6" width="32" height="44" rx="6"
+                      stroke="currentColor" stroke-width="2" fill="none" opacity="0.55"/>
+                <line x1="17" y1="20" x2="35" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+                <line x1="17" y1="28" x2="35" y2="28" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+                <line x1="17" y1="36" x2="27" y2="36" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.25"/>
+                <circle cx="44" cy="44" r="9" fill="var(--color-accent-primary, #00d4ff)"/>
+                <line x1="44" y1="40" x2="44" y2="48" stroke="var(--color-bg-sidebar, #0b1929)" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="40" y1="44" x2="48" y2="44" stroke="var(--color-bg-sidebar, #0b1929)" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h2 class="mobile-empty-state__title">No specs yet</h2>
+            <p class="mobile-empty-state__body">
+              Start by drafting your first spec — describe a feature, fix, or experiment and Specwright takes it from there.
+            </p>
+            <button class="mobile-empty-state__cta" @click=${this.handleOpenCreateSpecModal}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              Create first spec
+            </button>
           </div>
         ` : sortedSpecs.map(spec => html`
           <aos-mobile-project-card
@@ -2897,24 +2935,27 @@ export class AosDashboardView extends LitElement {
     if (!this.kanban) {
       return this.renderLoading();
     }
+    const spec = this.selectedSpec;
+    const stories = this.kanban.stories ?? [];
+    const total = stories.length;
+    const done = stories.filter(s => s.status === 'done').length;
+    const progress = total ? Math.round((done / total) * 100) : 0;
+    const idMatch = spec?.id?.match(/^[A-Za-z]+/);
+    const idPrefix = idMatch ? idMatch[0] : (spec?.id ?? '');
     return html`
-      <div class="mobile-spec-detail">
-        <div class="mobile-spec-detail-header">
-          <button
-            class="mobile-back-btn touch-target"
-            @click=${this.handleKanbanBack}
-            aria-label="Back to specs"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <span class="mobile-spec-detail-name">${this.selectedSpec?.name ?? ''}</span>
-        </div>
-        <aos-mobile-story-list
-          .stories=${this.kanban.stories}
+      <div class="mobile-spec-kanban-host">
+        <aos-mobile-spec-top-bar
+          .projectLabel=${spec?.name ?? ''}
+          .idPrefix=${idPrefix}
+          .progress=${progress}
+          .storiesDone=${done}
+          .storiesTotal=${total}
+          @back-tap=${this.handleKanbanBack}
+        ></aos-mobile-spec-top-bar>
+        <aos-mobile-spec-kanban
+          .stories=${stories}
           @story-open=${this._handleMobileStoryOpen}
-        ></aos-mobile-story-list>
+        ></aos-mobile-spec-kanban>
       </div>
     `;
   }

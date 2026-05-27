@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
 
 interface Model {
@@ -31,6 +31,9 @@ export type ModelSelectedDetail =
  */
 @customElement('aos-model-dropdown')
 export class AosModelDropdown extends LitElement {
+  /** Mobile-friendly layout: full-width button, ≥44px touch targets, bottom-sheet menu. */
+  @property({ type: Boolean, reflect: true }) compact = false;
+
   @state() private providers: Provider[] = [];
   @state() private selectedModel: Model | null = null;
   @state() private isTerminalSelected = false;
@@ -194,6 +197,61 @@ export class AosModelDropdown extends LitElement {
       display: inline-block;
       vertical-align: middle;
       margin-right: 0.25rem;
+    }
+
+    /* Compact = mobile-optimized layout */
+    :host([compact]) {
+      display: block;
+      width: 100%;
+    }
+
+    :host([compact]) .dropdown-button {
+      width: 100%;
+      min-height: 44px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      border-radius: 8px;
+    }
+
+    :host([compact]) .model-name {
+      font-size: 1rem;
+    }
+
+    :host([compact]) .model-provider {
+      font-size: 0.85rem;
+    }
+
+    :host([compact]) .dropdown-menu {
+      position: fixed;
+      top: auto;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      min-width: 0;
+      max-height: 70vh;
+      border-radius: 12px 12px 0 0;
+      border-bottom: none;
+      box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+    }
+
+    :host([compact]) .provider-label {
+      padding: 0.75rem 1rem 0.5rem;
+      font-size: 0.75rem;
+    }
+
+    :host([compact]) .model-option {
+      min-height: 44px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+    }
+
+    :host([compact]) .model-option-name {
+      font-size: 1rem;
+    }
+
+    :host([compact]) .model-provider-name {
+      font-size: 0.85rem;
     }
   `;
 

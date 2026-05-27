@@ -24,6 +24,8 @@ export class AosTerminalSession extends LitElement {
   @property({ type: Object }) session!: TerminalSession;
   @property({ type: Boolean }) isActive = false;
   @property({ type: String }) terminalSessionId: string | null = null;
+  /** Mobile-optimized layout: hides session-header chrome + plan-review block. */
+  @property({ type: Boolean, reflect: true }) compact = false;
 
   @state() private connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'reconnecting' = 'connecting';
   @state() private errorMessage: string | null = null;
@@ -257,6 +259,20 @@ export class AosTerminalSession extends LitElement {
     .loading-text {
       font-size: 13px;
       color: var(--text-color-secondary, #a0a0a0);
+    }
+
+    /* Compact = mobile-optimized layout. Hides chrome that's already shown
+       by surrounding mobile UI (connection bar, mobile header). */
+    :host([compact]) {
+      min-height: 0;
+    }
+
+    :host([compact]) .session-header {
+      display: none;
+    }
+
+    :host([compact]) aos-plan-review-block {
+      display: none;
     }
   `];
 

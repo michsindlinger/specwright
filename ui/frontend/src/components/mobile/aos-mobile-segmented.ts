@@ -58,7 +58,7 @@ export class AosMobileSegmented extends LitElement {
   static styles = css`
     :host {
       display: block;
-      padding: var(--space-mobile-xs, 0.25rem) var(--space-mobile-screen-x, 1rem);
+      padding: var(--space-mobile-sm, 0.5rem) var(--space-mobile-screen-x, 1rem);
       background: var(--color-bg-sidebar, #0b1929);
     }
 

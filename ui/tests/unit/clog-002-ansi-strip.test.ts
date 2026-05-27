@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { stripAnsi } from '../../frontend/src/utils/ansi-strip';
+import { stripAnsi, collapseTtyRewrites } from '../../frontend/src/utils/ansi-strip';
 
 describe('stripAnsi', () => {
   it('returns empty string unchanged', () => {
@@ -100,5 +100,49 @@ describe('stripAnsi', () => {
   it('strips real-world Claude Code log line (status + colour)', () => {
     const line = '\x1B[90m[INFO]\x1B[0m \x1B[32m✓\x1B[0m executed task';
     expect(stripAnsi(line)).toBe('[INFO] ✓ executed task');
+  });
+});
+
+describe('collapseTtyRewrites', () => {
+  it('returns empty string unchanged', () => {
+    expect(collapseTtyRewrites('')).toBe('');
+  });
+
+  it('passes through plain text', () => {
+    expect(collapseTtyRewrites('hello world')).toBe('hello world');
+  });
+
+  it('applies backspace by dropping previous character', () => {
+    expect(collapseTtyRewrites('abc\b\bz')).toBe('az');
+  });
+
+  it('sole CR resets the current line buffer (TUI overwrite)', () => {
+    expect(collapseTtyRewrites('hello\rworld')).toBe('world');
+  });
+
+  it('preserves CRLF as a single line terminator', () => {
+    expect(collapseTtyRewrites('line1\r\nline2')).toBe('line1\nline2');
+  });
+
+  it('sole CR after a partial line resets only that line, LF still terminates', () => {
+    expect(collapseTtyRewrites('line1\rline2\nline3')).toBe('line2\nline3');
+  });
+
+  it('backspace on empty line buffer is a safe no-op', () => {
+    expect(collapseTtyRewrites('\bonly')).toBe('only');
+  });
+
+  it('backspace works across lines (only affects current line)', () => {
+    expect(collapseTtyRewrites('a\nb\bc')).toBe('a\nc');
+  });
+
+  it('collapses a spinner sequence to its final frame', () => {
+    expect(collapseTtyRewrites('\rfoo\rbar\rfinal')).toBe('final');
+  });
+
+  it('is idempotent (running twice equals once)', () => {
+    const sample = 'a\rb\bc\r\nd';
+    const once = collapseTtyRewrites(sample);
+    expect(collapseTtyRewrites(once)).toBe(once);
   });
 });

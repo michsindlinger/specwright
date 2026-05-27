@@ -483,6 +483,13 @@ export class AosCloudTerminalSidebar extends LitElement {
         min-height: 0;
         overflow: hidden;
       }
+
+      .mobile-log-area aos-terminal-session {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        display: block;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -521,11 +528,7 @@ export class AosCloudTerminalSidebar extends LitElement {
           ${this.errorMessage ? this._renderErrorBanner() : nothing}
           ${this.loadingState.isLoading ? this._renderLoadingOverlay() : nothing}
           ${isPaused && activeSession ? this._renderPausedIndicator(activeSession) : nothing}
-          ${activeSession
-            ? html`<aos-claude-log-panel
-                .sessionId=${activeSession.terminalSessionId ?? ''}
-              ></aos-claude-log-panel>`
-            : this._renderEmptyState()}
+          ${this._renderMobileLogAreaContent(activeSession)}
         </div>
 
         ${activeSession?.terminalSessionId ? html`
@@ -546,12 +549,33 @@ export class AosCloudTerminalSidebar extends LitElement {
   private _handleMobileTextSend(e: CustomEvent<{ text: string }>) {
     const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
     if (!activeSession?.terminalSessionId) return;
+    // Claude Code TUI submits prompts on CR (0x0D), matching xterm.js Enter default.
+    // LF (0x0A) would be treated as in-buffer newline (multiline input), not submit.
     gateway.send({
       type: 'cloud-terminal:input',
       sessionId: activeSession.terminalSessionId,
-      data: e.detail.text + '\n',
+      data: e.detail.text + '\r',
       timestamp: new Date().toISOString(),
     });
+  }
+
+  /**
+   * Mobile log-area content. Delegates ALL session sub-states (picker, connecting,
+   * connected, error, expired) to `aos-terminal-session`, which renders an inline
+   * model picker when terminalSessionId is null and the xterm session once connected.
+   */
+  private _renderMobileLogAreaContent(session: TerminalSession | undefined) {
+    if (!session) {
+      return this._renderEmptyState();
+    }
+    return html`<aos-terminal-session
+      compact
+      .session=${session}
+      .isActive=${true}
+      .terminalSessionId=${session.terminalSessionId ?? null}
+      @session-connected=${this._handleSessionConnected}
+      @input-needed=${this._handleInputNeeded}
+    ></aos-terminal-session>`;
   }
 
   override render() {

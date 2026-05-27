@@ -18,7 +18,8 @@ export class AosMobileTopBar extends LitElement {
   }
 
   override render() {
-    const label = this.breadcrumb || this.workspaceName;
+    const title = this.breadcrumb || 'Dashboard';
+    const subtitle = this.workspaceName;
 
     return html`
       <header class="top-bar" role="banner">
@@ -35,13 +36,17 @@ export class AosMobileTopBar extends LitElement {
         </button>
 
         <div class="brand">
-          <svg class="logo" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-            <rect width="22" height="22" rx="6" fill="var(--color-accent-primary, #00D4FF)" opacity="0.15"/>
-            <path d="M6 11 L11 6 L16 11 L11 16 Z" fill="var(--color-accent-primary, #00D4FF)"/>
+          <svg class="logo" width="22" height="22" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <path d="M20 4 L34 30 L6 30 Z" stroke="var(--color-accent-primary, #00D4FF)" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M20 14 L27 27 L13 27 Z" fill="var(--color-accent-primary, #00D4FF)" fill-opacity="0.85"/>
+            <circle cx="20" cy="9" r="1.6" fill="var(--color-accent-primary, #00D4FF)"/>
           </svg>
-          ${label
-            ? html`<span class="label">${label}</span>`
-            : nothing}
+          <div class="labels">
+            <span class="title">${title}</span>
+            ${subtitle
+              ? html`<span class="subtitle">${subtitle}</span>`
+              : nothing}
+          </div>
         </div>
 
         <div class="actions">
@@ -122,10 +127,26 @@ export class AosMobileTopBar extends LitElement {
       flex-shrink: 0;
     }
 
-    .label {
-      font-size: 0.9375rem;
-      font-weight: 600;
+    .labels {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+      min-width: 0;
+    }
+
+    .title {
+      font-size: 0.8125rem;
+      font-weight: 700;
       color: var(--color-text-primary, #e8edf2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .subtitle {
+      font-size: 0.65625rem;
+      color: var(--color-text-muted, #64748b);
+      font-family: var(--font-family-mono, ui-monospace, monospace);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
