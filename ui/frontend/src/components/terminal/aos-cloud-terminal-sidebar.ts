@@ -467,6 +467,7 @@ export class AosCloudTerminalSidebar extends LitElement {
         display: flex;
         flex-direction: column;
         background: var(--bg-color-secondary, #1e1e1e);
+        overscroll-behavior: contain;
       }
 
       .mobile-log-area {
@@ -1117,6 +1118,9 @@ export class AosCloudTerminalSidebar extends LitElement {
   override updated(changed: PropertyValues): void {
     if (changed.has('isOpen')) {
       this.updateContentOffset();
+      if (this._mobileController.isMobile) {
+        document.body.style.overflow = this.isOpen ? 'hidden' : '';
+      }
     }
     // Refresh terminal rendering after sidebar opens (desktop only — mobile uses aos-claude-log-panel)
     if (changed.has('isOpen') && this.isOpen && !this._mobileController.isMobile) {
@@ -1175,6 +1179,7 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
+    document.body.style.overflow = '';
     document.documentElement.style.setProperty('--terminal-open-width', '0px');
     gateway.off('model.providers.list', this.boundHandleProvidersListResponse);
     gateway.off('plan-review:config.snapshot', this.boundHandleConfigSnapshot);
