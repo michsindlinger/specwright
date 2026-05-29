@@ -211,7 +211,7 @@ sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
 # SSH key. Other Git hosts are unaffected.
 echo "==> Configuring insteadOf rewrite for SSH GitHub remotes"
 sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
-    git config --global "url.https://github.com/.insteadOf" "git@github.com:"
+    git config --global --replace-all "url.https://github.com/.insteadOf" "git@github.com:"
 sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
     git config --global --add "url.https://github.com/.insteadOf" "ssh://git@github.com/"
 
