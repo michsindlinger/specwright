@@ -12,6 +12,7 @@ import '../mobile/aos-mobile-terminal-header.js';
 import '../mobile/aos-mobile-session-tabs.js';
 import '../mobile/aos-mobile-connection-bar.js';
 import '../mobile/aos-mobile-quick-replies.js';
+import '../mobile/aos-mobile-terminal-keys.js';
 import '../mobile/aos-mobile-input-bar-idle.js';
 import '../aos-claude-log-panel.js';
 
@@ -537,6 +538,10 @@ export class AosCloudTerminalSidebar extends LitElement {
             .sessionId=${activeSession.terminalSessionId}
             @reply-send=${this._handleMobileTextSend}
           ></aos-mobile-quick-replies>
+          <aos-mobile-terminal-keys
+            .sessionId=${activeSession.terminalSessionId}
+            @key-send=${this._handleMobileKeySend}
+          ></aos-mobile-terminal-keys>
         ` : nothing}
 
         <aos-mobile-input-bar-idle
@@ -556,6 +561,17 @@ export class AosCloudTerminalSidebar extends LitElement {
       type: 'cloud-terminal:input',
       sessionId: activeSession.terminalSessionId,
       data: e.detail.text + '\r',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  private _handleMobileKeySend(e: CustomEvent<{ sequence: string }>) {
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    if (!activeSession?.terminalSessionId) return;
+    gateway.send({
+      type: 'cloud-terminal:input',
+      sessionId: activeSession.terminalSessionId,
+      data: e.detail.sequence,
       timestamp: new Date().toISOString(),
     });
   }
