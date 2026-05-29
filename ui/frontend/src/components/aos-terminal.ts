@@ -124,6 +124,16 @@ export class AosTerminal extends LitElement {
   /** Guard to prevent multiple concurrent refreshTerminal() calls */
   private _refreshInProgress = false;
 
+  // Touch-scroll bridge: xterm.js only scrolls on wheel events, and its scrollable
+  // .xterm-viewport sits behind the .xterm-screen, so touch drags never reach it.
+  // We translate single-finger vertical drags into viewport.scrollTop changes, which
+  // fires xterm's own scroll handler and syncs the buffer rendering.
+  private _xtermViewport: HTMLElement | null = null;
+  private _touchStartY = 0;
+  private _touchStartScrollTop = 0;
+  private boundTouchStartHandler = (e: TouchEvent) => this._onTouchStart(e);
+  private boundTouchMoveHandler = (e: TouchEvent) => this._onTouchMove(e);
+
   override connectedCallback(): void {
     super.connectedCallback();
     themeService.onChange(this.boundThemeChangeHandler);
@@ -256,6 +266,9 @@ export class AosTerminal extends LitElement {
 
     // Fit terminal to container
     this.fitAddon.fit();
+
+    // Enable touch scrolling (no-op on non-touch devices, harmless on desktop)
+    this._setupTouchScroll();
 
     // Custom key event handler for terminal shortcuts.
     // attachCustomKeyEventHandler is called for ALL event types: keydown, keypress, keyup.
@@ -708,7 +721,53 @@ export class AosTerminal extends LitElement {
     }
   }
 
+  /**
+   * Bridge touch gestures to xterm's scrollback.
+   *
+   * xterm.js only reacts to `wheel` events for scrolling, so on touch devices
+   * (mobile) long output is unreachable. We attach touch listeners to the
+   * terminal container (events bubble up from .xterm-screen) and translate a
+   * single-finger vertical drag into a `scrollTop` change on .xterm-viewport.
+   * Setting scrollTop fires xterm's internal scroll handler, which keeps the
+   * rendered buffer in sync — same path used by the native scrollbar.
+   */
+  private _setupTouchScroll(): void {
+    if (!this.terminalContainer) return;
+    this._xtermViewport = this.terminalContainer.querySelector('.xterm-viewport');
+    this.terminalContainer.addEventListener('touchstart', this.boundTouchStartHandler, { passive: true });
+    this.terminalContainer.addEventListener('touchmove', this.boundTouchMoveHandler, { passive: false });
+  }
+
+  private _onTouchStart(event: TouchEvent): void {
+    if (event.touches.length !== 1) return;
+    // Viewport may not have existed when listeners were attached (deferred render).
+    if (!this._xtermViewport) {
+      this._xtermViewport = this.terminalContainer?.querySelector('.xterm-viewport') ?? null;
+    }
+    this._touchStartY = event.touches[0].clientY;
+    this._touchStartScrollTop = this._xtermViewport?.scrollTop ?? 0;
+  }
+
+  private _onTouchMove(event: TouchEvent): void {
+    if (event.touches.length !== 1 || !this._xtermViewport) return;
+
+    const maxScroll = this._xtermViewport.scrollHeight - this._xtermViewport.clientHeight;
+    if (maxScroll <= 0) return; // Nothing to scroll — let the gesture pass through.
+
+    const deltaY = this._touchStartY - event.touches[0].clientY;
+    this._xtermViewport.scrollTop = this._touchStartScrollTop + deltaY;
+
+    // Stop the surrounding overlay from scrolling / selecting text while we pan.
+    event.preventDefault();
+  }
+
   private cleanupTerminal(): void {
+    if (this.terminalContainer) {
+      this.terminalContainer.removeEventListener('touchstart', this.boundTouchStartHandler);
+      this.terminalContainer.removeEventListener('touchmove', this.boundTouchMoveHandler);
+    }
+    this._xtermViewport = null;
+
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
