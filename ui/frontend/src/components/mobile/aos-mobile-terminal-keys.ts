@@ -16,6 +16,7 @@ const TERMINAL_KEYS: TerminalKey[] = [
   { label: 'Tab', sequence: '\t', ariaLabel: 'Tab', wide: true },
   { label: 'Esc', sequence: '\x1b', ariaLabel: 'Escape', wide: true },
   { label: 'Ctrl+C', sequence: '\x03', ariaLabel: 'Abbrechen', wide: true },
+  { label: 'Enter', sequence: '\r', ariaLabel: 'Eingabe bestätigen', wide: true },
 ];
 
 export interface KeySendDetail {
