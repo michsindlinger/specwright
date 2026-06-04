@@ -24,9 +24,24 @@ const SPEC_COLUMNS: readonly ColumnDef[] = [
 export class AosMobileSpecKanban extends LitElement {
   @property({ type: Array }) stories: StoryInfo[] = [];
   @property({ type: String }) initialColumn: SpecStatus = 'in_progress';
+  @property({ type: Boolean }) autoModeEnabled = false;
 
   @state() private _activeColumn: SpecStatus = 'in_progress';
   @state() private _initialized = false;
+
+  /** Auto-Mode is only toggleable while at least one story is still open. */
+  private get _hasOpenStories(): boolean {
+    return this.stories.some(s => s.status !== 'done');
+  }
+
+  private _handleAutoToggle(): void {
+    if (!this._hasOpenStories) return;
+    this.dispatchEvent(new CustomEvent('auto-mode-toggle', {
+      detail: { enabled: !this.autoModeEnabled },
+      bubbles: true,
+      composed: true,
+    }));
+  }
 
   override willUpdate(changed: Map<string, unknown>): void {
     if (!this._initialized && changed.has('initialColumn')) {
@@ -64,10 +79,16 @@ export class AosMobileSpecKanban extends LitElement {
 
     return html`
       <div class="control-bar">
-        <span class="ctl-toggle on" aria-disabled="true">
+        <button
+          class="ctl-toggle ${this.autoModeEnabled ? 'on' : ''}"
+          ?disabled=${!this._hasOpenStories}
+          aria-pressed=${this.autoModeEnabled}
+          title=${!this._hasOpenStories ? 'Alle Stories sind erledigt' : 'Auto-Mode umschalten'}
+          @click=${this._handleAutoToggle}
+        >
           Auto
-          <span class="switch on"><span class="knob"></span></span>
-        </span>
+          <span class="switch ${this.autoModeEnabled ? 'on' : ''}"><span class="knob"></span></span>
+        </button>
         <span class="ctl-toggle" aria-disabled="true">
           Bot
           <span class="switch"><span class="knob"></span></span>
@@ -193,6 +214,14 @@ export class AosMobileSpecKanban extends LitElement {
       font-size: 0.6875rem;
       font-weight: 600;
       color: var(--color-text-muted, #64748b);
+      font-family: inherit;
+    }
+    button.ctl-toggle {
+      cursor: pointer;
+    }
+    button.ctl-toggle:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
     .ctl-toggle.on {
       color: var(--color-accent-primary, #00d4ff);

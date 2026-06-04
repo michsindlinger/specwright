@@ -14,7 +14,8 @@ import type { SpecInfo } from '../components/spec-card.js';
 import type { KanbanBoard, StoryInfo, AutoModeProgress, AutoModeProgressBoard, KanbanStatus } from '../components/kanban-board.js';
 import type { AutoModeSnapshot as AutoModeSnapshotMsg } from '../../../src/shared/types/auto-mode.protocol.js';
 import type { ProviderInfo } from '../components/story-card.js';
-import { AosKanbanBoard } from '../components/kanban-board.js';
+import { AosKanbanBoard, canMoveToInProgress } from '../components/kanban-board.js';
+import type { GitStrategy } from '../components/git-strategy-dialog.js';
 import type { AosDocsPanel } from '../components/docs/aos-docs-panel.js';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
 import { MobileBreakpointController } from '../controllers/mobile-breakpoint-controller.js';
@@ -1554,15 +1555,15 @@ export class AosDashboardView extends LitElement {
       return;
     }
 
-    // Get reference to kanban board component
+    // Get reference to kanban board component. On mobile the desktop board is
+    // not in the DOM, so fall back to the dashboard-level implementation that
+    // reuses the same ready-story logic but skips the desktop git-strategy dialog.
     const kanbanBoard = this.querySelector('aos-kanban-board') as AosKanbanBoard | null;
-    if (!kanbanBoard) {
-      console.log('[Dashboard] processAutoExecution: no kanbanBoard element');
-      return;
-    }
 
     // Get next ready story
-    const nextStory = kanbanBoard.getNextReadyStory();
+    const nextStory = kanbanBoard
+      ? kanbanBoard.getNextReadyStory()
+      : this.getNextReadyStoryMobile();
     console.log('[Dashboard] processAutoExecution: nextStory =', nextStory?.id ?? null);
     if (!nextStory) {
       // No more ready stories - check if all done
@@ -1616,7 +1617,60 @@ export class AosDashboardView extends LitElement {
     }
 
     // Start the next story
-    kanbanBoard.startStoryAutoExecution(nextStory.id);
+    if (kanbanBoard) {
+      kanbanBoard.startStoryAutoExecution(nextStory.id);
+    } else {
+      this.startStoryAutoExecutionMobile(nextStory.id);
+    }
+  }
+
+  /**
+   * Mobile fallback for AosKanbanBoard.getNextReadyStory().
+   * Mirrors the board logic (first backlog story without a pending user-action
+   * whose dependencies are satisfied) using only dashboard-level state, so
+   * auto-mode works on the mobile spec kanban where no board element exists.
+   */
+  private getNextReadyStoryMobile(): StoryInfo | null {
+    if (!this.kanban) return null;
+    const backlogStories = this.kanban.stories.filter(
+      s => s.status === 'backlog' && s.requiresUserAction !== true
+    );
+    for (const story of backlogStories) {
+      if (canMoveToInProgress(story, this.kanban.stories).valid) {
+        return story;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Mobile fallback for AosKanbanBoard.startStoryAutoExecution().
+   * Moves the story to in_progress and triggers the backend workflow with
+   * autoMode so the backend auto-continues to the next story. The git strategy
+   * comes from the spec (no desktop dialog on mobile); defaults to 'branch'.
+   */
+  private startStoryAutoExecutionMobile(storyId: string): void {
+    if (!this.selectedSpec || !this.kanban) return;
+    const story = this.kanban.stories.find(s => s.id === storyId);
+    if (!story || story.status !== 'backlog' || story.requiresUserAction === true) return;
+
+    const gitStrategy: GitStrategy = this.selectedSpec.gitStrategy ?? 'branch';
+    const model = story.model || 'opus';
+
+    // Optimistic local move + backend status persistence (mirrors handleStoryMove).
+    this.handleStoryMove(new CustomEvent('story-move', {
+      detail: { storyId, fromStatus: story.status, toStatus: 'in_progress' }
+    }));
+
+    // Trigger the workflow; autoMode lets the backend auto-continue the chain.
+    gateway.send({
+      type: 'workflow.story.start',
+      specId: this.selectedSpec.id,
+      storyId,
+      gitStrategy,
+      model,
+      autoMode: this.autoModeEnabled
+    });
   }
 
   private handleSpecSelect(e: CustomEvent): void {
@@ -2954,6 +3008,8 @@ export class AosDashboardView extends LitElement {
         ></aos-mobile-spec-top-bar>
         <aos-mobile-spec-kanban
           .stories=${stories}
+          .autoModeEnabled=${this.autoModeEnabled}
+          @auto-mode-toggle=${this.handleAutoModeToggle}
           @story-open=${this._handleMobileStoryOpen}
         ></aos-mobile-spec-kanban>
       </div>
