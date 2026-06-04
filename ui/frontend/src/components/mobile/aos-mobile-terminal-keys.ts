@@ -7,9 +7,13 @@ interface TerminalKey {
   sequence: string;
   ariaLabel: string;
   wide?: boolean;
+  /** Highlight with the accent color (e.g. shortcut for a slash command). */
+  accent?: boolean;
 }
 
 const TERMINAL_KEYS: TerminalKey[] = [
+  // Shortcut: types `/resume` and presses Enter in one tap.
+  { label: '/resume', sequence: '/resume\r', ariaLabel: 'Resume-Command ausführen', wide: true, accent: true },
   { label: '↑', sequence: '\x1b[A', ariaLabel: 'Pfeil hoch' },
   { label: '↓', sequence: '\x1b[B', ariaLabel: 'Pfeil runter' },
   { label: '←', sequence: '\x1b[D', ariaLabel: 'Pfeil links' },
@@ -143,7 +147,7 @@ export class AosMobileTerminalKeys extends LitElement {
         ${TERMINAL_KEYS.map(
           (key) => html`
             <button
-              class="key-btn touch-target ${key.wide ? 'wide' : ''}"
+              class="key-btn touch-target ${key.wide ? 'wide' : ''} ${key.accent ? 'accent' : ''}"
               aria-label="${key.ariaLabel}"
               @click=${() => this._onTap(key)}
             >
@@ -209,6 +213,21 @@ export class AosMobileTerminalKeys extends LitElement {
 
     .key-btn.wide {
       padding: 0 14px;
+    }
+
+    /* Accent keys (slash-command shortcuts) stand out from plain keystrokes. */
+    .key-btn.accent {
+      color: var(--color-accent-primary, #00d4ff);
+      border-color: color-mix(
+        in srgb,
+        var(--color-accent-primary, #00d4ff) 50%,
+        var(--color-border, #1e3a5f)
+      );
+      background: color-mix(
+        in srgb,
+        var(--color-accent-primary, #00d4ff) 12%,
+        transparent
+      );
     }
 
     /* Pin the image button to the left so it stays reachable while the key
