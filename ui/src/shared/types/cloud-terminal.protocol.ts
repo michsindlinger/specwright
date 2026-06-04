@@ -426,8 +426,8 @@ export const CLOUD_TERMINAL_CONFIG = {
   /** Maximum decoded size of a pasted screenshot (10 MB) */
   MAX_PASTE_IMAGE_BYTES: 10 * 1024 * 1024,
 
-  /** Allowed MIME types for pasted images */
-  ALLOWED_PASTE_IMAGE_MIME: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const,
+  /** Allowed MIME types for pasted images. heic/heif cover iPhone camera photos. */
+  ALLOWED_PASTE_IMAGE_MIME: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/heic', 'image/heif'] as const,
 
   /** Filesystem root for persisted paste images (per-session subdirectories) */
   PASTE_IMAGE_ROOT: '/tmp/cloud-terminal-paste',

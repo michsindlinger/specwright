@@ -41,6 +41,8 @@ const PASTE_MIME_TO_EXT: ReadonlyMap<string, string> = new Map([
   ['image/jpeg', 'jpg'],
   ['image/gif', 'gif'],
   ['image/webp', 'webp'],
+  ['image/heic', 'heic'],
+  ['image/heif', 'heif'],
 ]);
 
 /** Error thrown by savePastedImage; carries a CLOUD_TERMINAL_ERROR_CODES value */
