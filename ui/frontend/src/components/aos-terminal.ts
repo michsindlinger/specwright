@@ -735,6 +735,54 @@ export class AosTerminal extends LitElement {
     }, 1500);
   }
 
+  /**
+   * Read the browser clipboard and send it to the PTY as input, followed by a
+   * carriage return so it is submitted immediately — same as typing the text
+   * and pressing Enter. Internal newlines are preserved (sent as \n, matching
+   * the Shift+Enter prompt-newline path), and a trailing newline is dropped so
+   * the input is submitted exactly once.
+   */
+  private async _onPasteAndSendClick(): Promise<void> {
+    if (!this.terminalSessionId) return;
+    if (!navigator.clipboard?.readText) {
+      this._showPasteStatus('Einfügen nicht verfügbar (Zwischenablage gesperrt)', 'error');
+      return;
+    }
+    let text: string;
+    try {
+      text = await navigator.clipboard.readText();
+    } catch (err) {
+      this._showPasteStatus(
+        `Einfügen fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
+        'error',
+      );
+      return;
+    }
+    if (!text) {
+      this._showPasteStatus('Zwischenablage ist leer', 'info');
+      return;
+    }
+
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n+$/, '');
+    this._sendInput(normalized + '\r');
+    this._showPasteStatus('Eingefügt und abgeschickt', 'success');
+  }
+
+  /** Send raw input to the active PTY, routing by cloud vs. workflow mode. */
+  private _sendInput(data: string): void {
+    if (!this.terminalSessionId) return;
+    if (this.cloudMode) {
+      gateway.send({
+        type: 'cloud-terminal:input',
+        sessionId: this.terminalSessionId,
+        data,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      gateway.sendTerminalInput(this.terminalSessionId, data);
+    }
+  }
+
   private _showPasteStatus(message: string, type: 'info' | 'success' | 'error'): void {
     this.dispatchEvent(new CustomEvent('show-toast', {
       detail: { message, type },
@@ -1073,13 +1121,17 @@ export class AosTerminal extends LitElement {
           width: 11px;
           background: var(--accent-color, #00d4ff);
         }
-        /* Floating copy-all button. Sits top-right, clear of the custom
-           scrollbar's 28px hit zone so dragging the scrollbar still works. */
-        .aos-term-copy {
+        /* Floating action toolbar (paste + copy). Sits top-right, clear of the
+           custom scrollbar's 28px hit zone so dragging the scrollbar still works. */
+        .aos-term-actions {
           position: absolute;
           top: 8px;
           right: 36px;
           z-index: 6;
+          display: flex;
+          gap: 6px;
+        }
+        .aos-term-action {
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1096,14 +1148,14 @@ export class AosTerminal extends LitElement {
           -webkit-tap-highlight-color: transparent;
           backdrop-filter: blur(4px);
         }
-        .aos-term-copy:hover {
+        .aos-term-action:hover {
           opacity: 1;
         }
-        .aos-term-copy:active {
+        .aos-term-action:active {
           background: var(--color-bg-hover, rgba(45, 74, 111, 0.9));
         }
-        /* On touch devices keep it permanently visible (no hover). */
-        .aos-terminal-inner.touch .aos-term-copy {
+        /* On touch devices keep them permanently visible (no hover). */
+        .aos-terminal-inner.touch .aos-term-action {
           opacity: 0.85;
         }
         .aos-term-copy .icon-check {
@@ -1124,21 +1176,36 @@ export class AosTerminal extends LitElement {
       <div class="aos-terminal-outer ${this.cloudMode ? 'cloud-mode' : ''}">
         <div class="aos-terminal-inner ${this._isTouch ? 'touch' : ''}">
           <div id="terminal-container" class="aos-terminal-host"></div>
-          <button
-            class="aos-term-copy"
-            type="button"
-            title="Terminal-Inhalt kopieren"
-            aria-label="Terminal-Inhalt kopieren"
-            @click=${() => void this._onCopyAllClick()}
-          >
-            <svg class="icon-copy" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-              <path d="M3.5 10.5H3a1.5 1.5 0 0 1-1.5-1.5V3A1.5 1.5 0 0 1 3 1.5h6A1.5 1.5 0 0 1 10.5 3v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-            </svg>
-            <svg class="icon-check" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+          <div class="aos-term-actions">
+            <button
+              class="aos-term-action aos-term-paste"
+              type="button"
+              title="Zwischenablage einfügen & abschicken"
+              aria-label="Zwischenablage einfügen und abschicken"
+              @click=${() => void this._onPasteAndSendClick()}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M5.5 2.5h5A1.5 1.5 0 0 1 12 4v8.5a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V4A1.5 1.5 0 0 1 4 2.5h1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                <rect x="5.5" y="1.5" width="4" height="2.4" rx="0.8" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M5 9.5h4.5m0 0L8 8m1.5 1.5L8 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <button
+              class="aos-term-action aos-term-copy"
+              type="button"
+              title="Terminal-Inhalt kopieren"
+              aria-label="Terminal-Inhalt kopieren"
+              @click=${() => void this._onCopyAllClick()}
+            >
+              <svg class="icon-copy" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M3.5 10.5H3a1.5 1.5 0 0 1-1.5-1.5V3A1.5 1.5 0 0 1 3 1.5h6A1.5 1.5 0 0 1 10.5 3v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+              <svg class="icon-check" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
           ${this._isTouch
             ? html`<div class="aos-term-scrollbar"><div class="aos-term-scrollbar__thumb"></div></div>`
             : ''}
