@@ -11712,6 +11712,11 @@ aos-model-selector .model-option.selected .model-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.git-commit-dialog__file-path:hover {
+  text-decoration: underline;
 }
 
 .git-commit-dialog__file-status {

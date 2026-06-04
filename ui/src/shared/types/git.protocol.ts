@@ -119,6 +119,22 @@ export interface GitRevertResult {
 }
 
 /**
+ * Single-file diff result (read-only, for the diff viewer)
+ */
+export interface GitFileDiffResult {
+  /** File path relative to repo root (echoed back for response matching) */
+  path: string;
+  /** A single coherent unified diff, or raw file content for untracked files */
+  diff: string;
+  /** Whether the file is binary (no textual diff available) */
+  isBinary: boolean;
+  /** Whether the file is untracked (diff is the raw file content, all lines added) */
+  isUntracked: boolean;
+  /** Whether the diff was truncated due to the size limit */
+  truncated: boolean;
+}
+
+/**
  * PR info data (from gh CLI)
  */
 export interface GitPrInfo {
@@ -201,6 +217,7 @@ export type GitMessageType =
   | 'git:delete-untracked'
   | 'git:pr-info'
   | 'git:generate-commit-message'
+  | 'git:diff'
   // Server -> Client
   | 'git:status:response'
   | 'git:branches:response'
@@ -212,6 +229,7 @@ export type GitMessageType =
   | 'git:delete-untracked:response'
   | 'git:pr-info:response'
   | 'git:generate-commit-message:response'
+  | 'git:diff:response'
   | 'git:error';
 
 // ============================================================================
@@ -314,6 +332,16 @@ export interface GitGenerateCommitMessageMessage {
   timestamp: string;
 }
 
+/**
+ * Request the diff of a single file (read-only)
+ */
+export interface GitDiffMessage {
+  type: 'git:diff';
+  /** File path (relative to repo root) to diff */
+  file: string;
+  timestamp: string;
+}
+
 // ============================================================================
 // Server -> Client Messages
 // ============================================================================
@@ -409,6 +437,15 @@ export interface GitGenerateCommitMessageResponseMessage {
 }
 
 /**
+ * Git diff response (single file)
+ */
+export interface GitDiffResponseMessage {
+  type: 'git:diff:response';
+  data: GitFileDiffResult;
+  timestamp: string;
+}
+
+/**
  * Git error response
  */
 export interface GitErrorMessage {
@@ -439,7 +476,8 @@ export type GitClientMessage =
   | GitRevertMessage
   | GitDeleteUntrackedMessage
   | GitPrInfoMessage
-  | GitGenerateCommitMessageMessage;
+  | GitGenerateCommitMessageMessage
+  | GitDiffMessage;
 
 /**
  * Union type of all Git messages (server -> client)
@@ -455,6 +493,7 @@ export type GitServerMessage =
   | GitDeleteUntrackedResponseMessage
   | GitPrInfoResponseMessage
   | GitGenerateCommitMessageResponseMessage
+  | GitDiffResponseMessage
   | GitErrorMessage;
 
 /**
@@ -506,4 +545,6 @@ export const GIT_CONFIG = {
   OPERATION_TIMEOUT_MS: 10_000,
   /** Timeout for network git operations (push/pull/fetch) in milliseconds (60 seconds) */
   NETWORK_OPERATION_TIMEOUT_MS: 60_000,
+  /** Maximum diff size (bytes) returned to the viewer; larger diffs are truncated */
+  MAX_DIFF_BYTES: 1_000_000,
 } as const;

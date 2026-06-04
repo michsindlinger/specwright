@@ -18,6 +18,9 @@ import '../aos-confirm-dialog.js';
  * @fires revert-all - Fired when user clicks "Alle reverten"
  * @fires delete-untracked - Fired when user confirms deletion of an untracked file { file: string }
  * @fires generate-commit-message - Fired when user clicks Auto button { files: string[] }
+ *
+ * Clicking a file name dispatches a document-level `open-git-diff` CustomEvent
+ * ({ detail: { file } }) which the `aos-git-diff-viewer` listens for.
  */
 @customElement('aos-git-commit-dialog')
 export class AosGitCommitDialog extends LitElement {
@@ -143,6 +146,18 @@ export class AosGitCommitDialog extends LitElement {
         bubbles: true,
         composed: true,
       })
+    );
+  }
+
+  /**
+   * Open the read-only diff viewer for a file. Stops propagation + prevents the
+   * default label activation so the row checkbox is NOT toggled by this click.
+   */
+  private _handleViewDiff(e: Event, filePath: string): void {
+    e.preventDefault();
+    e.stopPropagation();
+    document.dispatchEvent(
+      new CustomEvent('open-git-diff', { detail: { file: filePath } })
     );
   }
 
@@ -332,7 +347,11 @@ export class AosGitCommitDialog extends LitElement {
                         .checked=${this.selectedFiles.has(file.path)}
                         @change=${() => this._handleFileToggle(file.path)}
                       />
-                      <span class="git-commit-dialog__file-path">${file.path}</span>
+                      <span
+                        class="git-commit-dialog__file-path"
+                        @click=${(e: Event) => this._handleViewDiff(e, file.path)}
+                        title="Diff anzeigen"
+                      >${file.path}</span>
                       <span class="git-commit-dialog__file-status git-commit-dialog__file-status--${this._getStatusLabel(file.status)}">
                         ${this._getStatusLabel(file.status)}
                       </span>

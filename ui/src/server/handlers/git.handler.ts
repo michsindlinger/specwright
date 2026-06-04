@@ -254,6 +254,32 @@ export class GitHandler {
   }
 
   /**
+   * Handle git:diff message.
+   * Returns the read-only diff of a single file.
+   */
+  public async handleDiff(client: WebSocketClient, message: WebSocketMessage, projectPath: string): Promise<void> {
+    const file = message.file as string;
+
+    if (!file || typeof file !== 'string') {
+      this.sendError(client, 'git:error', 'diff', 'file path is required');
+      return;
+    }
+
+    try {
+      const data = await this.service.getFileDiff(projectPath, file);
+
+      const response: WebSocketMessage = {
+        type: 'git:diff:response',
+        data,
+        timestamp: new Date().toISOString(),
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      this.sendGitError(client, 'diff', error);
+    }
+  }
+
+  /**
    * Handle git:pr-info message.
    * Returns PR info for the current branch, or null if no PR exists.
    */

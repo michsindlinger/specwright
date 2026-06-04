@@ -8,9 +8,9 @@
 
 import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify } from 'util';
-import { resolve } from 'path';
+import { resolve, sep } from 'path';
 import { existsSync } from 'fs';
-import { unlink } from 'fs/promises';
+import { readFile, unlink } from 'fs/promises';
 import type {
   GitStatusData,
   GitChangedFile,
@@ -20,6 +20,7 @@ import type {
   GitPushResult,
   GitCheckoutResult,
   GitRevertResult,
+  GitFileDiffResult,
   GitPrInfo,
   GitCreateBranchResult,
   GitPushBranchResult,
@@ -730,6 +731,94 @@ export class GitService {
     }
 
     return { revertedFiles, failedFiles };
+  }
+
+  /**
+   * Get the diff of a single file (read-only).
+   *
+   * Tracked files: one coherent unified diff via `git diff HEAD -- <file>`
+   * (staged + unstaged combined; also covers deleted/added/renamed).
+   * Untracked files: raw file content (the viewer renders every line as added).
+   * Binary detection is locale-independent (via `--numstat` / NUL-byte check).
+   * Output is capped at GIT_CONFIG.MAX_DIFF_BYTES.
+   *
+   * Read-only: only `git status`/`git diff`/readFile — never mutates the index,
+   * so no main-project lock is required.
+   */
+  async getFileDiff(projectPath: string, file: string): Promise<GitFileDiffResult> {
+    await this.ensureGitRepo(projectPath, 'getFileDiff');
+
+    // Path validation: reject empty / traversal; resolved path must stay inside project
+    if (!file || file.trim() === '') {
+      throw new GitError('File path is required', GIT_ERROR_CODES.OPERATION_FAILED, 'getFileDiff');
+    }
+    const projectRoot = resolve(projectPath);
+    const abs = resolve(projectRoot, file);
+    if (abs !== projectRoot && !abs.startsWith(projectRoot + sep)) {
+      throw new GitError(
+        'File path is outside project directory',
+        GIT_ERROR_CODES.OPERATION_FAILED,
+        'getFileDiff',
+      );
+    }
+
+    const cap = (raw: string): { diff: string; truncated: boolean } =>
+      raw.length > GIT_CONFIG.MAX_DIFF_BYTES
+        ? { diff: raw.slice(0, GIT_CONFIG.MAX_DIFF_BYTES), truncated: true }
+        : { diff: raw, truncated: false };
+
+    // Determine whether the file is untracked
+    const { stdout: statusOutput } = await this.execGit(
+      ['status', '--porcelain', '--', file],
+      projectPath,
+    );
+    const isUntracked = statusOutput.trim().startsWith('??');
+
+    if (isUntracked) {
+      let buf: Buffer;
+      try {
+        buf = await readFile(abs);
+      } catch {
+        return { path: file, diff: '', isBinary: false, isUntracked: true, truncated: false };
+      }
+      if (buf.includes(0)) {
+        return { path: file, diff: '', isBinary: true, isUntracked: true, truncated: false };
+      }
+      const { diff, truncated } = cap(buf.toString('utf-8'));
+      return { path: file, diff, isBinary: false, isUntracked: true, truncated };
+    }
+
+    // Locale-independent binary detection: numstat reports `-\t-` for binary files
+    let isBinary = false;
+    try {
+      const { stdout: numstat } = await this.execGit(
+        ['diff', '--numstat', 'HEAD', '--', file],
+        projectPath,
+      );
+      const firstLine = numstat.split('\n').find(l => l.trim().length > 0);
+      if (firstLine && firstLine.startsWith('-\t-')) isBinary = true;
+    } catch {
+      // numstat can fail if there is no HEAD yet; ignore and try the diff below
+    }
+    if (isBinary) {
+      return { path: file, diff: '', isBinary: true, isUntracked: false, truncated: false };
+    }
+
+    // One coherent unified diff vs HEAD; fall back to working-tree diff if no HEAD exists
+    let raw = '';
+    try {
+      const { stdout } = await this.execGit(['diff', 'HEAD', '--', file], projectPath);
+      raw = stdout;
+    } catch {
+      try {
+        const { stdout } = await this.execGit(['diff', '--', file], projectPath);
+        raw = stdout;
+      } catch {
+        raw = '';
+      }
+    }
+    const { diff, truncated } = cap(raw);
+    return { path: file, diff, isBinary: false, isUntracked: false, truncated };
   }
 
   /**
