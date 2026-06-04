@@ -541,6 +541,7 @@ export class AosCloudTerminalSidebar extends LitElement {
           <aos-mobile-terminal-keys
             .sessionId=${activeSession.terminalSessionId}
             @key-send=${this._handleMobileKeySend}
+            @image-send=${this._handleMobileImageSend}
           ></aos-mobile-terminal-keys>
         ` : nothing}
 
@@ -572,6 +573,24 @@ export class AosCloudTerminalSidebar extends LitElement {
       type: 'cloud-terminal:input',
       sessionId: activeSession.terminalSessionId,
       data: e.detail.sequence,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Mobile image insertion. The keys bar has already validated MIME/size and
+   * base64-encoded the file; we forward it via the same `cloud-terminal:paste-image`
+   * message the desktop Cmd/Ctrl+V path uses. The backend persists the image and
+   * injects its path into the PTY (see cloud-terminal-manager.savePastedImage).
+   */
+  private _handleMobileImageSend(e: CustomEvent<{ base64: string; mimeType: string }>) {
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    if (!activeSession?.terminalSessionId) return;
+    gateway.send({
+      type: 'cloud-terminal:paste-image',
+      sessionId: activeSession.terminalSessionId,
+      base64: e.detail.base64,
+      mimeType: e.detail.mimeType,
       timestamp: new Date().toISOString(),
     });
   }

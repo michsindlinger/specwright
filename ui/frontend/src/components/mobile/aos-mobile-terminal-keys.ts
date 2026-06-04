@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, query } from 'lit/decorators.js';
+import { CLOUD_TERMINAL_CONFIG } from '../../../../src/shared/types/cloud-terminal.protocol.js';
 
 interface TerminalKey {
   label: string;
@@ -23,9 +24,18 @@ export interface KeySendDetail {
   sequence: string;
 }
 
+export interface ImageSendDetail {
+  /** Base64-encoded image payload (no data-URL prefix) */
+  base64: string;
+  /** Image MIME type, guaranteed to be in CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME */
+  mimeType: string;
+}
+
 @customElement('aos-mobile-terminal-keys')
 export class AosMobileTerminalKeys extends LitElement {
   @property({ type: String }) sessionId = '';
+
+  @query('#img-input') private _imgInput!: HTMLInputElement;
 
   private _onTap(key: TerminalKey): void {
     this.dispatchEvent(
@@ -37,9 +47,99 @@ export class AosMobileTerminalKeys extends LitElement {
     );
   }
 
+  /** Opens the native picker (iOS: Fotomediathek / Foto aufnehmen / Datei). */
+  private _onPickImage(): void {
+    this._imgInput?.click();
+  }
+
+  /**
+   * Reads the chosen image, validates it against the same constraints as the
+   * desktop clipboard-paste path, and emits `image-send`. The parent forwards
+   * it as a `cloud-terminal:paste-image` message; the backend persists the file
+   * and injects its path into the PTY — identical to the Cmd/Ctrl+V flow.
+   */
+  private async _onFileSelected(e: Event): Promise<void> {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // Reset so picking the same screenshot again still fires `change`.
+    input.value = '';
+    if (!file) return;
+
+    const allowed = CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME as readonly string[];
+    if (!allowed.includes(file.type)) {
+      this._toast(`Dateityp wird nicht unterstützt (${file.type || 'unbekannt'})`, 'error');
+      return;
+    }
+
+    const maxBytes = CLOUD_TERMINAL_CONFIG.MAX_PASTE_IMAGE_BYTES;
+    if (file.size > maxBytes) {
+      this._toast(
+        `Bild ist zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB, Limit ${maxBytes / 1024 / 1024} MB)`,
+        'error',
+      );
+      return;
+    }
+
+    let base64: string;
+    try {
+      base64 = await this._fileToBase64(file);
+    } catch (err) {
+      this._toast(
+        `Bild konnte nicht gelesen werden: ${err instanceof Error ? err.message : String(err)}`,
+        'error',
+      );
+      return;
+    }
+
+    this._toast('Screenshot wird hochgeladen…', 'info');
+    this.dispatchEvent(
+      new CustomEvent<ImageSendDetail>('image-send', {
+        bubbles: true,
+        composed: true,
+        detail: { base64, mimeType: file.type },
+      })
+    );
+  }
+
+  private _fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const r = reader.result as string;
+        const comma = r.indexOf(',');
+        resolve(comma >= 0 ? r.slice(comma + 1) : r);
+      };
+      reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private _toast(message: string, type: 'info' | 'success' | 'error'): void {
+    this.dispatchEvent(
+      new CustomEvent('show-toast', {
+        detail: { message, type },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   override render() {
     return html`
       <div class="strip" role="toolbar" aria-label="Terminal-Steuerung">
+        <button
+          class="key-btn img-btn touch-target"
+          aria-label="Screenshot oder Bild einfügen"
+          @click=${this._onPickImage}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+               stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <path d="M21 15l-5-5L5 21"></path>
+          </svg>
+        </button>
         ${TERMINAL_KEYS.map(
           (key) => html`
             <button
@@ -51,6 +151,13 @@ export class AosMobileTerminalKeys extends LitElement {
             </button>
           `
         )}
+        <input
+          id="img-input"
+          type="file"
+          accept="image/*"
+          hidden
+          @change=${this._onFileSelected}
+        />
       </div>
     `;
   }
@@ -102,6 +209,21 @@ export class AosMobileTerminalKeys extends LitElement {
 
     .key-btn.wide {
       padding: 0 14px;
+    }
+
+    /* Pin the image button to the left so it stays reachable while the key
+       strip scrolls horizontally. */
+    .key-btn.img-btn {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      padding: 0 10px;
+      color: var(--color-accent-primary, #00d4ff);
+      background: var(--color-bg-sidebar, #0b1929);
+    }
+
+    .key-btn.img-btn svg {
+      display: block;
     }
 
     .key-btn:active {
