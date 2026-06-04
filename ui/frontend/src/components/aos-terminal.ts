@@ -83,6 +83,15 @@ function getTerminalTheme(theme: ResolvedTheme) {
   return DARK_THEME;
 }
 
+/** True on touch-capable devices (mobile/tablet), where the native xterm
+ *  scrollbar is too thin to grab reliably and we render a wide custom one. */
+function isTouchDevice(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  );
+}
+
 /**
  * Terminal component wrapping xterm.js
  *
@@ -134,6 +143,20 @@ export class AosTerminal extends LitElement {
   private _touchStartScrollTop = 0;
   private boundTouchStartHandler = (e: TouchEvent) => this._onTouchStart(e);
   private boundTouchMoveHandler = (e: TouchEvent) => this._onTouchMove(e);
+
+  // Custom touch scrollbar: iOS Safari ignores ::-webkit-scrollbar styling for its
+  // overlay scrollbars, so the native bar stays a hard-to-hit ~3px sliver. On touch
+  // devices we hide the native bar and render a wide (28px hit zone) draggable thumb
+  // synced to .xterm-viewport.scrollTop.
+  private readonly _isTouch = isTouchDevice();
+  private _scrollbarEl: HTMLElement | null = null;
+  private _scrollbarThumb: HTMLElement | null = null;
+  private _scrollbarDragging = false;
+  private _scrollbarRenderDisposable: { dispose(): void } | null = null;
+  private boundViewportScroll = () => this._updateScrollbarThumb();
+  private boundScrollbarTouchStart = (e: TouchEvent) => this._onScrollbarTouchStart(e);
+  private boundScrollbarTouchMove = (e: TouchEvent) => this._onScrollbarTouchMove(e);
+  private boundScrollbarTouchEnd = () => this._onScrollbarTouchEnd();
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -270,6 +293,9 @@ export class AosTerminal extends LitElement {
 
     // Enable touch scrolling (no-op on non-touch devices, harmless on desktop)
     this._setupTouchScroll();
+
+    // Wide custom scrollbar for touch devices (no-op on desktop)
+    this._setupCustomScrollbar();
 
     // Custom key event handler for terminal shortcuts.
     // attachCustomKeyEventHandler is called for ALL event types: keydown, keypress, keyup.
@@ -781,11 +807,106 @@ export class AosTerminal extends LitElement {
     event.preventDefault();
   }
 
+  /**
+   * Wire up the wide custom scrollbar (touch devices only).
+   *
+   * The native overlay scrollbar is hidden via CSS (`.touch .xterm-viewport`);
+   * here we keep our thumb in sync with `.xterm-viewport.scrollTop` (via the
+   * viewport's `scroll` event and xterm's `onRender`, which fires on new output)
+   * and translate drags inside the 28px hit zone into scroll position.
+   */
+  private _setupCustomScrollbar(): void {
+    if (!this._isTouch) return;
+    this._scrollbarEl = this.querySelector('.aos-term-scrollbar');
+    this._scrollbarThumb = this.querySelector('.aos-term-scrollbar__thumb');
+    if (!this._scrollbarEl || !this._scrollbarThumb || !this._xtermViewport) return;
+
+    this._xtermViewport.addEventListener('scroll', this.boundViewportScroll, { passive: true });
+    this._scrollbarEl.addEventListener('touchstart', this.boundScrollbarTouchStart, { passive: false });
+    this._scrollbarEl.addEventListener('touchmove', this.boundScrollbarTouchMove, { passive: false });
+    this._scrollbarEl.addEventListener('touchend', this.boundScrollbarTouchEnd, { passive: true });
+    this._scrollbarEl.addEventListener('touchcancel', this.boundScrollbarTouchEnd, { passive: true });
+
+    // Re-measure whenever xterm repaints (new output grows scrollHeight).
+    this._scrollbarRenderDisposable = this.terminal?.onRender(() => this._updateScrollbarThumb()) ?? null;
+    this._updateScrollbarThumb();
+  }
+
+  /** Resize/reposition the thumb to mirror the viewport's scroll metrics. */
+  private _updateScrollbarThumb(): void {
+    if (!this._scrollbarEl || !this._scrollbarThumb || !this._xtermViewport) return;
+    const vp = this._xtermViewport;
+    const maxScroll = vp.scrollHeight - vp.clientHeight;
+    if (maxScroll <= 0) {
+      this._scrollbarEl.classList.remove('is-scrollable');
+      return;
+    }
+    this._scrollbarEl.classList.add('is-scrollable');
+    const trackH = this._scrollbarEl.clientHeight;
+    const thumbH = Math.max(36, (vp.clientHeight / vp.scrollHeight) * trackH);
+    const top = (vp.scrollTop / maxScroll) * (trackH - thumbH);
+    this._scrollbarThumb.style.height = `${thumbH}px`;
+    this._scrollbarThumb.style.transform = `translateY(${top}px)`;
+  }
+
+  private _onScrollbarTouchStart(event: TouchEvent): void {
+    if (event.touches.length !== 1 || !this._xtermViewport) return;
+    this._scrollbarDragging = true;
+    this._scrollbarEl?.classList.add('is-active');
+    this._scrollToTouch(event.touches[0].clientY);
+    event.preventDefault();
+  }
+
+  private _onScrollbarTouchMove(event: TouchEvent): void {
+    if (!this._scrollbarDragging || event.touches.length !== 1) return;
+    this._scrollToTouch(event.touches[0].clientY);
+    event.preventDefault();
+  }
+
+  private _onScrollbarTouchEnd(): void {
+    this._scrollbarDragging = false;
+    this._scrollbarEl?.classList.remove('is-active');
+  }
+
+  /**
+   * Map an absolute finger Y to a scroll position, centering the thumb on the
+   * finger. Setting `scrollTop` fires xterm's own scroll handler, keeping the
+   * rendered buffer in sync (same path as the native scrollbar).
+   */
+  private _scrollToTouch(clientY: number): void {
+    if (!this._scrollbarEl || !this._xtermViewport) return;
+    const vp = this._xtermViewport;
+    const maxScroll = vp.scrollHeight - vp.clientHeight;
+    if (maxScroll <= 0) return;
+    const rect = this._scrollbarEl.getBoundingClientRect();
+    const thumbH = Math.max(36, (vp.clientHeight / vp.scrollHeight) * rect.height);
+    const usableTrack = rect.height - thumbH;
+    const ratio = usableTrack > 0
+      ? Math.min(1, Math.max(0, (clientY - rect.top - thumbH / 2) / usableTrack))
+      : 0;
+    vp.scrollTop = ratio * maxScroll;
+    this._updateScrollbarThumb();
+  }
+
   private cleanupTerminal(): void {
     if (this.terminalContainer) {
       this.terminalContainer.removeEventListener('touchstart', this.boundTouchStartHandler);
       this.terminalContainer.removeEventListener('touchmove', this.boundTouchMoveHandler);
     }
+    if (this._xtermViewport) {
+      this._xtermViewport.removeEventListener('scroll', this.boundViewportScroll);
+    }
+    if (this._scrollbarEl) {
+      this._scrollbarEl.removeEventListener('touchstart', this.boundScrollbarTouchStart);
+      this._scrollbarEl.removeEventListener('touchmove', this.boundScrollbarTouchMove);
+      this._scrollbarEl.removeEventListener('touchend', this.boundScrollbarTouchEnd);
+      this._scrollbarEl.removeEventListener('touchcancel', this.boundScrollbarTouchEnd);
+    }
+    this._scrollbarRenderDisposable?.dispose();
+    this._scrollbarRenderDisposable = null;
+    this._scrollbarEl = null;
+    this._scrollbarThumb = null;
+    this._scrollbarDragging = false;
     this._xtermViewport = null;
 
     if (this.resizeObserver) {
@@ -819,15 +940,68 @@ export class AosTerminal extends LitElement {
         .aos-terminal-inner {
           flex: 1;
           overflow: hidden;
+          position: relative;
+        }
+        .aos-terminal-host {
+          position: absolute;
+          inset: 0;
         }
         /* Fix: xterm.js caches explicit viewport width after visibility changes.
            Resetting to initial forces recalculation on each reflow. */
         .xterm .xterm-viewport {
           width: initial !important;
         }
+        /* Touch devices: hide the thin native overlay scrollbar — replaced by
+           the wide custom .aos-term-scrollbar below. */
+        .aos-terminal-inner.touch .xterm-viewport {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .aos-terminal-inner.touch .xterm-viewport::-webkit-scrollbar {
+          width: 0;
+          height: 0;
+          display: none;
+        }
+        /* Wide custom scrollbar: 28px hit zone, 7px visible thumb. */
+        .aos-term-scrollbar {
+          position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          width: 28px;
+          z-index: 5;
+          display: none;
+          touch-action: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .aos-term-scrollbar.is-scrollable {
+          display: block;
+        }
+        .aos-term-scrollbar__thumb {
+          position: absolute;
+          top: 0;
+          right: 6px;
+          width: 7px;
+          min-height: 36px;
+          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.4);
+          opacity: 0.6;
+          transition: opacity 0.15s ease, width 0.12s ease, background 0.15s ease;
+          will-change: transform, height;
+        }
+        .aos-term-scrollbar.is-active .aos-term-scrollbar__thumb {
+          opacity: 0.95;
+          width: 11px;
+          background: var(--accent-color, #00d4ff);
+        }
       </style>
       <div class="aos-terminal-outer ${this.cloudMode ? 'cloud-mode' : ''}">
-        <div id="terminal-container" class="aos-terminal-inner"></div>
+        <div class="aos-terminal-inner ${this._isTouch ? 'touch' : ''}">
+          <div id="terminal-container" class="aos-terminal-host"></div>
+          ${this._isTouch
+            ? html`<div class="aos-term-scrollbar"><div class="aos-term-scrollbar__thumb"></div></div>`
+            : ''}
+        </div>
       </div>
     `;
   }
