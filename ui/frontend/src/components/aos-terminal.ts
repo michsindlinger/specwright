@@ -149,6 +149,13 @@ export class AosTerminal extends LitElement {
   // devices we hide the native bar and render a wide (28px hit zone) draggable thumb
   // synced to .xterm-viewport.scrollTop.
   private readonly _isTouch = isTouchDevice();
+
+  // Copy-all button: native text selection is unreliable inside xterm (and on
+  // touch devices our scroll handler preventDefaults touchmove, killing selection
+  // entirely). A dedicated button copies the full buffer to the clipboard so the
+  // user can always get the text out — on desktop and mobile alike.
+  private _copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+
   private _scrollbarEl: HTMLElement | null = null;
   private _scrollbarThumb: HTMLElement | null = null;
   private _scrollbarDragging = false;
@@ -660,6 +667,74 @@ export class AosTerminal extends LitElement {
     });
   }
 
+  /**
+   * Extract the full terminal buffer (scrollback + viewport) as clean text:
+   * - trims the trailing padding xterm adds to fill each row
+   * - rejoins visually-wrapped rows into their original logical lines via the
+   *   buffer's isWrapped flag
+   * - strips leading/trailing blank lines
+   */
+  private _getFullBufferText(): string {
+    if (!this.terminal) return '';
+    const buffer = this.terminal.buffer.active;
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (let i = 0; i < buffer.length; i++) {
+      const line = buffer.getLine(i);
+      if (!line) continue;
+      const text = line.translateToString(true);
+      if (i > 0 && line.isWrapped) {
+        currentLine += text;
+      } else {
+        if (i > 0) lines.push(currentLine);
+        currentLine = text;
+      }
+    }
+    lines.push(currentLine);
+
+    return lines.join('\n').replace(/^\n+/, '').replace(/\n+$/, '');
+  }
+
+  /**
+   * Copy the entire terminal content to the clipboard. Triggered by the
+   * floating copy button — works on touch devices where text selection is
+   * blocked by our scroll handling.
+   */
+  private async _onCopyAllClick(): Promise<void> {
+    const text = this._getFullBufferText();
+    if (!text) {
+      this._showPasteStatus('Terminal ist leer – nichts zu kopieren', 'info');
+      return;
+    }
+    if (!navigator.clipboard?.writeText) {
+      this._showPasteStatus('Kopieren nicht verfügbar (Zwischenablage gesperrt)', 'error');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      this._flashCopied();
+      this._showPasteStatus('Terminal-Inhalt kopiert', 'success');
+    } catch (err) {
+      this._showPasteStatus(
+        `Kopieren fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
+        'error',
+      );
+    }
+  }
+
+  /** Briefly swap the copy icon for a checkmark to confirm the copy. */
+  private _flashCopied(): void {
+    const btn = this.querySelector('.aos-term-copy');
+    if (!btn) return;
+    btn.classList.add('is-copied');
+    if (this._copyResetTimer) clearTimeout(this._copyResetTimer);
+    this._copyResetTimer = setTimeout(() => {
+      btn.classList.remove('is-copied');
+      this._copyResetTimer = null;
+    }, 1500);
+  }
+
   private _showPasteStatus(message: string, type: 'info' | 'success' | 'error'): void {
     this.dispatchEvent(new CustomEvent('show-toast', {
       detail: { message, type },
@@ -904,6 +979,10 @@ export class AosTerminal extends LitElement {
     }
     this._scrollbarRenderDisposable?.dispose();
     this._scrollbarRenderDisposable = null;
+    if (this._copyResetTimer) {
+      clearTimeout(this._copyResetTimer);
+      this._copyResetTimer = null;
+    }
     this._scrollbarEl = null;
     this._scrollbarThumb = null;
     this._scrollbarDragging = false;
@@ -994,10 +1073,72 @@ export class AosTerminal extends LitElement {
           width: 11px;
           background: var(--accent-color, #00d4ff);
         }
+        /* Floating copy-all button. Sits top-right, clear of the custom
+           scrollbar's 28px hit zone so dragging the scrollbar still works. */
+        .aos-term-copy {
+          position: absolute;
+          top: 8px;
+          right: 36px;
+          z-index: 6;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          padding: 0;
+          border: 1px solid var(--color-border, rgba(255, 255, 255, 0.18));
+          border-radius: 8px;
+          background: var(--color-bg-sidebar, rgba(15, 31, 51, 0.78));
+          color: var(--color-text-secondary, #B8C9DB);
+          cursor: pointer;
+          opacity: 0.55;
+          transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+          -webkit-tap-highlight-color: transparent;
+          backdrop-filter: blur(4px);
+        }
+        .aos-term-copy:hover {
+          opacity: 1;
+        }
+        .aos-term-copy:active {
+          background: var(--color-bg-hover, rgba(45, 74, 111, 0.9));
+        }
+        /* On touch devices keep it permanently visible (no hover). */
+        .aos-terminal-inner.touch .aos-term-copy {
+          opacity: 0.85;
+        }
+        .aos-term-copy .icon-check {
+          display: none;
+        }
+        .aos-term-copy.is-copied {
+          opacity: 1;
+          color: var(--color-success, #22c55e);
+          border-color: var(--color-success, #22c55e);
+        }
+        .aos-term-copy.is-copied .icon-copy {
+          display: none;
+        }
+        .aos-term-copy.is-copied .icon-check {
+          display: block;
+        }
       </style>
       <div class="aos-terminal-outer ${this.cloudMode ? 'cloud-mode' : ''}">
         <div class="aos-terminal-inner ${this._isTouch ? 'touch' : ''}">
           <div id="terminal-container" class="aos-terminal-host"></div>
+          <button
+            class="aos-term-copy"
+            type="button"
+            title="Terminal-Inhalt kopieren"
+            aria-label="Terminal-Inhalt kopieren"
+            @click=${() => void this._onCopyAllClick()}
+          >
+            <svg class="icon-copy" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M3.5 10.5H3a1.5 1.5 0 0 1-1.5-1.5V3A1.5 1.5 0 0 1 3 1.5h6A1.5 1.5 0 0 1 10.5 3v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+            <svg class="icon-check" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
           ${this._isTouch
             ? html`<div class="aos-term-scrollbar"><div class="aos-term-scrollbar__thumb"></div></div>`
             : ''}
