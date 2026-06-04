@@ -441,6 +441,16 @@ export class CloudTerminalManager extends EventEmitter {
       return null;
     }
 
+    if (session.status === 'active') {
+      // Idempotent resume: a client that lost its WebSocket (e.g. mobile tab
+      // backgrounded) reconnects and resumes - but the session was never
+      // paused because the disconnect happened without a pause message.
+      // Treat as success so the client doesn't falsely see SESSION_NOT_FOUND.
+      console.log(`[CloudTerminalManager] Resume requested for already-active session ${sessionId}`);
+      this.emit('session.resumed', sessionId, '');
+      return '';
+    }
+
     if (session.status !== 'paused') {
       console.warn(`[CloudTerminalManager] Cannot resume session ${sessionId}, status: ${session.status}`);
       return null;

@@ -28,6 +28,7 @@ export class Gateway {
   private maxReconnectDelay = 15000; // Moltbot-pattern: max 15 seconds
   private isConnected = false;
   private isReconnecting = false;
+  private livenessCheckInProgress = false;
   private currentProjectPath: string | null = null;
 
   constructor() {
@@ -39,6 +40,72 @@ export class Gateway {
       ? `${window.location.hostname}:3001`
       : window.location.host;
     this.url = `${protocol}//${host}`;
+
+    this.setupLifecycleHandlers();
+  }
+
+  /**
+   * Mobile Safari (and other mobile browsers) freeze JS timers and silently
+   * kill WebSockets when the tab is backgrounded. When the user returns,
+   * the socket is often a "zombie" (readyState OPEN but server already
+   * terminated it via heartbeat) or a scheduled reconnect is stuck in a
+   * long backoff. These handlers force an immediate connection check the
+   * moment the page becomes visible/focused/online again.
+   */
+  private setupLifecycleHandlers(): void {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.ensureConnected();
+      }
+    });
+    // pageshow fires on bfcache restore (iOS back/forward navigation)
+    window.addEventListener('pageshow', () => this.ensureConnected());
+    window.addEventListener('online', () => this.ensureConnected());
+    window.addEventListener('focus', () => this.ensureConnected());
+  }
+
+  /**
+   * Verify the connection is alive and reconnect immediately if not.
+   * - Pending backoff reconnect: fire it now instead of waiting.
+   * - Closed/missing socket: connect immediately.
+   * - Seemingly open socket: send an app-level ping and force-close if no
+   *   pong arrives (zombie connection detection after tab suspend).
+   */
+  public ensureConnected(): void {
+    // Reset backoff - user is actively returning to the app
+    this.reconnectDelay = 800;
+
+    if (this.reconnectTimeout !== null) {
+      // A delayed reconnect is scheduled - fire it immediately instead
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+      this.connect();
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState === WebSocket.CLOSED || this.ws.readyState === WebSocket.CLOSING) {
+      this.connect();
+      return;
+    }
+
+    if (this.ws.readyState === WebSocket.OPEN && !this.livenessCheckInProgress) {
+      // Socket claims to be open - verify with app-level ping/pong.
+      // After iOS tab suspension the socket can be dead without onclose firing.
+      this.livenessCheckInProgress = true;
+      const ws = this.ws;
+      this.waitFor('pong', 3000)
+        .catch(() => {
+          // No pong - zombie connection. Force close to trigger reconnect.
+          if (this.ws === ws) {
+            console.warn('Gateway liveness check failed, forcing reconnect');
+            ws.close();
+          }
+        })
+        .finally(() => {
+          this.livenessCheckInProgress = false;
+        });
+      this.send({ type: 'ping' });
+    }
   }
 
   public connect(): void {
@@ -646,6 +713,21 @@ export class Gateway {
     this.send({
       type: 'git:generate-commit-message',
       files,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Request the read-only diff of a single file
+   * @param file - File path (relative to repo root) to diff
+   *
+   * Incoming Messages:
+   * - git:diff:response: GitFileDiffResult (diff text, isBinary, isUntracked, truncated)
+   */
+  public requestGitDiff(file: string): void {
+    this.send({
+      type: 'git:diff',
+      file,
       timestamp: new Date().toISOString()
     });
   }

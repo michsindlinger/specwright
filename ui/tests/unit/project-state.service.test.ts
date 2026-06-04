@@ -2,9 +2,13 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 // Mock the gateway before importing the service
 const mockGatewaySend = vi.fn();
+const mockGatewayWaitFor = vi.fn(() =>
+  Promise.resolve({ type: 'project.switch.ack' })
+);
 vi.mock('../../frontend/src/gateway.js', () => ({
   gateway: {
     send: mockGatewaySend,
+    waitFor: mockGatewayWaitFor,
   },
 }));
 
@@ -23,8 +27,9 @@ describe('ProjectStateService', () => {
     vi.useFakeTimers();
     mockStorage = {};
 
-    // Mock sessionStorage
-    const sessionStorageMock = {
+    // Mock localStorage (primary persistence) and sessionStorage (legacy migration source).
+    // Both share mockStorage so legacy-migration reads behave like an empty store.
+    const storageMock = {
       getItem: vi.fn((key: string) => mockStorage[key] ?? null),
       setItem: vi.fn((key: string, value: string) => {
         mockStorage[key] = value;
@@ -34,8 +39,13 @@ describe('ProjectStateService', () => {
       }),
     };
 
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: storageMock,
+      writable: true,
+      configurable: true,
+    });
     Object.defineProperty(globalThis, 'sessionStorage', {
-      value: sessionStorageMock,
+      value: storageMock,
       writable: true,
       configurable: true,
     });
@@ -123,8 +133,8 @@ describe('ProjectStateService', () => {
       expect(stored.activeProjectId).toBeNull();
     });
 
-    it('should not throw when sessionStorage is unavailable', () => {
-      Object.defineProperty(globalThis, 'sessionStorage', {
+    it('should not throw when localStorage is unavailable', () => {
+      Object.defineProperty(globalThis, 'localStorage', {
         value: {
           setItem: () => {
             throw new Error('Storage unavailable');

@@ -116,6 +116,7 @@ export class AosTerminal extends LitElement {
   private terminalDataHandler: MessageHandler | null = null;
   private terminalExitHandler: MessageHandler | null = null;
   private terminalBufferResponseHandler: MessageHandler | null = null;
+  private terminalResumedHandler: MessageHandler | null = null;
   private pasteImageSavedHandler: MessageHandler | null = null;
   private pasteImageErrorHandler: MessageHandler | null = null;
   /** Guard so concurrent Cmd+V presses don't fire multiple uploads */
@@ -410,6 +411,21 @@ export class AosTerminal extends LitElement {
     };
     gateway.on('cloud-terminal:buffer-response', this.terminalBufferResponseHandler);
 
+    // After a session resume (WebSocket reconnect, e.g. mobile tab restore),
+    // replay the full server-side buffer so output that arrived while
+    // disconnected is not lost. The buffer-response handler resets the
+    // terminal before writing, so this is safe to do on every resume.
+    this.terminalResumedHandler = (message) => {
+      if (message.sessionId === this.terminalSessionId && this.terminal) {
+        gateway.send({
+          type: 'cloud-terminal:buffer-request',
+          sessionId: this.terminalSessionId,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    };
+    gateway.on('cloud-terminal:resumed', this.terminalResumedHandler);
+
     this.pasteImageSavedHandler = (message) => {
       if (message.sessionId !== this.terminalSessionId) return;
       this._pasteInFlight = false;
@@ -641,6 +657,10 @@ export class AosTerminal extends LitElement {
       const bufferEvent = this.cloudMode ? 'cloud-terminal:buffer-response' : 'terminal.buffer.response';
       gateway.off(bufferEvent, this.terminalBufferResponseHandler);
       this.terminalBufferResponseHandler = null;
+    }
+    if (this.terminalResumedHandler) {
+      gateway.off('cloud-terminal:resumed', this.terminalResumedHandler);
+      this.terminalResumedHandler = null;
     }
     if (this.pasteImageSavedHandler) {
       gateway.off('cloud-terminal:paste-image-saved', this.pasteImageSavedHandler);

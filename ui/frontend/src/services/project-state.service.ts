@@ -17,7 +17,9 @@ interface SwitchProjectResult {
 
 /**
  * Service for managing project state, persistence, and backend synchronization.
- * Uses sessionStorage for tab-persistence across browser refresh.
+ * Uses localStorage for persistence: mobile Safari discards sessionStorage when
+ * it kills a backgrounded tab's process, which silently reset all open projects.
+ * localStorage survives tab/process eviction and browser restarts.
  */
 class ProjectStateService {
   private switchInProgress = false;
@@ -25,12 +27,23 @@ class ProjectStateService {
   private readonly DEBOUNCE_MS = 150;
 
   /**
-   * Load persisted project state from sessionStorage.
+   * Load persisted project state from localStorage.
+   * Falls back to sessionStorage once for migration from older versions.
    * Returns null if no state is stored or state is invalid.
    */
   loadPersistedState(): StoredProjectState | null {
     try {
-      const stored = sessionStorage.getItem(STORAGE_KEY);
+      let stored = localStorage.getItem(STORAGE_KEY);
+
+      // Migration: older versions persisted to sessionStorage
+      if (!stored) {
+        stored = sessionStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          localStorage.setItem(STORAGE_KEY, stored);
+          sessionStorage.removeItem(STORAGE_KEY);
+        }
+      }
+
       if (!stored) return null;
 
       const state = JSON.parse(stored) as StoredProjectState;
@@ -43,7 +56,7 @@ class ProjectStateService {
   }
 
   /**
-   * Persist project state to sessionStorage.
+   * Persist project state to localStorage.
    */
   persistState(openProjects: Project[], activeProjectId: string | null): void {
     try {
@@ -51,17 +64,19 @@ class ProjectStateService {
         openProjects,
         activeProjectId,
       };
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
-      // sessionStorage unavailable (privacy mode), silently fail
+      // localStorage unavailable (privacy mode), silently fail
     }
   }
 
   /**
-   * Clear persisted state from sessionStorage.
+   * Clear persisted state from localStorage (and legacy sessionStorage).
    */
   clearPersistedState(): void {
     try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_PROJECT_KEY);
       sessionStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem(ACTIVE_PROJECT_KEY);
     } catch {
@@ -185,11 +200,14 @@ class ProjectStateService {
 
   /**
    * Check if the wizard is needed for a given project path.
-   * Returns true if the wizard-needed key exists in sessionStorage.
+   * Returns true if the wizard-needed key exists in localStorage.
    */
   isWizardNeeded(projectPath: string): boolean {
     try {
-      return sessionStorage.getItem(WIZARD_NEEDED_PREFIX + projectPath) === 'true';
+      return (
+        localStorage.getItem(WIZARD_NEEDED_PREFIX + projectPath) === 'true' ||
+        sessionStorage.getItem(WIZARD_NEEDED_PREFIX + projectPath) === 'true'
+      );
     } catch {
       return false;
     }
@@ -201,9 +219,9 @@ class ProjectStateService {
    */
   setWizardNeeded(projectPath: string): void {
     try {
-      sessionStorage.setItem(WIZARD_NEEDED_PREFIX + projectPath, 'true');
+      localStorage.setItem(WIZARD_NEEDED_PREFIX + projectPath, 'true');
     } catch {
-      // sessionStorage unavailable, silently fail
+      // localStorage unavailable, silently fail
     }
   }
 
@@ -213,9 +231,10 @@ class ProjectStateService {
    */
   clearWizardNeeded(projectPath: string): void {
     try {
+      localStorage.removeItem(WIZARD_NEEDED_PREFIX + projectPath);
       sessionStorage.removeItem(WIZARD_NEEDED_PREFIX + projectPath);
     } catch {
-      // sessionStorage unavailable, silently fail
+      // localStorage unavailable, silently fail
     }
   }
 
@@ -243,11 +262,13 @@ class ProjectStateService {
    */
   private getSessionId(): string {
     try {
-      let sessionId = sessionStorage.getItem('specwright-session-id');
+      let sessionId =
+        localStorage.getItem('specwright-session-id') ||
+        sessionStorage.getItem('specwright-session-id');
       if (!sessionId) {
         sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-        sessionStorage.setItem('specwright-session-id', sessionId);
       }
+      localStorage.setItem('specwright-session-id', sessionId);
       return sessionId;
     } catch {
       return 'default-session';

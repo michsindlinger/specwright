@@ -195,6 +195,12 @@ export class WebSocketHandler {
       console.log(`Message from ${client.clientId}:`, message.type);
 
       switch (message.type) {
+        case 'ping':
+          // App-level liveness probe (mobile Safari zombie-connection detection).
+          // Protocol-level ping/pong is not accessible from the browser, so the
+          // client sends this after tab resume to verify the socket is alive.
+          client.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
+          break;
         case 'project.list':
           this.handleProjectList(client);
           break;
@@ -475,6 +481,9 @@ export class WebSocketHandler {
           break;
         case 'git:generate-commit-message':
           this.handleGitGenerateCommitMessage(client, message);
+          break;
+        case 'git:diff':
+          this.handleGitDiff(client, message);
           break;
         // Attachment Messages (SCA-001)
         case 'attachment:upload':
@@ -4192,6 +4201,18 @@ export class WebSocketHandler {
       return;
     }
     gitHandler.handleGenerateCommitMessage(client, message, projectPath);
+  }
+
+  /**
+   * Handle git:diff message.
+   */
+  private handleGitDiff(client: WebSocketClient, message: WebSocketMessage): void {
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      this.sendGitNoProjectError(client, 'diff');
+      return;
+    }
+    gitHandler.handleDiff(client, message, projectPath);
   }
 
   /**

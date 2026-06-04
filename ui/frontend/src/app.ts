@@ -40,6 +40,7 @@ import './components/document-preview/aos-document-preview-panel.js';
 import type { AosFileEditorPanel } from './components/file-editor/aos-file-editor-panel.js';
 import './components/git/aos-git-status-bar.js';
 import './components/git/aos-git-commit-dialog.js';
+import './components/git/aos-git-diff-viewer.js';
 import './components/git/aos-git-pull-strategy-dialog.js';
 import './components/queue/aos-global-queue-panel.js';
 import './components/queue/aos-queue-section.js';
@@ -1312,7 +1313,7 @@ export class AosApp extends LitElement {
   }
 
   /**
-   * Persist current project state to sessionStorage.
+   * Persist current project state to localStorage.
    */
   private persistProjectState(): void {
     projectStateService.persistState(this.openProjects, this.activeProjectId);
@@ -1337,7 +1338,7 @@ export class AosApp extends LitElement {
   }
 
   /**
-   * Restore project state from sessionStorage after browser refresh.
+   * Restore project state from localStorage after browser refresh.
    */
   private async restoreProjectState(): Promise<void> {
     const storedState = projectStateService.loadPersistedState();
@@ -2051,6 +2052,7 @@ export class AosApp extends LitElement {
         @show-toast=${this._handleShowToast}
       ></aos-global-queue-panel>
       <aos-toast-notification></aos-toast-notification>
+      <aos-git-diff-viewer></aos-git-diff-viewer>
       <aos-project-add-modal
         .open=${this.showAddProjectModal}
         .openProjectPaths=${this.openProjects.map((p) => p.path)}
