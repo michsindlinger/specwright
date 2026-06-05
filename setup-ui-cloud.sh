@@ -212,8 +212,12 @@ sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
 # fail with "Permission denied (publickey)" because the cloud droplet has no
 # SSH key. Other Git hosts are unaffected.
 echo "==> Configuring insteadOf rewrite for SSH GitHub remotes"
+# Reset to a clean state first: a prior run leaves multiple values behind, and
+# `git config` without --add fails on multi-valued keys (breaks idempotency).
 sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
-    git config --global "url.https://github.com/.insteadOf" "git@github.com:"
+    git config --global --unset-all "url.https://github.com/.insteadOf" || true
+sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
+    git config --global --add "url.https://github.com/.insteadOf" "git@github.com:"
 sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
     git config --global --add "url.https://github.com/.insteadOf" "ssh://git@github.com/"
 
