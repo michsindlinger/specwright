@@ -167,9 +167,12 @@ export class AosTerminal extends LitElement {
   private _scrollbarDragging = false;
   private _scrollbarRenderDisposable: { dispose(): void } | null = null;
   private boundViewportScroll = () => this._updateScrollbarThumb();
-  private boundScrollbarTouchStart = (e: TouchEvent) => this._onScrollbarTouchStart(e);
-  private boundScrollbarTouchMove = (e: TouchEvent) => this._onScrollbarTouchMove(e);
-  private boundScrollbarTouchEnd = () => this._onScrollbarTouchEnd();
+  // Pointer Events (not Touch Events) so the drag stays glued to the thumb via
+  // setPointerCapture even if the finger drifts off the thin hit zone — otherwise
+  // iOS Safari hijacks the gesture into native viewport scrolling.
+  private boundScrollbarPointerDown = (e: PointerEvent) => this._onScrollbarPointerDown(e);
+  private boundScrollbarPointerMove = (e: PointerEvent) => this._onScrollbarPointerMove(e);
+  private boundScrollbarPointerUp = (e: PointerEvent) => this._onScrollbarPointerUp(e);
 
   // Prompt templates picker: a button next to copy/paste that lists reusable
   // prompts and inserts the selected one into the terminal (and submits it).
@@ -999,10 +1002,10 @@ export class AosTerminal extends LitElement {
     if (!this._scrollbarEl || !this._scrollbarThumb || !this._xtermViewport) return;
 
     this._xtermViewport.addEventListener('scroll', this.boundViewportScroll, { passive: true });
-    this._scrollbarEl.addEventListener('touchstart', this.boundScrollbarTouchStart, { passive: false });
-    this._scrollbarEl.addEventListener('touchmove', this.boundScrollbarTouchMove, { passive: false });
-    this._scrollbarEl.addEventListener('touchend', this.boundScrollbarTouchEnd, { passive: true });
-    this._scrollbarEl.addEventListener('touchcancel', this.boundScrollbarTouchEnd, { passive: true });
+    this._scrollbarEl.addEventListener('pointerdown', this.boundScrollbarPointerDown);
+    this._scrollbarEl.addEventListener('pointermove', this.boundScrollbarPointerMove);
+    this._scrollbarEl.addEventListener('pointerup', this.boundScrollbarPointerUp);
+    this._scrollbarEl.addEventListener('pointercancel', this.boundScrollbarPointerUp);
 
     // Re-measure whenever xterm repaints (new output grows scrollHeight).
     this._scrollbarRenderDisposable = this.terminal?.onRender(() => this._updateScrollbarThumb()) ?? null;
@@ -1026,23 +1029,37 @@ export class AosTerminal extends LitElement {
     this._scrollbarThumb.style.transform = `translateY(${top}px)`;
   }
 
-  private _onScrollbarTouchStart(event: TouchEvent): void {
-    if (event.touches.length !== 1 || !this._xtermViewport) return;
+  private _onScrollbarPointerDown(event: PointerEvent): void {
+    if (!this._xtermViewport) return;
     this._scrollbarDragging = true;
     this._scrollbarEl?.classList.add('is-active');
-    this._scrollToTouch(event.touches[0].clientY);
+    // Capture the pointer so every subsequent move/up fires on the scrollbar even
+    // if the finger drifts off the 28px hit zone. Without this iOS reassigns the
+    // gesture to the viewport and starts native scrolling.
+    try {
+      this._scrollbarEl?.setPointerCapture(event.pointerId);
+    } catch {
+      // Older engines without pointer capture — touch-action:none still guards us.
+    }
+    this._scrollToTouch(event.clientY);
     event.preventDefault();
   }
 
-  private _onScrollbarTouchMove(event: TouchEvent): void {
-    if (!this._scrollbarDragging || event.touches.length !== 1) return;
-    this._scrollToTouch(event.touches[0].clientY);
+  private _onScrollbarPointerMove(event: PointerEvent): void {
+    if (!this._scrollbarDragging) return;
+    this._scrollToTouch(event.clientY);
     event.preventDefault();
   }
 
-  private _onScrollbarTouchEnd(): void {
+  private _onScrollbarPointerUp(event: PointerEvent): void {
+    if (!this._scrollbarDragging) return;
     this._scrollbarDragging = false;
     this._scrollbarEl?.classList.remove('is-active');
+    try {
+      this._scrollbarEl?.releasePointerCapture(event.pointerId);
+    } catch {
+      // No-op if capture was never acquired.
+    }
   }
 
   /**
@@ -1074,10 +1091,10 @@ export class AosTerminal extends LitElement {
       this._xtermViewport.removeEventListener('scroll', this.boundViewportScroll);
     }
     if (this._scrollbarEl) {
-      this._scrollbarEl.removeEventListener('touchstart', this.boundScrollbarTouchStart);
-      this._scrollbarEl.removeEventListener('touchmove', this.boundScrollbarTouchMove);
-      this._scrollbarEl.removeEventListener('touchend', this.boundScrollbarTouchEnd);
-      this._scrollbarEl.removeEventListener('touchcancel', this.boundScrollbarTouchEnd);
+      this._scrollbarEl.removeEventListener('pointerdown', this.boundScrollbarPointerDown);
+      this._scrollbarEl.removeEventListener('pointermove', this.boundScrollbarPointerMove);
+      this._scrollbarEl.removeEventListener('pointerup', this.boundScrollbarPointerUp);
+      this._scrollbarEl.removeEventListener('pointercancel', this.boundScrollbarPointerUp);
     }
     this._scrollbarRenderDisposable?.dispose();
     this._scrollbarRenderDisposable = null;
@@ -1132,11 +1149,20 @@ export class AosTerminal extends LitElement {
         .xterm .xterm-viewport {
           width: initial !important;
         }
-        /* Touch devices: hide the thin native overlay scrollbar — replaced by
-           the wide custom .aos-term-scrollbar below. */
+        /* Touch devices: fully disable the native scroll behaviour and replace it
+           with the wide custom .aos-term-scrollbar below.
+
+           overflow:hidden stops iOS Safari from showing its own overlay scroll
+           indicator and from hijacking a scrollbar drag into native viewport
+           scrolling — programmatic scrollTop (driven by both the body touch-drag
+           bridge and the custom scrollbar) still works on a hidden-overflow box.
+           This is the key fix: on iOS, ::-webkit-scrollbar can't suppress the
+           native overlay indicator, only removing overflow scrolling can. */
         .aos-terminal-inner.touch .xterm-viewport {
+          overflow: hidden !important;
           scrollbar-width: none;
           -ms-overflow-style: none;
+          overscroll-behavior: contain;
         }
         .aos-terminal-inner.touch .xterm-viewport::-webkit-scrollbar {
           width: 0;
