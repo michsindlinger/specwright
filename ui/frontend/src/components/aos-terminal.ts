@@ -1,11 +1,12 @@
 import { LitElement, html } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { gateway } from '../gateway';
 import type { MessageHandler } from '../gateway';
 import { themeService, type ResolvedTheme } from '../services/theme.service.js';
 import { CLOUD_TERMINAL_CONFIG } from '../../../src/shared/types/cloud-terminal.protocol.js';
+import type { PromptTemplate } from '../../../src/shared/types/prompt-templates.protocol.js';
 import '@xterm/xterm/css/xterm.css';
 
 const DARK_THEME = {
@@ -118,6 +119,11 @@ export class AosTerminal extends LitElement {
   @property({ type: Boolean })
   cloudMode = false;
 
+  /** Reusable prompt templates shown in the terminal picker. */
+  @state() private _templates: PromptTemplate[] = [];
+  /** Whether the prompt-templates dropdown is currently open. */
+  @state() private _templatesOpen = false;
+
   private terminal: Terminal | null = null;
   private fitAddon: FitAddon | null = null;
   private terminalContainer: HTMLElement | null = null;
@@ -165,9 +171,19 @@ export class AosTerminal extends LitElement {
   private boundScrollbarTouchMove = (e: TouchEvent) => this._onScrollbarTouchMove(e);
   private boundScrollbarTouchEnd = () => this._onScrollbarTouchEnd();
 
+  // Prompt templates picker: a button next to copy/paste that lists reusable
+  // prompts and inserts the selected one into the terminal (and submits it).
+  private boundTemplatesHandler: MessageHandler = (msg) => {
+    this._templates = (msg.templates as PromptTemplate[]) ?? [];
+  };
+  private boundDocMouseDown = (e: MouseEvent) => this._onDocMouseDown(e);
+
   override connectedCallback(): void {
     super.connectedCallback();
     themeService.onChange(this.boundThemeChangeHandler);
+    gateway.on('prompt-templates:list', this.boundTemplatesHandler);
+    gateway.send({ type: 'prompt-templates:list.get' });
+    document.addEventListener('mousedown', this.boundDocMouseDown);
 
     // Wait for first render before initializing terminal
     this.updateComplete.then(() => {
@@ -183,6 +199,8 @@ export class AosTerminal extends LitElement {
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     themeService.offChange(this.boundThemeChangeHandler);
+    gateway.off('prompt-templates:list', this.boundTemplatesHandler);
+    document.removeEventListener('mousedown', this.boundDocMouseDown);
     this.cleanupTerminal();
     this.cleanupGatewayListeners();
   }
@@ -768,6 +786,42 @@ export class AosTerminal extends LitElement {
     this._showPasteStatus('Eingefügt und abgeschickt', 'success');
   }
 
+  /** Toggle the prompt-templates dropdown, refreshing the list when opening. */
+  private _onTemplatesClick(): void {
+    this._templatesOpen = !this._templatesOpen;
+    if (this._templatesOpen) {
+      gateway.send({ type: 'prompt-templates:list.get' });
+    }
+  }
+
+  /**
+   * Insert the selected template into the terminal and submit it immediately
+   * (mirrors the paste-and-send normalization: \r\n/\r → \n, trailing newlines
+   * stripped, single trailing \r to press Enter).
+   */
+  private _onSelectTemplate(template: PromptTemplate): void {
+    this._templatesOpen = false;
+    if (!this.terminalSessionId) {
+      this._showPasteStatus('Kein aktives Terminal', 'error');
+      return;
+    }
+    const normalized = template.content
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\n+$/, '');
+    this._sendInput(normalized + '\r');
+    this._showPasteStatus(`Vorlage "${template.name}" eingefügt`, 'success');
+  }
+
+  /** Close the templates dropdown when clicking outside of it. */
+  private _onDocMouseDown(e: MouseEvent): void {
+    if (!this._templatesOpen) return;
+    const wrap = this.querySelector('.aos-term-templates-wrap');
+    if (wrap && !e.composedPath().includes(wrap)) {
+      this._templatesOpen = false;
+    }
+  }
+
   /** Send raw input to the active PTY, routing by cloud vs. workflow mode. */
   private _sendInput(data: string): void {
     if (!this.terminalSessionId) return;
@@ -1172,11 +1226,87 @@ export class AosTerminal extends LitElement {
         .aos-term-copy.is-copied .icon-check {
           display: block;
         }
+        /* Prompt templates picker (button + dropdown menu). */
+        .aos-term-templates-wrap {
+          position: relative;
+          display: flex;
+        }
+        .aos-term-templates-menu {
+          position: absolute;
+          top: calc(100% + 6px);
+          right: 0;
+          min-width: 200px;
+          max-width: 320px;
+          max-height: 320px;
+          overflow-y: auto;
+          padding: 4px;
+          background: var(--color-bg-sidebar, rgba(15, 31, 51, 0.96));
+          border: 1px solid var(--color-border, rgba(255, 255, 255, 0.18));
+          border-radius: 8px;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+          backdrop-filter: blur(8px);
+          z-index: 10;
+        }
+        .aos-term-templates-item {
+          display: block;
+          width: 100%;
+          padding: 8px 10px;
+          border: none;
+          border-radius: 6px;
+          background: transparent;
+          color: var(--color-text-primary, #E6F0FA);
+          font-size: 13px;
+          text-align: left;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          cursor: pointer;
+        }
+        .aos-term-templates-item:hover {
+          background: var(--color-bg-hover, rgba(45, 74, 111, 0.9));
+        }
+        .aos-term-templates-empty {
+          padding: 10px;
+          color: var(--color-text-secondary, #B8C9DB);
+          font-size: 13px;
+          white-space: nowrap;
+        }
       </style>
       <div class="aos-terminal-outer ${this.cloudMode ? 'cloud-mode' : ''}">
         <div class="aos-terminal-inner ${this._isTouch ? 'touch' : ''}">
           <div id="terminal-container" class="aos-terminal-host"></div>
           <div class="aos-term-actions">
+            <div class="aos-term-templates-wrap">
+              <button
+                class="aos-term-action aos-term-templates"
+                type="button"
+                title="Prompt-Vorlagen"
+                aria-label="Prompt-Vorlagen einfügen"
+                aria-haspopup="true"
+                aria-expanded=${this._templatesOpen ? 'true' : 'false'}
+                @click=${() => this._onTemplatesClick()}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <rect x="2.5" y="1.5" width="9" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+                  <path d="M5 5h4M5 8h4M5 11h2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+              </button>
+              ${this._templatesOpen
+                ? html`<div class="aos-term-templates-menu" role="menu">
+                    ${this._templates.length === 0
+                      ? html`<div class="aos-term-templates-empty">Keine Vorlagen vorhanden</div>`
+                      : this._templates.map(
+                          (t) => html`<button
+                            class="aos-term-templates-item"
+                            type="button"
+                            role="menuitem"
+                            title=${t.content}
+                            @click=${() => this._onSelectTemplate(t)}
+                          >${t.name}</button>`
+                        )}
+                  </div>`
+                : ''}
+            </div>
             <button
               class="aos-term-action aos-term-paste"
               type="button"

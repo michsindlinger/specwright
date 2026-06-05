@@ -5,6 +5,7 @@ import { ContextProvider } from '@lit/context';
 import './views/dashboard-view.js';
 import './views/chat-view.js';
 import './views/settings-view.js';
+import './views/prompt-templates-view.js';
 import './views/not-found-view.js';
 import './views/aos-getting-started-view.js';
 import './views/team-view.js';
@@ -229,6 +230,7 @@ export class AosApp extends LitElement {
     { route: 'team', label: 'Team', icon: 'team' },
     { route: 'getting-started', label: 'Getting Started', icon: 'getting-started' },
     { route: 'chat', label: 'Chat', icon: 'chat' },
+    { route: 'prompt-templates', label: 'Prompt Templates', icon: 'prompt-templates' },
     { route: 'settings', label: 'Settings', icon: 'settings' },
   ];
 
@@ -732,6 +734,7 @@ export class AosApp extends LitElement {
       'getting-started': html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>`,
       team: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
       settings: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+      'prompt-templates': html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>`,
     };
     return icons[icon] || icon;
   }
@@ -748,6 +751,7 @@ export class AosApp extends LitElement {
       chat: 'Chat',
       settings: 'Settings',
       call: 'Voice Call',
+      'prompt-templates': 'Prompt Templates',
       'not-found': 'Page Not Found',
     };
     return titles[this.currentRoute];
@@ -1902,6 +1906,8 @@ export class AosApp extends LitElement {
         return html`<aos-chat-view></aos-chat-view>`;
       case 'settings':
         return html`<aos-settings-view></aos-settings-view>`;
+      case 'prompt-templates':
+        return html`<aos-prompt-templates-view></aos-prompt-templates-view>`;
       case 'call':
         return html`<aos-voice-call-view></aos-voice-call-view>`;
       default:

@@ -36,6 +36,7 @@ import {
   type ModelProvider
 } from './model-config.js';
 import { loadGeneralConfig, updateGeneralConfig, getReviewPrompt, validateMaxConcurrent } from './general-config.js';
+import { loadPromptTemplates, savePromptTemplate, deletePromptTemplate } from './prompt-templates.js';
 import { loadVoiceConfigStatus, updateVoiceConfig } from './voice-config.js';
 import { loadGithubConfigStatus, updateGithubPat, clearGithubPat } from './github-config.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
@@ -405,6 +406,15 @@ export class WebSocketHandler {
           break;
         case 'settings.general.update':
           this.handleSettingsGeneralUpdate(client, message);
+          break;
+        case 'prompt-templates:list.get':
+          this.handlePromptTemplatesListGet(client);
+          break;
+        case 'prompt-templates:save':
+          this.handlePromptTemplatesSave(client, message);
+          break;
+        case 'prompt-templates:delete':
+          this.handlePromptTemplatesDelete(client, message);
           break;
         case 'settings.voice.get':
           this.handleSettingsVoiceGet(client);
@@ -3598,6 +3608,58 @@ export class WebSocketHandler {
       const errorResponse: WebSocketMessage = {
         type: 'settings.error',
         error: error instanceof Error ? error.message : 'Failed to update general settings',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  private handlePromptTemplatesListGet(client: WebSocketClient): void {
+    const templates = loadPromptTemplates();
+    const response: WebSocketMessage = {
+      type: 'prompt-templates:list',
+      templates,
+      timestamp: new Date().toISOString()
+    };
+    client.send(JSON.stringify(response));
+  }
+
+  private handlePromptTemplatesSave(client: WebSocketClient, message: WebSocketMessage): void {
+    try {
+      const templates = savePromptTemplate({
+        id: message.id as string | undefined,
+        name: message.name as string,
+        content: message.content as string,
+      });
+      const response: WebSocketMessage = {
+        type: 'prompt-templates:list',
+        templates,
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'prompt-templates:error',
+        error: error instanceof Error ? error.message : 'Failed to save template',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  private handlePromptTemplatesDelete(client: WebSocketClient, message: WebSocketMessage): void {
+    try {
+      const templates = deletePromptTemplate(message.id as string);
+      const response: WebSocketMessage = {
+        type: 'prompt-templates:list',
+        templates,
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(response));
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'prompt-templates:error',
+        error: error instanceof Error ? error.message : 'Failed to delete template',
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));
