@@ -10,7 +10,7 @@ import { routerService } from '../../services/router.service.js';
 import type { ViewType } from '../../types/route.types.js';
 import './aos-mobile-sheet.js';
 
-export type DrawerNavRoute = 'dashboard' | 'specs' | 'cloud-terminal' | 'settings';
+export type DrawerNavRoute = 'dashboard' | 'specs' | 'cloud-terminal' | 'prompt-templates' | 'settings';
 
 @customElement('aos-mobile-side-drawer')
 export class AosMobileSideDrawer extends LitElement {
@@ -35,6 +35,7 @@ export class AosMobileSideDrawer extends LitElement {
   private _onNavTap(route: DrawerNavRoute): void {
     const routerRoutes: Partial<Record<DrawerNavRoute, ViewType>> = {
       dashboard: 'dashboard',
+      'prompt-templates': 'prompt-templates',
       settings: 'settings',
     };
     const viewType = routerRoutes[route];
@@ -87,6 +88,14 @@ export class AosMobileSideDrawer extends LitElement {
         </svg>
       `;
     }
+    if (route === 'prompt-templates') {
+      return html`
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M10.5 2H4.5A1.5 1.5 0 0 0 3 3.5v11A1.5 1.5 0 0 0 4.5 16h9a1.5 1.5 0 0 0 1.5-1.5V6.5L10.5 2Z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+          <path d="M10.5 2v4.5H15M6 9.5h6M6 12h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      `;
+    }
     return html`
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
         <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.4" fill="none"/>
@@ -103,6 +112,7 @@ export class AosMobileSideDrawer extends LitElement {
       { route: 'dashboard', label: 'Dashboard' },
       { route: 'specs', label: 'Specs' },
       { route: 'cloud-terminal', label: 'Terminal' },
+      { route: 'prompt-templates', label: 'Prompt Templates' },
       { route: 'settings', label: 'Settings' },
     ];
 
