@@ -36,6 +36,17 @@ export interface PromptTemplatesError {
   timestamp: string;
 }
 
+/**
+ * Result of extracting a prompt from an uploaded image. The suggested `name`
+ * and transcribed `content` are pre-filled into the form (not yet persisted).
+ */
+export interface PromptTemplatesExtracted {
+  type: 'prompt-templates:extracted';
+  name: string;
+  content: string;
+  timestamp: string;
+}
+
 // ─── Client → Server ────────────────────────────────────────────────────────
 
 /** Request the current list of templates. */
@@ -58,4 +69,17 @@ export interface PromptTemplatesSave {
 export interface PromptTemplatesDelete {
   type: 'prompt-templates:delete';
   id: string;
+}
+
+/**
+ * Upload an image to have a prompt + title extracted from it by a small model.
+ * The server replies with `prompt-templates:extracted` on success or
+ * `prompt-templates:error` on failure. Nothing is persisted by this request.
+ */
+export interface PromptTemplatesExtractFromImage {
+  type: 'prompt-templates:extract-from-image';
+  /** Base64-encoded image payload (no data-URL prefix). */
+  base64: string;
+  /** Image MIME type (png, jpeg, gif or webp). */
+  mimeType: string;
 }

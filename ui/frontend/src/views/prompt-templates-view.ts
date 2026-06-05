@@ -1,7 +1,12 @@
 import { LitElement, html } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, state, query } from 'lit/decorators.js';
 import { gateway, type WebSocketMessage } from '../gateway.js';
 import type { PromptTemplate } from '../../../src/shared/types/prompt-templates.protocol.js';
+
+/** Image formats the extractor (Claude vision) supports. */
+const EXTRACT_ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+/** Upload size limit, mirrors the backend extractor. */
+const EXTRACT_MAX_BYTES = 10 * 1024 * 1024;
 
 /**
  * Prompt Templates maintenance page.
@@ -22,6 +27,11 @@ export class AosPromptTemplatesView extends LitElement {
   @state() private editingId: string | null = null;
   @state() private formName = '';
   @state() private formContent = '';
+
+  /** True while an uploaded image is being transcribed into a prompt. */
+  @state() private extracting = false;
+
+  @query('#tpl-image-input') private imageInput!: HTMLInputElement;
 
   private boundHandlers: Map<string, (msg: WebSocketMessage) => void> = new Map();
 
@@ -44,6 +54,7 @@ export class AosPromptTemplatesView extends LitElement {
     const handlers: [string, (msg: WebSocketMessage) => void][] = [
       ['prompt-templates:list', (msg) => this.onListReceived(msg)],
       ['prompt-templates:error', (msg) => this.onError(msg)],
+      ['prompt-templates:extracted', (msg) => this.onExtracted(msg)],
     ];
     for (const [type, handler] of handlers) {
       this.boundHandlers.set(type, handler);
@@ -74,6 +85,72 @@ export class AosPromptTemplatesView extends LitElement {
   private onError(msg: WebSocketMessage): void {
     this.error = (msg.error as string) || 'An error occurred';
     this.saving = false;
+    this.extracting = false;
+  }
+
+  /** Fill the form with the prompt + title transcribed from the uploaded image. */
+  private onExtracted(msg: WebSocketMessage): void {
+    this.extracting = false;
+    this.error = '';
+    this.formContent = (msg.content as string) ?? '';
+    // Only adopt the suggested title when the user hasn't typed one already.
+    const suggested = (msg.name as string) ?? '';
+    if (suggested && !this.formName.trim()) {
+      this.formName = suggested;
+    }
+  }
+
+  private onPickImage(): void {
+    if (this.extracting || this.saving) return;
+    this.imageInput?.click();
+  }
+
+  private async onImageSelected(e: Event): Promise<void> {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // Reset so re-picking the same screenshot still fires `change`.
+    input.value = '';
+    if (!file) return;
+
+    if (!EXTRACT_ALLOWED_MIME.includes(file.type)) {
+      this.error = `Unsupported image type (${file.type || 'unknown'}). Use PNG, JPEG, GIF or WebP.`;
+      return;
+    }
+    if (file.size > EXTRACT_MAX_BYTES) {
+      this.error = `Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB, limit ${
+        EXTRACT_MAX_BYTES / 1024 / 1024
+      } MB)`;
+      return;
+    }
+
+    let base64: string;
+    try {
+      base64 = await this.fileToBase64(file);
+    } catch (err) {
+      this.error = `Image could not be read: ${err instanceof Error ? err.message : String(err)}`;
+      return;
+    }
+
+    this.error = '';
+    this.extracting = true;
+    gateway.send({
+      type: 'prompt-templates:extract-from-image',
+      base64,
+      mimeType: file.type,
+    });
+  }
+
+  private fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const r = reader.result as string;
+        const comma = r.indexOf(',');
+        resolve(comma >= 0 ? r.slice(comma + 1) : r);
+      };
+      reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'));
+      reader.readAsDataURL(file);
+    });
   }
 
   private resetForm(): void {
@@ -132,7 +209,8 @@ export class AosPromptTemplatesView extends LitElement {
     }
 
     const isEditing = this.editingId !== null;
-    const canSave = !this.saving && this.formName.trim() && this.formContent.trim();
+    const busy = this.saving || this.extracting;
+    const canSave = !busy && this.formName.trim() && this.formContent.trim();
 
     return html`
       <div style="display: flex; flex-direction: column; gap: var(--spacing-lg); max-width: 900px;">
@@ -145,9 +223,38 @@ export class AosPromptTemplatesView extends LitElement {
         </div>
 
         <div class="provider-card">
-          <h4 style="margin: 0 0 var(--spacing-md) 0">
-            ${isEditing ? 'Edit Template' : 'New Template'}
-          </h4>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-md); margin: 0 0 var(--spacing-md) 0;">
+            <h4 style="margin: 0;">
+              ${isEditing ? 'Edit Template' : 'New Template'}
+            </h4>
+            <button
+              class="save-btn"
+              style="background: var(--color-bg-tertiary); color: var(--color-text-primary); display: inline-flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-sm); flex-shrink: 0;"
+              title="Extract a prompt from a screenshot using AI"
+              @click=${() => this.onPickImage()}
+              ?disabled=${busy}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                   stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <path d="M21 15l-5-5L5 21"></path>
+              </svg>
+              ${this.extracting ? 'Extracting…' : 'From image'}
+            </button>
+          </div>
+          <input
+            id="tpl-image-input"
+            type="file"
+            accept="image/png,image/jpeg,image/gif,image/webp"
+            hidden
+            @change=${(e: Event) => this.onImageSelected(e)}
+          />
+          <p class="section-description" style="margin: calc(-1 * var(--spacing-sm)) 0 var(--spacing-md) 0; font-size: 0.8125rem;">
+            Tip: upload a screenshot of a prompt (e.g. from Instagram) and the prompt
+            text and a title are filled in for you automatically.
+          </p>
           <div class="form-field">
             <label for="tpl-name">Name</label>
             <input
@@ -157,7 +264,7 @@ export class AosPromptTemplatesView extends LitElement {
               placeholder="e.g. Run tests"
               .value=${this.formName}
               @input=${(e: Event) => { this.formName = (e.target as HTMLInputElement).value; }}
-              ?disabled=${this.saving}
+              ?disabled=${busy}
             />
           </div>
           <div class="form-field" style="margin-top: var(--spacing-md)">
@@ -168,7 +275,7 @@ export class AosPromptTemplatesView extends LitElement {
               placeholder="The prompt text that gets inserted into the terminal..."
               .value=${this.formContent}
               @input=${(e: Event) => { this.formContent = (e.target as HTMLTextAreaElement).value; }}
-              ?disabled=${this.saving}
+              ?disabled=${busy}
               style="width: 100%; font-family: monospace; font-size: 0.875rem; padding: var(--spacing-sm); border: 1px solid var(--color-border, #e2e8f0); border-radius: var(--radius-md, 4px); background: var(--input-bg, var(--color-bg-primary)); color: var(--color-text-primary); resize: vertical; box-sizing: border-box;"
             ></textarea>
           </div>
@@ -182,7 +289,7 @@ export class AosPromptTemplatesView extends LitElement {
                   class="save-btn"
                   style="background: var(--color-bg-tertiary); color: var(--color-text-primary);"
                   @click=${() => this.resetForm()}
-                  ?disabled=${this.saving}
+                  ?disabled=${busy}
                 >Cancel</button>`
               : ''}
           </div>
