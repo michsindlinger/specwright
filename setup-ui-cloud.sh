@@ -11,6 +11,8 @@
 #   - Bound to loopback ${SPECWRIGHT_UI_PORT}            (default 3001)
 #   - Reads projects from ${SPECWRIGHT_PROJECTS_ROOT}    (default /mnt/shared_projects)
 #   - Cloudflare Tunnel (CLOUD-005) fronts loopback port — no public inbound
+#   - User-level Claude skills (cloud-deploy/claude-user-skills/) installed to
+#     /var/lib/${SPECWRIGHT_UI_USER}/.claude/skills/
 #
 # Idempotent: re-running updates the repo, rebuilds frontend, reinstalls unit.
 #
@@ -214,6 +216,31 @@ sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
     git config --global "url.https://github.com/.insteadOf" "git@github.com:"
 sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
     git config --global --add "url.https://github.com/.insteadOf" "ssh://git@github.com/"
+
+# -----------------------------------------------------------------------------
+# User-level Claude Code skills for the service user.
+# Claude sessions spawned by the UI run as $SPECWRIGHT_UI_USER with
+# HOME=/var/lib/$SPECWRIGHT_UI_USER — user-level skills must live in that
+# home's ~/.claude/skills/. Skills are versioned in the repo under
+# cloud-deploy/claude-user-skills/ and synced here on every install/update.
+# -----------------------------------------------------------------------------
+SKILLS_SRC="$SPECWRIGHT_UI_HOME/cloud-deploy/claude-user-skills"
+SKILLS_DEST="/var/lib/$SPECWRIGHT_UI_USER/.claude/skills"
+
+if [[ -d "$SKILLS_SRC" ]]; then
+    echo "==> Installing user-level Claude skills to $SKILLS_DEST"
+    mkdir -p "$SKILLS_DEST"
+    for skill_dir in "$SKILLS_SRC"/*/; do
+        [[ -d "$skill_dir" ]] || continue
+        skill_name=$(basename "$skill_dir")
+        echo "    - $skill_name"
+        rm -rf "${SKILLS_DEST:?}/$skill_name"
+        cp -R "$skill_dir" "$SKILLS_DEST/$skill_name"
+    done
+    chown -R "$SPECWRIGHT_UI_USER:$SPECWRIGHT_UI_USER" "/var/lib/$SPECWRIGHT_UI_USER/.claude"
+else
+    echo "==> No claude-user-skills directory in repo; skipping skill install"
+fi
 
 # -----------------------------------------------------------------------------
 # systemd unit
