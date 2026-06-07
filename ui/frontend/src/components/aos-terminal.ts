@@ -162,6 +162,9 @@ export class AosTerminal extends LitElement {
   // user can always get the text out — on desktop and mobile alike.
   private _copyResetTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Scroll arrow buttons (touch): press-and-hold repeats the scroll step.
+  private _scrollRepeatTimer: ReturnType<typeof setInterval> | null = null;
+
   private _scrollbarEl: HTMLElement | null = null;
   private _scrollbarThumb: HTMLElement | null = null;
   private _scrollbarDragging = false;
@@ -840,6 +843,90 @@ export class AosTerminal extends LitElement {
     }
   }
 
+  /**
+   * Start scrolling when an up/down arrow button is pressed. Uses `pointerdown`
+   * (not `click`) for an immediate response on touch, plus a repeat timer so
+   * holding the button keeps scrolling.
+   */
+  private _onScrollPress(event: PointerEvent, direction: 'up' | 'down'): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this._stopScrollRepeat();
+    this._scrollStep(direction); // immediate response to the tap
+    this._scrollRepeatTimer = setInterval(() => this._scrollStep(direction), 90);
+    const btn = event.currentTarget as HTMLElement | null;
+    try {
+      btn?.setPointerCapture(event.pointerId);
+    } catch {
+      // Older engines without pointer capture — harmless.
+    }
+  }
+
+  /** Stop the press-and-hold scroll repeat. */
+  private _stopScrollRepeat = (): void => {
+    if (this._scrollRepeatTimer !== null) {
+      clearInterval(this._scrollRepeatTimer);
+      this._scrollRepeatTimer = null;
+    }
+  };
+
+  /**
+   * Scroll one step. Two cases:
+   *
+   * 1. Full-screen apps (the Claude Code TUI) run on the alternate screen with
+   *    mouse tracking enabled and NO scrollback — xterm has nothing to scroll.
+   *    We send mouse-wheel events so the app scrolls its own view, exactly as a
+   *    real mouse wheel would.
+   * 2. Plain shell output: scroll the same `.xterm-viewport` the custom
+   *    scrollbar drives, via programmatic scrollTop, and refresh the thumb.
+   */
+  private _scrollStep(direction: 'up' | 'down'): void {
+    const term = this.terminal;
+    if (!term) return;
+
+    if (term.modes.mouseTrackingMode !== 'none') {
+      this._sendWheel(direction);
+      return;
+    }
+
+    const vp = this._resolveViewport();
+    if (!vp) return;
+    const maxScroll = vp.scrollHeight - vp.clientHeight;
+    if (maxScroll <= 0) return;
+    const step = Math.max(40, vp.clientHeight * 0.3);
+    vp.scrollTop = Math.min(
+      maxScroll,
+      Math.max(0, vp.scrollTop + (direction === 'up' ? -step : step)),
+    );
+    this._updateScrollbarThumb();
+  }
+
+  /**
+   * Emulate mouse-wheel scrolling by sending SGR (1006) mouse events to the
+   * PTY: button 64 = wheel up, 65 = wheel down, reported at the centre of the
+   * grid. A few notches per press for a useful step.
+   */
+  private _sendWheel(direction: 'up' | 'down', notches = 3): void {
+    const term = this.terminal;
+    if (!term) return;
+    const col = Math.max(1, Math.floor(term.cols / 2));
+    const row = Math.max(1, Math.floor(term.rows / 2));
+    const cb = direction === 'up' ? 64 : 65;
+    let seq = '';
+    for (let i = 0; i < notches; i++) {
+      seq += `\x1b[<${cb};${col};${row}M`;
+    }
+    this._sendInput(seq);
+  }
+
+  /** Lazily resolve the xterm viewport element (it renders after open()). */
+  private _resolveViewport(): HTMLElement | null {
+    if (!this._xtermViewport) {
+      this._xtermViewport = this.terminalContainer?.querySelector('.xterm-viewport') ?? null;
+    }
+    return this._xtermViewport;
+  }
+
   private _showPasteStatus(message: string, type: 'info' | 'success' | 'error'): void {
     this.dispatchEvent(new CustomEvent('show-toast', {
       detail: { message, type },
@@ -1102,6 +1189,7 @@ export class AosTerminal extends LitElement {
       clearTimeout(this._copyResetTimer);
       this._copyResetTimer = null;
     }
+    this._stopScrollRepeat();
     this._scrollbarEl = null;
     this._scrollbarThumb = null;
     this._scrollbarDragging = false;
@@ -1361,6 +1449,38 @@ export class AosTerminal extends LitElement {
                 <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </button>
+            ${this._isTouch
+              ? html`
+                  <button
+                    class="aos-term-action aos-term-scroll-up"
+                    type="button"
+                    title="Nach oben scrollen"
+                    aria-label="Terminal nach oben scrollen"
+                    @pointerdown=${(e: PointerEvent) => this._onScrollPress(e, 'up')}
+                    @pointerup=${this._stopScrollRepeat}
+                    @pointercancel=${this._stopScrollRepeat}
+                    @pointerleave=${this._stopScrollRepeat}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M4 10l4-4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <button
+                    class="aos-term-action aos-term-scroll-down"
+                    type="button"
+                    title="Nach unten scrollen"
+                    aria-label="Terminal nach unten scrollen"
+                    @pointerdown=${(e: PointerEvent) => this._onScrollPress(e, 'down')}
+                    @pointerup=${this._stopScrollRepeat}
+                    @pointercancel=${this._stopScrollRepeat}
+                    @pointerleave=${this._stopScrollRepeat}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                `
+              : ''}
           </div>
           ${this._isTouch
             ? html`<div class="aos-term-scrollbar"><div class="aos-term-scrollbar__thumb"></div></div>`
