@@ -247,6 +247,43 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# SSH access for Claude cloud sessions (service user -> root@localhost).
+# Cloud sessions run as $SPECWRIGHT_UI_USER on this droplet and need the same
+# SSH-based prod access (Compass DB, docker logs, systemd) as local dev
+# sessions. Key is generated once; the root authorized_keys entry is
+# restricted to connections originating from this droplet itself.
+# -----------------------------------------------------------------------------
+SSH_DIR="/var/lib/$SPECWRIGHT_UI_USER/.ssh"
+SSH_KEY="$SSH_DIR/id_ed25519"
+DROPLET_IP=$(hostname -I | awk '{print $1}')
+
+echo "==> Ensuring SSH access for $SPECWRIGHT_UI_USER -> root@localhost"
+mkdir -p "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+chown "$SPECWRIGHT_UI_USER:$SPECWRIGHT_UI_USER" "$SSH_DIR"
+
+if [[ ! -f "$SSH_KEY" ]]; then
+    sudo -u "$SPECWRIGHT_UI_USER" ssh-keygen -t ed25519 -N "" -f "$SSH_KEY" \
+        -C "specwright-cloud@$(hostname)"
+fi
+
+SSH_PUB=$(cat "$SSH_KEY.pub")
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+touch /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+if ! grep -qF "$SSH_PUB" /root/.ssh/authorized_keys; then
+    echo "from=\"$DROPLET_IP,127.0.0.1,::1\" $SSH_PUB" >> /root/.ssh/authorized_keys
+fi
+
+# Pre-trust the droplet's own host key so BatchMode SSH works immediately.
+touch "$SSH_DIR/known_hosts"
+if ! sudo -u "$SPECWRIGHT_UI_USER" ssh-keygen -F "$DROPLET_IP" -f "$SSH_DIR/known_hosts" &>/dev/null; then
+    ssh-keyscan -t ed25519 "$DROPLET_IP" >> "$SSH_DIR/known_hosts" 2>/dev/null
+fi
+chown -R "$SPECWRIGHT_UI_USER:$SPECWRIGHT_UI_USER" "$SSH_DIR"
+
+# -----------------------------------------------------------------------------
 # systemd unit
 # -----------------------------------------------------------------------------
 UNIT_TEMPLATE="$SPECWRIGHT_UI_HOME/cloud-deploy/specwright-ui.service"
