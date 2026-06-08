@@ -340,8 +340,12 @@ export class AosTerminal extends LitElement {
         if (this.terminal?.hasSelection()) {
           const cleaned = this._cleanSelection();
           if (cleaned) {
-            navigator.clipboard.writeText(cleaned);
-            this.terminal.clearSelection();
+            // preventDefault stops the browser's native Cmd/Ctrl+C from firing a
+            // synchronous `copy` event on xterm's (unselected) helper textarea,
+            // which would otherwise race with / clobber our async clipboard write
+            // — on macOS Safari this left the clipboard empty.
+            event.preventDefault();
+            void this._copySelectionToClipboard(cleaned);
             return false; // Block xterm's copy
           }
         }
@@ -555,6 +559,48 @@ export class AosTerminal extends LitElement {
     logicalLines.push(currentLine.trimEnd());
 
     return logicalLines.join('\n');
+  }
+
+  /**
+   * Write the cleaned selection to the clipboard. Only clears the terminal
+   * selection once the write succeeds, so a failed copy leaves the selection
+   * intact for a retry. Falls back to the legacy execCommand('copy') path on
+   * browsers/contexts where the async Clipboard API is unavailable or rejects.
+   */
+  private async _copySelectionToClipboard(text: string): Promise<void> {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else if (!this._legacyCopy(text)) {
+        throw new Error('No clipboard API available');
+      }
+      this.terminal?.clearSelection();
+    } catch (err) {
+      // Last-ditch fallback before giving up (some browsers reject writeText
+      // from a keydown gesture but still allow execCommand).
+      if (this._legacyCopy(text)) {
+        this.terminal?.clearSelection();
+        return;
+      }
+      console.warn('[Terminal] Copy to clipboard failed', err);
+    }
+  }
+
+  /** Legacy clipboard write via a temporary textarea + execCommand('copy'). */
+  private _legacyCopy(text: string): boolean {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
   }
 
   private _detectInputNeeded(data: string): void {
