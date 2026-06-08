@@ -116,6 +116,11 @@
       ],
       "models": [
         {
+          "id": "MiniMax-M3",
+          "name": "MiniMax M3",
+          "description": "Neuestes MiniMax-Modell"
+        },
+        {
           "id": "MiniMax-M2.5",
           "name": "MiniMax M2.5",
           "description": "204K context, ~60 tokens/sec"
