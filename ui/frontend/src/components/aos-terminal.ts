@@ -183,6 +183,12 @@ export class AosTerminal extends LitElement {
     this._templates = (msg.templates as PromptTemplate[]) ?? [];
   };
   private boundDocMouseDown = (e: MouseEvent) => this._onDocMouseDown(e);
+  // xterm renders its selection on a canvas, so it is NOT a native DOM selection
+  // (`window.getSelection()` is empty). A native Cmd/Ctrl+C therefore copies
+  // nothing. We listen for the browser's `copy` event — which fires for both
+  // Cmd+C and Ctrl+C regardless of which element holds focus — and inject the
+  // terminal's selection into the clipboard synchronously.
+  private boundDocCopy = (e: ClipboardEvent) => this._onDocCopy(e);
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -190,6 +196,7 @@ export class AosTerminal extends LitElement {
     gateway.on('prompt-templates:list', this.boundTemplatesHandler);
     gateway.send({ type: 'prompt-templates:list.get' });
     document.addEventListener('mousedown', this.boundDocMouseDown);
+    document.addEventListener('copy', this.boundDocCopy);
 
     // Wait for first render before initializing terminal
     this.updateComplete.then(() => {
@@ -207,6 +214,7 @@ export class AosTerminal extends LitElement {
     themeService.offChange(this.boundThemeChangeHandler);
     gateway.off('prompt-templates:list', this.boundTemplatesHandler);
     document.removeEventListener('mousedown', this.boundDocMouseDown);
+    document.removeEventListener('copy', this.boundDocCopy);
     this.cleanupTerminal();
     this.cleanupGatewayListeners();
   }
@@ -332,22 +340,16 @@ export class AosTerminal extends LitElement {
     // attachCustomKeyEventHandler is called for ALL event types: keydown, keypress, keyup.
     // Returning false blocks xterm from processing the event.
     this.terminal.attachCustomKeyEventHandler((event) => {
-      // Intercept Cmd/Ctrl+C to clean up selection before copying.
-      // xterm.js handles copy internally on a hidden textarea, so a normal
-      // 'copy' event listener on the container never fires. We bypass xterm's
-      // copy entirely by writing to the clipboard API ourselves.
+      // Cmd/Ctrl+C with an active selection → copy, don't interrupt.
+      // The actual clipboard write happens in _onDocCopy (the native `copy`
+      // event). Here we only return false (when a selection exists) to stop
+      // xterm from sending SIGINT (\x03) on Ctrl+C — crucially WITHOUT calling
+      // preventDefault(), so the browser still fires its native `copy` event
+      // that _onDocCopy services. With no selection we fall through and let
+      // xterm handle Ctrl+C normally (sends SIGINT).
       if (event.key === 'c' && (event.metaKey || event.ctrlKey) && !event.shiftKey && event.type === 'keydown') {
         if (this.terminal?.hasSelection()) {
-          const cleaned = this._cleanSelection();
-          if (cleaned) {
-            // preventDefault stops the browser's native Cmd/Ctrl+C from firing a
-            // synchronous `copy` event on xterm's (unselected) helper textarea,
-            // which would otherwise race with / clobber our async clipboard write
-            // — on macOS Safari this left the clipboard empty.
-            event.preventDefault();
-            void this._copySelectionToClipboard(cleaned);
-            return false; // Block xterm's copy
-          }
+          return false; // Block xterm's SIGINT; native copy event still fires
         }
         // No selection → let xterm handle (sends SIGINT / \x03)
       }
@@ -562,45 +564,24 @@ export class AosTerminal extends LitElement {
   }
 
   /**
-   * Write the cleaned selection to the clipboard. Only clears the terminal
-   * selection once the write succeeds, so a failed copy leaves the selection
-   * intact for a retry. Falls back to the legacy execCommand('copy') path on
-   * browsers/contexts where the async Clipboard API is unavailable or rejects.
+   * Service the browser's native `copy` event. xterm's selection lives on a
+   * canvas, so `window.getSelection()` is empty and a plain Cmd/Ctrl+C copies
+   * nothing. When the terminal has a selection — and the user isn't copying a
+   * real native selection elsewhere (e.g. chat text) — we write the cleaned
+   * terminal selection into the clipboard synchronously via clipboardData.
    */
-  private async _copySelectionToClipboard(text: string): Promise<void> {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else if (!this._legacyCopy(text)) {
-        throw new Error('No clipboard API available');
-      }
-      this.terminal?.clearSelection();
-    } catch (err) {
-      // Last-ditch fallback before giving up (some browsers reject writeText
-      // from a keydown gesture but still allow execCommand).
-      if (this._legacyCopy(text)) {
-        this.terminal?.clearSelection();
-        return;
-      }
-      console.warn('[Terminal] Copy to clipboard failed', err);
-    }
-  }
+  private _onDocCopy(e: ClipboardEvent): void {
+    if (!this.terminal?.hasSelection()) return;
+    // Respect a genuine native selection: don't hijack copies made outside the
+    // terminal while a terminal selection happens to linger.
+    const nativeSelection = window.getSelection()?.toString() ?? '';
+    if (nativeSelection.trim().length > 0) return;
 
-  /** Legacy clipboard write via a temporary textarea + execCommand('copy'). */
-  private _legacyCopy(text: string): boolean {
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      return ok;
-    } catch {
-      return false;
-    }
+    const cleaned = this._cleanSelection();
+    if (!cleaned || !e.clipboardData) return;
+
+    e.clipboardData.setData('text/plain', cleaned);
+    e.preventDefault();
   }
 
   private _detectInputNeeded(data: string): void {
