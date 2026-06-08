@@ -116,6 +116,11 @@
       ],
       "models": [
         {
+          "id": "MiniMax-M3",
+          "name": "MiniMax M3",
+          "description": "Latest MiniMax coding model (Claude Opus alternative)"
+        },
+        {
           "id": "MiniMax-M2.5",
           "name": "MiniMax M2.5",
           "description": "204K context, ~60 tokens/sec"
