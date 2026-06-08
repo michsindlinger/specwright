@@ -571,6 +571,18 @@ export class AosTerminal extends LitElement {
    * terminal selection into the clipboard synchronously via clipboardData.
    */
   private _onDocCopy(e: ClipboardEvent): void {
+    // --- TEMP DIAGNOSTIC (remove after debugging cloud copy) ---
+    const root = this.getRootNode();
+    const rootGetSel = (root as { getSelection?: () => Selection | null }).getSelection;
+    const shadowSel = typeof rootGetSel === 'function' ? (rootGetSel.call(root)?.toString() ?? '') : '(none)';
+    console.log('[DocCopy]', {
+      hasSelection: this.terminal?.hasSelection(),
+      xtermSel: (this.terminal?.getSelection() ?? '').slice(0, 40),
+      windowSel: (window.getSelection()?.toString() ?? '').slice(0, 40),
+      shadowSel: (shadowSel ?? '').slice(0, 40),
+      rootType: root?.constructor?.name,
+    });
+    // --- END DIAGNOSTIC ---
     if (!this.terminal?.hasSelection()) return;
     // Respect a genuine native selection: don't hijack copies made outside the
     // terminal while a terminal selection happens to linger.
