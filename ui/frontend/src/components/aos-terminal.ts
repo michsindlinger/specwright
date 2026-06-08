@@ -352,6 +352,22 @@ export class AosTerminal extends LitElement {
     // Wide custom scrollbar for touch devices (no-op on desktop)
     this._setupCustomScrollbar();
 
+    // Cloud-mode image paste bridge.
+    // Cloud Claude Code runs on the droplet and cannot reach the user's local
+    // clipboard, so pasted screenshots never reach it. We intercept the browser's
+    // native `paste` event — it delivers the clipboard image bytes directly via
+    // clipboardData, with none of the focus/permission quirks of the async
+    // Clipboard API (navigator.clipboard.read), which failed silently on Chrome.
+    // The image is uploaded and the server injects the saved path into the PTY.
+    // Text pastes fall through untouched to xterm.
+    if (this.cloudMode && this.terminal.textarea) {
+      this.terminal.textarea.addEventListener(
+        'paste',
+        (event) => this._handleCloudPasteEvent(event),
+        true, // capture: run before xterm's own paste handler
+      );
+    }
+
     // Custom key event handler for terminal shortcuts.
     // attachCustomKeyEventHandler is called for ALL event types: keydown, keypress, keyup.
     // Returning false blocks xterm from processing the event.
@@ -372,16 +388,10 @@ export class AosTerminal extends LitElement {
         // No selection → let xterm handle (sends SIGINT / \x03)
       }
 
-      // Cmd/Ctrl+V in cloud mode: bridge browser clipboard images to the remote PTY.
-      // Cloud Claude Code runs on the droplet — it can't reach the user's local
-      // clipboard. We intercept the keypress, read the image via the Async Clipboard
-      // API, and upload it. xterm's standard text-paste path stays intact (return true),
-      // so non-image clipboards still work the usual way.
-      if (this.cloudMode && event.key === 'v' && (event.metaKey || event.ctrlKey)
-          && !event.shiftKey && event.type === 'keydown') {
-        void this._tryHandleCloudImagePaste();
-        return true;
-      }
+      // Image paste in cloud mode is handled via the native `paste` event
+      // (see _handleCloudPasteEvent), which is far more reliable than reading the
+      // async Clipboard API from a keydown (that silently failed on Chrome due to
+      // focus/permission rules). Cmd/Ctrl+V falls through to xterm here.
 
       // Shift+Enter → send newline to PTY (cloud mode only)
       // Must return false for ALL event types (keydown, keypress, keyup) to fully
@@ -647,29 +657,50 @@ export class AosTerminal extends LitElement {
   }
 
   /**
-   * Cloud-mode paste bridge: read an image from the browser clipboard and ship it
-   * to the server. The text-paste path is not blocked — this is a best-effort
-   * additional handler that no-ops when no image is on the clipboard.
+   * Cloud-mode paste handler bound to the native `paste` event. If the clipboard
+   * carries an image, upload it to the server (which writes it to disk and injects
+   * the path into the PTY) and suppress xterm's default handling so Claude Code
+   * doesn't also see a stray paste. Non-image pastes fall through so normal text
+   * paste keeps working.
    */
-  private async _tryHandleCloudImagePaste(): Promise<void> {
+  private _handleCloudPasteEvent(event: ClipboardEvent): void {
     if (!this.terminalSessionId) return;
-    if (this._pasteInFlight) return;
-    if (!navigator.clipboard?.read) return;
+    const dataTransfer = event.clipboardData;
+    if (!dataTransfer) return;
 
-    let items: ClipboardItem[];
-    try {
-      items = await navigator.clipboard.read();
-    } catch {
-      // Permission denied or no access → silently fall back to xterm's text path
-      return;
+    const allowed = CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME as readonly string[];
+
+    // Screenshots usually arrive as files; some sources expose them as items.
+    let file: File | null = null;
+    for (const candidate of Array.from(dataTransfer.files)) {
+      if (allowed.includes(candidate.type)) { file = candidate; break; }
+    }
+    if (!file) {
+      for (const item of Array.from(dataTransfer.items)) {
+        if (item.kind === 'file' && allowed.includes(item.type)) {
+          file = item.getAsFile();
+          if (file) break;
+        }
+      }
     }
 
-    const allowed = CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME;
-    const item = items.find((i) => allowed.some((mt) => i.types.includes(mt)));
-    if (!item) return;
+    if (!file) return; // no image on the clipboard → let xterm paste text normally
 
-    const mimeType = allowed.find((mt) => item.types.includes(mt))!;
-    const blob = await item.getType(mimeType);
+    // We own this paste: stop xterm (and thus Claude Code) from also processing it.
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    void this._uploadClipboardImageBlob(file, file.type);
+  }
+
+  /**
+   * Upload a clipboard image blob over the cloud-terminal channel. The server
+   * persists it and feeds the absolute path into the PTY; success/failure are
+   * surfaced via the paste-image-saved / error gateway events.
+   */
+  private async _uploadClipboardImageBlob(blob: Blob, mimeType: string): Promise<void> {
+    if (!this.terminalSessionId) return;
+    if (this._pasteInFlight) return;
+
     const maxBytes = CLOUD_TERMINAL_CONFIG.MAX_PASTE_IMAGE_BYTES;
     if (blob.size > maxBytes) {
       this._showPasteStatus(
