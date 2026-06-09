@@ -1,0 +1,374 @@
+{
+  "version": "2.0",
+  "mode": "lean",
+  "spec": {
+    "id": "2026-06-09-spec-prioritization-dependencies",
+    "name": "Spec-Priorisierung & Abhängigkeits-Sequenzierung",
+    "prefix": "SPD",
+    "specFile": "spec.md",
+    "specLiteFile": "spec-lite.md",
+    "createdAt": "2026-06-09T08:38:58.836Z",
+    "specTier": "L",
+    "implementationPlan": "implementation-plan.md"
+  },
+  "resumeContext": {
+    "currentPhase": "2-complete",
+    "nextPhase": "3-execute-story",
+    "worktreePath": null,
+    "gitBranch": "main",
+    "gitStrategy": "current-branch",
+    "currentStory": null,
+    "currentStoryPhase": null,
+    "lastAction": "Completed SPD-001",
+    "nextAction": "Wait for blocked tasks to become ready",
+    "progressIndex": 1,
+    "totalStories": 12
+  },
+  "execution": {
+    "status": "executing",
+    "startedAt": "2026-06-09T08:42:07.513Z",
+    "completedAt": null,
+    "model": null
+  },
+  "tasks": [
+    {
+      "id": "SPD-001",
+      "title": "Backend-Typen & Persistenz (priority/blockedBy)",
+      "description": "KanbanJsonSpec + SpecInfo um optionale priority/blockedBy erweitern; getSpecInfo liest sie; lock-safe setSpecPriority/setSpecBlockedBy nach toggleBotAssignment-Muster.",
+      "planSection": "phase-1-backend-types-persistence",
+      "dependencies": [],
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
+      "timing": {
+        "startedAt": "2026-06-09T08:42:07.513Z",
+        "completedAt": "2026-06-09T08:50:50.481Z"
+      },
+      "implementation": {
+        "filesModified": [
+          "ui/src/server/specs-reader.ts",
+          "ui/tests/unit/spd-001-spec-priority-blockedby.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "585170be7b760b79e5a2b4fb564952fd197fa55d",
+            "message": "feat(spd-001): add priority/blockedBy persistence to KanbanJsonSpec",
+            "timestamp": "2026-06-09T08:50:31+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "id": "SPD-002",
+      "title": "Graph-Logik: Topo-Sort, Zyklen, abgeleiteter Status",
+      "description": "Pure functions in spec-graph.ts: Zyklus-Erkennung, wouldCreateCycle, computeRecommendedOrder, deriveDependencyStatus; Anreicherung in listSpecs.",
+      "planSection": "phase-2-graph-logic",
+      "dependencies": [
+        "SPD-001"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SPD-003",
+      "title": "WebSocket-Handler für priority/blockedBy",
+      "description": "Handler specs.setPriority/specs.setBlockedBy nach handleSpecsAssign-Muster inkl. Backend-Zyklus-Vorprüfung und specs.list-Broadcast.",
+      "planSection": "phase-3-websocket-handlers",
+      "dependencies": [
+        "SPD-001",
+        "SPD-002"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SPD-004",
+      "title": "Prioritäts-UI: Badge + Sortier-Selektor",
+      "description": "aos-priority-badge (Badge+Selektor) in spec-card; Sortier-Selektor (Datum/Priorität/Reihenfolge) und getSortedSpecs-Erweiterung in dashboard-view.",
+      "planSection": "phase-4-priority-ui",
+      "dependencies": [
+        "SPD-001",
+        "SPD-003"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SPD-005",
+      "title": "Abhängigkeits-UI: bidirektionaler Editor + Karten-Hinweis",
+      "description": "aos-spec-dependency-editor (blocked-by + is-prerequisite-for, nur aktive Specs, Zyklus-Fehler) und 'Blockiert durch …'-Hinweis auf der Spec-Karte.",
+      "planSection": "phase-5-dependency-ui",
+      "dependencies": [
+        "SPD-003"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SPD-006",
+      "title": "Reihenfolge-Ansicht (topologische Liste)",
+      "description": "aos-spec-order-view als dritter View-Mode: nummerierte Liste, 'wartet auf'/'ermöglicht', Zyklus-Warnung, 'noch nicht eingeordnet'.",
+      "planSection": "phase-6-order-view",
+      "dependencies": [
+        "SPD-002",
+        "SPD-004"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SPD-007",
+      "title": "KI-Abhängigkeitsanalyse + Vorschlags-Dialog",
+      "description": "dependency-analysis.service (spec-lite aller aktiven Specs, query()-Muster, Eskalation auf plan/spec bei mittel/niedrig), WS-Handler und aos-dependency-proposal-dialog mit Propose-&-Confirm.",
+      "planSection": "phase-7-ai-analysis",
+      "dependencies": [
+        "SPD-005"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SPD-008",
+      "title": "Wartung: Backfill, Re-Analyse, Cleanup bei Löschung",
+      "description": "Backfill ('Alle analysieren') + Re-Analyse-Trigger in der Reihenfolge-Ansicht; deleteSpec bereinigt verwaiste blockedBy-Verweise lock-safe.",
+      "planSection": "phase-8-maintenance-workflow",
+      "dependencies": [
+        "SPD-006",
+        "SPD-007"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SPD-009",
+      "title": "/create-spec-Workflow-Anpassung (Analyse-Schritt)",
+      "description": "Neuen Abhängigkeitsanalyse-Schritt nach spec-lite-Erzeugung in create-spec.md (Step 2.6-lean + 2.6) ergänzen, Frontmatter-Version bumpen.",
+      "planSection": "phase-8-maintenance-workflow",
+      "dependencies": [
+        "SPD-007"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SPD-997",
+      "title": "Code Review",
+      "description": "Full-feature diff review",
+      "planSection": "System: Code Review",
+      "dependencies": [
+        "SPD-001",
+        "SPD-002",
+        "SPD-003",
+        "SPD-004",
+        "SPD-005",
+        "SPD-006",
+        "SPD-007",
+        "SPD-008",
+        "SPD-009"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "opus",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SPD-998",
+      "title": "Integration Validation",
+      "description": "End-to-end test execution",
+      "planSection": "System: Integration Validation",
+      "dependencies": [
+        "SPD-001",
+        "SPD-002",
+        "SPD-003",
+        "SPD-004",
+        "SPD-005",
+        "SPD-006",
+        "SPD-007",
+        "SPD-008",
+        "SPD-009"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "opus",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    },
+    {
+      "id": "SPD-999",
+      "title": "Finalize PR",
+      "description": "User-todos, PR creation, cleanup",
+      "planSection": "System: Finalize PR",
+      "dependencies": [
+        "SPD-997",
+        "SPD-998"
+      ],
+      "status": "blocked",
+      "phase": "pending",
+      "model": "sonnet",
+      "timing": {
+        "startedAt": null,
+        "completedAt": null
+      },
+      "implementation": {
+        "filesModified": [],
+        "commits": []
+      }
+    }
+  ],
+  "boardStatus": {
+    "total": 12,
+    "ready": 0,
+    "inProgress": 0,
+    "inReview": 0,
+    "testing": 0,
+    "done": 1,
+    "blocked": 11
+  },
+  "changeLog": [
+    {
+      "timestamp": "2026-06-09T08:38:58.836Z",
+      "action": "kanban_created",
+      "storyId": null,
+      "details": "Lean kanban initialized with 12 tasks via MCP tool"
+    },
+    {
+      "timestamp": "2026-06-09T08:41:02.865Z",
+      "action": "models_bulk_changed",
+      "storyId": null,
+      "details": "Model set to sonnet for: SPD-001, SPD-002, SPD-003, SPD-004, SPD-005, SPD-006, SPD-007, SPD-008, SPD-009, SPD-997, SPD-998, SPD-999"
+    },
+    {
+      "timestamp": "2026-06-09T08:41:08.797Z",
+      "action": "model_changed",
+      "storyId": "SPD-997",
+      "details": "Model changed from sonnet to opus"
+    },
+    {
+      "timestamp": "2026-06-09T08:41:10.490Z",
+      "action": "model_changed",
+      "storyId": "SPD-998",
+      "details": "Model changed from sonnet to opus"
+    },
+    {
+      "timestamp": "2026-06-09T08:41:14.813Z",
+      "action": "status_changed",
+      "storyId": "SPD-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T08:41:14.851Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git current-branch setup via UI: main"
+    },
+    {
+      "timestamp": "2026-06-09T08:41:14.898Z",
+      "action": "stale_recovery",
+      "storyId": "SPD-001",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-06-09T08:41:14.910Z",
+      "action": "status_changed",
+      "storyId": "SPD-001",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T08:42:07.513Z",
+      "action": "status_changed",
+      "storyId": "SPD-001",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T08:50:50.481Z",
+      "action": "status_changed",
+      "storyId": "SPD-001",
+      "details": "Task completed: in_progress → done"
+    }
+  ]
+}
