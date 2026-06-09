@@ -7,6 +7,11 @@
 ## Purpose
 Essential guidance for Claude Code development in the Specwright repository. This is the **framework repository** that provides workflows, templates, agents, and skills for spec-driven development, plus an optional **Web UI** for visual project management.
 
+## Zusammenarbeit & Arbeitsweise
+
+- **Code ist Source of Truth**: Antworten IMMER im Code verifizieren, nicht nur aus Memory-Einträgen oder Doku ableiten. Memory/Specwright/CLAUDE.md sind Hinweise, kein Beweis – sie können veraltet sein. Vor Empfehlungen/Aussagen die betroffenen Dateien (Compose, Service-Code, Config) tatsächlich lesen. Nennt ein Memory-Eintrag eine Datei/Funktion/Flag: Existenz im Code bestätigen.
+- **Ideen kritisch hinterfragen**: Vorschläge des Users NICHT reflexartig bestätigen. Jede Idee challengen – Annahmen prüfen, Alternativen nennen, Risiken/Trade-offs offenlegen. Ziel ist die beste Lösung, nicht die schnellste Zustimmung. Bei Widerspruch: begründen, nicht nachgeben um des Friedens willen.
+
 ## Repository Structure
 
 **This is NOT a product project - it's the Specwright framework itself.**
