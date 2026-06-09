@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed SPD-007",
-    "nextAction": "Wait for blocked tasks to become ready",
-    "progressIndex": 7,
+    "lastAction": "Completed SPD-008",
+    "nextAction": "Execute next task: SPD-009",
+    "progressIndex": 8,
     "totalStories": 12
   },
   "execution": {
@@ -260,16 +260,34 @@
         "SPD-006",
         "SPD-007"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-06-09T11:11:26.250Z",
+        "completedAt": "2026-06-09T11:17:58.619Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/specs-reader.ts",
+          "ui/src/server/websocket.ts",
+          "ui/frontend/src/components/aos-spec-order-view.ts",
+          "ui/frontend/src/views/dashboard-view.ts",
+          "ui/tests/unit/spd-008-maintenance.test.ts",
+          "specwright/specs/2026-06-09-spec-prioritization-dependencies/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "5260ec9",
+            "message": "feat(spd-008): add backfill analyze-all, order-view re-analyze triggers, and deleteSpec blockedBy cleanup",
+            "timestamp": "2026-06-09T11:15:59+00:00"
+          },
+          {
+            "hash": "011fcf4",
+            "message": "chore: [SPD-008] update integration-context.md",
+            "timestamp": "2026-06-09T11:16:30+00:00"
+          }
+        ]
       }
     },
     {
@@ -280,7 +298,7 @@
       "dependencies": [
         "SPD-007"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": "sonnet",
       "timing": {
@@ -372,12 +390,12 @@
   ],
   "boardStatus": {
     "total": 12,
-    "ready": 0,
+    "ready": 1,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 7,
-    "blocked": 5
+    "done": 8,
+    "blocked": 3
   },
   "changeLog": [
     {
@@ -642,6 +660,36 @@
       "timestamp": "2026-06-09T11:10:38.348Z",
       "action": "status_changed",
       "storyId": "SPD-007",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-06-09T11:10:38.756Z",
+      "action": "dependency_resolved",
+      "storyId": "SPD-008",
+      "details": "Unblocked: all dependencies done/in_review (SPD-006, SPD-007)"
+    },
+    {
+      "timestamp": "2026-06-09T11:10:38.756Z",
+      "action": "dependency_resolved",
+      "storyId": "SPD-009",
+      "details": "Unblocked: all dependencies done/in_review (SPD-007)"
+    },
+    {
+      "timestamp": "2026-06-09T11:10:38.764Z",
+      "action": "status_changed",
+      "storyId": "SPD-008",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T11:11:26.250Z",
+      "action": "status_changed",
+      "storyId": "SPD-008",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T11:17:58.619Z",
+      "action": "status_changed",
+      "storyId": "SPD-008",
       "details": "Task completed: in_progress → done"
     }
   ]
