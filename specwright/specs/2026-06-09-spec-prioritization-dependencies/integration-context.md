@@ -12,6 +12,7 @@
 | SPD-006 | Topological order view (aos-spec-order-view) with cycle warning and numbered list | `ui/frontend/src/components/aos-spec-order-view.ts`, `ui/frontend/src/views/dashboard-view.ts` |
 | SPD-007 | AI dependency analysis service + WS handler + proposal dialog | `ui/src/server/services/dependency-analysis.service.ts`, `ui/src/server/websocket.ts`, `ui/frontend/src/components/aos-dependency-proposal-dialog.ts`, `ui/frontend/src/views/dashboard-view.ts` |
 | SPD-008 | Backfill "Alle analysieren" + per-spec re-analyze in order-view; deleteSpec blockedBy cleanup (lock-safe) | `ui/src/server/specs-reader.ts`, `ui/src/server/websocket.ts`, `ui/frontend/src/components/aos-spec-order-view.ts`, `ui/frontend/src/views/dashboard-view.ts` |
+| SPD-998 | Integration Validation: lint + build:backend + frontend build all pass; 60/60 spec-relevant tests green; component connections verified active. 22 pre-existing `npm test` failures isolated to orthogonal subsystems (terminal/pty, project-add-modal, model-config, workflow, execution-store) — not caused by this spec. | _(validation only, no code changes)_ |
 
 ## New Exports & APIs
 
