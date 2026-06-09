@@ -2,7 +2,7 @@
 description: Create Feature Specification with DevTeam (PO + Architect)
 globs:
 alwaysApply: false
-version: 3.16.0
+version: 3.17.0
 encoding: UTF-8
 ---
 
@@ -11,6 +11,11 @@ encoding: UTF-8
 ## Overview
 
 Create detailed feature specifications: Main agent gathers fachliche requirements (PO role), then either generates V2 Lean Tasks (default) or V1 Classic Stories with technical refinement (`--classic` flag).
+
+**v3.17 Changes (Dependency Analysis at Spec Creation):**
+- **NEW: Step 7.5 (V2 Lean) / Step 8.25 (V1 Classic)** — After `kanban.json` creation, AI analyzes `spec-lite.md` files of all other active specs and proposes `blockedBy` dependency edges. Propose-&-Confirm: user confirms edges; confirmed edges where the **new spec is blocked** are applied immediately to its `kanban.json`; reverse edges (existing spec blocked by new spec) are flagged as user-todos for the Web-UI Abhängigkeits-Editor.
+- **Escalation:** medium/low confidence candidates trigger a read of `implementation-plan.md` / `spec.md` for re-evaluation before presenting proposals.
+- **Setup impact:** None — no new templates or setup scripts required.
 
 **v3.16 Changes (HTML-Comment Anchors for stable planSection IDs):**
 - **NEW: Anchor-comment convention** — Plan-Agent prepends `<!-- section:<slug> -->` before each `## ` and `### ` heading in `implementation-plan.md`. Slug format `[a-z0-9-]+`, deduplicated per plan.
@@ -1125,6 +1130,86 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
 
      DO NOT pass `stories[]` or `executionPlan` — those are V1-only.
 
+  7.5. **DEPENDENCY ANALYSIS (v3.17 — Propose-&-Confirm):**
+
+  **Purpose:** Identify logical ordering dependencies between the newly created spec
+  and other active specs using inline AI reasoning. Skip gracefully if no other
+  active specs exist.
+
+  1. DISCOVER active specs:
+     ```bash
+     ls specwright/specs/
+     ```
+     FOR EACH spec directory EXCEPT the newly created spec:
+       IF `specwright/specs/[other]/spec-lite.md` AND `specwright/specs/[other]/kanban.json` both exist:
+         READ kanban.json briefly.
+         IF execution.status ≠ "completed": ADD to ACTIVE_SPECS list.
+
+  2. IF ACTIVE_SPECS is empty:
+     LOG: "Keine anderen aktiven Specs gefunden — Abhängigkeitsanalyse übersprungen"
+     GOTO: Step 8
+
+  3. GATHER spec-lites:
+     - New spec: `specwright/specs/[YYYY-MM-DD-spec-name]/spec-lite.md`
+     - Each active spec: `specwright/specs/[other]/spec-lite.md`
+
+  4. ANALYZE (inline — Claude reasons over spec-lites):
+     FOR EACH (new spec, active spec) pair, determine:
+     - New spec directly builds on active spec's output
+       → ProposedEdge: new-spec `blockedBy` active-spec (confidence: high/medium/low)
+     - Active spec directly depends on new spec's output
+       → ProposedEdge: active-spec `blockedBy` new-spec (confidence: high/medium/low)
+
+     ESCALATE for medium/low confidence candidates:
+       TRY READ: `specwright/specs/[candidate]/implementation-plan.md`
+       TRY READ: `specwright/specs/[candidate]/spec.md`
+       Re-evaluate confidence with additional context.
+
+     COLLECT: PROPOSED_EDGES = [{ from, to, confidence, reason }]
+     (from = blocked spec, to = prerequisite spec; semantics: from.blockedBy += to)
+
+  5. IF PROPOSED_EDGES is empty:
+     LOG: "Keine Abhängigkeitskandidaten identifiziert"
+     GOTO: Step 8
+
+  6. PRESENT proposals to user:
+     ```
+     🤖 KI-Abhängigkeitsanalyse — [N] mögliche Abhängigkeit(en) gefunden
+
+     [For each ProposedEdge:]
+       [HIGH/MEDIUM/LOW] "[from-spec-name]" wird blockiert durch "[to-spec-name]"
+       Grund: [reason]
+       [⚠ Manuelle Überprüfung empfohlen] (medium/low confidence only)
+
+     Bitte bestätige oder verwirf jeden Vorschlag.
+     ```
+
+     FOR EACH proposed edge: ASK user confirm / dismiss (allow "all" / "none" shortcuts).
+
+  7. APPLY confirmed edges:
+
+     **a. IF from = NEW spec (just created) — apply immediately:**
+        READ: `specwright/specs/[YYYY-MM-DD-spec-name]/kanban.json`
+        PARSE: `spec.blockedBy` (default `[]`)
+        IF [to-spec-id] NOT already in array:
+          ADD [to-spec-id] to `spec.blockedBy`
+          APPEND to `changeLog`:
+            { "timestamp": "[NOW]", "action": "spec_blocked_by_set",
+              "storyId": null, "details": "Added [to-spec-id] via create-spec dep-analysis" }
+          WRITE: back to `specwright/specs/[YYYY-MM-DD-spec-name]/kanban.json`
+        LOG: "Abhängigkeit gesetzt: [from-spec] blockiert durch [to-spec]"
+
+     **b. IF from = EXISTING spec — flag as user-todo:**
+        INFORM user:
+        "Die umgekehrte Kante ([from-spec] blockiert durch [new-spec]) kann nicht
+         automatisch gesetzt werden, da [from-spec] gerade ausgeführt werden könnte.
+         Bitte setze diese Abhängigkeit manuell im Web-UI (Abhängigkeits-Editor in
+         der Spec-Karte)."
+        IF `specwright/specs/[YYYY-MM-DD-spec-name]/user-todos.md` exists:
+          APPEND: "[ ] Abhängigkeit setzen: [from-spec] blockiert durch [new-spec] (Web-UI → Abhängigkeits-Editor)"
+        ELSE:
+          NOTE in spec.md tail-section.
+
   8. **ASK user (v3.7 resume pattern):**
      ```
      ✅ V2 Lean spec ready!
@@ -1462,6 +1547,86 @@ After the implementation plan is approved, branch based on SPEC_MODE set during 
     - ADD to story metadata: `Integration: [Source] → [Target]`
     - This will be used by Architect to add Integration-DoD items
   - Stories with integration responsibility MUST connect components, not just create them
+
+  8.25. **DEPENDENCY ANALYSIS (v3.17 — Propose-&-Confirm):**
+
+  **Purpose:** Identify logical ordering dependencies between the newly created spec
+  and other active specs using inline AI reasoning. Same logic as Step 7.5 in V2 Lean.
+  Skip gracefully if no other active specs exist.
+
+  1. DISCOVER active specs:
+     ```bash
+     ls specwright/specs/
+     ```
+     FOR EACH spec directory EXCEPT the newly created spec:
+       IF `specwright/specs/[other]/spec-lite.md` AND `specwright/specs/[other]/kanban.json` both exist:
+         READ kanban.json briefly.
+         IF execution.status ≠ "completed": ADD to ACTIVE_SPECS list.
+
+  2. IF ACTIVE_SPECS is empty:
+     LOG: "Keine anderen aktiven Specs gefunden — Abhängigkeitsanalyse übersprungen"
+     GOTO: Step 9
+
+  3. GATHER spec-lites:
+     - New spec: `specwright/specs/[YYYY-MM-DD-spec-name]/spec-lite.md`
+     - Each active spec: `specwright/specs/[other]/spec-lite.md`
+
+  4. ANALYZE (inline — Claude reasons over spec-lites):
+     FOR EACH (new spec, active spec) pair, determine:
+     - New spec directly builds on active spec's output
+       → ProposedEdge: new-spec `blockedBy` active-spec (confidence: high/medium/low)
+     - Active spec directly depends on new spec's output
+       → ProposedEdge: active-spec `blockedBy` new-spec (confidence: high/medium/low)
+
+     ESCALATE for medium/low confidence candidates:
+       TRY READ: `specwright/specs/[candidate]/implementation-plan.md`
+       TRY READ: `specwright/specs/[candidate]/spec.md`
+       Re-evaluate confidence with additional context.
+
+     COLLECT: PROPOSED_EDGES = [{ from, to, confidence, reason }]
+     (from = blocked spec, to = prerequisite spec; semantics: from.blockedBy += to)
+
+  5. IF PROPOSED_EDGES is empty:
+     LOG: "Keine Abhängigkeitskandidaten identifiziert"
+     GOTO: Step 9
+
+  6. PRESENT proposals to user:
+     ```
+     🤖 KI-Abhängigkeitsanalyse — [N] mögliche Abhängigkeit(en) gefunden
+
+     [For each ProposedEdge:]
+       [HIGH/MEDIUM/LOW] "[from-spec-name]" wird blockiert durch "[to-spec-name]"
+       Grund: [reason]
+       [⚠ Manuelle Überprüfung empfohlen] (medium/low confidence only)
+
+     Bitte bestätige oder verwirf jeden Vorschlag.
+     ```
+
+     FOR EACH proposed edge: ASK user confirm / dismiss (allow "all" / "none" shortcuts).
+
+  7. APPLY confirmed edges:
+
+     **a. IF from = NEW spec (just created) — apply immediately:**
+        READ: `specwright/specs/[YYYY-MM-DD-spec-name]/kanban.json`
+        PARSE: `spec.blockedBy` (default `[]`)
+        IF [to-spec-id] NOT already in array:
+          ADD [to-spec-id] to `spec.blockedBy`
+          APPEND to `changeLog`:
+            { "timestamp": "[NOW]", "action": "spec_blocked_by_set",
+              "storyId": null, "details": "Added [to-spec-id] via create-spec dep-analysis" }
+          WRITE: back to `specwright/specs/[YYYY-MM-DD-spec-name]/kanban.json`
+        LOG: "Abhängigkeit gesetzt: [from-spec] blockiert durch [to-spec]"
+
+     **b. IF from = EXISTING spec — flag as user-todo:**
+        INFORM user:
+        "Die umgekehrte Kante ([from-spec] blockiert durch [new-spec]) kann nicht
+         automatisch gesetzt werden, da [from-spec] gerade ausgeführt werden könnte.
+         Bitte setze diese Abhängigkeit manuell im Web-UI (Abhängigkeits-Editor in
+         der Spec-Karte)."
+        IF `specwright/specs/[YYYY-MM-DD-spec-name]/user-todos.md` exists:
+          APPEND: "[ ] Abhängigkeit setzen: [from-spec] blockiert durch [new-spec] (Web-UI → Abhängigkeits-Editor)"
+        ELSE:
+          NOTE in spec.md tail-section.
 
   9. ASK user via AskUserQuestion (v3.7):
      ```
