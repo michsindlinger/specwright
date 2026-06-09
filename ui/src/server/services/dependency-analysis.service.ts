@@ -158,6 +158,17 @@ Return [] if no dependencies confirmed.`;
 
   private async queryAndParse(projectPath: string, prompt: string): Promise<ProposedEdge[]> {
     return withTimeout(async (ac) => {
+      // Mirror external-reviewer.ts: strip ANTHROPIC_* env vars so the spawned
+      // Claude Code subprocess uses the OAuth login in the default ~/.claude
+      // config dir (.credentials.json) — the same session the cloud terminal
+      // uses — instead of a missing/stale API key that makes it exit code 1.
+      const envOverride: Record<string, string | undefined> = { ...process.env };
+      delete envOverride.ANTHROPIC_API_KEY;
+      delete envOverride.ANTHROPIC_AUTH_TOKEN;
+      delete envOverride.ANTHROPIC_BASE_URL;
+
+      const stderrBuf: string[] = [];
+
       const session = claudeQuery({
         prompt,
         options: {
@@ -168,7 +179,11 @@ Return [] if no dependencies confirmed.`;
           allowDangerouslySkipPermissions: true,
           cwd: projectPath,
           abortController: ac,
+          env: envOverride,
           settingSources: ['user'],
+          stderr: (data: string) => {
+            stderrBuf.push(data);
+          },
         },
       });
 
@@ -191,8 +206,10 @@ Return [] if no dependencies confirmed.`;
       }
 
       if (streamError || !result) {
+        const stderr = stderrBuf.join('').trim();
+        const base = streamError instanceof Error ? streamError.message : String(streamError ?? 'no result');
         throw new Error(
-          `Dependency analysis failed: ${streamError instanceof Error ? streamError.message : String(streamError ?? 'no result')}`
+          `Dependency analysis failed: ${base}${stderr ? ` — stderr: ${stderr.slice(0, 800)}` : ''}`
         );
       }
 
