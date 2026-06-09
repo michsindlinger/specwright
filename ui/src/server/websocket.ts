@@ -21,6 +21,7 @@ import { commentHandler } from './handlers/comment.handler.js';
 import { fileHandler } from './handlers/file.handler.js';
 import { documentPreviewHandler } from './handlers/document-preview.handler.js';
 import { PreviewWatcher } from './services/preview-watcher.service.js';
+import { DependencyAnalysisService } from './services/dependency-analysis.service.js';
 import {
   getAllProviders,
   getDefaultSelection,
@@ -88,6 +89,7 @@ export class WebSocketHandler {
   private planReviewOrchestrator: PlanReviewOrchestrator;
   private voiceCallService: VoiceCallService;
   private previewWatcher: PreviewWatcher;
+  private dependencyAnalysisService: DependencyAnalysisService;
   private unsubscribeConcurrency: (() => void) | null = null;
 
   constructor(server: Server) {
@@ -106,6 +108,7 @@ export class WebSocketHandler {
     this.workflowExecutor.setCloudTerminalManager(this.cloudTerminalManager);
     this.planReviewOrchestrator = new PlanReviewOrchestrator(this.cloudTerminalManager);
     this.voiceCallService = new VoiceCallService();
+    this.dependencyAnalysisService = new DependencyAnalysisService();
     this.previewWatcher = new PreviewWatcher();
     this.previewWatcher.init();
     this.setupConnectionHandler();
@@ -332,6 +335,11 @@ export class WebSocketHandler {
         case 'specs.setBlockedBy':
           this.handleSpecsSetBlockedBy(client, message).catch((err) => {
             console.error('[WebSocket] Unhandled error in handleSpecsSetBlockedBy:', err);
+          });
+          break;
+        case 'specs.analyzeDependencies':
+          this.handleSpecsAnalyzeDependencies(client, message).catch((err) => {
+            console.error('[WebSocket] Unhandled error in handleSpecsAnalyzeDependencies:', err);
           });
           break;
         case 'workflow.story.start':
@@ -2576,6 +2584,50 @@ export class WebSocketHandler {
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * SPD-007: Run AI dependency analysis for all active specs (or a single spec).
+   * Broadcasts proposals back to the requesting client only (not all project clients —
+   * proposals are per-user intent and haven't been confirmed yet).
+   */
+  private async handleSpecsAnalyzeDependencies(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
+    const specId = message.specId as string | undefined;
+
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      client.send(JSON.stringify({
+        type: 'specs.analyzeDependencies.error',
+        error: 'No project selected',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+
+    try {
+      client.send(JSON.stringify({
+        type: 'specs.analyzeDependencies.started',
+        specId,
+        timestamp: new Date().toISOString()
+      }));
+
+      const allSpecs = await this.specsReader.listSpecs(projectPath);
+      const proposals = await this.dependencyAnalysisService.analyze(projectPath, allSpecs, specId);
+
+      client.send(JSON.stringify({
+        type: 'specs.analyzeDependencies.result',
+        proposals,
+        specId,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      client.send(JSON.stringify({
+        type: 'specs.analyzeDependencies.error',
+        error: error instanceof Error ? error.message : 'Analyse fehlgeschlagen',
+        specId,
+        timestamp: new Date().toISOString()
+      }));
     }
   }
 

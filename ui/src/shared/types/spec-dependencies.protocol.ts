@@ -43,3 +43,18 @@ export interface OrderEntry {
   id: string;
   index: number;
 }
+
+// ─── AI Dependency Analysis (SPD-007) ─────────────────────────────────────
+
+/**
+ * A single AI-proposed dependency edge.
+ * `from.blockedBy += to` — `from` cannot start until `to` is done.
+ */
+export interface ProposedEdge {
+  from: string;
+  to: string;
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+  /** True when AI confidence stays low even after full-text escalation. */
+  needsReview?: boolean;
+}

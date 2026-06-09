@@ -9,7 +9,10 @@ import '../components/spec-card.js';
 import '../components/kanban-board.js';
 import '../components/aos-spec-dependency-editor.js';
 import '../components/aos-spec-order-view.js';
+import '../components/aos-dependency-proposal-dialog.js';
 import type { SaveDependenciesDetail } from '../components/aos-spec-dependency-editor.js';
+import type { ProposalsApplyDetail } from '../components/aos-dependency-proposal-dialog.js';
+import type { ProposedEdge } from '../../../src/shared/types/spec-dependencies.protocol.js';
 import '../components/docs/aos-docs-panel.js';
 import '../components/aos-create-spec-modal.js';
 import '../components/comments/aos-comment-thread.js';
@@ -205,6 +208,9 @@ export class AosDashboardView extends LitElement {
   @state() private sortMode: SortMode = loadSortMode();
   @state() private _depEditorOpen = false;
   @state() private _depEditorSpecId = '';
+  @state() private _proposalDialogOpen = false;
+  @state() private _proposalLoading = false;
+  @state() private _proposals: ProposedEdge[] = [];
   private lastActiveProjectId: string | null = null;
   @state() private showOnlyActive = true;
   @state() private backlogLoading = false;
@@ -549,6 +555,10 @@ export class AosDashboardView extends LitElement {
       // SPD-003: Priority / dependency change error handlers
       ['specs.setPriority.error', (msg) => this.onSpecsSetPriorityError(msg)],
       ['specs.setBlockedBy.error', (msg) => this.onSpecsSetBlockedByError(msg)],
+      // SPD-007: AI dependency analysis
+      ['specs.analyzeDependencies.started', () => this.onAnalysisStarted()],
+      ['specs.analyzeDependencies.result', (msg) => this.onAnalysisResult(msg)],
+      ['specs.analyzeDependencies.error', (msg) => this.onAnalysisError(msg)],
       ['backlog.assign.ack', (msg) => this.onBacklogAssignAck(msg)],
       ['backlog.assign.error', (msg) => this.onBacklogAssignError(msg)],
       // Bulk model update: confirm via disk refetch on ack, surface + rollback on error
@@ -2125,6 +2135,67 @@ export class AosDashboardView extends LitElement {
     );
   }
 
+  /** SPD-007: Analysis has started — show dialog in loading state. */
+  private onAnalysisStarted(): void {
+    this._proposalLoading = true;
+    this._proposals = [];
+    this._proposalDialogOpen = true;
+  }
+
+  /** SPD-007: Analysis results received — show proposals in dialog. */
+  private onAnalysisResult(msg: WebSocketMessage): void {
+    this._proposals = (msg.proposals as ProposedEdge[]) ?? [];
+    this._proposalLoading = false;
+  }
+
+  /** SPD-007: Analysis failed — close loading dialog, show error toast. */
+  private onAnalysisError(msg: WebSocketMessage): void {
+    this._proposalLoading = false;
+    this._proposalDialogOpen = false;
+    const error = (msg.error as string) || 'KI-Analyse fehlgeschlagen';
+    this.dispatchEvent(
+      new CustomEvent('show-toast', {
+        detail: { message: error, type: 'error' },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
+  /** SPD-007: Trigger AI analysis for a specific spec (from dep-editor). */
+  private handleDepEditorAnalyze(e: CustomEvent<{ specId: string }>): void {
+    const { specId } = e.detail;
+    this._depEditorOpen = false;
+    this._proposalLoading = true;
+    this._proposalDialogOpen = true;
+    this._proposals = [];
+    gateway.send({ type: 'specs.analyzeDependencies', specId });
+  }
+
+  /** SPD-007: Apply confirmed proposals by sending setBlockedBy for each edge. */
+  private handleProposalsApply(e: CustomEvent<ProposalsApplyDetail>): void {
+    const { proposals } = e.detail;
+    this._proposalDialogOpen = false;
+
+    for (const edge of proposals) {
+      const targetSpec = this.specs.find(s => s.id === edge.from);
+      if (!targetSpec) continue;
+      const currentBlockedBy = targetSpec.blockedBy ?? [];
+      if (!currentBlockedBy.includes(edge.to)) {
+        gateway.send({
+          type: 'specs.setBlockedBy',
+          specId: edge.from,
+          blockedBy: [...currentBlockedBy, edge.to],
+        });
+      }
+    }
+  }
+
+  /** SPD-007: Close the proposal dialog without applying. */
+  private handleProposalDialogClose(): void {
+    this._proposalDialogOpen = false;
+  }
+
   private onStoriesBulkModelAck(msg: WebSocketMessage): void {
     const specId = msg.specId as string;
     const updated = (msg.updated as string[]) ?? [];
@@ -2495,6 +2566,7 @@ export class AosDashboardView extends LitElement {
         </div>
         ${this.renderCreateSpecModal()}
         ${this.renderDepEditor()}
+        ${this.renderProposalDialog()}
       </div>
     `;
   }
@@ -2519,7 +2591,21 @@ export class AosDashboardView extends LitElement {
         .allSpecs=${this.specs}
         @save-dependencies=${this.handleDepEditorSave}
         @dep-editor-close=${this.handleDepEditorClose}
+        @dep-editor-analyze=${this.handleDepEditorAnalyze}
       ></aos-spec-dependency-editor>
+    `;
+  }
+
+  private renderProposalDialog() {
+    return html`
+      <aos-dependency-proposal-dialog
+        .open=${this._proposalDialogOpen}
+        .loading=${this._proposalLoading}
+        .proposals=${this._proposals}
+        .allSpecs=${this.specs}
+        @proposals-apply=${this.handleProposalsApply}
+        @proposal-dialog-close=${this.handleProposalDialogClose}
+      ></aos-dependency-proposal-dialog>
     `;
   }
 

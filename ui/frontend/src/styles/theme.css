@@ -13243,10 +13243,15 @@ aos-model-selector .model-option.selected .model-name {
 }
 .dep-editor__footer {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-sm);
   padding: var(--spacing-md) var(--spacing-lg);
   border-top: 1px solid var(--color-border);
+}
+.dep-editor__footer-right {
+  display: flex;
+  gap: var(--spacing-sm);
 }
 .dep-editor__btn {
   padding: var(--spacing-xs) var(--spacing-md);
@@ -13271,6 +13276,227 @@ aos-model-selector .model-option.selected .model-name {
   border-color: var(--color-accent-primary);
 }
 .dep-editor__btn--save:hover { opacity: 0.85; }
+.dep-editor__btn--analyze {
+  background: transparent;
+  color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+.dep-editor__btn--analyze:hover {
+  background: rgba(var(--color-accent-primary-rgb, 99, 102, 241), 0.08);
+}
+
+/* ─── Proposal Dialog (SPD-007) ─────────────────────────────────────────────── */
+
+.proposal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: var(--spacing-xl);
+}
+.proposal-dialog {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  max-height: 80vh;
+}
+.proposal-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+.proposal-dialog__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  flex: 1;
+}
+.proposal-dialog__close {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+.proposal-dialog__close:hover { color: var(--color-text-primary); }
+.proposal-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  flex: 1;
+}
+.proposal-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+.proposal-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-lg) 0;
+}
+.proposal-spinner {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.proposal-empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  padding: var(--spacing-lg) 0;
+  margin: 0;
+}
+.proposal-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.proposal-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+.proposal-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: opacity var(--transition-fast);
+}
+.proposal-item--dismissed {
+  opacity: 0.4;
+}
+.proposal-edge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+}
+.proposal-spec {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+.proposal-spec--prereq {
+  color: var(--color-accent-primary);
+}
+.proposal-arrow {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.proposal-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+.proposal-confidence {
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.proposal-confidence--high {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--color-accent-success, #10b981);
+}
+.proposal-confidence--medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--color-accent-warning, #f59e0b);
+}
+.proposal-confidence--low {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-accent-error, #ef4444);
+}
+.proposal-review-flag {
+  font-size: 10px;
+  color: var(--color-accent-warning, #f59e0b);
+  flex-shrink: 0;
+}
+.proposal-reason {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+.proposal-item__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.proposal-dismiss-btn, .proposal-undo {
+  background: transparent;
+  border: none;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+.proposal-dismiss-btn {
+  color: var(--color-text-muted);
+}
+.proposal-dismiss-btn:hover { background: var(--color-bg-tertiary); }
+.proposal-undo {
+  color: var(--color-accent-primary);
+}
+.proposal-undo:hover { background: rgba(99, 102, 241, 0.08); }
+.proposal-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.proposal-btn--cancel {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+.proposal-btn--cancel:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+.proposal-btn--confirm {
+  background: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  border-color: var(--color-accent-primary);
+}
+.proposal-btn--confirm:hover:not(:disabled) { opacity: 0.85; }
+.proposal-btn--confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 /* SPD-005: Spec-card blocked hint + dep-edit button */
 .spec-card__blocked-hint {

@@ -91,6 +91,14 @@ export class AosSpecDependencyEditor extends LitElement {
     }));
   }
 
+  private _requestAiAnalysis(): void {
+    this.dispatchEvent(new CustomEvent<{ specId: string }>('dep-editor-analyze', {
+      detail: { specId: this.specId },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
   override render() {
     if (!this.open) return html``;
     const active = this._activeOtherSpecs();
@@ -162,8 +170,13 @@ export class AosSpecDependencyEditor extends LitElement {
           </div>
 
           <div class="dep-editor__footer">
-            <button class="dep-editor__btn dep-editor__btn--cancel" @click=${this._close}>Abbrechen</button>
-            <button class="dep-editor__btn dep-editor__btn--save" @click=${this._save}>Speichern</button>
+            <button class="dep-editor__btn dep-editor__btn--analyze" @click=${this._requestAiAnalysis} title="KI-Abhängigkeiten vorschlagen">
+              🤖 KI-Analyse
+            </button>
+            <div class="dep-editor__footer-right">
+              <button class="dep-editor__btn dep-editor__btn--cancel" @click=${this._close}>Abbrechen</button>
+              <button class="dep-editor__btn dep-editor__btn--save" @click=${this._save}>Speichern</button>
+            </div>
           </div>
         </div>
       </div>
