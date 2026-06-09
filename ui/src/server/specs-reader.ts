@@ -1381,12 +1381,50 @@ export class SpecsReader {
   }
 
   /**
-   * Deletes a spec folder and all its contents.
+   * SPD-008: Removes a dangling spec ID from the blockedBy array of every
+   * other spec that references it. Called after deleteSpec to keep the graph
+   * consistent. Lock-safe: each write is wrapped in withKanbanLock.
+   */
+  async cleanupBlockedByRef(projectPath: string, deletedSpecId: string): Promise<void> {
+    const specsPath = projectDir(projectPath, 'specs');
+    let entries: import('fs').Dirent[] = [];
+    try {
+      entries = (await fs.readdir(specsPath, { withFileTypes: true }))
+        .filter(e => e.isDirectory() && !e.name.startsWith('.') && e.name !== deletedSpecId);
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const specPath = projectDir(projectPath, 'specs', entry.name);
+      await withKanbanLock(specPath, async () => {
+        const kanban = await this.readKanbanJsonUnlocked(specPath);
+        if (!kanban) return;
+        const current = kanban.spec.blockedBy ?? [];
+        if (!current.includes(deletedSpecId)) return;
+
+        const updated = current.filter(id => id !== deletedSpecId);
+        if (updated.length === 0) {
+          delete kanban.spec.blockedBy;
+        } else {
+          kanban.spec.blockedBy = updated;
+        }
+        this.addChangeLogEntry(kanban, 'spec_blocked_by_cleanup', null,
+          `Removed dangling ref to deleted spec "${deletedSpecId}"`);
+        await this.writeKanbanJsonUnlocked(specPath, kanban);
+      });
+    }
+  }
+
+  /**
+   * Deletes a spec folder and all its contents, then cleans up dangling
+   * blockedBy references in other specs (SPD-008).
    */
   async deleteSpec(projectPath: string, specId: string): Promise<boolean> {
     const specPath = projectDir(projectPath, 'specs', specId);
     try {
       await fs.rm(specPath, { recursive: true, force: true });
+      await this.cleanupBlockedByRef(projectPath, specId);
       return true;
     } catch (error) {
       console.error(`Failed to delete spec ${specId}:`, error);

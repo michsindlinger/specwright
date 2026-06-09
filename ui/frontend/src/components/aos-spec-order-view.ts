@@ -26,6 +26,25 @@ export class AosSpecOrderView extends LitElement {
     }));
   }
 
+  /** SPD-008: "Alle analysieren" button → triggers AI analysis for all active specs. */
+  private handleAnalyzeAll(e: Event): void {
+    e.stopPropagation();
+    this.dispatchEvent(new CustomEvent('order-view-analyze-all', {
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  /** SPD-008: Per-spec re-analyze button → triggers AI analysis focused on one spec. */
+  private handleAnalyzeSpec(e: Event, specId: string): void {
+    e.stopPropagation();
+    this.dispatchEvent(new CustomEvent('order-view-analyze-spec', {
+      detail: { specId },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
   override render() {
     const idToSpec = new Map(this.specs.map(s => [s.id, s]));
 
@@ -38,6 +57,14 @@ export class AosSpecOrderView extends LitElement {
 
     return html`
       <div class="spec-order-view">
+        <div class="spec-order-view__toolbar">
+          <button
+            class="spec-order-view__analyze-btn"
+            @click=${this.handleAnalyzeAll}
+            title="KI analysiert alle aktiven Specs und schlägt Abhängigkeiten vor"
+          >🤖 Alle analysieren</button>
+        </div>
+
         ${cyclicSpecs.length > 0 ? html`
           <div class="spec-order-view__cycle-banner" role="alert">
             <span class="spec-order-view__cycle-icon">⚠</span>
@@ -109,6 +136,11 @@ export class AosSpecOrderView extends LitElement {
                 <span class="order-row__priority order-row__priority--${spec.priority.toLowerCase()}">${spec.priority}</span>
               ` : ''}
               ${isBlocked ? html`<span class="order-row__blocked-pill" title="Blockiert durch offene Vorgänger">🔒</span>` : ''}
+              <button
+                class="order-row__reanalyze-btn"
+                @click=${(e: Event) => this.handleAnalyzeSpec(e, spec.id)}
+                title="KI-Analyse für diese Spec neu starten"
+              >🤖</button>
             </span>
           </div>
           ${hasRelations ? html`

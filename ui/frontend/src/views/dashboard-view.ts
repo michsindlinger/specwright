@@ -2196,6 +2196,23 @@ export class AosDashboardView extends LitElement {
     this._proposalDialogOpen = false;
   }
 
+  /** SPD-008: "Alle analysieren" button in order-view — analyze all active specs. */
+  private handleOrderViewAnalyzeAll(): void {
+    this._proposalLoading = true;
+    this._proposalDialogOpen = true;
+    this._proposals = [];
+    gateway.send({ type: 'specs.analyzeDependencies' });
+  }
+
+  /** SPD-008: Per-spec re-analyze button in order-view — analyze one spec. */
+  private handleOrderViewAnalyzeSpec(e: CustomEvent<{ specId: string }>): void {
+    const { specId } = e.detail;
+    this._proposalLoading = true;
+    this._proposalDialogOpen = true;
+    this._proposals = [];
+    gateway.send({ type: 'specs.analyzeDependencies', specId });
+  }
+
   private onStoriesBulkModelAck(msg: WebSocketMessage): void {
     const specId = msg.specId as string;
     const updated = (msg.updated as string[]) ?? [];
@@ -2684,6 +2701,8 @@ export class AosDashboardView extends LitElement {
       <aos-spec-order-view
         .specs=${activeSpecs}
         @spec-select=${this.handleSpecSelect}
+        @order-view-analyze-all=${this.handleOrderViewAnalyzeAll}
+        @order-view-analyze-spec=${this.handleOrderViewAnalyzeSpec}
       ></aos-spec-order-view>
     `;
   }

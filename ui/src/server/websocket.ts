@@ -1657,6 +1657,17 @@ export class WebSocketHandler {
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(response));
+
+      // SPD-008: Broadcast fresh specs.list after delete + blockedBy cleanup so
+      // all project clients see the updated dependency state immediately.
+      if (success) {
+        const specs = await this.specsReader.listSpecs(projectPath);
+        webSocketManager.sendToProject(projectPath, {
+          type: 'specs.list',
+          specs,
+          timestamp: new Date().toISOString()
+        });
+      }
     } catch (error) {
       const errorResponse: WebSocketMessage = {
         type: 'specs.delete',
