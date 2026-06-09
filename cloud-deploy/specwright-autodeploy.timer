@@ -1,0 +1,10 @@
+[Unit]
+Description=Specwright auto-deploy poll timer (every 2 min)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+Unit=specwright-autodeploy.service
+
+[Install]
+WantedBy=timers.target

@@ -54,6 +54,25 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json(response);
 });
 
+// Deploy-readiness gate (localhost-only, unauthenticated — bound to HOST=127.0.0.1
+// in production). Polled by the auto-deploy script before restarting the service so
+// a redeploy is deferred while an auto-mode run is active. Reads `wsHandler` lazily
+// (same pattern as /health): if it's still null the server is mid-startup, so we
+// report ready=true (fail-open — a restart now is harmless).
+app.get('/api/status/deploy-readiness', (_req: Request, res: Response) => {
+  if (!wsHandler) {
+    res.status(200).json({ ready: true, reason: 'starting', autoMode: { specOrchestrators: 0, backlogOrchestrators: 0 } });
+    return;
+  }
+  const we = wsHandler.getWorkflowExecutor();
+  const busy = we.isAnyAutoModeActive();
+  res.status(busy ? 423 : 200).json({
+    ready: !busy,
+    reason: busy ? 'auto-mode-active' : 'idle',
+    autoMode: we.getAutoModeCounts(),
+  });
+});
+
 // Serve frontend in production mode (built files from frontend/dist)
 const frontendDist = join(__dirname, '../../frontend/dist');
 if (existsSync(frontendDist)) {

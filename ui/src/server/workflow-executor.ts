@@ -3766,6 +3766,33 @@ export class WorkflowExecutor {
   }
 
   /**
+   * True if ANY auto-mode run (spec or backlog) is currently active. Used by the
+   * deploy-readiness gate to defer redeploys (which restart the server and would
+   * kill running auto-mode stories + their cloud terminals).
+   *
+   * Source of truth = the orchestrator maps: an orchestrator is registered for the
+   * full lifetime of a run (including inter-turn pauses and prompt-stuck waits) and
+   * only removed on completion (all-items-done / error). The cloud-session
+   * `autoModeActive` flag is intentionally NOT consulted — it is never reset to
+   * false, so it would report stale "busy" forever.
+   */
+  public isAnyAutoModeActive(): boolean {
+    return this.autoModeSpecOrchestrators.size > 0 || this.autoModeBacklogOrchestrators.size > 0;
+  }
+
+  /**
+   * Counts of registered auto-mode orchestrators (spec + backlog), for debug/logging
+   * in the deploy-readiness response. These are orchestrator-object counts, not a
+   * count of actively-executing turns.
+   */
+  public getAutoModeCounts(): { specOrchestrators: number; backlogOrchestrators: number } {
+    return {
+      specOrchestrators: this.autoModeSpecOrchestrators.size,
+      backlogOrchestrators: this.autoModeBacklogOrchestrators.size,
+    };
+  }
+
+  /**
    * Snapshot of running spec auto-mode for state restoration after navigation
    * or hard reload. Returns null when no orchestrator exists for this spec.
    */

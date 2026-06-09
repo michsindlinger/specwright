@@ -1512,6 +1512,15 @@ export class WebSocketHandler {
     return this.clients.size;
   }
 
+  /**
+   * Expose the WorkflowExecutor so REST routes (e.g. /api/status/deploy-readiness)
+   * can query auto-mode state. Mirrors WorkflowExecutor.getTerminalManager() — the
+   * route does its own aggregation, this class stays WebSocket-focused.
+   */
+  public getWorkflowExecutor(): WorkflowExecutor {
+    return this.workflowExecutor;
+  }
+
   public shutdown(): void {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);

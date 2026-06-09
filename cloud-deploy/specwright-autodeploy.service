@@ -1,0 +1,8 @@
+[Unit]
+Description=Specwright auto-deploy check (poll origin/main)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/specwright-deploy/auto-deploy-check.sh
