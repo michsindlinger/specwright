@@ -22,6 +22,8 @@ export interface SpecInfo {
   blockedBy?: string[];
   dependencyStatus?: DependencyStatus;
   orderIndex?: number;
+  // SPD-005: client-side resolved names for blockedBy IDs
+  blockedByNames?: string[];
 }
 
 type DerivedStage = 'in-progress' | 'ready' | 'shipping' | 'done' | 'not-started';
@@ -81,6 +83,17 @@ export class AosSpecCard extends LitElement {
     this.dispatchEvent(
       new CustomEvent('spec-priority-change', {
         detail: { specId: this.spec.id, priority: e.detail.priority },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private handleEditDependencies(e: Event): void {
+    e.stopPropagation();
+    this.dispatchEvent(
+      new CustomEvent('spec-edit-dependencies', {
+        detail: { specId: this.spec.id },
         bubbles: true,
         composed: true,
       })
@@ -158,6 +171,17 @@ export class AosSpecCard extends LitElement {
             .priority=${this.spec.priority ?? null}
             @priority-change=${this.handlePriorityChange}
           ></aos-priority-badge>
+          <button
+            class="spec-card__dep-btn"
+            @click=${this.handleEditDependencies}
+            aria-label="Abhängigkeiten bearbeiten"
+            title="Abhängigkeiten bearbeiten"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </button>
           <span class="spec-card__header-spacer"></span>
           <button
             class="assign-toggle-btn ${this.spec.assignedToBot ? 'assigned' : ''} ${!this.spec.isReady && !this.spec.assignedToBot ? 'assign-disabled' : ''}"
@@ -233,6 +257,11 @@ export class AosSpecCard extends LitElement {
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             ${this.formatDate(this.spec.createdDate)}
           </span>
+          ${this.spec.dependencyStatus === 'blocked' ? html`
+            <span class="spec-card__blocked-hint" title="${(this.spec.blockedByNames ?? this.spec.blockedBy ?? []).join(', ')}">
+              🔒 ${this.renderBlockedLabel()}
+            </span>
+          ` : ''}
           ${this.spec.assignedToBot ? html`
             <span class="spec-card__agent">
               <span class="sw-live-dot"></span>
@@ -242,6 +271,17 @@ export class AosSpecCard extends LitElement {
         </footer>
       </article>
     `;
+  }
+
+  private renderBlockedLabel(): string {
+    const names = this.spec.blockedByNames;
+    if (names && names.length > 0) {
+      return names.length <= 2
+        ? `Blockiert durch ${names.join(', ')}`
+        : `Blockiert durch ${names[0]} +${names.length - 1}`;
+    }
+    const count = (this.spec.blockedBy ?? []).length;
+    return count > 0 ? `Blockiert durch ${count} Spec${count !== 1 ? 's' : ''}` : 'Blockiert';
   }
 
   private formatDate(dateStr: string): string {

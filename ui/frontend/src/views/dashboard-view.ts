@@ -7,6 +7,8 @@ import { routerService } from '../services/router.service.js';
 import type { ParsedRoute } from '../types/route.types.js';
 import '../components/spec-card.js';
 import '../components/kanban-board.js';
+import '../components/aos-spec-dependency-editor.js';
+import type { SaveDependenciesDetail } from '../components/aos-spec-dependency-editor.js';
 import '../components/docs/aos-docs-panel.js';
 import '../components/aos-create-spec-modal.js';
 import '../components/comments/aos-comment-thread.js';
@@ -200,6 +202,8 @@ export class AosDashboardView extends LitElement {
   @state() private wsConnected = true; // Optimistic: assume connecting on init
   @state() private specsViewMode: SpecsViewMode = loadSpecsViewMode();
   @state() private sortMode: SortMode = loadSortMode();
+  @state() private _depEditorOpen = false;
+  @state() private _depEditorSpecId = '';
   private lastActiveProjectId: string | null = null;
   @state() private showOnlyActive = true;
   @state() private backlogLoading = false;
@@ -2001,6 +2005,60 @@ export class AosDashboardView extends LitElement {
     );
   }
 
+  /** SPD-005: Open dependency editor for a spec. */
+  private handleSpecEditDependencies(e: CustomEvent<{ specId: string }>): void {
+    this._depEditorSpecId = e.detail.specId;
+    this._depEditorOpen = true;
+  }
+
+  /** SPD-005: Close dependency editor without saving. */
+  private handleDepEditorClose(): void {
+    this._depEditorOpen = false;
+  }
+
+  /** SPD-005: Apply dependency changes from the editor. */
+  private handleDepEditorSave(e: CustomEvent<SaveDependenciesDetail>): void {
+    const { specId, blockedBy, prerequisiteFor } = e.detail;
+    this._depEditorOpen = false;
+
+    // 1. Update this spec's blockedBy (always send to let backend validate)
+    const currentSpec = this.specs.find(s => s.id === specId);
+    const currentBlockedBy = [...(currentSpec?.blockedBy ?? [])].sort();
+    const newBlockedBy = [...blockedBy].sort();
+    if (JSON.stringify(currentBlockedBy) !== JSON.stringify(newBlockedBy)) {
+      gateway.send({ type: 'specs.setBlockedBy', specId, blockedBy });
+    }
+
+    // 2. Compute which other specs now have specId as a prerequisite (their blockedBy includes specId)
+    const currentPrereqFor = this.specs
+      .filter(s => s.id !== specId && (s.blockedBy ?? []).includes(specId))
+      .map(s => s.id);
+
+    // Added: should now include specId as blocker
+    for (const targetId of prerequisiteFor.filter(id => !currentPrereqFor.includes(id))) {
+      const target = this.specs.find(s => s.id === targetId);
+      if (target) {
+        gateway.send({
+          type: 'specs.setBlockedBy',
+          specId: targetId,
+          blockedBy: [...(target.blockedBy ?? []), specId],
+        });
+      }
+    }
+
+    // Removed: should no longer include specId as blocker
+    for (const targetId of currentPrereqFor.filter(id => !prerequisiteFor.includes(id))) {
+      const target = this.specs.find(s => s.id === targetId);
+      if (target) {
+        gateway.send({
+          type: 'specs.setBlockedBy',
+          specId: targetId,
+          blockedBy: (target.blockedBy ?? []).filter(id => id !== specId),
+        });
+      }
+    }
+  }
+
   /** SPD-004: Handle sort mode change from the sort selector. */
   private handleSortModeChange(e: Event): void {
     const value = (e.target as HTMLSelectElement).value as SortMode;
@@ -2391,6 +2449,7 @@ export class AosDashboardView extends LitElement {
             </div>
           </div>
           ${this.renderCreateSpecModal()}
+          ${this.renderDepEditor()}
         </div>
       `;
     }
@@ -2430,6 +2489,7 @@ export class AosDashboardView extends LitElement {
           ${this.specsViewMode === 'grid' ? this.renderSpecsGridView() : this.renderSpecsListView()}
         </div>
         ${this.renderCreateSpecModal()}
+        ${this.renderDepEditor()}
       </div>
     `;
   }
@@ -2444,21 +2504,41 @@ export class AosDashboardView extends LitElement {
     `;
   }
 
+  private renderDepEditor() {
+    const editorSpec = this.specs.find(s => s.id === this._depEditorSpecId);
+    return html`
+      <aos-spec-dependency-editor
+        .open=${this._depEditorOpen}
+        .specId=${this._depEditorSpecId}
+        .specName=${editorSpec?.name ?? ''}
+        .allSpecs=${this.specs}
+        @save-dependencies=${this.handleDepEditorSave}
+        @dep-editor-close=${this.handleDepEditorClose}
+      ></aos-spec-dependency-editor>
+    `;
+  }
+
   private renderSpecsGridView() {
     const sortedSpecs = this.getSortedSpecs();
+    const specsNameMap = new Map(this.specs.map(s => [s.id, s.name]));
     return html`
       <div class="spec-grid">
-        ${sortedSpecs.map(
-          spec => html`
+        ${sortedSpecs.map(spec => {
+          const enriched = {
+            ...spec,
+            blockedByNames: (spec.blockedBy ?? []).map(id => specsNameMap.get(id) ?? id),
+          };
+          return html`
             <aos-spec-card
-              .spec=${spec}
+              .spec=${enriched}
               @spec-select=${this.handleSpecSelect}
               @spec-delete=${this.handleSpecDelete}
               @spec-assign=${this.handleSpecAssign}
               @spec-priority-change=${this.handleSpecPriorityChange}
+              @spec-edit-dependencies=${this.handleSpecEditDependencies}
             ></aos-spec-card>
-          `
-        )}
+          `;
+        })}
       </div>
     `;
   }
