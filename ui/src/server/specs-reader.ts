@@ -39,6 +39,8 @@ export interface SpecInfo {
   isReady?: boolean;
   projectPath?: string;
   projectName?: string;
+  priority?: string;
+  blockedBy?: string[];
 }
 
 export interface ProjectSpecs {
@@ -92,6 +94,8 @@ export interface KanbanBoard {
   isReady?: boolean;
   lastIncident?: KanbanAutoModeIncident | null;
   activeIncidents: KanbanAutoModeIncident[];
+  priority?: string;
+  blockedBy?: string[];
 }
 
 export interface ReadyStoryInfo {
@@ -165,6 +169,8 @@ interface KanbanJsonSpec {
   specFile: string;
   specLiteFile?: string;
   createdAt: string;
+  priority?: string;
+  blockedBy?: string[];
 }
 
 interface KanbanJsonResumeContext {
@@ -858,7 +864,9 @@ export class SpecsReader {
       assignedToBot: json.assignedToBot?.assigned ?? false,
       isReady: boardStatus.ready === boardStatus.total && boardStatus.total > 0,
       activeIncidents,
-      lastIncident: activeIncidents[0] ?? null
+      lastIncident: activeIncidents[0] ?? null,
+      ...(json.spec.priority !== undefined ? { priority: json.spec.priority } : {}),
+      ...(json.spec.blockedBy !== undefined ? { blockedBy: json.spec.blockedBy } : {})
     };
   }
 
@@ -903,7 +911,9 @@ export class SpecsReader {
       // (boardStatus can be stale if kanban was created/modified externally)
       isReady: json.stories.length > 0 && json.stories.every(s => s.status === 'ready'),
       lastIncident: activeIncidents[0] ?? null,
-      activeIncidents
+      activeIncidents,
+      ...(json.spec.priority !== undefined ? { priority: json.spec.priority } : {}),
+      ...(json.spec.blockedBy !== undefined ? { blockedBy: json.spec.blockedBy } : {})
     };
   }
 
@@ -1006,6 +1016,88 @@ export class SpecsReader {
       await this.writeKanbanJsonUnlocked(specPath, kanban);
 
       return { assigned: newAssigned };
+    });
+  }
+
+  /**
+   * Sets the priority of a spec (P0–P3 or null to clear).
+   * Lock-safe read-modify-write following the toggleBotAssignment pattern.
+   */
+  public async setSpecPriority(
+    projectPath: string,
+    specId: string,
+    priority: string | null
+  ): Promise<{ priority: string | null; error?: string }> {
+    const VALID_PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
+    if (priority !== null && !VALID_PRIORITIES.includes(priority)) {
+      return { priority: null, error: `Invalid priority "${priority}". Must be one of: ${VALID_PRIORITIES.join(', ')} or null` };
+    }
+
+    const specPath = projectDir(projectPath, 'specs', specId);
+
+    return await withKanbanLock(specPath, async () => {
+      const kanban = await this.readKanbanJsonUnlocked(specPath);
+      if (!kanban) {
+        return { priority: null, error: 'kanban.json not found' };
+      }
+
+      const prev = kanban.spec.priority ?? null;
+
+      if (priority === null) {
+        delete kanban.spec.priority;
+      } else {
+        kanban.spec.priority = priority;
+      }
+
+      this.addChangeLogEntry(
+        kanban,
+        'spec_priority_set',
+        null,
+        `priority: ${prev ?? 'none'} → ${priority ?? 'none'}`
+      );
+
+      await this.writeKanbanJsonUnlocked(specPath, kanban);
+
+      return { priority };
+    });
+  }
+
+  /**
+   * Sets the blockedBy list of a spec (array of spec IDs that block this spec).
+   * Lock-safe read-modify-write following the toggleBotAssignment pattern.
+   * Cycle validation happens in the WebSocket handler (SPD-003) before this is called.
+   */
+  public async setSpecBlockedBy(
+    projectPath: string,
+    specId: string,
+    blockedBy: string[]
+  ): Promise<{ blockedBy: string[]; error?: string }> {
+    const specPath = projectDir(projectPath, 'specs', specId);
+
+    return await withKanbanLock(specPath, async () => {
+      const kanban = await this.readKanbanJsonUnlocked(specPath);
+      if (!kanban) {
+        return { blockedBy: [], error: 'kanban.json not found' };
+      }
+
+      const prev = kanban.spec.blockedBy ?? [];
+
+      if (blockedBy.length === 0) {
+        delete kanban.spec.blockedBy;
+      } else {
+        kanban.spec.blockedBy = blockedBy;
+      }
+
+      this.addChangeLogEntry(
+        kanban,
+        'spec_blocked_by_set',
+        null,
+        `blockedBy: [${prev.join(', ')}] → [${blockedBy.join(', ')}]`
+      );
+
+      await this.writeKanbanJsonUnlocked(specPath, kanban);
+
+      return { blockedBy };
     });
   }
 
@@ -1284,7 +1376,9 @@ export class SpecsReader {
           hasKanban: true,
           gitStrategy,
           assignedToBot: jsonKanban.assignedToBot?.assigned ?? false,
-          isReady
+          isReady,
+          ...(jsonKanban.spec.priority !== undefined ? { priority: jsonKanban.spec.priority } : {}),
+          ...(jsonKanban.spec.blockedBy !== undefined ? { blockedBy: jsonKanban.spec.blockedBy } : {})
         };
       }
 
