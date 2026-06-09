@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed SPD-003",
-    "nextAction": "Wait for blocked tasks to become ready",
-    "progressIndex": 3,
+    "lastAction": "Completed SPD-004",
+    "nextAction": "Execute next task: SPD-005",
+    "progressIndex": 4,
     "totalStories": 12
   },
   "execution": {
@@ -130,16 +130,27 @@
         "SPD-001",
         "SPD-003"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-06-09T10:24:00.461Z",
+        "completedAt": "2026-06-09T10:32:10.954Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/components/aos-priority-badge.ts",
+          "ui/frontend/src/components/spec-card.ts",
+          "ui/frontend/src/views/dashboard-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
+        "commits": [
+          {
+            "hash": "0cd6d2173f44eec5692b947f4e7404616941c0fe",
+            "message": "feat(spd-004): add priority badge + sort selector to spec dashboard",
+            "timestamp": "2026-06-09T10:31:37+00:00"
+          }
+        ]
       }
     },
     {
@@ -150,7 +161,7 @@
       "dependencies": [
         "SPD-003"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": "sonnet",
       "timing": {
@@ -324,12 +335,12 @@
   ],
   "boardStatus": {
     "total": 12,
-    "ready": 0,
+    "ready": 1,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 3,
-    "blocked": 9
+    "done": 4,
+    "blocked": 7
   },
   "changeLog": [
     {
@@ -498,6 +509,36 @@
       "timestamp": "2026-06-09T10:23:17.025Z",
       "action": "status_changed",
       "storyId": "SPD-003",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-06-09T10:23:17.430Z",
+      "action": "dependency_resolved",
+      "storyId": "SPD-004",
+      "details": "Unblocked: all dependencies done/in_review (SPD-001, SPD-003)"
+    },
+    {
+      "timestamp": "2026-06-09T10:23:17.430Z",
+      "action": "dependency_resolved",
+      "storyId": "SPD-005",
+      "details": "Unblocked: all dependencies done/in_review (SPD-003)"
+    },
+    {
+      "timestamp": "2026-06-09T10:23:17.436Z",
+      "action": "status_changed",
+      "storyId": "SPD-004",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T10:24:00.462Z",
+      "action": "status_changed",
+      "storyId": "SPD-004",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T10:32:10.954Z",
+      "action": "status_changed",
+      "storyId": "SPD-004",
       "details": "Task completed: in_progress → done"
     }
   ]
