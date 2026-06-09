@@ -70,6 +70,7 @@ export class AosCloudTerminalSidebar extends LitElement {
   @property({ type: String }) activeSessionId: string | null = null;
   @state() private sidebarWidth = 500;
   @state() private isResizing = false;
+  @state() private isFullscreen = false;
   @state() private loadingState: LoadingState = { isLoading: false, message: '' };
   @state() private errorMessage: string | null = null;
   private readonly minSidebarWidth = 400;
@@ -85,6 +86,7 @@ export class AosCloudTerminalSidebar extends LitElement {
   private boundHandleProvidersListResponse = this._handleProvidersListResponse.bind(this);
   private boundHandleConfigSnapshot = this._handleConfigSnapshot.bind(this);
   private boundHandleGatewayConnected = this._handleGatewayConnectedForProviders.bind(this);
+  private boundHandleFullscreenKeydown = this._handleFullscreenKeydown.bind(this);
 
   // Use light DOM for styling compatibility
   override createRenderRoot() {
@@ -621,13 +623,17 @@ export class AosCloudTerminalSidebar extends LitElement {
       return this.renderMobile();
     }
 
+    const effectiveWidth = this.isFullscreen ? window.innerWidth : this.sidebarWidth;
+
     const sidebarStyles = {
-      '--sidebar-width': `${this.sidebarWidth}px`,
+      '--sidebar-width': `${effectiveWidth}px`,
     };
 
-    // Resizer is positioned relative to the sidebar's left edge via calc()
+    // Resizer is positioned relative to the sidebar's left edge via calc().
+    // Hidden in fullscreen so the full-width view can't be accidentally dragged.
     const resizerStyles = {
-      right: this.isOpen ? `${this.sidebarWidth - 3}px` : '-10px',
+      right: this.isOpen && !this.isFullscreen ? `${this.sidebarWidth - 3}px` : '-10px',
+      display: this.isFullscreen ? 'none' : '',
     };
 
     return html`
@@ -669,6 +675,29 @@ export class AosCloudTerminalSidebar extends LitElement {
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
               Neue Session
+            </button>
+            <button
+              class="action-btn"
+              @click=${this._toggleFullscreen}
+              title=${this.isFullscreen ? 'Vollbild verlassen' : 'Vollbild'}
+            >
+              ${this.isFullscreen
+                ? html`
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="4 14 10 14 10 20"></polyline>
+                      <polyline points="20 10 14 10 14 4"></polyline>
+                      <line x1="14" y1="10" x2="21" y2="3"></line>
+                      <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                  `
+                : html`
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <polyline points="9 21 3 21 3 15"></polyline>
+                      <line x1="21" y1="3" x2="14" y2="10"></line>
+                      <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                  `}
             </button>
             <button
               class="action-btn"
@@ -817,6 +846,47 @@ export class AosCloudTerminalSidebar extends LitElement {
         composed: true,
       })
     );
+  }
+
+  /**
+   * Toggle the desktop sidebar between its resizable width and full window width.
+   * Width changes are not CSS-transitioned (only `transform` is animated), so the
+   * new size applies immediately — we refit xterm after a layout reflow.
+   */
+  private _toggleFullscreen() {
+    this.isFullscreen = !this.isFullscreen;
+    this.updateContentOffset();
+    this._refreshActiveTerminal();
+  }
+
+  /** Refit the active session's terminal after a layout reflow (double rAF). */
+  private _refreshActiveTerminal() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const activeSession = this.querySelector('.session-panel.active') as AosTerminalSession | null;
+        activeSession?.refreshTerminal();
+      });
+    });
+  }
+
+  private _handleFullscreenKeydown(e: KeyboardEvent) {
+    // Desktop-only; the mobile overlay is already fullscreen.
+    if (!this.isOpen || this._mobileController.isMobile) return;
+
+    // Cmd/Ctrl+Shift+F toggles fullscreen
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+      e.preventDefault();
+      this._toggleFullscreen();
+      return;
+    }
+
+    // Escape leaves fullscreen (only consume the event when actually fullscreen)
+    if (e.key === 'Escape' && this.isFullscreen) {
+      e.preventDefault();
+      this.isFullscreen = false;
+      this.updateContentOffset();
+      this._refreshActiveTerminal();
+    }
   }
 
   private _handleNewSession() {
@@ -1111,7 +1181,8 @@ export class AosCloudTerminalSidebar extends LitElement {
    * pattern used by aos-file-tree-sidebar.
    */
   private updateContentOffset(): void {
-    const width = (this.isOpen && !this._mobileController.isMobile) ? this.sidebarWidth : 0;
+    const openWidth = this.isFullscreen ? window.innerWidth : this.sidebarWidth;
+    const width = (this.isOpen && !this._mobileController.isMobile) ? openWidth : 0;
     document.documentElement.style.setProperty('--terminal-open-width', `${width}px`);
   }
 
@@ -1152,6 +1223,10 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   override updated(changed: PropertyValues): void {
     if (changed.has('isOpen')) {
+      // No fullscreen persistence — a fresh open always starts in normal mode.
+      if (!this.isOpen && this.isFullscreen) {
+        this.isFullscreen = false;
+      }
       this.updateContentOffset();
       if (this._mobileController.isMobile) {
         document.body.style.overflow = this.isOpen ? 'hidden' : '';
@@ -1207,6 +1282,7 @@ export class AosCloudTerminalSidebar extends LitElement {
     gateway.on('model.providers.list', this.boundHandleProvidersListResponse);
     gateway.on('plan-review:config.snapshot', this.boundHandleConfigSnapshot);
     gateway.on('gateway.connected', this.boundHandleGatewayConnected);
+    document.addEventListener('keydown', this.boundHandleFullscreenKeydown);
     if (gateway.getConnectionStatus()) {
       gateway.send({ type: 'model.providers.list' });
     }
@@ -1219,6 +1295,7 @@ export class AosCloudTerminalSidebar extends LitElement {
     gateway.off('model.providers.list', this.boundHandleProvidersListResponse);
     gateway.off('plan-review:config.snapshot', this.boundHandleConfigSnapshot);
     gateway.off('gateway.connected', this.boundHandleGatewayConnected);
+    document.removeEventListener('keydown', this.boundHandleFullscreenKeydown);
   }
 }
 
