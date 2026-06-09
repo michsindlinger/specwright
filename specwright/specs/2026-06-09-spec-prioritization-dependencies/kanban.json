@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed SPD-005",
-    "nextAction": "Execute next task: SPD-006",
-    "progressIndex": 5,
+    "lastAction": "Completed SPD-006",
+    "nextAction": "Execute next task: SPD-007",
+    "progressIndex": 6,
     "totalStories": 12
   },
   "execution": {
@@ -193,16 +193,26 @@
         "SPD-002",
         "SPD-004"
       ],
-      "status": "ready",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-06-09T10:45:25.249Z",
+        "completedAt": "2026-06-09T10:52:48.412Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/components/aos-spec-order-view.ts",
+          "ui/frontend/src/views/dashboard-view.ts",
+          "ui/frontend/src/styles/theme.css"
+        ],
+        "commits": [
+          {
+            "hash": "896edae",
+            "message": "feat(spd-006): add topological order view (aos-spec-order-view)",
+            "timestamp": "2026-06-09T10:44:48+00:00"
+          }
+        ]
       }
     },
     {
@@ -213,7 +223,7 @@
       "dependencies": [
         "SPD-005"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": "sonnet",
       "timing": {
@@ -350,8 +360,8 @@
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 5,
-    "blocked": 6
+    "done": 6,
+    "blocked": 5
   },
   "changeLog": [
     {
@@ -574,6 +584,30 @@
       "timestamp": "2026-06-09T10:44:47.708Z",
       "action": "status_changed",
       "storyId": "SPD-005",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-06-09T10:44:48.121Z",
+      "action": "dependency_resolved",
+      "storyId": "SPD-007",
+      "details": "Unblocked: all dependencies done/in_review (SPD-005)"
+    },
+    {
+      "timestamp": "2026-06-09T10:44:48.127Z",
+      "action": "status_changed",
+      "storyId": "SPD-006",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T10:45:25.250Z",
+      "action": "status_changed",
+      "storyId": "SPD-006",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T10:52:48.413Z",
+      "action": "status_changed",
+      "storyId": "SPD-006",
       "details": "Task completed: in_progress → done"
     }
   ]
