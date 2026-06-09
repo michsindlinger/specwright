@@ -4,6 +4,8 @@ import { withKanbanLock } from './utils/kanban-lock.js';
 import { projectDir } from './utils/project-dirs.js';
 import { lookupPlanSection, PlanSectionLookupError } from './utils/plan-section-lookup.js';
 import { attachmentStorageService } from './services/attachment-storage.service.js';
+import { computeRecommendedOrder, deriveDependencyStatus, type GraphSpec } from './utils/spec-graph.js';
+import type { DependencyStatus } from '../shared/types/spec-dependencies.protocol.js';
 
 // Dep-satisfaction set: ['done', 'in_review']. Mirror of SATISFIED_DEP_STATUSES
 // in specwright/scripts/mcp/kanban-validation.ts — keep both in sync. Not a
@@ -41,6 +43,11 @@ export interface SpecInfo {
   projectName?: string;
   priority?: string;
   blockedBy?: string[];
+  /** Derived (not persisted): readiness based on active predecessors. SPD-002. */
+  dependencyStatus?: DependencyStatus;
+  /** Derived (not persisted): 1-based position in the recommended topological
+   * order. Absent when the spec is done or participates in a cycle. SPD-002. */
+  orderIndex?: number;
 }
 
 export interface ProjectSpecs {
@@ -1298,6 +1305,10 @@ export class SpecsReader {
         }
       }
 
+      // SPD-002: Enrich with derived graph state (dependency status + recommended
+      // order). Pure, computed on-read from the loaded set — never persisted.
+      this.enrichWithGraphState(specs);
+
       // Sort by created date, newest first
       specs.sort((a, b) => b.createdDate.localeCompare(a.createdDate));
 
@@ -1305,6 +1316,42 @@ export class SpecsReader {
     } catch {
       // No specs directory or error reading
       return [];
+    }
+  }
+
+  /**
+   * SPD-002: Mutates each SpecInfo in place, attaching derived dependency state.
+   *
+   * - `dependencyStatus`: 'blocked' if an active (not-done) predecessor blocks it.
+   * - `orderIndex`: 1-based position in the recommended topological order; left
+   *   undefined for done specs and specs participating in a cycle.
+   *
+   * All computation is pure (delegated to spec-graph.ts) over the loaded set.
+   * A spec is treated as "done" when it has stories and all are completed.
+   */
+  private enrichWithGraphState(specs: SpecInfo[]): void {
+    if (specs.length === 0) return;
+
+    const graphSpecs: GraphSpec[] = specs.map(s => ({
+      id: s.id,
+      blockedBy: s.blockedBy,
+      priority: s.priority,
+      createdDate: s.createdDate,
+      isDone: s.storyCount > 0 && s.completedCount >= s.storyCount
+    }));
+
+    const statusById = deriveDependencyStatus(graphSpecs);
+    const order = computeRecommendedOrder(graphSpecs);
+    const orderIndexById = new Map(order.map(e => [e.id, e.index]));
+
+    for (const spec of specs) {
+      spec.dependencyStatus = statusById.get(spec.id) ?? 'ready';
+      const idx = orderIndexById.get(spec.id);
+      if (idx !== undefined) {
+        spec.orderIndex = idx;
+      } else {
+        delete spec.orderIndex;
+      }
     }
   }
 
