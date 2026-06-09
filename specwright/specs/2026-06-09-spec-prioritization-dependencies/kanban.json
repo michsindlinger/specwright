@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed SPD-009",
-    "nextAction": "Wait for blocked tasks to become ready",
-    "progressIndex": 9,
+    "lastAction": "Completed SPD-997",
+    "nextAction": "Execute next task: SPD-998",
+    "progressIndex": 10,
     "totalStories": 12
   },
   "execution": {
@@ -334,16 +334,25 @@
         "SPD-008",
         "SPD-009"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "opus",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-opus-4-8",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-06-09T11:33:03.556Z",
+        "completedAt": "2026-06-09T11:41:07.784Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/components/aos-spec-order-view.ts",
+          "specwright/specs/2026-06-09-spec-prioritization-dependencies/review-report.md"
+        ],
+        "commits": [
+          {
+            "hash": "b4307fb6545d3c565e535f5f231b945a4904d51a",
+            "message": "fix: [SPD-997] Code Review — exclude done specs from cycle warning in order-view",
+            "timestamp": "2026-06-09T11:41:03+00:00"
+          }
+        ]
       }
     },
     {
@@ -362,7 +371,7 @@
         "SPD-008",
         "SPD-009"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": "opus",
       "timing": {
@@ -398,12 +407,12 @@
   ],
   "boardStatus": {
     "total": 12,
-    "ready": 0,
+    "ready": 1,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 9,
-    "blocked": 3
+    "done": 10,
+    "blocked": 1
   },
   "changeLog": [
     {
@@ -716,6 +725,66 @@
       "timestamp": "2026-06-09T11:26:49.136Z",
       "action": "status_changed",
       "storyId": "SPD-009",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-06-09T11:26:49.711Z",
+      "action": "dependency_resolved",
+      "storyId": "SPD-997",
+      "details": "Unblocked: all dependencies done/in_review (SPD-001, SPD-002, SPD-003, SPD-004, SPD-005, SPD-006, SPD-007, SPD-008, SPD-009)"
+    },
+    {
+      "timestamp": "2026-06-09T11:26:49.711Z",
+      "action": "dependency_resolved",
+      "storyId": "SPD-998",
+      "details": "Unblocked: all dependencies done/in_review (SPD-001, SPD-002, SPD-003, SPD-004, SPD-005, SPD-006, SPD-007, SPD-008, SPD-009)"
+    },
+    {
+      "timestamp": "2026-06-09T11:26:49.740Z",
+      "action": "status_changed",
+      "storyId": "SPD-997",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T11:32:27.787Z",
+      "action": "stall_recovery",
+      "storyId": "SPD-997",
+      "details": "Manueller Reset durch User → backlog"
+    },
+    {
+      "timestamp": "2026-06-09T11:32:29.132Z",
+      "action": "status_changed",
+      "storyId": "SPD-997",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T11:32:29.254Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git current-branch setup via UI: main"
+    },
+    {
+      "timestamp": "2026-06-09T11:32:29.300Z",
+      "action": "stale_recovery",
+      "storyId": "SPD-997",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-06-09T11:32:29.309Z",
+      "action": "status_changed",
+      "storyId": "SPD-997",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T11:33:03.557Z",
+      "action": "status_changed",
+      "storyId": "SPD-997",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T11:41:07.784Z",
+      "action": "status_changed",
+      "storyId": "SPD-997",
       "details": "Task completed: in_progress → done"
     }
   ]
