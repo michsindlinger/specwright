@@ -11,6 +11,7 @@
 | SPD-005 | Bidirectional dependency editor (blocked-by + is-prerequisite-for) + blocked-by hint on spec-card | `ui/frontend/src/components/aos-spec-dependency-editor.ts`, `ui/frontend/src/components/spec-card.ts` |
 | SPD-006 | Topological order view (aos-spec-order-view) with cycle warning and numbered list | `ui/frontend/src/components/aos-spec-order-view.ts`, `ui/frontend/src/views/dashboard-view.ts` |
 | SPD-007 | AI dependency analysis service + WS handler + proposal dialog | `ui/src/server/services/dependency-analysis.service.ts`, `ui/src/server/websocket.ts`, `ui/frontend/src/components/aos-dependency-proposal-dialog.ts`, `ui/frontend/src/views/dashboard-view.ts` |
+| SPD-008 | Backfill "Alle analysieren" + per-spec re-analyze in order-view; deleteSpec blockedBy cleanup (lock-safe) | `ui/src/server/specs-reader.ts`, `ui/src/server/websocket.ts`, `ui/frontend/src/components/aos-spec-order-view.ts`, `ui/frontend/src/views/dashboard-view.ts` |
 
 ## New Exports & APIs
 
@@ -71,3 +72,6 @@
 - `specs.analyzeDependencies.result` (server→client): `{ type, proposals: ProposedEdge[], specId? }` — proposals for the dialog.
 - `specs.analyzeDependencies.error` (server→client): `{ type, error }` — shows error toast, closes loading dialog.
 - Confirmed proposals in `aos-dependency-proposal-dialog` fire `proposals-apply` → `dashboard-view.handleProposalsApply()` → sends `specs.setBlockedBy` per confirmed edge (appending to existing blockedBy, skipping duplicates).
+- SPD-008 backfill: `aos-spec-order-view` exposes `order-view-analyze-all` event (toolbar "🤖 Alle analysieren" button) and `order-view-analyze-spec` event (per-row 🤖 button, carries `{ specId }`). Both → `dashboard-view` → `gateway.send({ type: 'specs.analyzeDependencies', specId? })` → existing proposal dialog flow.
+- SPD-008 cleanup: `SpecsReader.deleteSpec()` now calls `cleanupBlockedByRef(projectPath, deletedSpecId)` after folder deletion. `handleSpecsDelete` broadcasts a fresh `specs.list` to all project clients after a successful delete so the dependency graph view is immediately consistent.
+- `SpecsReader.cleanupBlockedByRef(projectPath, deletedSpecId)`: iterates all other spec dirs, acquires `withKanbanLock` per spec, removes `deletedSpecId` from `blockedBy`, appends `spec_blocked_by_cleanup` changeLog entry. No-op if the spec has no kanban.json or doesn't reference the deleted ID.
