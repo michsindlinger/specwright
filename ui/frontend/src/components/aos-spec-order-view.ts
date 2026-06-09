@@ -2,13 +2,6 @@ import { LitElement, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import type { SpecInfo } from './spec-card.js';
 
-const CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
-
-function circled(n: number): string {
-  if (n >= 1 && n <= 20) return CIRCLED[n - 1];
-  return `#${n}`;
-}
-
 /**
  * SPD-006: Topological order view — third view mode alongside grid/list.
  * Shows active specs numbered by recommended execution order, with
@@ -59,15 +52,29 @@ export class AosSpecOrderView extends LitElement {
     const isDone = (s: SpecInfo): boolean => s.storyCount > 0 && s.completedCount >= s.storyCount;
     const cyclicSpecs = this.specs.filter(s => s.orderIndex == null && !isDone(s));
 
+    const readyCount = orderedSpecs.filter(s => s.dependencyStatus !== 'blocked').length;
+
     return html`
       <div class="spec-order-view">
         <div class="spec-order-view__toolbar">
+          <p class="spec-order-view__caption">
+            Empfohlene Reihenfolge — von oben nach unten abarbeiten.
+            <span class="spec-order-view__legend-item"><span class="spec-order-view__dot spec-order-view__dot--ready"></span>startklar</span>
+            <span class="spec-order-view__legend-item"><span class="spec-order-view__dot spec-order-view__dot--blocked"></span>wartet auf Vorgänger</span>
+          </p>
           <button
             class="spec-order-view__analyze-btn"
             @click=${this.handleAnalyzeAll}
             title="KI analysiert alle aktiven Specs und schlägt Abhängigkeiten vor"
           >🤖 Alle analysieren</button>
         </div>
+
+        ${orderedSpecs.length > 0 ? html`
+          <p class="spec-order-view__summary">
+            <strong>${orderedSpecs.length}</strong> Spec${orderedSpecs.length !== 1 ? 's' : ''} eingeordnet ·
+            <strong class="spec-order-view__summary-ready">${readyCount}</strong> jetzt startklar
+          </p>
+        ` : ''}
 
         ${cyclicSpecs.length > 0 ? html`
           <div class="spec-order-view__cycle-banner" role="alert">
@@ -124,22 +131,30 @@ export class AosSpecOrderView extends LitElement {
     );
 
     const hasRelations = blockedBySpecs.length > 0 || enablesSpecs.length > 0;
+    const isLast = orderedSpecs.indexOf(spec) === orderedSpecs.length - 1;
+    const statusLabel = isBlocked ? 'blockiert — wartet auf Vorgänger' : 'startklar';
 
     return html`
       <div
-        class="order-row${isBlocked ? ' order-row--blocked' : ''}"
+        class="order-row${isBlocked ? ' order-row--blocked' : ' order-row--ready'}"
         @click=${() => this.handleSpecClick(spec.id)}
         title="Spec öffnen: ${spec.name}"
       >
-        <span class="order-row__index" aria-label="Position ${index}">${circled(index)}</span>
+        <div class="order-row__rail-col">
+          <span
+            class="order-row__index order-row__index--${isBlocked ? 'blocked' : 'ready'}"
+            aria-label="Position ${index} — ${statusLabel}"
+          >${index}</span>
+          ${!isLast ? html`<span class="order-row__rail" aria-hidden="true"></span>` : ''}
+        </div>
         <div class="order-row__body">
           <div class="order-row__head">
+            <span class="order-row__status-icon" title="${statusLabel}">${isBlocked ? '🔒' : '🟢'}</span>
             <span class="order-row__name">${spec.name}</span>
             <span class="order-row__badges">
               ${spec.priority != null ? html`
                 <span class="order-row__priority order-row__priority--${spec.priority.toLowerCase()}">${spec.priority}</span>
               ` : ''}
-              ${isBlocked ? html`<span class="order-row__blocked-pill" title="Blockiert durch offene Vorgänger">🔒</span>` : ''}
               <button
                 class="order-row__reanalyze-btn"
                 @click=${(e: Event) => this.handleAnalyzeSpec(e, spec.id)}
@@ -151,14 +166,24 @@ export class AosSpecOrderView extends LitElement {
             <div class="order-row__relations">
               ${blockedBySpecs.length > 0 ? html`
                 <span class="order-relation order-relation--waits">
-                  wartet auf
-                  ${blockedBySpecs.map(s => html`<span class="order-relation__ref">${circled(s.orderIndex!)}</span>`)}
+                  <span class="order-relation__label">wartet auf</span>
+                  ${blockedBySpecs.map(s => html`
+                    <span class="order-relation__chip" title="${s.name}">
+                      <span class="order-relation__num">${s.orderIndex}</span>
+                      <span class="order-relation__name">${s.name}</span>
+                    </span>
+                  `)}
                 </span>
               ` : ''}
               ${enablesSpecs.length > 0 ? html`
                 <span class="order-relation order-relation--enables">
-                  ermöglicht
-                  ${enablesSpecs.map(s => html`<span class="order-relation__ref">${circled(s.orderIndex!)}</span>`)}
+                  <span class="order-relation__label">ermöglicht</span>
+                  ${enablesSpecs.map(s => html`
+                    <span class="order-relation__chip" title="${s.name}">
+                      <span class="order-relation__num">${s.orderIndex}</span>
+                      <span class="order-relation__name">${s.name}</span>
+                    </span>
+                  `)}
                 </span>
               ` : ''}
             </div>
