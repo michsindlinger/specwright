@@ -12,16 +12,16 @@
     "implementationPlan": "implementation-plan.md"
   },
   "resumeContext": {
-    "currentPhase": "2-complete",
-    "nextPhase": "3-execute-story",
+    "currentPhase": "task-complete",
+    "nextPhase": "3-execute-task",
     "worktreePath": null,
     "gitBranch": "main",
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed SPD-001",
+    "lastAction": "Completed SPD-003",
     "nextAction": "Wait for blocked tasks to become ready",
-    "progressIndex": 1,
+    "progressIndex": 3,
     "totalStories": 12
   },
   "execution": {
@@ -66,16 +66,28 @@
       "dependencies": [
         "SPD-001"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-06-09T08:51:41.720Z",
+        "completedAt": "2026-06-09T09:35:18.380Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/utils/spec-graph.ts",
+          "ui/src/shared/types/spec-dependencies.protocol.ts",
+          "ui/src/server/specs-reader.ts",
+          "ui/tests/unit/spd-002-spec-graph.test.ts",
+          "specwright/specs/2026-06-09-spec-prioritization-dependencies/integration-context.md"
+        ],
+        "commits": [
+          {
+            "hash": "983bb29c0493be4f688f21c5175a46c51cacc30b",
+            "message": "feat(spd-002): add spec-graph topo-sort, cycle detection & derived status",
+            "timestamp": "2026-06-09T09:34:00+00:00"
+          }
+        ]
       }
     },
     {
@@ -87,16 +99,26 @@
         "SPD-001",
         "SPD-002"
       ],
-      "status": "blocked",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-06-09T10:13:12.084Z",
+        "completedAt": "2026-06-09T10:23:17.025Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/src/server/websocket.ts",
+          "ui/frontend/src/views/dashboard-view.ts",
+          "ui/tests/unit/spd-003-websocket-handlers.test.ts"
+        ],
+        "commits": [
+          {
+            "hash": "4ad1d6d958e8e4ca0f3fa453a95fdedc5a514c2f",
+            "message": "feat(spd-003): add specs.setPriority / specs.setBlockedBy WebSocket handlers",
+            "timestamp": "2026-06-09T10:22:25+00:00"
+          }
+        ]
       }
     },
     {
@@ -306,8 +328,8 @@
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 1,
-    "blocked": 11
+    "done": 3,
+    "blocked": 9
   },
   "changeLog": [
     {
@@ -368,6 +390,114 @@
       "timestamp": "2026-06-09T08:50:50.481Z",
       "action": "status_changed",
       "storyId": "SPD-001",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-06-09T08:50:50.950Z",
+      "action": "dependency_resolved",
+      "storyId": "SPD-002",
+      "details": "Unblocked: all dependencies done/in_review (SPD-001)"
+    },
+    {
+      "timestamp": "2026-06-09T08:50:50.968Z",
+      "action": "status_changed",
+      "storyId": "SPD-002",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T08:51:41.720Z",
+      "action": "status_changed",
+      "storyId": "SPD-002",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T09:35:18.380Z",
+      "action": "status_changed",
+      "storyId": "SPD-002",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-06-09T09:35:22.070Z",
+      "action": "phase_updated",
+      "storyId": null,
+      "details": "Phase: task-complete"
+    },
+    {
+      "timestamp": "2026-06-09T09:35:51.234Z",
+      "action": "status_changed",
+      "storyId": "SPD-003",
+      "details": "Moved from blocked to ready"
+    },
+    {
+      "timestamp": "2026-06-09T09:35:53.052Z",
+      "action": "status_changed",
+      "storyId": "SPD-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T09:35:53.218Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git current-branch setup via UI: main"
+    },
+    {
+      "timestamp": "2026-06-09T09:35:53.258Z",
+      "action": "stale_recovery",
+      "storyId": "SPD-003",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-06-09T09:35:53.265Z",
+      "action": "status_changed",
+      "storyId": "SPD-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T09:36:35.099Z",
+      "action": "status_changed",
+      "storyId": "SPD-003",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T10:11:28.569Z",
+      "action": "stall_recovery",
+      "storyId": "SPD-003",
+      "details": "Manueller Reset durch User → backlog"
+    },
+    {
+      "timestamp": "2026-06-09T10:11:30.217Z",
+      "action": "status_changed",
+      "storyId": "SPD-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T10:11:30.378Z",
+      "action": "git_strategy_set",
+      "storyId": null,
+      "details": "Git current-branch setup via UI: main"
+    },
+    {
+      "timestamp": "2026-06-09T10:11:30.417Z",
+      "action": "stale_recovery",
+      "storyId": "SPD-003",
+      "details": "Reset in_progress → ready (no active slot at orchestrator-init)"
+    },
+    {
+      "timestamp": "2026-06-09T10:11:30.423Z",
+      "action": "status_changed",
+      "storyId": "SPD-003",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T10:13:12.085Z",
+      "action": "status_changed",
+      "storyId": "SPD-003",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T10:23:17.025Z",
+      "action": "status_changed",
+      "storyId": "SPD-003",
       "details": "Task completed: in_progress → done"
     }
   ]
