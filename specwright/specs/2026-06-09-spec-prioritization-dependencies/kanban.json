@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed SPD-004",
-    "nextAction": "Execute next task: SPD-005",
-    "progressIndex": 4,
+    "lastAction": "Completed SPD-005",
+    "nextAction": "Execute next task: SPD-006",
+    "progressIndex": 5,
     "totalStories": 12
   },
   "execution": {
@@ -161,16 +161,27 @@
       "dependencies": [
         "SPD-003"
       ],
-      "status": "ready",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-06-09T10:32:51.002Z",
+        "completedAt": "2026-06-09T10:44:47.708Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "ui/frontend/src/components/aos-spec-dependency-editor.ts",
+          "ui/frontend/src/components/spec-card.ts",
+          "ui/frontend/src/styles/theme.css",
+          "ui/frontend/src/views/dashboard-view.ts"
+        ],
+        "commits": [
+          {
+            "hash": "58cc9601dade235b75ea809b1c3f1262a589c32f",
+            "message": "feat(spd-005): add dependency editor + blocked-by hint to spec-card",
+            "timestamp": "2026-06-09T10:44:37+00:00"
+          }
+        ]
       }
     },
     {
@@ -182,7 +193,7 @@
         "SPD-002",
         "SPD-004"
       ],
-      "status": "blocked",
+      "status": "ready",
       "phase": "pending",
       "model": "sonnet",
       "timing": {
@@ -339,8 +350,8 @@
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 4,
-    "blocked": 7
+    "done": 5,
+    "blocked": 6
   },
   "changeLog": [
     {
@@ -539,6 +550,30 @@
       "timestamp": "2026-06-09T10:32:10.954Z",
       "action": "status_changed",
       "storyId": "SPD-004",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-06-09T10:32:11.370Z",
+      "action": "dependency_resolved",
+      "storyId": "SPD-006",
+      "details": "Unblocked: all dependencies done/in_review (SPD-002, SPD-004)"
+    },
+    {
+      "timestamp": "2026-06-09T10:32:11.378Z",
+      "action": "status_changed",
+      "storyId": "SPD-005",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T10:32:51.002Z",
+      "action": "status_changed",
+      "storyId": "SPD-005",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T10:44:47.708Z",
+      "action": "status_changed",
+      "storyId": "SPD-005",
       "details": "Task completed: in_progress → done"
     }
   ]
