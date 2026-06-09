@@ -8,6 +8,7 @@ import type { ParsedRoute } from '../types/route.types.js';
 import '../components/spec-card.js';
 import '../components/kanban-board.js';
 import '../components/aos-spec-dependency-editor.js';
+import '../components/aos-spec-order-view.js';
 import type { SaveDependenciesDetail } from '../components/aos-spec-dependency-editor.js';
 import '../components/docs/aos-docs-panel.js';
 import '../components/aos-create-spec-modal.js';
@@ -78,7 +79,7 @@ interface BacklogKanbanBoard {
 }
 
 type ViewMode = 'specs' | 'kanban' | 'story' | 'backlog' | 'docs' | 'backlog-story';
-type SpecsViewMode = 'grid' | 'list';
+type SpecsViewMode = 'grid' | 'list' | 'order';
 type SortMode = 'date' | 'priority' | 'order';
 
 const STORAGE_KEY = 'aos-dashboard-view-mode';
@@ -111,7 +112,7 @@ function clearAutoModeState(): void {
 }
 
 function isValidSpecsViewMode(value: unknown): value is SpecsViewMode {
-  return value === 'grid' || value === 'list';
+  return value === 'grid' || value === 'list' || value === 'order';
 }
 
 function loadSpecsViewMode(): SpecsViewMode {
@@ -2486,7 +2487,11 @@ export class AosDashboardView extends LitElement {
         </div>
 
         <div class="dashboard-content">
-          ${this.specsViewMode === 'grid' ? this.renderSpecsGridView() : this.renderSpecsListView()}
+          ${this.specsViewMode === 'order'
+            ? this.renderSpecsOrderView()
+            : this.specsViewMode === 'grid'
+              ? this.renderSpecsGridView()
+              : this.renderSpecsListView()}
         </div>
         ${this.renderCreateSpecModal()}
         ${this.renderDepEditor()}
@@ -2582,6 +2587,18 @@ export class AosDashboardView extends LitElement {
           `
         )}
       </div>
+    `;
+  }
+
+  private renderSpecsOrderView() {
+    const activeSpecs = this.showOnlyActive
+      ? this.specs.filter(s => !s.hasKanban || s.completedCount !== s.storyCount)
+      : [...this.specs];
+    return html`
+      <aos-spec-order-view
+        .specs=${activeSpecs}
+        @spec-select=${this.handleSpecSelect}
+      ></aos-spec-order-view>
     `;
   }
 
@@ -2705,6 +2722,21 @@ export class AosDashboardView extends LitElement {
             <rect x="0" y="2" width="16" height="2" rx="1"/>
             <rect x="0" y="7" width="16" height="2" rx="1"/>
             <rect x="0" y="12" width="16" height="2" rx="1"/>
+          </svg>
+        </button>
+        <button
+          class="view-toggle-btn ${this.specsViewMode === 'order' ? 'active' : ''}"
+          @click=${() => this.handleViewModeChange('order')}
+          aria-label="Order view"
+          title="Empfohlene Reihenfolge"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="0" y="1" width="3" height="3" rx="1"/>
+            <rect x="5" y="2" width="11" height="2" rx="1"/>
+            <rect x="0" y="6" width="3" height="3" rx="1"/>
+            <rect x="5" y="7" width="11" height="2" rx="1"/>
+            <rect x="0" y="11" width="3" height="3" rx="1"/>
+            <rect x="5" y="12" width="11" height="2" rx="1"/>
           </svg>
         </button>
       </div>
