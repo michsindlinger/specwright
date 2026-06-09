@@ -5,6 +5,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { projectDir, resolveCommandDir } from './utils/project-dirs.js';
 import { withKanbanLock } from './utils/kanban-lock.js';
+import { wouldCreateCycle, type GraphSpec } from './utils/spec-graph.js';
 import { ProjectManager } from './projects.js';
 import { ClaudeHandler } from './claude-handler.js';
 import { WorkflowExecutor } from './workflow-executor.js';
@@ -324,6 +325,14 @@ export class WebSocketHandler {
           break;
         case 'specs.assign':
           this.handleSpecsAssign(client, message);
+          break;
+        case 'specs.setPriority':
+          this.handleSpecsSetPriority(client, message);
+          break;
+        case 'specs.setBlockedBy':
+          this.handleSpecsSetBlockedBy(client, message).catch((err) => {
+            console.error('[WebSocket] Unhandled error in handleSpecsSetBlockedBy:', err);
+          });
           break;
         case 'workflow.story.start':
           this.handleWorkflowStoryStart(client, message).catch((err) => {
@@ -2403,6 +2412,167 @@ export class WebSocketHandler {
         type: 'specs.assign.error',
         specId,
         error: error instanceof Error ? error.message : 'Failed to toggle assignment',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * SPD-003: Handle specs.setPriority — set or clear the priority of a spec.
+   * Validates priority (P0–P3 or null), mutates via SpecsReader, then broadcasts
+   * a fresh specs.list to all project clients so derived orderIndex updates propagate.
+   */
+  private async handleSpecsSetPriority(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
+    const specId = message.specId as string;
+    const priority = (message.priority !== undefined ? message.priority : null) as string | null;
+
+    if (!specId) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.setPriority.error',
+        specId: '',
+        error: 'Spec ID is required',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.setPriority.error',
+        specId,
+        error: 'No project selected',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    try {
+      const result = await this.specsReader.setSpecPriority(projectPath, specId, priority);
+
+      if (result.error) {
+        const errorResponse: WebSocketMessage = {
+          type: 'specs.setPriority.error',
+          specId,
+          error: result.error,
+          timestamp: new Date().toISOString()
+        };
+        client.send(JSON.stringify(errorResponse));
+        return;
+      }
+
+      const specs = await this.specsReader.listSpecs(projectPath);
+      webSocketManager.sendToProject(projectPath, {
+        type: 'specs.list',
+        specs,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.setPriority.error',
+        specId,
+        error: error instanceof Error ? error.message : 'Failed to set priority',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * SPD-003: Handle specs.setBlockedBy — replace the blockedBy list of a spec.
+   * Pre-validates each new predecessor with wouldCreateCycle before mutating.
+   * On success broadcasts a fresh specs.list so dependencyStatus/orderIndex
+   * updates propagate to all project clients.
+   */
+  private async handleSpecsSetBlockedBy(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
+    const specId = message.specId as string;
+    const blockedBy = message.blockedBy as string[];
+
+    if (!specId) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.setBlockedBy.error',
+        specId: '',
+        error: 'Spec ID is required',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    if (!Array.isArray(blockedBy)) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.setBlockedBy.error',
+        specId,
+        error: 'blockedBy must be an array',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    const projectPath = this.getClientProjectPath(client);
+    if (!projectPath) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.setBlockedBy.error',
+        specId,
+        error: 'No project selected',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    try {
+      // Cycle pre-check before mutation using current graph state.
+      const allSpecs = await this.specsReader.listSpecs(projectPath);
+      const graphSpecs: GraphSpec[] = allSpecs.map(s => ({
+        id: s.id,
+        blockedBy: s.blockedBy,
+        priority: s.priority,
+        createdDate: s.createdDate,
+        isDone: s.storyCount > 0 && s.completedCount >= s.storyCount
+      }));
+
+      for (const predecessor of blockedBy) {
+        if (wouldCreateCycle(graphSpecs, specId, predecessor)) {
+          const errorResponse: WebSocketMessage = {
+            type: 'specs.setBlockedBy.error',
+            specId,
+            error: `Adding "${predecessor}" as a dependency would create a cycle`,
+            timestamp: new Date().toISOString()
+          };
+          client.send(JSON.stringify(errorResponse));
+          return;
+        }
+      }
+
+      const result = await this.specsReader.setSpecBlockedBy(projectPath, specId, blockedBy);
+
+      if (result.error) {
+        const errorResponse: WebSocketMessage = {
+          type: 'specs.setBlockedBy.error',
+          specId,
+          error: result.error,
+          timestamp: new Date().toISOString()
+        };
+        client.send(JSON.stringify(errorResponse));
+        return;
+      }
+
+      const specs = await this.specsReader.listSpecs(projectPath);
+      webSocketManager.sendToProject(projectPath, {
+        type: 'specs.list',
+        specs,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'specs.setBlockedBy.error',
+        specId,
+        error: error instanceof Error ? error.message : 'Failed to set blockedBy',
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));

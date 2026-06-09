@@ -522,6 +522,9 @@ export class AosDashboardView extends LitElement {
       // ASGN-004: Assignment toggle handlers
       ['specs.assign.ack', (msg) => this.onSpecsAssignAck(msg)],
       ['specs.assign.error', (msg) => this.onSpecsAssignError(msg)],
+      // SPD-003: Priority / dependency change error handlers
+      ['specs.setPriority.error', (msg) => this.onSpecsSetPriorityError(msg)],
+      ['specs.setBlockedBy.error', (msg) => this.onSpecsSetBlockedByError(msg)],
       ['backlog.assign.ack', (msg) => this.onBacklogAssignAck(msg)],
       ['backlog.assign.error', (msg) => this.onBacklogAssignError(msg)],
       // Bulk model update: confirm via disk refetch on ack, surface + rollback on error
@@ -1993,6 +1996,30 @@ export class AosDashboardView extends LitElement {
    */
   private onSpecsAssignError(msg: WebSocketMessage): void {
     const error = (msg.error as string) || 'Assignment fehlgeschlagen';
+    this.dispatchEvent(
+      new CustomEvent('show-toast', {
+        detail: { message: error, type: 'error' },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
+  /** SPD-003: Show toast when specs.setPriority fails. */
+  private onSpecsSetPriorityError(msg: WebSocketMessage): void {
+    const error = (msg.error as string) || 'Priorität konnte nicht gesetzt werden';
+    this.dispatchEvent(
+      new CustomEvent('show-toast', {
+        detail: { message: error, type: 'error' },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+
+  /** SPD-003: Show toast when specs.setBlockedBy fails (including cycle errors). */
+  private onSpecsSetBlockedByError(msg: WebSocketMessage): void {
+    const error = (msg.error as string) || 'Abhängigkeit konnte nicht gesetzt werden';
     this.dispatchEvent(
       new CustomEvent('show-toast', {
         detail: { message: error, type: 'error' },
