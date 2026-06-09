@@ -3,6 +3,8 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
 import { buildSpecFilePath, copyPathToClipboard } from '../utils/copy-path.js';
+import type { Priority, DependencyStatus } from '../../../src/shared/types/spec-dependencies.protocol.js';
+import './aos-priority-badge.js';
 
 export interface SpecInfo {
   id: string;
@@ -15,8 +17,11 @@ export interface SpecInfo {
   gitStrategy: 'branch' | 'worktree' | 'current-branch' | null;
   assignedToBot?: boolean;
   isReady?: boolean;
-  // TODO(backend): design also shows summary, stage, priority, agent.status, owner, lastActivity, prs.
-  // Skip rendering when absent — do not fake values.
+  // SPD-001/002: priority & dependency fields (optional, absent on legacy specs)
+  priority?: Priority;
+  blockedBy?: string[];
+  dependencyStatus?: DependencyStatus;
+  orderIndex?: number;
 }
 
 type DerivedStage = 'in-progress' | 'ready' | 'shipping' | 'done' | 'not-started';
@@ -65,6 +70,17 @@ export class AosSpecCard extends LitElement {
     this.dispatchEvent(
       new CustomEvent('spec-assign', {
         detail: { specId: this.spec.id },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private handlePriorityChange(e: CustomEvent<{ priority: string | null }>): void {
+    e.stopPropagation();
+    this.dispatchEvent(
+      new CustomEvent('spec-priority-change', {
+        detail: { specId: this.spec.id, priority: e.detail.priority },
         bubbles: true,
         composed: true,
       })
@@ -138,6 +154,10 @@ export class AosSpecCard extends LitElement {
           ${this.spec.hasKanban
             ? html`<span class="spec-card__type-badge">Kanban</span>`
             : html`<span class="spec-card__type-badge spec-card__type-badge--muted">Discovery</span>`}
+          <aos-priority-badge
+            .priority=${this.spec.priority ?? null}
+            @priority-change=${this.handlePriorityChange}
+          ></aos-priority-badge>
           <span class="spec-card__header-spacer"></span>
           <button
             class="assign-toggle-btn ${this.spec.assignedToBot ? 'assigned' : ''} ${!this.spec.isReady && !this.spec.assignedToBot ? 'assign-disabled' : ''}"

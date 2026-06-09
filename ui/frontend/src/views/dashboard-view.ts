@@ -13,6 +13,8 @@ import '../components/comments/aos-comment-thread.js';
 import type { SpecInfo } from '../components/spec-card.js';
 import type { KanbanBoard, StoryInfo, AutoModeProgress, AutoModeProgressBoard, KanbanStatus } from '../components/kanban-board.js';
 import type { AutoModeSnapshot as AutoModeSnapshotMsg } from '../../../src/shared/types/auto-mode.protocol.js';
+import type { Priority } from '../../../src/shared/types/spec-dependencies.protocol.js';
+import { isPriority } from '../../../src/shared/types/spec-dependencies.protocol.js';
 import type { ProviderInfo } from '../components/story-card.js';
 import { AosKanbanBoard, canMoveToInProgress } from '../components/kanban-board.js';
 import type { GitStrategy } from '../components/git-strategy-dialog.js';
@@ -75,8 +77,10 @@ interface BacklogKanbanBoard {
 
 type ViewMode = 'specs' | 'kanban' | 'story' | 'backlog' | 'docs' | 'backlog-story';
 type SpecsViewMode = 'grid' | 'list';
+type SortMode = 'date' | 'priority' | 'order';
 
 const STORAGE_KEY = 'aos-dashboard-view-mode';
+const SORT_MODE_STORAGE_KEY = 'aos-dashboard-sort-mode';
 
 // BUG-005: Auto-mode state persistence across navigation
 const AUTO_MODE_STORAGE_KEY = 'aos-auto-mode-state';
@@ -126,6 +130,20 @@ function saveSpecsViewMode(mode: SpecsViewMode): void {
   } catch {
     // localStorage unavailable (privacy mode), silently fail
   }
+}
+
+function loadSortMode(): SortMode {
+  try {
+    const stored = localStorage.getItem(SORT_MODE_STORAGE_KEY);
+    if (stored === 'date' || stored === 'priority' || stored === 'order') return stored;
+  } catch { /* unavailable */ }
+  return 'date';
+}
+
+function saveSortMode(mode: SortMode): void {
+  try {
+    localStorage.setItem(SORT_MODE_STORAGE_KEY, mode);
+  } catch { /* unavailable */ }
 }
 
 // Default fallback providers (used until backend responds)
@@ -181,6 +199,7 @@ export class AosDashboardView extends LitElement {
   @state() private autoModeEnabled = false;
   @state() private wsConnected = true; // Optimistic: assume connecting on init
   @state() private specsViewMode: SpecsViewMode = loadSpecsViewMode();
+  @state() private sortMode: SortMode = loadSortMode();
   private lastActiveProjectId: string | null = null;
   @state() private showOnlyActive = true;
   @state() private backlogLoading = false;
@@ -1971,6 +1990,24 @@ export class AosDashboardView extends LitElement {
     gateway.send({ type: 'specs.assign', specId });
   }
 
+  /** SPD-004: Handle priority change from spec-card priority badge. */
+  private handleSpecPriorityChange(e: CustomEvent<{ specId: string; priority: string | null }>): void {
+    const { specId, priority } = e.detail;
+    gateway.send({ type: 'specs.setPriority', specId, priority });
+    // Optimistic update so the badge reflects immediately without waiting for broadcast
+    const typedPriority: Priority | undefined = isPriority(priority) ? priority : undefined;
+    this.specs = this.specs.map(spec =>
+      spec.id === specId ? { ...spec, priority: typedPriority } : spec
+    );
+  }
+
+  /** SPD-004: Handle sort mode change from the sort selector. */
+  private handleSortModeChange(e: Event): void {
+    const value = (e.target as HTMLSelectElement).value as SortMode;
+    this.sortMode = value;
+    saveSortMode(value);
+  }
+
   /**
    * ASGN-004: Handle specs.assign.ack WebSocket response.
    * Updates kanban assignedToBot state in real-time.
@@ -2373,6 +2410,16 @@ export class AosDashboardView extends LitElement {
             />
             <span>Nur aktive</span>
           </label>
+          <select
+            class="sort-mode-select"
+            .value=${this.sortMode}
+            @change=${this.handleSortModeChange}
+            aria-label="Sortierung"
+          >
+            <option value="date">Neueste</option>
+            <option value="priority">Priorität</option>
+            <option value="order">Reihenfolge</option>
+          </select>
           <button class="new-spec-btn" @click=${this.handleOpenCreateSpecModal}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/></svg>
             Neues Spec
@@ -2408,6 +2455,7 @@ export class AosDashboardView extends LitElement {
               @spec-select=${this.handleSpecSelect}
               @spec-delete=${this.handleSpecDelete}
               @spec-assign=${this.handleSpecAssign}
+              @spec-priority-change=${this.handleSpecPriorityChange}
             ></aos-spec-card>
           `
         )}
@@ -2471,7 +2519,29 @@ export class AosDashboardView extends LitElement {
       );
     }
 
-    filtered.sort((a, b) => b.createdDate.localeCompare(a.createdDate));
+    switch (this.sortMode) {
+      case 'priority': {
+        const RANK: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
+        filtered.sort((a, b) => {
+          const ra = a.priority != null ? (RANK[a.priority] ?? 4) : 4;
+          const rb = b.priority != null ? (RANK[b.priority] ?? 4) : 4;
+          if (ra !== rb) return ra - rb;
+          return b.createdDate.localeCompare(a.createdDate);
+        });
+        break;
+      }
+      case 'order': {
+        filtered.sort((a, b) => {
+          const ia = a.orderIndex ?? Infinity;
+          const ib = b.orderIndex ?? Infinity;
+          if (ia !== ib) return ia - ib;
+          return b.createdDate.localeCompare(a.createdDate);
+        });
+        break;
+      }
+      default: // 'date'
+        filtered.sort((a, b) => b.createdDate.localeCompare(a.createdDate));
+    }
 
     return filtered;
   }
