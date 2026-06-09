@@ -1,0 +1,3 @@
+# Spec-Lite: Spec-Priorisierung & Abhängigkeits-Sequenzierung
+
+Erweitert die Spec-Übersicht im Dashboard um **Priorität (P0–P3)** und **Abhängigkeiten (`blockedBy`)** je Spezifikation, eine **empfohlene topologische Abarbeitungsreihenfolge** (neue "Reihenfolge"-Ansicht mit Zyklus-Warnung) sowie eine **KI-gestützte Abhängigkeitsanalyse** beim Spec-Anlegen (alle aktiven Specs via `spec-lite.md`, paarweise Eskalation auf `implementation-plan.md`/`spec.md` bei mittlerer/niedriger Konfidenz, Propose-&-Confirm). Persistenz erfolgt abwärtskompatibel im `spec`-Objekt der `kanban.json` nach dem `assignedToBot`-Muster; der Auto-Mode bleibt unberührt — die Reihenfolge ist in v1 rein visuell.
