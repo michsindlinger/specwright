@@ -52,8 +52,12 @@ export class AosSpecOrderView extends LitElement {
       .filter(s => s.orderIndex != null)
       .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
 
-    // Active specs without orderIndex are cyclic (computeRecommendedOrder excludes them)
-    const cyclicSpecs = this.specs.filter(s => s.orderIndex == null);
+    // A spec lacks orderIndex because it is either DONE (work complete) or part
+    // of a cycle. Only the latter is "not yet orderable". Done specs must be
+    // excluded so they are not mislabeled as a cycle warning when "Nur aktive"
+    // is off and completed specs are passed in. (SPD-997 review fix.)
+    const isDone = (s: SpecInfo): boolean => s.storyCount > 0 && s.completedCount >= s.storyCount;
+    const cyclicSpecs = this.specs.filter(s => s.orderIndex == null && !isDone(s));
 
     return html`
       <div class="spec-order-view">
