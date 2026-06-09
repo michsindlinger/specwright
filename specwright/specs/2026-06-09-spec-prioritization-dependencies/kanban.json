@@ -19,9 +19,9 @@
     "gitStrategy": "current-branch",
     "currentStory": null,
     "currentStoryPhase": null,
-    "lastAction": "Completed SPD-008",
-    "nextAction": "Execute next task: SPD-009",
-    "progressIndex": 8,
+    "lastAction": "Completed SPD-009",
+    "nextAction": "Wait for blocked tasks to become ready",
+    "progressIndex": 9,
     "totalStories": 12
   },
   "execution": {
@@ -298,16 +298,24 @@
       "dependencies": [
         "SPD-007"
       ],
-      "status": "ready",
-      "phase": "pending",
-      "model": "sonnet",
+      "status": "done",
+      "phase": "done",
+      "model": "claude-sonnet-4-6",
       "timing": {
-        "startedAt": null,
-        "completedAt": null
+        "startedAt": "2026-06-09T11:18:35.749Z",
+        "completedAt": "2026-06-09T11:26:49.136Z"
       },
       "implementation": {
-        "filesModified": [],
-        "commits": []
+        "filesModified": [
+          "specwright/workflows/core/create-spec.md"
+        ],
+        "commits": [
+          {
+            "hash": "0d452c170229f079f4f72c5a032154139f3bd2ae",
+            "message": "feat(spd-009): add dep-analysis step to create-spec workflow (v3.17)",
+            "timestamp": "2026-06-09T11:26:41+00:00"
+          }
+        ]
       }
     },
     {
@@ -390,11 +398,11 @@
   ],
   "boardStatus": {
     "total": 12,
-    "ready": 1,
+    "ready": 0,
     "inProgress": 0,
     "inReview": 0,
     "testing": 0,
-    "done": 8,
+    "done": 9,
     "blocked": 3
   },
   "changeLog": [
@@ -690,6 +698,24 @@
       "timestamp": "2026-06-09T11:17:58.619Z",
       "action": "status_changed",
       "storyId": "SPD-008",
+      "details": "Task completed: in_progress → done"
+    },
+    {
+      "timestamp": "2026-06-09T11:17:59.042Z",
+      "action": "status_changed",
+      "storyId": "SPD-009",
+      "details": "Moved from ready to in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T11:18:35.749Z",
+      "action": "status_changed",
+      "storyId": "SPD-009",
+      "details": "Task started: in_progress → in_progress"
+    },
+    {
+      "timestamp": "2026-06-09T11:26:49.136Z",
+      "action": "status_changed",
+      "storyId": "SPD-009",
       "details": "Task completed: in_progress → done"
     }
   ]
