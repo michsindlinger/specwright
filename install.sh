@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.31.0"
+FRAMEWORK_VERSION="3.32.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -1104,7 +1104,8 @@ install_mcp() {
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@anthropic-ai/sdk": "^0.32.0",
-    "better-sqlite3": "^12.6.2"
+    "better-sqlite3": "^12.6.2",
+    "tsx": "4.21.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12"
@@ -1145,7 +1146,7 @@ console.log('  Seeded ' + seed.seeded + ' tags');
 SETUPEOF
     fi
 
-    (cd "$MCP_DIR" && npx tsx _setup-memory.ts 2>/dev/null) || {
+    (cd "$MCP_DIR" && "$MCP_DIR/node_modules/.bin/tsx" _setup-memory.ts 2>/dev/null) || {
         echo -e " ${YELLOW}[warning: memory DB setup via tsx failed, trying sqlite3 fallback...]${RESET}"
         # Fallback: use sqlite3 CLI for schema creation
         setup_memory_db_fallback "$MEMORY_DB"
@@ -1157,35 +1158,33 @@ SETUPEOF
     substep "MCP configuration" "1"
     local MCP_CONFIG=".mcp.json"
     if [[ -f "$MCP_CONFIG" ]]; then
-        if grep -q '"kanban"' "$MCP_CONFIG" 2>/dev/null; then
-            FILES_SKIPPED=$((FILES_SKIPPED + 1))
-        else
-            # Backup and merge
-            cp "$MCP_CONFIG" "${MCP_CONFIG}.backup.$(date +%s)"
-            python3 << PYEOF 2>/dev/null || {
+        # Always (re)write the kanban entry so reinstalls upgrade legacy
+        # "npx tsx" entries to the direct ".bin/tsx" launcher (no npx wrapper chain).
+        # Backup first, then merge/overwrite.
+        cp "$MCP_CONFIG" "${MCP_CONFIG}.backup.$(date +%s)"
+        python3 << PYEOF 2>/dev/null || {
 import json
 with open('$MCP_CONFIG', 'r') as f:
     config = json.load(f)
 if 'mcpServers' not in config:
     config['mcpServers'] = {}
 config['mcpServers']['kanban'] = {
-    'command': 'npx',
-    'args': ['tsx', '$MCP_DIR/kanban-mcp-server.ts']
+    'command': '$MCP_DIR/node_modules/.bin/tsx',
+    'args': ['$MCP_DIR/kanban-mcp-server.ts']
 }
 with open('$MCP_CONFIG', 'w') as f:
     json.dump(config, f, indent=2)
 PYEOF
-                echo -e " ${YELLOW}[warning: auto-merge failed, add kanban entry manually]${RESET}"
-            }
-            FILES_INSTALLED=$((FILES_INSTALLED + 1))
-        fi
+            echo -e " ${YELLOW}[warning: auto-merge failed, add kanban entry manually]${RESET}"
+        }
+        FILES_INSTALLED=$((FILES_INSTALLED + 1))
     else
         cat > "$MCP_CONFIG" << MCPEOF
 {
   "mcpServers": {
     "kanban": {
-      "command": "npx",
-      "args": ["tsx", "$MCP_DIR/kanban-mcp-server.ts"]
+      "command": "$MCP_DIR/node_modules/.bin/tsx",
+      "args": ["$MCP_DIR/kanban-mcp-server.ts"]
     }
   }
 }

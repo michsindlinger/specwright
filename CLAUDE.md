@@ -122,6 +122,20 @@ specwright/                          # Repository root
 - **Lock hierarchy (invariant):** `withMainProjectLock` (outer) → `withKanbanLock` (inner). Never reverse — ABBA deadlock.
 - New git index ops on the main repo must be wrapped in `withMainProjectLock`.
 
+**MCP Server Launch Model (v3.32.0+):**
+- MCP servers are launched **directly**, never via `npx`/`npm exec`. The npx form spawns a
+  3–4 process wrapper chain per server; with several parallel Claude sessions this bloated
+  RAM/swap on the cloud droplet (~480MB / 1.5G swap).
+- **kanban:** `$MCP_DIR/node_modules/.bin/tsx $MCP_DIR/kanban-mcp-server.ts` — `tsx` is pinned
+  (exact `4.21.0`) in the mcp dir's `package.json` `dependencies` (not devDependencies → survives
+  `--production`). ~2 procs (tsx CLI + worker).
+- **supabase:** global `mcp-server-supabase` (absolute path, e.g. `/usr/bin/mcp-server-supabase`),
+  pinned version. ~1 proc. Configured user-scope (`~/.claude.json`), not per-project.
+- **firebase:** `firebase mcp` (global firebase-tools binary). ~1 proc.
+- Generators (`install.sh`, `setup-mcp.sh`) emit the `.bin/tsx` form and **upgrade** legacy `npx`
+  entries on reinstall (no skip-if-exists). Guard: `bash scripts/check-mcp-launcher.sh` fails if
+  any installer re-introduces an `npx`-based kanban command.
+
 **When modifying UI frontend:**
 - Follow Lit component patterns from `.claude/skills/frontend-lit/`
 - Use `aos-` prefix for all new components

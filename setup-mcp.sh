@@ -70,7 +70,8 @@ cat > "$MCP_DIR/package.json" <<EOF
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@anthropic-ai/sdk": "^0.32.0",
-    "better-sqlite3": "^12.6.2"
+    "better-sqlite3": "^12.6.2",
+    "tsx": "4.21.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12"
@@ -91,18 +92,15 @@ echo ""
 MCP_CONFIG=".mcp.json"
 
 if [ -f "$MCP_CONFIG" ]; then
-  echo "📝 Adding kanban MCP server to existing $MCP_CONFIG..."
+  echo "📝 Adding/updating kanban MCP server in existing $MCP_CONFIG..."
 
-  # Check if kanban server already exists
-  if grep -q '"kanban"' "$MCP_CONFIG"; then
-    echo "   ⚠️  Kanban MCP server already configured in $MCP_CONFIG"
-    echo "   Skipping configuration update"
-  else
-    # Backup existing config
-    cp "$MCP_CONFIG" "${MCP_CONFIG}.backup.$(date +%s)"
+  # Always (re)write the kanban entry so reinstalls upgrade legacy "npx tsx"
+  # entries to the direct ".bin/tsx" launcher (no npx wrapper chain).
+  # Backup existing config first.
+  cp "$MCP_CONFIG" "${MCP_CONFIG}.backup.$(date +%s)"
 
-    # Use Python to properly merge JSON (available on macOS/Linux)
-    python3 <<PYTHON
+  # Use Python to properly merge JSON (available on macOS/Linux)
+  python3 <<PYTHON
 import json
 import sys
 
@@ -110,39 +108,38 @@ try:
     with open('$MCP_CONFIG', 'r') as f:
         config = json.load(f)
 
-    # Add kanban server
+    # Add/overwrite kanban server
     if 'mcpServers' not in config:
         config['mcpServers'] = {}
 
     config['mcpServers']['kanban'] = {
-        'command': 'npx',
-        'args': ['tsx', '$MCP_DIR/kanban-mcp-server.ts']
+        'command': '$MCP_DIR/node_modules/.bin/tsx',
+        'args': ['$MCP_DIR/kanban-mcp-server.ts']
     }
 
     # Write updated config
     with open('$MCP_CONFIG', 'w') as f:
         json.dump(config, f, indent=2)
 
-    print('   ✅ Kanban MCP server added to .mcp.json')
+    print('   ✅ Kanban MCP server configured in .mcp.json')
 except Exception as e:
     print(f'   ⚠️  Auto-merge failed: {e}')
     print('   Please add manually:')
     print('   "kanban": {')
-    print('     "command": "npx",')
-    print('     "args": ["tsx", "$MCP_DIR/kanban-mcp-server.ts"]')
+    print('     "command": "$MCP_DIR/node_modules/.bin/tsx",')
+    print('     "args": ["$MCP_DIR/kanban-mcp-server.ts"]')
     print('   }')
     sys.exit(0)  # Don't fail the script
 PYTHON
 
-  fi
 else
   echo "📝 Creating new $MCP_CONFIG..."
   cat > "$MCP_CONFIG" <<EOF
 {
   "mcpServers": {
     "kanban": {
-      "command": "npx",
-      "args": ["tsx", "$MCP_DIR/kanban-mcp-server.ts"]
+      "command": "$MCP_DIR/node_modules/.bin/tsx",
+      "args": ["$MCP_DIR/kanban-mcp-server.ts"]
     }
   }
 }
@@ -300,7 +297,7 @@ const tagResult = seedInitialTags();
 console.log(`Tags seeded: ${tagResult.seeded} new, ${tagResult.total} total`);
 TSEOF
 
-(cd "$MCP_DIR" && npx tsx _setup-memory.ts 2>/dev/null) || {
+(cd "$MCP_DIR" && "$MCP_DIR/node_modules/.bin/tsx" _setup-memory.ts 2>/dev/null) || {
     echo "   ⚠️  memory DB setup via tsx failed, trying sqlite3 fallback..."
     rm -f "$SETUP_SCRIPT"
     setup_memory_db_fallback "$MEMORY_DB"
@@ -318,7 +315,7 @@ echo "   • Memory DB: $MEMORY_DB"
 echo "   • Configuration: .mcp.json (or needs manual merge)"
 echo ""
 echo "🧪 Test the installation:"
-echo "   echo '{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":1}' | npx tsx $MCP_DIR/kanban-mcp-server.ts"
+echo "   echo '{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":1}' | $MCP_DIR/node_modules/.bin/tsx $MCP_DIR/kanban-mcp-server.ts"
 echo ""
 echo "📚 The MCP server provides these tools for Claude CLI:"
 echo "   • kanban_read - Read kanban state"
