@@ -19,11 +19,20 @@ export interface TabReviewConfig {
 interface SessionState {
   config: TabReviewConfig;
   locked: boolean;
+  /** Epoch ms when `locked` was last set. Used to recover from a stale lock
+   *  (a reviewer/inject that hung and never reached the finally-reset) on an
+   *  explicit manual re-trigger. null when unlocked. */
+  lockedAt: number | null;
   /** Resolved plan-file path of the most recently injected review.
    *  Used to suppress repeat reviews of the same plan (e.g., when TUI boxes
    *  re-fire plan detection during plan execution). Reset on toggle-off. */
   lastInjectedPlanPath: string | null;
 }
+
+/** A manual re-trigger may reclaim a lock older than this — a fresh lock means
+ *  a review is genuinely still running, so concurrent manual triggers still
+ *  block to avoid double-injection. */
+const STALE_LOCK_MS = 3 * 60 * 1000;
 
 function buildInjectText(
   reviewerOutputs: { providerId: string; modelId: string; output: string }[]
@@ -82,6 +91,7 @@ export class PlanReviewOrchestrator extends EventEmitter {
     this.sessions.set(sessionId, {
       config,
       locked: existing?.locked ?? false,
+      lockedAt: existing?.lockedAt ?? null,
       lastInjectedPlanPath: config.enabled ? (existing?.lastInjectedPlanPath ?? null) : null,
     });
     this.cloudTerminalManager.setPlanReviewEnabled(sessionId, config.enabled);
@@ -114,6 +124,7 @@ export class PlanReviewOrchestrator extends EventEmitter {
       state = {
         config: { enabled: false, reviewers: [] },
         locked: false,
+        lockedAt: null,
         lastInjectedPlanPath: null,
       };
       this.sessions.set(sessionId, state);
@@ -133,16 +144,30 @@ export class PlanReviewOrchestrator extends EventEmitter {
     }
 
     if (state.locked) {
+      // A manual trigger is an explicit re-review intent: reclaim the lock if
+      // it is stale (a prior review hung without reaching the finally-reset).
+      // A fresh lock means a review is genuinely running — keep blocking so we
+      // never inject twice.
+      const lockAge = state.lockedAt === null ? Infinity : Date.now() - state.lockedAt;
+      const canReclaim = source === 'manual' && lockAge >= STALE_LOCK_MS;
+      if (!canReclaim) {
+        console.warn(
+          `[PlanReviewOrchestrator] Session ${sessionId} review already in progress, ignoring ${source} trigger`
+        );
+        this.emit('plan-review:error', sessionId, 'Review already in progress for this session');
+        return;
+      }
       console.warn(
-        `[PlanReviewOrchestrator] Session ${sessionId} review already in progress, ignoring ${source} trigger`
+        `[PlanReviewOrchestrator] Session ${sessionId} reclaiming stale lock (${Math.round(lockAge / 1000)}s) on manual trigger`
       );
-      this.emit('plan-review:error', sessionId, 'Review already in progress for this session');
-      return;
     }
 
     const session = this.cloudTerminalManager.getSession(sessionId);
     const planPath = session?.lastDetectedPlanPath ?? null;
-    if (planPath && state.lastInjectedPlanPath === planPath) {
+    // Suppress repeat reviews of the same plan only for automatic (TUI-box
+    // re-fire) detection. A manual trigger always re-reviews — the user asked
+    // for it explicitly (e.g. the previous inject landed on the wrong focus).
+    if (source === 'auto' && planPath && state.lastInjectedPlanPath === planPath) {
       console.log(
         `[PlanReviewOrchestrator] Skipping ${source} re-review for already-injected plan: ${planPath}`
       );
@@ -155,6 +180,7 @@ export class PlanReviewOrchestrator extends EventEmitter {
     }
 
     state.locked = true;
+    state.lockedAt = Date.now();
 
     try {
       const projectPath = session?.projectPath ?? process.cwd();
@@ -236,6 +262,7 @@ export class PlanReviewOrchestrator extends EventEmitter {
       this.emit('plan-review:injected', sessionId);
     } finally {
       state.locked = false;
+      state.lockedAt = null;
     }
   }
 }

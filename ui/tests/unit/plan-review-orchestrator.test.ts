@@ -110,6 +110,34 @@ describe('PlanReviewOrchestrator dedup by planPath', () => {
     expect(mock.sendInput).toHaveBeenCalledTimes(1);
   });
 
+  it('manual trigger re-reviews the same already-injected planPath (auto would skip)', async () => {
+    mock.setPlanPath('/p/foo.md');
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+    const started = vi.fn();
+    orch.on('plan-review:started', started);
+
+    orch.setTabConfig('sess-1', {
+      enabled: true,
+      reviewers: [{ providerId: 'mock', modelId: 'mock-1' }],
+    });
+
+    // First (auto) review injects and remembers /p/foo.md
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(started).toHaveBeenCalledTimes(1);
+
+    // An auto re-fire of the same plan is suppressed
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(started).toHaveBeenCalledTimes(1);
+
+    // A manual trigger of the SAME plan re-reviews (prev inject landed on wrong focus)
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'manual');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(started).toHaveBeenCalledTimes(2);
+    expect(mock.sendInput).toHaveBeenCalledTimes(2);
+  });
+
   it('second trigger with a different planPath runs a fresh review', async () => {
     mock.setPlanPath('/p/foo.md');
     const orch = buildOrchestratorWithMockReviewer(mock.ctm);
