@@ -1,0 +1,24 @@
+{
+  "templates": [
+    {
+      "id": "tpl_mq54k5y9_9ztryx",
+      "name": "Prüfen, ob Spezifikation bereits abgeschlossen ist.",
+      "content": "Bitte schau dir den aktuellen Stand folgender Spezifikation an und prüfe anschließend im Code, ob nicht bereits alles implementiert wurde. Ich habe das Gefühl, dass wir das Feature eigentlich komplett bereits abgeschlossen haben und dass nur die Spezifikation noch nicht aktualisiert wurde.\n\nGib mir am Ende eine Übersicht der einzelnen Storys, welche tatsächlich abgeschlossen sind und welche nicht. Und ob wir die noch nicht abgeschlossenen wirklich noch brauchen oder nicht."
+    },
+    {
+      "id": "tpl_mq55kbqf_jp9eu4",
+      "name": "Kundenfeedback überprüfen",
+      "content": "Ich habe folgendes Feedback vom Kunde bekommen, kannst du bitte prüfen ob du eine Ursache dafür findest. Falls dir das Feedback unklar erscheint und du Rückfragen hast, stelle mir diese bevor du blind los legst. Wenn dir klar ist, was das Problem sein soll, starte mit der Analyse.\n\nFeedback vom Kunde:"
+    },
+    {
+      "id": "tpl_mq55p20k_vhjxq5",
+      "name": "Gitlab Title und Story für Spec erstellen",
+      "content": "Ich möchte in GitLab Issues ein Ticket für folgende Spezifikation anlegen. Bitte erstelle mir einen passenden Titel und eine Markdown Beschreibung, welche ich dann kopieren kann.\n\nDas Mittel soll anzeigen, ob es sich um ein neues Feature handelt, eine Optimierung etc.\nBeschreibung soll rein fachlicher Natur sein, keine Implementierungsdetails etc.\nNatürlich soll die Beschreibung auch für Nicht-Entwickler lesbar sein.\n\nDer Aufbau der Beschreibung soll wie folgt sein:\n\n## Art der Änderung\n\n## Ausgangslage\n\n## Ziel\n\n## Nutzen\n\n## Abnahmekriterien\n\n- [ ] kriterium 1\n- [ ] kriterium 2\n...\n\n## Hinweise (z.b. Betrifft ausschließlich die Verarbeitung im Hintergrund, die Benutzeroberfläche ändert sich nicht.)\n\nSpec:"
+    },
+    {
+      "id": "tpl_mq56vllj_c27fhv",
+      "name": "Post Mortem Gitlab Ticket",
+      "content": "Ich möchte in GitLab Issues NACHTRÄGLICH ein Ticket für das gerade bearbeitete Thema (Nutze den vorhandenen Kontext) erstellen. Bitte erstelle mir einen passenden Titel und eine Markdown Beschreibung, welche ich dann kopieren kann. \n\nEs soll erkennbar sein, ob es sich um ein Bugfix, neues Feature, Optimierung, etc. handelt.\nEs soll das Thema beschreiben, ohne die implementierte Lösung."
+    }
+  ]
+}
