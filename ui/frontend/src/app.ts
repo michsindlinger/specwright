@@ -945,6 +945,13 @@ export class AosApp extends LitElement {
     return this.terminalSessions.filter(s => s.projectPath === projectPath);
   }
 
+  /** projectPath -> display name, for the cross-project split-screen pane dropdowns. */
+  private get terminalProjectNames(): Record<string, string> {
+    const map: Record<string, string> = {};
+    for (const p of this.openProjects) map[p.path] = p.name;
+    return map;
+  }
+
   private _handleTerminalSessionSelect(e: CustomEvent<{ sessionId: string; clearNeedsInput?: boolean }>): void {
     this.activeTerminalSessionId = e.detail.sessionId;
 
@@ -2096,6 +2103,8 @@ export class AosApp extends LitElement {
       <aos-cloud-terminal-sidebar
         .isOpen=${this.isTerminalSidebarOpen}
         .sessions=${this.projectTerminalSessions}
+        .allSessions=${this.terminalSessions}
+        .projectNames=${this.terminalProjectNames}
         .activeSessionId=${this.activeTerminalSessionId}
         @sidebar-close=${this._handleTerminalClose}
         @new-session=${this._handleNewTerminalSession}

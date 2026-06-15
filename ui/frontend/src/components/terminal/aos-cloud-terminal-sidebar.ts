@@ -1,4 +1,4 @@
-import { LitElement, html, nothing, type PropertyValues } from 'lit';
+import { LitElement, html, svg, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { repeat } from 'lit/directives/repeat.js';
@@ -68,9 +68,19 @@ export class AosCloudTerminalSidebar extends LitElement {
   @property({ type: Boolean }) isOpen = false;
   @property({ type: Array }) sessions: TerminalSession[] = [];
   @property({ type: String }) activeSessionId: string | null = null;
+  /** All sessions across every project — source for the cross-project pane picker. */
+  @property({ attribute: false }) allSessions: TerminalSession[] = [];
+  /** Map projectPath -> display name, for the pane dropdown's <optgroup> labels. */
+  @property({ attribute: false }) projectNames: Record<string, string> = {};
   @state() private sidebarWidth = 500;
   @state() private isResizing = false;
   @state() private isFullscreen = false;
+  /** Split-screen layout: single pane, 2 rows (top/bottom), or 2x2 quad (fullscreen only). */
+  @state() private layoutMode: 'single' | 'split-2' | 'quad-4' = 'single';
+  /** Session id per pane slot (length 2 for split-2, 4 for quad-4). null = empty slot. */
+  @state() private paneSessionIds: (string | null)[] = [];
+  /** Which pane currently owns toolbar/keyboard intent (visual focus ring + session-select sync). */
+  @state() private focusedPaneIndex = 0;
   @state() private loadingState: LoadingState = { isLoading: false, message: '' };
   @state() private errorMessage: string | null = null;
   private readonly minSidebarWidth = 400;
@@ -284,20 +294,134 @@ export class AosCloudTerminalSidebar extends LitElement {
         flex: 1;
         overflow: hidden;
         position: relative;
+        display: grid;
+        gap: 1px;
       }
 
+      .terminal-sessions-container.single { grid-template: 1fr / 1fr; }
+      /* Split/quad: thicker gaps over a divider-coloured backdrop render as clear seams. */
+      .terminal-sessions-container.split-2,
+      .terminal-sessions-container.quad-4 {
+        gap: 3px;
+        background: var(--border-color, #404040);
+      }
+      .terminal-sessions-container.split-2 { grid-template: 1fr 1fr / 1fr; }
+      .terminal-sessions-container.quad-4 { grid-template: 1fr 1fr / 1fr 1fr; }
+
+      /* Each terminal is a grid item; visibility + cell placement set inline per render. */
       .session-panel {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
         display: none;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
       }
 
-      .session-panel.active {
+      .split-2 .session-panel,
+      .quad-4 .session-panel {
+        padding-top: 30px; /* room for the absolutely-positioned pane header overlay */
+        border: 1px solid var(--border-color, #404040);
+        outline-offset: -2px;
+      }
+
+      .split-2 .session-panel.focused,
+      .quad-4 .session-panel.focused {
+        outline: 2px solid var(--accent-color, #007acc);
+      }
+
+      /* Header overlay: same grid template, sits above the terminals, only the dropdown is interactive. */
+      .pane-headers {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        gap: 3px;
+        pointer-events: none;
+        z-index: 5;
+      }
+
+      .pane-headers.split-2 { grid-template: 1fr 1fr / 1fr; }
+      .pane-headers.quad-4 { grid-template: 1fr 1fr / 1fr 1fr; }
+
+      .pane-header {
+        align-self: start;
+        height: 30px;
         display: flex;
-        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 0 8px;
+        background: var(--bg-color-tertiary, #252526);
+        border-bottom: 1px solid var(--border-color, #404040);
+        pointer-events: auto;
+      }
+
+      .pane-header.focused {
+        border-bottom-color: var(--accent-color, #007acc);
+      }
+
+      .pane-project {
+        flex: 0 1 auto;
+        max-width: 45%;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pane-project.empty {
+        background: var(--bg-color-secondary, #1e1e1e);
+        color: var(--text-color-muted, #606060);
+        font-weight: 400;
+        font-style: italic;
+      }
+
+      .pane-select {
+        flex: 1;
+        min-width: 0;
+        max-width: 100%;
+        background: var(--bg-color-secondary, #1e1e1e);
+        color: var(--text-color-primary, #e0e0e0);
+        border: 1px solid var(--border-color, #404040);
+        border-radius: 4px;
+        font-size: 11px;
+        padding: 2px 4px;
+        cursor: pointer;
+      }
+
+      .layout-switcher {
+        display: inline-flex;
+        gap: 2px;
+        margin-right: 4px;
+      }
+
+      .layout-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-color-secondary, #a0a0a0);
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+
+      .layout-btn:hover {
+        background: var(--bg-color-hover, #3c3c3c);
+        color: var(--text-color-primary, #e0e0e0);
+      }
+
+      .layout-btn.active {
+        background: rgba(0, 122, 204, 0.2);
+        color: var(--accent-color, #007acc);
+      }
+
+      .layout-btn svg {
+        width: 16px;
+        height: 16px;
       }
 
       .session-indicator {
@@ -676,6 +800,7 @@ export class AosCloudTerminalSidebar extends LitElement {
               </svg>
               Neue Session
             </button>
+            ${this._renderLayoutSwitcher()}
             <button
               class="action-btn"
               @click=${this._toggleFullscreen}
@@ -745,44 +870,195 @@ export class AosCloudTerminalSidebar extends LitElement {
     `;
   }
 
+  private get _paneCount(): number {
+    return this.layoutMode === 'quad-4' ? 4 : this.layoutMode === 'split-2' ? 2 : 1;
+  }
+
+  private get _isSplit(): boolean {
+    return this.layoutMode !== 'single';
+  }
+
+  /** Grid cell (1-based col/row) for a pane index in the current layout. */
+  private _cellForIndex(idx: number): { col: number; row: number } {
+    if (this.layoutMode === 'quad-4') {
+      return { col: (idx % 2) + 1, row: Math.floor(idx / 2) + 1 };
+    }
+    // split-2: single column, stacked rows (top/bottom)
+    return { col: 1, row: idx + 1 };
+  }
+
+  /** Pane index a session currently occupies in the active layout, or -1. */
+  private _paneIndexForSession(id: string): number {
+    return this.paneSessionIds.slice(0, this._paneCount).indexOf(id);
+  }
+
+  /**
+   * Sessions that must keep a live xterm element mounted. Single-mode keeps every
+   * current-project session mounted (tab switching without buffer refetch). Split/quad
+   * additionally keep every pane-assigned session (cross-project). One flat keyed repeat
+   * over this union means toggling layout never re-parents a surviving terminal.
+   */
+  private _mountedSessions(): TerminalSession[] {
+    const map = new Map<string, TerminalSession>();
+    for (const s of this.sessions) map.set(s.id, s);
+    if (this._isSplit) {
+      for (const id of this.paneSessionIds) {
+        if (!id) continue;
+        const s = this.allSessions.find(x => x.id === id);
+        if (s) map.set(s.id, s);
+      }
+    }
+    return Array.from(map.values());
+  }
+
+  private _projectLabel(path: string): string {
+    return this.projectNames[path] ?? (path.split('/').filter(Boolean).pop() ?? path);
+  }
+
   private _renderTerminalContent() {
     const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
-    const isPaused = activeSession?.status === 'paused';
+    const isPaused = !this._isSplit && activeSession?.status === 'paused';
 
     return html`
       ${this.errorMessage ? this._renderErrorBanner() : ''}
-      <aos-terminal-tabs
-        .sessions=${this.sessions}
-        .activeSessionId=${this.activeSessionId}
-        .availableProviders=${this.availableProviders}
-        .activeTerminalSessionId=${this.sessions.find(s => s.id === this.activeSessionId)?.terminalSessionId ?? ''}
-        .activeSessionReviewEnabled=${this._getActiveReviewConfig().enabled}
-        .activeSessionReviewReviewers=${this._getActiveReviewConfig().reviewers}
-        @session-select=${this._handleSessionSelect}
-        @session-close=${this._handleSessionClose}
-        @session-rename=${this._handleSessionRename}
-        @auto-review-config-changed=${this._handleAutoReviewConfigChanged}
-        @auto-review-trigger-manual=${this._handleAutoReviewTriggerManual}
-      ></aos-terminal-tabs>
-      <div class="terminal-sessions-container">
+      ${this._isSplit
+        ? nothing
+        : html`<aos-terminal-tabs
+            .sessions=${this.sessions}
+            .activeSessionId=${this.activeSessionId}
+            .availableProviders=${this.availableProviders}
+            .activeTerminalSessionId=${this.sessions.find(s => s.id === this.activeSessionId)?.terminalSessionId ?? ''}
+            .activeSessionReviewEnabled=${this._getActiveReviewConfig().enabled}
+            .activeSessionReviewReviewers=${this._getActiveReviewConfig().reviewers}
+            @session-select=${this._handleSessionSelect}
+            @session-close=${this._handleSessionClose}
+            @session-rename=${this._handleSessionRename}
+            @auto-review-config-changed=${this._handleAutoReviewConfigChanged}
+            @auto-review-trigger-manual=${this._handleAutoReviewTriggerManual}
+          ></aos-terminal-tabs>`}
+      <div class="terminal-sessions-container ${this.layoutMode}">
         ${this.loadingState.isLoading ? this._renderLoadingOverlay() : ''}
         ${isPaused ? this._renderPausedIndicator(activeSession!) : ''}
+        ${this._isSplit ? this._renderPaneHeaders() : nothing}
         ${repeat(
-          this.sessions,
+          this._mountedSessions(),
           (session) => session.id,
-          (session) => html`
-            <aos-terminal-session
-              .session=${session}
-              .isActive=${session.id === this.activeSessionId}
-              .terminalSessionId=${session.terminalSessionId || null}
-              data-session-id="${session.id}"
-              class="session-panel ${session.id === this.activeSessionId ? 'active' : 'inactive'}"
-              @session-connected=${this._handleSessionConnected}
-              @input-needed=${this._handleInputNeeded}
-            ></aos-terminal-session>
-          `
+          (session) => {
+            const paneIdx = this._isSplit ? this._paneIndexForSession(session.id) : -1;
+            const visible = this._isSplit
+              ? paneIdx >= 0
+              : session.id === this.activeSessionId;
+            const styles: Record<string, string> = { display: visible ? 'flex' : 'none' };
+            if (visible && this._isSplit) {
+              const { col, row } = this._cellForIndex(paneIdx);
+              styles.gridColumn = String(col);
+              styles.gridRow = String(row);
+            }
+            const focused = this._isSplit && paneIdx === this.focusedPaneIndex;
+            return html`
+              <aos-terminal-session
+                .session=${session}
+                .isActive=${visible}
+                .terminalSessionId=${session.terminalSessionId || null}
+                data-session-id="${session.id}"
+                class="session-panel ${focused ? 'focused' : ''}"
+                style=${styleMap(styles)}
+                @focusin=${() => this._handlePaneFocus(paneIdx, session.id)}
+                @session-connected=${this._handleSessionConnected}
+                @input-needed=${this._handleInputNeeded}
+              ></aos-terminal-session>
+            `;
+          }
         )}
       </div>
+    `;
+  }
+
+  /** Deterministic hue (0-359) per project path — same project, same badge colour everywhere. */
+  private _projectHue(path: string): number {
+    let h = 0;
+    for (let i = 0; i < path.length; i++) h = (h * 31 + path.charCodeAt(i)) % 360;
+    return h;
+  }
+
+  private _renderPaneHeaders() {
+    const panes = Array.from({ length: this._paneCount }, (_, i) => i);
+    return html`
+      <div class="pane-headers ${this.layoutMode}">
+        ${repeat(
+          panes,
+          (i) => i,
+          (i) => {
+            const { col, row } = this._cellForIndex(i);
+            const sessionId = this.paneSessionIds[i];
+            const session = sessionId ? this.allSessions.find((s) => s.id === sessionId) : undefined;
+            const label = session ? this._projectLabel(session.projectPath) : '';
+            const badgeStyle = session
+              ? {
+                  background: `hsl(${this._projectHue(session.projectPath)} 55% 22%)`,
+                  color: `hsl(${this._projectHue(session.projectPath)} 70% 80%)`,
+                }
+              : {};
+            return html`<div
+              class="pane-header ${i === this.focusedPaneIndex ? 'focused' : ''}"
+              style=${styleMap({ gridColumn: String(col), gridRow: String(row) })}
+            >
+              <span
+                class="pane-project ${session ? '' : 'empty'}"
+                style=${styleMap(badgeStyle)}
+                title=${label || 'Kein Projekt'}
+              >${label || 'Kein Projekt'}</span>
+              ${this._renderPaneDropdown(i)}
+            </div>`;
+          }
+        )}
+      </div>
+    `;
+  }
+
+  private _renderPaneDropdown(paneIndex: number) {
+    const currentId = this.paneSessionIds[paneIndex] ?? '';
+    const found = !currentId || this.allSessions.some(s => s.id === currentId);
+    const assignedElsewhere = new Set(
+      this.paneSessionIds.filter((id, i) => !!id && i !== paneIndex) as string[]
+    );
+
+    // Group sessions by project path for <optgroup> labels.
+    const groups = new Map<string, TerminalSession[]>();
+    for (const s of this.allSessions) {
+      const arr = groups.get(s.projectPath) ?? [];
+      arr.push(s);
+      groups.set(s.projectPath, arr);
+    }
+
+    return html`
+      <select
+        class="pane-select"
+        @change=${(e: Event) =>
+          this._assignPaneSession(paneIndex, (e.target as HTMLSelectElement).value || null)}
+      >
+        <option value="" ?selected=${!currentId}>— Session wählen —</option>
+        ${currentId && !found
+          ? html`<option value=${currentId} selected>(nicht verfügbar)</option>`
+          : ''}
+        ${repeat(
+          [...groups.entries()],
+          ([path]) => path,
+          ([path, list]) => html`
+            <optgroup label=${this._projectLabel(path)}>
+              ${list.map(
+                (s) => html`<option
+                  value=${s.id}
+                  ?disabled=${assignedElsewhere.has(s.id)}
+                  ?selected=${s.id === currentId}
+                >
+                  ${s.name}
+                </option>`
+              )}
+            </optgroup>
+          `
+        )}
+      </select>
     `;
   }
 
@@ -855,16 +1131,22 @@ export class AosCloudTerminalSidebar extends LitElement {
    */
   private _toggleFullscreen() {
     this.isFullscreen = !this.isFullscreen;
+    // Quad is fullscreen-only — leaving fullscreen downgrades to 2-split (top row survives).
+    if (!this.isFullscreen && this.layoutMode === 'quad-4') {
+      this._setLayout('split-2');
+    }
     this.updateContentOffset();
-    this._refreshActiveTerminal();
+    this._refreshVisibleTerminals();
   }
 
-  /** Refit the active session's terminal after a layout reflow (double rAF). */
-  private _refreshActiveTerminal() {
+  /** Refit every currently-visible terminal after a layout reflow (double rAF). */
+  private _refreshVisibleTerminals() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const activeSession = this.querySelector('.session-panel.active') as AosTerminalSession | null;
-        activeSession?.refreshTerminal();
+        this.querySelectorAll('aos-terminal-session.session-panel').forEach((el) => {
+          const node = el as AosTerminalSession & HTMLElement;
+          if (node.style.display !== 'none') node.refreshTerminal();
+        });
       });
     });
   }
@@ -884,8 +1166,154 @@ export class AosCloudTerminalSidebar extends LitElement {
     if (e.key === 'Escape' && this.isFullscreen) {
       e.preventDefault();
       this.isFullscreen = false;
+      if (this.layoutMode === 'quad-4') this._setLayout('split-2');
       this.updateContentOffset();
-      this._refreshActiveTerminal();
+      this._refreshVisibleTerminals();
+    }
+  }
+
+  // ---- Split-screen layout management ----
+
+  private _renderLayoutSwitcher() {
+    const btn = (mode: 'single' | 'split-2' | 'quad-4', title: string, paths: unknown) => html`
+      <button
+        class="layout-btn ${this.layoutMode === mode ? 'active' : ''}"
+        title=${title}
+        @click=${() => this._setLayout(mode)}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${paths}</svg>
+      </button>
+    `;
+    return html`
+      <div class="layout-switcher">
+        ${btn('single', 'Einzelansicht', svg`<rect x="3" y="4" width="18" height="16" rx="1"></rect>`)}
+        ${btn(
+          'split-2',
+          'Geteilt (oben/unten)',
+          svg`<rect x="3" y="4" width="18" height="16" rx="1"></rect><line x1="3" y1="12" x2="21" y2="12"></line>`
+        )}
+        ${this.isFullscreen
+          ? btn(
+              'quad-4',
+              'Vier Quadranten',
+              svg`<rect x="3" y="4" width="18" height="16" rx="1"></rect><line x1="3" y1="12" x2="21" y2="12"></line><line x1="12" y1="4" x2="12" y2="20"></line>`
+            )
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _setLayout(mode: 'single' | 'split-2' | 'quad-4') {
+    // Quad requires fullscreen — entering it from the sidebar forces fullscreen on.
+    if (mode === 'quad-4' && !this.isFullscreen) {
+      this.isFullscreen = true;
+      this.updateContentOffset();
+    }
+    const count = mode === 'quad-4' ? 4 : mode === 'split-2' ? 2 : 0;
+    if (count > 0) {
+      // Keep existing assignments (down-size keeps the top rows), pad/truncate to count.
+      const next: (string | null)[] = this.paneSessionIds.slice(0, count);
+      while (next.length < count) next.push(null);
+      this._autoFillPanes(next);
+      this.paneSessionIds = next;
+      if (this.focusedPaneIndex >= count) this.focusedPaneIndex = 0;
+    }
+    this.layoutMode = mode;
+    this._persistLayout();
+    this._refreshVisibleTerminals();
+  }
+
+  /** Fill only the null slots — never overwrites a slot the user assigned manually. */
+  private _autoFillPanes(arr: (string | null)[]) {
+    const used = new Set(arr.filter((id): id is string => !!id));
+    const pool: string[] = [];
+    if (this.activeSessionId && !used.has(this.activeSessionId)) pool.push(this.activeSessionId);
+    for (const s of this.allSessions) {
+      if (s.id !== this.activeSessionId && !used.has(s.id)) pool.push(s.id);
+    }
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] == null) {
+        const pick = pool.shift();
+        if (pick) {
+          arr[i] = pick;
+          used.add(pick);
+        }
+      }
+    }
+  }
+
+  private _assignPaneSession(paneIndex: number, sessionId: string | null) {
+    const next = this.paneSessionIds.slice();
+    // Move-semantics: a session lives in at most one pane (avoids duplicate xterm on one
+    // backend session, which would fight over cloud-terminal:resize).
+    if (sessionId) {
+      for (let i = 0; i < next.length; i++) {
+        if (i !== paneIndex && next[i] === sessionId) next[i] = null;
+      }
+    }
+    next[paneIndex] = sessionId;
+    this.paneSessionIds = next;
+    this.focusedPaneIndex = paneIndex;
+    this._persistLayout();
+    this._refreshVisibleTerminals();
+    if (sessionId) this._emitSessionSelect(sessionId);
+  }
+
+  private _handlePaneFocus(paneIndex: number, sessionId: string) {
+    if (paneIndex < 0) return;
+    this.focusedPaneIndex = paneIndex;
+    this._emitSessionSelect(sessionId);
+  }
+
+  /** Keep app.ts' activeTerminalSessionId in sync with the focused pane (toolbar/shortcuts). */
+  private _emitSessionSelect(sessionId: string) {
+    if (this.activeSessionId === sessionId) return;
+    this.activeSessionId = sessionId;
+    this.dispatchEvent(
+      new CustomEvent('session-select', {
+        detail: { sessionId, clearNeedsInput: true },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private _persistLayout() {
+    try {
+      localStorage.setItem('cloud-terminal-layout-mode', this.layoutMode);
+      localStorage.setItem('cloud-terminal-pane-sessions', JSON.stringify(this.paneSessionIds));
+    } catch {
+      // localStorage unavailable
+    }
+  }
+
+  private _restoreLayout() {
+    try {
+      const mode = localStorage.getItem('cloud-terminal-layout-mode');
+      if (mode === 'single' || mode === 'split-2' || mode === 'quad-4') {
+        this.layoutMode = mode;
+      }
+      const raw = localStorage.getItem('cloud-terminal-pane-sessions');
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          this.paneSessionIds = parsed.map((x) => (typeof x === 'string' ? x : null));
+        }
+      }
+      // Normalize array length to the restored mode.
+      const count = this.layoutMode === 'quad-4' ? 4 : this.layoutMode === 'split-2' ? 2 : 0;
+      if (count > 0) {
+        const norm = this.paneSessionIds.slice(0, count);
+        while (norm.length < count) norm.push(null);
+        this.paneSessionIds = norm;
+      } else {
+        this.paneSessionIds = [];
+      }
+      // Quad is only usable in fullscreen.
+      if (this.layoutMode === 'quad-4') this.isFullscreen = true;
+    } catch {
+      this.layoutMode = 'single';
+      this.paneSessionIds = [];
     }
   }
 
@@ -1223,9 +1651,13 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   override updated(changed: PropertyValues): void {
     if (changed.has('isOpen')) {
-      // No fullscreen persistence — a fresh open always starts in normal mode.
-      if (!this.isOpen && this.isFullscreen) {
+      // No fullscreen persistence for the manual toggle — a fresh open starts in normal mode,
+      // EXCEPT a restored quad layout, which is only usable in fullscreen.
+      if (!this.isOpen && this.isFullscreen && this.layoutMode !== 'quad-4') {
         this.isFullscreen = false;
+      }
+      if (this.isOpen && this.layoutMode === 'quad-4') {
+        this.isFullscreen = true;
       }
       this.updateContentOffset();
       if (this._mobileController.isMobile) {
@@ -1241,8 +1673,7 @@ export class AosCloudTerminalSidebar extends LitElement {
           if (this._refreshScheduled) return;
           this._refreshScheduled = true;
           sidebar.removeEventListener('transitionend', handler);
-          const activeSession = this.querySelector('.session-panel.active') as AosTerminalSession | null;
-          activeSession?.refreshTerminal();
+          this._refreshVisibleTerminals();
         };
 
         const handler = (e: TransitionEvent) => {
@@ -1259,6 +1690,9 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
+
+    // Restore split-screen layout + pane assignments (best-effort).
+    this._restoreLayout();
 
     // Load saved width preference
     try {
