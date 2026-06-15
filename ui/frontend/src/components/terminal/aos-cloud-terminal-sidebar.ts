@@ -4,6 +4,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 import './aos-terminal-tabs.js';
 import './aos-terminal-session.js';
+import './aos-auto-review-toggle.js';
 import type { AosTerminalSession } from './aos-terminal-session.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
@@ -81,6 +82,11 @@ export class AosCloudTerminalSidebar extends LitElement {
   @state() private paneSessionIds: (string | null)[] = [];
   /** Which pane currently owns toolbar/keyboard intent (visual focus ring + session-select sync). */
   @state() private focusedPaneIndex = 0;
+  /** Resizable-splitter ratios (clamped 0.15–0.85). split-2: one row split; quad: column + per-column rows. */
+  @state() private splitRowRatio = 0.5;
+  @state() private quadColRatio = 0.5;
+  @state() private quadLeftRowRatio = 0.5;
+  @state() private quadRightRowRatio = 0.5;
   @state() private loadingState: LoadingState = { isLoading: false, message: '' };
   @state() private errorMessage: string | null = null;
   private readonly minSidebarWidth = 400;
@@ -299,16 +305,14 @@ export class AosCloudTerminalSidebar extends LitElement {
       }
 
       .terminal-sessions-container.single { grid-template: 1fr / 1fr; }
-      /* Split/quad: thicker gaps over a divider-coloured backdrop render as clear seams. */
+      /* Split/quad: panes are absolutely positioned from ratio CSS vars; splitter bars are the seams. */
       .terminal-sessions-container.split-2,
       .terminal-sessions-container.quad-4 {
-        gap: 3px;
-        background: var(--border-color, #404040);
+        display: block;
+        background: var(--bg-color-secondary, #1e1e1e);
       }
-      .terminal-sessions-container.split-2 { grid-template: 1fr 1fr / 1fr; }
-      .terminal-sessions-container.quad-4 { grid-template: 1fr 1fr / 1fr 1fr; }
 
-      /* Each terminal is a grid item; visibility + cell placement set inline per render. */
+      /* Single-mode: terminal is a grid item; split/quad: absolutely positioned (inline geometry). */
       .session-panel {
         display: none;
         flex-direction: column;
@@ -319,7 +323,8 @@ export class AosCloudTerminalSidebar extends LitElement {
 
       .split-2 .session-panel,
       .quad-4 .session-panel {
-        padding-top: 30px; /* room for the absolutely-positioned pane header overlay */
+        position: absolute;
+        padding-top: 30px; /* room for the pane header overlay */
         border: 1px solid var(--border-color, #404040);
         outline-offset: -2px;
       }
@@ -327,23 +332,19 @@ export class AosCloudTerminalSidebar extends LitElement {
       .split-2 .session-panel.focused,
       .quad-4 .session-panel.focused {
         outline: 2px solid var(--accent-color, #007acc);
+        z-index: 1;
       }
 
-      /* Header overlay: same grid template, sits above the terminals, only the dropdown is interactive. */
+      /* Header overlay: full-bleed, headers absolutely positioned per pane; only headers interactive. */
       .pane-headers {
         position: absolute;
         inset: 0;
-        display: grid;
-        gap: 3px;
         pointer-events: none;
         z-index: 5;
       }
 
-      .pane-headers.split-2 { grid-template: 1fr 1fr / 1fr; }
-      .pane-headers.quad-4 { grid-template: 1fr 1fr / 1fr 1fr; }
-
       .pane-header {
-        align-self: start;
+        position: absolute;
         height: 30px;
         display: flex;
         align-items: center;
@@ -360,7 +361,7 @@ export class AosCloudTerminalSidebar extends LitElement {
 
       .pane-project {
         flex: 0 1 auto;
-        max-width: 45%;
+        max-width: 38%;
         font-size: 11px;
         font-weight: 600;
         padding: 2px 8px;
@@ -378,7 +379,7 @@ export class AosCloudTerminalSidebar extends LitElement {
       }
 
       .pane-select {
-        flex: 1;
+        flex: 1 1 auto;
         min-width: 0;
         max-width: 100%;
         background: var(--bg-color-secondary, #1e1e1e);
@@ -389,6 +390,30 @@ export class AosCloudTerminalSidebar extends LitElement {
         padding: 2px 4px;
         cursor: pointer;
       }
+
+      .pane-review-toggle {
+        flex: 0 0 auto;
+      }
+
+      /* Drag-to-resize splitters (split/quad): wide hit area, thin visible line. */
+      .pane-splitter {
+        position: absolute;
+        z-index: 10;
+        background: transparent;
+        touch-action: none;
+      }
+      .pane-splitter.vertical { width: 6px; cursor: col-resize; }
+      .pane-splitter.horizontal { height: 6px; cursor: row-resize; }
+      .pane-splitter::before {
+        content: '';
+        position: absolute;
+        background: var(--border-color, #404040);
+        transition: background 0.15s;
+      }
+      .pane-splitter.vertical::before { left: 2px; top: 0; bottom: 0; width: 2px; }
+      .pane-splitter.horizontal::before { top: 2px; left: 0; right: 0; height: 2px; }
+      .pane-splitter:hover::before,
+      .pane-splitter.dragging::before { background: var(--accent-color, #007acc); }
 
       .layout-switcher {
         display: inline-flex;
@@ -878,13 +903,47 @@ export class AosCloudTerminalSidebar extends LitElement {
     return this.layoutMode !== 'single';
   }
 
-  /** Grid cell (1-based col/row) for a pane index in the current layout. */
-  private _cellForIndex(idx: number): { col: number; row: number } {
+  /** Container CSS vars holding the current splitter ratios (geometry calc()s read these). */
+  private _containerVars(): Record<string, string> {
+    return {
+      '--sr': String(this.splitRowRatio),
+      '--c': String(this.quadColRatio),
+      '--rl': String(this.quadLeftRowRatio),
+      '--rr': String(this.quadRightRowRatio),
+    };
+  }
+
+  /**
+   * Absolute geometry (inline style) for a pane index in split/quad mode, driven by ratio
+   * vars (`--sr`/`--c`/`--rl`/`--rr`). G=3px gap → 1.5px inset around each splitter line.
+   * Pane index map: 0=TL, 1=TR, 2=BL, 3=BR.
+   */
+  private _paneGeom(idx: number): Record<string, string> {
     if (this.layoutMode === 'quad-4') {
-      return { col: (idx % 2) + 1, row: Math.floor(idx / 2) + 1 };
+      const isRight = idx === 1 || idx === 3;
+      const isBottom = idx === 2 || idx === 3;
+      const rv = isRight ? '--rr' : '--rl';
+      return {
+        left: isRight ? 'calc(var(--c) * 100% + 1.5px)' : '0',
+        width: isRight ? 'calc((1 - var(--c)) * 100% - 1.5px)' : 'calc(var(--c) * 100% - 1.5px)',
+        top: isBottom ? `calc(var(${rv}) * 100% + 1.5px)` : '0',
+        height: isBottom ? `calc((1 - var(${rv})) * 100% - 1.5px)` : `calc(var(${rv}) * 100% - 1.5px)`,
+      };
     }
-    // split-2: single column, stacked rows (top/bottom)
-    return { col: 1, row: idx + 1 };
+    // split-2: full width, stacked rows
+    const isBottom = idx === 1;
+    return {
+      left: '0',
+      width: '100%',
+      top: isBottom ? 'calc(var(--sr) * 100% + 1.5px)' : '0',
+      height: isBottom ? 'calc((1 - var(--sr)) * 100% - 1.5px)' : 'calc(var(--sr) * 100% - 1.5px)',
+    };
+  }
+
+  /** Header sits at the top of its pane: same left/top/width, fixed 30px height. */
+  private _headerGeom(idx: number): Record<string, string> {
+    const g = this._paneGeom(idx);
+    return { left: g.left, top: g.top, width: g.width, height: '30px' };
   }
 
   /** Pane index a session currently occupies in the active layout, or -1. */
@@ -936,10 +995,14 @@ export class AosCloudTerminalSidebar extends LitElement {
             @auto-review-config-changed=${this._handleAutoReviewConfigChanged}
             @auto-review-trigger-manual=${this._handleAutoReviewTriggerManual}
           ></aos-terminal-tabs>`}
-      <div class="terminal-sessions-container ${this.layoutMode}">
+      <div
+        class="terminal-sessions-container ${this.layoutMode}"
+        style=${styleMap(this._isSplit ? this._containerVars() : {})}
+      >
         ${this.loadingState.isLoading ? this._renderLoadingOverlay() : ''}
         ${isPaused ? this._renderPausedIndicator(activeSession!) : ''}
         ${this._isSplit ? this._renderPaneHeaders() : nothing}
+        ${this._isSplit ? this._renderSplitters() : nothing}
         ${repeat(
           this._mountedSessions(),
           (session) => session.id,
@@ -948,12 +1011,9 @@ export class AosCloudTerminalSidebar extends LitElement {
             const visible = this._isSplit
               ? paneIdx >= 0
               : session.id === this.activeSessionId;
-            const styles: Record<string, string> = { display: visible ? 'flex' : 'none' };
-            if (visible && this._isSplit) {
-              const { col, row } = this._cellForIndex(paneIdx);
-              styles.gridColumn = String(col);
-              styles.gridRow = String(row);
-            }
+            const styles: Record<string, string> = visible
+              ? (this._isSplit ? { display: 'flex', ...this._paneGeom(paneIdx) } : { display: 'flex' })
+              : { display: 'none' };
             const focused = this._isSplit && paneIdx === this.focusedPaneIndex;
             return html`
               <aos-terminal-session
@@ -989,7 +1049,6 @@ export class AosCloudTerminalSidebar extends LitElement {
           panes,
           (i) => i,
           (i) => {
-            const { col, row } = this._cellForIndex(i);
             const sessionId = this.paneSessionIds[i];
             const session = sessionId ? this.allSessions.find((s) => s.id === sessionId) : undefined;
             const label = session ? this._projectLabel(session.projectPath) : '';
@@ -1001,7 +1060,7 @@ export class AosCloudTerminalSidebar extends LitElement {
               : {};
             return html`<div
               class="pane-header ${i === this.focusedPaneIndex ? 'focused' : ''}"
-              style=${styleMap({ gridColumn: String(col), gridRow: String(row) })}
+              style=${styleMap(this._headerGeom(i))}
             >
               <span
                 class="pane-project ${session ? '' : 'empty'}"
@@ -1009,11 +1068,93 @@ export class AosCloudTerminalSidebar extends LitElement {
                 title=${label || 'Kein Projekt'}
               >${label || 'Kein Projekt'}</span>
               ${this._renderPaneDropdown(i)}
+              ${session?.terminalSessionId
+                ? html`<aos-auto-review-toggle
+                    class="pane-review-toggle"
+                    .sessionId=${session.terminalSessionId}
+                    .enabled=${this._getReviewConfigFor(session.terminalSessionId).enabled}
+                    .reviewers=${this._getReviewConfigFor(session.terminalSessionId).reviewers}
+                    .availableProviders=${this.availableProviders}
+                    @auto-review-config-changed=${this._handleAutoReviewConfigChanged}
+                    @auto-review-trigger-manual=${this._handleAutoReviewTriggerManual}
+                  ></aos-auto-review-toggle>`
+                : nothing}
             </div>`;
           }
         )}
       </div>
     `;
+  }
+
+  /** Drag handles between panes: one per divider, driven by ratio CSS vars. */
+  private _renderSplitters() {
+    if (this.layoutMode === 'split-2') {
+      return html`<div
+        class="pane-splitter horizontal"
+        style=${styleMap({ left: '0', width: '100%', top: 'calc(var(--sr) * 100% - 3px)' })}
+        @pointerdown=${(e: PointerEvent) => this._startSplitterDrag(e, 'row')}
+      ></div>`;
+    }
+    if (this.layoutMode === 'quad-4') {
+      return html`
+        <div
+          class="pane-splitter vertical"
+          style=${styleMap({ top: '0', bottom: '0', left: 'calc(var(--c) * 100% - 3px)' })}
+          @pointerdown=${(e: PointerEvent) => this._startSplitterDrag(e, 'col')}
+        ></div>
+        <div
+          class="pane-splitter horizontal"
+          style=${styleMap({ left: '0', width: 'calc(var(--c) * 100% - 1.5px)', top: 'calc(var(--rl) * 100% - 3px)' })}
+          @pointerdown=${(e: PointerEvent) => this._startSplitterDrag(e, 'rowL')}
+        ></div>
+        <div
+          class="pane-splitter horizontal"
+          style=${styleMap({ left: 'calc(var(--c) * 100% + 1.5px)', width: 'calc((1 - var(--c)) * 100% - 1.5px)', top: 'calc(var(--rr) * 100% - 3px)' })}
+          @pointerdown=${(e: PointerEvent) => this._startSplitterDrag(e, 'rowR')}
+        ></div>
+      `;
+    }
+    return nothing;
+  }
+
+  private _dragRatio: number | null = null;
+
+  /** Live-update the relevant ratio CSS var during drag (no Lit re-render); commit to state on release. */
+  private _startSplitterDrag(e: PointerEvent, kind: 'col' | 'rowL' | 'rowR' | 'row') {
+    e.preventDefault();
+    const splitter = e.currentTarget as HTMLElement;
+    const container = this.querySelector('.terminal-sessions-container') as HTMLElement | null;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const varName = kind === 'col' ? '--c' : kind === 'rowL' ? '--rl' : kind === 'rowR' ? '--rr' : '--sr';
+    splitter.setPointerCapture(e.pointerId);
+    splitter.classList.add('dragging');
+
+    const move = (ev: PointerEvent) => {
+      const raw = kind === 'col'
+        ? (ev.clientX - rect.left) / rect.width
+        : (ev.clientY - rect.top) / rect.height;
+      const ratio = Math.min(0.85, Math.max(0.15, raw));
+      this._dragRatio = ratio;
+      container.style.setProperty(varName, String(ratio));
+    };
+    const up = (ev: PointerEvent) => {
+      splitter.releasePointerCapture(ev.pointerId);
+      splitter.classList.remove('dragging');
+      splitter.removeEventListener('pointermove', move);
+      splitter.removeEventListener('pointerup', up);
+      const r = this._dragRatio;
+      this._dragRatio = null;
+      if (r == null) return;
+      if (kind === 'col') this.quadColRatio = r;
+      else if (kind === 'rowL') this.quadLeftRowRatio = r;
+      else if (kind === 'rowR') this.quadRightRowRatio = r;
+      else this.splitRowRatio = r;
+      this._persistLayout();
+      this._refreshVisibleTerminals();
+    };
+    splitter.addEventListener('pointermove', move);
+    splitter.addEventListener('pointerup', up);
   }
 
   private _renderPaneDropdown(paneIndex: number) {
@@ -1282,6 +1423,12 @@ export class AosCloudTerminalSidebar extends LitElement {
     try {
       localStorage.setItem('cloud-terminal-layout-mode', this.layoutMode);
       localStorage.setItem('cloud-terminal-pane-sessions', JSON.stringify(this.paneSessionIds));
+      localStorage.setItem('cloud-terminal-split-ratios', JSON.stringify({
+        sr: this.splitRowRatio,
+        c: this.quadColRatio,
+        rl: this.quadLeftRowRatio,
+        rr: this.quadRightRowRatio,
+      }));
     } catch {
       // localStorage unavailable
     }
@@ -1311,6 +1458,21 @@ export class AosCloudTerminalSidebar extends LitElement {
       }
       // Quad is only usable in fullscreen.
       if (this.layoutMode === 'quad-4') this.isFullscreen = true;
+
+      // Restore splitter ratios (clamp 0.15–0.85, default 0.5).
+      const ratiosRaw = localStorage.getItem('cloud-terminal-split-ratios');
+      if (ratiosRaw) {
+        const r: unknown = JSON.parse(ratiosRaw);
+        if (r && typeof r === 'object') {
+          const clamp = (v: unknown) =>
+            typeof v === 'number' && isFinite(v) ? Math.min(0.85, Math.max(0.15, v)) : 0.5;
+          const obj = r as Record<string, unknown>;
+          this.splitRowRatio = clamp(obj.sr);
+          this.quadColRatio = clamp(obj.c);
+          this.quadLeftRowRatio = clamp(obj.rl);
+          this.quadRightRowRatio = clamp(obj.rr);
+        }
+      }
     } catch {
       this.layoutMode = 'single';
       this.paneSessionIds = [];
@@ -1487,7 +1649,12 @@ export class AosCloudTerminalSidebar extends LitElement {
   private _getActiveReviewConfig(): { enabled: boolean; reviewers: ReviewerConfig[] } {
     const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
     const termId = activeSession?.terminalSessionId;
-    return termId ? (this.sessionReviewConfigs[termId] ?? { enabled: false, reviewers: [] }) : { enabled: false, reviewers: [] };
+    return termId ? this._getReviewConfigFor(termId) : { enabled: false, reviewers: [] };
+  }
+
+  /** Review config for any backend terminalSessionId (used by per-pane toggles in split mode). */
+  private _getReviewConfigFor(termId: string): { enabled: boolean; reviewers: ReviewerConfig[] } {
+    return this.sessionReviewConfigs[termId] ?? { enabled: false, reviewers: [] };
   }
 
   private _handleProvidersListResponse(msg: WebSocketMessage): void {
@@ -1514,7 +1681,7 @@ export class AosCloudTerminalSidebar extends LitElement {
     };
 
     if (didMigrate) {
-      const session = this.sessions.find(s => s.terminalSessionId === sessionId);
+      const session = this.allSessions.find(s => s.terminalSessionId === sessionId);
       if (session) {
         const el = this.querySelector(`[data-session-id="${session.id}"]`) as AosTerminalSession | null;
         el?.sendPlanReviewConfigUpdate(enabled, migrated);
@@ -1561,7 +1728,7 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   private _handleAutoReviewConfigChanged(e: CustomEvent<{ sessionId: string; enabled: boolean; reviewers: ReviewerConfig[] }>): void {
     const { sessionId: terminalSessionId, enabled, reviewers } = e.detail;
-    const session = this.sessions.find(s => s.terminalSessionId === terminalSessionId);
+    const session = this.allSessions.find(s => s.terminalSessionId === terminalSessionId);
     if (!session) return;
     const el = this.querySelector(`[data-session-id="${session.id}"]`) as AosTerminalSession | null;
     el?.sendPlanReviewConfigUpdate(enabled, reviewers);
@@ -1574,7 +1741,7 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   private _handleAutoReviewTriggerManual(e: CustomEvent<{ sessionId: string }>): void {
     const { sessionId: terminalSessionId } = e.detail;
-    const session = this.sessions.find(s => s.terminalSessionId === terminalSessionId);
+    const session = this.allSessions.find(s => s.terminalSessionId === terminalSessionId);
     if (!session) return;
     const el = this.querySelector(`[data-session-id="${session.id}"]`) as AosTerminalSession | null;
     el?.sendPlanReviewTriggerManual();
