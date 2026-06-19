@@ -4,6 +4,7 @@ import { CloudTerminalManager } from './cloud-terminal-manager.js';
 import { ExternalReviewer } from './external-reviewer.js';
 import { aggregateFindings, formatInject } from './finding-aggregator.js';
 import { getReviewPrompt } from '../general-config.js';
+import { getDefaultReviewers } from '../model-config.js';
 import { CloudTerminalSessionId } from '../../shared/types/cloud-terminal.protocol.js';
 
 export interface ReviewerConfig {
@@ -105,7 +106,10 @@ export class PlanReviewOrchestrator extends EventEmitter {
   /** Push current config snapshot to a single WS client (called on tab connect/resume). */
   public sendSnapshot(sessionId: CloudTerminalSessionId, ws: WebSocket): void {
     const state = this.sessions.get(sessionId);
-    const config = state?.config ?? { enabled: false, reviewers: [] };
+    // Pure read: never create state here (avoids orphan-state leaks / races).
+    // A fresh session (no state yet) gets the default reviewers pre-selected,
+    // enabled stays false so nothing auto-fires until the user turns AR on.
+    const config = state?.config ?? { enabled: false, reviewers: getDefaultReviewers() };
     const prompt = getReviewPrompt();
     ws.send(
       JSON.stringify({

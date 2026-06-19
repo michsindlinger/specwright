@@ -26,6 +26,13 @@ export class AosTerminalSession extends LitElement {
   @property({ type: String }) terminalSessionId: string | null = null;
   /** Mobile-optimized layout: hides session-header chrome + plan-review block. */
   @property({ type: Boolean, reflect: true }) compact = false;
+  /**
+   * Rendered inside a split/quad pane that has an external pane-header overlay.
+   * The sidebar reserves the overlay height via `padding-top` on the panel host;
+   * here we hide the redundant session-header (the pane-header already shows the
+   * project/session chrome) so the terminal gets the full reserved area.
+   */
+  @property({ type: Boolean, reflect: true, attribute: 'pane-mode' }) paneMode = false;
 
   @state() private connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'reconnecting' = 'connecting';
   @state() private errorMessage: string | null = null;
@@ -57,8 +64,15 @@ export class AosTerminalSession extends LitElement {
     .session-container {
       display: flex;
       flex-direction: column;
-      position: absolute;
-      inset: 0;
+      /* Fill the host as a flex child (not absolute/inset:0) so the host's
+         padding-top — which the sidebar uses to reserve room for the pane-header
+         overlay in split/quad — actually offsets the content. An absolutely
+         positioned inset:0 box fills the padding box and would ignore that
+         reservation, hiding the terminal's top rows behind the overlay.
+         position:relative keeps it the anchor for the absolute overlays below. */
+      position: relative;
+      flex: 1;
+      min-height: 0;
       background: var(--bg-color-secondary, #1e1e1e);
     }
 
@@ -272,6 +286,13 @@ export class AosTerminalSession extends LitElement {
     }
 
     :host([compact]) aos-plan-review-block {
+      display: none;
+    }
+
+    /* Split/quad pane: the pane-header overlay already provides the session
+       chrome, so the redundant connection-status header is hidden to give the
+       terminal the full reserved area. (plan-review stays available per pane.) */
+    :host([pane-mode]) .session-header {
       display: none;
     }
   `];

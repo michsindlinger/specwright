@@ -27,24 +27,9 @@
           "description": "Balanced performance and speed"
         },
         {
-          "id": "opus[1m]",
-          "name": "Opus 4.7 1M",
-          "description": "Most capable model with 1M Context Window"
-        },
-        {
-          "id": "sonnet[1m]",
-          "name": "Sonnet 4.6 !M",
-          "description": "Sonnet 1M"
-        },
-        {
-          "id": "claude-opus-4-6",
-          "name": "Opus 4.6",
-          "description": "Opus 4.6 "
-        },
-        {
-          "id": "claude-opus-4-6[1m]",
-          "name": "Opus 4.6 1 Mio",
-          "description": "Opus 4.6 1 Mio"
+          "id": "fable",
+          "name": "Fable 5",
+          "description": "Most capable model"
         }
       ]
     },
@@ -60,6 +45,11 @@
         {
           "id": "glm-5.1",
           "name": "GLM 5.1",
+          "description": "Most capable model"
+        },
+        {
+          "id": "glm-5.2",
+          "name": "GLM 5.2",
           "description": "Most capable model"
         }
       ]

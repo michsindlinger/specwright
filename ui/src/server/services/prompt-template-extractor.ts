@@ -1,4 +1,4 @@
-import { homedir, tmpdir } from 'os';
+import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { mkdir, writeFile, rm } from 'fs/promises';
@@ -39,10 +39,6 @@ export interface ExtractedPrompt {
   content: string;
 }
 
-function expandTilde(p: string): string {
-  return p.startsWith('~') ? join(homedir(), p.slice(1)) : p;
-}
-
 /** Strip a data-URL prefix if the caller accidentally left one in. */
 function normalizeBase64(base64: string): string {
   const comma = base64.indexOf(',');
@@ -51,7 +47,10 @@ function normalizeBase64(base64: string): string {
 
 function extractJson(raw: string): string {
   const trimmed = raw.trim();
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  // Match a ```json fenced block anywhere — haiku often prepends prose
+  // ("Based on the image, here is...") before the fence, so anchoring on
+  // ^``` misses it.
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (fenced) return fenced[1].trim();
   const firstBrace = trimmed.indexOf('{');
   const lastBrace = trimmed.lastIndexOf('}');
@@ -141,7 +140,11 @@ export async function extractPromptFromImage(
           allowDangerouslySkipPermissions: true,
           cwd: dir,
           abortController: ac,
-          env: { ...baseEnv, CLAUDE_CONFIG_DIR: expandTilde('~/.claude') },
+          // Do NOT override CLAUDE_CONFIG_DIR — mirror external-reviewer's
+          // anthropic branch and let the SDK use the cloud terminal's inherited
+          // config dir, which holds the OAuth login. Forcing ~/.claude clobbers
+          // a non-default CLAUDE_CONFIG_DIR and yields "Invalid API key".
+          env: baseEnv,
           settingSources: ['user'],
           model: EXTRACT_MODEL,
         },

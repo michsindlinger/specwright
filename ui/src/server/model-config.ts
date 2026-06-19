@@ -153,6 +153,39 @@ export function getDefaultSelection(): { providerId: string; modelId: string } {
   };
 }
 
+/**
+ * Provider/model pairs that should be pre-selected as plan reviewers for a fresh
+ * session. Kept as a code-level constant (NOT a per-model flag in the JSON):
+ * the config editor (`updateModel`) replaces model objects wholesale, so a flag
+ * would be silently dropped when a user edits a model in the settings UI.
+ */
+const DEFAULT_REVIEWER_IDS: ReadonlyArray<{ providerId: string; modelId: string }> = [
+  { providerId: 'anthropic', modelId: 'opus' },      // Opus 4.8
+  { providerId: 'glm', modelId: 'glm-5.2' },         // GLM 5.2
+  { providerId: 'minimax', modelId: 'MiniMax-M3' },  // MiniMax M3
+  { providerId: 'deepseek', modelId: 'opus' }        // DeepSeek V4 Pro
+];
+
+/**
+ * Default plan reviewers, validated against the currently loaded config. Each
+ * pair is checked provider-scoped via `getModel` (so the duplicate `opus`
+ * modelId across `anthropic`/`deepseek` is no collision). Stale/removed models
+ * are dropped with a warning instead of silently producing wrong selections.
+ */
+export function getDefaultReviewers(): { providerId: string; modelId: string }[] {
+  const result: { providerId: string; modelId: string }[] = [];
+  for (const ref of DEFAULT_REVIEWER_IDS) {
+    if (getModel(ref.providerId, ref.modelId)) {
+      result.push({ providerId: ref.providerId, modelId: ref.modelId });
+    } else {
+      console.warn(
+        `[ModelConfig] default reviewer not found in config: ${ref.providerId}/${ref.modelId}`
+      );
+    }
+  }
+  return result;
+}
+
 export function saveModelConfig(config: ModelConfig): void {
   const configDir = dirname(CONFIG_PATH);
   if (!existsSync(configDir)) {

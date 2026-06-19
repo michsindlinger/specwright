@@ -64,6 +64,9 @@ export interface LoadingState {
  * - Session management (create, switch, close)
  * - Integration with CloudTerminalService
  */
+/** Per-column row-ratio state keys that the pane-maximize toggle can drive. */
+type RowKey = 'splitRowRatio' | 'quadLeftRowRatio' | 'quadRightRowRatio';
+
 @customElement('aos-cloud-terminal-sidebar')
 export class AosCloudTerminalSidebar extends LitElement {
   @property({ type: Boolean }) isOpen = false;
@@ -82,11 +85,21 @@ export class AosCloudTerminalSidebar extends LitElement {
   @state() private paneSessionIds: (string | null)[] = [];
   /** Which pane currently owns toolbar/keyboard intent (visual focus ring + session-select sync). */
   @state() private focusedPaneIndex = 0;
+  /** Pending "+"-new-session: adopt the freshly created session into this pane once it arrives. */
+  private _pendingNewSession: { paneIndex: number; projectPath: string } | null = null;
+  /** Transient last-known project per pane (non-persisted) — lets close-fallback pick a sibling. */
+  private _paneProjectCache: (string | null)[] = [];
   /** Resizable-splitter ratios (clamped 0.15–0.85). split-2: one row split; quad: column + per-column rows. */
   @state() private splitRowRatio = 0.5;
   @state() private quadColRatio = 0.5;
   @state() private quadLeftRowRatio = 0.5;
   @state() private quadRightRowRatio = 0.5;
+  /**
+   * Which pane is currently maximized per row-axis, plus the pre-maximize ratio
+   * to restore to. Discrete state (not inferred from the ratio) so a manual drag
+   * near the extreme isn't mistaken for "maximized". Transient — not persisted.
+   */
+  @state() private _maxAxis: Partial<Record<RowKey, { pane: number; prev: number }>> = {};
   @state() private loadingState: LoadingState = { isLoading: false, message: '' };
   @state() private errorMessage: string | null = null;
   private readonly minSidebarWidth = 400;
@@ -324,7 +337,7 @@ export class AosCloudTerminalSidebar extends LitElement {
       .split-2 .session-panel,
       .quad-4 .session-panel {
         position: absolute;
-        padding-top: 30px; /* room for the pane header overlay */
+        padding-top: 62px; /* room for the pane header overlay (project row + tab bar) */
         border: 1px solid var(--border-color, #404040);
         outline-offset: -2px;
       }
@@ -345,11 +358,10 @@ export class AosCloudTerminalSidebar extends LitElement {
 
       .pane-header {
         position: absolute;
-        height: 30px;
+        height: 62px;
         display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 0 8px;
+        flex-direction: column;
+        box-sizing: border-box;
         background: var(--bg-color-tertiary, #252526);
         border-bottom: 1px solid var(--border-color, #404040);
         pointer-events: auto;
@@ -357,6 +369,79 @@ export class AosCloudTerminalSidebar extends LitElement {
 
       .pane-header.focused {
         border-bottom-color: var(--accent-color, #007acc);
+      }
+
+      .pane-header-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 28px;
+        flex: 0 0 auto;
+        padding: 0 8px;
+        box-sizing: border-box;
+      }
+
+      .pane-header-tabs {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .pane-new-btn {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        background: var(--bg-color-secondary, #1e1e1e);
+        color: var(--text-color-primary, #e0e0e0);
+        border: 1px solid var(--border-color, #404040);
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .pane-maximize-btn {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        background: var(--bg-color-secondary, #1e1e1e);
+        color: var(--text-color-muted, #909090);
+        border: 1px solid var(--border-color, #404040);
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .pane-maximize-btn:hover {
+        border-color: var(--accent-color, #007acc);
+        color: var(--text-color-primary, #e0e0e0);
+      }
+
+      .pane-maximize-btn.active {
+        border-color: var(--accent-color, #007acc);
+        color: var(--accent-color, #007acc);
+      }
+
+      .pane-new-btn:hover:not(:disabled) {
+        border-color: var(--accent-color, #007acc);
+      }
+
+      .pane-new-btn:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      .pane-tabs-hint {
+        display: flex;
+        align-items: center;
+        height: 100%;
+        padding: 0 10px;
+        font-size: 11px;
+        font-style: italic;
+        color: var(--text-color-muted, #606060);
       }
 
       .pane-project {
@@ -940,10 +1025,71 @@ export class AosCloudTerminalSidebar extends LitElement {
     };
   }
 
-  /** Header sits at the top of its pane: same left/top/width, fixed 30px height. */
+  /** Header sits at the top of its pane: same left/top/width, fixed height (project row + tabs). */
   private _headerGeom(idx: number): Record<string, string> {
     const g = this._paneGeom(idx);
-    return { left: g.left, top: g.top, width: g.width, height: '30px' };
+    return { left: g.left, top: g.top, width: g.width, height: '62px' };
+  }
+
+  /** Which row-ratio governs pane `idx`, and whether it's the top pane of its column. */
+  private _paneRowAxis(idx: number): { key: RowKey; isTop: boolean } {
+    if (this.layoutMode === 'quad-4') {
+      const isRight = idx === 1 || idx === 3;
+      const isBottom = idx === 2 || idx === 3;
+      return { key: isRight ? 'quadRightRowRatio' : 'quadLeftRowRatio', isTop: !isBottom };
+    }
+    // split-2: idx 0 = top, idx 1 = bottom, both on the single row split.
+    return { key: 'splitRowRatio', isTop: idx === 0 };
+  }
+
+  private _getRowRatio(key: RowKey): number {
+    switch (key) {
+      case 'splitRowRatio': return this.splitRowRatio;
+      case 'quadLeftRowRatio': return this.quadLeftRowRatio;
+      case 'quadRightRowRatio': return this.quadRightRowRatio;
+    }
+  }
+
+  private _setRowRatio(key: RowKey, v: number): void {
+    switch (key) {
+      case 'splitRowRatio': this.splitRowRatio = v; break;
+      case 'quadLeftRowRatio': this.quadLeftRowRatio = v; break;
+      case 'quadRightRowRatio': this.quadRightRowRatio = v; break;
+    }
+  }
+
+  /** True when pane `idx` is the one currently maximized on its row-axis (discrete, not ratio-based). */
+  private _isPaneMaximized(idx: number): boolean {
+    return this._maxAxis[this._paneRowAxis(idx).key]?.pane === idx;
+  }
+
+  /** Toggle: maximize pane `idx` vertically within its column (85/15), or restore its prior ratio. */
+  private _togglePaneMaximize(idx: number): void {
+    const { key, isTop } = this._paneRowAxis(idx);
+    const cur = this._maxAxis[key];
+    if (cur?.pane === idx) {
+      // Restore the ratio that was active before this pane was maximized.
+      this._setRowRatio(key, cur.prev);
+      const next = { ...this._maxAxis };
+      delete next[key];
+      this._maxAxis = next;
+    } else {
+      // Keep the original pre-maximize ratio even when switching which pane of
+      // the column is maximized, so a later restore returns to the user's value.
+      const prev = cur ? cur.prev : this._getRowRatio(key);
+      this._setRowRatio(key, isTop ? 0.85 : 0.15);
+      this._maxAxis = { ...this._maxAxis, [key]: { pane: idx, prev } };
+    }
+    this._persistLayout();
+    this._refreshVisibleTerminals();
+  }
+
+  /** Drop the maximize indicator for a row-axis (e.g. after a manual splitter drag repositions it). */
+  private _clearMaxAxis(key: RowKey): void {
+    if (!this._maxAxis[key]) return;
+    const next = { ...this._maxAxis };
+    delete next[key];
+    this._maxAxis = next;
   }
 
   /** Pane index a session currently occupies in the active layout, or -1. */
@@ -961,10 +1107,15 @@ export class AosCloudTerminalSidebar extends LitElement {
     const map = new Map<string, TerminalSession>();
     for (const s of this.sessions) map.set(s.id, s);
     if (this._isSplit) {
-      for (const id of this.paneSessionIds) {
-        if (!id) continue;
-        const s = this.allSessions.find(x => x.id === id);
-        if (s) map.set(s.id, s);
+      // Mount every session of each pane's (derived) project so in-pane tab switching is
+      // buffer-free, same as single-mode keeps the active project's sessions mounted.
+      const paneProjects = new Set<string>();
+      for (let i = 0; i < this._paneCount; i++) {
+        const p = this._projectOf(i);
+        if (p) paneProjects.add(p);
+      }
+      for (const s of this.allSessions) {
+        if (s.projectPath && paneProjects.has(s.projectPath)) map.set(s.id, s);
       }
     }
     return Array.from(map.values());
@@ -972,6 +1123,116 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   private _projectLabel(path: string): string {
     return this.projectNames[path] ?? (path.split('/').filter(Boolean).pop() ?? path);
+  }
+
+  /** Project a pane currently shows — derived from its active session (single source of truth). */
+  private _projectOf(paneIndex: number): string | null {
+    const id = this.paneSessionIds[paneIndex];
+    if (!id) return null;
+    return this.allSessions.find(s => s.id === id)?.projectPath ?? null;
+  }
+
+  /** Distinct project paths present in allSessions, in first-seen order (non-empty only). */
+  private _distinctProjects(): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const s of this.allSessions) {
+      if (s.projectPath && !seen.has(s.projectPath)) {
+        seen.add(s.projectPath);
+        out.push(s.projectPath);
+      }
+    }
+    return out;
+  }
+
+  /** Newest (latest createdAt) session id of a project, or null if it has none. */
+  private _newestSessionIdOfProject(path: string): string | null {
+    let best: TerminalSession | null = null;
+    for (const s of this.allSessions) {
+      if (s.projectPath !== path) continue;
+      if (!best || new Date(s.createdAt).getTime() > new Date(best.createdAt).getTime()) best = s;
+    }
+    return best?.id ?? null;
+  }
+
+  /** Dropdown handler: select a project for a pane → activate its newest session (or empty it). */
+  private _assignPaneProject(paneIndex: number, projectPath: string | null) {
+    if (!projectPath) {
+      this._assignPaneSession(paneIndex, null);
+      return;
+    }
+    this._assignPaneSession(paneIndex, this._newestSessionIdOfProject(projectPath));
+  }
+
+  /**
+   * Keep pane assignments consistent when allSessions changes. Idempotent — only writes when a
+   * value actually changes (no requestUpdate loop). Runs from updated() (post-render), never
+   * willUpdate(). Handles: "+"-adoption, duplicate-project dedup, and close/vanish fallback.
+   */
+  private _reconcilePanes() {
+    if (!this._isSplit) return;
+    const count = this._paneCount;
+    const next = this.paneSessionIds.slice(0, count);
+    while (next.length < count) next.push(null);
+    let changed = false;
+
+    // Refresh last-known project per pane (for close fallback) while the mapping still resolves.
+    for (let i = 0; i < count; i++) {
+      const id = next[i];
+      const proj = id ? this.allSessions.find((s) => s.id === id)?.projectPath ?? null : null;
+      if (proj) this._paneProjectCache[i] = proj;
+    }
+
+    // 1. Adopt the "+"-created session into the requesting pane once it arrives.
+    if (this._pendingNewSession) {
+      const { paneIndex, projectPath } = this._pendingNewSession;
+      const active = this.activeSessionId;
+      const s = active ? this.allSessions.find((x) => x.id === active) : undefined;
+      if (s && s.projectPath === projectPath && paneIndex < count) {
+        if (next[paneIndex] !== active) {
+          next[paneIndex] = active;
+          changed = true;
+        }
+        this.focusedPaneIndex = paneIndex;
+        this._paneProjectCache[paneIndex] = projectPath;
+        this._pendingNewSession = null;
+      }
+    }
+
+    // 2. Close/vanish fallback: assigned session gone → newest sibling of same project, or null.
+    for (let i = 0; i < count; i++) {
+      const id = next[i];
+      if (!id || this.allSessions.some((x) => x.id === id)) continue;
+      const proj = this._paneProjectCache[i];
+      const fallback = proj ? this._newestSessionIdOfProject(proj) : null;
+      if (next[i] !== fallback) {
+        next[i] = fallback;
+        changed = true;
+      }
+      if (!fallback) this._paneProjectCache[i] = null;
+    }
+
+    // 3. Dedup: same project must not occupy two panes (defensive, esp. after restoring old state).
+    const seenProjects = new Set<string>();
+    for (let i = 0; i < count; i++) {
+      const id = next[i];
+      if (!id) continue;
+      const proj = this.allSessions.find((x) => x.id === id)?.projectPath;
+      if (!proj) continue;
+      if (seenProjects.has(proj)) {
+        next[i] = null;
+        this._paneProjectCache[i] = null;
+        changed = true;
+      } else {
+        seenProjects.add(proj);
+      }
+    }
+
+    if (changed) {
+      this.paneSessionIds = next;
+      this._persistLayout();
+      this._refreshVisibleTerminals();
+    }
   }
 
   private _renderTerminalContent() {
@@ -1019,6 +1280,7 @@ export class AosCloudTerminalSidebar extends LitElement {
               <aos-terminal-session
                 .session=${session}
                 .isActive=${visible}
+                ?pane-mode=${this._isSplit}
                 .terminalSessionId=${session.terminalSessionId || null}
                 data-session-id="${session.id}"
                 class="session-panel ${focused ? 'focused' : ''}"
@@ -1049,36 +1311,91 @@ export class AosCloudTerminalSidebar extends LitElement {
           panes,
           (i) => i,
           (i) => {
-            const sessionId = this.paneSessionIds[i];
-            const session = sessionId ? this.allSessions.find((s) => s.id === sessionId) : undefined;
-            const label = session ? this._projectLabel(session.projectPath) : '';
-            const badgeStyle = session
+            const projectPath = this._projectOf(i);
+            const label = projectPath ? this._projectLabel(projectPath) : '';
+            const badgeStyle = projectPath
               ? {
-                  background: `hsl(${this._projectHue(session.projectPath)} 55% 22%)`,
-                  color: `hsl(${this._projectHue(session.projectPath)} 70% 80%)`,
+                  background: `hsl(${this._projectHue(projectPath)} 55% 22%)`,
+                  color: `hsl(${this._projectHue(projectPath)} 70% 80%)`,
                 }
               : {};
+            const activeId = this.paneSessionIds[i];
+            const activeSession = activeId
+              ? this.allSessions.find((s) => s.id === activeId)
+              : undefined;
+            const paneSessions = projectPath
+              ? this.allSessions.filter((s) => s.projectPath === projectPath)
+              : [];
+            const termId = activeSession?.terminalSessionId ?? '';
+            const reviewCfg = termId
+              ? this._getReviewConfigFor(termId)
+              : { enabled: false, reviewers: [] };
             return html`<div
               class="pane-header ${i === this.focusedPaneIndex ? 'focused' : ''}"
               style=${styleMap(this._headerGeom(i))}
             >
-              <span
-                class="pane-project ${session ? '' : 'empty'}"
-                style=${styleMap(badgeStyle)}
-                title=${label || 'Kein Projekt'}
-              >${label || 'Kein Projekt'}</span>
-              ${this._renderPaneDropdown(i)}
-              ${session?.terminalSessionId
-                ? html`<aos-auto-review-toggle
-                    class="pane-review-toggle"
-                    .sessionId=${session.terminalSessionId}
-                    .enabled=${this._getReviewConfigFor(session.terminalSessionId).enabled}
-                    .reviewers=${this._getReviewConfigFor(session.terminalSessionId).reviewers}
-                    .availableProviders=${this.availableProviders}
-                    @auto-review-config-changed=${this._handleAutoReviewConfigChanged}
-                    @auto-review-trigger-manual=${this._handleAutoReviewTriggerManual}
-                  ></aos-auto-review-toggle>`
-                : nothing}
+              <div class="pane-header-row">
+                <span
+                  class="pane-project ${projectPath ? '' : 'empty'}"
+                  style=${styleMap(badgeStyle)}
+                  title=${label || 'Kein Projekt'}
+                >${label || 'Kein Projekt'}</span>
+                ${this._renderPaneDropdown(i)}
+                <button
+                  class="pane-new-btn"
+                  ?disabled=${!projectPath}
+                  title="Neue Session in diesem Projekt"
+                  @click=${() => this._handleNewSession(projectPath ?? undefined, i)}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </button>
+                ${this.layoutMode !== 'single'
+                  ? html`<button
+                      class="pane-maximize-btn ${this._isPaneMaximized(i) ? 'active' : ''}"
+                      title=${this._isPaneMaximized(i)
+                        ? 'Auf 50/50 zurücksetzen'
+                        : 'Dieses Pane vertikal maximieren'}
+                      aria-label=${this._isPaneMaximized(i)
+                        ? 'Pane-Größe zurücksetzen'
+                        : 'Pane vertikal maximieren'}
+                      aria-pressed=${this._isPaneMaximized(i) ? 'true' : 'false'}
+                      @click=${() => this._togglePaneMaximize(i)}
+                    >
+                      ${this._isPaneMaximized(i)
+                        ? html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="7 4 12 9 17 4"></polyline>
+                            <polyline points="7 20 12 15 17 20"></polyline>
+                          </svg>`
+                        : html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="7 9 12 4 17 9"></polyline>
+                            <polyline points="7 15 12 20 17 15"></polyline>
+                          </svg>`}
+                    </button>`
+                  : nothing}
+              </div>
+              <div class="pane-header-tabs">
+                ${projectPath && paneSessions.length
+                  ? html`<aos-terminal-tabs
+                      .sessions=${paneSessions}
+                      .activeSessionId=${activeId}
+                      .availableProviders=${this.availableProviders}
+                      .activeTerminalSessionId=${termId}
+                      .activeSessionReviewEnabled=${reviewCfg.enabled}
+                      .activeSessionReviewReviewers=${reviewCfg.reviewers}
+                      @session-select=${(e: CustomEvent<{ sessionId: string }>) =>
+                        this._assignPaneSession(i, e.detail.sessionId)}
+                      @session-close=${this._handleSessionClose}
+                      @session-rename=${this._handleSessionRename}
+                      @auto-review-config-changed=${this._handleAutoReviewConfigChanged}
+                      @auto-review-trigger-manual=${this._handleAutoReviewTriggerManual}
+                    ></aos-terminal-tabs>`
+                  : html`<span class="pane-tabs-hint"
+                      >${projectPath ? 'Keine Sessions' : 'Projekt wählen'}</span
+                    >`}
+              </div>
             </div>`;
           }
         )}
@@ -1147,9 +1464,9 @@ export class AosCloudTerminalSidebar extends LitElement {
       this._dragRatio = null;
       if (r == null) return;
       if (kind === 'col') this.quadColRatio = r;
-      else if (kind === 'rowL') this.quadLeftRowRatio = r;
-      else if (kind === 'rowR') this.quadRightRowRatio = r;
-      else this.splitRowRatio = r;
+      else if (kind === 'rowL') { this.quadLeftRowRatio = r; this._clearMaxAxis('quadLeftRowRatio'); }
+      else if (kind === 'rowR') { this.quadRightRowRatio = r; this._clearMaxAxis('quadRightRowRatio'); }
+      else { this.splitRowRatio = r; this._clearMaxAxis('splitRowRatio'); }
       this._persistLayout();
       this._refreshVisibleTerminals();
     };
@@ -1158,46 +1475,32 @@ export class AosCloudTerminalSidebar extends LitElement {
   }
 
   private _renderPaneDropdown(paneIndex: number) {
-    const currentId = this.paneSessionIds[paneIndex] ?? '';
-    const found = !currentId || this.allSessions.some(s => s.id === currentId);
-    const assignedElsewhere = new Set(
-      this.paneSessionIds.filter((id, i) => !!id && i !== paneIndex) as string[]
-    );
-
-    // Group sessions by project path for <optgroup> labels.
-    const groups = new Map<string, TerminalSession[]>();
-    for (const s of this.allSessions) {
-      const arr = groups.get(s.projectPath) ?? [];
-      arr.push(s);
-      groups.set(s.projectPath, arr);
+    const current = this._projectOf(paneIndex) ?? '';
+    // Exclusivity: a project shown in another pane can't be picked here.
+    const usedElsewhere = new Set<string>();
+    for (let i = 0; i < this._paneCount; i++) {
+      if (i === paneIndex) continue;
+      const p = this._projectOf(i);
+      if (p) usedElsewhere.add(p);
     }
 
     return html`
       <select
         class="pane-select"
         @change=${(e: Event) =>
-          this._assignPaneSession(paneIndex, (e.target as HTMLSelectElement).value || null)}
+          this._assignPaneProject(paneIndex, (e.target as HTMLSelectElement).value || null)}
       >
-        <option value="" ?selected=${!currentId}>— Session wählen —</option>
-        ${currentId && !found
-          ? html`<option value=${currentId} selected>(nicht verfügbar)</option>`
-          : ''}
+        <option value="" ?selected=${!current}>— Projekt wählen —</option>
         ${repeat(
-          [...groups.entries()],
-          ([path]) => path,
-          ([path, list]) => html`
-            <optgroup label=${this._projectLabel(path)}>
-              ${list.map(
-                (s) => html`<option
-                  value=${s.id}
-                  ?disabled=${assignedElsewhere.has(s.id)}
-                  ?selected=${s.id === currentId}
-                >
-                  ${s.name}
-                </option>`
-              )}
-            </optgroup>
-          `
+          this._distinctProjects(),
+          (path) => path,
+          (path) => html`<option
+            value=${path}
+            ?disabled=${usedElsewhere.has(path) && path !== current}
+            ?selected=${path === current}
+          >
+            ${this._projectLabel(path)}
+          </option>`
         )}
       </select>
     `;
@@ -1345,6 +1648,10 @@ export class AosCloudTerminalSidebar extends LitElement {
   }
 
   private _setLayout(mode: 'single' | 'split-2' | 'quad-4') {
+    // Layout change invalidates a pending "+" adoption (pane indices may shift).
+    this._pendingNewSession = null;
+    // Maximize tracking is per-axis/index — meaningless across a layout switch.
+    this._maxAxis = {};
     // Quad requires fullscreen — entering it from the sidebar forces fullscreen on.
     if (mode === 'quad-4' && !this.isFullscreen) {
       this.isFullscreen = true;
@@ -1364,21 +1671,36 @@ export class AosCloudTerminalSidebar extends LitElement {
     this._refreshVisibleTerminals();
   }
 
-  /** Fill only the null slots — never overwrites a slot the user assigned manually. */
+  /**
+   * Fill only the null slots — never overwrites an assigned slot. Project-exclusive: each filled
+   * pane gets the newest session of a DISTINCT project not already shown (active project first).
+   */
   private _autoFillPanes(arr: (string | null)[]) {
-    const used = new Set(arr.filter((id): id is string => !!id));
-    const pool: string[] = [];
-    if (this.activeSessionId && !used.has(this.activeSessionId)) pool.push(this.activeSessionId);
-    for (const s of this.allSessions) {
-      if (s.id !== this.activeSessionId && !used.has(s.id)) pool.push(s.id);
+    const usedProjects = new Set<string>();
+    for (const id of arr) {
+      if (!id) continue;
+      const p = this.allSessions.find((s) => s.id === id)?.projectPath;
+      if (p) usedProjects.add(p);
     }
+    const pool: string[] = [];
+    const addProject = (path: string | undefined | null) => {
+      if (!path || usedProjects.has(path)) return;
+      const id = this._newestSessionIdOfProject(path);
+      if (id) {
+        pool.push(id);
+        usedProjects.add(path);
+      }
+    };
+    const activeProj = this.activeSessionId
+      ? this.allSessions.find((s) => s.id === this.activeSessionId)?.projectPath
+      : undefined;
+    addProject(activeProj);
+    for (const path of this._distinctProjects()) addProject(path);
+
     for (let i = 0; i < arr.length; i++) {
       if (arr[i] == null) {
         const pick = pool.shift();
-        if (pick) {
-          arr[i] = pick;
-          used.add(pick);
-        }
+        if (pick) arr[i] = pick;
       }
     }
   }
@@ -1479,9 +1801,20 @@ export class AosCloudTerminalSidebar extends LitElement {
     }
   }
 
-  private _handleNewSession() {
+  /**
+   * New session. Existing bindings call this as an event handler (first arg = Event) → that arg
+   * is ignored and app.ts falls back to the active project. The per-pane "+" passes an explicit
+   * projectPath (string) + paneIndex, and the freshly created session is adopted into that pane
+   * via `_pendingNewSession` in `_reconcilePanes`.
+   */
+  private _handleNewSession(projectPathOrEvent?: string | Event, paneIndex?: number) {
+    const projectPath = typeof projectPathOrEvent === 'string' ? projectPathOrEvent : undefined;
+    if (this._isSplit && projectPath && paneIndex != null && paneIndex >= 0) {
+      this._pendingNewSession = { paneIndex, projectPath };
+    }
     this.dispatchEvent(
       new CustomEvent('new-session', {
+        detail: projectPath ? { projectPath } : undefined,
         bubbles: true,
         composed: true,
       })
@@ -1817,6 +2150,9 @@ export class AosCloudTerminalSidebar extends LitElement {
   private _refreshScheduled = false;
 
   override updated(changed: PropertyValues): void {
+    if (changed.has('allSessions') || changed.has('activeSessionId') || this._pendingNewSession) {
+      this._reconcilePanes();
+    }
     if (changed.has('isOpen')) {
       // No fullscreen persistence for the manual toggle — a fresh open starts in normal mode,
       // EXCEPT a restored quad layout, which is only usable in fullscreen.
