@@ -394,6 +394,10 @@ export class AosCloudTerminalSidebar extends LitElement {
         justify-content: center;
         width: 22px;
         height: 22px;
+        /* Reset the global button padding from theme.css: with box-sizing
+           border-box + fixed 22px width it would collapse the icon's content
+           box to 0 width, hiding the inline SVG. */
+        padding: 0;
         background: var(--bg-color-secondary, #1e1e1e);
         color: var(--text-color-primary, #e0e0e0);
         border: 1px solid var(--border-color, #404040);
@@ -408,6 +412,7 @@ export class AosCloudTerminalSidebar extends LitElement {
         justify-content: center;
         width: 22px;
         height: 22px;
+        padding: 0;
         background: var(--bg-color-secondary, #1e1e1e);
         color: var(--text-color-muted, #909090);
         border: 1px solid var(--border-color, #404040);
