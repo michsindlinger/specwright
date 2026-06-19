@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventEmitter } from 'events';
+import type { WebSocket } from 'ws';
 import { PlanReviewOrchestrator } from '../../src/server/services/plan-review-orchestrator.js';
+import { getDefaultReviewers } from '../../src/server/model-config.js';
 import type { CloudTerminalManager } from '../../src/server/services/cloud-terminal-manager.js';
 
 /**
@@ -230,5 +232,43 @@ describe('PlanReviewOrchestrator dedup by planPath', () => {
     await waitForNextTick();
 
     expect(sessionsMap.has('sess-1')).toBe(false);
+  });
+});
+
+describe('PlanReviewOrchestrator sendSnapshot default reviewers', () => {
+  function captureSnapshot(orch: PlanReviewOrchestrator, sessionId: string) {
+    const sent: string[] = [];
+    const ws = { send: (s: string) => sent.push(s) } as unknown as WebSocket;
+    orch.sendSnapshot(sessionId, ws);
+    expect(sent).toHaveLength(1);
+    return JSON.parse(sent[0]) as { type: string; enabled: boolean; reviewers: unknown[] };
+  }
+
+  it('seeds the default reviewers for a fresh session without creating state', () => {
+    const mock = buildMockCtm();
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+
+    const payload = captureSnapshot(orch, 'sess-1');
+
+    expect(payload.type).toBe('plan-review:config.snapshot');
+    expect(payload.enabled).toBe(false);
+    expect(payload.reviewers).toEqual(getDefaultReviewers());
+    expect(payload.reviewers.length).toBeGreaterThan(0);
+
+    // Pure read: must NOT create orphan session state.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sessionsMap = (orch as any).sessions as Map<string, unknown>;
+    expect(sessionsMap.has('sess-1')).toBe(false);
+  });
+
+  it('respects an explicit empty selection and never re-seeds it', () => {
+    const mock = buildMockCtm();
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+    // User explicitly cleared all reviewers — this must be preserved.
+    orch.setTabConfig('sess-1', { enabled: false, reviewers: [] });
+
+    const payload = captureSnapshot(orch, 'sess-1');
+
+    expect(payload.reviewers).toEqual([]);
   });
 });

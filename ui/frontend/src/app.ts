@@ -899,10 +899,10 @@ export class AosApp extends LitElement {
     this.isTerminalSidebarOpen = false;
   }
 
-  private _handleNewTerminalSession(): void {
-    // Get current project path from active project
+  private _handleNewTerminalSession(e?: CustomEvent<{ projectPath?: string }>): void {
+    // Project path: explicit override (per-pane "+" in split mode) or active project.
     const activeProject = this.openProjects.find(p => p.id === this.activeProjectId);
-    const projectPath = activeProject?.path || '';
+    const projectPath = e?.detail?.projectPath || activeProject?.path || '';
     if (!projectPath) {
       this.showToast('Kein Projekt ausgewählt', 'error');
       return;

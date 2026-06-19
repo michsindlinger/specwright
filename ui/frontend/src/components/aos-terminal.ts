@@ -1286,6 +1286,12 @@ export class AosTerminal extends LitElement {
         .aos-terminal-host {
           position: absolute;
           inset: 0;
+          /* Horizontal breathing room so the first/last text column isn't flush
+             against the pane edge. Matters most in split/quad: left-column panes
+             sit against the outer screen edge, where flush text reads as cut off.
+             FitAddon reads this host's content width, so it subtracts the padding
+             and recomputes cols — no clipping on either side. */
+          padding: 0 10px;
         }
         /* Fix: xterm.js caches explicit viewport width after visibility changes.
            Resetting to initial forces recalculation on each reflow. */

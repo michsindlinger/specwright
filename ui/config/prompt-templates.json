@@ -19,6 +19,21 @@
       "id": "tpl_mq56vllj_c27fhv",
       "name": "Post Mortem Gitlab Ticket",
       "content": "Ich möchte in GitLab Issues NACHTRÄGLICH ein Ticket für das gerade bearbeitete Thema (Nutze den vorhandenen Kontext) erstellen. Bitte erstelle mir einen passenden Titel und eine Markdown Beschreibung, welche ich dann kopieren kann. \n\nEs soll erkennbar sein, ob es sich um ein Bugfix, neues Feature, Optimierung, etc. handelt.\nEs soll das Thema beschreiben, ohne die implementierte Lösung."
+    },
+    {
+      "id": "tpl_mqfldwyx_ey2bm6",
+      "name": "Performance Engineer Optimization Prompt",
+      "content": "Act like a senior performance engineer optimizing a production application used by millions of users.\n\nYour goals:\n• Maximum speed\n• Lower memory usage\n• Better scalability\n• Faster rendering\n• Cleaner execution\n\nCarefully identify:\n• Performance bottlenecks\n• Inefficient logic\n• Unnecessary rendering\n• Expensive operations\n• Memory leaks\n\nThen provide:\n• Performance issue breakdown\n• Optimization strategies\n• Improved production-ready code\n• Scalability recommendations\n\nOptimize the code like you're preparing it for massive traffic."
+    },
+    {
+      "id": "tpl_mqi3kcn3_0b35c5",
+      "name": "AI Technical Lead Mode",
+      "content": "Act like a senior technical lead managing a real engineering team.\n\nBefore writing code:\n\n• Ask clarifying questions\n• Challenge bad decisions\n• Identify scaling risks\n• Suggest better approaches\n• Prioritize simplicity\n\nThink long-term like someone responsible for maintaining this product for 5+ years.\n\nThen provide:\n\n• Technical decisions\n• Tradeoff analysis\n• Recommended architecture\n• Implementation plan\n• Production-ready solution\""
+    },
+    {
+      "id": "tpl_mqjfyx62_jeni8o",
+      "name": "Production-level debugging monster",
+      "content": "Act like a senior debugging engineer investigating a live production issue. Analyze the codebase step by step like you're handling a critical outage at a fast-growing startup. Your job:\n\n• Understand what the code actually does\n• Trace the real root cause\n• Explain why the failure happens\n• Identify hidden edge cases\n• Propose the most robust fix possible\n\nFinally, provide:\n\n• Code functionality breakdown\n• Root cause analysis\n• Failure explanation\n• Edge case analysis\n• Fixed production-ready code\n\nDo not guess. Think deeply before making changes."
     }
   ]
 }

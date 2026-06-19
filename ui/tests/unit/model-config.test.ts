@@ -240,4 +240,57 @@ describe('ModelConfig', () => {
       expect(defaults.modelId).toBe('opus');
     });
   });
+
+  describe('getDefaultReviewers()', () => {
+    it('returns all 4 default reviewers when every model exists in config', async () => {
+      const fullConfig: ModelConfig = {
+        defaultProvider: 'anthropic',
+        defaultModel: 'opus',
+        providers: [
+          { id: 'anthropic', name: 'Anthropic', cliCommand: 'claude', cliFlags: ['--model', '{modelId}'], models: [{ id: 'opus', name: 'Opus 4.8' }] },
+          { id: 'glm', name: 'GLM', cliCommand: 'claude-glm', cliFlags: ['--model', '{modelId}'], models: [{ id: 'glm-5.2', name: 'GLM 5.2' }] },
+          { id: 'minimax', name: 'MiniMax', cliCommand: 'claude-minimax', cliFlags: ['--model', '{modelId}'], models: [{ id: 'MiniMax-M3', name: 'MiniMax M3' }] },
+          { id: 'deepseek', name: 'DeepSeek V4', cliCommand: 'claude-deepseek', cliFlags: ['--model', '{modelId}'], models: [{ id: 'opus', name: 'DeepSeek V4 Pro' }] },
+        ],
+      };
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify(fullConfig));
+
+      const { getDefaultReviewers: freshGetDefaultReviewers } = await import(
+        '../../src/server/model-config.js'
+      );
+
+      expect(freshGetDefaultReviewers()).toEqual([
+        { providerId: 'anthropic', modelId: 'opus' },
+        { providerId: 'glm', modelId: 'glm-5.2' },
+        { providerId: 'minimax', modelId: 'MiniMax-M3' },
+        { providerId: 'deepseek', modelId: 'opus' },
+      ]);
+    });
+
+    it('drops default reviewers missing from config and warns for each', async () => {
+      // Fallback DEFAULT_CONFIG has anthropic/opus + deepseek/opus, but no
+      // glm-5.2 and no minimax provider — those two must be dropped with a warning.
+      vi.mocked(existsSync).mockReturnValue(false);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const { getDefaultReviewers: freshGetDefaultReviewers } = await import(
+        '../../src/server/model-config.js'
+      );
+
+      expect(freshGetDefaultReviewers()).toEqual([
+        { providerId: 'anthropic', modelId: 'opus' },
+        { providerId: 'deepseek', modelId: 'opus' },
+      ]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('glm/glm-5.2')
+      );
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('minimax/MiniMax-M3')
+      );
+
+      warn.mockRestore();
+    });
+  });
 });
