@@ -1,10 +1,5 @@
-import { homedir } from 'os';
-import { join } from 'path';
 import { query as claudeQuery } from '@anthropic-ai/claude-agent-sdk';
-
-function expandTilde(p: string): string {
-  return p.startsWith('~') ? join(homedir(), p.slice(1)) : p;
-}
+import { buildProviderEnv } from '../utils/provider-env.js';
 
 const REVIEWER_TOOLS: string[] = ['Read', 'Grep', 'Glob'];
 const MIN_REVIEW_PROSE_LENGTH = 40;
@@ -48,20 +43,10 @@ export class ExternalReviewer {
         `[ExternalReviewer] ${providerId}${modelId ? ':' + modelId : ''} prompt-head=${JSON.stringify(prompt.slice(0, 240))} totalLen=${prompt.length}`
       );
 
-      const baseEnv: Record<string, string | undefined> = { ...process.env };
-      delete baseEnv.ANTHROPIC_API_KEY;
-      delete baseEnv.ANTHROPIC_AUTH_TOKEN;
-      delete baseEnv.ANTHROPIC_BASE_URL;
-
-      // For Anthropic provider, reuse the default ~/.claude config dir which
-      // holds the OAuth login (.credentials.json) used by the cloud terminal.
-      // The provider-scoped ~/.claude-anthropic dir has no login session.
-      // For non-Anthropic providers (glm, deepseek, ...), the scoped config dir
-      // carries the third-party CLI settings/keys.
-      const envOverride: Record<string, string | undefined> =
-        providerId === 'anthropic'
-          ? { ...baseEnv }
-          : { ...baseEnv, CLAUDE_CONFIG_DIR: expandTilde(`~/.claude-${providerId}`) };
+      // Provider→auth mapping lives in buildProviderEnv (single source of truth,
+      // shared with the finding aggregator). Anthropic reuses the default
+      // ~/.claude OAuth login; other providers use their scoped ~/.claude-<id>.
+      const envOverride = buildProviderEnv(providerId);
 
       const session = claudeQuery({
         prompt,

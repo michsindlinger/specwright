@@ -5274,14 +5274,18 @@ export class WebSocketHandler {
       }
     );
 
-    this.planReviewOrchestrator.on('plan-review:aggregated', (sessionId: string, aggregatedText: string) => {
-      this.broadcast({
-        type: 'plan-review:aggregated',
-        sessionId,
-        aggregatedText,
-        timestamp: new Date().toISOString(),
-      });
-    });
+    this.planReviewOrchestrator.on(
+      'plan-review:aggregated',
+      (sessionId: string, aggregatedText: string, fallbackReason?: string) => {
+        this.broadcast({
+          type: 'plan-review:aggregated',
+          sessionId,
+          aggregatedText,
+          ...(fallbackReason !== undefined ? { fallbackReason } : {}),
+          timestamp: new Date().toISOString(),
+        });
+      }
+    );
 
     this.planReviewOrchestrator.on('plan-review:injected', (sessionId: string) => {
       this.broadcast({
@@ -5681,13 +5685,18 @@ export class WebSocketHandler {
       return;
     }
 
-    const resized = this.cloudTerminalManager.resizeSession(sessionId, cols, rows);
+    const result = this.cloudTerminalManager.resizeSession(sessionId, cols, rows);
 
-    if (!resized) {
+    if (result !== 'ok') {
+      // Only a genuinely missing session is SESSION_NOT_FOUND (which the UI treats as
+      // "expired" and tears down). A live session whose resize failed reports the
+      // distinct, non-fatal RESIZE_FAILED so the session is not killed by a resize hiccup.
       const errorResponse: WebSocketMessage = {
         type: 'cloud-terminal:error',
-        code: 'SESSION_NOT_FOUND',
-        message: `Session not found: ${sessionId}`,
+        code: result === 'not_found' ? 'SESSION_NOT_FOUND' : 'RESIZE_FAILED',
+        message: result === 'not_found'
+          ? `Session not found: ${sessionId}`
+          : `Resize could not be applied for session: ${sessionId}`,
         sessionId,
         timestamp: new Date().toISOString()
       };

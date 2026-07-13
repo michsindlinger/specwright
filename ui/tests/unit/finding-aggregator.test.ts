@@ -239,6 +239,135 @@ describe('aggregateFindings', () => {
       'deepseek:haiku',
     ]);
   });
+
+  // ── Lenient validator: skip defective clusters instead of rejecting all ──
+  it('keeps valid clusters and drops one missing summary', async () => {
+    mockClaudeReturning(
+      JSON.stringify({
+        clusters: [
+          { summary: 'Valid one', supporting_keys: ['anthropic:opus', 'glm:glm-5.1'], supporting_quotes: [] },
+          { supporting_keys: ['anthropic:opus'], supporting_quotes: [] }, // no summary
+        ],
+      })
+    );
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackUsed).toBe(false);
+    expect(res.clusters).toHaveLength(1);
+    expect(res.clusters[0].summary).toBe('Valid one');
+  });
+
+  it('accepts a cluster with no supporting_quotes (defaults to [])', async () => {
+    mockClaudeReturning(
+      JSON.stringify({
+        clusters: [{ summary: 'No quotes', supporting_keys: ['anthropic:opus'] }],
+      })
+    );
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackUsed).toBe(false);
+    expect(res.clusters[0].supporting_quotes).toEqual([]);
+  });
+
+  it('drops a cluster with empty supporting_keys (would be unattributed minority)', async () => {
+    mockClaudeReturning(
+      JSON.stringify({
+        clusters: [
+          { summary: 'Kept', supporting_keys: ['anthropic:opus'], supporting_quotes: [] },
+          { summary: 'Dropped', supporting_keys: [], supporting_quotes: [] },
+        ],
+      })
+    );
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackUsed).toBe(false);
+    expect(res.clusters).toHaveLength(1);
+    expect(res.clusters[0].summary).toBe('Kept');
+  });
+
+  it('falls back when every cluster is defective (regression guard, retried)', async () => {
+    // Today validateClusters returns null on the FIRST bad cluster; this asserts
+    // the lenient version still falls back when NOTHING valid survives.
+    const allBad = JSON.stringify({ clusters: [{ summary: 'x', supporting_keys: [] }] });
+    mockClaudeReturning(allBad);
+    mockClaudeReturning(allBad);
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackUsed).toBe(true);
+    expect(res.fallbackReason).toBe('schema-invalid');
+    expect(mockedQuery).toHaveBeenCalledTimes(2);
+  });
+
+  // ── Single corrective retry ──
+  it('retries once on bad JSON and succeeds on the second attempt', async () => {
+    mockClaudeReturning('not json at all');
+    mockClaudeReturning(
+      JSON.stringify({
+        clusters: [
+          {
+            summary: 'Recovered',
+            supporting_keys: ['anthropic:opus', 'deepseek:deepseek-v4-pro'],
+            supporting_quotes: [],
+          },
+        ],
+      })
+    );
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackUsed).toBe(false);
+    expect(res.clusters).toHaveLength(1);
+    expect(mockedQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it('falls back after exactly one retry when both attempts are schema-invalid', async () => {
+    const bad = JSON.stringify({ clusters: [{ summary: 'x' }] });
+    mockClaudeReturning(bad);
+    mockClaudeReturning(bad);
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackUsed).toBe(true);
+    expect(res.fallbackReason).toBe('schema-invalid');
+    expect(mockedQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it('does NOT retry when the first call throws (timeout/network funnel here)', async () => {
+    mockClaudeThrows(new Error('network'));
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackUsed).toBe(true);
+    expect(res.fallbackReason).toBe('llm-error');
+    expect(mockedQuery).toHaveBeenCalledTimes(1);
+  });
+
+  // ── Fallback reason taxonomy ──
+  it('reports single-reviewer reason for <2 reviewers', async () => {
+    const res = await aggregateFindings([REV_A], '/tmp/x');
+    expect(res.fallbackReason).toBe('single-reviewer');
+  });
+
+  it('reports empty-output reason and does not retry', async () => {
+    mockClaudeError('');
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackReason).toBe('empty-output');
+    expect(mockedQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports parse-error reason after a failed retry', async () => {
+    mockClaudeReturning('garbage');
+    mockClaudeReturning('still garbage');
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackReason).toBe('parse-error');
+  });
+
+  it('returns an empty valid result (no fallback) when the model reports no findings', async () => {
+    mockClaudeReturning(JSON.stringify({ clusters: [] }));
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackUsed).toBe(false);
+    expect(res.clusters).toEqual([]);
+  });
 });
 
 describe('formatInject', () => {

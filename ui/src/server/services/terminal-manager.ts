@@ -25,6 +25,7 @@ import {
   SpawnPtyOptions,
   TERMINAL_BUFFER_LIMITS,
 } from '../../shared/types/terminal.protocol.js';
+import { clampTerminalSize } from '../../shared/types/cloud-terminal.protocol.js';
 
 /**
  * Extended terminal session with PTY instance and cleanup timer
@@ -168,10 +169,19 @@ export class TerminalManager extends EventEmitter {
       throw new Error(`Terminal session not found: ${event.executionId}`);
     }
 
-    session.ptyProcess.resize(event.cols, event.rows);
+    // Clamp to a safe, usable grid so node-pty can never throw on NaN/<=0/Infinity,
+    // and Claude Code is never driven below a renderable size. A non-finite axis keeps
+    // the PTY's current size (last good grid) rather than jumping to a default. In the
+    // normal path the frontend already sends valid, >= MIN grids, so this is a no-op
+    // safety net for malformed messages.
+    const { cols, rows } = clampTerminalSize(event.cols, event.rows, {
+      cols: session.ptyProcess.cols,
+      rows: session.ptyProcess.rows,
+    });
+    session.ptyProcess.resize(cols, rows);
     session.lastActivity = new Date();
     console.log(
-      `[TerminalManager] Resized terminal ${event.executionId} to ${event.cols}x${event.rows}`
+      `[TerminalManager] Resized terminal ${event.executionId} to ${cols}x${rows}`
     );
   }
 
@@ -250,7 +260,7 @@ export class TerminalManager extends EventEmitter {
     this.sessions.delete(executionId);
 
     console.log(
-      `[TerminalManager] Cleaned up session ${executionId} (buffer: ${session.buffer.length} lines)`
+      `[TerminalManager] Cleaned up session ${executionId} (buffer: ${session.buffer.length} chunks)`
     );
   }
 
@@ -311,39 +321,44 @@ export class TerminalManager extends EventEmitter {
   }
 
   /**
-   * Add data to session buffer with size limits
+   * Add data to session buffer with size limits.
+   *
+   * Stores raw PTY output chunks WITHOUT splitting, so the buffer concatenates back
+   * (`join('')`) to the exact original stream. Splitting on '\n' was lossy: node-pty delivers
+   * arbitrary, non-line-aligned chunks, so a split()+join('\n') round-trip inserted a spurious
+   * newline at every chunk boundary that did not end in '\n', corrupting the replayed terminal.
+   * Reconstruction via `join('')` is what the reconnect/buffer-response consumers and the tests
+   * already assume. MAX_BUFFER_LINES is now a coarse chunk-count guard; MAX_BUFFER_SIZE (chars)
+   * is the real cap. Mirrors CloudTerminalManager.addToBuffer.
    */
   private addToBuffer(session: ManagedTerminalSession, data: string): void {
-    // Split data into lines
-    const lines = data.split('\n');
+    session.buffer.push(data);
 
-    // Add lines to buffer
-    session.buffer.push(...lines);
-
-    // Enforce line limit
+    // Enforce chunk-count limit (coarse guard against unbounded growth)
     if (session.buffer.length > TERMINAL_BUFFER_LIMITS.MAX_BUFFER_LINES) {
       const overflow = session.buffer.length - TERMINAL_BUFFER_LIMITS.MAX_BUFFER_LINES;
       session.buffer.splice(0, overflow);
       // Only warn once per session to avoid log spam
       if (!session.bufferOverflowWarned) {
         console.warn(
-          `[TerminalManager] Buffer limit reached for ${session.executionId}, old lines will be trimmed (this warning will not repeat)`
+          `[TerminalManager] Buffer chunk limit reached for ${session.executionId}, old output will be trimmed (this warning will not repeat)`
         );
         session.bufferOverflowWarned = true;
       }
     }
 
-    // Enforce size limit
-    const bufferSize = session.buffer.join('\n').length;
-    if (bufferSize > TERMINAL_BUFFER_LIMITS.MAX_BUFFER_SIZE) {
-      // Remove oldest lines until under limit
-      while (session.buffer.join('\n').length > TERMINAL_BUFFER_LIMITS.MAX_BUFFER_SIZE) {
+    // Enforce size limit (total characters) — drop oldest chunks until under the cap
+    let totalSize = 0;
+    for (const chunk of session.buffer) totalSize += chunk.length;
+    if (totalSize > TERMINAL_BUFFER_LIMITS.MAX_BUFFER_SIZE) {
+      while (session.buffer.length > 0 && totalSize > TERMINAL_BUFFER_LIMITS.MAX_BUFFER_SIZE) {
+        totalSize -= session.buffer[0].length;
         session.buffer.shift();
       }
       // Only warn once per session to avoid log spam
       if (!session.bufferOverflowWarned) {
         console.warn(
-          `[TerminalManager] Buffer size limit reached for ${session.executionId}, trimmed to ${session.buffer.length} lines (this warning will not repeat)`
+          `[TerminalManager] Buffer size limit reached for ${session.executionId}, trimmed to ${session.buffer.length} chunks (this warning will not repeat)`
         );
         session.bufferOverflowWarned = true;
       }

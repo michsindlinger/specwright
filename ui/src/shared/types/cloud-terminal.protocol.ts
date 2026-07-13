@@ -417,6 +417,15 @@ export const CLOUD_TERMINAL_CONFIG = {
   DEFAULT_COLS: 120,
   DEFAULT_ROWS: 40,
 
+  /**
+   * Smallest usable TUI grid. Below ~10 rows Claude Code's input box + status line
+   * don't fit and its SIGWINCH redraw mis-clears, flooding the scrollback with ghost
+   * frames. The frontend hides any pane that would render smaller than this; the
+   * backend clamps to it as a safety net (see clampTerminalSize).
+   */
+  MIN_COLS: 20,
+  MIN_ROWS: 10,
+
   /** @deprecated Use WORKFLOW_COMMAND_READY_TIMEOUT_MS instead. Kept for backward compatibility. */
   WORKFLOW_COMMAND_DELAY_MS: 1500,
 
@@ -434,6 +443,38 @@ export const CLOUD_TERMINAL_CONFIG = {
 } as const;
 
 /**
+ * Clamp a requested terminal grid to a safe, usable range before it reaches
+ * `pty.resize()`.
+ *
+ * This is a BACKEND SAFETY NET for malformed resize messages only. The normal
+ * frontend path never emits a sub-MIN grid — it hides any pane that would render
+ * smaller than MIN_ROWS instead of resizing the PTY down — so this clamp does not
+ * diverge xterm from the PTY in practice. Its job is to guarantee the value handed
+ * to node-pty is a positive integer >= the MIN grid, since node-pty throws on
+ * `<=0` / `NaN` / `Infinity`.
+ *
+ * A non-finite axis falls back to `fallback` (pass the session's *current* size to
+ * "keep the last good grid" rather than jumping to the default).
+ */
+export function clampTerminalSize(
+  cols: number,
+  rows: number,
+  fallback: { cols: number; rows: number } = {
+    cols: CLOUD_TERMINAL_CONFIG.DEFAULT_COLS,
+    rows: CLOUD_TERMINAL_CONFIG.DEFAULT_ROWS,
+  },
+): { cols: number; rows: number } {
+  const clampAxis = (value: number, fallbackValue: number, min: number): number => {
+    const base = Number.isFinite(value) ? Math.floor(value) : fallbackValue;
+    return Math.max(min, Number.isFinite(base) ? base : min);
+  };
+  return {
+    cols: clampAxis(cols, fallback.cols, CLOUD_TERMINAL_CONFIG.MIN_COLS),
+    rows: clampAxis(rows, fallback.rows, CLOUD_TERMINAL_CONFIG.MIN_ROWS),
+  };
+}
+
+/**
  * Error codes for Cloud Terminal operations
  */
 export const CLOUD_TERMINAL_ERROR_CODES = {
@@ -449,6 +490,8 @@ export const CLOUD_TERMINAL_ERROR_CODES = {
   SPAWN_FAILED: 'SPAWN_FAILED',
   /** Invalid message format */
   INVALID_MESSAGE: 'INVALID_MESSAGE',
+  /** PTY resize could not be applied although the session is still alive */
+  RESIZE_FAILED: 'RESIZE_FAILED',
   /** CLI command not found in PATH */
   CLI_NOT_FOUND: 'CLI_NOT_FOUND',
   /** Session is paused or otherwise not accepting input */
