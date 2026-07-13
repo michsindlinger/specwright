@@ -144,6 +144,14 @@ const PLAN_IDLE_TIMEOUT_MS = 5000;
  * - 'session.blocker-reported' (CloudTerminalSessionId, reason) - LLM emitted <<BLOCKER:reason>> marker (auto-mode only)
  * - 'session.plan-detected' (CloudTerminalSessionId, planText, source: 'auto'|'manual') - Plan box detected; planText is extracted buffer content (plan-review only)
  */
+/**
+ * Outcome of a {@link CloudTerminalManager.resizeSession} call.
+ * - 'ok'            – resize applied
+ * - 'not_found'     – no session with that ID
+ * - 'resize_failed' – session is alive but the PTY resize threw
+ */
+export type CloudTerminalResizeResult = 'ok' | 'not_found' | 'resize_failed';
+
 export class CloudTerminalManager extends EventEmitter {
   /**
    * Active cloud terminal sessions keyed by session ID
@@ -564,21 +572,25 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
-   * Resize a Cloud Terminal session
+   * Resize a Cloud Terminal session.
+   *
+   * Returns a discriminated outcome so callers can distinguish a genuinely missing
+   * session ('not_found') from a live session whose PTY resize could not be applied
+   * ('resize_failed'). Conflating the two previously made the UI tear down a live
+   * session on a transient resize failure.
    *
    * @param sessionId - Target session ID
    * @param cols - Number of columns
    * @param rows - Number of rows
-   * @returns true if resized successfully, false if session not found
    */
   public resizeSession(
     sessionId: CloudTerminalSessionId,
     cols: number,
     rows: number
-  ): boolean {
+  ): CloudTerminalResizeResult {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      return false;
+      return 'not_found';
     }
 
     try {
@@ -587,10 +599,10 @@ export class CloudTerminalManager extends EventEmitter {
         cols,
         rows,
       });
-      return true;
+      return 'ok';
     } catch (error) {
       console.error(`[CloudTerminalManager] Failed to resize session ${sessionId}:`, error);
-      return false;
+      return 'resize_failed';
     }
   }
 

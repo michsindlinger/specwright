@@ -987,6 +987,9 @@ export class AosApp extends LitElement {
     this.terminalSessions = this.terminalSessions.map(s =>
       s.id === sessionId ? { ...s, name, customNameSet: true } : s
     );
+    // Persist by stable backend id so the name survives reload (the .id changes to `restored-…`).
+    const session = this.terminalSessions.find(s => s.id === sessionId);
+    if (session?.terminalSessionId) this._persistSessionName(session.terminalSessionId, name);
   }
 
   private _handleTerminalSessionClose(e: CustomEvent<{ sessionId: string }>): void {
@@ -1000,6 +1003,8 @@ export class AosApp extends LitElement {
         sessionId: session.terminalSessionId,
         timestamp: new Date().toISOString(),
       });
+      // Drop the persisted name — the session is gone for good.
+      this._removeSessionName(session.terminalSessionId);
     }
 
     this.terminalSessions = this.terminalSessions.filter(s => s.id !== sessionId);
@@ -1019,13 +1024,64 @@ export class AosApp extends LitElement {
     // Skip the auto-name overwrite if the user has already renamed this tab.
     this.terminalSessions = this.terminalSessions.map(s => {
       if (s.id !== sessionId) return s;
-      return {
+      const updated = {
         ...s,
         terminalSessionId,
         terminalType: resolvedType,
         ...(s.customNameSet ? {} : { name: this._generateSessionName(s.projectPath, resolvedType) }),
       };
+      // Rename-before-connect: a custom name set before terminalSessionId existed can now be
+      // persisted against the stable backend id.
+      if (updated.customNameSet) this._persistSessionName(terminalSessionId, updated.name);
+      return updated;
     });
+  }
+
+  // --- Tab-name persistence (keyed by the stable backend terminalSessionId, not the ephemeral
+  // frontend .id which regenerates as `restored-<id>` on reload). ---
+
+  private _loadSessionNames(): Record<string, string> {
+    try {
+      const raw = localStorage.getItem('cloud-terminal-session-names');
+      if (!raw) return {};
+      const parsed: unknown = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, string>;
+      }
+      return {};
+    } catch {
+      return {};
+    }
+  }
+
+  private _persistSessionName(terminalSessionId: string, name: string): void {
+    if (!terminalSessionId) return;
+    try {
+      const map = this._loadSessionNames();
+      map[terminalSessionId] = name;
+      // Cap to avoid unbounded growth from sessions closed backend-side (no close event → no
+      // _removeSessionName). Object keys keep insertion order → drop the oldest on overflow.
+      const keys = Object.keys(map);
+      if (keys.length > 200) {
+        for (const k of keys.slice(0, keys.length - 200)) delete map[k];
+      }
+      localStorage.setItem('cloud-terminal-session-names', JSON.stringify(map));
+    } catch {
+      // localStorage unavailable
+    }
+  }
+
+  private _removeSessionName(terminalSessionId: string): void {
+    if (!terminalSessionId) return;
+    try {
+      const map = this._loadSessionNames();
+      if (terminalSessionId in map) {
+        delete map[terminalSessionId];
+        localStorage.setItem('cloud-terminal-session-names', JSON.stringify(map));
+      }
+    } catch {
+      // localStorage unavailable
+    }
   }
 
   private handleWorkflowStart(e: CustomEvent<{ commandId: string; argument?: string; model?: string }>): void {
@@ -1520,6 +1576,7 @@ export class AosApp extends LitElement {
     }
 
     // Convert backend sessions to frontend TerminalSession format
+    const persistedNames = this._loadSessionNames();
     let shellIndex = 0;
     let claudeIndex = 0;
     const newSessions: TerminalSession[] = backendSessions
@@ -1535,9 +1592,11 @@ export class AosApp extends LitElement {
 
         // Resolve terminal type (backward compat: default to 'claude-code')
         const type = backendSession.terminalType || 'claude-code';
-        const name = type === 'shell'
+        // Rehydrate a user-set name (keyed by stable backend id); else auto-generate.
+        const persisted = persistedNames[backendSession.sessionId];
+        const name = persisted ?? (type === 'shell'
           ? `Terminal ${++shellIndex}`
-          : `Claude Session ${++claudeIndex}`;
+          : `Claude Session ${++claudeIndex}`);
 
         // Create new frontend session entry
         return {
@@ -1548,7 +1607,7 @@ export class AosApp extends LitElement {
           projectPath: backendSession.projectPath,
           terminalSessionId: backendSession.sessionId,
           terminalType: type,
-          customNameSet: false,
+          customNameSet: persisted != null,
         } as TerminalSession;
       });
 

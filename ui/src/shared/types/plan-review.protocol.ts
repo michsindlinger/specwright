@@ -20,6 +20,22 @@ export interface TabReviewConfig {
   reviewers: ReviewerConfig[];
 }
 
+/**
+ * Why consensus clustering was skipped and the raw per-reviewer output was
+ * injected instead. `undefined` on the aggregated event ⇒ clustering succeeded.
+ *  - single-reviewer: fewer than 2 reviewers fulfilled, nothing to cluster
+ *  - llm-error:       aggregator model call threw / timed out
+ *  - empty-output:    aggregator returned nothing
+ *  - parse-error:     aggregator output was not valid JSON (after one retry)
+ *  - schema-invalid:  aggregator JSON did not match the cluster schema (after one retry)
+ */
+export type FallbackReason =
+  | 'single-reviewer'
+  | 'llm-error'
+  | 'empty-output'
+  | 'parse-error'
+  | 'schema-invalid';
+
 // ─── Server → Client ────────────────────────────────────────────────────────
 
 /** Pushed on tab connect / resume so frontend has current toggle + prompt state. */
@@ -57,6 +73,8 @@ export interface PlanReviewAggregated {
   type: 'plan-review:aggregated';
   sessionId: CloudTerminalSessionId;
   aggregatedText: string;
+  /** Present only when clustering was skipped → raw reviewer output injected. */
+  fallbackReason?: FallbackReason;
   timestamp: string;
 }
 

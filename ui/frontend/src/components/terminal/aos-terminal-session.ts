@@ -417,6 +417,14 @@ export class AosTerminalSession extends LitElement {
 
     const errorCode = message.code as string | undefined;
 
+    if (errorCode === 'RESIZE_FAILED') {
+      // Non-fatal: the session is alive, only a PTY resize could not be applied.
+      // Do NOT change connection state or surface an error — otherwise a transient
+      // resize hiccup would mark a live session disconnected.
+      console.warn(`[AosTerminalSession] Resize failed for ${this.terminalSessionId}; session still active`);
+      return;
+    }
+
     if (errorCode === 'SESSION_NOT_FOUND') {
       // Session expired on server - offer to start a new one
       this.isSessionExpired = true;

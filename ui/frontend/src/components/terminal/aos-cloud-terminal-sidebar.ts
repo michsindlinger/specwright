@@ -7,6 +7,7 @@ import './aos-terminal-session.js';
 import './aos-auto-review-toggle.js';
 import type { AosTerminalSession } from './aos-terminal-session.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
+import { hiddenRowPane, clampRowRatio } from './pane-visibility.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 import { MobileBreakpointController } from '../../controllers/mobile-breakpoint-controller.js';
 import '../mobile/aos-mobile-terminal-header.js';
@@ -89,17 +90,35 @@ export class AosCloudTerminalSidebar extends LitElement {
   private _pendingNewSession: { paneIndex: number; projectPath: string } | null = null;
   /** Transient last-known project per pane (non-persisted) — lets close-fallback pick a sibling. */
   private _paneProjectCache: (string | null)[] = [];
+  /**
+   * Write-once restore intent (non-persisted): persisted per-pane projects to re-resolve to live
+   * sessions after reload. Sessions load incrementally (one cloud-terminal:list per project), so
+   * _reconcilePanes keeps retrying until each pane's project surfaces a session. Cleared per pane
+   * once resolved or on any manual pane change; whole field nulled when nothing remains pending.
+   */
+  private _paneRestoreProjects: (string | null)[] | null = null;
   /** Resizable-splitter ratios (clamped 0.15–0.85). split-2: one row split; quad: column + per-column rows. */
   @state() private splitRowRatio = 0.5;
   @state() private quadColRatio = 0.5;
   @state() private quadLeftRowRatio = 0.5;
   @state() private quadRightRowRatio = 0.5;
   /**
-   * Which pane is currently maximized per row-axis, plus the pre-maximize ratio
-   * to restore to. Discrete state (not inferred from the ratio) so a manual drag
-   * near the extreme isn't mistaken for "maximized". Transient — not persisted.
+   * Which pane is currently maximized per row-axis. TRANSIENT maximize flag ONLY — it never
+   * carries ratio state. `_togglePaneMaximize` must NOT mutate the row ratios (Option-2
+   * decoupling): the soloed-axis geometry is derived from this flag via `hiddenRowPane`, so
+   * the persisted ratio stays a real drag value and can never strand a pane after reload.
+   * Discrete (not inferred from the ratio) so a manual drag near the extreme isn't mistaken
+   * for "maximized". Not persisted — a fresh load/layout-switch starts un-maximized.
    */
-  @state() private _maxAxis: Partial<Record<RowKey, { pane: number; prev: number }>> = {};
+  @state() private _maxAxis: Partial<Record<RowKey, { pane: number }>> = {};
+  /**
+   * Live pixel height of the split-panes container. Drives the "too small to render → hide"
+   * decision (see PANE_MIN_PX). Measured via a ResizeObserver so it tracks window/fullscreen
+   * changes; 0 until first measured (→ nothing is hidden while unmeasured).
+   */
+  @state() private _containerHeightPx = 0;
+  private _containerResizeObserver: ResizeObserver | null = null;
+  private _observedContainer: HTMLElement | null = null;
   @state() private loadingState: LoadingState = { isLoading: false, message: '' };
   @state() private errorMessage: string | null = null;
   private readonly minSidebarWidth = 400;
@@ -1009,18 +1028,29 @@ export class AosCloudTerminalSidebar extends LitElement {
    * Pane index map: 0=TL, 1=TR, 2=BL, 3=BR.
    */
   private _paneGeom(idx: number): Record<string, string> {
+    // When the row-axis sibling is collapsed (maximize / too-small), this pane owns the full
+    // column height — top:0, height:100% — instead of its ratio slice.
+    const fullAxis = this._isPaneFullAxis(idx);
     if (this.layoutMode === 'quad-4') {
       const isRight = idx === 1 || idx === 3;
       const isBottom = idx === 2 || idx === 3;
       const rv = isRight ? '--rr' : '--rl';
+      const left = isRight ? 'calc(var(--c) * 100% + 1.5px)' : '0';
+      const width = isRight ? 'calc((1 - var(--c)) * 100% - 1.5px)' : 'calc(var(--c) * 100% - 1.5px)';
+      if (fullAxis) {
+        return { left, width, top: '0', height: '100%' };
+      }
       return {
-        left: isRight ? 'calc(var(--c) * 100% + 1.5px)' : '0',
-        width: isRight ? 'calc((1 - var(--c)) * 100% - 1.5px)' : 'calc(var(--c) * 100% - 1.5px)',
+        left,
+        width,
         top: isBottom ? `calc(var(${rv}) * 100% + 1.5px)` : '0',
         height: isBottom ? `calc((1 - var(${rv})) * 100% - 1.5px)` : `calc(var(${rv}) * 100% - 1.5px)`,
       };
     }
     // split-2: full width, stacked rows
+    if (fullAxis) {
+      return { left: '0', width: '100%', top: '0', height: '100%' };
+    }
     const isBottom = idx === 1;
     return {
       left: '0',
@@ -1063,29 +1093,58 @@ export class AosCloudTerminalSidebar extends LitElement {
     }
   }
 
+  /**
+   * Invariant-keeper for the persisted row ratios: once the container height is measured, pull
+   * every active row ratio back into the usable band ({@link clampRowRatio}). Two reasons this
+   * exists as a runtime pass rather than a one-shot migration:
+   *  - Self-heals LEGACY persisted maximize-extremes (0.85/0.15 written by the pre-Option-2
+   *    maximize button) — the exact state that stranded a quad column to a single pane.
+   *  - Handles window-shrink: a ratio that was safe at the old height gets nudged in so both
+   *    panes stay ≥ MIN, instead of `hiddenRowPane` collapsing one away.
+   * Idempotent: writes only when a ratio actually changes, so it can't feed an update loop. Sole
+   * owner that corrects row ratios from the update cycle. Runs after the height measurement in the
+   * SAME `updated()` tick, so the first measured render already carries safe ratios (no 2-pane
+   * flash between measure and heal). `_restoreLayout`'s static 0.15/0.85 clamp is only a coarse
+   * first pass (no container height at connect time); this refines it height-aware.
+   */
+  private _healRowRatios(): void {
+    if (!this._isSplit || !(this._containerHeightPx > 0)) return;
+    const keys: RowKey[] = this.layoutMode === 'quad-4'
+      ? ['quadLeftRowRatio', 'quadRightRowRatio']
+      : ['splitRowRatio'];
+    let changed = false;
+    for (const key of keys) {
+      const cur = this._getRowRatio(key);
+      const safe = clampRowRatio(cur, this._containerHeightPx);
+      if (safe !== cur) {
+        this._setRowRatio(key, safe);
+        changed = true;
+      }
+    }
+    if (changed) {
+      this._persistLayout();
+      this._refreshVisibleTerminals();
+    }
+  }
+
   /** True when pane `idx` is the one currently maximized on its row-axis (discrete, not ratio-based). */
   private _isPaneMaximized(idx: number): boolean {
     return this._maxAxis[this._paneRowAxis(idx).key]?.pane === idx;
   }
 
-  /** Toggle: maximize pane `idx` vertically within its column (85/15), or restore its prior ratio. */
+  /**
+   * Toggle vertical maximize for pane `idx` within its column. Pure flag flip — the soloed-axis
+   * geometry is derived from `_maxAxis` via `hiddenRowPane`/`_isPaneFullAxis`, so we deliberately
+   * do NOT touch the row ratio (Option-2 decoupling). Restoring just clears the flag; both panes
+   * reappear at whatever real (drag/default) ratio is current. The flag is transient, so nothing
+   * to persist here.
+   */
   private _togglePaneMaximize(idx: number): void {
-    const { key, isTop } = this._paneRowAxis(idx);
-    const cur = this._maxAxis[key];
-    if (cur?.pane === idx) {
-      // Restore the ratio that was active before this pane was maximized.
-      this._setRowRatio(key, cur.prev);
-      const next = { ...this._maxAxis };
-      delete next[key];
-      this._maxAxis = next;
-    } else {
-      // Keep the original pre-maximize ratio even when switching which pane of
-      // the column is maximized, so a later restore returns to the user's value.
-      const prev = cur ? cur.prev : this._getRowRatio(key);
-      this._setRowRatio(key, isTop ? 0.85 : 0.15);
-      this._maxAxis = { ...this._maxAxis, [key]: { pane: idx, prev } };
-    }
-    this._persistLayout();
+    const { key } = this._paneRowAxis(idx);
+    const next = { ...this._maxAxis };
+    if (next[key]?.pane === idx) delete next[key];
+    else next[key] = { pane: idx };
+    this._maxAxis = next;
     this._refreshVisibleTerminals();
   }
 
@@ -1095,6 +1154,75 @@ export class AosCloudTerminalSidebar extends LitElement {
     const next = { ...this._maxAxis };
     delete next[key];
     this._maxAxis = next;
+  }
+
+  /** The two pane indices sharing a row-axis, ordered [top, bottom]. */
+  private _axisPanes(key: RowKey): [number, number] {
+    switch (key) {
+      case 'splitRowRatio': return [0, 1];
+      case 'quadLeftRowRatio': return [0, 2];
+      case 'quadRightRowRatio': return [1, 3];
+    }
+  }
+
+  /**
+   * Which pane on a row-axis (if any) must be hidden so no pane renders below a usable height.
+   * Two sources:
+   *  - an explicit maximize → solo the axis (the non-maximized pane is hidden), height-independent;
+   *  - a splitter position / restored ratio that would leave one pane shorter than MIN_ROWS.
+   * Returns null when both fit, when the container isn't measured yet, or when both would be too
+   * small (never blank the whole axis — the splitter drag clamp already prevents that in practice).
+   */
+  private _hiddenPaneOnAxis(key: RowKey): number | null {
+    const [top, bottom] = this._axisPanes(key);
+    const max = this._maxAxis[key];
+    const maximized = max ? (max.pane === top ? 'top' : 'bottom') : null;
+    const which = hiddenRowPane(this._getRowRatio(key), this._containerHeightPx, maximized);
+    return which === 'top' ? top : which === 'bottom' ? bottom : null;
+  }
+
+  /** True when pane `idx` is collapsed away on its row-axis (maximize sibling, or too small). */
+  private _isPaneHidden(idx: number): boolean {
+    if (!this._isSplit) return false;
+    return this._hiddenPaneOnAxis(this._paneRowAxis(idx).key) === idx;
+  }
+
+  /** True when pane `idx`'s row-axis sibling is hidden, so `idx` should span the full axis. */
+  private _isPaneFullAxis(idx: number): boolean {
+    if (!this._isSplit) return false;
+    const hidden = this._hiddenPaneOnAxis(this._paneRowAxis(idx).key);
+    return hidden !== null && hidden !== idx;
+  }
+
+  /**
+   * (Re)attach the ResizeObserver that tracks the split-panes container height. Idempotent:
+   * only re-observes when the observed element actually changes (layout enters/leaves split,
+   * or the container element is re-created).
+   */
+  private _syncContainerObserver(): void {
+    const container = this._isSplit
+      ? (this.querySelector('.terminal-sessions-container') as HTMLElement | null)
+      : null;
+    if (container === this._observedContainer) return;
+
+    this._containerResizeObserver?.disconnect();
+    this._containerResizeObserver = null;
+    this._observedContainer = container;
+
+    if (!container) {
+      this._containerHeightPx = 0;
+      return;
+    }
+    this._containerHeightPx = container.clientHeight;
+    this._containerResizeObserver = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const h = e.contentRect.height;
+        // Container height is fixed by the sidebar layout; hiding a pane never changes it, so
+        // updating this state cannot feed back into a resize loop. Threshold avoids sub-pixel churn.
+        if (Math.abs(h - this._containerHeightPx) >= 1) this._containerHeightPx = h;
+      }
+    });
+    this._containerResizeObserver.observe(container);
   }
 
   /** Pane index a session currently occupies in the active layout, or -1. */
@@ -1188,6 +1316,28 @@ export class AosCloudTerminalSidebar extends LitElement {
       if (proj) this._paneProjectCache[i] = proj;
     }
 
+    // 0. Restore phase: re-resolve persisted per-pane projects to live sessions. Sessions arrive
+    //    incrementally (one cloud-terminal:list-response per project), so keep retrying until each
+    //    pane's project surfaces a session. Re-seeding _paneProjectCache here heals stage 2's wipe
+    //    for still-pending panes. (A project whose sessions were all closed while away stays
+    //    pending forever — benign: the loop is cheap and the dropdown can't offer it anyway.)
+    if (this._paneRestoreProjects) {
+      let anyPending = false;
+      for (let i = 0; i < count; i++) {
+        const proj = this._paneRestoreProjects[i];
+        if (!proj) continue;
+        this._paneProjectCache[i] = proj;
+        const sid = this._newestSessionIdOfProject(proj);
+        if (sid) {
+          if (next[i] !== sid) { next[i] = sid; changed = true; }
+          this._paneRestoreProjects[i] = null;
+        } else {
+          anyPending = true;
+        }
+      }
+      if (!anyPending) this._paneRestoreProjects = null;
+    }
+
     // 1. Adopt the "+"-created session into the requesting pane once it arrives.
     if (this._pendingNewSession) {
       const { paneIndex, projectPath } = this._pendingNewSession;
@@ -1275,7 +1425,7 @@ export class AosCloudTerminalSidebar extends LitElement {
           (session) => {
             const paneIdx = this._isSplit ? this._paneIndexForSession(session.id) : -1;
             const visible = this._isSplit
-              ? paneIdx >= 0
+              ? paneIdx >= 0 && !this._isPaneHidden(paneIdx)
               : session.id === this.activeSessionId;
             const styles: Record<string, string> = visible
               ? (this._isSplit ? { display: 'flex', ...this._paneGeom(paneIdx) } : { display: 'flex' })
@@ -1316,6 +1466,8 @@ export class AosCloudTerminalSidebar extends LitElement {
           panes,
           (i) => i,
           (i) => {
+            // A collapsed pane (maximize sibling / too small) shows no header.
+            if (this._isPaneHidden(i)) return nothing;
             const projectPath = this._projectOf(i);
             const label = projectPath ? this._projectLabel(projectPath) : '';
             const badgeStyle = projectPath
@@ -1411,6 +1563,8 @@ export class AosCloudTerminalSidebar extends LitElement {
   /** Drag handles between panes: one per divider, driven by ratio CSS vars. */
   private _renderSplitters() {
     if (this.layoutMode === 'split-2') {
+      // No row splitter while one pane is collapsed to full height — reverse via the maximize button.
+      if (this._hiddenPaneOnAxis('splitRowRatio') !== null) return nothing;
       return html`<div
         class="pane-splitter horizontal"
         style=${styleMap({ left: '0', width: '100%', top: 'calc(var(--sr) * 100% - 3px)' })}
@@ -1418,22 +1572,24 @@ export class AosCloudTerminalSidebar extends LitElement {
       ></div>`;
     }
     if (this.layoutMode === 'quad-4') {
+      const showRowL = this._hiddenPaneOnAxis('quadLeftRowRatio') === null;
+      const showRowR = this._hiddenPaneOnAxis('quadRightRowRatio') === null;
       return html`
         <div
           class="pane-splitter vertical"
           style=${styleMap({ top: '0', bottom: '0', left: 'calc(var(--c) * 100% - 3px)' })}
           @pointerdown=${(e: PointerEvent) => this._startSplitterDrag(e, 'col')}
         ></div>
-        <div
+        ${showRowL ? html`<div
           class="pane-splitter horizontal"
           style=${styleMap({ left: '0', width: 'calc(var(--c) * 100% - 1.5px)', top: 'calc(var(--rl) * 100% - 3px)' })}
           @pointerdown=${(e: PointerEvent) => this._startSplitterDrag(e, 'rowL')}
-        ></div>
-        <div
+        ></div>` : nothing}
+        ${showRowR ? html`<div
           class="pane-splitter horizontal"
           style=${styleMap({ left: 'calc(var(--c) * 100% + 1.5px)', width: 'calc((1 - var(--c)) * 100% - 1.5px)', top: 'calc(var(--rr) * 100% - 3px)' })}
           @pointerdown=${(e: PointerEvent) => this._startSplitterDrag(e, 'rowR')}
-        ></div>
+        ></div>` : nothing}
       `;
     }
     return nothing;
@@ -1456,7 +1612,12 @@ export class AosCloudTerminalSidebar extends LitElement {
       const raw = kind === 'col'
         ? (ev.clientX - rect.left) / rect.width
         : (ev.clientY - rect.top) / rect.height;
-      const ratio = Math.min(0.85, Math.max(0.15, raw));
+      // Columns clamp to the static band; rows keep BOTH panes at least MIN_ROWS tall so a drag
+      // can never create a sub-usable pane (which would flood Claude Code with SIGWINCH redraws).
+      // `clampRowRatio` is the single source of the row safe-band, shared with `_healRowRatios`.
+      const ratio = kind === 'col'
+        ? Math.min(0.85, Math.max(0.15, raw))
+        : clampRowRatio(raw, rect.height);
       this._dragRatio = ratio;
       container.style.setProperty(varName, String(ratio));
     };
@@ -1588,15 +1749,16 @@ export class AosCloudTerminalSidebar extends LitElement {
     this._refreshVisibleTerminals();
   }
 
-  /** Refit every currently-visible terminal after a layout reflow (double rAF). */
+  /**
+   * Refit every currently-visible terminal after a layout change. Each terminal's own
+   * refreshTerminal() schedules a coalesced, settled refit (double-rAF + cancel-and-reschedule),
+   * so the sidebar must NOT add its own rAF wrapper — that just stacked latency (4 frames) with
+   * no benefit. The per-terminal scheduler already lands after Lit's flush and forces layout on read.
+   */
   private _refreshVisibleTerminals() {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        this.querySelectorAll('aos-terminal-session.session-panel').forEach((el) => {
-          const node = el as AosTerminalSession & HTMLElement;
-          if (node.style.display !== 'none') node.refreshTerminal();
-        });
-      });
+    this.querySelectorAll('aos-terminal-session.session-panel').forEach((el) => {
+      const node = el as AosTerminalSession & HTMLElement;
+      if (node.style.display !== 'none') node.refreshTerminal();
     });
   }
 
@@ -1711,6 +1873,12 @@ export class AosCloudTerminalSidebar extends LitElement {
   }
 
   private _assignPaneSession(paneIndex: number, sessionId: string | null) {
+    // A manual pane change wins over a pending restore — drop this pane's restore intent so a
+    // late list-response can't override the user's choice in _reconcilePanes step 0.
+    if (this._paneRestoreProjects) {
+      this._paneRestoreProjects[paneIndex] = null;
+      if (!this._paneRestoreProjects.some(Boolean)) this._paneRestoreProjects = null;
+    }
     const next = this.paneSessionIds.slice();
     // Move-semantics: a session lives in at most one pane (avoids duplicate xterm on one
     // backend session, which would fight over cloud-terminal:resize).
@@ -1750,6 +1918,11 @@ export class AosCloudTerminalSidebar extends LitElement {
     try {
       localStorage.setItem('cloud-terminal-layout-mode', this.layoutMode);
       localStorage.setItem('cloud-terminal-pane-sessions', JSON.stringify(this.paneSessionIds));
+      // Per-pane project path — the stable anchor for restore (session ids are ephemeral).
+      localStorage.setItem(
+        'cloud-terminal-pane-projects',
+        JSON.stringify(this.paneSessionIds.map((_, i) => this._projectOf(i)))
+      );
       localStorage.setItem('cloud-terminal-split-ratios', JSON.stringify({
         sr: this.splitRowRatio,
         c: this.quadColRatio,
@@ -1780,6 +1953,24 @@ export class AosCloudTerminalSidebar extends LitElement {
         const norm = this.paneSessionIds.slice(0, count);
         while (norm.length < count) norm.push(null);
         this.paneSessionIds = norm;
+
+        // Per-pane projects: the persisted session ids above are stale after reload (regenerate as
+        // `restored-…`); the project path is the stable anchor. Stash it as restore intent and seed
+        // the close-fallback cache so _reconcilePanes can re-resolve each pane to a live session.
+        const projRaw = localStorage.getItem('cloud-terminal-pane-projects');
+        if (projRaw) {
+          const parsedProj: unknown = JSON.parse(projRaw);
+          if (Array.isArray(parsedProj)) {
+            const projs = parsedProj
+              .map((x) => (typeof x === 'string' ? x : null))
+              .slice(0, count);
+            while (projs.length < count) projs.push(null);
+            if (projs.some(Boolean)) {
+              this._paneRestoreProjects = projs;
+              this._paneProjectCache = projs.slice();
+            }
+          }
+        }
       } else {
         this.paneSessionIds = [];
       }
@@ -2194,6 +2385,17 @@ export class AosCloudTerminalSidebar extends LitElement {
         setTimeout(() => doRefresh(), 400);
       }
     }
+
+    // Keep the container-height measurement (drives the too-small-pane hide) attached to the
+    // current split-panes container. Idempotent — no-op when the element hasn't changed.
+    this._syncContainerObserver();
+
+    // Correct any unsafe row ratios once the height is known. Called unconditionally (NOT gated on
+    // a `_containerHeightPx` change): single→quad-4 keeps the container height constant, so a
+    // change-gate would never heal legacy 0.85 ratios on that transition. Placed right after the
+    // measurement above so a first measure + heal batch into one render (no 2-pane flash), and the
+    // internal idempotency guard makes the every-update call a cheap no-op when ratios are safe.
+    this._healRowRatios();
   }
 
   override connectedCallback() {
@@ -2232,6 +2434,9 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
+    this._containerResizeObserver?.disconnect();
+    this._containerResizeObserver = null;
+    this._observedContainer = null;
     document.body.style.overflow = '';
     document.documentElement.style.setProperty('--terminal-open-width', '0px');
     gateway.off('model.providers.list', this.boundHandleProvidersListResponse);

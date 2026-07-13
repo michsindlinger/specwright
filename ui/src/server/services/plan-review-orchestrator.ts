@@ -6,6 +6,7 @@ import { aggregateFindings, formatInject } from './finding-aggregator.js';
 import { getReviewPrompt } from '../general-config.js';
 import { getDefaultReviewers } from '../model-config.js';
 import { CloudTerminalSessionId } from '../../shared/types/cloud-terminal.protocol.js';
+import type { FallbackReason } from '../../shared/types/plan-review.protocol.js';
 
 export interface ReviewerConfig {
   providerId: string;
@@ -55,7 +56,7 @@ function buildInjectText(
  * Emits (as EventEmitter):
  *   'plan-review:started'          (sessionId, source, reviewerCount)
  *   'plan-review:reviewer.result'  (sessionId, providerId, status, output?, error?)
- *   'plan-review:aggregated'       (sessionId, aggregatedText)
+ *   'plan-review:aggregated'       (sessionId, aggregatedText, fallbackReason?)
  *   'plan-review:injected'         (sessionId)
  *   'plan-review:error'            (sessionId, message)
  *
@@ -246,16 +247,24 @@ export class PlanReviewOrchestrator extends EventEmitter {
       }));
 
       let aggregatedText: string;
+      let fallbackReason: FallbackReason | undefined;
       if (mapped.length === 1) {
         aggregatedText = buildInjectText(mapped);
+        fallbackReason = 'single-reviewer';
       } else {
-        const { clusters, fallbackUsed } = await aggregateFindings(mapped, projectPath);
-        aggregatedText = fallbackUsed
-          ? buildInjectText(mapped)
-          : formatInject(clusters, mapped, reviewers.length);
+        const { clusters, fallbackUsed, fallbackReason: reason } = await aggregateFindings(
+          mapped,
+          projectPath
+        );
+        if (fallbackUsed) {
+          aggregatedText = buildInjectText(mapped);
+          fallbackReason = reason;
+        } else {
+          aggregatedText = formatInject(clusters, mapped, reviewers.length);
+        }
       }
 
-      this.emit('plan-review:aggregated', sessionId, aggregatedText);
+      this.emit('plan-review:aggregated', sessionId, aggregatedText, fallbackReason);
 
       await this.cloudTerminalManager.waitForIdle(sessionId, 500);
       const written = this.cloudTerminalManager.sendInput(sessionId, aggregatedText + '\n');

@@ -7,6 +7,7 @@ import type { MessageHandler } from '../gateway';
 import { themeService, type ResolvedTheme } from '../services/theme.service.js';
 import { CLOUD_TERMINAL_CONFIG } from '../../../src/shared/types/cloud-terminal.protocol.js';
 import type { PromptTemplate } from '../../../src/shared/types/prompt-templates.protocol.js';
+import { stripTerminalQueries } from './terminal/replay-sanitize.js';
 import '@xterm/xterm/css/xterm.css';
 
 const DARK_THEME = {
@@ -137,8 +138,17 @@ export class AosTerminal extends LitElement {
   /** Guard so concurrent Cmd+V presses don't fire multiple uploads */
   private _pasteInFlight = false;
   private boundThemeChangeHandler = (theme: ResolvedTheme) => this.onThemeChanged(theme);
-  /** Guard to prevent multiple concurrent refreshTerminal() calls */
-  private _refreshInProgress = false;
+  /** Pending coalesced-refit rAF handle (number | null so the cancel guard typechecks). */
+  private _refitRaf: number | null = null;
+  /**
+   * Last cols/rows actually sent to the backend PTY. Lets _performRefit skip a same-size
+   * resize: a redundant SIGWINCH makes Claude Code (Ink-based TUI on the normal buffer)
+   * mis-erase and leave ghost frames in the scrollback. 0 = never sent → the first refit
+   * always syncs the real grid (the PTY spawns at a default 80x24). Reset on session change /
+   * reconnect / dispose so a new session re-syncs.
+   */
+  private _lastSentCols = 0;
+  private _lastSentRows = 0;
 
   // Touch-scroll bridge: xterm.js only scrolls on wheel events, and its scrollable
   // .xterm-viewport sits behind the .xterm-screen, so touch drags never reach it.
@@ -218,60 +228,97 @@ export class AosTerminal extends LitElement {
   }
 
   /**
-   * Refresh terminal rendering after becoming visible again.
+   * Refresh terminal rendering after a layout/visibility change.
    *
-   * IMPORTANT: This method only calls fitAddon.fit() to recalculate
-   * dimensions and trigger a re-render. It does NOT reset the terminal
-   * or request a buffer replay from the server. The terminal's internal
-   * buffer is still intact after display:none → display:block transitions -
-   * xterm.js just needs to re-render the canvas at the correct size.
+   * Schedules a coalesced refit (fit + conditional repaint + one PTY resize) via
+   * {@link _scheduleRefit}. Multiple calls in a burst collapse into a single settled
+   * refit (last-call-wins) so racing layout changes never thrash the terminal.
    *
-   * Buffer replay (reset + re-fetch from server) should only be used for
-   * actual reconnection scenarios (WebSocket disconnect/reconnect), not
-   * for simple visibility toggles.
+   * IMPORTANT: This does NOT reset the terminal or request a buffer replay. The
+   * internal buffer survives display:none → display:block transitions - xterm.js
+   * just needs to re-render the canvas at the correct size. Buffer replay (reset +
+   * re-fetch) is only for actual reconnection scenarios (WebSocket disconnect/reconnect).
    */
   public refreshTerminal(): void {
+    this._scheduleRefit();
+  }
+
+  /**
+   * Coalesce all refit triggers (ResizeObserver, refreshTerminal, deferred-init) into
+   * one settled fit per burst. Cancel-and-reschedule guarantees the last call wins and
+   * none is dropped.
+   */
+  private _scheduleRefit(): void {
+    // Existence guard: terminal & fitAddon are null before _doInitializeTerminal and
+    // after cleanupTerminal — so no refit is ever scheduled outside a live terminal.
     if (!this.fitAddon || !this.terminal) return;
-    if (this._refreshInProgress) return;
-    this._refreshInProgress = true;
-
-    // Double requestAnimationFrame: first rAF schedules after current frame,
-    // second rAF runs after the browser has completed layout reflow.
-    // A single rAF is not enough after visibility changes (display:none → block).
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        this._refreshInProgress = false;
-        if (!this.fitAddon || !this.terminal || !this.terminalContainer) return;
-
-        // Skip if container still has zero dimensions (not yet visible)
-        if (this.terminalContainer.offsetWidth === 0 || this.terminalContainer.offsetHeight === 0) {
-          return;
-        }
-
-        // Just refit - xterm.js re-renders its internal buffer at the new size.
-        // Do NOT call reset() or request buffer replay here, as that destroys
-        // the correct internal state and replaces it with a server-side buffer
-        // that may contain absolute cursor positioning escape sequences.
-        this.fitAddon.fit();
-
-        // Send resize to backend PTY so new output is correctly formatted.
-        if (this.terminalSessionId) {
-          const cols = this.terminal.cols;
-          const rows = this.terminal.rows;
-          if (this.cloudMode) {
-            gateway.send({
-              type: 'cloud-terminal:resize',
-              sessionId: this.terminalSessionId,
-              cols,
-              rows,
-              timestamp: new Date().toISOString(),
-            });
-          } else {
-            gateway.sendTerminalResize(this.terminalSessionId, cols, rows);
-          }
-        }
+    if (this._refitRaf !== null) cancelAnimationFrame(this._refitRaf);
+    // Double-rAF: the HTML event loop drains microtasks (Lit flushes its render via a
+    // microtask) BEFORE rAF callbacks, and reading offsetWidth in _performRefit forces a
+    // synchronous layout — so by the inner frame the new geometry is applied and measurable.
+    // The second frame covers display:none → block, where one frame is not enough. _refitRaf
+    // is reassigned to the inner handle so cleanupTerminal can cancel whichever frame is pending.
+    this._refitRaf = requestAnimationFrame(() => {
+      this._refitRaf = requestAnimationFrame(() => {
+        this._refitRaf = null;
+        this._performRefit();
       });
     });
+  }
+
+  private _performRefit(): void {
+    const term = this.terminal;
+    const fit = this.fitAddon;
+    const container = this.terminalContainer;
+    if (!term || !fit || !container) return; // disposed between schedule and fire
+    // Skip when hidden (display:none gives zero dimensions) — avoids a bogus PTY resize.
+    if (container.offsetWidth === 0 || container.offsetHeight === 0) return;
+
+    const prevCols = term.cols;
+    const prevRows = term.rows;
+    try {
+      // addon-fit 0.11: resizes + clears ONLY if integer cols/rows change.
+      fit.fit();
+    } catch {
+      // Degenerate container (sub-pixel / transient 0-height) — skip this burst; the
+      // ResizeObserver re-fires once the layout settles.
+      return;
+    }
+
+    const gridChanged = term.cols !== prevCols || term.rows !== prevRows;
+
+    // When fit() was a no-op (dims unchanged), force one repaint — covers the
+    // display:none → block-returns-to-same-grid case where the canvas was never painted while
+    // hidden (fit() already clears+repaints on a real resize). rows>0 avoids refresh(0, -1).
+    if (!gridChanged && term.rows > 0) {
+      term.refresh(0, term.rows - 1);
+    }
+
+    // Sync the grid to the backend PTY ONLY when it differs from what we last sent. The first
+    // refit (last-sent 0/0) always syncs; same-size refits are skipped. This is deliberate, not
+    // an optimization: every SIGWINCH makes Claude Code (Ink, normal buffer) recompute its
+    // erase-line count against the new width and leave ghost frames in the scrollback, so a
+    // redundant same-size resize would corrupt the view for no reason.
+    const cols = term.cols;
+    const rows = term.rows;
+    if (this.terminalSessionId && (cols !== this._lastSentCols || rows !== this._lastSentRows)) {
+      this._lastSentCols = cols;
+      this._lastSentRows = rows;
+      if (this.cloudMode) {
+        gateway.send({
+          type: 'cloud-terminal:resize',
+          sessionId: this.terminalSessionId,
+          cols,
+          rows,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        gateway.sendTerminalResize(this.terminalSessionId, cols, rows);
+      }
+      // The app redraws its UI at the bottom on SIGWINCH; follow it so the viewport shows the
+      // live (correct) frame instead of staying parked on stale ghost frames up in the scrollback.
+      term.scrollToBottom();
+    }
   }
 
   private initializeTerminal(): void {
@@ -487,17 +534,11 @@ export class AosTerminal extends LitElement {
     };
     gateway.on('cloud-terminal:closed', this.terminalExitHandler);
 
-    // Handle buffer response for reconnection / refresh.
-    // Uses reset() to fully clear terminal state (cursor position, scrollback,
-    // attributes) before writing the buffer. clear() only removes scrollback
-    // and leaves the cursor where it was, causing content to accumulate/shift.
+    // Handle buffer response for reconnection / refresh. Routed through
+    // _writeReplayBuffer so the historical stream is sanitized before it hits xterm.
     this.terminalBufferResponseHandler = (message) => {
       if (message.sessionId === this.terminalSessionId && this.terminal) {
-        const buffer = message.buffer as string;
-        if (buffer && buffer.length > 0) {
-          this.terminal.reset();
-          this.terminal.write(buffer);
-        }
+        this._writeReplayBuffer((message.buffer as string) || '');
       }
     };
     gateway.on('cloud-terminal:buffer-response', this.terminalBufferResponseHandler);
@@ -513,6 +554,11 @@ export class AosTerminal extends LitElement {
           sessionId: this.terminalSessionId,
           timestamp: new Date().toISOString(),
         });
+        // The reconnected PTY may be at a different grid; force a re-sync (sessionId is unchanged
+        // on resume, so updated() does not fire here).
+        this._lastSentCols = 0;
+        this._lastSentRows = 0;
+        this._scheduleRefit();
       }
     };
     gateway.on('cloud-terminal:resumed', this.terminalResumedHandler);
@@ -646,14 +692,30 @@ export class AosTerminal extends LitElement {
 
     this.terminalBufferResponseHandler = (message) => {
       if (message.executionId === this.terminalSessionId && this.terminal) {
-        const buffer = message.buffer as string[];
-        if (buffer && buffer.length > 0) {
-          this.terminal.reset();
-          this.terminal.write(buffer.join('\n'));
-        }
+        // join('') reconstructs the exact PTY stream — the buffer holds raw chunks
+        // (TerminalManager no longer splits on '\n'); join('\n') would inject spurious newlines.
+        const buffer = message.buffer as string[] | undefined;
+        this._writeReplayBuffer(buffer ? buffer.join('') : '');
       }
     };
     gateway.on('terminal.buffer.response', this.terminalBufferResponseHandler);
+  }
+
+  /**
+   * Single choke-point for replaying a captured PTY buffer into xterm.
+   *
+   * reset() fully clears terminal state (cursor, scrollback, attributes) so replayed
+   * content does not accumulate/shift. stripTerminalQueries() removes the historical
+   * query-REQUEST sequences from the stream: xterm would otherwise auto-answer them via
+   * onData and our onData handler would forward those synthetic answers to the LIVE PTY
+   * as fake user input (the "auto-/clear on wake" bug). Live (non-replay) data does NOT
+   * pass through here, so the genuine startup handshake is unaffected. Stateless by
+   * design — no guard/counter that could get stuck and block real input.
+   */
+  private _writeReplayBuffer(raw: string): void {
+    if (!this.terminal || !raw) return;
+    this.terminal.reset();
+    this.terminal.write(stripTerminalQueries(raw));
   }
 
   /**
@@ -1047,29 +1109,14 @@ export class AosTerminal extends LitElement {
         this.dispatchEvent(new CustomEvent('terminal-ready', {
           detail: { terminal: this.terminal }
         }));
+        // Emit the initial grid to the PTY: the one-time fit() in _doInitializeTerminal sends
+        // no resize, and no further RO callback is guaranteed once the size is stable.
+        this._scheduleRefit();
         return;
       }
 
-      if (this.fitAddon && this.terminal) {
-        this.fitAddon.fit();
-
-        // Send resize event to backend
-        if (this.terminalSessionId) {
-          const cols = this.terminal.cols;
-          const rows = this.terminal.rows;
-          if (this.cloudMode) {
-            gateway.send({
-              type: 'cloud-terminal:resize',
-              sessionId: this.terminalSessionId,
-              cols,
-              rows,
-              timestamp: new Date().toISOString(),
-            });
-          } else {
-            gateway.sendTerminalResize(this.terminalSessionId, cols, rows);
-          }
-        }
-      }
+      // Coalesce with any concurrent refreshTerminal() into a single settled refit.
+      this._scheduleRefit();
     });
 
     this.resizeObserver.observe(this.terminalContainer);
@@ -1077,6 +1124,14 @@ export class AosTerminal extends LitElement {
 
   override updated(changedProperties: Map<string, unknown>): void {
     super.updated(changedProperties);
+
+    // A new backend session must re-sync its grid: forget the last-sent dims so the next refit
+    // re-emits the resize even if the integer grid happens to match. Covers both modes; resetting
+    // two numbers is harmless even before the terminal exists.
+    if (changedProperties.has('terminalSessionId')) {
+      this._lastSentCols = 0;
+      this._lastSentRows = 0;
+    }
 
     // Handle terminalSessionId changes (e.g., after page reload) - workflow mode only
     if (changedProperties.has('terminalSessionId') && !this.cloudMode) {
@@ -1249,6 +1304,16 @@ export class AosTerminal extends LitElement {
     this._scrollbarThumb = null;
     this._scrollbarDragging = false;
     this._xtermViewport = null;
+
+    // Cancel any pending coalesced refit before tearing down the observer, so a frame
+    // scheduled pre-disconnect cannot fire against a disposed terminal after a re-mount.
+    if (this._refitRaf !== null) {
+      cancelAnimationFrame(this._refitRaf);
+      this._refitRaf = null;
+    }
+    // Forget the last-sent grid so a re-mounted/new session re-syncs from scratch.
+    this._lastSentCols = 0;
+    this._lastSentRows = 0;
 
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();

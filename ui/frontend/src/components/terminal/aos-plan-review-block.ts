@@ -13,6 +13,17 @@ interface ReviewerBlock {
 
 type ReviewState = 'idle' | 'running' | 'done' | 'error';
 
+/** Human-readable labels for the aggregator fallback reasons (see FallbackReason
+ *  in plan-review.protocol.ts). Kept local — the frontend/backend type boundary
+ *  is duplicated by convention in this codebase (cf. ReviewerConfig). */
+const FALLBACK_LABELS: Record<string, string> = {
+  'single-reviewer': 'only one reviewer succeeded',
+  'llm-error': 'aggregator model call failed',
+  'empty-output': 'aggregator returned nothing',
+  'parse-error': 'model returned invalid JSON',
+  'schema-invalid': "model output didn't match the expected structure",
+};
+
 @customElement('aos-plan-review-block')
 export class AosPlanReviewBlock extends LitElement {
   @property({ type: String }) sessionId = '';
@@ -24,6 +35,7 @@ export class AosPlanReviewBlock extends LitElement {
   @state() private source: 'auto' | 'manual' = 'auto';
   @state() private expanded = true;
   @state() private expandedReviewers: Set<string> = new Set();
+  @state() private clusteringFallback: string | null = null;
 
   private boundHandlers: Map<string, (msg: WebSocketMessage) => void> = new Map();
 
@@ -130,6 +142,13 @@ export class AosPlanReviewBlock extends LitElement {
       font-size: 11px;
     }
 
+    .fallback-line {
+      padding: 4px 0;
+      color: var(--text-color-secondary, #a0a0a0);
+      font-size: 11px;
+      font-style: italic;
+    }
+
     .reviewer-block {
       border: 1px solid var(--border-color, #404040);
       border-radius: 4px;
@@ -187,6 +206,7 @@ export class AosPlanReviewBlock extends LitElement {
     const handlers: Array<[string, (msg: WebSocketMessage) => void]> = [
       ['plan-review:started', (msg) => this.onStarted(msg)],
       ['plan-review:reviewer.result', (msg) => this.onReviewerResult(msg)],
+      ['plan-review:aggregated', (msg) => this.onAggregated(msg)],
       ['plan-review:injected', (msg) => this.onInjected(msg)],
       ['plan-review:error', (msg) => this.onError(msg)],
     ];
@@ -216,6 +236,12 @@ export class AosPlanReviewBlock extends LitElement {
     this.reviewState = 'running';
     this.expanded = true;
     this.expandedReviewers = new Set();
+    this.clusteringFallback = null;
+  }
+
+  private onAggregated(msg: WebSocketMessage): void {
+    if (!this.matchesSession(msg)) return;
+    this.clusteringFallback = (msg.fallbackReason as string | undefined) ?? null;
   }
 
   private onReviewerResult(msg: WebSocketMessage): void {
@@ -324,6 +350,9 @@ export class AosPlanReviewBlock extends LitElement {
           <div class="review-body">
             ${this.errorMessage
               ? html`<div class="error-line">${this.errorMessage}</div>`
+              : nothing}
+            ${this.clusteringFallback
+              ? html`<div class="fallback-line">Consensus clustering unavailable (${FALLBACK_LABELS[this.clusteringFallback] ?? this.clusteringFallback}) — showing individual reviews</div>`
               : nothing}
             ${[...this.reviewers.values()].map((b) => this.renderReviewerBlock(b))}
           </div>
