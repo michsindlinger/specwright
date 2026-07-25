@@ -38,3 +38,8 @@ coverage/
 
 # One-off recovery scripts
 tmp/
+# Specwright: runtime state (MCP-routed, do not commit)
+# (kanban + backlog files are written live by the kanban MCP server)
+specwright/specs/*/kanban.json
+specwright/specs/*/kanban-board.md
+specwright/backlog/backlog-index.json
