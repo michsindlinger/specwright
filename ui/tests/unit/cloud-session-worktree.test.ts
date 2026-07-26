@@ -164,6 +164,166 @@ describe('createCloudSessionWorktree / removeCloudSessionWorktree', () => {
   });
 });
 
+// ── Claude project config seeding ────────────────────────────────────────────
+
+/**
+ * Builds the `.claude/` layout of a real project: allowlisted config next to
+ * the runtime junk that must never be duplicated into a throwaway worktree.
+ */
+async function writeClaudeConfig(projectPath: string): Promise<void> {
+  const c = join(projectPath, '.claude');
+  await fs.mkdir(join(c, 'agents'), { recursive: true });
+  await fs.mkdir(join(c, 'commands', 'specwright'), { recursive: true });
+  await fs.mkdir(join(c, 'skills', 'my-skill'), { recursive: true });
+  await fs.mkdir(join(c, 'worktrees', 'junk'), { recursive: true });
+  await fs.mkdir(join(c, 'backup'), { recursive: true });
+  await fs.writeFile(join(c, 'agents', 'tech-lead-planner.md'), 'agent');
+  await fs.writeFile(join(c, 'agents', '.DS_Store'), 'finder junk');
+  await fs.writeFile(join(c, 'commands', 'specwright', 'add-bug.md'), 'cmd');
+  await fs.writeFile(join(c, 'skills', 'my-skill', 'SKILL.md'), 'skill');
+  await fs.writeFile(join(c, 'settings.local.json'), '{"permissions":{"allow":[]}}');
+  await fs.writeFile(join(c, 'worktrees', 'junk', 'big.bin'), 'x'.repeat(4096));
+  await fs.writeFile(join(c, 'backup', 'old.md'), 'old');
+  await fs.writeFile(join(c, 'scheduled_tasks.lock'), 'lock');
+}
+
+/** Repo-local exclude — invisible in the repo, exactly the reported setup. */
+async function excludeClaudeDir(projectPath: string): Promise<void> {
+  await fs.appendFile(join(projectPath, '.git', 'info', 'exclude'), '\n/.claude/\n');
+}
+
+describe('Claude config seeding into a session worktree', () => {
+  let repo: RepoFixture;
+  beforeEach(async () => {
+    repo = await mkRepo('main');
+    await excludeClaudeDir(repo.projectPath);
+    await writeClaudeConfig(repo.projectPath);
+  });
+  afterEach(async () => { await cleanup(repo); });
+
+  it('seeds agents, commands, skills and settings that git never saw', async () => {
+    const { worktreePath, seededClaudeConfig } =
+      await createCloudSessionWorktree(repo.projectPath, 'seed-1', 'main');
+
+    expect(existsSync(join(worktreePath, '.claude/agents/tech-lead-planner.md'))).toBe(true);
+    expect(existsSync(join(worktreePath, '.claude/commands/specwright/add-bug.md'))).toBe(true);
+    expect(existsSync(join(worktreePath, '.claude/skills/my-skill/SKILL.md'))).toBe(true);
+    expect(existsSync(join(worktreePath, '.claude/settings.local.json'))).toBe(true);
+    expect(seededClaudeConfig).toContain('.claude/agents/tech-lead-planner.md');
+    expect(seededClaudeConfig).toContain('.claude/settings.local.json');
+  });
+
+  it('never copies runtime state outside the allowlist', async () => {
+    const { worktreePath, seededClaudeConfig } =
+      await createCloudSessionWorktree(repo.projectPath, 'seed-2', 'main');
+
+    expect(existsSync(join(worktreePath, '.claude/worktrees'))).toBe(false);
+    expect(existsSync(join(worktreePath, '.claude/backup'))).toBe(false);
+    expect(existsSync(join(worktreePath, '.claude/scheduled_tasks.lock'))).toBe(false);
+    expect(seededClaudeConfig.some((p) => p.includes('worktrees'))).toBe(false);
+    expect(seededClaudeConfig.some((p) => p.includes('backup'))).toBe(false);
+  });
+
+  it('skips .DS_Store', async () => {
+    const { worktreePath } = await createCloudSessionWorktree(repo.projectPath, 'seed-3', 'main');
+    expect(existsSync(join(worktreePath, '.claude/agents/.DS_Store'))).toBe(false);
+  });
+
+  it('does not follow symlinks out of the allowlist', async () => {
+    const outside = join(repo.base, 'outside.md');
+    await fs.writeFile(outside, 'secret');
+    await fs.symlink(outside, join(repo.projectPath, '.claude/agents/link.md'));
+
+    const { worktreePath, seededClaudeConfig } =
+      await createCloudSessionWorktree(repo.projectPath, 'seed-4', 'main');
+
+    expect(existsSync(join(worktreePath, '.claude/agents/link.md'))).toBe(false);
+    expect(seededClaudeConfig).not.toContain('.claude/agents/link.md');
+  });
+
+  it('is a no-op when the project has no .claude dir', async () => {
+    await fs.rm(join(repo.projectPath, '.claude'), { recursive: true, force: true });
+    const { worktreePath, seededClaudeConfig } =
+      await createCloudSessionWorktree(repo.projectPath, 'seed-5', 'main');
+    expect(seededClaudeConfig).toEqual([]);
+    expect(existsSync(worktreePath)).toBe(true);
+  });
+
+  it('leaves files the checkout already provided untouched', async () => {
+    // Commit one agent despite the exclude (force-add), then diverge the
+    // working copy in main. The worktree must keep the committed content.
+    execSync('git add -f .claude/agents/tech-lead-planner.md', { cwd: repo.projectPath });
+    execSync('git commit -q -m "track one agent"', { cwd: repo.projectPath });
+    await fs.writeFile(
+      join(repo.projectPath, '.claude/agents/tech-lead-planner.md'),
+      'LOCALLY EDITED'
+    );
+
+    const { worktreePath, seededClaudeConfig } =
+      await createCloudSessionWorktree(repo.projectPath, 'seed-6', 'main');
+
+    const content = await fs.readFile(
+      join(worktreePath, '.claude/agents/tech-lead-planner.md'), 'utf-8'
+    );
+    expect(content).toBe('agent'); // committed version, not the main-repo edit
+    expect(seededClaudeConfig).not.toContain('.claude/agents/tech-lead-planner.md');
+  });
+});
+
+describe('seeded Claude config at teardown (project versions .claude/)', () => {
+  let repo: RepoFixture;
+
+  // No exclude here: `.claude/` is versioned, so a seeded copy shows up as an
+  // untracked file. Without the teardown removal every session worktree would
+  // read as dirty and never be reclaimed.
+  beforeEach(async () => {
+    repo = await mkRepo('main');
+    await fs.mkdir(join(repo.projectPath, '.claude/agents'), { recursive: true });
+    await fs.writeFile(join(repo.projectPath, '.claude/agents/committed.md'), 'committed');
+    execSync('git add . && git commit -q -m "track claude config"', { cwd: repo.projectPath });
+    // Local-only agent — the file that actually needs seeding.
+    await fs.writeFile(join(repo.projectPath, '.claude/agents/local-only.md'), 'local');
+  });
+  afterEach(async () => { await cleanup(repo); });
+
+  it('removes unchanged seeds so the worktree is reclaimed', async () => {
+    const { worktreePath, branchName, seededClaudeConfig } =
+      await createCloudSessionWorktree(repo.projectPath, 'td-1', 'main');
+    expect(seededClaudeConfig).toEqual(['.claude/agents/local-only.md']);
+    expect(existsSync(join(worktreePath, '.claude/agents/local-only.md'))).toBe(true);
+
+    const res = await removeCloudSessionWorktree(
+      repo.projectPath, worktreePath, branchName, seededClaudeConfig
+    );
+    expect(res.removed).toBe(true);
+    expect(existsSync(worktreePath)).toBe(false);
+  });
+
+  it('keeps a seed edited during the session → worktree stays dirty', async () => {
+    const { worktreePath, branchName, seededClaudeConfig } =
+      await createCloudSessionWorktree(repo.projectPath, 'td-2', 'main');
+    await fs.writeFile(join(worktreePath, '.claude/agents/local-only.md'), 'EDITED IN SESSION');
+
+    const res = await removeCloudSessionWorktree(
+      repo.projectPath, worktreePath, branchName, seededClaudeConfig
+    );
+    expect(res.removed).toBe(false);
+    expect(res.keptReason).toBe('dirty');
+    expect(
+      await fs.readFile(join(worktreePath, '.claude/agents/local-only.md'), 'utf-8')
+    ).toBe('EDITED IN SESSION');
+  });
+
+  it('without the seed list, teardown deletes nothing (guards the default arg)', async () => {
+    const { worktreePath, branchName } =
+      await createCloudSessionWorktree(repo.projectPath, 'td-3', 'main');
+    const res = await removeCloudSessionWorktree(repo.projectPath, worktreePath, branchName);
+    expect(res.removed).toBe(false);
+    expect(res.keptReason).toBe('dirty'); // untracked seed still there
+    expect(existsSync(join(worktreePath, '.claude/agents/local-only.md'))).toBe(true);
+  });
+});
+
 // ── Manager wiring ───────────────────────────────────────────────────────────
 
 class FakeTerminalManager extends EventEmitter {

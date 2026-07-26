@@ -512,8 +512,9 @@ export class CloudTerminalManager extends EventEmitter {
     } catch (error) {
       // Clean up on failure — including a worktree created earlier in this call.
       if (session.worktreeCleanup) {
-        const { worktreePath, branchName, mainProjectPath } = session.worktreeCleanup;
-        void removeCloudSessionWorktree(mainProjectPath, worktreePath, branchName)
+        const { worktreePath, branchName, mainProjectPath, seededClaudeConfig } =
+          session.worktreeCleanup;
+        void removeCloudSessionWorktree(mainProjectPath, worktreePath, branchName, seededClaudeConfig)
           .catch((err) => console.warn(
             `[CloudTerminalManager] failed to roll back worktree for ${sessionId}:`, err,
           ));
@@ -590,9 +591,10 @@ export class CloudTerminalManager extends EventEmitter {
       return Promise.resolve();
     }
     session.worktreeDisposed = true;
-    const { worktreePath, branchName, mainProjectPath } = session.worktreeCleanup;
+    const { worktreePath, branchName, mainProjectPath, seededClaudeConfig } =
+      session.worktreeCleanup;
     const sessionId = session.sessionId;
-    return removeCloudSessionWorktree(mainProjectPath, worktreePath, branchName)
+    return removeCloudSessionWorktree(mainProjectPath, worktreePath, branchName, seededClaudeConfig)
       .then((result) => {
         if (result.keptReason === 'dirty') {
           this.emit(

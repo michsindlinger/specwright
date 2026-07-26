@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.34.1 - 2026-07-26
+
+### Behoben
+- **Session-Worktrees verlieren nicht mehr die Projekt-Agents.** Ein frischer Worktree wird von `git worktree add` befüllt und enthält daher ausschließlich *eingecheckte* Dateien. Viele Projekte halten ihre Claude-Konfiguration bewusst aus der Versionierung heraus — per `.gitignore` oder, unsichtbar im Repo, per `/.claude/` in `.git/info/exclude`. In solchen Projekten fehlten in jeder Worktree-Session die Projekt-Agents, Slash-Commands, Skills und die Permission-Allowlist. Gemessener Fall: 13 von 19 Agents waren da (die vor dem Exclude eingecheckten), 6 fehlten, dazu ein Skill und `settings.local.json`.
+- **Fix:** `createCloudSessionWorktree` seedet jetzt zusätzlich zu `.mcp.json` auch `.claude/agents/`, `.claude/commands/`, `.claude/skills/` und `.claude/settings.local.json` (neue Helfer `ensureClaudeConfigInWorktree` / `removeSeededClaudeConfig` in `worktree-story.ts`). `.mcp.json` hatte exakt dasselbe Problem und wird aus exakt demselben Grund seit jeher kopiert — der Rest derselben Kategorie war schlicht vergessen.
+- **Strikte Allowlist statt Blocklist.** `.claude/` enthält auch Runtime-State und Caches, die in einem Wegwerf-Worktree nichts verloren haben (`worktrees/` allein erreicht zweistellige MB, dazu `backup/`, `checkpoints/`, `mailbox/`, `scheduled_tasks.*`, `agent-registry.json`). Ein neues Junk-Verzeichnis upstream ist damit ein No-op statt einer stillen Regression. Gemessen am Referenzprojekt: 1,1 MB pro Session statt 58 MB. `.DS_Store` wird übersprungen, Symlinks werden nie verfolgt — ein Link in `.claude/` kann aus dem Projekt herauszeigen.
+- **Seed-if-missing, never overwrite** — dieselbe Semantik wie `ensureMcpConfigInWorktree`, aber pro *Datei* statt pro Verzeichnis: ein `.claude/agents/` aus dem Checkout wird um die uncommitteten Agents ergänzt, statt komplett übersprungen zu werden. Was der Checkout geliefert hat, gewinnt.
+- **Teardown räumt die eigenen Seeds weg**, bevor die Sauberkeitsprüfung läuft, und nur bei Byte-Gleichheit zur Quelle. Ohne das würde in einem Projekt, das `.claude/` *doch* versioniert, jede geseedete Kopie als untracked zählen — jeder Session-Worktree bliebe dauerhaft „dirty" und würde nie zurückgebaut (Orphan-Akkumulation). Eine in der Session bearbeitete Datei bleibt bewusst liegen und landet im bestehenden `keptReason: 'dirty'`-Pfad. Die Seed-Liste hängt an `OwnedSessionWorktree`, wird also nicht beim Teardown neu berechnet — eine Datei aus dem Checkout kann so nie für eine eigene gehalten werden.
+- **Scope:** nur der Cloud-Session-Pfad. Der Auto-Mode hat dieselbe Lücke, aber committet und merged seine Worktrees — dort könnten geseedete Dateien in einen Commit geraten. Bewusst separat gelassen.
+
+### Tests
+- `cloud-session-worktree.test.ts` 13 → 22. Neu: Seeding trotz `.git/info/exclude`, Allowlist hält (`worktrees`/`backup`/`scheduled_tasks.lock`), `.DS_Store`, Symlink-Escape, Projekt ohne `.claude/`, Checkout-Datei bleibt unangetastet, Teardown entfernt unveränderte Seeds, behält bearbeitete, und löscht ohne Seed-Liste nichts.
+
+### Caveats / Operator-Notiz
+- Jeder neue `session-*`-Pfad ist für Claude Code ein unbekanntes Projekt (`~/.claude.json` hat keinen Eintrag dafür) → Trust-Dialog beim Start jeder Session. Blockiert die Agents nachweislich nicht, kostet aber eine Bestätigung. Ein Vorab-Eintrag würde in die globale Claude-Config des Nutzers schreiben und bleibt deshalb offen.
+
 ## 3.34.0 - 2026-07-25
 
 ### Neu

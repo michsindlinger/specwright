@@ -26,6 +26,8 @@ import { getBaseBranch } from '../general-config.js';
 import {
   isWorktreeClean,
   copyMcpConfigToWorktree,
+  ensureClaudeConfigInWorktree,
+  removeSeededClaudeConfig,
   ensureSpecwrightRuntimeGitignored,
 } from './worktree-story.js';
 
@@ -68,6 +70,13 @@ export interface OwnedSessionWorktree {
   worktreePath: string;
   branchName: string;
   mainProjectPath: string;
+  /**
+   * Worktree-relative paths seeded by `ensureClaudeConfigInWorktree`, i.e. the
+   * only files teardown is allowed to delete on top of the worktree itself.
+   * Carried on the session rather than recomputed at teardown so a file the
+   * *checkout* provided can never be mistaken for one of ours.
+   */
+  seededClaudeConfig: string[];
 }
 
 /** Name schema of a disposable per-session worktree directory. */
@@ -191,13 +200,23 @@ export async function createCloudSessionWorktree(
     }
   });
 
-  // File copy into the worktree — no main-repo index mutation, no lock needed.
+  // File copies into the worktree — no main-repo index mutation, no lock needed.
   await copyMcpConfigToWorktree(mainProjectPath, worktreePath);
+  // Project agents / commands / skills / permission allowlist. A fresh worktree
+  // only ever holds committed files, and projects routinely keep `.claude/` out
+  // of version control (`.gitignore`, or an invisible `/.claude/` in
+  // `.git/info/exclude`) — without this the session silently loses them.
+  const seededClaudeConfig = await ensureClaudeConfigInWorktree(mainProjectPath, worktreePath);
 
   // The brand is the ONLY place ownership is minted. Cast is intentional: the
   // symbol has no runtime representation, it exists purely so that a worktree
   // the user already owned can never be assigned to `worktreeCleanup`.
-  return { worktreePath, branchName, mainProjectPath } as unknown as OwnedSessionWorktree;
+  return {
+    worktreePath,
+    branchName,
+    mainProjectPath,
+    seededClaudeConfig,
+  } as unknown as OwnedSessionWorktree;
 }
 
 /**
@@ -220,7 +239,8 @@ export async function createCloudSessionWorktree(
 export async function removeCloudSessionWorktree(
   mainProjectPath: string,
   worktreePath: string,
-  branchName: string
+  branchName: string,
+  seededClaudeConfig: readonly string[] = []
 ): Promise<RemoveWorktreeResult> {
   if (
     !OWNED_WORKTREE_DIR_RE.test(basename(worktreePath)) ||
@@ -240,6 +260,15 @@ export async function removeCloudSessionWorktree(
       // Safe delete: no-op when the branch has unmerged commits or is missing.
       git(mainProjectPath, ['branch', '-d', branchName]);
       return { removed: true };
+    }
+
+    // Drop our own seeds BEFORE judging cleanliness. In a project that versions
+    // `.claude/`, the seeded copies show up as untracked, so every session
+    // worktree would land in the "dirty → keep" branch and never be reclaimed.
+    // Only byte-identical copies go; anything edited in-session survives and
+    // legitimately marks the worktree dirty.
+    if (seededClaudeConfig.length > 0) {
+      await removeSeededClaudeConfig(mainProjectPath, worktreePath, seededClaudeConfig);
     }
 
     if (!isWorktreeClean(worktreePath)) {
