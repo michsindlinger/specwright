@@ -183,6 +183,22 @@
           "description": "Text-only, 262k context ($0.10/$0.50 per M)"
         }
       ]
+    },
+    {
+      "id": "grok",
+      "name": "Grok",
+      "cliCommand": "claude-grok",
+      "cliFlags": [
+        "--model",
+        "{modelId}"
+      ],
+      "models": [
+        {
+          "id": "grok-4.5",
+          "name": "Grok 4.5",
+          "description": "xAI frontier coding model (via Grok subscription proxy)"
+        }
+      ]
     }
   ]
 }

@@ -7,6 +7,12 @@ export interface GeneralConfig {
   baseBranch: string;
   reviewPrompt: string;
   worktreeMaxConcurrent: number;
+  /**
+   * When true (default), each interactive claude-code Cloud Terminal session
+   * starts in its own throwaway git worktree. Emergency-off switch for a
+   * behavior that changes the default for all users.
+   */
+  cloudSessionWorktree: boolean;
 }
 
 interface GeneralConfigStore {
@@ -34,6 +40,7 @@ const DEFAULT_CONFIG: GeneralConfig = {
   baseBranch: 'main',
   reviewPrompt: DEFAULT_REVIEW_PROMPT,
   worktreeMaxConcurrent: 2,
+  cloudSessionWorktree: true,
 };
 
 let cachedStore: GeneralConfigStore | null = null;
@@ -100,6 +107,14 @@ export function getReviewPrompt(projectPath?: string): string {
   return loadGeneralConfig(projectPath).reviewPrompt;
 }
 
+/**
+ * Whether interactive claude-code Cloud Terminal sessions run in a per-session
+ * git worktree. Defaults to true; a stored `false` disables the feature.
+ */
+export function getCloudSessionWorktreeEnabled(projectPath?: string): boolean {
+  return loadGeneralConfig(projectPath).cloudSessionWorktree !== false;
+}
+
 export function getWorktreeMaxConcurrent(projectPath?: string): number {
   const value = loadGeneralConfig(projectPath).worktreeMaxConcurrent;
   // Defensive: if config file predates this field, spread of DEFAULT_CONFIG
@@ -147,6 +162,12 @@ export function updateGeneralConfig(updates: Partial<GeneralConfig>, projectPath
   }
   if (updates.worktreeMaxConcurrent !== undefined) {
     validated.worktreeMaxConcurrent = validateMaxConcurrent(updates.worktreeMaxConcurrent);
+  }
+  if (updates.cloudSessionWorktree !== undefined) {
+    if (typeof updates.cloudSessionWorktree !== 'boolean') {
+      throw new Error(`cloudSessionWorktree must be a boolean, got ${typeof updates.cloudSessionWorktree}`);
+    }
+    validated.cloudSessionWorktree = updates.cloudSessionWorktree;
   }
 
   if (projectPath) {

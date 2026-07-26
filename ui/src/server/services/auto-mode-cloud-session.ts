@@ -211,7 +211,7 @@ export class AutoModeCloudSession extends EventEmitter {
     // Create session with initial prompt + MCP flags + Auto-Mode CLI flags
     // (PAM-FIX-004 Layer 1: --disallowed-tools AskUserQuestion + system-prompt rule)
     const extraCliArgs = [...mcpFlags, ...AUTO_MODE_CLI_FLAGS];
-    const session = this.config.cloudTerminalManager.createSession(
+    const session = await this.config.cloudTerminalManager.createSession(
       this.config.projectPath,
       'claude-code',
       modelConfig,

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
-import { tmpdir } from 'os';
+import { tmpdir, homedir } from 'os';
 import { join } from 'path';
 import { PlanBufferExtractor } from '../../src/server/utils/plan-buffer-extractor.js';
 
@@ -14,10 +14,17 @@ let emptyPlanFile: string;
 // Realistic slugs for subsequence-recovery tests (see "subsequence recovery").
 let breezyFile: string;
 let optimierungFile: string;
+// Provider-scoped config dir (non-Anthropic sessions write plans to
+// ~/.claude-<provider>/plans/ — see plan-buffer-extractor PLAN_PATH_PATTERN).
+let grokPlansDir: string;
+let grokPlanFile: string;
+let grokRecoverFile: string;
 const PLAN_CONTENT = '# Plan A\n\n## Context\nSome plan body.\n';
 const SECOND_PLAN_CONTENT = '# Plan B\n\n## Context\nNewer plan.\n';
 const BREEZY_CONTENT = '# DB Indizes\n\n## Context\nPhase 1 plan.\n';
 const OPTIMIERUNG_CONTENT = '# Cloud Terminal\n\n## Context\nModular refactor.\n';
+const GROK_PLAN_CONTENT = '# Plan Grok\n\n## Context\nProvider-scoped plan.\n';
+const GROK_RECOVER_CONTENT = '# Grok Recovery\n\n## Context\nDropped-char slug.\n';
 
 beforeAll(() => {
   tmpDir = mkdtempSync(join(tmpdir(), 'plan-buffer-test-'));
@@ -44,6 +51,15 @@ beforeAll(() => {
 
   // Non-ENOENT fixture: a *directory* named like a plan file -> readFileSync EISDIR.
   fs.mkdirSync(join(plansDir, 'isadir.md'), { recursive: true });
+
+  // Provider-scoped config dir (e.g. Grok session: CLAUDE_CONFIG_DIR=~/.claude-grok).
+  grokPlansDir = join(tmpDir, '.claude-grok', 'plans');
+  fs.mkdirSync(grokPlansDir, { recursive: true });
+  grokPlanFile = join(grokPlansDir, 'plan-grok.md');
+  writeFileSync(grokPlanFile, GROK_PLAN_CONTENT, 'utf8');
+  // Recovery fixture under the provider dir (unique subsequence target).
+  grokRecoverFile = join(grokPlansDir, 'plane-provider-scoped-recovery-walrus.md');
+  writeFileSync(grokRecoverFile, GROK_RECOVER_CONTENT, 'utf8');
 });
 
 afterAll(() => {
@@ -130,6 +146,63 @@ describe('PlanBufferExtractor.extract (strict file-path mode)', () => {
     const buffer = 'relative/.claude/plans/relative-plan.md';
     expect(extractor.extract(buffer)).toBeNull();
   });
+
+  it('detects a plan under a provider-scoped config dir (.claude-grok/plans/)', () => {
+    // Non-Anthropic sessions write plans to ~/.claude-<provider>/plans/. The footer
+    // path must be recognized just like the default .claude/plans/ dir.
+    const buffer = [
+      'Some Claude Code output',
+      '╭───────────────────────────╮',
+      '│ Plan box content here     │',
+      `╰────────── ctrl-g · ${grokPlanFile} ──╯`,
+    ].join('\n');
+
+    const result = extractor.extract(buffer);
+    expect(result).not.toBeNull();
+    expect(result?.planPath).toBe(grokPlanFile);
+    expect(result?.planText).toBe(GROK_PLAN_CONTENT);
+  });
+
+  it('uses the LAST path when default and provider-scoped dirs are mixed', () => {
+    // A buffer mentioning both a .claude/plans and a .claude-grok/plans path must
+    // resolve to the last one (matches[matches.length - 1]).
+    const buffer = [
+      `older reference ${planFile}`,
+      'some intervening output',
+      `newer reference ${grokPlanFile}`,
+    ].join('\n');
+
+    const result = extractor.extract(buffer);
+    expect(result?.planPath).toBe(grokPlanFile);
+    expect(result?.planText).toBe(GROK_PLAN_CONTENT);
+  });
+
+  it('ignores a sibling dir under a provider config dir (.claude-grok/history/)', () => {
+    // Only the /plans/ subdir is a plan location; a sibling like /history/ must not match.
+    const buffer = `ctrl-g · ${join(tmpDir, '.claude-grok', 'history', 'foo.md')}`;
+    expect(extractor.extract(buffer)).toBeNull();
+  });
+
+  it('resolves a ~/ tilde footer path under a provider-scoped dir', () => {
+    // The TUI footer shows a tilde path (~/.claude-grok/plans/<slug>.md). Point HOME
+    // at the temp dir so the tilde expands onto a real fixture, then restore it.
+    const originalHome = process.env.HOME;
+    try {
+      process.env.HOME = tmpDir;
+      // Sanity: os.homedir() must honor the overridden HOME in this env, else skip.
+      if (homedir() !== tmpDir) return;
+      const buffer = `ctrl-g to edit in Vim · ~/.claude-grok/plans/plan-grok.md`;
+      const result = extractor.extract(buffer);
+      expect(result?.planPath).toBe(grokPlanFile);
+      expect(result?.planText).toBe(GROK_PLAN_CONTENT);
+    } finally {
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
+      }
+    }
+  });
 });
 
 describe('PlanBufferExtractor.extract (subsequence recovery on dropped chars)', () => {
@@ -185,5 +258,16 @@ describe('PlanBufferExtractor.extract (subsequence recovery on dropped chars)', 
     // Passes both guards (long, no shorter candidate) but matches nothing -> null.
     const buffer = `ctrl-g · ${join(plansDir, 'zzz-nonexistent-unique-plan-slug.md')}`;
     expect(extractor.extract(buffer)).toBeNull();
+  });
+
+  it('recovers a dropped-char slug under a provider-scoped dir (.claude-grok/plans/)', () => {
+    // "plae-..." is a subsequence of the real "plane-..." file (missing 'n'),
+    // uniquely, within the provider config dir.
+    const corrupted = join(grokPlansDir, 'plae-provider-scoped-recovery-walrus.md');
+    const buffer = `ctrl-g · ${corrupted}`;
+
+    const result = extractor.extract(buffer);
+    expect(result?.planPath).toBe(grokRecoverFile);
+    expect(result?.planText).toBe(GROK_RECOVER_CONTENT);
   });
 });

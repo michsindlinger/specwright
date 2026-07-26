@@ -90,7 +90,7 @@ export class AutoModeStorySlot extends EventEmitter {
     const extraEnv = this.config.mainProjectPath && this.config.mainProjectPath !== this.config.projectPath
       ? { SPECWRIGHT_MAIN_PROJECT_PATH: this.config.mainProjectPath }
       : undefined;
-    const session = this.config.cloudTerminalManager.createSession(
+    const session = await this.config.cloudTerminalManager.createSession(
       this.config.projectPath,
       'claude-code',
       modelConfig,

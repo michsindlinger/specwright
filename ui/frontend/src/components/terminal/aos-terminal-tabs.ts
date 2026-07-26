@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { TerminalSession } from './aos-cloud-terminal-sidebar.js';
-import { getTabTitle } from './tab-title.js';
+import { getTabTitle, getSessionLocationHint } from './tab-title.js';
 import './aos-auto-review-toggle.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 
@@ -266,6 +266,7 @@ export class AosTerminalTabs extends LitElement {
             const isWorkflow = session.isWorkflow ?? false;
             const needsInput = session.needsInput ?? false;
             const tabTitle = getTabTitle(session);
+            const locationHint = getSessionLocationHint(session);
             const isEditing = this.renamingSessionId === session.id;
 
             // Note: a single click selects the tab before @dblclick fires.
@@ -275,7 +276,7 @@ export class AosTerminalTabs extends LitElement {
                 class="tab ${session.id === this.activeSessionId ? 'active' : ''} ${isWorkflow ? 'workflow' : ''} ${needsInput ? 'needs-input' : ''} ${isEditing ? 'editing' : ''}"
                 @click=${() => this._handleTabClick(session.id)}
                 @dblclick=${(e: Event) => this._handleRenameStart(e, session, tabTitle)}
-                title="${tabTitle} (${session.status})"
+                title="${tabTitle} (${session.status})${locationHint ? ` · ${locationHint}` : ''}"
               >
                 ${isWorkflow
                   ? html`

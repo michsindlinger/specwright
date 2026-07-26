@@ -3,9 +3,15 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
 import type { TerminalSession } from './aos-cloud-terminal-sidebar.js';
 import type { ModelSelectedDetail } from './aos-model-dropdown.js';
+import type { SessionTargetSelectedDetail } from './aos-session-target-list.js';
+import type {
+  CloudTerminalNotice,
+  CloudTerminalSessionTarget,
+} from '../../../../src/shared/types/cloud-terminal.protocol.js';
 import '../aos-terminal.js';
 import type { AosTerminal } from '../aos-terminal.js';
 import './aos-model-dropdown.js';
+import './aos-session-target-list.js';
 import './aos-plan-review-block.js';
 import type { ReviewerConfig } from './aos-auto-review-toggle.js';
 import xtermCss from '@xterm/xterm/css/xterm.css?inline';
@@ -37,8 +43,14 @@ export class AosTerminalSession extends LitElement {
   @state() private connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'reconnecting' = 'connecting';
   @state() private errorMessage: string | null = null;
   @state() private showModelSelector = false;
+  /** Step 2 of the new-session flow: the model is picked, the target is not. */
+  @state() private showTargetSelector = false;
+  /** Model chosen in step 1, held until a target is picked in step 2. */
+  @state() private pendingModel: { providerId: string; modelId: string } | null = null;
   /** Tracks the selected terminal type for this session */
   @state() private selectedTerminalType: 'shell' | 'claude-code' = 'claude-code';
+  /** Non-fatal server messages about this session (worktree fallbacks etc.) */
+  @state() private notices: CloudTerminalNotice[] = [];
   /** When true, session expired on server - show "new session" instead of "reconnect" */
   @state() private isSessionExpired = false;
 
@@ -47,6 +59,7 @@ export class AosTerminalSession extends LitElement {
   private boundHandleSessionError = this.handleSessionError.bind(this);
   private boundHandleSessionResumed = this.handleSessionResumed.bind(this);
   private boundHandleSessionClosed = this.handleSessionClosed.bind(this);
+  private boundHandleSessionNotice = this.handleSessionNotice.bind(this);
   private boundHandleGatewayConnected = this.handleGatewayConnected.bind(this);
   private boundHandleGatewayDisconnected = this.handleGatewayDisconnected.bind(this);
 
@@ -232,6 +245,39 @@ export class AosTerminalSession extends LitElement {
       overflow: visible;
     }
 
+    /*
+     * Step 2 is a list, not a single dropdown, so it can outgrow a short split
+     * pane. Scroll inside the overlay and start at the top rather than clipping
+     * symmetrically around a vertical centre.
+     */
+    :host([pane-mode]) .model-selector-overlay,
+    :host([compact]) .model-selector-overlay {
+      justify-content: flex-start;
+      padding-top: 8px;
+      overflow-y: auto;
+    }
+
+    .notice-banner {
+      width: 100%;
+      max-width: 460px;
+      text-align: left;
+      cursor: pointer;
+      border: 1px solid var(--border-color, #404040);
+      border-radius: 4px;
+      background-color: var(--bg-color-tertiary, #2d2d2d);
+      padding: 0.4rem 0.6rem;
+    }
+
+    .notice-line {
+      font-size: 0.75rem;
+      line-height: 1.4;
+      color: var(--text-color-secondary, #a0a0a0);
+    }
+
+    .notice-line.warn {
+      color: var(--warning-color, #d29922);
+    }
+
     .model-selector-title {
       font-size: 16px;
       font-weight: 500;
@@ -371,6 +417,7 @@ export class AosTerminalSession extends LitElement {
     gateway.on('cloud-terminal:error', this.boundHandleSessionError);
     gateway.on('cloud-terminal:resumed', this.boundHandleSessionResumed);
     gateway.on('cloud-terminal:closed', this.boundHandleSessionClosed);
+    gateway.on('cloud-terminal:notice', this.boundHandleSessionNotice);
     gateway.on('gateway.connected', this.boundHandleGatewayConnected);
     gateway.on('gateway.disconnected', this.boundHandleGatewayDisconnected);
   }
@@ -380,6 +427,7 @@ export class AosTerminalSession extends LitElement {
     gateway.off('cloud-terminal:error', this.boundHandleSessionError);
     gateway.off('cloud-terminal:resumed', this.boundHandleSessionResumed);
     gateway.off('cloud-terminal:closed', this.boundHandleSessionClosed);
+    gateway.off('cloud-terminal:notice', this.boundHandleSessionNotice);
     gateway.off('gateway.connected', this.boundHandleGatewayConnected);
     gateway.off('gateway.disconnected', this.boundHandleGatewayDisconnected);
   }
@@ -394,6 +442,14 @@ export class AosTerminalSession extends LitElement {
       this.connectionStatus = 'connected';
       this.errorMessage = null;
       this.showModelSelector = false;
+      this.showTargetSelector = false;
+
+      // Notices raised during creation arrive here, because at that point the
+      // client only knew its requestId — not the sessionId a notice would carry.
+      const createNotices = message.notices as CloudTerminalNotice[] | undefined;
+      if (createNotices?.length) this.notices = [...this.notices, ...createNotices];
+
+      const session = message.session as { effectiveCwd?: string } | undefined;
 
       // Notify parent with terminalType so app.ts can update session name/type
       this.dispatchEvent(
@@ -402,6 +458,8 @@ export class AosTerminalSession extends LitElement {
             sessionId: this.session.id,
             terminalSessionId: sessionId,
             terminalType: this.selectedTerminalType,
+            // Ground truth from the server, not what we asked for.
+            effectiveCwd: session?.effectiveCwd,
           },
           bubbles: true,
           composed: true,
@@ -410,12 +468,50 @@ export class AosTerminalSession extends LitElement {
     }
   }
 
+  private handleSessionNotice(message: WebSocketMessage): void {
+    if (message.sessionId !== this.terminalSessionId) return;
+    this.notices = [
+      ...this.notices,
+      {
+        level: (message.level as 'info' | 'warn') || 'info',
+        text: (message.message as string) || '',
+      },
+    ];
+  }
+
+  private dismissNotices(): void {
+    this.notices = [];
+  }
+
   private handleSessionError(message: WebSocketMessage): void {
-    // Filter: only handle errors for our session or errors without sessionId (create errors)
+    // Filter: only handle errors for our session, or create errors correlated by
+    // requestId. Without the requestId check every pane in a split view would
+    // adopt a sibling's create failure — and target errors made those routine.
     const errorSessionId = message.sessionId as string | undefined;
+    const errorRequestId = message.requestId as string | undefined;
     if (errorSessionId && errorSessionId !== this.terminalSessionId) return;
+    if (!errorSessionId && errorRequestId && errorRequestId !== this.session.id) return;
 
     const errorCode = message.code as string | undefined;
+
+    // Target problems are recoverable: the picked worktree got taken or
+    // vanished. Go back to step 2 with a fresh list instead of killing the pane.
+    if (
+      errorCode === 'TARGET_OCCUPIED' ||
+      errorCode === 'TARGET_NOT_FOUND' ||
+      errorCode === 'TARGET_NOT_A_WORKTREE' ||
+      errorCode === 'WORKTREE_CREATION_DISABLED' ||
+      errorCode === 'INVALID_SESSION_TARGET'
+    ) {
+      this.connectionStatus = 'connecting';
+      this.showModelSelector = true;
+      this.showTargetSelector = true;
+      this.notices = [
+        ...this.notices,
+        { level: 'warn', text: (message.message as string) || 'Ziel nicht verfügbar.' },
+      ];
+      return;
+    }
 
     if (errorCode === 'RESIZE_FAILED') {
       // Non-fatal: the session is alive, only a PTY resize could not be applied.
@@ -512,6 +608,11 @@ export class AosTerminalSession extends LitElement {
     this.connectionStatus = 'connecting';
     this.isSessionExpired = false;
     this.errorMessage = null;
+    // Restart at step 1 — a stale model/target pair from the expired session
+    // must not silently drive the new one.
+    this.showTargetSelector = false;
+    this.pendingModel = null;
+    this.notices = [];
 
     // Workflow sessions auto-start without model selector
     if (this.session.isWorkflow) {
@@ -564,39 +665,66 @@ export class AosTerminalSession extends LitElement {
     });
   }
 
-  /** Handle model-selected event with discriminated union detail */
+  /**
+   * Step 1 of the new-session flow.
+   *
+   * A shell terminal starts immediately — it always runs in the project
+   * directory, so there is nothing to choose. A model selection only *stores*
+   * the choice and reveals step 2; the session is created once a target is
+   * picked there.
+   */
   private handleModelSelected(e: CustomEvent<ModelSelectedDetail>): void {
     e.stopPropagation();
     const detail = e.detail;
 
-    this.showModelSelector = false;
-    this.connectionStatus = 'connecting';
-
     if ('terminalType' in detail) {
-      // Shell terminal - no modelConfig needed
       this.selectedTerminalType = 'shell';
-      gateway.send({
-        type: 'cloud-terminal:create',
-        requestId: this.session.id,
-        projectPath: this.session.projectPath,
-        terminalType: 'shell' as const,
-        timestamp: new Date().toISOString(),
-      });
-    } else {
-      // Cloud Code session - send with modelConfig and terminalType
-      this.selectedTerminalType = 'claude-code';
-      gateway.send({
-        type: 'cloud-terminal:create',
-        requestId: this.session.id,
-        projectPath: this.session.projectPath,
-        terminalType: 'claude-code' as const,
-        modelConfig: {
-          model: detail.modelId,
-          provider: detail.providerId,
-        },
-        timestamp: new Date().toISOString(),
-      });
+      this.showModelSelector = false;
+      this.connectionStatus = 'connecting';
+      this.startSession('shell', undefined, { kind: 'main' });
+      return;
     }
+
+    this.selectedTerminalType = 'claude-code';
+    this.pendingModel = detail;
+    this.showTargetSelector = true;
+  }
+
+  /** Step 2: target picked → create the session. */
+  private handleTargetSelected(e: CustomEvent<SessionTargetSelectedDetail>): void {
+    e.stopPropagation();
+    if (!this.pendingModel) return;
+
+    this.showModelSelector = false;
+    this.showTargetSelector = false;
+    this.connectionStatus = 'connecting';
+    this.startSession('claude-code', this.pendingModel, e.detail.target);
+  }
+
+  /** Back to step 1 without having created anything. */
+  private handleTargetBack(): void {
+    this.showTargetSelector = false;
+    this.pendingModel = null;
+  }
+
+  /**
+   * The single `cloud-terminal:create` sender. `requestId` is the frontend
+   * session id, which the server echoes on both success and failure.
+   */
+  private startSession(
+    terminalType: 'shell' | 'claude-code',
+    model: { providerId: string; modelId: string } | undefined,
+    sessionTarget: CloudTerminalSessionTarget
+  ): void {
+    gateway.send({
+      type: 'cloud-terminal:create',
+      requestId: this.session.id,
+      projectPath: this.session.projectPath,
+      terminalType,
+      ...(model ? { modelConfig: { model: model.modelId, provider: model.providerId } } : {}),
+      sessionTarget,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   /**
@@ -687,15 +815,44 @@ export class AosTerminalSession extends LitElement {
   }
 
   private renderModelSelector() {
+    if (this.showTargetSelector) {
+      return html`
+        <div class="model-selector-overlay">
+          <div class="model-selector-title">Wo soll die Session laufen?</div>
+          ${this.renderNotices()}
+          <aos-session-target-list
+            .projectPath=${this.session.projectPath}
+            .modelLabel=${this.pendingModel?.modelId ?? ''}
+            ?compact=${this.compact}
+            @target-selected=${this.handleTargetSelected}
+            @target-back=${this.handleTargetBack}
+          ></aos-session-target-list>
+        </div>
+      `;
+    }
+
     return html`
       <div class="model-selector-overlay">
         <div class="model-selector-title">Neue Session</div>
         <div class="model-selector-hint">
           Terminal oder Cloud Code Session starten
         </div>
+        ${this.renderNotices()}
         <aos-model-dropdown
           @model-selected=${this.handleModelSelected}
         ></aos-model-dropdown>
+      </div>
+    `;
+  }
+
+  /** Non-fatal server messages (worktree fallbacks, unavailable targets). */
+  private renderNotices() {
+    if (this.notices.length === 0) return '';
+    return html`
+      <div class="notice-banner" @click=${this.dismissNotices} title="Zum Ausblenden klicken">
+        ${this.notices.map((n) => html`
+          <div class="notice-line ${n.level}">${n.text}</div>
+        `)}
       </div>
     `;
   }

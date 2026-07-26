@@ -30,6 +30,62 @@ export interface CloudTerminalModelConfig {
 }
 
 /**
+ * Where a Cloud Terminal session's PTY runs.
+ *
+ * - `new-worktree`  — a throwaway per-session worktree (`session/<id>` branch)
+ * - `main`          — the registered project directory, verbatim, no worktree
+ * - `existing-worktree` — a worktree the user already owns; never cleaned up
+ *
+ * Absent on the wire ⇒ `{ kind: 'new-worktree' }` (backwards compatible with
+ * clients that predate the target picker). The distinction between "absent"
+ * and "explicitly chosen" is carried server-side, not on the wire — see
+ * `parseSessionTarget` in `server/utils/session-target.ts`.
+ */
+export type CloudTerminalSessionTarget =
+  | { kind: 'new-worktree' }
+  | { kind: 'main' }
+  | { kind: 'existing-worktree'; path: string };
+
+/**
+ * One selectable row in the "where should this session run?" picker: either the
+ * registered project root or one of the repo's git worktrees.
+ */
+export interface CloudTerminalWorktreeEntry {
+  /** Absolute path, normalized via `pathKey` (realpath when resolvable) */
+  path: string;
+  /** Directory basename, used as the display label */
+  name: string;
+  /** Short branch name, or null when the worktree is on a detached HEAD */
+  branch: string | null;
+  /** Short commit SHA (used to label detached worktrees) */
+  head: string | null;
+  /** True for the repo's main worktree */
+  isMain: boolean;
+  /** True when this entry IS the registered project path */
+  isProjectRoot: boolean;
+  /** Working tree cleanliness; null when unknown (git error or time budget) */
+  clean: boolean | null;
+  /** Registered in git metadata but missing on disk (prunable) */
+  missing: boolean;
+  /** `git worktree lock`ed */
+  locked: boolean;
+  /** At least one live cloud session runs here */
+  occupied: boolean;
+  /** Session id of one occupant (arbitrary pick when several) */
+  occupiedBy?: CloudTerminalSessionId;
+  /** Number of live sessions — >1 is possible for the project-root row */
+  occupiedCount: number;
+  /** Heuristically owned by auto-mode (branch `story/*` or dir `backlog-*`) */
+  autoModeManaged: boolean;
+  /**
+   * Best-effort creation time in epoch ms (git worktree admin-dir birthtime).
+   * null for the main worktree and whenever the filesystem gives no usable
+   * timestamp.
+   */
+  createdAt: number | null;
+}
+
+/**
  * Cloud Terminal session states
  */
 export type CloudTerminalSessionStatus =
@@ -45,8 +101,16 @@ export interface CloudTerminalSession {
   /** Unique session ID */
   sessionId: CloudTerminalSessionId;
 
-  /** Associated project path */
+  /** Associated project path — always the REGISTERED project, never the worktree */
   projectPath: string;
+
+  /**
+   * Directory the PTY actually runs in: the project dir, a per-session
+   * worktree, or a user-owned existing worktree. Ground truth for the UI and
+   * the authoritative occupancy key — unlike `worktreeCleanup`, which only
+   * exists for worktrees this session created.
+   */
+  effectiveCwd: string;
 
   /** Terminal type discriminator */
   terminalType: CloudTerminalType;
@@ -75,7 +139,7 @@ export interface CloudTerminalSession {
   /** Timestamp when session was paused (if applicable) */
   pausedAt?: Date;
 
-  /** Resolved file path of the most recently detected plan (~/.claude/plans/<slug>.md). */
+  /** Resolved file path of the most recently detected plan (~/.claude[-<provider>]/plans/<slug>.md). */
   lastDetectedPlanPath?: string;
 }
 
@@ -112,6 +176,7 @@ export type CloudTerminalMessageType =
   | 'cloud-terminal:input'
   | 'cloud-terminal:resize'
   | 'cloud-terminal:list'
+  | 'cloud-terminal:targets'
   // Server -> Client
   | 'cloud-terminal:created'
   | 'cloud-terminal:closed'
@@ -119,6 +184,9 @@ export type CloudTerminalMessageType =
   | 'cloud-terminal:resumed'
   | 'cloud-terminal:error'
   | 'cloud-terminal:list-response'
+  | 'cloud-terminal:targets:response'
+  | 'cloud-terminal:targets:error'
+  | 'cloud-terminal:notice'
   // Bidirectional
   | 'cloud-terminal:data';
 
@@ -137,9 +205,28 @@ export interface CloudTerminalCreateMessage {
   projectPath: string;
   /** Model configuration (required for 'claude-code', unused for 'shell') */
   modelConfig?: CloudTerminalModelConfig;
+  /**
+   * Where the session should run. Absent ⇒ new per-session worktree (legacy
+   * default). Only honoured for 'claude-code'; shell terminals always run in
+   * the project directory.
+   */
+  sessionTarget?: CloudTerminalSessionTarget;
   /** Initial terminal size */
   cols?: number;
   rows?: number;
+  timestamp: string;
+}
+
+/**
+ * Request the list of places a new session could run: the project root plus
+ * every git worktree of the repo, annotated with occupancy and cleanliness.
+ */
+export interface CloudTerminalTargetsMessage {
+  type: 'cloud-terminal:targets';
+  /** Correlation id echoed back on the response */
+  requestId?: string;
+  /** Project path whose repo should be enumerated */
+  projectPath: string;
   timestamp: string;
 }
 
@@ -271,6 +358,68 @@ export interface CloudTerminalCreatedMessage {
   session: CloudTerminalSession;
   /** Workflow metadata if this is a workflow session */
   workflowMetadata?: CloudTerminalWorkflowMetadata;
+  /**
+   * Notices raised while the session was being created (e.g. "started without
+   * worktree — no git repository"). They cannot travel via
+   * `cloud-terminal:notice` because the client does not know the sessionId
+   * yet, so they ride along with the response that carries the requestId.
+   */
+  notices?: CloudTerminalNotice[];
+  timestamp: string;
+}
+
+/** A non-fatal message about a session, surfaced as a banner in the UI. */
+export interface CloudTerminalNotice {
+  level: 'info' | 'warn';
+  text: string;
+}
+
+/**
+ * Notice raised for an already-created session (post-create lifecycle).
+ * Create-time notices travel inside `cloud-terminal:created` instead.
+ */
+export interface CloudTerminalNoticeMessage {
+  type: 'cloud-terminal:notice';
+  sessionId: CloudTerminalSessionId;
+  level: 'info' | 'warn';
+  message: string;
+  timestamp: string;
+}
+
+/**
+ * Response to `cloud-terminal:targets`.
+ */
+export interface CloudTerminalTargetsResponseMessage {
+  type: 'cloud-terminal:targets:response';
+  /** Echoed correlation id from the request */
+  requestId?: string;
+  /** True when the project is inside a git work tree */
+  isGitRepo: boolean;
+  /** The registered project directory as a selectable entry */
+  projectRoot: CloudTerminalWorktreeEntry;
+  /** Absolute path of the repo's main worktree (may differ from projectRoot) */
+  mainWorktreePath: string;
+  /** True when the registered project is itself a linked worktree */
+  projectRootIsLinkedWorktree: boolean;
+  /** All git worktrees of the repo, project root included */
+  worktrees: CloudTerminalWorktreeEntry[];
+  /** False when `cloudSessionWorktree` is disabled in the general config */
+  worktreeCreationEnabled: boolean;
+  /** Branch a new session worktree would fork from (label only) */
+  newWorktreeBase: string | null;
+  timestamp: string;
+}
+
+/**
+ * Failure while building the target list. Deliberately NOT a
+ * `cloud-terminal:error` — that type is interpreted as a session-create
+ * failure by the frontend and would tear down the picker.
+ */
+export interface CloudTerminalTargetsErrorMessage {
+  type: 'cloud-terminal:targets:error';
+  requestId?: string;
+  code: string;
+  message: string;
   timestamp: string;
 }
 
@@ -368,7 +517,8 @@ export type CloudTerminalClientMessage =
   | CloudTerminalInputMessage
   | CloudTerminalPasteImageMessage
   | CloudTerminalResizeMessage
-  | CloudTerminalListMessage;
+  | CloudTerminalListMessage
+  | CloudTerminalTargetsMessage;
 
 /**
  * Union type of all Cloud Terminal messages (server -> client)
@@ -381,7 +531,10 @@ export type CloudTerminalServerMessage =
   | CloudTerminalErrorMessage
   | CloudTerminalListResponseMessage
   | CloudTerminalDataMessage
-  | CloudTerminalPasteImageSavedMessage;
+  | CloudTerminalPasteImageSavedMessage
+  | CloudTerminalTargetsResponseMessage
+  | CloudTerminalTargetsErrorMessage
+  | CloudTerminalNoticeMessage;
 
 /**
  * Union type of all Cloud Terminal messages
@@ -502,4 +655,16 @@ export const CLOUD_TERMINAL_ERROR_CODES = {
   PASTE_IMAGE_TOO_LARGE: 'PASTE_IMAGE_TOO_LARGE',
   /** Pasted image MIME type not in ALLOWED_PASTE_IMAGE_MIME */
   PASTE_IMAGE_UNSUPPORTED_TYPE: 'PASTE_IMAGE_UNSUPPORTED_TYPE',
+  /** sessionTarget malformed: unknown kind, missing path, or relative path */
+  INVALID_SESSION_TARGET: 'INVALID_SESSION_TARGET',
+  /** Requested path is not a worktree of this repo (covers traversal attempts) */
+  TARGET_NOT_A_WORKTREE: 'TARGET_NOT_A_WORKTREE',
+  /** Worktree is registered in git metadata but missing on disk */
+  TARGET_NOT_FOUND: 'TARGET_NOT_FOUND',
+  /** Another live cloud session already runs in this directory */
+  TARGET_OCCUPIED: 'TARGET_OCCUPIED',
+  /** Explicit 'new-worktree' request while `cloudSessionWorktree` is disabled */
+  WORKTREE_CREATION_DISABLED: 'WORKTREE_CREATION_DISABLED',
+  /** `git worktree list` failed while building the target list */
+  WORKTREE_LIST_FAILED: 'WORKTREE_LIST_FAILED',
 } as const;

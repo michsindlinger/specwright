@@ -4,7 +4,7 @@
  */
 
 import { join, basename, dirname } from 'path';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { existsSync, lstatSync, cpSync, rmSync } from 'fs';
 import { mkdir, rm, copyFile, readFile, writeFile } from 'fs/promises';
 import { resolveProjectDir, projectDir } from './project-dirs.js';
@@ -72,6 +72,33 @@ export async function ensureSpecwrightRuntimeGitignored(
       let existing = '';
       try { existing = await readFile(gitignorePath, 'utf-8'); } catch { /* ENOENT → empty */ }
       if (existing.includes(RUNTIME_IGNORE_SENTINEL)) return;
+
+      // Defer the whole migration while the user has unrelated staged work.
+      //
+      // The commit below is intentionally NOT pathspec-limited: `git commit --
+      // <path>` behaves like `--only` and re-stages the worktree content of the
+      // named paths, which would undo the `git rm --cached` untracking this
+      // function exists to perform. So instead of narrowing the commit, we
+      // refuse to build one at all while foreign entries sit in the index —
+      // otherwise the user's staged work gets swept into a housekeeping commit.
+      // That became a live concern once interactive sessions can run directly
+      // in the main checkout. Nothing is written on this path, so the next
+      // session retries cleanly.
+      try {
+        const staged = execSync('git diff --cached --name-only', {
+          cwd: mainProjectPath,
+          encoding: 'utf-8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+        }).trim();
+        if (staged.length > 0) {
+          console.warn(
+            `[worktree-story] ensureSpecwrightRuntimeGitignored: deferring migration in ${mainProjectPath} — ${staged.split('\n').length} file(s) already staged`
+          );
+          return;
+        }
+      } catch {
+        // Not a git repo / no HEAD yet — nothing to protect, carry on.
+      }
 
       let projDirName: string;
       try {
@@ -144,10 +171,20 @@ export async function ensureSpecwrightRuntimeGitignored(
           return; // exit 0 = nothing to commit
         } catch { /* exit 1 = staged diff present → commit */ }
 
-        execSync(
-          'git commit -m "chore: untrack Specwright runtime state (MCP-routed kanban + backlog)"',
-          { cwd: mainProjectPath, stdio: 'pipe' }
+        // Safe to commit the whole index: the empty-index gate above guarantees
+        // everything staged here was staged by this function.
+        const commit = spawnSync(
+          'git',
+          ['commit', '-m', 'chore: untrack Specwright runtime state (MCP-routed kanban + backlog)'],
+          { cwd: mainProjectPath, encoding: 'utf-8', stdio: 'pipe' }
         );
+        if (commit.status !== 0) {
+          console.error(
+            '[worktree-story] ensureSpecwrightRuntimeGitignored: commit failed:',
+            (commit.stderr ?? '').trim()
+          );
+          return;
+        }
         console.log(`[worktree-story] Untracked Specwright runtime state in ${mainProjectPath} (${trackedRuntimeFiles.length} file(s))`);
       } catch (err) {
         console.error('[worktree-story] ensureSpecwrightRuntimeGitignored: commit failed:', err);
@@ -575,6 +612,46 @@ export async function copyMcpConfigToWorktree(
     await rm(dst, { force: true });
   }
   await copyFile(src, dst);
+}
+
+/** Outcome of {@link ensureMcpConfigInWorktree}. */
+export type EnsureMcpConfigResult = 'seeded' | 'already-identical' | 'kept-different' | 'no-source';
+
+/**
+ * Non-destructive variant of {@link copyMcpConfigToWorktree} for worktrees the
+ * *user* owns (session attached to an existing worktree rather than creating a
+ * throwaway one).
+ *
+ * `.mcp.json` is gitignored, so overwriting it there is unrecoverable data
+ * loss. Skipping it entirely is not an option either: without the kanban MCP
+ * server the LLM falls back to editing `kanban.json` in place and shadows the
+ * canonical copy. So: seed when absent, no-op when identical, and keep the
+ * user's file when it differs — the caller surfaces that as a notice.
+ */
+export async function ensureMcpConfigInWorktree(
+  projectPath: string,
+  worktreePath: string
+): Promise<EnsureMcpConfigResult> {
+  const candidates = [
+    join(projectPath, '.mcp.json'),
+    join(dirname(projectPath), '.mcp.json'),
+  ];
+  const src = candidates.find(existsSync);
+  if (!src) return 'no-source';
+
+  const dst = join(worktreePath, '.mcp.json');
+  if (!existsSync(dst)) {
+    await copyFile(src, dst);
+    return 'seeded';
+  }
+
+  try {
+    const [a, b] = await Promise.all([readFile(src, 'utf-8'), readFile(dst, 'utf-8')]);
+    return a === b ? 'already-identical' : 'kept-different';
+  } catch {
+    // Unreadable destination — leave it alone rather than guess.
+    return 'kept-different';
+  }
 }
 
 // ── Internal ─────────────────────────────────────────────────────────────────

@@ -117,6 +117,40 @@ describe('ensureSpecwrightRuntimeGitignored — legacy specwright/ layout', () =
       expect(after2).toBe(after1);
     } finally { await tearDown(fix); }
   });
+
+  it('defers entirely while the user has unrelated staged work', async () => {
+    const fix = await mkRepo({ layout: 'specwright', withTrackedKanban: true, withBacklog: true });
+    try {
+      // Simulate a user mid-commit in the main checkout — now a normal state,
+      // since interactive sessions can run there.
+      await fs.writeFile(join(fix.projectPath, 'user-work.txt'), 'in progress');
+      execSync('git add user-work.txt', { cwd: fix.projectPath });
+      const before = commitCount(fix.projectPath);
+
+      await ensureSpecwrightRuntimeGitignored(fix.projectPath);
+
+      // No commit at all — the user's staged file must never be swept into a
+      // housekeeping commit.
+      expect(commitCount(fix.projectPath)).toBe(before);
+      const stillStaged = execSync('git diff --cached --name-only', {
+        cwd: fix.projectPath, encoding: 'utf-8',
+      }).trim();
+      expect(stillStaged).toBe('user-work.txt');
+      // And nothing half-applied: no sentinel written, so the next session retries.
+      const gi = await fs.readFile(join(fix.projectPath, '.gitignore'), 'utf-8').catch(() => '');
+      expect(gi).not.toContain('# Specwright: runtime state');
+      expect(tracked(fix.projectPath, 'specwright/specs/2026-05-08-test/kanban.json')).toBe(true);
+    } finally { await tearDown(fix); }
+  });
+
+  it('still untracks the runtime files once the index is clean again', async () => {
+    const fix = await mkRepo({ layout: 'specwright', withTrackedKanban: true, withBacklog: true });
+    try {
+      await ensureSpecwrightRuntimeGitignored(fix.projectPath);
+      expect(tracked(fix.projectPath, 'specwright/specs/2026-05-08-test/kanban.json')).toBe(false);
+      expect(tracked(fix.projectPath, 'specwright/backlog/backlog-index.json')).toBe(false);
+    } finally { await tearDown(fix); }
+  });
 });
 
 describe('ensureSpecwrightRuntimeGitignored — legacy agent-os/ layout', () => {

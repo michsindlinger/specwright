@@ -1,5 +1,50 @@
 # Changelog
 
+## 3.34.0 - 2026-07-25
+
+### Neu
+- **Ziel-Auswahl beim Start einer Cloud-Terminal-Session:** Nach der Modellwahl folgt ein zweiter Schritt „Wo soll die Session laufen?" mit drei Optionen — **Neuer Worktree** (Default, immer oben, zeigt den Base-Branch), **Hauptverzeichnis** (mit aktuellem Branch) und **bestehende Worktrees** (Ordnername + Stand). Erst der Klick auf ein Ziel startet die Session; „← Modell ändern" führt zurück. Shell-Terminals überspringen Schritt 2 und laufen wie bisher im Projektverzeichnis.
+- **Belegte Worktrees sind gesperrt** (ausgegraut, Badge „aktiv"), damit nicht zwei Claude-Instanzen im selben Verzeichnis kollidieren. **Ausnahme Hauptverzeichnis:** nicht gesperrt, nur Badge „N Sessions aktiv" — Shell-Terminals, Setup-Assistent und Nicht-Git-Projekte laufen zwingend dort, Sperren wäre eine Regression. Auto-Mode-Worktrees (Branch `story/*` oder Ordner `backlog-*`) bekommen einen Hinweis-Badge, werden aber nicht gesperrt: `backlogBranchName` ist `feature/<slug>` und würde sonst handgemachte Feature-Worktrees mittreffen.
+- **Alter der Worktrees in der Liste:** Jede Worktree-Zeile zeigt hinter dem Branch, wann der Worktree angelegt wurde („feature/x · vor 3 Tagen"), der Tooltip nennt Datum und Uhrzeit. git speichert kein Erstelldatum, deshalb dient das Admin-Verzeichnis `.git/worktrees/<id>` als Quelle (einmalig bei `git worktree add` geschrieben). Genommen wird der kleinste plausible Zeitstempel aus `birthtime` des Verzeichnisses, `birthtime` und `mtime` der `gitdir`-Datei — auf Dateisystemen ohne Geburtszeit liefert Node sonst die `ctime`, die bei jedem git-Schreibzugriff wandert. Ohne verwertbaren Zeitstempel bleibt die Zeile wie bisher. Das Hauptverzeichnis hat kein Admin-Verzeichnis und damit kein Alter — außer es ist selbst ein verlinkter Worktree.
+- **Neuer WS-Kanal `cloud-terminal:targets`** (+ `:response`/`:error`) liefert Projekt-Root und alle Worktrees mit Branch, Sauberkeit, Belegung, Auto-Mode-Marker, `worktreeCreationEnabled` und `newWorktreeBase`. Neue pure Module `utils/git-worktree-list.ts` (Porcelain-Parser + `pathKey`) und `utils/session-target.ts` (Parsing + Allowlist-Autorisierung).
+- **`effectiveCwd`** ist jetzt Teil der Session-Metadaten (Protokoll-Typ + `getSessionMetadata`) — Ground Truth statt Wunsch, sichtbar im Tab-Tooltip. `projectPath` bleibt unverändert das registrierte Projekt (sonst brächen `getSessionsForProject`, Per-Projekt-Config und Voice-Transcripts).
+
+### Geändert
+- **Notaus-Schalter `cloudSessionWorktree` lügt nicht mehr:** Bei explizit geklicktem „Neuer Worktree" antwortet der Server mit `WORKTREE_CREATION_DISABLED` statt still ins Hauptverzeichnis zu degradieren; die UI graut die Zeile mit Begründung aus und wählt „Hauptverzeichnis" vor. Alte Clients ohne `sessionTarget` behalten exakt das bisherige stille Fallback-Verhalten (plus Notice) — `parseSessionTarget` unterscheidet dafür „geklickt" von „defaulted".
+- **Plan-Review liest im richtigen Baum:** externe Reviewer laufen mit `session.effectiveCwd` als `cwd` statt mit `projectPath`. Vorher verifizierten sie Pläne gegen das Hauptverzeichnis, was beim Einklinken in einen fremden Worktree zu „diese Datei gibt es nicht"-Befunden geführt hätte. Die Config-Lookups (`getReviewPrompt`) bleiben am registrierten Projekt.
+- **`cloud-terminal:error` trägt jetzt `requestId`** bei Create-Fehlern. Ohne das adoptierte im Split-Screen jeder Pane den Fehler eines Nachbarn — durch die neuen Ziel-Fehler (belegt/ungültig) wäre das vom Sonderfall zum Alltag geworden. Ziel-Fehler führen zurück in Schritt 2 mit frischer Liste statt in `disconnected`.
+- **`cloud-terminal:notice` hat endlich einen Consumer** (dismissible Banner). Notices aus der Create-Phase reisen in der `cloud-terminal:created`-Antwort mit (`notices[]`), weil der Client zu dem Zeitpunkt nur seine `requestId` kennt, nicht die `sessionId`.
+- **Config-Lookup nach `resolveMainWorktreePath`:** vorher wurde `getCloudSessionWorktreeEnabled` mit dem rohen Pfad aufgerufen, wodurch ein als Projekt registrierter Sub-Worktree seinen Per-Projekt-Override verfehlte.
+
+### Sicherheit
+- **Drei Schichten gegen das Löschen fremder Worktrees.** (1) `createCloudSessionWorktree` liefert einen Branded Type `OwnedSessionWorktree`, den nur diese Funktion erzeugen kann — `worktreeCleanup` bei einem angehängten Worktree zu setzen ist damit ein Compile-Fehler, keine Review-Frage. (2) `removeCloudSessionWorktree` verweigert per Early-Return alles außerhalb von `session-*` / `session/*` und deckt damit beide `git branch -d`-Stellen mit einer Prüfung ab. (3) Tests über `closeSession`, `terminal.exit` und `shutdown`.
+- **Keine Shell-Interpolation mehr** in `removeCloudSessionWorktree`: alle git-Aufrufe laufen über `spawnSync` mit argv-Array. Vorher waren die Pfade serverseitig erzeugt und damit harmlos — mit einem client-gelieferten Zielpfad wäre daraus eine Command-Injection-Fläche geworden.
+- **Zielprüfung ist eine Exakt-Match-Allowlist** gegen `git worktree list --porcelain`, kein Prefix-Check auf `<projekt>-worktrees/`. Traversal-Pfade und Worktrees fremder Repos stehen schlicht nicht in der Liste. Normalisierung läuft beidseitig durch dieselbe `pathKey`-Funktion (`realpathSync.native` → `realpathSync` → `resolve`); jede Restdiskrepanz endet damit in einer Ablehnung, nie in einem falschen Arbeitsverzeichnis.
+- **Race-frei belegt:** Occupancy-Check und `session.effectiveCwd`-Claim liegen ohne `await` dazwischen — Node ist single-threaded, damit ist Check-then-Set atomar gegen ein paralleles `createSession`. Zusätzlich `existsSync`-Re-Check unmittelbar vor `spawn` gegen externes Entfernen zwischen Validierung und Start.
+- **`.mcp.json` wird in fremden Worktrees nur noch geseedet, nie überschrieben** (`ensureMcpConfigInWorktree`): fehlend → kopieren, identisch → No-op, abweichend → unangetastet + Notice. `copyMcpConfigToWorktree` behält die Overwrite-Semantik für die Auto-Mode-Aufrufer.
+- **`ensureSpecwrightRuntimeGitignored` fasst gestagte Fremdarbeit nicht mehr an:** liegt beim Aufruf irgendetwas im Index, wird die komplette Migration verschoben (nichts geschrieben, nächste Session versucht es erneut). Ein pathspec-limitierter Commit wäre der falsche Fix — `git commit -- <pfad>` verhält sich wie `--only` und würde den Worktree-Inhalt der genannten Pfade neu stagen, also genau das `git rm --cached` rückgängig machen. Relevant geworden, weil „Hauptverzeichnis" jetzt eine reguläre Wahl ist.
+
+### Tests
+- `git-worktree-list.test.ts` (29), `session-target.test.ts` (14), `cloud-session-target.test.ts` (22), `session-target-rows.test.ts` (25), `runtime-gitignore.test.ts` +2 (10). Abgedeckt u.a.: Backward-Compat ohne `sessionTarget`, alle drei Safety-Teardown-Pfade, Race mit `Promise.allSettled`, keine Geister-Occupancy nach Fehlschlag, sofortige Freigabe bei `terminal.exit`, Traversal/Fremd-Repo/gelöschter Worktree, Notaus explizit vs. implizit, Erstelldatum inkl. gelöschtem Worktree und Nicht-Repo, Altersformatierung inkl. Uhr-Vorlauf.
+
+### Caveats / Operator-Notiz
+- `CloudTerminalManager.shutdown()` hat weiterhin **keinen Aufrufer** (`websocket.ts` ruft nur `webSocketManager.shutdown()`) — verwaiste `session-*`-Worktrees überleben deshalb Server-Neustarts und tauchen im Picker auf. Einklinken ist erlaubt (praktisch zur Rettung liegengebliebener Arbeit), sie werden dann aber nie automatisch entfernt. Verdrahtung + Startup-Orphan-Sweep bleiben der bereits unter 3.33.0 notierte Folgeschritt.
+- Occupancy kennt nur Cloud-Sessions. Ein Mensch mit offenem Editor oder ein Spec-Level-Auto-Mode-Worktree ohne eigene Session erscheinen als frei.
+- Prozessübergreifendes TOCTOU bleibt: zwischen Auflistung und Start kann ein Fremdprozess den Worktree entfernen oder sperren. Abgefedert durch den Pre-Spawn-Check, nicht ausgeschlossen (dafür bräuchte es ein Advisory-Lockfile).
+
+## 3.33.0 - 2026-07-24
+
+### Neu
+- **Eigener Git-Worktree pro interaktiver Cloud-Terminal-Claude-Session:** Jede vom Nutzer gestartete `claude-code`-Cloud-Session läuft ab jetzt in einem frischen, wegwerfbaren Worktree auf einem eigenen `session/<sessionId>`-Branch (abgezweigt vom `baseBranch`, Fallback `HEAD`). Parallele Claude-Sessions kollidieren so nicht mehr im selben Working Tree/Branch. Das einfache **"Terminal" (shell) bleibt** im Hauptordner. **Ausgenommen:** Auto-Mode (legt eigene Story-Worktrees an) und Workflow-Tabs (spec-eigene git-Strategie) — beide erhalten kein `isolateInWorktree`. Neu: `utils/cloud-session-worktree.ts` (reused Bausteine aus `worktree-story.ts`), zentralisiert in `CloudTerminalManager.createSession` (jetzt `async`). Kanban-Runtime-Writes werden per `SPECWRIGHT_MAIN_PROJECT_PATH` zurück ins Hauptprojekt geroutet (wie Auto-Mode).
+- **Teardown:** Beim Schließen — clean ohne Commits → Worktree + leerer Branch weg; clean mit Commits → Worktree weg, Branch bleibt (für PR); dirty → alles behalten + UI-Notice (`cloud-terminal:notice`) statt nur Log. Idempotent über `closeSession`/`terminal.exit`/`shutdown`.
+- **Feature-Flag `cloudSessionWorktree`** (`general-config.json`, default `true`) als Notaus.
+
+### Tests
+- `cloud-session-worktree.test.ts`: Naming-Disjunktheit, Base-Fallback/Non-Repo, vier Remove-Fälle, Idempotenz, Manager-Wiring (claude-code→Worktree-cwd, shell→Hauptordner). 13/13.
+
+### Caveats / Operator-Notiz
+- Neue Sibling-Ordner `<projekt>-worktrees/session-*` (außerhalb des Repos → kein `.gitignore` nötig) und lokale `session/*`-Branches. Bei Server-Hard-Crash können Worktree+Branch verwaisen (nur Plattenplatz/Metadaten) → `git worktree prune` + `git branch -D session/*`. Startup-Orphan-Sweep ist als Folgeschritt vorgesehen.
+
 ## 3.28.6 - 2026-05-06
 
 ### Behoben

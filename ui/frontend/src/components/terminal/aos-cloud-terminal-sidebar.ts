@@ -48,6 +48,13 @@ export interface TerminalSession {
   setupType?: 'install' | 'migrate' | 'update';
   /** True once the user has explicitly renamed this tab — guards against auto-overwrite from connect/sync handlers. */
   customNameSet?: boolean;
+  /**
+   * Directory the backend actually spawned the PTY in (session worktree, an
+   * existing worktree, or the project dir). Reported by the server, so it is
+   * ground truth rather than what was requested — shown in the tab/pane title
+   * so a session running outside the project dir is never invisible.
+   */
+  effectiveCwd?: string;
 }
 
 export interface LoadingState {

@@ -8,9 +8,14 @@ const ANSI_CSI = /\x1b\[[0-9;]*[a-zA-Z]/g;
 // eslint-disable-next-line no-control-regex
 const ANSI_OSC = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
 
-// Plan-mode footer line: "ctrl-g to edit in Vim · ~/.claude/plans/<slug>.md"
-// Match absolute or tilde paths to .md files under .claude/plans/
-const PLAN_PATH_PATTERN = /(~\/|\/)[^\s│─]*\.claude\/plans\/[\w.@%+-]+\.md/g;
+// Plan-mode footer line: "ctrl-g to edit in Vim · ~/.claude[-<provider>]/plans/<slug>.md"
+// Match absolute or tilde paths to .md files under a plans dir. The config dir is
+// `.claude` for the default (Anthropic) session, or `.claude-<provider>` for
+// non-Anthropic sessions whose wrapper sets CLAUDE_CONFIG_DIR=~/.claude-<provider>
+// (e.g. claude-grok → ~/.claude-grok). The optional `-<provider>` suffix allows
+// word chars + hyphen only (no dots) — matches every kebab-case wrapper dir while
+// rejecting stray paths like `.claude-./plans/` or `.claude-grok./plans/`.
+const PLAN_PATH_PATTERN = /(~\/|\/)[^\s│─]*\.claude(?:-[\w-]+)?\/plans\/[\w.@%+-]+\.md/g;
 
 export interface ExtractedPlan {
   planText: string;
@@ -22,7 +27,7 @@ export interface ExtractedPlan {
  *
  * Strict file-path mode:
  *   1. Strip ANSI/OSC escape sequences and carriage returns
- *   2. Find the last `~/.claude/plans/<slug>.md` reference in the buffer
+ *   2. Find the last `~/.claude[-<provider>]/plans/<slug>.md` reference in the buffer
  *   3. Read that file and return its content + resolved path
  *   4. Return `null` if no plan path is present or the file can't be read
  *

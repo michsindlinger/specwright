@@ -37,7 +37,8 @@ import {
   type Model,
   type ModelProvider
 } from './model-config.js';
-import { loadGeneralConfig, updateGeneralConfig, getReviewPrompt, validateMaxConcurrent } from './general-config.js';
+import { loadGeneralConfig, updateGeneralConfig, getReviewPrompt, validateMaxConcurrent, getCloudSessionWorktreeEnabled } from './general-config.js';
+import { resolveMainWorktreePath } from './utils/worktree-detect.js';
 import { loadPromptTemplates, savePromptTemplate, deletePromptTemplate } from './prompt-templates.js';
 import { extractPromptFromImage } from './services/prompt-template-extractor.js';
 import { loadVoiceConfigStatus, updateVoiceConfig } from './voice-config.js';
@@ -52,9 +53,14 @@ import type {
   CloudTerminalSessionId,
   CloudTerminalType,
   CloudTerminalModelConfig,
-  CloudTerminalWorkflowMetadata
+  CloudTerminalWorkflowMetadata,
+  CloudTerminalWorktreeEntry
 } from '../shared/types/cloud-terminal.protocol.js';
 import { CLOUD_TERMINAL_ERROR_CODES } from '../shared/types/cloud-terminal.protocol.js';
+import { listRepoWorktrees, listWorktreeCreationTimes, pathKey } from './utils/git-worktree-list.js';
+import { parseSessionTarget, SessionTargetError, type ParsedTarget } from './utils/session-target.js';
+import { resolveSessionBase } from './utils/cloud-session-worktree.js';
+import { isWorktreeClean } from './utils/worktree-story.js';
 
 interface WebSocketClient extends WebSocket {
   clientId: string;
@@ -575,14 +581,14 @@ export class WebSocketHandler {
           this.handleSetupRunStep(client, message);
           break;
         case 'setup:start-devteam':
-          this.handleSetupStartDevteam(client, message);
+          void this.handleSetupStartDevteam(client, message);
           break;
         // Cloud Terminal Messages (CCT-001)
         case 'cloud-terminal:create':
-          this.handleCloudTerminalCreate(client, message);
+          void this.handleCloudTerminalCreate(client, message);
           break;
         case 'cloud-terminal:create-workflow':
-          this.handleCloudTerminalCreateWorkflow(client, message);
+          void this.handleCloudTerminalCreateWorkflow(client, message);
           break;
         case 'cloud-terminal:close':
           this.handleCloudTerminalClose(client, message);
@@ -604,6 +610,9 @@ export class WebSocketHandler {
           break;
         case 'cloud-terminal:list':
           this.handleCloudTerminalList(client, message);
+          break;
+        case 'cloud-terminal:targets':
+          void this.handleCloudTerminalTargets(client, message);
           break;
         case 'cloud-terminal:buffer-request':
           this.handleCloudTerminalBufferRequest(client, message);
@@ -4905,7 +4914,7 @@ export class WebSocketHandler {
     }
   }
 
-  private handleSetupStartDevteam(client: WebSocketClient, message: WebSocketMessage): void {
+  private async handleSetupStartDevteam(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
     const projectPath = message.projectPath as string || this.getClientProjectPath(client);
     if (!projectPath) {
       const errorResponse: WebSocketMessage = {
@@ -4931,7 +4940,7 @@ export class WebSocketHandler {
     }
 
     try {
-      const session = this.cloudTerminalManager.createSession(projectPath, 'claude-code', modelConfig);
+      const session = await this.cloudTerminalManager.createSession(projectPath, 'claude-code', modelConfig);
       console.log(`[WebSocket] DevTeam setup session created: ${session.sessionId}`);
 
       // Send initial command to start DevTeam build
@@ -5240,6 +5249,22 @@ export class WebSocketHandler {
       };
       this.broadcast(message);
     });
+
+    // User-facing notice (per-session worktree: kept-because-dirty, or started
+    // without a worktree). Non-fatal — surfaced so the reason is visible in the
+    // UI instead of only in the server log.
+    this.cloudTerminalManager.on(
+      'session.notice',
+      (sessionId: CloudTerminalSessionId, level: 'warn' | 'info', noticeMessage: string) => {
+        this.broadcast({
+          type: 'cloud-terminal:notice',
+          sessionId,
+          level,
+          message: noticeMessage,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    );
   }
 
   /**
@@ -5345,16 +5370,23 @@ export class WebSocketHandler {
    * Handle cloud-terminal:create
    * Creates a new Cloud Terminal session
    */
-  private handleCloudTerminalCreate(client: WebSocketClient, message: WebSocketMessage): void {
+  private async handleCloudTerminalCreate(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
     const projectPath = message.projectPath as string || this.getClientProjectPath(client);
     const terminalType = (message.terminalType as CloudTerminalType) || 'claude-code';
     const modelConfig = message.modelConfig as CloudTerminalModelConfig | undefined;
     const cols = message.cols as number | undefined;
     const rows = message.rows as number | undefined;
 
+    // `requestId` is echoed on errors too: in split-screen every mounted pane
+    // listens on the same socket, and an unfiltered error would tear down
+    // sibling panes as well. Target errors (occupied / invalid) made that a
+    // routine path rather than an exotic one.
+    const requestId = message.requestId;
+
     if (!projectPath) {
       const errorResponse: WebSocketMessage = {
         type: 'cloud-terminal:error',
+        requestId,
         code: 'INVALID_PROJECT_PATH',
         message: 'Project path is required',
         timestamp: new Date().toISOString()
@@ -5367,6 +5399,7 @@ export class WebSocketHandler {
     if (terminalType === 'claude-code' && (!modelConfig || !modelConfig.model)) {
       const errorResponse: WebSocketMessage = {
         type: 'cloud-terminal:error',
+        requestId,
         code: 'INVALID_MESSAGE',
         message: 'Model configuration is required for claude-code terminals',
         timestamp: new Date().toISOString()
@@ -5375,16 +5408,44 @@ export class WebSocketHandler {
       return;
     }
 
+    let sessionTarget: ParsedTarget;
     try {
-      const session = this.cloudTerminalManager.createSession(projectPath, terminalType, modelConfig, cols, rows);
-      console.log(`[WebSocket] Cloud Terminal ${terminalType} session created: ${session.sessionId}`);
+      sessionTarget = parseSessionTarget(message.sessionTarget);
+    } catch (error) {
+      const errorResponse: WebSocketMessage = {
+        type: 'cloud-terminal:error',
+        requestId,
+        code: error instanceof SessionTargetError
+          ? error.code
+          : CLOUD_TERMINAL_ERROR_CODES.INVALID_SESSION_TARGET,
+        message: error instanceof Error ? error.message : 'Invalid session target',
+        timestamp: new Date().toISOString()
+      };
+      client.send(JSON.stringify(errorResponse));
+      return;
+    }
+
+    try {
+      // Where the session runs is the client's choice; absent `sessionTarget`
+      // still means "new per-session worktree" for older clients. Shell
+      // terminals ignore it entirely and stay in the project dir.
+      const session = await this.cloudTerminalManager.createSession(
+        projectPath, terminalType, modelConfig, cols, rows,
+        undefined, undefined, undefined, { sessionTarget }
+      );
+      console.log(`[WebSocket] Cloud Terminal ${terminalType} session created: ${session.sessionId} (cwd: ${session.effectiveCwd})`);
+
+      // Notices raised during creation cannot travel via cloud-terminal:notice
+      // (the client does not know the sessionId yet), so they ride along here.
+      const notices = this.cloudTerminalManager.takePendingNotices(session.sessionId);
 
       // Send created response with requestId for correlation
       const createdResponse: WebSocketMessage = {
         type: 'cloud-terminal:created',
-        requestId: message.requestId,
+        requestId,
         sessionId: session.sessionId,
         session,
+        ...(notices.length > 0 ? { notices } : {}),
         timestamp: new Date().toISOString()
       };
       this.broadcast(createdResponse);
@@ -5393,6 +5454,7 @@ export class WebSocketHandler {
       const errorCode = (error as Error & { code?: string }).code || 'SPAWN_FAILED';
       const errorResponse: WebSocketMessage = {
         type: 'cloud-terminal:error',
+        requestId,
         code: errorCode,
         message: error instanceof Error ? error.message : 'Failed to create Cloud Terminal session',
         timestamp: new Date().toISOString()
@@ -5402,11 +5464,129 @@ export class WebSocketHandler {
   }
 
   /**
+   * Handle cloud-terminal:targets
+   *
+   * Answers "where could this session run?": the registered project root plus
+   * every git worktree of the repo, annotated with branch, cleanliness and
+   * live-session occupancy.
+   *
+   * Lives here rather than in the git handler because occupancy is only known
+   * to CloudTerminalManager. Response goes to the requesting client only —
+   * unlike `cloud-terminal:created`, targets are not shared state.
+   */
+  private async handleCloudTerminalTargets(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
+    const requestId = message.requestId as string | undefined;
+    const projectPath = message.projectPath as string || this.getClientProjectPath(client);
+
+    const sendError = (code: string, text: string): void => {
+      client.send(JSON.stringify({
+        type: 'cloud-terminal:targets:error',
+        requestId,
+        code,
+        message: text,
+        timestamp: new Date().toISOString(),
+      }));
+    };
+
+    if (!projectPath) {
+      sendError(CLOUD_TERMINAL_ERROR_CODES.INVALID_PROJECT_PATH, 'Project path is required');
+      return;
+    }
+
+    try {
+      const mainProjectPath = resolveMainWorktreePath(projectPath);
+      const [info, createdAtByPath] = await Promise.all([
+        listRepoWorktrees(mainProjectPath),
+        listWorktreeCreationTimes(mainProjectPath),
+      ]);
+      const occupied = this.cloudTerminalManager.getOccupiedPaths();
+      const projectKey = pathKey(projectPath);
+
+      // `git status` per worktree is synchronous and not free. Beyond a handful
+      // of worktrees we report `clean: null` and the UI simply omits the badge.
+      const CLEANLINESS_BUDGET = 8;
+      const withCleanliness = info.entries.length <= CLEANLINESS_BUDGET;
+
+      const toEntry = (
+        path: string,
+        branch: string | null,
+        head: string | null,
+        flags: { isMain: boolean; missing: boolean; locked: boolean }
+      ): CloudTerminalWorktreeEntry => {
+        const hit = occupied.get(path);
+        const name = path.split('/').filter(Boolean).pop() ?? path;
+        return {
+          path,
+          name,
+          branch,
+          head,
+          isMain: flags.isMain,
+          isProjectRoot: path === projectKey,
+          clean: withCleanliness && !flags.missing ? isWorktreeClean(path) : null,
+          missing: flags.missing,
+          locked: flags.locked,
+          occupied: Boolean(hit),
+          occupiedBy: hit?.sessionId,
+          occupiedCount: hit?.count ?? 0,
+          // `backlogBranchName` is `feature/<slug>`, which collides with
+          // hand-made feature worktrees — so only the unambiguous markers
+          // count: a `story/*` branch or a `backlog-*` directory.
+          autoModeManaged: Boolean(branch?.startsWith('story/')) || name.startsWith('backlog-'),
+          // Only linked worktrees have an admin dir — the main worktree and
+          // non-git project roots stay null and render without an age.
+          createdAt: createdAtByPath.get(path) ?? null,
+        };
+      };
+
+      const worktrees = info.entries
+        .filter((e) => !e.bare)
+        .map((e) => toEntry(e.path, e.branch, e.head, {
+          isMain: e.path === info.mainWorktreePath,
+          missing: e.prunable,
+          locked: e.locked,
+        }));
+
+      const projectRoot =
+        worktrees.find((w) => w.isProjectRoot) ??
+        toEntry(projectKey, null, null, { isMain: false, missing: false, locked: false });
+
+      let newWorktreeBase: string | null = null;
+      if (info.isGitRepo) {
+        try {
+          newWorktreeBase = await resolveSessionBase(mainProjectPath);
+        } catch {
+          newWorktreeBase = null;
+        }
+      }
+
+      client.send(JSON.stringify({
+        type: 'cloud-terminal:targets:response',
+        requestId,
+        isGitRepo: info.isGitRepo,
+        projectRoot,
+        mainWorktreePath: info.mainWorktreePath ?? projectKey,
+        projectRootIsLinkedWorktree:
+          info.mainWorktreePath !== null && info.mainWorktreePath !== projectKey,
+        worktrees,
+        worktreeCreationEnabled: getCloudSessionWorktreeEnabled(mainProjectPath),
+        newWorktreeBase,
+        timestamp: new Date().toISOString(),
+      }));
+    } catch (error) {
+      console.error('[WebSocket] cloud-terminal:targets failed:', error);
+      sendError(
+        CLOUD_TERMINAL_ERROR_CODES.WORKTREE_LIST_FAILED,
+        error instanceof Error ? error.message : 'Failed to list worktrees'
+      );
+    }
+  }
+
+  /**
    * Handle cloud-terminal:create-workflow (WTT-001)
    * Creates a new Cloud Terminal session for workflow execution
    * Automatically sends the workflow command after session initialization
    */
-  private handleCloudTerminalCreateWorkflow(client: WebSocketClient, message: WebSocketMessage): void {
+  private async handleCloudTerminalCreateWorkflow(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
     const projectPath = message.projectPath as string || this.getClientProjectPath(client);
     const workflowMetadata = message.workflowMetadata as CloudTerminalWorkflowMetadata | undefined;
     const modelConfig = message.modelConfig as CloudTerminalModelConfig | undefined;
@@ -5447,7 +5627,7 @@ export class WebSocketHandler {
     }
 
     try {
-      const session = this.cloudTerminalManager.createWorkflowSession(
+      const session = await this.cloudTerminalManager.createWorkflowSession(
         projectPath,
         workflowMetadata,
         modelConfig,

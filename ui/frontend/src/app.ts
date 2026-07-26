@@ -1016,8 +1016,8 @@ export class AosApp extends LitElement {
     }
   }
 
-  private _handleTerminalSessionConnected(e: CustomEvent<{ sessionId: string; terminalSessionId: string; terminalType?: 'shell' | 'claude-code' }>): void {
-    const { sessionId, terminalSessionId, terminalType } = e.detail;
+  private _handleTerminalSessionConnected(e: CustomEvent<{ sessionId: string; terminalSessionId: string; terminalType?: 'shell' | 'claude-code'; effectiveCwd?: string }>): void {
+    const { sessionId, terminalSessionId, terminalType, effectiveCwd } = e.detail;
     const resolvedType = terminalType || 'claude-code';
 
     // Update session with backend ID, terminalType, and type-specific name.
@@ -1028,6 +1028,7 @@ export class AosApp extends LitElement {
         ...s,
         terminalSessionId,
         terminalType: resolvedType,
+        ...(effectiveCwd ? { effectiveCwd } : {}),
         ...(s.customNameSet ? {} : { name: this._generateSessionName(s.projectPath, resolvedType) }),
       };
       // Rename-before-connect: a custom name set before terminalSessionId existed can now be

@@ -27,6 +27,7 @@ import {
   CloudTerminalType,
   CloudTerminalModelConfig,
   CloudTerminalWorkflowMetadata,
+  CloudTerminalNotice,
   CLOUD_TERMINAL_CONFIG,
   CLOUD_TERMINAL_ERROR_CODES,
 } from '../../shared/types/cloud-terminal.protocol.js';
@@ -34,6 +35,19 @@ import { TerminalManager } from './terminal-manager.js';
 import { getCliCommandForModel, getProviderCommand, checkCliAvailability } from '../model-config.js';
 import { PlanBufferExtractor } from '../utils/plan-buffer-extractor.js';
 import { loadGithubConfigStatus, loadGithubPat } from '../github-config.js';
+import { resolveMainWorktreePath } from '../utils/worktree-detect.js';
+import { getCloudSessionWorktreeEnabled } from '../general-config.js';
+import {
+  createCloudSessionWorktree,
+  removeCloudSessionWorktree,
+  resolveSessionBase,
+  NotAGitRepoError,
+  SPECWRIGHT_MAIN_PROJECT_PATH_ENV,
+  type OwnedSessionWorktree,
+} from '../utils/cloud-session-worktree.js';
+import { pathKey } from '../utils/git-worktree-list.js';
+import { resolveExistingWorktreeTarget, type ParsedTarget } from '../utils/session-target.js';
+import { ensureMcpConfigInWorktree } from '../utils/worktree-story.js';
 
 /** MIME type → filename extension for pasted-image persistence */
 const PASTE_MIME_TO_EXT: ReadonlyMap<string, string> = new Map([
@@ -84,8 +98,37 @@ interface ManagedCloudSession extends CloudTerminalSession {
   /** Dedup timestamp: last time a plan box was detected. */
   lastPlanDetectedAt?: Date;
 
-  /** Resolved file path of the most recently detected plan (~/.claude/plans/<slug>.md). */
+  /** Resolved file path of the most recently detected plan (~/.claude[-<provider>]/plans/<slug>.md). */
   lastDetectedPlanPath?: string;
+
+  /**
+   * Per-session git worktree bookkeeping. Set **if and only if this session
+   * created the worktree** — that is the entire ownership contract, because
+   * `disposeSessionWorktree` deletes whatever it finds here on close, exit,
+   * create-rollback and shutdown.
+   *
+   * The type is deliberately `OwnedSessionWorktree`, a branded value only
+   * `createCloudSessionWorktree` can produce, so a session that attached to a
+   * user-owned worktree cannot populate this field even by accident.
+   */
+  worktreeCleanup?: OwnedSessionWorktree;
+
+  /** Idempotency guard so worktree teardown runs at most once. */
+  worktreeDisposed?: boolean;
+
+  /**
+   * Directory the PTY runs in. Assigned synchronously at construction and only
+   * ever overwritten synchronously, because it doubles as the occupancy claim
+   * for `existing-worktree` targets (see the claim barrier in createSession).
+   */
+  effectiveCwd: string;
+
+  /**
+   * Notices raised before `session.created` was emitted. The client cannot map
+   * a `cloud-terminal:notice` to a pending request yet at that point, so these
+   * ride along inside the `cloud-terminal:created` response instead.
+   */
+  pendingNotices?: CloudTerminalNotice[];
 }
 
 /**
@@ -143,6 +186,7 @@ const PLAN_IDLE_TIMEOUT_MS = 5000;
  * - 'session.prompt-detected' (CloudTerminalSessionId, matchedText) - Interactive prompt detected in output (auto-mode only)
  * - 'session.blocker-reported' (CloudTerminalSessionId, reason) - LLM emitted <<BLOCKER:reason>> marker (auto-mode only)
  * - 'session.plan-detected' (CloudTerminalSessionId, planText, source: 'auto'|'manual') - Plan box detected; planText is extracted buffer content (plan-review only)
+ * - 'session.notice' (CloudTerminalSessionId, level: 'warn'|'info', message) - User-facing notice (e.g. worktree kept due to uncommitted changes, or started without worktree)
  */
 /**
  * Outcome of a {@link CloudTerminalManager.resizeSession} call.
@@ -184,10 +228,15 @@ export class CloudTerminalManager extends EventEmitter {
    * @param modelConfig - Model configuration for Claude Code CLI (required for 'claude-code', unused for 'shell')
    * @param cols - Terminal columns (default: 120)
    * @param rows - Terminal rows (default: 40)
+   * @param options.sessionTarget - Where the session runs; supersedes
+   *   `isolateInWorktree`. Only honoured for 'claude-code' terminals.
+   * @param options.isolateInWorktree - Legacy switch kept so callers that
+   *   predate the target picker keep compiling; `true` maps to
+   *   `{kind:'new-worktree', explicit:false}`.
    * @returns Created session metadata
-   * @throws Error if max sessions reached or spawn fails
+   * @throws Error if max sessions reached, the target is invalid/occupied, or spawn fails
    */
-  public createSession(
+  public async createSession(
     projectPath: string,
     terminalType: CloudTerminalType,
     modelConfig?: CloudTerminalModelConfig,
@@ -195,8 +244,9 @@ export class CloudTerminalManager extends EventEmitter {
     rows?: number,
     initialPrompt?: string,
     extraCliArgs?: string[],
-    extraEnv?: Record<string, string>
-  ): CloudTerminalSession {
+    extraEnv?: Record<string, string>,
+    options?: { isolateInWorktree?: boolean; sessionTarget?: ParsedTarget }
+  ): Promise<CloudTerminalSession> {
     // Check max sessions limit
     if (this.sessions.size >= CLOUD_TERMINAL_CONFIG.MAX_SESSIONS) {
       const error = new Error(
@@ -212,10 +262,21 @@ export class CloudTerminalManager extends EventEmitter {
     // Generate internal execution ID for TerminalManager
     const executionId = `cloud-${sessionId}`;
 
+    // Normalize the target. Callers that pass neither (auto-mode, workflow tabs,
+    // setup shells) run in `projectPath` exactly as they always did.
+    const target: ParsedTarget =
+      options?.sessionTarget ??
+      (options?.isolateInWorktree
+        ? { target: { kind: 'new-worktree' }, explicit: false }
+        : { target: { kind: 'main' }, explicit: false });
+
     // Create session metadata
     const session: ManagedCloudSession = {
       sessionId,
       projectPath,
+      // Claimed synchronously so a concurrent createSession sees this session
+      // as an occupant from the moment it enters the map.
+      effectiveCwd: pathKey(projectPath),
       terminalType,
       status: 'creating',
       modelConfig,
@@ -254,6 +315,134 @@ export class CloudTerminalManager extends EventEmitter {
           baseEnv.GIT_ASKPASS = '/dev/null';
           baseEnv.GIT_TERMINAL_PROMPT = '0';
         }
+      }
+
+      // Where the PTY runs. Only claude-code honours the target; shell
+      // terminals (setup wizard, devteam install, plain shells) always run in
+      // the project directory, as they always have.
+      let effectiveCwd = projectPath;
+      if (terminalType === 'claude-code') {
+        switch (target.target.kind) {
+          case 'new-worktree': {
+            // Resolve BEFORE the config lookup: a registered sub-worktree would
+            // otherwise miss its per-project override and silently use defaults.
+            const mainProjectPath = resolveMainWorktreePath(projectPath);
+
+            if (!getCloudSessionWorktreeEnabled(mainProjectPath)) {
+              if (target.explicit) {
+                // The user actively picked "new worktree" — a silent downgrade to
+                // the main dir would leave them believing they are isolated.
+                const error = new Error(
+                  'Worktree-Isolation ist per Konfiguration deaktiviert (cloudSessionWorktree: false)'
+                );
+                (error as Error & { code: string }).code =
+                  CLOUD_TERMINAL_ERROR_CODES.WORKTREE_CREATION_DISABLED;
+                throw error;
+              }
+              // Legacy caller that sent no target: preserve the pre-picker
+              // behaviour (run in the project dir) but say so.
+              this.addPendingNotice(
+                session,
+                'warn',
+                'Worktree-Isolation ist deaktiviert — Session läuft im Projektverzeichnis.'
+              );
+              break;
+            }
+
+            try {
+              const base = await resolveSessionBase(mainProjectPath);
+              const owned = await createCloudSessionWorktree(mainProjectPath, sessionId, base);
+              effectiveCwd = owned.worktreePath;
+              session.effectiveCwd = pathKey(owned.worktreePath);
+              // Route kanban/backlog runtime writes back to the main repo (same
+              // mechanism auto-mode uses) so per-session copies never diverge.
+              baseEnv[SPECWRIGHT_MAIN_PROJECT_PATH_ENV] = mainProjectPath;
+              // Ownership: this session created it, so teardown may remove it.
+              session.worktreeCleanup = owned;
+            } catch (err) {
+              if (err instanceof NotAGitRepoError) {
+                // Graceful degrade: isolation impossible, run in the main project dir
+                // and make the reason visible in the UI rather than hard-failing.
+                console.warn(
+                  `[CloudTerminalManager] session ${sessionId}: ${err.message} — starting without worktree`
+                );
+                this.addPendingNotice(
+                  session,
+                  'warn',
+                  'Ohne Worktree gestartet (kein Git-Repository).'
+                );
+              } else {
+                // Git present but worktree creation failed — do NOT silently fall back
+                // to the main dir (would defeat isolation). Surface as a hard error.
+                throw err;
+              }
+            }
+            break;
+          }
+
+          case 'main':
+            // Pre-picker behaviour verbatim: the registered project path, no
+            // SPECWRIGHT_MAIN_PROJECT_PATH override, no worktree bookkeeping.
+            // Deliberately NOT occupancy-checked — shell terminals, the setup
+            // wizard and non-git projects all live here, so blocking it would
+            // lock the user out after the first session.
+            break;
+
+          case 'existing-worktree': {
+            const mainProjectPath = resolveMainWorktreePath(projectPath);
+            const wtPath = await resolveExistingWorktreeTarget(
+              mainProjectPath,
+              target.target.path
+            );
+
+            // ── Claim barrier: NO `await` between the check and the assignment.
+            // Node is single-threaded, so a check-then-set with no intervening
+            // await is atomic against a concurrent createSession. Inserting an
+            // await here re-opens the double-attach race.
+            const holder = this.getOccupiedPaths().get(wtPath);
+            if (holder && holder.sessionId !== sessionId) {
+              const error = new Error(
+                `Worktree wird bereits von einer anderen Session verwendet: ${wtPath}`
+              );
+              (error as Error & { code: string }).code =
+                CLOUD_TERMINAL_ERROR_CODES.TARGET_OCCUPIED;
+              throw error;
+            }
+            session.effectiveCwd = wtPath;
+            effectiveCwd = wtPath;
+            baseEnv[SPECWRIGHT_MAIN_PROJECT_PATH_ENV] = mainProjectPath;
+            // ── Claim established; awaits are safe again below.
+
+            // Seed-only: never clobber a `.mcp.json` the user maintains.
+            const mcp = await ensureMcpConfigInWorktree(mainProjectPath, wtPath);
+            if (mcp === 'kept-different') {
+              this.addPendingNotice(
+                session,
+                'info',
+                'Worktree nutzt eine eigene .mcp.json — kanban-MCP ist evtl. nicht verfügbar.'
+              );
+            }
+
+            // NO session.worktreeCleanup: this worktree belongs to the user and
+            // must survive session teardown. The branded type makes assigning
+            // one here a compile error, this comment says why.
+            break;
+          }
+
+          default: {
+            const exhaustive: never = target.target;
+            void exhaustive;
+            break;
+          }
+        }
+      }
+
+      // Re-check right before spawn: the directory can disappear between
+      // validation and launch (external `git worktree remove`, manual rm).
+      if (!fs.existsSync(effectiveCwd)) {
+        const error = new Error(`Arbeitsverzeichnis existiert nicht: ${effectiveCwd}`);
+        (error as Error & { code: string }).code = CLOUD_TERMINAL_ERROR_CODES.TARGET_NOT_FOUND;
+        throw error;
       }
 
       if (terminalType === 'shell') {
@@ -299,7 +488,7 @@ export class CloudTerminalManager extends EventEmitter {
       // user explicitly closes it (see CLOUD_TERMINAL_CONFIG.INACTIVITY_TIMEOUT_MS).
       const terminalSession = this.terminalManager.spawn({
         executionId,
-        cwd: projectPath,
+        cwd: effectiveCwd,
         shell: shellCommand,
         args: shellArgs,
         cols: cols || CLOUD_TERMINAL_CONFIG.DEFAULT_COLS,
@@ -321,11 +510,102 @@ export class CloudTerminalManager extends EventEmitter {
 
       return this.getSessionMetadata(session);
     } catch (error) {
-      // Clean up on failure
+      // Clean up on failure — including a worktree created earlier in this call.
+      if (session.worktreeCleanup) {
+        const { worktreePath, branchName, mainProjectPath } = session.worktreeCleanup;
+        void removeCloudSessionWorktree(mainProjectPath, worktreePath, branchName)
+          .catch((err) => console.warn(
+            `[CloudTerminalManager] failed to roll back worktree for ${sessionId}:`, err,
+          ));
+      }
       this.sessions.delete(sessionId);
       console.error(`[CloudTerminalManager] Failed to create session:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Buffers a notice raised before `session.created` was emitted.
+   *
+   * At that point the client only knows its own `requestId`, not the
+   * `sessionId`, so a `cloud-terminal:notice` broadcast would be unroutable.
+   * These ride along inside the `cloud-terminal:created` response instead.
+   */
+  private addPendingNotice(
+    session: ManagedCloudSession,
+    level: 'info' | 'warn',
+    text: string
+  ): void {
+    (session.pendingNotices ??= []).push({ level, text });
+  }
+
+  /**
+   * Directories currently occupied by a live cloud session, keyed by
+   * `effectiveCwd` (pathKey-normalized).
+   *
+   * Closed sessions are excluded: `terminal.exit` flips `status` to 'closed'
+   * before the delayed map delete, so Ctrl-D frees the target immediately
+   * rather than five seconds later.
+   *
+   * Auto-mode story/backlog slots create their sessions with the worktree as
+   * `projectPath`, so they land in this map automatically. Spec-level
+   * worktrees that carry no session remain invisible — see the picker's
+   * "Auto-Mode" badge for the mitigation.
+   */
+  public getOccupiedPaths(): Map<string, { sessionId: CloudTerminalSessionId; count: number }> {
+    const out = new Map<string, { sessionId: CloudTerminalSessionId; count: number }>();
+    for (const session of this.sessions.values()) {
+      if (session.status === 'closed') continue;
+      const existing = out.get(session.effectiveCwd);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        out.set(session.effectiveCwd, { sessionId: session.sessionId, count: 1 });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Drains the create-time notices of a session (returns and clears them).
+   */
+  public takePendingNotices(sessionId: CloudTerminalSessionId): CloudTerminalNotice[] {
+    const session = this.sessions.get(sessionId);
+    if (!session?.pendingNotices?.length) return [];
+    const notices = session.pendingNotices;
+    session.pendingNotices = undefined;
+    return notices;
+  }
+
+  /**
+   * Idempotently tear down a session's per-session worktree (if any).
+   *
+   * The `worktreeDisposed` flag is set **synchronously** at the top so the two
+   * teardown paths (explicit closeSession + the terminal.exit listener) can
+   * both call this without double-removing when they race. Returns the removal
+   * promise so shutdown can await it; closeSession/terminal.exit fire-and-forget.
+   */
+  private disposeSessionWorktree(session: ManagedCloudSession): Promise<void> {
+    if (session.worktreeDisposed || !session.worktreeCleanup) {
+      return Promise.resolve();
+    }
+    session.worktreeDisposed = true;
+    const { worktreePath, branchName, mainProjectPath } = session.worktreeCleanup;
+    const sessionId = session.sessionId;
+    return removeCloudSessionWorktree(mainProjectPath, worktreePath, branchName)
+      .then((result) => {
+        if (result.keptReason === 'dirty') {
+          this.emit(
+            'session.notice',
+            sessionId,
+            'warn',
+            `Worktree behalten (ungespeicherte Änderungen): ${worktreePath}`
+          );
+        }
+      })
+      .catch((err) => console.warn(
+        `[CloudTerminalManager] worktree cleanup failed for ${sessionId}:`, err,
+      ));
   }
 
   /**
@@ -344,13 +624,13 @@ export class CloudTerminalManager extends EventEmitter {
    * @returns Created session metadata with workflow metadata attached
    * @throws Error if max sessions reached or spawn fails
    */
-  public createWorkflowSession(
+  public async createWorkflowSession(
     projectPath: string,
     workflowMetadata: CloudTerminalWorkflowMetadata,
     modelConfig: CloudTerminalModelConfig,
     cols?: number,
     rows?: number
-  ): CloudTerminalSession & { workflowMetadata: CloudTerminalWorkflowMetadata } {
+  ): Promise<CloudTerminalSession & { workflowMetadata: CloudTerminalWorkflowMetadata }> {
     // Build initial prompt from workflow metadata (e.g., "/specwright:add-bug test")
     let initialPrompt = workflowMetadata.workflowCommand;
     if (workflowMetadata.workflowContext) {
@@ -358,8 +638,10 @@ export class CloudTerminalManager extends EventEmitter {
     }
 
     // Pass initial prompt as CLI argument - Claude Code processes it on startup
-    // and returns to interactive REPL mode afterwards
-    const session = this.createSession(projectPath, 'claude-code', modelConfig, cols, rows, initialPrompt);
+    // and returns to interactive REPL mode afterwards.
+    // Workflow tabs are excluded from per-session worktree isolation (they run
+    // against a spec with its own git strategy) → no isolateInWorktree option.
+    const session = await this.createSession(projectPath, 'claude-code', modelConfig, cols, rows, initialPrompt);
 
     console.log(
       `[CloudTerminalManager] Created workflow session ${session.sessionId} with initial prompt: ${initialPrompt}`
@@ -390,6 +672,11 @@ export class CloudTerminalManager extends EventEmitter {
 
     // Update session status
     session.status = 'closed';
+
+    // Tear down the per-session worktree (idempotent; fire-and-forget). Runs
+    // BEFORE the map delete so the race with the terminal.exit listener resolves
+    // via the synchronous worktreeDisposed flag rather than a lost session ref.
+    void this.disposeSessionWorktree(session);
 
     // Remove from sessions
     this.sessions.delete(sessionId);
@@ -708,6 +995,10 @@ export class CloudTerminalManager extends EventEmitter {
 
       console.log(`[CloudTerminalManager] Session ${session.sessionId} exited with code ${exitCode}`);
 
+      // Tear down the per-session worktree (idempotent). Runs now — before the
+      // delayed delete — so a crashed/exited CLI doesn't orphan its worktree.
+      void this.disposeSessionWorktree(session);
+
       // Emit session closed event
       this.emit('session.closed', session.sessionId, exitCode);
 
@@ -951,6 +1242,7 @@ export class CloudTerminalManager extends EventEmitter {
     return {
       sessionId: session.sessionId,
       projectPath: session.projectPath,
+      effectiveCwd: session.effectiveCwd,
       terminalType: session.terminalType,
       status: session.status,
       modelConfig: session.modelConfig,
@@ -967,8 +1259,13 @@ export class CloudTerminalManager extends EventEmitter {
   /**
    * Clean up all sessions (for shutdown)
    */
-  public shutdown(): void {
+  public async shutdown(): Promise<void> {
     console.log(`[CloudTerminalManager] Shutting down, cleaning up ${this.sessions.size} sessions`);
+
+    // Snapshot BEFORE clear so worktreeCleanup refs survive; await removals so
+    // they finish before the process exits (fire-and-forget would be lost).
+    const snapshot = [...this.sessions.values()];
+    await Promise.allSettled(snapshot.map((session) => this.disposeSessionWorktree(session)));
 
     for (const session of this.sessions.values()) {
       this.terminalManager.kill(session.executionId);

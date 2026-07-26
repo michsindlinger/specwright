@@ -188,7 +188,14 @@ export class PlanReviewOrchestrator extends EventEmitter {
     state.lockedAt = Date.now();
 
     try {
+      // Two different paths on purpose:
+      // - `projectPath` (registered project) keys the per-project config.
+      // - `reviewCwd` is where the session actually runs, so reviewers read the
+      //   same tree the plan was written against. With the session-target
+      //   picker those can differ by an arbitrary amount of work — a reviewer
+      //   pointed at the main checkout would report "this file doesn't exist".
       const projectPath = session?.projectPath ?? process.cwd();
+      const reviewCwd = session?.effectiveCwd ?? projectPath;
 
       this.emit('plan-review:started', sessionId, source, reviewers.length);
 
@@ -198,7 +205,7 @@ export class PlanReviewOrchestrator extends EventEmitter {
       const results = await Promise.allSettled(
         reviewers.map((r) =>
           this.externalReviewer
-            .reviewPlan(fullPrompt, r.providerId, r.modelId, projectPath)
+            .reviewPlan(fullPrompt, r.providerId, r.modelId, reviewCwd)
             .then((output) => ({ reviewer: r, output }))
         )
       );
