@@ -72,6 +72,80 @@ describe('parseSessionTarget', () => {
     });
   });
 
+  // ── Optional worktree name ────────────────────────────────────────────────
+
+  it('treats an absent or empty name as "no name" (pre-name-field behaviour)', () => {
+    for (const raw of [
+      { kind: 'new-worktree' },
+      { kind: 'new-worktree', name: undefined },
+      { kind: 'new-worktree', name: null },
+      { kind: 'new-worktree', name: '' },
+    ]) {
+      expect(parseSessionTarget(raw)).toEqual({
+        target: { kind: 'new-worktree' },
+        explicit: true,
+      });
+    }
+  });
+
+  it('slugs a usable name and keeps it on the target', () => {
+    expect(parseSessionTarget({ kind: 'new-worktree', name: 'Refactor: Auth!' })).toEqual({
+      target: { kind: 'new-worktree', name: 'refactor-auth' },
+      explicit: true,
+    });
+  });
+
+  it('rejects a non-string name as a protocol violation', () => {
+    expect(() => parseSessionTarget({ kind: 'new-worktree', name: 42 })).toThrow(
+      /must be a string/
+    );
+    try {
+      parseSessionTarget({ kind: 'new-worktree', name: 42 });
+    } catch (e) {
+      expect(e).toMatchObject({ code: 'INVALID_WORKTREE_NAME' });
+    }
+  });
+
+  it('rejects an oversized payload before normalizing it', () => {
+    expect(() =>
+      parseSessionTarget({ kind: 'new-worktree', name: 'a'.repeat(201) })
+    ).toThrow(/exceeds 200/);
+  });
+
+  it('rejects input that slugs to nothing, naming the allowed alphabet', () => {
+    for (const name of ['!!!', '   ', 'Привет', '🚀']) {
+      expect(() => parseSessionTarget({ kind: 'new-worktree', name })).toThrow(
+        /a–z, 0–9/
+      );
+    }
+  });
+
+  it('rejects the reserved auto-name schema', () => {
+    expect(() =>
+      parseSessionTarget({ kind: 'new-worktree', name: 'cloud-1785063829638-5' })
+    ).toThrow(/reserviert/);
+  });
+
+  it('allows names that merely resemble the reserved schema', () => {
+    expect(parseSessionTarget({ kind: 'new-worktree', name: 'cloud-native' })).toEqual({
+      target: { kind: 'new-worktree', name: 'cloud-native' },
+      explicit: true,
+    });
+  });
+
+  it('never carries a name on main or existing-worktree', () => {
+    expect(parseSessionTarget({ kind: 'main', name: 'ignored' })).toEqual({
+      target: { kind: 'main' },
+      explicit: true,
+    });
+    expect(
+      parseSessionTarget({ kind: 'existing-worktree', path: '/abs/wt', name: 'ignored' })
+    ).toEqual({
+      target: { kind: 'existing-worktree', path: '/abs/wt' },
+      explicit: true,
+    });
+  });
+
   it('passes main through as explicit', () => {
     expect(parseSessionTarget({ kind: 'main' })).toEqual({
       target: { kind: 'main' },

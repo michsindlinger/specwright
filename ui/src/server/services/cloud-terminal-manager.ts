@@ -351,7 +351,12 @@ export class CloudTerminalManager extends EventEmitter {
 
             try {
               const base = await resolveSessionBase(mainProjectPath);
-              const owned = await createCloudSessionWorktree(mainProjectPath, sessionId, base);
+              const owned = await createCloudSessionWorktree(
+                mainProjectPath,
+                sessionId,
+                base,
+                target.target.name
+              );
               effectiveCwd = owned.worktreePath;
               session.effectiveCwd = pathKey(owned.worktreePath);
               // Route kanban/backlog runtime writes back to the main repo (same

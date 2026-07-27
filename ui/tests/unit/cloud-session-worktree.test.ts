@@ -164,6 +164,176 @@ describe('createCloudSessionWorktree / removeCloudSessionWorktree', () => {
   });
 });
 
+// ── Named worktrees ──────────────────────────────────────────────────────────
+
+describe('createCloudSessionWorktree with a user-chosen name', () => {
+  let repo: RepoFixture;
+  beforeEach(async () => { repo = await mkRepo('main'); });
+  afterEach(async () => { await cleanup(repo); });
+
+  function branchExists(branch: string): boolean {
+    return spawnSyncOk(['show-ref', '--verify', '--quiet', `refs/heads/${branch}`]);
+  }
+  function spawnSyncOk(args: string[]): boolean {
+    try {
+      execSync(`git ${args.join(' ')}`, { cwd: repo.projectPath, stdio: 'pipe' });
+      return true;
+    } catch { return false; }
+  }
+
+  it('names the worktree and branch after the slug, keeping the session- prefix', async () => {
+    const { worktreePath, branchName } =
+      await createCloudSessionWorktree(repo.projectPath, 'cloud-9-1', 'main', 'refactor-auth');
+
+    expect(basename(worktreePath)).toBe('session-refactor-auth');
+    expect(branchName).toBe('session/refactor-auth');
+    expect(existsSync(worktreePath)).toBe(true);
+    // The teardown guards key off exactly these prefixes.
+    expect(basename(worktreePath).startsWith('session-')).toBe(true);
+    expect(branchName.startsWith('session/')).toBe(true);
+  });
+
+  it('falls back to the session id for an empty name — never a bare "session-"', async () => {
+    const { worktreePath, branchName } =
+      await createCloudSessionWorktree(repo.projectPath, 'cloud-9-2', 'main', '');
+
+    expect(basename(worktreePath)).toBe('session-cloud-9-2');
+    expect(branchName).toBe('session/cloud-9-2');
+  });
+
+  it('rejects a name already used by another worktree', async () => {
+    await createCloudSessionWorktree(repo.projectPath, 'cloud-9-3', 'main', 'shared');
+    await expect(
+      createCloudSessionWorktree(repo.projectPath, 'cloud-9-4', 'main', 'shared')
+    ).rejects.toMatchObject({ code: 'WORKTREE_NAME_TAKEN' });
+  });
+
+  /**
+   * The regression test for the rollback guard.
+   *
+   * Before the guard, ANY `git worktree add` failure ran `branch -D`. With
+   * user-chosen names a collision is exactly the case where the branch belongs
+   * to someone else, so the failed second start would have destroyed the first
+   * session's unmerged work.
+   */
+  it('leaves the OTHER session\'s worktree and branch intact on collision', async () => {
+    const first = await createCloudSessionWorktree(
+      repo.projectPath, 'cloud-9-5', 'main', 'contested'
+    );
+    // Give the first session real work so a `branch -D` would be destructive.
+    await fs.writeFile(join(first.worktreePath, 'work.txt'), 'precious');
+    execSync('git add . && git commit -q -m work', { cwd: first.worktreePath });
+    const sha = execSync('git rev-parse HEAD', {
+      cwd: first.worktreePath, encoding: 'utf-8',
+    }).trim();
+
+    await expect(
+      createCloudSessionWorktree(repo.projectPath, 'cloud-9-6', 'main', 'contested')
+    ).rejects.toMatchObject({ code: 'WORKTREE_NAME_TAKEN' });
+
+    expect(existsSync(first.worktreePath)).toBe(true);
+    expect(existsSync(join(first.worktreePath, 'work.txt'))).toBe(true);
+    expect(branchExists('session/contested')).toBe(true);
+    expect(
+      execSync('git rev-parse session/contested', {
+        cwd: repo.projectPath, encoding: 'utf-8',
+      }).trim()
+    ).toBe(sha);
+  });
+
+  it('rejects a name whose branch exists even when the directory does not', async () => {
+    execSync('git branch session/orphaned main', { cwd: repo.projectPath });
+    await expect(
+      createCloudSessionWorktree(repo.projectPath, 'cloud-9-7', 'main', 'orphaned')
+    ).rejects.toMatchObject({ code: 'WORKTREE_NAME_TAKEN' });
+    // …and does not delete that branch on the way out.
+    expect(branchExists('session/orphaned')).toBe(true);
+  });
+
+  /**
+   * Reaches the SECOND collision layer: git's own rejection, classified from
+   * stderr. Unnamed creation skips the pre-flight check (a session id cannot
+   * collide), so this is the code path that also covers the cross-process race
+   * the pre-flight check structurally cannot close — `withMainProjectLock` is
+   * process-local, so a second server can slip between check and create.
+   */
+  it('maps git\'s own collision rejection onto WORKTREE_NAME_TAKEN without rollback', async () => {
+    const first = await createCloudSessionWorktree(repo.projectPath, 'cloud-9-9', 'main');
+    await fs.writeFile(join(first.worktreePath, 'work.txt'), 'precious');
+    execSync('git add . && git commit -q -m work', { cwd: first.worktreePath });
+
+    // Same id again, no name → no pre-flight check, git rejects the add.
+    await expect(
+      createCloudSessionWorktree(repo.projectPath, 'cloud-9-9', 'main')
+    ).rejects.toMatchObject({ code: 'WORKTREE_NAME_TAKEN' });
+
+    expect(existsSync(join(first.worktreePath, 'work.txt'))).toBe(true);
+    expect(branchExists('session/cloud-9-9')).toBe(true);
+  });
+
+  it('does not treat a same-named TAG as a branch collision', async () => {
+    execSync('git tag session/tagged main', { cwd: repo.projectPath });
+    const { branchName } =
+      await createCloudSessionWorktree(repo.projectPath, 'cloud-9-8', 'main', 'tagged');
+    expect(branchName).toBe('session/tagged');
+    expect(branchExists('session/tagged')).toBe(true);
+  });
+});
+
+describe('teardown of a named worktree', () => {
+  let repo: RepoFixture;
+  beforeEach(async () => { repo = await mkRepo('main'); });
+  afterEach(async () => { await cleanup(repo); });
+
+  function branchExists(branch: string): boolean {
+    try {
+      execSync(`git rev-parse --verify --quiet "${branch}"`, {
+        cwd: repo.projectPath, stdio: 'pipe',
+      });
+      return true;
+    } catch { return false; }
+  }
+
+  it('clean + no commits → worktree and branch removed', async () => {
+    const { worktreePath, branchName, seededClaudeConfig } =
+      await createCloudSessionWorktree(repo.projectPath, 'cloud-8-1', 'main', 'throwaway');
+    const res = await removeCloudSessionWorktree(
+      repo.projectPath, worktreePath, branchName, seededClaudeConfig
+    );
+    expect(res.removed).toBe(true);
+    expect(existsSync(worktreePath)).toBe(false);
+    expect(branchExists(branchName)).toBe(false);
+  });
+
+  it('clean + own commits → worktree removed, branch kept for a PR', async () => {
+    const { worktreePath, branchName, seededClaudeConfig } =
+      await createCloudSessionWorktree(repo.projectPath, 'cloud-8-2', 'main', 'has-work');
+    await fs.writeFile(join(worktreePath, 'work.txt'), 'done');
+    execSync('git add . && git commit -q -m work', { cwd: worktreePath });
+
+    const res = await removeCloudSessionWorktree(
+      repo.projectPath, worktreePath, branchName, seededClaudeConfig
+    );
+    expect(res.removed).toBe(true);
+    expect(existsSync(worktreePath)).toBe(false);
+    expect(branchExists('session/has-work')).toBe(true);
+  });
+
+  it('dirty → everything kept', async () => {
+    const { worktreePath, branchName, seededClaudeConfig } =
+      await createCloudSessionWorktree(repo.projectPath, 'cloud-8-3', 'main', 'wip');
+    await fs.writeFile(join(worktreePath, 'wip.txt'), 'uncommitted');
+
+    const res = await removeCloudSessionWorktree(
+      repo.projectPath, worktreePath, branchName, seededClaudeConfig
+    );
+    expect(res.removed).toBe(false);
+    expect(res.keptReason).toBe('dirty');
+    expect(existsSync(worktreePath)).toBe(true);
+    expect(branchExists('session/wip')).toBe(true);
+  });
+});
+
 // ── Claude project config seeding ────────────────────────────────────────────
 
 /**

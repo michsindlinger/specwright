@@ -21,6 +21,11 @@ import { isAbsolute } from 'path';
 import type { CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
 import { CLOUD_TERMINAL_ERROR_CODES } from '../../shared/types/cloud-terminal.protocol.js';
 import { listRepoWorktrees, pathKey } from './git-worktree-list.js';
+import {
+  slugifyWorktreeName,
+  MAX_WORKTREE_NAME_INPUT,
+  RESERVED_WORKTREE_NAME_RE,
+} from '../../shared/worktree-name.js';
 
 /** Error carrying a CLOUD_TERMINAL_ERROR_CODES value for the WS error response. */
 export class SessionTargetError extends Error {
@@ -61,7 +66,7 @@ export function parseSessionTarget(raw: unknown): ParsedTarget {
 
   const kind = (raw as { kind?: unknown }).kind;
 
-  if (kind === 'new-worktree') return { target: { kind: 'new-worktree' }, explicit: true };
+  if (kind === 'new-worktree') return parseNewWorktreeTarget(raw);
   if (kind === 'main') return { target: { kind: 'main' }, explicit: true };
 
   if (kind === 'existing-worktree') {
@@ -85,6 +90,60 @@ export function parseSessionTarget(raw: unknown): ParsedTarget {
     CLOUD_TERMINAL_ERROR_CODES.INVALID_SESSION_TARGET,
     `Unknown sessionTarget.kind: ${JSON.stringify(kind)}`
   );
+}
+
+/**
+ * `kind: 'new-worktree'` with its optional user-chosen name.
+ *
+ * Absent or empty name ⇒ pre-name-field behaviour verbatim (worktree named
+ * after the session id). Anything else is slugged here so the rest of the
+ * server only ever sees a validated `[a-z0-9-]` slug.
+ *
+ * Message language follows the convention in this codebase: protocol
+ * violations (wrong type, oversized payload) are client bugs and stay English
+ * like the rest of this file; errors the *user* caused by typing something
+ * surface as a UI banner and are German, like the target errors in
+ * `cloud-terminal-manager.ts`.
+ */
+function parseNewWorktreeTarget(raw: unknown): ParsedTarget {
+  const rawName = (raw as { name?: unknown }).name;
+
+  if (rawName === undefined || rawName === null || rawName === '') {
+    return { target: { kind: 'new-worktree' }, explicit: true };
+  }
+
+  if (typeof rawName !== 'string') {
+    throw new SessionTargetError(
+      CLOUD_TERMINAL_ERROR_CODES.INVALID_WORKTREE_NAME,
+      'sessionTarget.name must be a string'
+    );
+  }
+
+  // Bound the input BEFORE normalizing — the 40-char cap applies to the output.
+  if (rawName.length > MAX_WORKTREE_NAME_INPUT) {
+    throw new SessionTargetError(
+      CLOUD_TERMINAL_ERROR_CODES.INVALID_WORKTREE_NAME,
+      `sessionTarget.name exceeds ${MAX_WORKTREE_NAME_INPUT} characters`
+    );
+  }
+
+  const name = slugifyWorktreeName(rawName);
+
+  if (!name) {
+    throw new SessionTargetError(
+      CLOUD_TERMINAL_ERROR_CODES.INVALID_WORKTREE_NAME,
+      'Name enthält keine verwertbaren Zeichen — erlaubt sind a–z, 0–9 und Bindestrich.'
+    );
+  }
+
+  if (RESERVED_WORKTREE_NAME_RE.test(name)) {
+    throw new SessionTargetError(
+      CLOUD_TERMINAL_ERROR_CODES.INVALID_WORKTREE_NAME,
+      'Dieses Namensschema ist für automatisch benannte Sessions reserviert.'
+    );
+  }
+
+  return { target: { kind: 'new-worktree', name }, explicit: true };
 }
 
 /**

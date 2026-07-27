@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.35.0 - 2026-07-27
+
+### Neu
+- **Optionaler Worktree-Name beim Session-Start.** Die Zeile „Neuer Worktree" im Ziel-Picker hat jetzt ein Feld *Name (optional)*. Eingabe `Refactor: Auth!` → Verzeichnis `session-refactor-auth`, Branch `session/refactor-auth`. Ohne Eingabe passiert exakt das Bisherige (Benennung nach der Session-ID). Ein Klick wie zuvor; unter dem Feld steht live, was daraus wird. Alte Clients ohne Namensfeld senden kein `name` und verhalten sich unverändert.
+- **Neues geteiltes Modul `shared/worktree-name.ts`** — `slugifyWorktreeName()` wird von Frontend (Live-Vorschau) und Server (autoritative Ableitung) genutzt. Der Server slugged immer neu und vertraut dem Client nie.
+
+### Sicherheit
+- **Derive-then-validate statt Blocklisting.** Die Ausgabe matcht per Konstruktion `/^[a-z0-9][a-z0-9-]*$/`: NFKD, Combining-Marks strippen, lowercase, alles Nicht-`[a-z0-9]` → Bindestrich, trimmen, 40 Zeichen. Damit sind `/`, `\`, `..`, führendes `-`, `~ ^ : ? * [ @{` und Control-Chars — sämtliche Traversal-Bausteine und `git check-ref-format`-Verstöße — nicht konstruierbar, statt abgefangen zu werden. Ein auf `.lock` endender Ref ist unmöglich, weil Punkte nicht überleben (`foo.lock` → `foo-lock`, gültig).
+- **ASCII-only als bewusste Einschränkung.** Lateinische Diakritika werden aufgelöst (é→e, ü→u). `ß`, Griechisch, Kyrillisch, CJK, Emoji, ZWJ/RTL-Marker ergeben den Leerstring → klarer Fehler mit Nennung des erlaubten Alphabets, statt eines Verzeichnisses namens Nichts. Eingabelänge ist auf 200 Zeichen begrenzt, geprüft **vor** der Normalisierung.
+- **Reserviertes Namensschema.** `/^cloud-\d+-\d+$/` — exakt die Form von `generateSessionId()` — ist für eigene Namen gesperrt. Sonst könnte ein Nutzer den Pfad einer künftigen automatisch benannten Session besetzen, die dann ohne erkennbaren Grund scheitert.
+- **Der Rollback löscht keine fremden Branches mehr.** Der bisherige Fehlerpfad in `createCloudSessionWorktree` führte bei *jedem* Fehlschlag `git branch -D` aus. Das war gefahrlos, solange der Branchname aus der eindeutigen Session-ID stammte — der Branch konnte nur uns gehören. Mit selbstvergebenen Namen ist ein Fehlschlag *wegen Kollision* aber genau der Fall, in dem der Branch einer laufenden Session oder älterer unmerged Arbeit gehört; der Rollback hätte sie vernichtet. Bei erkannter Kollision wird jetzt nichts angefasst, nur der typisierte Fehler geworfen. Eigener Regressionstest.
+- **Zwei Kollisionsschichten, weil eine nicht reicht.** Die Vorabprüfung (`existsSync` + `show-ref --verify refs/heads/<b>`) liefert die gute Fehlermeldung, ist aber nicht autoritativ: `withMainProjectLock` ist ein prozesslokaler Mutex und schützt nicht gegen einen zweiten Serverprozess. Autorität ist `git worktree add` selbst — dessen Fehlschlag wird über stderr auf `WORKTREE_NAME_TAKEN` gemappt. `show-ref --verify refs/heads/…` statt `rev-parse --verify`, sonst zählte ein gleichnamiger *Tag* als Branch-Kollision.
+- **Leerstring degeneriert nicht.** `name` als `''` oder Whitespace von einem Nicht-UI-Client fällt auf die Session-ID zurück, statt einen Worktree namens `session-` anzulegen.
+
+### Geändert
+- Keine Auto-Suffixe bei Kollision (`refactor-auth-2`): der Name wurde zur Wiedererkennung gewählt, eine still angehängte Zahl macht genau das kaputt. Stattdessen `WORKTREE_NAME_TAKEN` und zurück in Schritt 2.
+- Teardown benannter Worktrees ist **identisch** zu unbenannten (clean+ohne Commits → weg, mit Commits → Branch bleibt, dirty → alles bleibt). Zwei Aufräum-Regeln je nach Benennung wären eine Falle statt eines Features.
+- Neue Error-Codes `INVALID_WORKTREE_NAME` und `WORKTREE_NAME_TAKEN`; beide laufen über den vorhandenen Ziel-Fehler-Pfad, der bereits in Schritt 2 mit frischer Liste zurückführt.
+- Die Namens-Eingabe stoppt Event-Propagation **selektiv** — nur `ArrowUp`/`ArrowDown`/`Space`, also die Tasten, die die Listbox selbst behandelt. `Enter` startet die Session; `Tab`, Cursor-Tasten und normales Tippen laufen unverändert durch.
+
+### Tests
+- `worktree-name.test.ts` (neu, 41): Diakritika, nicht-lateinische Schriften, Emoji, ZWJ/RTL, Control-Chars via `String.fromCharCode`, Traversal-Formen, `.lock`, Längenkappung inkl. freigelegtem Trailing-Dash, reserviertes Schema.
+- `session-target.test.ts` 15 → 22: Name absent/leer, Slugging, Protokollverstöße (non-string, >200) englisch vs. Nutzerfehler deutsch, reserviertes Schema, Name wird bei `main`/`existing-worktree` verworfen.
+- `cloud-session-worktree.test.ts` 22 → 32: Benennung inkl. Präfix-Erhalt, Leerstring-Fallback, Kollision via Vorabprüfung **und** via git-stderr, fremder Branch überlebt beide Wege, Tag ist keine Kollision, Teardown benannter Worktrees in allen drei Zuständen.
+
 ## 3.34.1 - 2026-07-26
 
 ### Behoben

@@ -3,6 +3,10 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
 import type { CloudTerminalSessionTarget } from '../../../../src/shared/types/cloud-terminal.protocol.js';
 import {
+  slugifyWorktreeName,
+  MAX_WORKTREE_NAME_INPUT,
+} from '../../../../src/shared/worktree-name.js';
+import {
   buildTargetRows,
   defaultTargetRowId,
   type SessionTargetRow,
@@ -55,6 +59,8 @@ export class AosSessionTargetList extends LitElement {
   @state() private phase: 'loading' | 'ready' | 'error' = 'loading';
   @state() private errorMessage = '';
   @state() private focusedId: string | null = null;
+  /** Optional user-chosen name for the "Neuer Worktree" row. */
+  @state() private worktreeName = '';
 
   /** Correlates responses: several panes request targets over one socket. */
   private readonly requestId = `tgt-${Math.random().toString(36).slice(2)}-${Date.now()}`;
@@ -223,6 +229,45 @@ export class AosSessionTargetList extends LitElement {
       font-size: 0.72rem;
       color: var(--text-color-secondary, #a0a0a0);
     }
+
+    .name-field {
+      margin-top: 0.4rem;
+    }
+
+    .name-input {
+      width: 100%;
+      box-sizing: border-box;
+      background-color: var(--bg-color, #1a1a1a);
+      border: 1px solid var(--border-color, #404040);
+      border-radius: 3px;
+      color: var(--text-color, #e5e5e5);
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.3rem 0.45rem;
+    }
+
+    :host([compact]) .name-input {
+      font-size: 0.85rem;
+      padding: 0.45rem 0.5rem;
+    }
+
+    .name-input:focus {
+      outline: none;
+      border-color: var(--accent-color, #007acc);
+    }
+
+    .name-preview {
+      margin-top: 0.25rem;
+      font-size: 0.68rem;
+      color: var(--text-color-secondary, #a0a0a0);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .name-preview.invalid {
+      color: var(--warning-color, #d29922);
+    }
   `;
 
   override connectedCallback(): void {
@@ -301,15 +346,89 @@ export class AosSessionTargetList extends LitElement {
     this.errorMessage = (message.message as string) || 'Worktrees konnten nicht geladen werden.';
   }
 
+  /**
+   * Drops a name the user typed once the "Neuer Worktree" row is gone or
+   * disabled — otherwise the text rides along invisibly and would be applied to
+   * a later selection the user never associated with it.
+   *
+   * Guarded on `phase === 'ready'`: while loading, `rows` is empty but a
+   * synthetic new-worktree row IS on screen, so resetting there would wipe the
+   * field mid-typing on every background refresh.
+   */
+  protected override willUpdate(): void {
+    if (!this.worktreeName || this.phase !== 'ready') return;
+    const row = this.rows.find((r) => r.id === 'new-worktree');
+    if (!row || row.disabled) this.worktreeName = '';
+  }
+
   private select(row: SessionTargetRow): void {
     if (row.disabled) return;
+    const name = this.worktreeName.trim();
+    // Only `new-worktree` carries a name; for the other kinds the path is fixed.
+    const target: CloudTerminalSessionTarget =
+      row.target.kind === 'new-worktree' && name
+        ? { kind: 'new-worktree', name }
+        : row.target;
+
     this.dispatchEvent(
       new CustomEvent<SessionTargetSelectedDetail>('target-selected', {
-        detail: { target: row.target, label: row.label },
+        detail: { target, label: row.label },
         bubbles: true,
         composed: true,
       })
     );
+  }
+
+  private handleNameInput(e: Event): void {
+    this.worktreeName = (e.target as HTMLInputElement).value;
+  }
+
+  /**
+   * Keydown inside the name field.
+   *
+   * Enter starts the session. Only the keys the listbox itself acts on are
+   * stopped, so they do not move the roving focus while the caret is in the
+   * field. Everything else — Tab, left/right for the caret, ordinary typing —
+   * passes through untouched.
+   */
+  private handleNameKeydown(e: KeyboardEvent, row: SessionTargetRow): void {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      this.select(row);
+      return;
+    }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.stopPropagation();
+    }
+  }
+
+  /** Live preview of the directory the server will derive. */
+  private renderNameField(row: SessionTargetRow) {
+    const typed = this.worktreeName.trim();
+    const slug = typed ? slugifyWorktreeName(typed) : '';
+
+    return html`
+      <div class="name-field" @click=${(e: Event) => e.stopPropagation()}>
+        <input
+          class="name-input"
+          type="text"
+          placeholder="Name (optional)"
+          aria-label="Worktree-Name (optional)"
+          maxlength=${MAX_WORKTREE_NAME_INPUT}
+          .value=${this.worktreeName}
+          @input=${this.handleNameInput}
+          @keydown=${(e: KeyboardEvent) => this.handleNameKeydown(e, row)}
+        />
+        ${typed
+          ? slug
+            ? html`<div class="name-preview">wird zu: session-${slug}</div>`
+            : html`<div class="name-preview invalid">
+                Kein gültiger Name — erlaubt sind a–z, 0–9 und Bindestrich.
+              </div>`
+          : ''}
+      </div>
+    `;
   }
 
   private emitBack(): void {
@@ -318,6 +437,10 @@ export class AosSessionTargetList extends LitElement {
 
   /** Roving focus over selectable rows; Enter/Space activates. */
   private handleKeydown(e: KeyboardEvent): void {
+    // Second line of defence behind the name field's own selective
+    // stopPropagation: typing must never drive the roving focus.
+    if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
+
     const selectable = this.rows.filter((r) => !r.disabled);
     if (selectable.length === 0) return;
 
@@ -414,6 +537,7 @@ export class AosSessionTargetList extends LitElement {
             <div class="row-text">
               <div class="row-label">${row.label}</div>
               <div class="row-sublabel">${row.sublabel}</div>
+              ${row.id === 'new-worktree' && !row.disabled ? this.renderNameField(row) : ''}
             </div>
             ${row.dirty ? html`<span class="dirty-dot" title="Ungespeicherte Änderungen"></span>` : ''}
             ${row.badge ? html`<span class="badge">${row.badge}</span>` : ''}

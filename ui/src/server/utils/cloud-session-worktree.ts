@@ -23,6 +23,7 @@ import { existsSync } from 'fs';
 import { mkdir, rm } from 'fs/promises';
 import { withMainProjectLock } from './main-project-mutex.js';
 import { getBaseBranch } from '../general-config.js';
+import { CLOUD_TERMINAL_ERROR_CODES } from '../../shared/types/cloud-terminal.protocol.js';
 import {
   isWorktreeClean,
   copyMcpConfigToWorktree,
@@ -44,6 +45,35 @@ export class NotAGitRepoError extends Error {
     super(`Not a git repository: ${projectPath}`);
     this.name = 'NotAGitRepoError';
   }
+}
+
+/**
+ * A user-chosen worktree name is already in use by a directory or a
+ * `session/<name>` branch.
+ *
+ * Only reachable for *named* worktrees — a session-id-derived name is unique by
+ * construction. Carries `code` so the WS error response surfaces it like any
+ * other target error and the picker returns to step 2.
+ */
+export class WorktreeNameTakenError extends Error {
+  public readonly code = CLOUD_TERMINAL_ERROR_CODES.WORKTREE_NAME_TAKEN;
+  constructor(name: string) {
+    super(`Worktree-Name bereits vergeben: ${name}`);
+    this.name = 'WorktreeNameTakenError';
+  }
+}
+
+/**
+ * git's own rejection of a colliding path or branch.
+ *
+ * Matched on stderr because the pre-flight check cannot be authoritative:
+ * `withMainProjectLock` is a process-local mutex, so a second server process
+ * (restart overlap, orphaned nodemon) can slip between check and create. git
+ * itself is the real guard — `worktree add` fails atomically — and this maps
+ * that failure onto the typed error.
+ */
+function isCollisionFailure(stderr: string): boolean {
+  return /already exists|already checked out|already used by worktree/i.test(stderr);
 }
 
 /** Result of {@link removeCloudSessionWorktree}. */
@@ -145,6 +175,14 @@ export async function resolveSessionBase(mainProjectPath: string): Promise<strin
 
 // ── Create / remove ──────────────────────────────────────────────────────────
 
+/** Failure of `git worktree add`, carrying stderr so the caller can classify it. */
+class WorktreeAddError extends Error {
+  constructor(public readonly stderr: string, code: number | null) {
+    super(`git worktree add failed (${code}): ${stderr}`);
+    this.name = 'WorktreeAddError';
+  }
+}
+
 function gitWorktreeAdd(
   mainProjectPath: string,
   worktreePath: string,
@@ -159,10 +197,23 @@ function gitWorktreeAdd(
     let stderr = '';
     proc.stderr?.on('data', (d) => { stderr += d.toString(); });
     proc.on('close', (code) =>
-      code === 0 ? resolve() : reject(new Error(`git worktree add failed (${code}): ${stderr}`))
+      code === 0 ? resolve() : reject(new WorktreeAddError(stderr, code))
     );
     proc.on('error', reject);
   });
+}
+
+/**
+ * True when `refs/heads/<branchName>` exists.
+ *
+ * `show-ref --verify refs/heads/…` rather than `rev-parse --verify <branch>`:
+ * the latter also resolves tags, so a tag named `session/foo` would be reported
+ * as a branch collision and block a perfectly free name.
+ */
+function branchExists(mainProjectPath: string, branchName: string): boolean {
+  return git(mainProjectPath, [
+    'show-ref', '--verify', '--quiet', `refs/heads/${branchName}`,
+  ]).ok;
 }
 
 /**
@@ -178,21 +229,43 @@ function gitWorktreeAdd(
 export async function createCloudSessionWorktree(
   mainProjectPath: string,
   sessionId: string,
-  base: string
+  base: string,
+  name?: string
 ): Promise<OwnedSessionWorktree> {
-  const worktreePath = cloudSessionWorktreePath(mainProjectPath, sessionId);
-  const branchName = cloudSessionBranchName(sessionId);
+  // An empty/whitespace name from a non-UI client must never degenerate into a
+  // worktree literally called `session-`; fall back to the session id instead.
+  const key = name && name.length > 0 ? name : sessionId;
+  const worktreePath = cloudSessionWorktreePath(mainProjectPath, key);
+  const branchName = cloudSessionBranchName(key);
 
   // Self-locking — MUST stay outside withMainProjectLock (non-reentrant mutex).
   await ensureSpecwrightRuntimeGitignored(mainProjectPath);
 
   await withMainProjectLock(mainProjectPath, 'cloud-session-worktree-add', async () => {
+    // Pre-flight only for named worktrees — a session id cannot collide. This
+    // exists for the error *message*; git is the actual guard (see below).
+    if (name && (existsSync(worktreePath) || branchExists(mainProjectPath, branchName))) {
+      throw new WorktreeNameTakenError(name);
+    }
+
     await mkdir(dirname(worktreePath), { recursive: true });
     try {
       await gitWorktreeAdd(mainProjectPath, worktreePath, branchName, base);
     } catch (err) {
-      // Roll back a partially-created worktree so a retry with the same id works
-      // and no orphan directory/ref is left behind.
+      // ── Rollback guard ──────────────────────────────────────────────────
+      // The rollback below deletes `branchName`. That is safe only while the
+      // branch can belong to nobody but us. With user-chosen names a collision
+      // is precisely the case where it belongs to SOMEONE ELSE — a live
+      // session, or yesterday's unmerged work. Deleting it would turn a
+      // harmless error message into silent data loss, so a collision returns
+      // the typed error and touches nothing.
+      if (err instanceof WorktreeAddError && isCollisionFailure(err.stderr)) {
+        throw new WorktreeNameTakenError(key);
+      }
+
+      // Any other failure: the path is ours (or does not exist), so roll back a
+      // partially-created worktree — a retry with the same id then works and no
+      // orphan directory/ref is left behind.
       await rm(worktreePath, { recursive: true, force: true }).catch(() => {});
       git(mainProjectPath, ['worktree', 'prune']);
       git(mainProjectPath, ['branch', '-D', branchName]); // may not exist — no-op

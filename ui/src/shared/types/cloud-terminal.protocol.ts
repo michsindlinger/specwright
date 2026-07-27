@@ -42,7 +42,16 @@ export interface CloudTerminalModelConfig {
  * `parseSessionTarget` in `server/utils/session-target.ts`.
  */
 export type CloudTerminalSessionTarget =
-  | { kind: 'new-worktree' }
+  | {
+      kind: 'new-worktree';
+      /**
+       * Optional user-chosen name. Server-side it is always re-derived via
+       * `slugifyWorktreeName`, so what arrives here is untrusted input; what
+       * leaves `parseSessionTarget` is a validated slug. Absent ⇒ the worktree
+       * is named after the session id, exactly as before the name field.
+       */
+      name?: string;
+    }
   | { kind: 'main' }
   | { kind: 'existing-worktree'; path: string };
 
@@ -667,4 +676,8 @@ export const CLOUD_TERMINAL_ERROR_CODES = {
   WORKTREE_CREATION_DISABLED: 'WORKTREE_CREATION_DISABLED',
   /** `git worktree list` failed while building the target list */
   WORKTREE_LIST_FAILED: 'WORKTREE_LIST_FAILED',
+  /** sessionTarget.name unusable: empty after slugging, too long, or reserved */
+  INVALID_WORKTREE_NAME: 'INVALID_WORKTREE_NAME',
+  /** A worktree directory or `session/<name>` branch with that name already exists */
+  WORKTREE_NAME_TAKEN: 'WORKTREE_NAME_TAKEN',
 } as const;
