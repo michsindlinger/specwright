@@ -51,6 +51,11 @@
           "id": "glm-5.2",
           "name": "GLM 5.2",
           "description": "Most capable model"
+        },
+        {
+          "id": "glm-5.3",
+          "name": "GLM 5.3",
+          "description": "Most capable model"
         }
       ]
     },
@@ -148,37 +153,42 @@
       ],
       "models": [
         {
-          "id": "arcee-ai/trinity-large-thinking",
+          "id": "openrouter,moonshotai/kimi-k3",
+          "name": "Kimi K3",
+          "description": "Multimodal (Text/Bild/Video), 1M Kontext ($3.00/$15.00 per M, Cache-Read $0.30)"
+        },
+        {
+          "id": "openrouter,arcee-ai/trinity-large-thinking",
           "name": "Arcee Trinity Large Thinking",
           "description": "Text-only, 262k context, reasoning ($0.22/$0.85 per M)"
         },
         {
-          "id": "arcee-ai/trinity-mini",
+          "id": "openrouter,arcee-ai/trinity-mini",
           "name": "Arcee Trinity Mini",
           "description": "Text-only, fast & cheap ($0.045/$0.15 per M)"
         },
         {
-          "id": "deepseek/deepseek-v3.2",
+          "id": "openrouter,deepseek/deepseek-v3.2",
           "name": "DeepSeek V3.2",
           "description": "Text-only, 163k context ($0.26/$0.38 per M)"
         },
         {
-          "id": "deepseek/deepseek-v3.2-exp",
+          "id": "openrouter,deepseek/deepseek-v3.2-exp",
           "name": "DeepSeek V3.2 Experimental",
           "description": "Text-only, 163k context ($0.27/$0.41 per M)"
         },
         {
-          "id": "qwen/qwen3.6-plus",
+          "id": "openrouter,qwen/qwen3.6-plus",
           "name": "Qwen 3.6 Plus",
           "description": "Vision (text/image/video), 1M context ($0.325/$1.95 per M)"
         },
         {
-          "id": "minimax/minimax-m2.7",
+          "id": "openrouter,minimax/minimax-m2.7",
           "name": "MiniMax M2.7 (via OpenRouter)",
           "description": "Text-only, 196k context ($0.30/$1.20 per M)"
         },
         {
-          "id": "nvidia/nemotron-3-super-120b-a12b",
+          "id": "openrouter,nvidia/nemotron-3-super-120b-a12b",
           "name": "NVIDIA Nemotron-3 Super 120B",
           "description": "Text-only, 262k context ($0.10/$0.50 per M)"
         }
@@ -196,6 +206,11 @@
         {
           "id": "grok-4.5",
           "name": "Grok 4.5",
+          "description": "xAI frontier coding model (via Grok subscription proxy)"
+        },
+        {
+          "id": "grok-4.6",
+          "name": "Grok 4.6",
           "description": "xAI frontier coding model (via Grok subscription proxy)"
         }
       ]

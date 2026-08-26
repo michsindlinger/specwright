@@ -124,14 +124,80 @@ export function getModel(providerId: string, modelId: string): Model | undefined
   return provider?.models.find(m => m.id === modelId);
 }
 
+/**
+ * Legacy model IDs that have already been reported, so the warning below fires
+ * once per ID per process instead of on every terminal spawn.
+ */
+const warnedLegacyModelIds = new Set<string>();
+
+/**
+ * Resolve a stored model ID against the currently loaded config.
+ *
+ * The OpenRouter models moved to the `<providerId>,<slug>` form that
+ * claude-code-router requires for explicit routing: a bare slug never reaches
+ * its `body.model.includes(",")` branch and is silently replaced by
+ * `Router.default`, so every dropdown entry resolved to the same model.
+ *
+ * Story models are persisted in `kanban.json` (`specs-reader.updateStoryModel`),
+ * so IDs written before that change still carry the bare slug. Without this
+ * fallback they match no provider at all and drop into the anthropic default
+ * branch of `getCliCommandForModel()` — running the story on the real Anthropic
+ * account with a model name it does not know, and logging nothing but a
+ * `console.log`.
+ *
+ * Deliberately NOT a suffix or fuzzy match: only the exact
+ * `${provider.id},${modelId}` form counts, so a legacy ID can never bind to an
+ * unrelated provider that happens to end in the same characters.
+ */
+export function resolveModelId(
+  modelId: string,
+  providerId?: string
+): { provider: ModelProvider; model: Model } | undefined {
+  const config = loadModelConfig();
+  const scope = providerId
+    ? config.providers.filter(p => p.id === providerId)
+    : config.providers;
+
+  // Exact match always wins over the legacy form.
+  for (const provider of scope) {
+    const model = provider.models.find(m => m.id === modelId);
+    if (model) {
+      return { provider, model };
+    }
+  }
+
+  for (const provider of scope) {
+    const legacyId = `${provider.id},${modelId}`;
+    const model = provider.models.find(m => m.id === legacyId);
+    if (model) {
+      if (!warnedLegacyModelIds.has(modelId)) {
+        warnedLegacyModelIds.add(modelId);
+        console.warn(
+          `[ModelConfig] legacy model id '${modelId}' resolved to '${legacyId}' — ` +
+          `update the stored value in kanban.json to silence this`
+        );
+      }
+      return { provider, model };
+    }
+  }
+
+  return undefined;
+}
+
 export function getProviderCommand(providerId: string, modelId: string): { command: string; args: string[] } | undefined {
   const provider = getProvider(providerId);
   if (!provider) {
     return undefined;
   }
 
+  // Legacy IDs stored before the `<providerId>,<slug>` migration are rewritten
+  // here; anything unresolvable is passed through verbatim, preserving the
+  // previous blind-substitution behaviour for providers that intentionally
+  // accept IDs not listed in the config.
+  const effectiveModelId = resolveModelId(modelId, providerId)?.model.id ?? modelId;
+
   const args = provider.cliFlags.map(flag =>
-    flag === '{modelId}' ? modelId : flag
+    flag === '{modelId}' ? effectiveModelId : flag
   );
 
   return {
@@ -471,22 +537,19 @@ export function setDefaults(providerId: string, modelId: string): ModelConfig {
  * @returns CLI command and args, or fallback to anthropic defaults
  */
 export function getCliCommandForModel(modelId: string): { command: string; args: string[] } {
-  const config = loadModelConfig();
-
-  // Search all providers for the model
-  for (const provider of config.providers) {
-    const model = provider.models.find(m => m.id === modelId);
-    if (model) {
-      // Found the provider, use its CLI configuration
-      const args = provider.cliFlags.map(flag =>
-        flag === '{modelId}' ? modelId : flag
-      );
-      console.log(`[ModelConfig] Model '${modelId}' found in provider '${provider.id}', using command: ${provider.cliCommand}`);
-      return {
-        command: provider.cliCommand,
-        args
-      };
-    }
+  // Searches all providers, including the legacy `<providerId>,<slug>` form for
+  // model IDs persisted in kanban.json before that migration.
+  const resolved = resolveModelId(modelId);
+  if (resolved) {
+    const { provider, model } = resolved;
+    const args = provider.cliFlags.map(flag =>
+      flag === '{modelId}' ? model.id : flag
+    );
+    console.log(`[ModelConfig] Model '${modelId}' found in provider '${provider.id}', using command: ${provider.cliCommand}`);
+    return {
+      command: provider.cliCommand,
+      args
+    };
   }
 
   // Fallback to anthropic defaults if model not found

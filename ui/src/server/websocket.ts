@@ -25,6 +25,7 @@ import { DependencyAnalysisService } from './services/dependency-analysis.servic
 import {
   getAllProviders,
   getDefaultSelection,
+  resolveModelId,
   loadModelConfig,
   updateProvider,
   addProvider,
@@ -1990,9 +1991,11 @@ export class WebSocketHandler {
       return;
     }
 
-    // MSK-003-FIX: Validate model value against all configured models (not just Anthropic)
+    // MSK-003-FIX: Validate model value against all configured models (not just Anthropic).
+    // resolveModelId also accepts the pre-migration `<slug>` form of an OpenRouter
+    // ID, so stories stored in kanban.json before that rename stay editable.
     const allModels = getAllProviders().flatMap(p => p.models.map(m => m.id));
-    if (!allModels.includes(model)) {
+    if (!resolveModelId(model)) {
       const errorResponse: WebSocketMessage = {
         type: 'specs.story.updateModel.error',
         error: `Invalid model value: ${model}. Must be one of: ${allModels.join(', ')}`,
@@ -2060,7 +2063,7 @@ export class WebSocketHandler {
     }
 
     const allModels = getAllProviders().flatMap(p => p.models.map(m => m.id));
-    if (!allModels.includes(model)) {
+    if (!resolveModelId(model)) {
       const errorResponse: WebSocketMessage = {
         type: 'specs.stories.updateModelBulk.error',
         error: `Invalid model value: ${model}. Must be one of: ${allModels.join(', ')}`,

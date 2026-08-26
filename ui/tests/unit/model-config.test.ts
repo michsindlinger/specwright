@@ -293,4 +293,143 @@ describe('ModelConfig', () => {
       warn.mockRestore();
     });
   });
+  describe('resolveModelId()', () => {
+    // Mirrors the real openrouter provider after the `<providerId>,<slug>`
+    // migration: the config only carries prefixed IDs, while kanban.json may
+    // still hold the bare slug written before the rename.
+    const migratedConfig: ModelConfig = {
+      defaultProvider: 'anthropic',
+      defaultModel: 'sonnet',
+      providers: [
+        {
+          id: 'anthropic',
+          name: 'Anthropic',
+          cliCommand: 'claude',
+          cliFlags: ['--dangerously-skip-permissions', '--model', '{modelId}'],
+          models: [{ id: 'sonnet', name: 'Sonnet' }],
+        },
+        {
+          id: 'openrouter',
+          name: 'OpenRouter',
+          cliCommand: 'claude-openrouter',
+          cliFlags: ['--model', '{modelId}'],
+          models: [
+            { id: 'openrouter,moonshotai/kimi-k3', name: 'Kimi K3' },
+            { id: 'openrouter,arcee-ai/trinity-large-thinking', name: 'Trinity' },
+          ],
+        },
+      ],
+    };
+
+    const loadMigrated = async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify(migratedConfig));
+      return import('../../src/server/model-config.js');
+    };
+
+    it('prefers an exact match over the legacy form', async () => {
+      const { resolveModelId } = await loadMigrated();
+
+      const hit = resolveModelId('openrouter,moonshotai/kimi-k3');
+
+      expect(hit?.provider.id).toBe('openrouter');
+      expect(hit?.model.id).toBe('openrouter,moonshotai/kimi-k3');
+    });
+
+    it('resolves a pre-migration bare slug and warns once', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { resolveModelId } = await loadMigrated();
+
+      const hit = resolveModelId('arcee-ai/trinity-large-thinking');
+      resolveModelId('arcee-ai/trinity-large-thinking');
+
+      expect(hit?.provider.id).toBe('openrouter');
+      expect(hit?.model.id).toBe('openrouter,arcee-ai/trinity-large-thinking');
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('openrouter,arcee-ai/trinity-large-thinking')
+      );
+
+      warn.mockRestore();
+    });
+
+    it('honours the providerId scope instead of scanning every provider', async () => {
+      const { resolveModelId } = await loadMigrated();
+
+      expect(resolveModelId('arcee-ai/trinity-large-thinking', 'anthropic')).toBeUndefined();
+      expect(resolveModelId('arcee-ai/trinity-large-thinking', 'openrouter')?.model.id).toBe(
+        'openrouter,arcee-ai/trinity-large-thinking'
+      );
+    });
+
+    it('returns undefined for an unknown model', async () => {
+      const { resolveModelId } = await loadMigrated();
+
+      expect(resolveModelId('does/not-exist')).toBeUndefined();
+    });
+  });
+
+  describe('legacy model IDs in the CLI command builders', () => {
+    const migratedConfig: ModelConfig = {
+      defaultProvider: 'anthropic',
+      defaultModel: 'sonnet',
+      providers: [
+        {
+          id: 'openrouter',
+          name: 'OpenRouter',
+          cliCommand: 'claude-openrouter',
+          cliFlags: ['--model', '{modelId}'],
+          models: [{ id: 'openrouter,arcee-ai/trinity-large-thinking', name: 'Trinity' }],
+        },
+      ],
+    };
+
+    const loadMigrated = async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue(JSON.stringify(migratedConfig));
+      return import('../../src/server/model-config.js');
+    };
+
+    it('getCliCommandForModel maps a legacy slug onto the openrouter CLI', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { getCliCommandForModel } = await loadMigrated();
+
+      // Without the fallback this lands in the anthropic default branch and the
+      // story silently runs on the real Anthropic account.
+      expect(getCliCommandForModel('arcee-ai/trinity-large-thinking')).toEqual({
+        command: 'claude-openrouter',
+        args: ['--model', 'openrouter,arcee-ai/trinity-large-thinking'],
+      });
+    });
+
+    it('getCliCommandForModel still falls back to anthropic for a truly unknown model', async () => {
+      const { getCliCommandForModel } = await loadMigrated();
+
+      expect(getCliCommandForModel('does/not-exist')).toEqual({
+        command: 'claude',
+        args: ['--model', 'does/not-exist'],
+      });
+    });
+
+    it('getProviderCommand substitutes the resolved ID, not the legacy one', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { getProviderCommand } = await loadMigrated();
+
+      expect(
+        getProviderCommand('openrouter', 'arcee-ai/trinity-large-thinking')
+      ).toEqual({
+        command: 'claude-openrouter',
+        args: ['--model', 'openrouter,arcee-ai/trinity-large-thinking'],
+      });
+    });
+
+    it('getProviderCommand passes an unresolvable ID through unchanged', async () => {
+      const { getProviderCommand } = await loadMigrated();
+
+      expect(getProviderCommand('openrouter', 'some/free-form-id')).toEqual({
+        command: 'claude-openrouter',
+        args: ['--model', 'some/free-form-id'],
+      });
+    });
+  });
 });
