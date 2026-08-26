@@ -1,0 +1,44 @@
+[Unit]
+Description=Specwright tmux server (cloud terminal persistence)
+Documentation=https://github.com/michsindlinger/specwright
+
+[Service]
+Type=forking
+
+# Same placeholders as specwright-ui.service, substituted by setup-ui-cloud.sh.
+User=__SPECWRIGHT_UI_USER__
+Group=__SPECWRIGHT_UI_USER__
+
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=SPECWRIGHT_PROJECTS_ROOT=__SPECWRIGHT_PROJECTS_ROOT__
+
+# Socket lives in /var/lib/<user> (the service user's home): writable, short
+# path (unix-socket sun_path limit), untouched by git deploys, and NOT under
+# any PrivateTmp namespace — the ui unit reaches it via
+# SPECWRIGHT_TMUX_SOCKET_DIR.
+ExecStartPre=/usr/bin/install -d -m 0700 -o __SPECWRIGHT_UI_USER__ -g __SPECWRIGHT_UI_USER__ /var/lib/__SPECWRIGHT_UI_USER__/tmux
+ExecStart=/usr/bin/tmux -S /var/lib/__SPECWRIGHT_UI_USER__/tmux/specwright-__SPECWRIGHT_UI_PORT__.sock -f __SPECWRIGHT_UI_HOME__/ui/config/tmux-cloud.conf start-server
+ExecStop=/usr/bin/tmux -S /var/lib/__SPECWRIGHT_UI_USER__/tmux/specwright-__SPECWRIGHT_UI_PORT__.sock kill-server
+
+# `start-server` daemonizes (Type=forking); `exit-empty off` in tmux-cloud.conf
+# keeps the server alive with zero sessions. This unit is the whole point of
+# the persistence feature: deploys restart specwright-ui.service only, so the
+# tmux server — and every claude session inside it — survives.
+Restart=on-failure
+RestartSec=5s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=specwright-tmux
+
+# Hardening mirrors the ui unit where possible. Deliberately NO PrivateTmp and
+# NO ProtectHome: the claude sessions live in THIS unit's namespace and need
+# the host /tmp view plus write access to their HOME (/var/lib/<user> holds
+# ~/.claude — auth, plans, MCP config), the install dir (runtime state, paste
+# images) and the projects volume (repos + worktrees).
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=__SPECWRIGHT_UI_HOME__ __SPECWRIGHT_PROJECTS_ROOT__ /var/lib/__SPECWRIGHT_UI_USER__
+
+[Install]
+WantedBy=multi-user.target

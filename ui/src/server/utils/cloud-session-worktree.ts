@@ -293,6 +293,44 @@ export async function createCloudSessionWorktree(
 }
 
 /**
+ * Rehydrates an {@link OwnedSessionWorktree} from a persisted registry record
+ * after a backend restart.
+ *
+ * This deliberately relaxes the brand invariant from "only
+ * `createCloudSessionWorktree` can mint" to "…or a schema-validated
+ * rehydration of a record that `createCloudSessionWorktree` wrote": the brand
+ * is minted ONLY when both the directory name and the branch match the
+ * disposable `session-*` / `session/*` namespace, so a tampered or foreign
+ * record can never make teardown delete a user-owned worktree. Returns
+ * undefined (and warns) otherwise.
+ */
+export function rehydrateOwnedSessionWorktree(
+  raw: {
+    worktreePath: string;
+    branchName: string;
+    mainProjectPath: string;
+    seededClaudeConfig: string[];
+  }
+): OwnedSessionWorktree | undefined {
+  if (
+    !OWNED_WORKTREE_DIR_RE.test(basename(raw.worktreePath)) ||
+    !OWNED_WORKTREE_BRANCH_RE.test(raw.branchName)
+  ) {
+    console.warn(
+      '[cloud-session-worktree] refusing to rehydrate a worktree record outside the session namespace:',
+      { worktreePath: raw.worktreePath, branchName: raw.branchName }
+    );
+    return undefined;
+  }
+  return {
+    worktreePath: raw.worktreePath,
+    branchName: raw.branchName,
+    mainProjectPath: raw.mainProjectPath,
+    seededClaudeConfig: [...raw.seededClaudeConfig],
+  } as unknown as OwnedSessionWorktree;
+}
+
+/**
  * Removes a session worktree when clean, keeps it when dirty.
  * - dirty (uncommitted changes) → keep, return `{ removed: false, keptReason: 'dirty' }`.
  * - clean → `git worktree remove` + `prune`, then `git branch -d` (safe delete:

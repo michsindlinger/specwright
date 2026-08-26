@@ -600,7 +600,13 @@ export const CLOUD_TERMINAL_CONFIG = {
   /** Allowed MIME types for pasted images. heic/heif cover iPhone camera photos. */
   ALLOWED_PASTE_IMAGE_MIME: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/heic', 'image/heif'] as const,
 
-  /** Filesystem root for persisted paste images (per-session subdirectories) */
+  /**
+   * @deprecated Server code must use `getPasteImageRoot()` from
+   * `server/utils/runtime-paths.ts` (paste images moved out of /tmp — with
+   * systemd PrivateTmp a /tmp path is invisible to processes in the tmux
+   * unit's namespace). Kept only because this shared file is imported by the
+   * frontend and must stay free of server-side env logic.
+   */
   PASTE_IMAGE_ROOT: '/tmp/cloud-terminal-paste',
 } as const;
 

@@ -91,6 +91,14 @@ log "Build frontend"
 log "Ownership -> $USER_OWN"
 chown -R "$USER_OWN:$USER_OWN" "$HOME_DIR"
 
+# Ensure the tmux session host is up (it survives deploys by design — start
+# only if missing, NEVER restart it here: that would kill live claude sessions).
+if systemctl list-unit-files specwright-tmux.service >/dev/null 2>&1 \
+   && ! systemctl is-active --quiet specwright-tmux.service; then
+  log "Start specwright-tmux (was inactive)"
+  systemctl start specwright-tmux.service || true
+fi
+
 log "Restart $SERVICE"
 systemctl restart "$SERVICE.service"
 

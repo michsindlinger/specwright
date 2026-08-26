@@ -8,6 +8,7 @@ import {
   CLOUD_TERMINAL_CONFIG,
   CLOUD_TERMINAL_ERROR_CODES,
 } from '../../src/shared/types/cloud-terminal.protocol.js';
+import { getPasteImageRoot } from '../../src/server/utils/runtime-paths.js';
 
 /**
  * Minimal stand-in for TerminalManager — we only need `on('terminal.*', …)` for
@@ -57,7 +58,7 @@ function withActiveSession(
 describe('CloudTerminalManager.savePastedImage', () => {
   let manager: CloudTerminalManager;
   let fakeTerminal: FakeTerminalManager;
-  const sessionDir = join(CLOUD_TERMINAL_CONFIG.PASTE_IMAGE_ROOT, TEST_SESSION_ID);
+  const sessionDir = join(getPasteImageRoot(), TEST_SESSION_ID);
 
   beforeEach(() => {
     fakeTerminal = new FakeTerminalManager();

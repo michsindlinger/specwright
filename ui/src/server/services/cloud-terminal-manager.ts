@@ -40,6 +40,7 @@ import { getCloudSessionWorktreeEnabled } from '../general-config.js';
 import {
   createCloudSessionWorktree,
   removeCloudSessionWorktree,
+  rehydrateOwnedSessionWorktree,
   resolveSessionBase,
   NotAGitRepoError,
   SPECWRIGHT_MAIN_PROJECT_PATH_ENV,
@@ -48,6 +49,12 @@ import {
 import { pathKey } from '../utils/git-worktree-list.js';
 import { resolveExistingWorktreeTarget, type ParsedTarget } from '../utils/session-target.js';
 import { ensureMcpConfigInWorktree } from '../utils/worktree-story.js';
+import { TmuxSessionBackend } from './tmux-session-backend.js';
+import {
+  CloudSessionRegistry,
+  type PersistedCloudSessionV1,
+} from './cloud-session-registry.js';
+import { getPasteImageRoot, getSessionRegistryPath } from '../utils/runtime-paths.js';
 
 /** MIME type → filename extension for pasted-image persistence */
 const PASTE_MIME_TO_EXT: ReadonlyMap<string, string> = new Map([
@@ -129,6 +136,33 @@ interface ManagedCloudSession extends CloudTerminalSession {
    * ride along inside the `cloud-terminal:created` response instead.
    */
   pendingNotices?: CloudTerminalNotice[];
+
+  /**
+   * tmux session name when this session is tmux-backed (i.e. survives backend
+   * restarts). Absent → legacy direct spawn.
+   */
+  tmuxSessionName?: string;
+
+  /** True when this session was rebuilt from the on-disk registry after a restart. */
+  restored?: boolean;
+
+  /**
+   * Set by closeSession BEFORE it kills the attach client. The terminal.exit
+   * handler checks it first: a closing session always takes the full-teardown
+   * path and is never re-attached — without this flag the exit of the killed
+   * attach client races the re-attach logic and could resurrect a session the
+   * user just closed.
+   */
+  closing?: boolean;
+
+  /** Restored from a registry entry with autoMode=true (orchestrator does not re-attach in v1). */
+  restoredAutoMode?: boolean;
+
+  /** Consecutive failed re-attach attempts after an isolated attach-client death. */
+  reattachAttempts?: number;
+
+  /** Absolute path of the generated tmux run script (tmux-backed only). */
+  runScriptPath?: string;
 }
 
 /**
@@ -212,12 +246,70 @@ export class CloudTerminalManager extends EventEmitter {
    */
   private executionIdCounter = 0;
 
-  constructor(terminalManager: TerminalManager) {
+  /**
+   * tmux backend for restart-surviving sessions. When unavailable (no tmux,
+   * kill switch, dead external server) every path degrades to today's direct
+   * spawn.
+   */
+  private tmux: TmuxSessionBackend;
+
+  /** On-disk session registry (only written for tmux-backed sessions). */
+  private registry: CloudSessionRegistry;
+
+  /**
+   * Resolves once boot-restore has settled (success, partial, or timeout).
+   * Never rejects — a failed restore must never block the server. All
+   * session-mutating entry points and the WS cloud-terminal handlers await
+   * this so no client can race a half-populated session map.
+   */
+  private restoreReady: Promise<void>;
+
+  /** Hard cap for the whole boot-restore (restore runs per-session in parallel). */
+  private static readonly RESTORE_TIMEOUT_MS = 60_000;
+
+  constructor(
+    terminalManager: TerminalManager,
+    tmux?: TmuxSessionBackend,
+    registry?: CloudSessionRegistry
+  ) {
     super();
     this.terminalManager = terminalManager;
+    this.tmux = tmux ?? new TmuxSessionBackend();
+    this.registry = registry ?? new CloudSessionRegistry(getSessionRegistryPath());
 
     // Forward TerminalManager events to handle PTY output
     this.setupTerminalManagerListeners();
+
+    this.tmux.logAvailability();
+    this.restoreReady = this.startRestore();
+  }
+
+  /** Resolves when boot-restore has settled. See {@link restoreReady}. */
+  public whenReady(): Promise<void> {
+    return this.restoreReady;
+  }
+
+  private startRestore(): Promise<void> {
+    if (!this.tmux.isEnabled()) {
+      return Promise.resolve();
+    }
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<void>((resolve) => {
+      timer = setTimeout(() => {
+        console.warn(
+          `[CloudTerminalManager] boot-restore exceeded ${CloudTerminalManager.RESTORE_TIMEOUT_MS}ms — continuing with the sessions restored so far`
+        );
+        resolve();
+      }, CloudTerminalManager.RESTORE_TIMEOUT_MS);
+      // Do not keep the process alive just for this watchdog.
+      timer.unref?.();
+    });
+    const restore = this.restorePersistedSessions().catch((err) => {
+      console.error('[CloudTerminalManager] boot-restore failed (continuing without restored sessions):', err);
+    });
+    return Promise.race([restore, timeout]).finally(() => {
+      if (timer) clearTimeout(timer);
+    });
   }
 
   /**
@@ -247,6 +339,10 @@ export class CloudTerminalManager extends EventEmitter {
     extraEnv?: Record<string, string>,
     options?: { isolateInWorktree?: boolean; sessionTarget?: ParsedTarget }
   ): Promise<CloudTerminalSession> {
+    // Never race the boot-restore: restored sessions must be in the map before
+    // new IDs are generated and occupancy is checked.
+    await this.restoreReady;
+
     // Check max sessions limit
     if (this.sessions.size >= CLOUD_TERMINAL_CONFIG.MAX_SESSIONS) {
       const error = new Error(
@@ -491,18 +587,57 @@ export class CloudTerminalManager extends EventEmitter {
       // Spawn PTY process
       // Cloud terminals disable the inactivity timeout — session runs until the
       // user explicitly closes it (see CLOUD_TERMINAL_CONFIG.INACTIVITY_TIMEOUT_MS).
-      const terminalSession = this.terminalManager.spawn({
-        executionId,
-        cwd: effectiveCwd,
-        shell: shellCommand,
-        args: shellArgs,
-        cols: cols || CLOUD_TERMINAL_CONFIG.DEFAULT_COLS,
-        rows: rows || CLOUD_TERMINAL_CONFIG.DEFAULT_ROWS,
-        inactivityTimeoutMs: CLOUD_TERMINAL_CONFIG.INACTIVITY_TIMEOUT_MS,
-        env: shellEnv,
-      });
+      //
+      // tmux-backed path: the PTY runs a tmux CLIENT; the tmux server (outside
+      // our process tree) hosts the real command, so the session survives a
+      // backend restart. Falls back to today's direct spawn when tmux is
+      // unavailable — that path must stay byte-identical.
+      let terminalSession;
+      if (this.tmux.isEnabled() && (await this.tmux.ensureServerAvailable()) === 'ok') {
+        const tmuxName = this.tmux.sessionName(sessionId);
+        const runScript = await this.tmux.writeRunScript(sessionId, {
+          cwd: effectiveCwd,
+          command: shellCommand,
+          args: shellArgs,
+          env: shellEnv,
+        });
+        const spec = this.tmux.buildNewSessionArgv(tmuxName, runScript);
+        terminalSession = this.terminalManager.spawn({
+          executionId,
+          cwd: effectiveCwd,
+          shell: spec.shell,
+          args: spec.args,
+          cols: cols || CLOUD_TERMINAL_CONFIG.DEFAULT_COLS,
+          rows: rows || CLOUD_TERMINAL_CONFIG.DEFAULT_ROWS,
+          inactivityTimeoutMs: CLOUD_TERMINAL_CONFIG.INACTIVITY_TIMEOUT_MS,
+          env: {},
+        });
+        session.tmuxSessionName = tmuxName;
+        session.runScriptPath = runScript;
+        await this.registry.upsert(this.toPersistedEntry(session));
+      } else {
+        if (this.tmux.isEnabled()) {
+          // enabled but server unreachable (external mode, unit missing/down)
+          this.addPendingNotice(
+            session,
+            'warn',
+            'tmux-Server nicht erreichbar — Session überlebt Backend-Neustarts nicht.'
+          );
+        }
+        terminalSession = this.terminalManager.spawn({
+          executionId,
+          cwd: effectiveCwd,
+          shell: shellCommand,
+          args: shellArgs,
+          cols: cols || CLOUD_TERMINAL_CONFIG.DEFAULT_COLS,
+          rows: rows || CLOUD_TERMINAL_CONFIG.DEFAULT_ROWS,
+          inactivityTimeoutMs: CLOUD_TERMINAL_CONFIG.INACTIVITY_TIMEOUT_MS,
+          env: shellEnv,
+        });
+      }
 
-      // Update session with PTY info
+      // Update session with PTY info. For tmux-backed sessions the pid is the
+      // tmux CLIENT pid (display metadata only — no server-side logic reads it).
       session.pid = terminalSession.pid;
       session.status = 'active';
 
@@ -515,6 +650,13 @@ export class CloudTerminalManager extends EventEmitter {
 
       return this.getSessionMetadata(session);
     } catch (error) {
+      // Clean up on failure — including tmux artifacts written before the
+      // spawn threw (registry entry, run script, a possibly-created session).
+      if (session.tmuxSessionName) {
+        void this.tmux.killSession(session.tmuxSessionName);
+        void this.tmux.cleanupSessionArtifacts(sessionId);
+        void this.registry.remove(sessionId);
+      }
       // Clean up on failure — including a worktree created earlier in this call.
       if (session.worktreeCleanup) {
         const { worktreePath, branchName, mainProjectPath, seededClaudeConfig } =
@@ -674,6 +816,10 @@ export class CloudTerminalManager extends EventEmitter {
       return false;
     }
 
+    // Set BEFORE the kill: the attach client's exit event must take the
+    // teardown path, never the re-attach path (see ManagedCloudSession.closing).
+    session.closing = true;
+
     // Kill PTY process via TerminalManager
     const killed = this.terminalManager.kill(session.executionId);
 
@@ -685,11 +831,19 @@ export class CloudTerminalManager extends EventEmitter {
     // via the synchronous worktreeDisposed flag rather than a lost session ref.
     void this.disposeSessionWorktree(session);
 
+    // tmux-backed: the surviving tmux session must die with the explicit close,
+    // and its persisted metadata must go so it is not restored on next boot.
+    if (session.tmuxSessionName) {
+      void this.tmux.killSession(session.tmuxSessionName);
+      void this.tmux.cleanupSessionArtifacts(sessionId);
+      void this.registry.remove(sessionId);
+    }
+
     // Remove from sessions
     this.sessions.delete(sessionId);
 
     // Remove any pasted-image files belonging to this session
-    const pasteDir = path.join(CLOUD_TERMINAL_CONFIG.PASTE_IMAGE_ROOT, sessionId);
+    const pasteDir = path.join(getPasteImageRoot(), sessionId);
     fs.promises.rm(pasteDir, { recursive: true, force: true })
       .catch((err) => console.warn(
         `[CloudTerminalManager] Failed to clean up paste dir for ${sessionId}:`, err,
@@ -752,6 +906,17 @@ export class CloudTerminalManager extends EventEmitter {
       // Treat as success so the client doesn't falsely see SESSION_NOT_FOUND.
       console.log(`[CloudTerminalManager] Resume requested for already-active session ${sessionId}`);
       this.emit('session.resumed', sessionId, '');
+      // One-time heads-up for a restored auto-mode session: the claude process
+      // survived the restart, but the orchestrator bookkeeping did not.
+      if (session.restoredAutoMode) {
+        session.restoredAutoMode = undefined;
+        this.emit(
+          'session.notice',
+          sessionId,
+          'info',
+          'Session hat einen Backend-Neustart überlebt. Auto-Mode-Überwachung läuft für diese Session nicht weiter — Claude arbeitet, aber ohne Orchestrator.'
+        );
+      }
       return '';
     }
 
@@ -852,7 +1017,7 @@ export class CloudTerminalManager extends EventEmitter {
       );
     }
 
-    const dir = path.join(CLOUD_TERMINAL_CONFIG.PASTE_IMAGE_ROOT, sessionId);
+    const dir = path.join(getPasteImageRoot(), sessionId);
     await fs.promises.mkdir(dir, { recursive: true, mode: 0o700 });
     const absolutePath = path.join(dir, `img-${randomUUID()}.${ext}`);
     await fs.promises.writeFile(absolutePath, buf, { mode: 0o600 });
@@ -997,23 +1162,118 @@ export class CloudTerminalManager extends EventEmitter {
         return;
       }
 
-      session.exitCode = exitCode;
-      session.status = 'closed';
+      if (session.tmuxSessionName && !session.closing) {
+        // tmux-backed: the exiting process is only the ATTACH CLIENT. Two cases:
+        //   (a) the inner command exited → tmux session destroyed → real exit.
+        //   (b) the client died in isolation → tmux session still alive →
+        //       re-attach instead of closing (closing here would destroy the
+        //       worktree/registry entry of a live session).
+        void this.handleTmuxClientExit(session, exitCode);
+        return;
+      }
 
-      console.log(`[CloudTerminalManager] Session ${session.sessionId} exited with code ${exitCode}`);
-
-      // Tear down the per-session worktree (idempotent). Runs now — before the
-      // delayed delete — so a crashed/exited CLI doesn't orphan its worktree.
-      void this.disposeSessionWorktree(session);
-
-      // Emit session closed event
-      this.emit('session.closed', session.sessionId, exitCode);
-
-      // Remove from sessions after a brief delay
-      setTimeout(() => {
-        this.sessions.delete(session.sessionId);
-      }, 5000);
+      this.finalizeSessionExit(session, exitCode);
     });
+  }
+
+  /**
+   * Distinguishes a real inner-command exit from an isolated attach-client
+   * death for a tmux-backed session (see the terminal.exit listener).
+   */
+  private async handleTmuxClientExit(
+    session: ManagedCloudSession,
+    clientExitCode: number
+  ): Promise<void> {
+    const tmuxName = session.tmuxSessionName as string;
+    const alive = await this.tmux.hasSession(tmuxName);
+
+    // Re-check: closeSession may have run while hasSession was in flight.
+    if (session.closing || !this.sessions.has(session.sessionId)) {
+      return;
+    }
+
+    if (alive) {
+      const attempts = (session.reattachAttempts ?? 0) + 1;
+      session.reattachAttempts = attempts;
+      if (attempts <= 3) {
+        console.warn(
+          `[CloudTerminalManager] attach client for ${session.sessionId} died (code ${clientExitCode}) while tmux session lives — re-attaching (attempt ${attempts}/3)`
+        );
+        setTimeout(() => {
+          void this.reattachSession(session);
+        }, attempts * 500);
+        return;
+      }
+      console.error(
+        `[CloudTerminalManager] giving up re-attaching ${session.sessionId} after ${attempts - 1} attempts — closing`
+      );
+    }
+
+    // Real exit (or unrecoverable client): prefer the inner command's exit code
+    // from the run-script's exit file; fall back to the client's code when the
+    // file is missing (SIGKILL of the inner process, kill-session).
+    const innerCode = await this.tmux.readExitCode(session.sessionId);
+    void this.tmux.cleanupSessionArtifacts(session.sessionId);
+    void this.registry.remove(session.sessionId);
+    this.finalizeSessionExit(session, innerCode ?? clientExitCode);
+  }
+
+  /** Shared tail of the exit path (direct-spawn behavior, unchanged). */
+  private finalizeSessionExit(session: ManagedCloudSession, exitCode: number): void {
+    session.exitCode = exitCode;
+    session.status = 'closed';
+
+    console.log(`[CloudTerminalManager] Session ${session.sessionId} exited with code ${exitCode}`);
+
+    // Tear down the per-session worktree (idempotent). Runs now — before the
+    // delayed delete — so a crashed/exited CLI doesn't orphan its worktree.
+    void this.disposeSessionWorktree(session);
+
+    // Emit session closed event
+    this.emit('session.closed', session.sessionId, exitCode);
+
+    // Remove from sessions after a brief delay
+    setTimeout(() => {
+      this.sessions.delete(session.sessionId);
+    }, 5000);
+  }
+
+  /**
+   * Spawns a fresh attach client for a live tmux session after the previous
+   * client died (isolated client crash, or boot-restore). Uses a fresh
+   * executionId — the old one may still occupy TerminalManager's map during
+   * its 5s cleanup grace period.
+   */
+  private reattachSession(session: ManagedCloudSession): void {
+    if (session.closing || !this.sessions.has(session.sessionId)) {
+      return;
+    }
+    const tmuxName = session.tmuxSessionName as string;
+    const spec = this.tmux.buildAttachArgv(tmuxName);
+    const executionId = `cloud-${session.sessionId}-r${Date.now()}`;
+    try {
+      const ts = this.terminalManager.spawn({
+        executionId,
+        cwd: fs.existsSync(session.effectiveCwd) ? session.effectiveCwd : session.projectPath,
+        shell: spec.shell,
+        args: spec.args,
+        cols: CLOUD_TERMINAL_CONFIG.DEFAULT_COLS,
+        rows: CLOUD_TERMINAL_CONFIG.DEFAULT_ROWS,
+        inactivityTimeoutMs: CLOUD_TERMINAL_CONFIG.INACTIVITY_TIMEOUT_MS,
+        env: {},
+      });
+      session.executionId = executionId;
+      session.pid = ts.pid;
+      session.status = 'active';
+      console.log(`[CloudTerminalManager] re-attached session ${session.sessionId} (pid ${ts.pid})`);
+    } catch (err) {
+      console.error(`[CloudTerminalManager] re-attach spawn failed for ${session.sessionId}:`, err);
+      // The next terminal.exit for the old executionId will not fire again;
+      // treat as unrecoverable.
+      void this.tmux.cleanupSessionArtifacts(session.sessionId);
+      void this.registry.remove(session.sessionId);
+      this.finalizeSessionExit(session, session.exitCode ?? 1);
+    }
   }
 
   /**
@@ -1029,6 +1289,11 @@ export class CloudTerminalManager extends EventEmitter {
     if (!active) {
       session.lastPromptDetectedAt = undefined;
       session.blockerReported = undefined;
+    }
+    // Keep the persisted autoMode flag current so a restore after restart can
+    // flag the session (orchestrator does not re-attach in v1).
+    if (session.tmuxSessionName) {
+      void this.registry.upsert(this.toPersistedEntry(session));
     }
   }
 
@@ -1156,6 +1421,184 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
+   * Serializes a session into its registry record.
+   */
+  private toPersistedEntry(session: ManagedCloudSession): PersistedCloudSessionV1 {
+    const wt = session.worktreeCleanup;
+    return {
+      sessionId: session.sessionId,
+      projectPath: session.projectPath,
+      effectiveCwd: session.effectiveCwd,
+      terminalType: session.terminalType,
+      modelConfig: session.modelConfig,
+      createdAt: session.createdAt.toISOString(),
+      tmuxSessionName: session.tmuxSessionName ?? this.tmux.sessionName(session.sessionId),
+      runScriptPath: session.runScriptPath ?? '',
+      worktree: wt
+        ? {
+            worktreePath: wt.worktreePath,
+            branchName: wt.branchName,
+            mainProjectPath: wt.mainProjectPath,
+            seededClaudeConfig: [...wt.seededClaudeConfig],
+          }
+        : undefined,
+      autoMode: session.autoModeActive === true,
+    };
+  }
+
+  /**
+   * Boot-restore: rebuild the in-memory session map from the on-disk registry
+   * and reattach to the tmux sessions that survived the restart. Sessions are
+   * restored in parallel; the caller (startRestore) enforces the overall cap.
+   *
+   * Ordering guarantee: entries land in `this.sessions` (occupancy + stable
+   * IDs) before any WS handler runs, because every cloud-terminal entry point
+   * awaits `restoreReady`.
+   */
+  private async restorePersistedSessions(): Promise<void> {
+    // Probe the server AND push the current tmux-cloud.conf into it before any
+    // attach: the server outlives backend restarts, so it may still be running
+    // the config it was started with. Client terminal capabilities are resolved
+    // at attach time, so the fresh attach clients below pick up the new config.
+    if ((await this.tmux.ensureServerAvailable()) !== 'ok') {
+      console.warn('[CloudTerminalManager] tmux server unavailable — no sessions restored');
+      return;
+    }
+
+    const { entries, healthy } = await this.registry.load();
+
+    if (healthy) {
+      // Only with trustworthy metadata: cs-* sessions nobody claims are
+      // unrecoverable (no project/cwd/model info) and get killed. With an
+      // unhealthy registry we leave everything alive for manual recovery.
+      await this.tmux.killOrphans(new Set(entries.map((e) => e.tmuxSessionName)));
+    } else if (entries.length === 0) {
+      console.warn(
+        '[CloudTerminalManager] session registry unreadable — skipping orphan cleanup, no sessions restored'
+      );
+    }
+
+    if (entries.length === 0) {
+      return;
+    }
+
+    const live = await this.tmux.listSessions();
+    await Promise.allSettled(
+      entries.map((entry) =>
+        live.has(entry.tmuxSessionName)
+          ? this.restoreEntry(entry)
+          : this.reapDeadEntry(entry)
+      )
+    );
+
+    // Persist the surviving set in one go (drops reaped/failed entries).
+    const survivors = Array.from(this.sessions.values())
+      .filter((s) => s.tmuxSessionName && s.status !== 'closed')
+      .map((s) => this.toPersistedEntry(s));
+    await this.registry.replaceAll(survivors);
+
+    console.log(
+      `[CloudTerminalManager] boot-restore complete: ${survivors.length}/${entries.length} sessions reattached`
+    );
+  }
+
+  /** Rebuilds one session from its registry record and reattaches. */
+  private async restoreEntry(entry: PersistedCloudSessionV1): Promise<void> {
+    const session: ManagedCloudSession = {
+      sessionId: entry.sessionId,
+      projectPath: entry.projectPath,
+      effectiveCwd: entry.effectiveCwd,
+      terminalType: entry.terminalType,
+      status: 'creating',
+      modelConfig: entry.modelConfig,
+      buffer: [],
+      pausedBuffer: [],
+      createdAt: new Date(entry.createdAt),
+      lastActivity: new Date(),
+      executionId: `cloud-${entry.sessionId}`,
+      tmuxSessionName: entry.tmuxSessionName,
+      runScriptPath: entry.runScriptPath || undefined,
+      restored: true,
+      restoredAutoMode: entry.autoMode || undefined,
+      worktreeCleanup: entry.worktree
+        ? rehydrateOwnedSessionWorktree(entry.worktree)
+        : undefined,
+    };
+
+    // Seed the scrollback from tmux history BEFORE attaching — the attach
+    // redraw then appends the live screen, so buffer-request replays both.
+    const history = await this.tmux.capturePaneHistory(
+      entry.tmuxSessionName,
+      CLOUD_TERMINAL_CONFIG.MAX_BUFFER_LINES
+    );
+    if (history) {
+      session.buffer.push(history);
+    }
+
+    // Into the map first: occupancy (getOccupiedPaths) and the session-ID
+    // collision guard both read from here.
+    this.sessions.set(entry.sessionId, session);
+
+    try {
+      this.reattachRestoredSession(session);
+      if (entry.autoMode) {
+        console.warn(
+          `[CloudTerminalManager] restored auto-mode session ${entry.sessionId} as plain terminal — orchestrator does not re-attach (v1 limitation)`
+        );
+      }
+    } catch (err) {
+      console.error(`[CloudTerminalManager] failed to reattach ${entry.sessionId}:`, err);
+      this.sessions.delete(entry.sessionId);
+      await this.reapDeadEntry(entry);
+    }
+  }
+
+  /** Attach-PTY spawn for a restored session (throws on failure). */
+  private reattachRestoredSession(session: ManagedCloudSession): void {
+    const spec = this.tmux.buildAttachArgv(session.tmuxSessionName as string);
+    const ts = this.terminalManager.spawn({
+      executionId: session.executionId,
+      // attach needs no particular cwd; be safe if the dir vanished meanwhile.
+      cwd: fs.existsSync(session.effectiveCwd) ? session.effectiveCwd : process.cwd(),
+      shell: spec.shell,
+      args: spec.args,
+      cols: CLOUD_TERMINAL_CONFIG.DEFAULT_COLS,
+      rows: CLOUD_TERMINAL_CONFIG.DEFAULT_ROWS,
+      inactivityTimeoutMs: CLOUD_TERMINAL_CONFIG.INACTIVITY_TIMEOUT_MS,
+      env: {},
+    });
+    session.pid = ts.pid;
+    session.status = 'active';
+  }
+
+  /**
+   * A registry entry whose tmux session died while the backend was down:
+   * treat like an exit that happened in absence — dispose the owned worktree,
+   * remove launch artifacts, paste dir and the registry entry.
+   */
+  private async reapDeadEntry(entry: PersistedCloudSessionV1): Promise<void> {
+    console.log(`[CloudTerminalManager] reaping dead session ${entry.sessionId} (tmux session gone)`);
+    if (entry.worktree) {
+      const owned = rehydrateOwnedSessionWorktree(entry.worktree);
+      if (owned) {
+        await removeCloudSessionWorktree(
+          owned.mainProjectPath,
+          owned.worktreePath,
+          owned.branchName,
+          owned.seededClaudeConfig
+        ).catch((err) =>
+          console.warn(`[CloudTerminalManager] worktree cleanup failed for ${entry.sessionId}:`, err)
+        );
+      }
+    }
+    await this.tmux.cleanupSessionArtifacts(entry.sessionId);
+    await fs.promises
+      .rm(path.join(getPasteImageRoot(), entry.sessionId), { recursive: true, force: true })
+      .catch(() => {});
+    await this.registry.remove(entry.sessionId);
+  }
+
+  /**
    * Find a session by its internal execution ID
    */
   private findSessionByExecutionId(executionId: string): ManagedCloudSession | undefined {
@@ -1168,7 +1611,14 @@ export class CloudTerminalManager extends EventEmitter {
    * Generate a unique session ID
    */
   private generateSessionId(): CloudTerminalSessionId {
-    return `cloud-${Date.now()}-${++this.executionIdCounter}`;
+    // The counter resets on restart, so a restored session could occupy the
+    // freshly generated ID — loop until free (createSession additionally waits
+    // for restoreReady, so the restored IDs are already in the map here).
+    let id: CloudTerminalSessionId;
+    do {
+      id = `cloud-${Date.now()}-${++this.executionIdCounter}`;
+    } while (this.sessions.has(id));
+    return id;
   }
 
   /**
@@ -1269,20 +1719,25 @@ export class CloudTerminalManager extends EventEmitter {
   public async shutdown(): Promise<void> {
     console.log(`[CloudTerminalManager] Shutting down, cleaning up ${this.sessions.size} sessions`);
 
-    // Snapshot BEFORE clear so worktreeCleanup refs survive; await removals so
-    // they finish before the process exits (fire-and-forget would be lost).
-    const snapshot = [...this.sessions.values()];
+    // tmux-backed sessions deliberately survive shutdown: their tmux session,
+    // worktree, paste dir and registry entry are the restart-restore payload.
+    // Only direct-spawn sessions (which die with us anyway) get torn down.
+    const snapshot = [...this.sessions.values()].filter((s) => !s.tmuxSessionName);
     await Promise.allSettled(snapshot.map((session) => this.disposeSessionWorktree(session)));
 
     for (const session of this.sessions.values()) {
       this.terminalManager.kill(session.executionId);
     }
 
+    const hadTmuxSessions = [...this.sessions.values()].some((s) => s.tmuxSessionName);
     this.sessions.clear();
     this.removeAllListeners();
 
-    // Sweep the paste root in case any per-session dirs survived a crash
-    fs.promises.rm(CLOUD_TERMINAL_CONFIG.PASTE_IMAGE_ROOT, { recursive: true, force: true })
-      .catch((err) => console.warn('[CloudTerminalManager] Failed to clean up paste root:', err));
+    // Sweep the paste root in case any per-session dirs survived a crash —
+    // but never while surviving tmux sessions still reference their paste dirs.
+    if (!hadTmuxSessions) {
+      fs.promises.rm(getPasteImageRoot(), { recursive: true, force: true })
+        .catch((err) => console.warn('[CloudTerminalManager] Failed to clean up paste root:', err));
+    }
   }
 }

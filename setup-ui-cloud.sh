@@ -80,6 +80,13 @@ for cmd in git node npm; do
     fi
 done
 
+# tmux hosts the cloud-terminal PTYs so sessions survive backend restarts
+# (deploys restart only specwright-ui.service, never the tmux server).
+if ! command -v tmux &>/dev/null; then
+    echo "==> Installing tmux (cloud-terminal session persistence)"
+    apt-get update -qq && apt-get install -y -qq tmux
+fi
+
 NODE_MAJOR=$(node -v | sed 's/^v//' | cut -d. -f1)
 if [[ "$NODE_MAJOR" -lt 20 ]]; then
     echo "Error: Node.js 20+ required (found $(node -v))." >&2
@@ -304,8 +311,32 @@ sed \
 
 chmod 0644 "$UNIT_INSTALLED"
 
+# Dedicated tmux server unit: hosts the cloud-terminal PTYs OUTSIDE the ui
+# unit's cgroup so sessions survive `systemctl restart specwright-ui`.
+TMUX_UNIT_TEMPLATE="$SPECWRIGHT_UI_HOME/cloud-deploy/specwright-tmux.service"
+TMUX_UNIT_INSTALLED="/etc/systemd/system/specwright-tmux.service"
+
+if [[ -f "$TMUX_UNIT_TEMPLATE" ]]; then
+    echo "==> Installing systemd unit: $TMUX_UNIT_INSTALLED"
+    sed \
+        -e "s|__SPECWRIGHT_UI_USER__|${SPECWRIGHT_UI_USER}|g" \
+        -e "s|__SPECWRIGHT_UI_HOME__|${SPECWRIGHT_UI_HOME}|g" \
+        -e "s|__SPECWRIGHT_UI_PORT__|${SPECWRIGHT_UI_PORT}|g" \
+        -e "s|__SPECWRIGHT_PROJECTS_ROOT__|${SPECWRIGHT_PROJECTS_ROOT}|g" \
+        "$TMUX_UNIT_TEMPLATE" > "$TMUX_UNIT_INSTALLED"
+    chmod 0644 "$TMUX_UNIT_INSTALLED"
+else
+    echo "Warning: tmux unit template not found at $TMUX_UNIT_TEMPLATE — skipping" >&2
+fi
+
 systemctl daemon-reload
 systemctl enable "${SERVICE_NAME}.service" >/dev/null
+if [[ -f "$TMUX_UNIT_INSTALLED" ]]; then
+    systemctl enable specwright-tmux.service >/dev/null
+    # Start (or leave running) BEFORE the ui service so the backend finds the
+    # socket on first boot. Never restart here — that would kill live sessions.
+    systemctl start specwright-tmux.service
+fi
 
 if [[ "$START_SERVICE" == "true" ]]; then
     echo "==> (Re)starting service: $SERVICE_NAME"

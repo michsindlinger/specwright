@@ -202,6 +202,18 @@ export class WebSocketHandler {
     });
   }
 
+  /**
+   * Runs a cloud-terminal message handler once the boot-restore of persisted
+   * sessions has settled (see CloudTerminalManager.whenReady). Resolved
+   * promise → next microtask, so the per-keystroke overhead is negligible and
+   * relative message order is preserved.
+   */
+  private gateOnCloudTerminalRestore(fn: () => void): void {
+    void this.cloudTerminalManager.whenReady().then(fn).catch((err) => {
+      console.error('[WebSocketHandler] cloud-terminal handler failed:', err);
+    });
+  }
+
   private handleMessage(client: WebSocketClient, data: RawData): void {
     try {
       const message = JSON.parse(data.toString()) as WebSocketMessage;
@@ -585,38 +597,44 @@ export class WebSocketHandler {
           void this.handleSetupStartDevteam(client, message);
           break;
         // Cloud Terminal Messages (CCT-001)
+        // All handlers are gated on the boot-restore of persisted tmux-backed
+        // sessions: a client that connects right after a backend restart must
+        // never see a half-populated session map (list) or race the restore
+        // with a create. The gate resolves immediately once restore settled
+        // (and always for non-tmux setups), and per-client message order is
+        // preserved because every case chains on the same settled promise.
         case 'cloud-terminal:create':
-          void this.handleCloudTerminalCreate(client, message);
+          this.gateOnCloudTerminalRestore(() => void this.handleCloudTerminalCreate(client, message));
           break;
         case 'cloud-terminal:create-workflow':
-          void this.handleCloudTerminalCreateWorkflow(client, message);
+          this.gateOnCloudTerminalRestore(() => void this.handleCloudTerminalCreateWorkflow(client, message));
           break;
         case 'cloud-terminal:close':
-          this.handleCloudTerminalClose(client, message);
+          this.gateOnCloudTerminalRestore(() => this.handleCloudTerminalClose(client, message));
           break;
         case 'cloud-terminal:pause':
-          this.handleCloudTerminalPause(client, message);
+          this.gateOnCloudTerminalRestore(() => this.handleCloudTerminalPause(client, message));
           break;
         case 'cloud-terminal:resume':
-          this.handleCloudTerminalResume(client, message);
+          this.gateOnCloudTerminalRestore(() => this.handleCloudTerminalResume(client, message));
           break;
         case 'cloud-terminal:input':
-          this.handleCloudTerminalInput(client, message);
+          this.gateOnCloudTerminalRestore(() => this.handleCloudTerminalInput(client, message));
           break;
         case 'cloud-terminal:paste-image':
-          void this.handleCloudTerminalPasteImage(client, message);
+          this.gateOnCloudTerminalRestore(() => void this.handleCloudTerminalPasteImage(client, message));
           break;
         case 'cloud-terminal:resize':
-          this.handleCloudTerminalResize(client, message);
+          this.gateOnCloudTerminalRestore(() => this.handleCloudTerminalResize(client, message));
           break;
         case 'cloud-terminal:list':
-          this.handleCloudTerminalList(client, message);
+          this.gateOnCloudTerminalRestore(() => this.handleCloudTerminalList(client, message));
           break;
         case 'cloud-terminal:targets':
-          void this.handleCloudTerminalTargets(client, message);
+          this.gateOnCloudTerminalRestore(() => void this.handleCloudTerminalTargets(client, message));
           break;
         case 'cloud-terminal:buffer-request':
-          this.handleCloudTerminalBufferRequest(client, message);
+          this.gateOnCloudTerminalRestore(() => this.handleCloudTerminalBufferRequest(client, message));
           break;
         // Plan Review Messages (APR-004, APR-007)
         case 'plan-review:prompt.get':

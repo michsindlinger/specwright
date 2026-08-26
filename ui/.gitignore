@@ -25,3 +25,6 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+
+# Persisted runtime state (cloud-terminal session registry, run scripts, paste images)
+runtime/
