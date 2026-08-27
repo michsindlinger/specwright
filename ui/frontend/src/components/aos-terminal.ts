@@ -356,6 +356,12 @@ export class AosTerminal extends LitElement {
       fontSize: 14,
       lineHeight: 1.5,
       theme: getTerminalTheme(themeService.getResolvedTheme()),
+      // tmux runs with `mouse on` (wheel scrolls tmux's own history), which
+      // puts xterm into mouse-tracking mode — plain drag then goes to the app,
+      // not to selection. The escape hatch differs per OS: Shift+drag works
+      // out of the box everywhere EXCEPT macOS, where xterm only honors
+      // Option(⌥)+drag and only when this flag is set.
+      macOptionClickForcesSelection: true,
       allowProposedApi: true // Required for some addons
     });
 
