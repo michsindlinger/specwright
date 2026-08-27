@@ -178,6 +178,9 @@ export class AosTerminal extends LitElement {
   private _scrollbarEl: HTMLElement | null = null;
   private _scrollbarThumb: HTMLElement | null = null;
   private _scrollbarDragging = false;
+
+  /** True while a captured buffer is being replayed into xterm (see _writeReplayBuffer). */
+  private _replayingBuffer = false;
   private _scrollbarRenderDisposable: { dispose(): void } | null = null;
   private boundViewportScroll = () => this._updateScrollbarThumb();
   // Pointer Events (not Touch Events) so the drag stays glued to the thumb via
@@ -364,6 +367,12 @@ export class AosTerminal extends LitElement {
       macOptionClickForcesSelection: true,
       allowProposedApi: true // Required for some addons
     });
+
+    // tmux owns mouse selection (drag → copy-mode → copy on release) and emits
+    // the copied text as OSC 52. Forward it to the browser clipboard. Guarded
+    // against buffer replay: a historical copy in the replayed stream must not
+    // clobber the user's current clipboard.
+    this.terminal.parser.registerOscHandler(52, (data) => this._handleOsc52(data));
 
     // Create fit addon for auto-resize
     this.fitAddon = new FitAddon();
@@ -721,7 +730,36 @@ export class AosTerminal extends LitElement {
   private _writeReplayBuffer(raw: string): void {
     if (!this.terminal || !raw) return;
     this.terminal.reset();
-    this.terminal.write(stripTerminalQueries(raw));
+    this._replayingBuffer = true;
+    this.terminal.write(stripTerminalQueries(raw), () => {
+      this._replayingBuffer = false;
+    });
+  }
+
+  /**
+   * OSC 52 (clipboard set) from tmux — payload format "<targets>;<base64>".
+   * Read requests ("?") are ignored; we never expose the clipboard to the PTY.
+   */
+  private _handleOsc52(data: string): boolean {
+    const semi = data.indexOf(';');
+    if (semi === -1) return true;
+    const payload = data.slice(semi + 1);
+    // Belt and braces with the stripTerminalQueries OSC-52 filter.
+    if (payload === '?' || this._replayingBuffer) return true;
+    let text = '';
+    try {
+      const bin = atob(payload);
+      const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+      text = new TextDecoder().decode(bytes);
+    } catch {
+      return true;
+    }
+    if (!text) return true;
+    navigator.clipboard?.writeText(text).then(
+      () => this._showPasteStatus('In Zwischenablage kopiert', 'success'),
+      () => this._showPasteStatus('Kopieren blockiert — Clipboard-Berechtigung im Browser prüfen', 'error'),
+    );
+    return true;
   }
 
   /**

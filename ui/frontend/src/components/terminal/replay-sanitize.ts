@@ -48,6 +48,9 @@ export function stripTerminalQueries(data: string): string {
     // OSC colour QUERY (10/11/12 fg/bg/cursor) — only the "?" query form, BEL or ST terminated
     .replace(/\x1b\]1[0-2];\?(?:\x07|\x1b\\)/g, '')
     // OSC palette colour QUERY (4;n;?)
-    .replace(/\x1b\]4;[0-9]+;\?(?:\x07|\x1b\\)/g, '');
+    .replace(/\x1b\]4;[0-9]+;\?(?:\x07|\x1b\\)/g, '')
+    // OSC 52 clipboard SET (tmux mouse-copy): replaying a historical copy would
+    // clobber the user's current clipboard via the frontend OSC-52 handler
+    .replace(/\x1b\]52;[^\x07\x1b]*(?:\x07|\x1b\\)/g, '');
   /* eslint-enable no-control-regex */
 }

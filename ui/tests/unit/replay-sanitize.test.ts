@@ -106,3 +106,17 @@ describe('stripTerminalQueries — realistic replay buffer', () => {
     expect(cleaned).not.toContain(';?');
   });
 });
+
+describe('stripTerminalQueries — OSC 52 clipboard writes', () => {
+  it('strips a BEL-terminated tmux mouse-copy so replay cannot clobber the clipboard', () => {
+    const copy = `${ESC}]52;c;Q09QWUxJTkUtNDI=${BEL}`;
+    const stream = `before${copy}after`;
+    expect(stripTerminalQueries(stream)).toBe('beforeafter');
+  });
+
+  it('strips the ST-terminated form and keeps unrelated OSC SET sequences', () => {
+    const copy = `${ESC}]52;;aGVsbG8=${ESC}\\`;
+    const title = `${ESC}]0;my-title${BEL}`;
+    expect(stripTerminalQueries(copy + title)).toBe(title);
+  });
+});
