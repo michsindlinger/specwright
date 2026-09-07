@@ -8,6 +8,8 @@ import './aos-auto-review-toggle.js';
 import type { AosTerminalSession } from './aos-terminal-session.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
 import { hiddenRowPane, clampRowRatio } from './pane-visibility.js';
+import { effectiveZoomedPane, nextZoomedPane, ZOOM_GEOM } from './pane-zoom.js';
+import { isPaneZoomShortcut, isEditableTarget } from '../../utils/keyboard-shortcuts.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 import { MobileBreakpointController } from '../../controllers/mobile-breakpoint-controller.js';
 import '../mobile/aos-mobile-terminal-header.js';
@@ -118,6 +120,13 @@ export class AosCloudTerminalSidebar extends LitElement {
    * for "maximized". Not persisted — a fresh load/layout-switch starts un-maximized.
    */
   @state() private _maxAxis: Partial<Record<RowKey, { pane: number }>> = {};
+  /**
+   * Pane index zoomed to the WHOLE terminal area (both axes), or null. Transient like
+   * `_maxAxis` and independent of it: zooming does not touch `_maxAxis` or any ratio, so
+   * un-zooming restores exactly the previous arrangement. Resolved through
+   * `_effectiveZoom` (pane-zoom.ts) so an emptied slot silently un-zooms. Not persisted.
+   */
+  @state() private _zoomedPane: number | null = null;
   /**
    * Live pixel height of the split-panes container. Drives the "too small to render → hide"
    * decision (see PANE_MIN_PX). Measured via a ResizeObserver so it tracks window/fullscreen
@@ -454,6 +463,46 @@ export class AosCloudTerminalSidebar extends LitElement {
       .pane-maximize-btn.active {
         border-color: var(--accent-color, #007acc);
         color: var(--accent-color, #007acc);
+      }
+
+      .pane-maximize-btn:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      .pane-maximize-btn:disabled:hover {
+        border-color: var(--border-color, #404040);
+        color: var(--text-color-muted, #909090);
+      }
+
+      .pane-zoom-btn {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        background: var(--bg-color-secondary, #1e1e1e);
+        color: var(--text-color-muted, #909090);
+        border: 1px solid var(--border-color, #404040);
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .pane-zoom-btn:hover:not(:disabled) {
+        border-color: var(--accent-color, #007acc);
+        color: var(--text-color-primary, #e0e0e0);
+      }
+
+      .pane-zoom-btn.active {
+        border-color: var(--accent-color, #007acc);
+        color: var(--accent-color, #007acc);
+      }
+
+      .pane-zoom-btn:disabled {
+        opacity: 0.4;
+        cursor: default;
       }
 
       .pane-new-btn:hover:not(:disabled) {
@@ -1019,6 +1068,12 @@ export class AosCloudTerminalSidebar extends LitElement {
     return this.layoutMode !== 'single';
   }
 
+  /** The pane currently zoomed to the full terminal area, or null (see `_zoomedPane`). */
+  private get _effectiveZoom(): number | null {
+    if (!this._isSplit) return null;
+    return effectiveZoomedPane(this._zoomedPane, this._paneCount, this.paneSessionIds);
+  }
+
   /** Container CSS vars holding the current splitter ratios (geometry calc()s read these). */
   private _containerVars(): Record<string, string> {
     return {
@@ -1035,6 +1090,8 @@ export class AosCloudTerminalSidebar extends LitElement {
    * Pane index map: 0=TL, 1=TR, 2=BL, 3=BR.
    */
   private _paneGeom(idx: number): Record<string, string> {
+    // Zoomed pane owns the whole container regardless of any ratio / maximize state.
+    if (this._effectiveZoom === idx) return { ...ZOOM_GEOM };
     // When the row-axis sibling is collapsed (maximize / too-small), this pane owns the full
     // column height — top:0, height:100% — instead of its ratio slice.
     const fullAxis = this._isPaneFullAxis(idx);
@@ -1155,6 +1212,47 @@ export class AosCloudTerminalSidebar extends LitElement {
     this._refreshVisibleTerminals();
   }
 
+  /**
+   * Zoom pane `idx` to the full terminal area, or un-zoom if it is already zoomed (header
+   * button). Pane headers are siblings of the session panels, so a header click never fires the
+   * panel's focusin — focus is set explicitly here, then handed to the pane's xterm once Lit has
+   * committed the new geometry.
+   */
+  private _zoomPane(idx: number): void {
+    if (!this.paneSessionIds[idx]) return; // empty pane — nothing to zoom (button is disabled anyway)
+    this._zoomedPane = this._effectiveZoom === idx ? null : idx;
+    this._afterZoomChange(idx);
+  }
+
+  /** Keyboard toggle (Cmd/Ctrl+Shift+Enter): zoom the focused pane, or un-zoom. No-op in single layout / empty pane. */
+  private _toggleZoom(): void {
+    const next = nextZoomedPane(this._zoomedPane, this.focusedPaneIndex, this._paneCount, this.paneSessionIds);
+    if (next === this._zoomedPane) return;
+    this._zoomedPane = next;
+    this._afterZoomChange(next ?? this.focusedPaneIndex);
+  }
+
+  /**
+   * Shared tail of a zoom change: focus bookkeeping, refit and xterm focus. Like
+   * `_togglePaneMaximize`, the refit is requested before Lit's flush — each terminal's own
+   * double-rAF scheduler lands after it (see `_refreshVisibleTerminals`).
+   */
+  private _afterZoomChange(focusIdx: number): void {
+    const sessionId = this.paneSessionIds[focusIdx] ?? null;
+    if (sessionId) {
+      this.focusedPaneIndex = focusIdx;
+      this._emitSessionSelect(sessionId);
+    }
+    this._refreshVisibleTerminals();
+    void this.updateComplete.then(() => {
+      if (!sessionId) return;
+      const panel = this.querySelector(
+        `aos-terminal-session.session-panel[data-session-id="${sessionId}"]`
+      ) as AosTerminalSession | null;
+      panel?.focusTerminal();
+    });
+  }
+
   /** Drop the maximize indicator for a row-axis (e.g. after a manual splitter drag repositions it). */
   private _clearMaxAxis(key: RowKey): void {
     if (!this._maxAxis[key]) return;
@@ -1191,6 +1289,9 @@ export class AosCloudTerminalSidebar extends LitElement {
   /** True when pane `idx` is collapsed away on its row-axis (maximize sibling, or too small). */
   private _isPaneHidden(idx: number): boolean {
     if (!this._isSplit) return false;
+    // Zoom hides every pane but the zoomed one, independent of the row-axis logic.
+    const zoom = this._effectiveZoom;
+    if (zoom !== null) return idx !== zoom;
     return this._hiddenPaneOnAxis(this._paneRowAxis(idx).key) === idx;
   }
 
@@ -1391,6 +1492,9 @@ export class AosCloudTerminalSidebar extends LitElement {
     }
 
     if (changed) {
+      // The zoomed slot lost its session → drop the zoom for good, so the next session
+      // assigned to that slot does not pop up zoomed unexpectedly.
+      if (this._zoomedPane !== null && !next[this._zoomedPane]) this._zoomedPane = null;
       this.paneSessionIds = next;
       this._persistLayout();
       this._refreshVisibleTerminals();
@@ -1458,6 +1562,12 @@ export class AosCloudTerminalSidebar extends LitElement {
     `;
   }
 
+  /** Platform-aware label for the pane-zoom shortcut shown in tooltips. */
+  private _zoomShortcutLabel(): string {
+    const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
+    return isMac ? '⌘⇧↩' : 'Strg+Umschalt+Enter';
+  }
+
   /** Deterministic hue (0-359) per project path — same project, same badge colour everywhere. */
   private _projectHue(path: string): number {
     let h = 0;
@@ -1494,6 +1604,8 @@ export class AosCloudTerminalSidebar extends LitElement {
             const reviewCfg = termId
               ? this._getReviewConfigFor(termId)
               : { enabled: false, reviewers: [] };
+            const zoomActive = this._effectiveZoom !== null;
+            const isZoomed = this._effectiveZoom === i;
             return html`<div
               class="pane-header ${i === this.focusedPaneIndex ? 'focused' : ''}"
               style=${styleMap(this._headerGeom(i))}
@@ -1519,9 +1631,12 @@ export class AosCloudTerminalSidebar extends LitElement {
                 ${this.layoutMode !== 'single'
                   ? html`<button
                       class="pane-maximize-btn ${this._isPaneMaximized(i) ? 'active' : ''}"
-                      title=${this._isPaneMaximized(i)
-                        ? 'Auf 50/50 zurücksetzen'
-                        : 'Dieses Pane vertikal maximieren'}
+                      ?disabled=${zoomActive}
+                      title=${zoomActive
+                        ? 'Während des Zooms nicht verfügbar'
+                        : this._isPaneMaximized(i)
+                          ? 'Auf 50/50 zurücksetzen'
+                          : 'Dieses Pane vertikal maximieren'}
                       aria-label=${this._isPaneMaximized(i)
                         ? 'Pane-Größe zurücksetzen'
                         : 'Pane vertikal maximieren'}
@@ -1536,6 +1651,30 @@ export class AosCloudTerminalSidebar extends LitElement {
                         : html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="7 9 12 4 17 9"></polyline>
                             <polyline points="7 15 12 20 17 15"></polyline>
+                          </svg>`}
+                    </button>
+                    <button
+                      class="pane-zoom-btn ${isZoomed ? 'active' : ''}"
+                      ?disabled=${!activeId}
+                      title=${isZoomed
+                        ? `Zoom beenden (${this._zoomShortcutLabel()})`
+                        : `Pane auf volle Fläche zoomen (${this._zoomShortcutLabel()})`}
+                      aria-label=${isZoomed ? 'Zoom beenden' : 'Pane zoomen'}
+                      aria-pressed=${isZoomed ? 'true' : 'false'}
+                      @click=${() => this._zoomPane(i)}
+                    >
+                      ${isZoomed
+                        ? html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="4 14 10 14 10 20"></polyline>
+                            <polyline points="20 10 14 10 14 4"></polyline>
+                            <line x1="14" y1="10" x2="21" y2="3"></line>
+                            <line x1="3" y1="21" x2="10" y2="14"></line>
+                          </svg>`
+                        : html`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <polyline points="9 21 3 21 3 15"></polyline>
+                            <line x1="21" y1="3" x2="14" y2="10"></line>
+                            <line x1="3" y1="21" x2="10" y2="14"></line>
                           </svg>`}
                     </button>`
                   : nothing}
@@ -1569,6 +1708,8 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   /** Drag handles between panes: one per divider, driven by ratio CSS vars. */
   private _renderSplitters() {
+    // No splitters while a pane is zoomed — there is nothing to divide.
+    if (this._effectiveZoom !== null) return nothing;
     if (this.layoutMode === 'split-2') {
       // No row splitter while one pane is collapsed to full height — reverse via the maximize button.
       if (this._hiddenPaneOnAxis('splitRowRatio') !== null) return nothing;
@@ -1780,6 +1921,15 @@ export class AosCloudTerminalSidebar extends LitElement {
       return;
     }
 
+    // Cmd/Ctrl+Shift+Enter toggles pane zoom (xterm blocks the same combo, so it never reaches
+    // the PTY). Ignored while typing in an editable outside the sidebar (e.g. the notepad).
+    if (isPaneZoomShortcut(e)) {
+      if (isEditableTarget(e.target) && !this.contains(e.target as Node)) return;
+      e.preventDefault();
+      this._toggleZoom();
+      return;
+    }
+
     // Escape leaves fullscreen (only consume the event when actually fullscreen)
     if (e.key === 'Escape' && this.isFullscreen) {
       e.preventDefault();
@@ -1824,8 +1974,9 @@ export class AosCloudTerminalSidebar extends LitElement {
   private _setLayout(mode: 'single' | 'split-2' | 'quad-4') {
     // Layout change invalidates a pending "+" adoption (pane indices may shift).
     this._pendingNewSession = null;
-    // Maximize tracking is per-axis/index — meaningless across a layout switch.
+    // Maximize/zoom tracking is per-axis/index — meaningless across a layout switch.
     this._maxAxis = {};
+    this._zoomedPane = null;
     // Quad requires fullscreen — entering it from the sidebar forces fullscreen on.
     if (mode === 'quad-4' && !this.isFullscreen) {
       this.isFullscreen = true;
@@ -1897,6 +2048,8 @@ export class AosCloudTerminalSidebar extends LitElement {
     next[paneIndex] = sessionId;
     this.paneSessionIds = next;
     this.focusedPaneIndex = paneIndex;
+    // A manual pane change is a new intent — never carry a zoom over to the new arrangement.
+    this._zoomedPane = null;
     this._persistLayout();
     this._refreshVisibleTerminals();
     if (sessionId) this._emitSessionSelect(sessionId);

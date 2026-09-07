@@ -17,6 +17,7 @@ import './components/aos-project-tabs.js';
 import './components/aos-project-add-modal.js';
 import './components/aos-context-menu.js';
 import './components/aos-quick-todo-modal.js';
+import './components/aos-notepad-panel.js';
 import './components/terminal/aos-cloud-terminal-sidebar.js';
 import './components/mobile/aos-mobile-sheet.js';
 import './components/mobile/aos-mobile-top-bar.js';
@@ -164,6 +165,10 @@ export class AosApp extends LitElement {
 
   @state()
   private showQuickTodoModal = false;
+
+  /** Floating notepad (Cmd/Ctrl+Shift+E); the panel owns the shortcut and reports via events. */
+  @state()
+  private showNotepad = false;
 
   // Project validation state (WSM-003: renamed from wizard* to project*)
   @state()
@@ -2149,6 +2154,11 @@ export class AosApp extends LitElement {
         @modal-close=${this.handleQuickTodoModalClose}
         @quick-todo-saved=${this.handleQuickTodoSaved}
       ></aos-quick-todo-modal>
+      <aos-notepad-panel
+        .open=${this.showNotepad}
+        @notepad-toggle=${() => { this.showNotepad = !this.showNotepad; }}
+        @panel-close=${() => { this.showNotepad = false; }}
+      ></aos-notepad-panel>
       <aos-file-tree-sidebar
         .isOpen=${this.isFileTreeOpen}
         @sidebar-close=${this._handleFileTreeClose}

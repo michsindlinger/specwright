@@ -383,6 +383,12 @@ export class AosTerminalSession extends LitElement {
     terminal?.refreshTerminal();
   }
 
+  /** Focus this pane's xterm (used by the sidebar after zooming a pane via its header button). */
+  public focusTerminal(): void {
+    const terminal = this.renderRoot.querySelector('aos-terminal') as AosTerminal | null;
+    terminal?.focusTerminal();
+  }
+
   /**
    * Synchronize internal state based on current properties.
    * Called on mount and when terminalSessionId changes.

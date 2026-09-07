@@ -8,6 +8,7 @@ import { themeService, type ResolvedTheme } from '../services/theme.service.js';
 import { CLOUD_TERMINAL_CONFIG } from '../../../src/shared/types/cloud-terminal.protocol.js';
 import type { PromptTemplate } from '../../../src/shared/types/prompt-templates.protocol.js';
 import { stripTerminalQueries } from './terminal/replay-sanitize.js';
+import { isPaneZoomShortcut } from '../utils/keyboard-shortcuts.js';
 import '@xterm/xterm/css/xterm.css';
 
 const DARK_THEME = {
@@ -246,6 +247,11 @@ export class AosTerminal extends LitElement {
     this._scheduleRefit();
   }
 
+  /** Move keyboard focus into the xterm instance (no-op before init). */
+  public focusTerminal(): void {
+    this.terminal?.focus();
+  }
+
   /**
    * Coalesce all refit triggers (ResizeObserver, refreshTerminal, deferred-init) into
    * one settled fit per burst. Cancel-and-reschedule guarantees the last call wins and
@@ -455,10 +461,18 @@ export class AosTerminal extends LitElement {
       // async Clipboard API from a keydown (that silently failed on Chrome due to
       // focus/permission rules). Cmd/Ctrl+V falls through to xterm here.
 
+      // Cmd/Ctrl+Shift+Enter = pane zoom (handled by the cloud-terminal sidebar on
+      // document keydown). Must never reach the PTY: without this block xterm would
+      // treat it as Shift+Enter below and inject a newline into Claude Code.
+      if (isPaneZoomShortcut(event)) {
+        if (event.type === 'keydown') event.preventDefault();
+        return false; // Block keydown/keypress/keyup alike
+      }
+
       // Shift+Enter → send newline to PTY (cloud mode only)
       // Must return false for ALL event types (keydown, keypress, keyup) to fully
       // block xterm. Previously only keydown was blocked, but keypress leaked through.
-      if (this.cloudMode && event.key === 'Enter' && event.shiftKey) {
+      if (this.cloudMode && event.key === 'Enter' && event.shiftKey && !event.metaKey && !event.ctrlKey) {
         if (event.type === 'keydown') {
           event.preventDefault();
           gateway.send({
