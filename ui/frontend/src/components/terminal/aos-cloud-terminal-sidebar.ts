@@ -2048,8 +2048,12 @@ export class AosCloudTerminalSidebar extends LitElement {
     next[paneIndex] = sessionId;
     this.paneSessionIds = next;
     this.focusedPaneIndex = paneIndex;
-    // A manual pane change is a new intent — never carry a zoom over to the new arrangement.
-    this._zoomedPane = null;
+    // Switching the session INSIDE the zoomed pane (tab click, "+", project dropdown) keeps the
+    // zoom — that is the pane the user is looking at. Only a change to another pane, or emptying
+    // the zoomed pane, is a new arrangement that drops the zoom.
+    if (this._zoomedPane !== null && (paneIndex !== this._zoomedPane || !sessionId)) {
+      this._zoomedPane = null;
+    }
     this._persistLayout();
     this._refreshVisibleTerminals();
     if (sessionId) this._emitSessionSelect(sessionId);
