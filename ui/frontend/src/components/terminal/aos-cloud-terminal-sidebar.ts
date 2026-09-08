@@ -8,7 +8,7 @@ import './aos-auto-review-toggle.js';
 import type { AosTerminalSession } from './aos-terminal-session.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
 import { hiddenRowPane, clampRowRatio } from './pane-visibility.js';
-import { effectiveZoomedPane, nextZoomedPane, ZOOM_GEOM } from './pane-zoom.js';
+import { effectiveZoomedPane, nextZoomedPane, paneShowingProject, ZOOM_GEOM } from './pane-zoom.js';
 import { isPaneZoomShortcut, isEditableTarget } from '../../utils/keyboard-shortcuts.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 import { MobileBreakpointController } from '../../controllers/mobile-breakpoint-controller.js';
@@ -1402,6 +1402,17 @@ export class AosCloudTerminalSidebar extends LitElement {
       this._assignPaneSession(paneIndex, null);
       return;
     }
+    // Zoomed pane + project already shown in another (hidden) pane → jump the zoom there.
+    // The arrangement stays untouched, so un-zooming later shows the panes exactly as before.
+    if (this._effectiveZoom === paneIndex) {
+      const projects = Array.from({ length: this._paneCount }, (_, i) => this._projectOf(i));
+      const other = paneShowingProject(projects, projectPath, paneIndex);
+      if (other >= 0) {
+        this._zoomedPane = other;
+        this._afterZoomChange(other);
+        return;
+      }
+    }
     this._assignPaneSession(paneIndex, this._newestSessionIdOfProject(projectPath));
   }
 
@@ -1790,7 +1801,10 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   private _renderPaneDropdown(paneIndex: number) {
     const current = this._projectOf(paneIndex) ?? '';
-    // Exclusivity: a project shown in another pane can't be picked here.
+    // Exclusivity: a project shown in another pane can't be picked here — except while this pane
+    // is zoomed: the other panes are invisible, so picking their project JUMPS the zoom there
+    // (see _assignPaneProject) instead of duplicating it.
+    const zoomed = this._effectiveZoom === paneIndex;
     const usedElsewhere = new Set<string>();
     for (let i = 0; i < this._paneCount; i++) {
       if (i === paneIndex) continue;
@@ -1810,8 +1824,9 @@ export class AosCloudTerminalSidebar extends LitElement {
           (path) => path,
           (path) => html`<option
             value=${path}
-            ?disabled=${usedElsewhere.has(path) && path !== current}
+            ?disabled=${!zoomed && usedElsewhere.has(path) && path !== current}
             ?selected=${path === current}
+            title=${zoomed && usedElsewhere.has(path) ? 'Springt zu diesem Pane' : nothing}
           >
             ${this._projectLabel(path)}
           </option>`

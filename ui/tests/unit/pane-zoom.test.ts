@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   effectiveZoomedPane,
   nextZoomedPane,
+  paneShowingProject,
   ZOOM_GEOM,
 } from '../../frontend/src/components/terminal/pane-zoom.js';
 
@@ -58,5 +59,23 @@ describe('ZOOM_GEOM', () => {
   it('spans the whole container', () => {
     expect(ZOOM_GEOM).toEqual({ left: '0', top: '0', width: '100%', height: '100%' });
     expect(Object.isFrozen(ZOOM_GEOM)).toBe(true);
+  });
+});
+
+describe('paneShowingProject', () => {
+  const projects = ['/a', '/b', null, '/d'];
+
+  it('finds the other pane that shows the project', () => {
+    expect(paneShowingProject(projects, '/d', 0)).toBe(3);
+    expect(paneShowingProject(projects, '/a', 3)).toBe(0);
+  });
+
+  it('never returns the excluded pane itself', () => {
+    expect(paneShowingProject(projects, '/a', 0)).toBe(-1);
+  });
+
+  it('returns -1 when no pane shows the project, ignoring empty slots', () => {
+    expect(paneShowingProject(projects, '/zzz', 0)).toBe(-1);
+    expect(paneShowingProject([null, null], '/a', 0)).toBe(-1);
   });
 });

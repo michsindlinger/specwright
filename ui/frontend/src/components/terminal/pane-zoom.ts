@@ -43,3 +43,19 @@ export function nextZoomedPane(
   if (effectiveZoomedPane(current, paneCount, paneSessionIds) !== null) return null;
   return effectiveZoomedPane(focusedPane, paneCount, paneSessionIds);
 }
+
+/**
+ * Index of the pane (other than `exclude`) that currently shows `projectPath`, or -1.
+ * Used while zoomed: picking a project that lives in a hidden pane jumps the zoom there
+ * instead of violating the one-project-per-pane invariant.
+ */
+export function paneShowingProject(
+  paneProjects: readonly (string | null)[],
+  projectPath: string,
+  exclude: number
+): number {
+  for (let i = 0; i < paneProjects.length; i++) {
+    if (i !== exclude && paneProjects[i] === projectPath) return i;
+  }
+  return -1;
+}
