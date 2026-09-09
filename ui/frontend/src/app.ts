@@ -55,6 +55,7 @@ import {
   pruneNotifications,
   type AgentNotification,
 } from './components/terminal/agent-notifications.js';
+import { playAgentDoneChime } from './components/terminal/notification-sound.js';
 import type { ProjectSelectedDetail } from './components/aos-project-add-modal.js';
 import type { GitStatusData, GitBranchEntry, GitPrInfo } from '../../src/shared/types/git.protocol.js';
 import type { GlobalGateState } from '../../src/shared/types/concurrency.protocol.js';
@@ -1007,6 +1008,8 @@ export class AosApp extends LitElement {
       finishedAt: Number.isFinite(ts) ? ts : Date.now(),
       preview: typeof msg.preview === 'string' ? msg.preview : undefined,
     });
+    // Rings even while the sidebar is closed — that is when it matters most.
+    playAgentDoneChime();
   }
 
   /**

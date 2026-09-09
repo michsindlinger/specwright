@@ -11,6 +11,7 @@ import { hiddenRowPane, clampRowRatio } from './pane-visibility.js';
 import { effectiveZoomedPane, nextZoomedPane, paneShowingProject, ZOOM_GEOM } from './pane-zoom.js';
 import { isPaneZoomShortcut, isEditableTarget } from '../../utils/keyboard-shortcuts.js';
 import { resolveJumpTarget, formatRelativeTime, type AgentNotification } from './agent-notifications.js';
+import { isBellSoundEnabled, setBellSoundEnabled, playAgentDoneChime } from './notification-sound.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 import { MobileBreakpointController } from '../../controllers/mobile-breakpoint-controller.js';
 import '../mobile/aos-mobile-terminal-header.js';
@@ -92,6 +93,7 @@ export class AosCloudTerminalSidebar extends LitElement {
   @property({ attribute: false }) agentNotifications: AgentNotification[] = [];
 
   @state() private _bellOpen = false;
+  @state() private _bellSound = isBellSoundEnabled();
   /** Re-renders the relative times while the bell list is open. */
   private _bellTicker: ReturnType<typeof setInterval> | null = null;
   @state() private sidebarWidth = 500;
@@ -320,7 +322,11 @@ export class AosCloudTerminalSidebar extends LitElement {
       }
 
       .bell-dropdown-header {
-        padding: 6px 12px 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 8px 4px 12px;
         font-size: 10px;
         font-weight: 700;
         color: #c0c0c0;
@@ -328,6 +334,32 @@ export class AosCloudTerminalSidebar extends LitElement {
         letter-spacing: 0.05em;
         border-bottom: 1px solid #444;
         margin-bottom: 4px;
+      }
+
+      .bell-sound-btn {
+        background: transparent;
+        border: none;
+        padding: 2px 4px;
+        border-radius: 3px;
+        cursor: pointer;
+        color: #a0a0a0;
+        display: flex;
+        align-items: center;
+        transition: color 0.1s, background 0.1s;
+      }
+
+      .bell-sound-btn:hover {
+        background: #3a3a3a;
+        color: #e0e0e0;
+      }
+
+      .bell-sound-btn.muted {
+        color: #6a6a6a;
+      }
+
+      .bell-sound-btn svg {
+        width: 14px;
+        height: 14px;
       }
 
       .bell-empty {
@@ -1433,7 +1465,10 @@ export class AosCloudTerminalSidebar extends LitElement {
         ${this._bellOpen
           ? html`
               <div class="bell-dropdown" role="menu">
-                <div class="bell-dropdown-header">Fertige Agenten</div>
+                <div class="bell-dropdown-header">
+                  <span>Fertige Agenten</span>
+                  ${this._renderSoundToggle()}
+                </div>
                 ${count === 0
                   ? html`<div class="bell-empty">Keine fertigen Agenten</div>`
                   : repeat(items, (n) => n.sessionId, (n) => this._renderBellRow(n))}
@@ -1462,6 +1497,35 @@ export class AosCloudTerminalSidebar extends LitElement {
       </div>
     `;
   }
+
+  /** Speaker toggle in the dropdown header; unmuting previews the chime. */
+  private _renderSoundToggle() {
+    const on = this._bellSound;
+    return html`
+      <button
+        class="bell-sound-btn ${on ? '' : 'muted'}"
+        @click=${this._toggleBellSound}
+        title=${on ? 'Ton aus' : 'Ton an'}
+        aria-label=${on ? 'Ton ausschalten' : 'Ton einschalten'}
+        aria-pressed=${on ? 'true' : 'false'}
+      >
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <path d="M4 7.5h3L11 4v12L7 12.5H4z" fill="currentColor" stroke-linejoin="round"></path>
+          ${on
+            ? svg`<path d="M13.5 7a4 4 0 0 1 0 6M15.8 5a7 7 0 0 1 0 10" stroke-linecap="round"></path>`
+            : svg`<path d="M14 8l4 4M18 8l-4 4" stroke-linecap="round"></path>`}
+        </svg>
+      </button>
+    `;
+  }
+
+  private _toggleBellSound = (e: Event): void => {
+    e.stopPropagation();
+    this._bellSound = !this._bellSound;
+    setBellSoundEnabled(this._bellSound);
+    // Preview on unmute so the user hears what they just enabled.
+    if (this._bellSound) playAgentDoneChime(true);
+  };
 
   private _toggleBell = (e: Event): void => {
     e.stopPropagation();
