@@ -8,11 +8,11 @@ import {
   CLOUD_SESSION_ID_ENV,
   CLOUD_SESSION_ID_RE,
   HOOK_TOKEN_HEADER,
-  ensureStopHookSettingsFile,
+  ensureHookSettingsFile,
   loadOrCreateHookSecret,
-  renderStopHookSettings,
+  renderHookSettings,
   summarizePreview,
-} from '../../src/server/services/claude-stop-hook.js';
+} from '../../src/server/services/claude-hooks.js';
 
 const SECRET = 'ab'.repeat(32);
 
@@ -20,9 +20,9 @@ interface HookSettings {
   hooks: { Stop: Array<{ hooks: Array<{ type: string; command: string; timeout: number; async?: boolean }> }> };
 }
 
-describe('renderStopHookSettings()', () => {
+describe('renderHookSettings()', () => {
   it('produces a synchronous Stop hook targeting this backend port', () => {
-    const parsed = JSON.parse(renderStopHookSettings(3001, SECRET)) as HookSettings;
+    const parsed = JSON.parse(renderHookSettings(3001, SECRET)) as HookSettings;
     const hook = parsed.hooks.Stop[0].hooks[0];
     expect(hook.type).toBe('command');
     expect(hook.timeout).toBe(5);
@@ -34,10 +34,10 @@ describe('renderStopHookSettings()', () => {
   });
 
   it('rejects invalid ports and malformed secrets', () => {
-    expect(() => renderStopHookSettings(0, SECRET)).toThrow();
-    expect(() => renderStopHookSettings(70000, SECRET)).toThrow();
-    expect(() => renderStopHookSettings(3001, 'short')).toThrow();
-    expect(() => renderStopHookSettings(3001, `${SECRET}'; rm -rf /`)).toThrow();
+    expect(() => renderHookSettings(0, SECRET)).toThrow();
+    expect(() => renderHookSettings(70000, SECRET)).toThrow();
+    expect(() => renderHookSettings(3001, 'short')).toThrow();
+    expect(() => renderHookSettings(3001, `${SECRET}'; rm -rf /`)).toThrow();
   });
 });
 
@@ -46,7 +46,7 @@ describe('the rendered hook command, run through a real sh', () => {
   let curlLog: string;
 
   const command = (): string =>
-    (JSON.parse(renderStopHookSettings(4242, SECRET)) as HookSettings).hooks.Stop[0].hooks[0].command;
+    (JSON.parse(renderHookSettings(4242, SECRET)) as HookSettings).hooks.Stop[0].hooks[0].command;
 
   const run = (env: Record<string, string>, stdin = ''): number => {
     try {
@@ -58,7 +58,7 @@ describe('the rendered hook command, run through a real sh', () => {
   };
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'stop-hook-'));
+    dir = mkdtempSync(join(tmpdir(), 'claude-hooks-'));
     curlLog = join(dir, 'curl.log');
     // Stub curl: records argv and stdin, so the test sees exactly what the hook sends.
     const stub = join(dir, 'curl');
@@ -89,9 +89,9 @@ describe('the rendered hook command, run through a real sh', () => {
   });
 });
 
-describe('loadOrCreateHookSecret() / ensureStopHookSettingsFile()', () => {
+describe('loadOrCreateHookSecret() / ensureHookSettingsFile()', () => {
   let dir: string;
-  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'stop-hook-files-')); });
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'claude-hooks-files-')); });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
   it('creates a 64-hex secret once and returns the same value afterwards', () => {
@@ -110,8 +110,8 @@ describe('loadOrCreateHookSecret() / ensureStopHookSettingsFile()', () => {
 
   it('writes the settings file 0600 and is idempotent', () => {
     const p = join(dir, 'claude-hooks-3001.json');
-    expect(ensureStopHookSettingsFile(3001, SECRET, p)).toBe(p);
-    ensureStopHookSettingsFile(3001, SECRET, p);
+    expect(ensureHookSettingsFile(3001, SECRET, p)).toBe(p);
+    ensureHookSettingsFile(3001, SECRET, p);
     expect(statSync(p).mode & 0o777).toBe(0o600);
     expect(JSON.parse(readFileSync(p, 'utf-8'))).toHaveProperty('hooks.Stop');
   });

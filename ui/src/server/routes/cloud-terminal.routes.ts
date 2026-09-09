@@ -2,7 +2,7 @@
  * REST callbacks for cloud-terminal sessions.
  *
  * POST /api/cloud-terminal/:sessionId/agent-event
- *   Target of the Claude Code Stop hook (see services/claude-stop-hook.ts).
+ *   Target of the Claude Code Stop hook (see services/claude-hooks.ts).
  *   Body = Claude's hook stdin payload (optional). Authenticated solely by
  *   the shared hook secret: a loopback check would be worthless on the
  *   droplet, where the Cloudflare tunnel delivers every external request
@@ -19,7 +19,7 @@ import {
   CLOUD_SESSION_ID_RE,
   HOOK_TOKEN_HEADER,
   summarizePreview,
-} from '../services/claude-stop-hook.js';
+} from '../services/claude-hooks.js';
 import type { CloudTerminalSessionId } from '../../shared/types/cloud-terminal.protocol.js';
 
 /** Constant-time comparison that also hides length differences. */
@@ -50,7 +50,7 @@ export function createCloudTerminalRouter(
     const manager = getManager();
     const secret = manager?.getHookSecret();
     if (!manager || !secret) {
-      reject(503, 'stop-hook not ready');
+      reject(503, 'hooks not ready');
       return;
     }
     if (!tokenMatches(req.get(HOOK_TOKEN_HEADER), secret)) {

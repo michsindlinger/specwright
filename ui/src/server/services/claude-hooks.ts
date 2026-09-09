@@ -52,12 +52,12 @@ const CONTROL_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g;
  *   2. bail (exit 0) unless curl exists,
  *   3. POST stdin to this backend with the shared secret, ignore the outcome.
  */
-export function renderStopHookSettings(port: number, secret: string): string {
+export function renderHookSettings(port: number, secret: string): string {
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-    throw new Error(`renderStopHookSettings: invalid port ${port}`);
+    throw new Error(`renderHookSettings: invalid port ${port}`);
   }
   if (!SECRET_HEX_RE.test(secret)) {
-    throw new Error('renderStopHookSettings: secret must be 64 hex chars');
+    throw new Error('renderHookSettings: secret must be 64 hex chars');
   }
   const url = `http://127.0.0.1:${port}/api/cloud-terminal/$${CLOUD_SESSION_ID_ENV}/agent-event`;
   const command = [
@@ -99,13 +99,13 @@ export function loadOrCreateHookSecret(secretPath: string = getHookSecretPath())
  * Writes the settings file for this port and returns its path. Idempotent;
  * synchronous for the same reason as {@link loadOrCreateHookSecret}.
  */
-export function ensureStopHookSettingsFile(
+export function ensureHookSettingsFile(
   port: number,
   secret: string,
   settingsPath: string = getClaudeHookSettingsPath()
 ): string {
   mkdirSync(dirname(settingsPath), { recursive: true, mode: 0o700 });
-  writeFileSync(settingsPath, renderStopHookSettings(port, secret), { mode: 0o600 });
+  writeFileSync(settingsPath, renderHookSettings(port, secret), { mode: 0o600 });
   return settingsPath;
 }
 

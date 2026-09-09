@@ -24,7 +24,7 @@ vi.mock('../../src/server/general-config.js', () => ({
 import { CloudTerminalManager } from '../../src/server/services/cloud-terminal-manager.js';
 import { CloudSessionRegistry } from '../../src/server/services/cloud-session-registry.js';
 import type { TmuxSessionBackend } from '../../src/server/services/tmux-session-backend.js';
-import { CLOUD_SESSION_ID_ENV, CLOUD_SESSION_ID_RE } from '../../src/server/services/claude-stop-hook.js';
+import { CLOUD_SESSION_ID_ENV, CLOUD_SESSION_ID_RE } from '../../src/server/services/claude-hooks.js';
 
 interface Spawn { executionId: string; shell?: string; args?: string[]; cwd: string; env?: Record<string, string> }
 

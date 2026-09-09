@@ -38,9 +38,9 @@ import { PlanBufferExtractor } from '../utils/plan-buffer-extractor.js';
 import { backendPort } from '../utils/runtime-paths.js';
 import {
   CLOUD_SESSION_ID_ENV,
-  ensureStopHookSettingsFile,
+  ensureHookSettingsFile,
   loadOrCreateHookSecret,
-} from './claude-stop-hook.js';
+} from './claude-hooks.js';
 import { loadGithubConfigStatus, loadGithubPat } from '../github-config.js';
 import { resolveMainWorktreePath } from '../utils/worktree-detect.js';
 import { getCloudSessionWorktreeEnabled } from '../general-config.js';
@@ -232,11 +232,11 @@ const PLAN_IDLE_TIMEOUT_MS = 5000;
  * - 'session.agent-event' (CloudTerminalSessionId, event: 'stop', { preview? }) - The agent inside a claude-code session reported a lifecycle event via its Stop hook
  */
 /**
- * Where the Stop-hook settings file and its shared secret live. Tests inject
+ * Where the hook settings file and its shared secret live. Tests inject
  * temp paths; `null` disables the hook entirely (sessions start without
  * `--settings`).
  */
-export interface StopHookOptions {
+export interface HookOptions {
   settingsPath?: string;
   secretPath?: string;
   port?: number;
@@ -290,7 +290,7 @@ export class CloudTerminalManager extends EventEmitter {
   /**
    * `--settings` file handed to every claude-code session (Stop hook → agent
    * finished). Undefined when the hook could not be set up — sessions then
-   * start without it and the bell stays silent (see claude-stop-hook.ts).
+   * start without it and the bell stays silent (see claude-hooks.ts).
    */
   private hookSettingsPath?: string;
   /** Shared secret the Stop hook must present. Undefined ⇔ hookSettingsPath undefined. */
@@ -300,7 +300,7 @@ export class CloudTerminalManager extends EventEmitter {
     terminalManager: TerminalManager,
     tmux?: TmuxSessionBackend,
     registry?: CloudSessionRegistry,
-    stopHook: StopHookOptions | null = {}
+    hooks: HookOptions | null = {}
   ) {
     super();
     this.terminalManager = terminalManager;
@@ -313,18 +313,18 @@ export class CloudTerminalManager extends EventEmitter {
     // Synchronous on purpose: must exist before the first createSession() or
     // boot-restore below (restored sessions already carry --settings in their
     // run script; a new session must not race the file write).
-    if (stopHook !== null) {
+    if (hooks !== null) {
       try {
-        const secret = loadOrCreateHookSecret(stopHook.secretPath);
-        this.hookSettingsPath = ensureStopHookSettingsFile(
-          stopHook.port ?? backendPort(),
+        const secret = loadOrCreateHookSecret(hooks.secretPath);
+        this.hookSettingsPath = ensureHookSettingsFile(
+          hooks.port ?? backendPort(),
           secret,
-          stopHook.settingsPath
+          hooks.settingsPath
         );
         this.hookSecret = secret;
       } catch (err) {
         console.warn(
-          '[CloudTerminalManager] Stop-hook setup failed — agent-finished notifications disabled:',
+          '[CloudTerminalManager] Claude hook setup failed — agent status + bell disabled:',
           err instanceof Error ? err.message : err
         );
       }

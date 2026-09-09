@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Request, Response } from 'express';
 import { createCloudTerminalRouter, tokenMatches } from '../../src/server/routes/cloud-terminal.routes.js';
-import { HOOK_TOKEN_HEADER } from '../../src/server/services/claude-stop-hook.js';
+import { HOOK_TOKEN_HEADER } from '../../src/server/services/claude-hooks.js';
 import type { CloudTerminalManager } from '../../src/server/services/cloud-terminal-manager.js';
 
 const SECRET = 'cd'.repeat(32);
