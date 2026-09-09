@@ -21,6 +21,7 @@ import '../mobile/aos-mobile-quick-replies.js';
 import '../mobile/aos-mobile-terminal-keys.js';
 import '../mobile/aos-mobile-input-bar-idle.js';
 import '../aos-claude-log-panel.js';
+import type { CloudTerminalAgentStatus } from '../../../../src/shared/types/cloud-terminal.protocol.js';
 
 export interface TerminalSession {
   id: string;
@@ -59,6 +60,12 @@ export interface TerminalSession {
    * so a session running outside the project dir is never invisible.
    */
   effectiveCwd?: string;
+  /** Server-reduced agent status (claude-code sessions only; see agent-status.ts). */
+  agentStatus?: CloudTerminalAgentStatus;
+  /** Epoch ms of the last agent status change (never a Date — formatRelativeTime expects ms). */
+  agentStatusAt?: number;
+  /** Reason for blocked / error, when the hook delivered one. */
+  agentStatusReason?: string;
 }
 
 export interface LoadingState {

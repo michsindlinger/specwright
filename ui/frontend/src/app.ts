@@ -55,10 +55,28 @@ import {
   pruneNotifications,
   type AgentNotification,
 } from './components/terminal/agent-notifications.js';
+import type { CloudTerminalAgentStatus } from '../../src/shared/types/cloud-terminal.protocol.js';
 import { playAgentDoneChime } from './components/terminal/notification-sound.js';
 import type { ProjectSelectedDetail } from './components/aos-project-add-modal.js';
 import type { GitStatusData, GitBranchEntry, GitPrInfo } from '../../src/shared/types/git.protocol.js';
 import type { GlobalGateState } from '../../src/shared/types/concurrency.protocol.js';
+
+const AGENT_STATUS_VALUES: ReadonlySet<string> = new Set(['unknown', 'idle', 'working', 'blocked', 'error', 'done']);
+
+/** Picks the agent-status fields off a backend session record (ISO → epoch ms). */
+function agentStatusFields(b: { agentStatus?: CloudTerminalAgentStatus; agentStatusAt?: string; agentStatusReason?: string }): {
+  agentStatus?: CloudTerminalAgentStatus;
+  agentStatusAt?: number;
+  agentStatusReason?: string;
+} {
+  if (b.agentStatus === undefined) return {};
+  const at = typeof b.agentStatusAt === 'string' ? Date.parse(b.agentStatusAt) : NaN;
+  return {
+    agentStatus: b.agentStatus,
+    agentStatusAt: Number.isFinite(at) ? at : undefined,
+    agentStatusReason: b.agentStatusReason,
+  };
+}
 import type { MenuSelectEventDetail } from './components/aos-context-menu.js';
 import { recentlyOpenedService } from './services/recently-opened.service.js';
 import { projectStateService } from './services/project-state.service.js';
@@ -992,15 +1010,40 @@ export class AosApp extends LitElement {
   }
 
   /**
-   * Stop hook fired in a claude-code session. Adds a bell entry unless the user
-   * is looking at that very session (same rule as needsInput). Sessions of
-   * projects that are not open are unknown here and silently ignored.
+   * A Claude Code hook fired in a claude-code session. Two consumers:
+   * 1. the agent status on the session (every event, active tab included) —
+   *    the server has already reduced it, the client only stores it;
+   * 2. the bell, on `stop` only, unless the user is looking at that very
+   *    session (same rule as needsInput).
+   * Sessions of projects that are not open are unknown here and ignored.
    */
   private _handleCloudTerminalAgentEvent(msg: Record<string, unknown>): void {
     const backendId = typeof msg.sessionId === 'string' ? msg.sessionId : null;
-    if (!backendId || msg.event !== 'stop') return;
+    if (!backendId) return;
     const match = this.terminalSessions.find(s => s.terminalSessionId === backendId);
-    if (!match || match.id === this.activeTerminalSessionId) return;
+    if (!match) return;
+
+    const status = msg.status;
+    if (typeof status === 'string' && AGENT_STATUS_VALUES.has(status)) {
+      const at = typeof msg.statusAt === 'string' ? Date.parse(msg.statusAt) : NaN;
+      const agentStatus = status as CloudTerminalAgentStatus;
+      // Server status is authoritative: a session that is working/done/idle
+      // is by definition not waiting for input, whatever the regex thought.
+      const clearNeedsInput = agentStatus === 'working' || agentStatus === 'done' || agentStatus === 'idle';
+      this.terminalSessions = this.terminalSessions.map(s =>
+        s.id === match.id
+          ? {
+              ...s,
+              agentStatus,
+              agentStatusAt: Number.isFinite(at) ? at : Date.now(),
+              agentStatusReason: typeof msg.reason === 'string' ? msg.reason : undefined,
+              ...(clearNeedsInput ? { needsInput: false } : {}),
+            }
+          : s
+      );
+    }
+
+    if (msg.event !== 'stop' || match.id === this.activeTerminalSessionId) return;
     const ts = typeof msg.timestamp === 'string' ? Date.parse(msg.timestamp) : NaN;
     this.agentNotifications = upsertNotification(this.agentNotifications, {
       sessionId: match.id,
@@ -1646,6 +1689,9 @@ export class AosApp extends LitElement {
       terminalType?: 'shell' | 'claude-code';
       modelConfig?: { model: string; provider?: string };
       createdAt: string;
+      agentStatus?: CloudTerminalAgentStatus;
+      agentStatusAt?: string;
+      agentStatusReason?: string;
     }> | undefined;
 
     if (!backendSessions || backendSessions.length === 0) {
@@ -1685,8 +1731,23 @@ export class AosApp extends LitElement {
           terminalSessionId: backendSession.sessionId,
           terminalType: type,
           customNameSet: persisted != null,
+          ...agentStatusFields(backendSession),
         } as TerminalSession;
       });
+
+    // A list response after a (re)connect is the freshest agent-status source
+    // for sessions we already know — refresh them in place.
+    const byBackendId = new Map(backendSessions.map(b => [b.sessionId, b]));
+    let refreshed = false;
+    const refreshedSessions = this.terminalSessions.map(s => {
+      const b = s.terminalSessionId ? byBackendId.get(s.terminalSessionId) : undefined;
+      if (!b || b.agentStatus === undefined) return s;
+      const fields = agentStatusFields(b);
+      if (fields.agentStatus === s.agentStatus && fields.agentStatusAt === s.agentStatusAt && fields.agentStatusReason === s.agentStatusReason) return s;
+      refreshed = true;
+      return { ...s, ...fields };
+    });
+    if (refreshed) this.terminalSessions = refreshedSessions;
 
     // Merge with existing sessions (avoid duplicates)
     const existingIds = new Set(this.terminalSessions.map(s => s.terminalSessionId));

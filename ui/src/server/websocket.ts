@@ -53,6 +53,8 @@ import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 import type {
   CloudTerminalSessionId,
   CloudTerminalAgentEvent,
+  CloudTerminalAgentEventDetail,
+  CloudTerminalAgentStatus,
   CloudTerminalType,
   CloudTerminalModelConfig,
   CloudTerminalWorkflowMetadata,
@@ -5293,15 +5295,22 @@ export class WebSocketHandler {
       }
     );
 
-    // Agent lifecycle reported by the Claude Code Stop hook (agent-finished bell).
+    // Agent status reduced from Claude Code hooks (tab dot + agent-finished bell).
     this.cloudTerminalManager.on(
       'session.agent-event',
-      (sessionId: CloudTerminalSessionId, event: CloudTerminalAgentEvent, detail: { preview?: string }) => {
+      (
+        sessionId: CloudTerminalSessionId,
+        event: CloudTerminalAgentEvent,
+        detail: CloudTerminalAgentEventDetail & { status: CloudTerminalAgentStatus; statusAt: Date }
+      ) => {
         this.broadcast({
           type: 'cloud-terminal:agent-event',
           sessionId,
           event,
+          status: detail.status,
+          statusAt: detail.statusAt.toISOString(),
           ...(detail.preview ? { preview: detail.preview } : {}),
+          ...(detail.reason ? { reason: detail.reason } : {}),
           timestamp: new Date().toISOString(),
         });
       }

@@ -29,6 +29,8 @@ import {
   CloudTerminalWorkflowMetadata,
   CloudTerminalNotice,
   CloudTerminalAgentEvent,
+  CloudTerminalAgentEventDetail,
+  CloudTerminalAgentStatus,
   CLOUD_TERMINAL_CONFIG,
   CLOUD_TERMINAL_ERROR_CODES,
 } from '../../shared/types/cloud-terminal.protocol.js';
@@ -41,6 +43,7 @@ import {
   ensureHookSettingsFile,
   loadOrCreateHookSecret,
 } from './claude-hooks.js';
+import { bumpsActivity, isUnblockingInput, reduceAgentStatus } from './agent-status.js';
 import { loadGithubConfigStatus, loadGithubPat } from '../github-config.js';
 import { resolveMainWorktreePath } from '../utils/worktree-detect.js';
 import { getCloudSessionWorktreeEnabled } from '../general-config.js';
@@ -171,6 +174,12 @@ interface ManagedCloudSession extends CloudTerminalSession {
 
   /** Absolute path of the generated tmux run script (tmux-backed only). */
   runScriptPath?: string;
+
+  /** Reduced agent status (see agent-status.ts). Always set internally; exposed only for claude-code sessions. */
+  agentStatus: CloudTerminalAgentStatus;
+
+  /** Pending done → idle decay timer (see applyAgentEvent). */
+  agentIdleTimer?: NodeJS.Timeout;
 }
 
 /**
@@ -229,7 +238,7 @@ const PLAN_IDLE_TIMEOUT_MS = 5000;
  * - 'session.blocker-reported' (CloudTerminalSessionId, reason) - LLM emitted <<BLOCKER:reason>> marker (auto-mode only)
  * - 'session.plan-detected' (CloudTerminalSessionId, planText, source: 'auto'|'manual') - Plan box detected; planText is extracted buffer content (plan-review only)
  * - 'session.notice' (CloudTerminalSessionId, level: 'warn'|'info', message) - User-facing notice (e.g. worktree kept due to uncommitted changes, or started without worktree)
- * - 'session.agent-event' (CloudTerminalSessionId, event: 'stop', { preview? }) - The agent inside a claude-code session reported a lifecycle event via its Stop hook
+ * - 'session.agent-event' (CloudTerminalSessionId, event, { preview?, reason?, status, statusAt }) - Agent status changed (Claude Code hooks, keystrokes on a blocked session, idle decay). `stop` still drives the bell.
  */
 /**
  * Where the hook settings file and its shared secret live. Tests inject
@@ -345,22 +354,72 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
-   * Called by the agent-event HTTP route when a session's Stop hook fires.
-   * Returns false (no emit) for unknown, closing or closed sessions — a late
-   * hook after close must not resurrect a bell entry.
+   * Called by the agent-event HTTP route when one of a session's Claude Code
+   * hooks fires. Returns false (no emit) for unknown, closing or closed
+   * sessions — a late hook after close must not resurrect a bell entry.
    */
   public reportAgentEvent(
     sessionId: CloudTerminalSessionId,
     event: CloudTerminalAgentEvent,
-    detail: { preview?: string } = {}
+    detail: CloudTerminalAgentEventDetail = {}
   ): boolean {
     const session = this.sessions.get(sessionId);
     if (!session || session.closing || session.status === 'closed') {
       return false;
     }
-    session.lastActivity = new Date();
-    this.emit('session.agent-event', sessionId, event, detail);
+    if (bumpsActivity(event)) {
+      session.lastActivity = new Date();
+    }
+    this.applyAgentEvent(session, event, detail);
     return true;
+  }
+
+  /**
+   * Reduces an agent event into the session's status and broadcasts it.
+   * Emits on every status or reason change, and on every `stop` (the bell
+   * wants each finished turn). Arms the done → idle decay timer; any later
+   * event disarms it. Safe to call late: closed sessions are ignored.
+   */
+  private applyAgentEvent(
+    session: ManagedCloudSession,
+    event: CloudTerminalAgentEvent,
+    detail: CloudTerminalAgentEventDetail = {}
+  ): void {
+    if (session.closing || session.status === 'closed') return;
+
+    const next = reduceAgentStatus(session.agentStatus, event);
+    const reasonChanged = detail.reason !== session.agentStatusReason;
+    if (next === session.agentStatus && !reasonChanged && event !== 'stop') return;
+
+    session.agentStatus = next;
+    session.agentStatusAt = new Date();
+    session.agentStatusReason = detail.reason;
+    this.clearAgentIdleTimer(session);
+
+    if (next === 'done') {
+      const timer = setTimeout(() => {
+        // Identity guard: a newer event may have re-armed or cleared the timer.
+        if (session.agentIdleTimer === timer) {
+          this.applyAgentEvent(session, 'idle-timeout');
+        }
+      }, CLOUD_TERMINAL_CONFIG.AGENT_IDLE_AFTER_MS);
+      // Optional chaining: vitest fake-timer handles have no unref().
+      timer.unref?.();
+      session.agentIdleTimer = timer;
+    }
+
+    this.emit('session.agent-event', session.sessionId, event, {
+      ...detail,
+      status: next,
+      statusAt: session.agentStatusAt,
+    });
+  }
+
+  private clearAgentIdleTimer(session: ManagedCloudSession): void {
+    if (session.agentIdleTimer) {
+      clearTimeout(session.agentIdleTimer);
+      session.agentIdleTimer = undefined;
+    }
   }
 
   private startRestore(): Promise<void> {
@@ -455,6 +514,7 @@ export class CloudTerminalManager extends EventEmitter {
       createdAt: new Date(),
       lastActivity: new Date(),
       executionId,
+      agentStatus: 'unknown',
     };
 
     // Store session
@@ -631,7 +691,7 @@ export class CloudTerminalManager extends EventEmitter {
         if (extraCliArgs && extraCliArgs.length > 0) {
           shellArgs.push(...extraCliArgs);
         }
-        // Stop hook (agent-finished bell). Only for claude CLIs / claude-* wrappers
+        // Claude Code hooks (agent status + bell). Only for claude CLIs / claude-* wrappers
         // — a user-configured foreign CLI must not receive an unknown flag.
         if (this.hookSettingsPath && path.basename(shellCommand).startsWith('claude')) {
           shellArgs.push('--settings', this.hookSettingsPath);
@@ -643,7 +703,7 @@ export class CloudTerminalManager extends EventEmitter {
           ...baseEnv,
           CLAUDE_MODEL: modelConfig.model,
           CLAUDE_PROVIDER: modelConfig.provider || 'anthropic',
-          // Read by the Stop hook to name this session in its callback.
+          // Read by the hook command to name this session in its callback.
           [CLOUD_SESSION_ID_ENV]: sessionId,
           ...(extraEnv ?? {}),
         };
@@ -992,6 +1052,7 @@ export class CloudTerminalManager extends EventEmitter {
     // Set BEFORE the kill: the attach client's exit event must take the
     // teardown path, never the re-attach path (see ManagedCloudSession.closing).
     session.closing = true;
+    this.clearAgentIdleTimer(session);
 
     // Kill PTY process via TerminalManager
     const killed = this.terminalManager.kill(session.executionId);
@@ -1135,6 +1196,11 @@ export class CloudTerminalManager extends EventEmitter {
 
     if (written) {
       session.lastActivity = new Date();
+      // Claude does not report that a permission dialog was answered; an
+      // answer-shaped keystroke on a blocked session is the signal.
+      if (session.agentStatus === 'blocked' && isUnblockingInput(data)) {
+        this.applyAgentEvent(session, 'user-input');
+      }
     }
 
     return written;
@@ -1395,6 +1461,7 @@ export class CloudTerminalManager extends EventEmitter {
   private finalizeSessionExit(session: ManagedCloudSession, exitCode: number): void {
     session.exitCode = exitCode;
     session.status = 'closed';
+    this.clearAgentIdleTimer(session);
 
     console.log(`[CloudTerminalManager] Session ${session.sessionId} exited with code ${exitCode}`);
 
@@ -1732,6 +1799,7 @@ export class CloudTerminalManager extends EventEmitter {
       tmuxSessionName: entry.tmuxSessionName,
       runScriptPath: entry.runScriptPath || undefined,
       restored: true,
+      agentStatus: 'unknown',
       restoredAutoMode: entry.autoMode || undefined,
       worktreeCleanup: entry.worktree
         ? rehydrateOwnedSessionWorktree(entry.worktree)
@@ -1936,6 +2004,14 @@ export class CloudTerminalManager extends EventEmitter {
       lastActivity: session.lastActivity,
       pausedAt: session.pausedAt,
       lastDetectedPlanPath: session.lastDetectedPlanPath,
+      // Shell sessions never carry an agent status on the wire.
+      ...(session.terminalType === 'claude-code'
+        ? {
+            agentStatus: session.agentStatus,
+            agentStatusAt: session.agentStatusAt,
+            agentStatusReason: session.agentStatusReason,
+          }
+        : {}),
     };
   }
 
@@ -1952,6 +2028,7 @@ export class CloudTerminalManager extends EventEmitter {
     await Promise.allSettled(snapshot.map((session) => this.disposeSessionWorktree(session)));
 
     for (const session of this.sessions.values()) {
+      this.clearAgentIdleTimer(session);
       this.terminalManager.kill(session.executionId);
     }
 

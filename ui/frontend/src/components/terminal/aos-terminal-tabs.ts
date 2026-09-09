@@ -2,6 +2,7 @@ import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { TerminalSession } from './aos-cloud-terminal-sidebar.js';
 import { getTabTitle, getSessionLocationHint } from './tab-title.js';
+import { agentStatusClass, agentStatusTitle, needsAttention, AGENT_STATUS_LABEL } from './agent-status.js';
 import './aos-auto-review-toggle.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 
@@ -113,6 +114,39 @@ export class AosTerminalTabs extends LitElement {
 
       .tab-status.disconnected {
         background: #f44336;
+      }
+
+      /* Agent status (claude-code sessions, PTY active only — see agent-status.ts). */
+      .tab-status.agent-idle {
+        background: #6e6e6e;
+      }
+
+      .tab-status.agent-working {
+        background: #4fc1ff;
+        animation: agent-working 1.2s ease-in-out infinite;
+      }
+
+      .tab-status.agent-blocked {
+        background: #ff9800;
+      }
+
+      .tab-status.agent-error {
+        background: #f44336;
+      }
+
+      .tab-status.agent-done {
+        background: #4caf50;
+      }
+
+      @keyframes agent-working {
+        0%, 100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.45;
+          transform: scale(0.8);
+        }
       }
 
       .tab-name {
@@ -264,7 +298,10 @@ export class AosTerminalTabs extends LitElement {
         ${this.sessions.map(
           (session) => {
             const isWorkflow = session.isWorkflow ?? false;
-            const needsInput = session.needsInput ?? false;
+            const attention = needsAttention(session);
+            const agentClass = agentStatusClass(session);
+            const agentTitle = agentStatusTitle(session);
+            const agentLabel = session.agentStatus ? AGENT_STATUS_LABEL[session.agentStatus] : '';
             const tabTitle = getTabTitle(session);
             const locationHint = getSessionLocationHint(session);
             const isEditing = this.renamingSessionId === session.id;
@@ -273,10 +310,10 @@ export class AosTerminalTabs extends LitElement {
             // That's intentional — matches Finder-style "click to select, dblclick to rename".
             return html`
               <div
-                class="tab ${session.id === this.activeSessionId ? 'active' : ''} ${isWorkflow ? 'workflow' : ''} ${needsInput ? 'needs-input' : ''} ${isEditing ? 'editing' : ''}"
+                class="tab ${session.id === this.activeSessionId ? 'active' : ''} ${isWorkflow ? 'workflow' : ''} ${attention ? 'needs-input' : ''} ${isEditing ? 'editing' : ''}"
                 @click=${() => this._handleTabClick(session.id)}
                 @dblclick=${(e: Event) => this._handleRenameStart(e, session, tabTitle)}
-                title="${tabTitle} (${session.status})${locationHint ? ` · ${locationHint}` : ''}"
+                title="${tabTitle} (${agentLabel || session.status})${locationHint ? ` · ${locationHint}` : ''}"
               >
                 ${isWorkflow
                   ? html`
@@ -285,8 +322,9 @@ export class AosTerminalTabs extends LitElement {
                       <path d="M2 17l10 5 10-5"></path>
                       <path d="M2 12l10 5 10-5"></path>
                     </svg>
+                    ${agentClass ? html`<span class="tab-status ${agentClass}" title=${agentTitle}></span>` : ''}
                   `
-                  : html`<span class="tab-status ${session.status}"></span>`
+                  : html`<span class="tab-status ${session.status} ${agentClass}" title=${agentTitle}></span>`
                 }
                 ${isEditing
                   ? html`
@@ -301,8 +339,8 @@ export class AosTerminalTabs extends LitElement {
                   `
                   : html`<span class="tab-name">${tabTitle}</span>`
                 }
-                ${needsInput
-                  ? html`<span class="input-badge" title="Eingabe erforderlich">!</span>`
+                ${attention
+                  ? html`<span class="input-badge" title=${agentTitle || 'Eingabe erforderlich'}>!</span>`
                   : ''
                 }
                 ${!isEditing

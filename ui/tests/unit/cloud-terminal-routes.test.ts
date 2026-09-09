@@ -44,7 +44,7 @@ describe('tokenMatches()', () => {
 });
 
 describe('POST /api/cloud-terminal/:sessionId/agent-event', () => {
-  const report = vi.fn<(id: string, ev: string, d: { preview?: string }) => boolean>();
+  const report = vi.fn<(id: string, ev: string, d: { preview?: string; reason?: string }) => boolean>();
   const manager = { getHookSecret: () => SECRET, reportAgentEvent: report } as unknown as CloudTerminalManager;
   const auth = { [HOOK_TOKEN_HEADER]: SECRET };
   let warn: ReturnType<typeof vi.spyOn>;
@@ -85,11 +85,45 @@ describe('POST /api/cloud-terminal/:sessionId/agent-event', () => {
     expect(out.status).toBe(400);
   });
 
-  it('400 for a non-Stop hook payload', () => {
+  it('400 (logged) for an unregistered hook payload', () => {
     const { res, out } = fakeRes();
     handlerOf(() => manager)(fakeReq('cloud-1-1', auth, { hook_event_name: 'SubagentStop' }), res);
     expect(out.status).toBe(400);
+    const r2 = fakeRes();
+    handlerOf(() => manager)(fakeReq('cloud-1-1', auth, { hook_event_name: 'PreToolUse', tool_name: 'Read' }), r2.res);
+    expect(r2.out.status).toBe(400);
     expect(report).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  it('204 without a log for known-but-irrelevant payloads', () => {
+    for (const body of [
+      { hook_event_name: 'SessionStart', source: 'compact' },
+      { hook_event_name: 'Notification', notification_type: 'permission_prompt' },
+      { hook_event_name: 'Notification', notification_type: 'auth_success' },
+    ]) {
+      const { res, out } = fakeRes();
+      handlerOf(() => manager)(fakeReq('cloud-1-1', auth, body), res);
+      expect(out.status).toBe(204);
+    }
+    expect(report).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('maps status events to the manager with their reason', () => {
+    const cases: Array<[Record<string, unknown>, string, { preview?: string; reason?: string }]> = [
+      [{ hook_event_name: 'PermissionRequest', tool_name: 'Bash' }, 'blocked', { reason: 'Berechtigung: Bash' }],
+      [{ hook_event_name: 'UserPromptSubmit', user_prompt: 'x' }, 'prompt-submitted', {}],
+      [{ hook_event_name: 'StopFailure', error: 'rate_limit' }, 'stop-failure', { reason: 'rate_limit' }],
+      [{ hook_event_name: 'SessionStart', source: 'startup' }, 'session-start', {}],
+      [{ hook_event_name: 'PostToolUse', tool_name: 'AskUserQuestion' }, 'unblocked', {}],
+    ];
+    for (const [body, ev, detail] of cases) {
+      const { res, out } = fakeRes();
+      handlerOf(() => manager)(fakeReq('cloud-1-1', auth, body), res);
+      expect(out.status).toBe(204);
+      expect(report).toHaveBeenLastCalledWith('cloud-1-1', ev, detail);
+    }
   });
 
   it('404 when the manager rejects (unknown/closed session)', () => {

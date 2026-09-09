@@ -1,5 +1,32 @@
 # Changelog
 
+## 3.37.0 - 2026-09-09
+
+### Neu
+- **Agent-Status pro Claude-Session im Cloud-Terminal.** Jeder claude-code-Tab trägt vorne einen farbigen Punkt: grau = bereit/untätig, blau pulsierend = arbeitet, orange mit `!` = wartet auf Eingabe (Berechtigung, Rückfrage, MCP-Dialog), rot = Fehler (API/Rate-Limit hat den Turn beendet), grün = fertig. Tooltip nennt Zustand, Grund und Alter („Wartet auf Eingabe: Berechtigung: Bash (vor 2 Min)"). Gilt in Sidebar-Tabs, Pane-Köpfen der Split-Ansicht und der Mobile-Tab-Leiste. Herdr (herdr.dev) liest so einen Zustand per Regex vom Bildschirm ab; wir bekommen ihn von Claude Code selbst.
+- **Signalquelle sind Claude-Code-Hooks, nicht Bildschirmtext.** Die bestehende `--settings`-Datei (`runtime/cloud-terminal/claude-hooks-<port>.json`) registriert jetzt acht Events statt nur `Stop`: `SessionStart` (ohne `compact`, das mitten im Turn feuert), `UserPromptSubmit`, `PermissionRequest`, `PreToolUse`/`PostToolUse` nur mit Matcher `AskUserQuestion`, `Notification` (`elicitation_*`, `agent_needs_input`, `idle_prompt`), `Stop`, `StopFailure`. Alle mit `async: true` — auf Claude Code 2.1.266 belegt, dass async-Hooks stdin bekommen; damit blockiert kein Hook das Tippen. Curl-Timeouts `--connect-timeout 0.2 -m 1`.
+- **Serverseitiger Reducer** (`services/agent-status.ts`): der Browser rechnet nichts, er malt den vom Server gelieferten Status. Neues Protokollfeld `status`/`statusAt`/`reason` auf `cloud-terminal:agent-event`, neue Felder `agentStatus`/`agentStatusAt`/`agentStatusReason` auf der Session (nur claude-code; Shell-Terminals tragen keinen Status). `CLOUD_TERMINAL_CONFIG.AGENT_IDLE_AFTER_MS` (10 min): danach wird `done` zu `idle`.
+- **Antwort-Erkennung ohne Hook.** Claude meldet nicht, dass ein Berechtigungsdialog beantwortet wurde. Enter/Newline (auch im Paste), eine einzelne Ziffer, y/n oder ESC auf einer blockierten Session setzen sie auf „arbeitet"; Pfeiltasten und Tab nicht. Falsch geraten → der nächste Hook korrigiert.
+
+### Geändert
+- `services/claude-stop-hook.ts` → `services/claude-hooks.ts` (`renderHookSettings`, `ensureHookSettingsFile`, `HookOptions`), plus reine `mapHookPayload()`.
+- Route `POST /api/cloud-terminal/:id/agent-event`: bekannte, aber irrelevante Payloads (`SessionStart compact`, ungetrackte `notification_type` wie das 6 s verzögerte `permission_prompt`) → 204 ohne Log; unregistrierte Events → 400 mit Log wie bisher. Body ohne `hook_event_name` zählt weiter als `Stop`.
+- Frontend: Server-Status ist autoritativ, sobald bekannt; das Regex-Flag `needsInput` zählt nur noch als Fallback bei `unknown`. Der Agent-Punkt erscheint nur bei PTY-Status `active` — pausierte/abgerissene Terminals zeigen wie bisher ihren Verbindungszustand.
+- Glocke und Chime unverändert (`stop`, nicht-aktiver Tab).
+
+### Bekannte Grenzen
+- Nach einem Backend-Deploy behalten überlebende tmux-Sessions ihre alte Hook-Datei (nur `Stop`) bis zum Neustart der Session; der Status kommt als `unknown` zurück und kennt bis dahin nur grün/grau.
+- Auto-Mode-Sessions laufen mit `--dangerously-skip-permissions`; `blocked` kommt dort weiterhin nur über `PROMPT_PATTERN`/`<<BLOCKER>>`, nicht über Hooks.
+- `Esc` mitten im Turn löst kein `Stop` aus; die Session bleibt blau bis zum nächsten Prompt. Der Reducer würde `idle_prompt` (~60 s) zu grau übersetzen, aber im E2E-Test (2.1.266) kam die Notification nach dem Abbruch nicht — Claude legt den abgebrochenen Prompt zurück ins Eingabefeld und zählt das als Tippen.
+- Der Tooltip-Zeitstempel („vor 2 Min“) wird nur beim nächsten Render aktualisiert, nicht per Ticker.
+
+### Tests
+- `claude-hooks.test.ts` (umbenannt) 12 → 20: acht Events, Matcher, identischer Command, `mapHookPayload`-Tabelle inkl. Ignore-/Reject-Pfade und Fallback-Texte.
+- `agent-status.test.ts` neu (7): volle Transitionstabelle, `bumpsActivity`, `isUnblockingInput`.
+- `cloud-terminal-agent-event.test.ts` 9 → 15: Reducer-Sequenz, Dedupe außer `stop`, Keystroke-Unblock, `lastActivity`-Regel, Idle-Decay mit Fake-Timern (Ablauf, Cancel, Re-Arm, Close).
+- `cloud-terminal-routes.test.ts` 9 → 11, `agent-status-ui.test.ts` neu (6).
+- E2E lokal (Backend auf Port 3111, echte Haiku-Session): `idle` nach TUI-Start → `blocked` mit `!` bei `AskUserQuestion` → `done` nach Antwort.
+
 ## 3.36.0 - 2026-09-09
 
 ### Neu

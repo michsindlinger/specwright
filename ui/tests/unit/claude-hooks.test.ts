@@ -7,29 +7,64 @@ import { tmpdir } from 'os';
 import {
   CLOUD_SESSION_ID_ENV,
   CLOUD_SESSION_ID_RE,
+  HOOK_EVENTS,
   HOOK_TOKEN_HEADER,
   ensureHookSettingsFile,
   loadOrCreateHookSecret,
+  mapHookPayload,
   renderHookSettings,
   summarizePreview,
 } from '../../src/server/services/claude-hooks.js';
 
 const SECRET = 'ab'.repeat(32);
 
-interface HookSettings {
-  hooks: { Stop: Array<{ hooks: Array<{ type: string; command: string; timeout: number; async?: boolean }> }> };
-}
+interface HookEntry { matcher?: string; hooks: Array<{ type: string; command: string; timeout: number; async?: boolean }> }
+interface HookSettings { hooks: Record<string, HookEntry[]> }
+
+const parse = (port = 3001): HookSettings => JSON.parse(renderHookSettings(port, SECRET)) as HookSettings;
 
 describe('renderHookSettings()', () => {
-  it('produces a synchronous Stop hook targeting this backend port', () => {
-    const parsed = JSON.parse(renderHookSettings(3001, SECRET)) as HookSettings;
-    const hook = parsed.hooks.Stop[0].hooks[0];
-    expect(hook.type).toBe('command');
-    expect(hook.timeout).toBe(5);
-    expect(hook.async).toBeUndefined();
+  it('registers exactly the eight events, each with the identical async command', () => {
+    const { hooks } = parse();
+    expect(Object.keys(hooks).sort()).toEqual(HOOK_EVENTS.map((e) => e.event).sort());
+    expect(Object.keys(hooks)).toHaveLength(8);
+    const commands = new Set<string>();
+    for (const entries of Object.values(hooks)) {
+      expect(entries).toHaveLength(1);
+      expect(entries[0].hooks).toHaveLength(1);
+      const hook = entries[0].hooks[0];
+      expect(hook.type).toBe('command');
+      expect(hook.async).toBe(true);
+      expect(hook.timeout).toBe(2);
+      commands.add(hook.command);
+    }
+    expect(commands.size).toBe(1);
+  });
+
+  it('uses the immediate PermissionRequest signal, never the 6-second permission_prompt notification', () => {
+    const { hooks } = parse();
+    expect(hooks.PermissionRequest[0].matcher).toBeUndefined();
+    expect(hooks.Notification[0].matcher).toBe('elicitation_dialog|elicitation_url_dialog|agent_needs_input|idle_prompt');
+    expect(hooks.Notification[0].matcher).not.toContain('permission_prompt');
+  });
+
+  it('scopes tool hooks to AskUserQuestion and excludes compact from SessionStart', () => {
+    const { hooks } = parse();
+    expect(hooks.PreToolUse[0].matcher).toBe('AskUserQuestion');
+    expect(hooks.PostToolUse[0].matcher).toBe('AskUserQuestion');
+    expect(hooks.SessionStart[0].matcher).toBe('startup|resume|clear|fork');
+    expect(hooks.UserPromptSubmit[0].matcher).toBeUndefined();
+    expect(hooks.Stop[0].matcher).toBeUndefined();
+    expect(hooks.StopFailure[0].matcher).toBeUndefined();
+  });
+
+  it('targets this backend port with tight curl timeouts and always exits 0', () => {
+    const hook = parse(3001).hooks.Stop[0].hooks[0];
     expect(hook.command).toContain('http://127.0.0.1:3001/api/cloud-terminal/$SPECWRIGHT_CLOUD_SESSION_ID/agent-event');
     expect(hook.command).toContain(`${HOOK_TOKEN_HEADER}: ${SECRET}`);
     expect(hook.command).toContain('--data-binary @-');
+    expect(hook.command).toContain('--connect-timeout 0.2 -m 1');
+    expect(hook.command).toContain('>/dev/null 2>&1');
     expect(hook.command).toMatch(/; exit 0$/);
   });
 
@@ -45,8 +80,7 @@ describe('the rendered hook command, run through a real sh', () => {
   let dir: string;
   let curlLog: string;
 
-  const command = (): string =>
-    (JSON.parse(renderHookSettings(4242, SECRET)) as HookSettings).hooks.Stop[0].hooks[0].command;
+  const command = (): string => parse(4242).hooks.Stop[0].hooks[0].command;
 
   const run = (env: Record<string, string>, stdin = ''): number => {
     try {
@@ -113,7 +147,79 @@ describe('loadOrCreateHookSecret() / ensureHookSettingsFile()', () => {
     expect(ensureHookSettingsFile(3001, SECRET, p)).toBe(p);
     ensureHookSettingsFile(3001, SECRET, p);
     expect(statSync(p).mode & 0o777).toBe(0o600);
-    expect(JSON.parse(readFileSync(p, 'utf-8'))).toHaveProperty('hooks.Stop');
+    const parsed = JSON.parse(readFileSync(p, 'utf-8')) as HookSettings;
+    expect(parsed).toHaveProperty('hooks.Stop');
+    expect(parsed).toHaveProperty('hooks.UserPromptSubmit');
+  });
+});
+
+describe('mapHookPayload()', () => {
+  const event = (body: Record<string, unknown>) => {
+    const m = mapHookPayload(body);
+    expect(m.kind).toBe('event');
+    return m.kind === 'event' ? m : (undefined as never);
+  };
+  const kind = (body: Record<string, unknown>) => mapHookPayload(body).kind;
+
+  it('Stop (and a body without hook_event_name) → stop with sanitized preview', () => {
+    expect(event({ hook_event_name: 'Stop', last_assistant_message: '\x1b[1mAll   done\x1b[0m' }))
+      .toEqual({ kind: 'event', event: 'stop', detail: { preview: 'All done' } });
+    expect(event({})).toEqual({ kind: 'event', event: 'stop', detail: { preview: undefined } });
+  });
+
+  it('StopFailure → stop-failure, reason from message, then error, then a static fallback', () => {
+    expect(event({ hook_event_name: 'StopFailure', last_assistant_message: 'API Error: 429', error: 'rate_limit' }).detail)
+      .toEqual({ reason: 'API Error: 429' });
+    expect(event({ hook_event_name: 'StopFailure', error: 'rate_limit' }).detail).toEqual({ reason: 'rate_limit' });
+    expect(event({ hook_event_name: 'StopFailure' }).detail).toEqual({ reason: 'API-Fehler' });
+  });
+
+  it('UserPromptSubmit → prompt-submitted without forwarding the prompt text', () => {
+    expect(event({ hook_event_name: 'UserPromptSubmit', user_prompt: 'secret plans' }))
+      .toEqual({ kind: 'event', event: 'prompt-submitted', detail: {} });
+  });
+
+  it('PermissionRequest → blocked, tool name optional', () => {
+    expect(event({ hook_event_name: 'PermissionRequest', tool_name: 'Bash' }).detail).toEqual({ reason: 'Berechtigung: Bash' });
+    expect(event({ hook_event_name: 'PermissionRequest' }).detail).toEqual({ reason: 'Berechtigung' });
+  });
+
+  it('PreToolUse/PostToolUse only for AskUserQuestion', () => {
+    const pre = event({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'AskUserQuestion',
+      tool_input: { questions: [{ question: 'Which colour?' }] },
+    });
+    expect(pre).toEqual({ kind: 'event', event: 'blocked', detail: { reason: 'Which colour?' } });
+    expect(event({ hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion' }).detail).toEqual({ reason: 'Frage' });
+    expect(event({ hook_event_name: 'PostToolUse', tool_name: 'AskUserQuestion' }))
+      .toEqual({ kind: 'event', event: 'unblocked', detail: {} });
+    expect(kind({ hook_event_name: 'PreToolUse', tool_name: 'Bash' })).toBe('reject');
+    expect(kind({ hook_event_name: 'PostToolUse', tool_name: 'Read' })).toBe('reject');
+  });
+
+  it('Notification: blocking types → blocked, idle_prompt → idle-prompt, everything else ignored', () => {
+    expect(event({ hook_event_name: 'Notification', notification_type: 'elicitation_dialog', message: 'Pick one' }))
+      .toEqual({ kind: 'event', event: 'blocked', detail: { reason: 'Pick one' } });
+    expect(event({ hook_event_name: 'Notification', notification_type: 'agent_needs_input' }).event).toBe('blocked');
+    expect(event({ hook_event_name: 'Notification', notification_type: 'idle_prompt' }))
+      .toEqual({ kind: 'event', event: 'idle-prompt', detail: {} });
+    // The 6-second permission_prompt must never re-block an answered session.
+    expect(kind({ hook_event_name: 'Notification', notification_type: 'permission_prompt' })).toBe('ignore');
+    expect(kind({ hook_event_name: 'Notification', notification_type: 'auth_success' })).toBe('ignore');
+    expect(kind({ hook_event_name: 'Notification' })).toBe('ignore');
+  });
+
+  it('SessionStart → session-start, except compact which is ignored', () => {
+    expect(event({ hook_event_name: 'SessionStart', source: 'startup' }).event).toBe('session-start');
+    expect(event({ hook_event_name: 'SessionStart', source: 'resume' }).event).toBe('session-start');
+    expect(kind({ hook_event_name: 'SessionStart', source: 'compact' })).toBe('ignore');
+  });
+
+  it('rejects unregistered events', () => {
+    expect(kind({ hook_event_name: 'SubagentStop' })).toBe('reject');
+    expect(kind({ hook_event_name: 'PreCompact' })).toBe('reject');
+    expect(kind({ hook_event_name: 42 })).toBe('reject');
   });
 });
 

@@ -1,6 +1,6 @@
 /**
- * Stop-hook wiring in CloudTerminalManager: --settings injection, session env,
- * reportAgentEvent() gating, and graceful degradation.
+ * Claude hook wiring in CloudTerminalManager: --settings injection, session env,
+ * reportAgentEvent() gating, agent-status reduction, idle decay, and graceful degradation.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventEmitter } from 'events';
@@ -22,6 +22,7 @@ vi.mock('../../src/server/general-config.js', () => ({
 }));
 
 import { CloudTerminalManager } from '../../src/server/services/cloud-terminal-manager.js';
+import { CLOUD_TERMINAL_CONFIG } from '../../src/shared/types/cloud-terminal.protocol.js';
 import { CloudSessionRegistry } from '../../src/server/services/cloud-session-registry.js';
 import type { TmuxSessionBackend } from '../../src/server/services/tmux-session-backend.js';
 import { CLOUD_SESSION_ID_ENV, CLOUD_SESSION_ID_RE } from '../../src/server/services/claude-hooks.js';
@@ -64,7 +65,7 @@ class FakeTmux {
   async killOrphans() {}
 }
 
-describe('CloudTerminalManager Stop-hook wiring', () => {
+describe('CloudTerminalManager Claude-hook wiring', () => {
   let dir: string;
   let project: string;
   let terminal: FakeTerminalManager;
@@ -163,11 +164,129 @@ describe('CloudTerminalManager Stop-hook wiring', () => {
     const session = await mgr.createSession(project, 'claude-code', { model: 'x' });
 
     expect(mgr.reportAgentEvent(session.sessionId, 'stop', { preview: 'done' })).toBe(true);
-    expect(events).toEqual([[session.sessionId, 'stop', { preview: 'done' }]]);
+    expect(events).toHaveLength(1);
+    expect(events[0][0]).toBe(session.sessionId);
+    expect(events[0][1]).toBe('stop');
+    expect(events[0][2]).toMatchObject({ preview: 'done', status: 'done' });
+    expect((events[0][2] as { statusAt: Date }).statusAt).toBeInstanceOf(Date);
 
     expect(mgr.reportAgentEvent('cloud-1-999' as never, 'stop')).toBe(false);
     mgr.closeSession(session.sessionId);
     expect(mgr.reportAgentEvent(session.sessionId, 'stop')).toBe(false);
     expect(events).toHaveLength(1);
+  });
+
+  describe('agent status', () => {
+    type Emitted = { event: string; status: string; reason?: string };
+    let emitted: Emitted[];
+    const status = (id: string) => mgr.getSession(id as never)?.agentStatus;
+
+    beforeEach(() => {
+      emitted = [];
+      mgr.on('session.agent-event', (_id: string, event: string, d: { status: string; reason?: string }) =>
+        emitted.push({ event, status: d.status, ...(d.reason ? { reason: d.reason } : {}) })
+      );
+    });
+
+    it('starts unknown, follows the reducer, and only emits on change (except stop)', async () => {
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      expect(status(id)).toBe('unknown');
+
+      mgr.reportAgentEvent(id, 'session-start');
+      mgr.reportAgentEvent(id, 'prompt-submitted');
+      mgr.reportAgentEvent(id, 'blocked', { reason: 'Berechtigung: Bash' });
+      mgr.reportAgentEvent(id, 'blocked', { reason: 'Berechtigung: Bash' }); // duplicate → no emit
+      mgr.reportAgentEvent(id, 'blocked', { reason: 'Frage' }); // reason changed → emit
+      mgr.reportAgentEvent(id, 'unblocked');
+      mgr.reportAgentEvent(id, 'stop');
+      mgr.reportAgentEvent(id, 'stop'); // stop always emits (bell)
+      mgr.reportAgentEvent(id, 'stop-failure', { reason: 'rate_limit' });
+
+      expect(emitted).toEqual([
+        { event: 'session-start', status: 'idle' },
+        { event: 'prompt-submitted', status: 'working' },
+        { event: 'blocked', status: 'blocked', reason: 'Berechtigung: Bash' },
+        { event: 'blocked', status: 'blocked', reason: 'Frage' },
+        { event: 'unblocked', status: 'working' },
+        { event: 'stop', status: 'done' },
+        { event: 'stop', status: 'done' },
+        { event: 'stop-failure', status: 'error', reason: 'rate_limit' },
+      ]);
+      expect(status(id)).toBe('error');
+    });
+
+    it('answer-shaped keystrokes unblock; navigation keys do not; shell sessions never carry a status', async () => {
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      mgr.reportAgentEvent(id, 'blocked', { reason: 'Berechtigung: Bash' });
+      emitted = [];
+
+      expect(mgr.sendInput(id, '\x1b[B')).toBe(true); // arrow down
+      expect(emitted).toEqual([]);
+      expect(mgr.sendInput(id, '\r')).toBe(true);
+      expect(emitted).toEqual([{ event: 'user-input', status: 'working' }]);
+      expect(mgr.sendInput(id, '\r')).toBe(true); // not blocked any more → no-op
+      expect(emitted).toHaveLength(1);
+
+      const shell = await mgr.createSession(project, 'shell');
+      expect(mgr.getSession(shell.sessionId)?.agentStatus).toBeUndefined();
+      emitted = [];
+      mgr.sendInput(shell.sessionId, '\r');
+      expect(emitted).toEqual([]);
+    });
+
+    it('idle-prompt does not bump lastActivity, other hook events do', async () => {
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      mgr.reportAgentEvent(id, 'prompt-submitted');
+      const t0 = mgr.getSession(id)!.lastActivity.getTime();
+      await new Promise((r) => setTimeout(r, 5));
+      mgr.reportAgentEvent(id, 'idle-prompt');
+      expect(mgr.getSession(id)!.lastActivity.getTime()).toBe(t0);
+      mgr.reportAgentEvent(id, 'stop');
+      expect(mgr.getSession(id)!.lastActivity.getTime()).toBeGreaterThan(t0);
+    });
+
+    describe('done → idle decay', () => {
+      beforeEach(() => vi.useFakeTimers());
+      afterEach(() => vi.useRealTimers());
+
+      it('fires after AGENT_IDLE_AFTER_MS without another event', async () => {
+        const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+        mgr.reportAgentEvent(id, 'stop');
+        emitted = [];
+        vi.advanceTimersByTime(CLOUD_TERMINAL_CONFIG.AGENT_IDLE_AFTER_MS - 1);
+        expect(emitted).toEqual([]);
+        vi.advanceTimersByTime(2);
+        expect(emitted).toEqual([{ event: 'idle-timeout', status: 'idle' }]);
+        expect(status(id)).toBe('idle');
+      });
+
+      it('is cancelled by a newer event and by closing the session', async () => {
+        const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+        mgr.reportAgentEvent(id, 'stop');
+        mgr.reportAgentEvent(id, 'prompt-submitted');
+        emitted = [];
+        vi.advanceTimersByTime(CLOUD_TERMINAL_CONFIG.AGENT_IDLE_AFTER_MS + 10);
+        expect(emitted).toEqual([]);
+        expect(status(id)).toBe('working');
+
+        mgr.reportAgentEvent(id, 'stop');
+        mgr.closeSession(id);
+        emitted = [];
+        vi.advanceTimersByTime(CLOUD_TERMINAL_CONFIG.AGENT_IDLE_AFTER_MS + 10);
+        expect(emitted).toEqual([]);
+      });
+
+      it('a repeated stop re-arms the full window', async () => {
+        const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+        mgr.reportAgentEvent(id, 'stop');
+        vi.advanceTimersByTime(CLOUD_TERMINAL_CONFIG.AGENT_IDLE_AFTER_MS / 2);
+        mgr.reportAgentEvent(id, 'stop');
+        emitted = [];
+        vi.advanceTimersByTime(CLOUD_TERMINAL_CONFIG.AGENT_IDLE_AFTER_MS / 2 + 10);
+        expect(emitted).toEqual([]);
+        vi.advanceTimersByTime(CLOUD_TERMINAL_CONFIG.AGENT_IDLE_AFTER_MS / 2);
+        expect(emitted).toEqual([{ event: 'idle-timeout', status: 'idle' }]);
+      });
+    });
   });
 });

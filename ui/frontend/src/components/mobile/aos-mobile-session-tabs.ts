@@ -2,6 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import type { TerminalSession } from '../terminal/aos-cloud-terminal-sidebar.js';
 import { getTabTitle } from '../terminal/tab-title.js';
+import { agentStatusColor, agentStatusTitle, needsAttention } from '../terminal/agent-status.js';
 
 @customElement('aos-mobile-session-tabs')
 export class AosMobileSessionTabs extends LitElement {
@@ -34,8 +35,11 @@ export class AosMobileSessionTabs extends LitElement {
     );
   }
 
-  private _statusColor(status: TerminalSession['status']): string {
-    switch (status) {
+  private _statusColor(session: TerminalSession): string {
+    // Agent status (claude-code, PTY active) wins; otherwise the PTY colour.
+    const agent = agentStatusColor(session);
+    if (agent) return agent;
+    switch (session.status) {
       case 'active': return 'var(--color-status-active, #22c55e)';
       case 'paused': return 'var(--color-status-paused, #f59e0b)';
       case 'error': return 'var(--color-status-error, #ef4444)';
@@ -59,16 +63,16 @@ export class AosMobileSessionTabs extends LitElement {
               role="tab"
               aria-selected=${isActive}
               aria-label="${title}"
-              title="${title} (${session.status})"
+              title="${agentStatusTitle(session) || `${title} (${session.status})`}"
               @click=${() => this._onSelect(session.id)}
             >
               <span
-                class="status-dot"
+                class="status-dot ${session.agentStatus === 'working' && session.status === 'active' ? 'agent-working' : ''}"
                 aria-hidden="true"
-                style="background:${this._statusColor(session.status)}"
+                style="background:${this._statusColor(session)}"
               ></span>
               <span class="tab-name">${title}</span>
-              ${session.needsInput
+              ${needsAttention(session)
                 ? html`<span class="input-badge" aria-label="Eingabe erforderlich">!</span>`
                 : nothing}
               <button
@@ -138,6 +142,15 @@ export class AosMobileSessionTabs extends LitElement {
       height: 7px;
       border-radius: 50%;
       flex-shrink: 0;
+    }
+
+    .status-dot.agent-working {
+      animation: agent-working 1.2s ease-in-out infinite;
+    }
+
+    @keyframes agent-working {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.8); }
     }
 
     .tab-name {

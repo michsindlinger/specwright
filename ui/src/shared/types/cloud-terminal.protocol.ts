@@ -150,6 +150,12 @@ export interface CloudTerminalSession {
 
   /** Resolved file path of the most recently detected plan (~/.claude[-<provider>]/plans/<slug>.md). */
   lastDetectedPlanPath?: string;
+  /** Agent status (claude-code sessions only; absent for shell sessions). */
+  agentStatus?: CloudTerminalAgentStatus;
+  /** When `agentStatus` last changed. */
+  agentStatusAt?: Date;
+  /** Reason for blocked / error, when the hook delivered one. */
+  agentStatusReason?: string;
 }
 
 /**
@@ -397,18 +403,53 @@ export interface CloudTerminalNoticeMessage {
 }
 
 /** Lifecycle events reported by the agent itself (Claude Code hooks). */
-export type CloudTerminalAgentEvent = 'stop';
+/**
+ * Agent status of a claude-code session, reduced server-side from Claude Code
+ * hook events (see services/agent-status.ts). Orthogonal to the PTY lifecycle
+ * in `CloudTerminalSessionStatus`. `unknown` = no hook event seen yet (fresh
+ * or restored session) — shell sessions never carry a status at all.
+ */
+export type CloudTerminalAgentStatus = 'unknown' | 'idle' | 'working' | 'blocked' | 'error' | 'done';
+
+/**
+ * Agent events. Hook-originated: session-start, prompt-submitted, blocked,
+ * unblocked, stop, stop-failure, idle-prompt. Manager-originated: user-input
+ * (answer-shaped keystrokes on a blocked session), idle-timeout (done → idle
+ * after AGENT_IDLE_AFTER_MS).
+ */
+export type CloudTerminalAgentEvent =
+  | 'session-start'
+  | 'prompt-submitted'
+  | 'blocked'
+  | 'unblocked'
+  | 'stop'
+  | 'stop-failure'
+  | 'idle-prompt'
+  | 'user-input'
+  | 'idle-timeout';
+
+/** Optional payload accompanying an agent event. */
+export interface CloudTerminalAgentEventDetail {
+  /** Stop only: sanitized, truncated excerpt of the last assistant message (bell list). */
+  preview?: string;
+  /** Short human-readable reason for blocked / error (e.g. "Berechtigung: Bash"). */
+  reason?: string;
+}
 
 /**
  * Server -> Client: the agent inside a claude-code session reported an event.
- * `stop` = Claude finished a turn (Stop hook). `preview` is a sanitized,
- * truncated excerpt of the last assistant message, when the hook delivered one.
+ * `status` is the reduced, authoritative agent status after this event —
+ * clients never reduce themselves. `stop` still drives the bell.
  */
 export interface CloudTerminalAgentEventMessage {
   type: 'cloud-terminal:agent-event';
   sessionId: CloudTerminalSessionId;
   event: CloudTerminalAgentEvent;
+  status: CloudTerminalAgentStatus;
+  /** ISO timestamp of the status change. */
+  statusAt: string;
   preview?: string;
+  reason?: string;
   timestamp: string;
 }
 
@@ -592,6 +633,9 @@ export const CLOUD_TERMINAL_CONFIG = {
    * 0 = disabled: cloud terminals persist until the user explicitly closes them.
    */
   INACTIVITY_TIMEOUT_MS: 0,
+
+  /** A `done` agent status decays to `idle` after this long without another agent event. */
+  AGENT_IDLE_AFTER_MS: 10 * 60 * 1000,
 
   /** Default terminal size */
   DEFAULT_COLS: 120,

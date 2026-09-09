@@ -2,7 +2,7 @@
  * REST callbacks for cloud-terminal sessions.
  *
  * POST /api/cloud-terminal/:sessionId/agent-event
- *   Target of the Claude Code Stop hook (see services/claude-hooks.ts).
+ *   Target of the Claude Code hooks (see services/claude-hooks.ts).
  *   Body = Claude's hook stdin payload (optional). Authenticated solely by
  *   the shared hook secret: a loopback check would be worthless on the
  *   droplet, where the Cloudflare tunnel delivers every external request
@@ -18,7 +18,7 @@ import type { CloudTerminalManager } from '../services/cloud-terminal-manager.js
 import {
   CLOUD_SESSION_ID_RE,
   HOOK_TOKEN_HEADER,
-  summarizePreview,
+  mapHookPayload,
 } from '../services/claude-hooks.js';
 import type { CloudTerminalSessionId } from '../../shared/types/cloud-terminal.protocol.js';
 
@@ -64,13 +64,19 @@ export function createCloudTerminalRouter(
 
     const body: Record<string, unknown> =
       req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {};
-    if (body.hook_event_name !== undefined && body.hook_event_name !== 'Stop') {
-      reject(400, `unexpected hook event ${String(body.hook_event_name)}`);
+    const mapped = mapHookPayload(body);
+    if (mapped.kind === 'reject') {
+      reject(400, mapped.reason);
+      return;
+    }
+    if (mapped.kind === 'ignore') {
+      // Known but irrelevant (SessionStart compact, untracked notification
+      // types): acknowledge quietly so an older CLI cannot spam the log.
+      res.status(204).end();
       return;
     }
 
-    const preview = summarizePreview(body.last_assistant_message);
-    const accepted = manager.reportAgentEvent(sessionId as CloudTerminalSessionId, 'stop', { preview });
+    const accepted = manager.reportAgentEvent(sessionId as CloudTerminalSessionId, mapped.event, mapped.detail);
     if (!accepted) {
       reject(404, 'session not active');
       return;
