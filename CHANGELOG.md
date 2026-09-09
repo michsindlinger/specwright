@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.36.0 - 2026-09-09
+
+### Neu
+- **Suche im Ziel-Picker.** Über der Liste „Wo soll die Session laufen?" steht ein Feld *Worktree suchen…*; getippter Text wird case-insensitiv gegen Ordnername und Branch geprüft. Bewusst **nicht** gegen den Alterstext — sonst träfe „ta" jede Zeile mit „vor 3 Tagen". „Neuer Worktree" und „Hauptverzeichnis" bleiben immer stehen: dadurch bleibt die Listbox für jede Eingabe bedienbar, `defaultTargetRowId` liefert nie `null`, und das Namensfeld der Neu-Zeile kann nicht mitten im Tippen verschwinden. Ohne Treffer erscheint „Keine Worktrees gefunden".
+- **Tastatur in der Suche:** Pfeiltasten bewegen die Auswahl in der Liste, Enter startet, Escape leert eine nicht-leere Suche (und blubbert sonst weiter). Das Feld liegt außerhalb des `role="listbox"` — ein Textfeld darin wäre ungültiges ARIA und sein Keydown erreichte den Listen-Handler nie. Autofokus nur im Nicht-`compact`-Layout, damit auf Mobil/Split nicht jedes Öffnen die Bildschirmtastatur hochzieht.
+- **Mehrere Badges pro Zeile** (`badges: string[]` statt `badge`). Ein Auto-Mode-Worktree mit laufenden Sessions zeigt jetzt beides: `Auto-Mode` (zuerst, es ist das Gefahrensignal) und `2 Sessions aktiv`.
+
+### Geändert
+- **Worktrees werden nach Erstelldatum sortiert, neueste zuerst** — statt alphabetisch. Bei zwanzig Checkouts ist der von gestern der gesuchte, und das Alphabet begräbt ihn in der Mitte. Ohne verwertbaren Zeitstempel (`null`, `0`, negativ, nicht-endlich) rutscht die Zeile ans Ende, dort nach Name. Der Tiebreak ist explizit, damit die Reihenfolge nicht von der Sort-Stabilität abhängt. Quelle ist derselbe Wert wie das angezeigte „vor 3 Tagen" — Anzeige und Reihenfolge können sich also nicht widersprechen.
+- **Belegte Worktrees sind nicht mehr gesperrt.** Sie verhalten sich wie das Hauptverzeichnis: anwählbar, mit Badge `N Sessions aktiv`. Ausgegraut bleiben nur die technisch unmöglichen Fälle `fehlt` und `gesperrt`. Serverseitig fällt damit die Claim-Barriere im `existing-worktree`-Zweig; `TARGET_OCCUPIED` wird nicht mehr geworfen, bleibt aber als Code und im Recovery-Pfad des Clients erhalten (Toleranz gegenüber älteren Servern).
+
+### Sicherheit
+- **Aufräum-Zuständigkeit wird übergeben statt verworfen.** Nur die Session, die einen Worktree über „Neuer Worktree" angelegt hat, trägt den (gebrandeten) Cleanup-Token. Sobald mehrere Sessions ein Verzeichnis teilen, sind beide naheliegenden Verhalten falsch: Löschen zerstört die Arbeit der anderen Session (der gefährliche Fall ist genau der *saubere* Worktree, den `keptReason: 'dirty'` nicht schützt), bloßes Überspringen verliert den Token für immer. `disposeSessionWorktree` reicht ihn deshalb an eine überlebende Session weiter (synchron, ohne `await` dazwischen, mit `registry.upsert`) — die letzte Session im Verzeichnis räumt auf. Kandidaten mit gesetztem `worktreeDisposed` sind ausgeschlossen, sonst schieben zwei gleichzeitig schließende Sessions den Token im Kreis.
+- **Boot-Restore löscht keine belegten Worktrees mehr.** `reapDeadEntry` entscheidet jetzt aus der Registry-Liste plus dem tmux-Snapshot (nicht aus `this.sessions` — Restores und Reaps laufen parallel, die Map ist unvollständig). Gehört der Worktree eines toten Eintrags einer überlebenden Session, wird er nicht entfernt und sein `worktree`-Payload nach den Restores der überlebenden Session zugeschrieben; das bestehende `replaceAll` persistiert ihn. Vorher hätte ein Backend-Neustart das Verzeichnis unter einer laufenden Session entfernt **und** den einzigen Cleanup-Datensatz weggeworfen.
+- **Pfadvergleich immer über `pathKey()`.** `effectiveCwd` ist normalisiert, `worktreeCleanup.worktreePath` nicht (macOS: `/var` vs. `/private/var`) — ohne Normalisierung würde der Schutz still nie greifen.
+- **Auto-Mode löscht keine belegten Worktrees mehr.** `removeItemWorktree` (`--force`), `removeStoryWorktree` und `finalizeSpec` prüfen `foreignSessionsIn()` und lassen das Verzeichnis stehen, wenn eine Session darin arbeitet, die nicht dem Auto-Mode gehört. Slot-Sessions schließen sich über `autoModeActive` selbst aus — nötig, weil `slot.cancel()` nicht awaited wird und die eigene Session beim Removal meist noch lebt.
+- **Rollback nach fehlgeschlagenem Create** übergibt ebenfalls, statt zu löschen.
+
+### Tests
+- `session-target-rows.test.ts` 25 → 34: Recency-Sortierung inkl. `null`/`0`/negativ/`NaN` und Namens-Tiebreak, belegte Worktrees selektierbar, `Auto-Mode` + Session-Zähler gleichzeitig, Filter (Name, Branch, case-insensitiv, kein Treffer auf „Tagen", gepinnte Zeilen überleben, `defaultTargetRowId` nie `null`).
+- `cloud-session-target.test.ts` 22 → 28: zweite Session auf demselben Worktree erlaubt und gezählt, zwei parallele Creates gelingen beide, Übergabe bei `closeSession`/Ctrl-D/`shutdown`, letzte Session räumt auf, zwei gleichzeitig schließende Sessions räumen genau einmal auf, `foreignSessionsIn` ignoriert Auto-Mode-Slots.
+- `cloud-terminal-restore.test.ts` 11 → 12: toter Eintrag + lebender Eintrag im selben Verzeichnis → kein Removal, Payload landet beim Überlebenden.
+
 ## 3.35.0 - 2026-07-27
 
 ### Neu

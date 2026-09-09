@@ -12,7 +12,6 @@ import type {
 
 /** Why a row cannot be picked, or what is noteworthy about it. */
 export type SessionTargetBadge =
-  | 'aktiv'
   | 'fehlt'
   | 'gesperrt'
   | 'Auto-Mode'
@@ -29,11 +28,27 @@ export interface SessionTargetRow {
   disabled: boolean;
   /** Tooltip explaining `disabled`, empty when selectable */
   disabledReason: string;
-  badge: SessionTargetBadge | null;
+  /**
+   * Chips shown on the right, in display order. Several can apply at once —
+   * an auto-mode worktree that also carries live sessions shows both, because
+   * "Auto-Mode" is a danger signal that must never be masked by a count.
+   */
+  badges: SessionTargetBadge[];
   /** Uncommitted changes present (unknown cleanliness renders as false) */
   dirty: boolean;
-  /** Worktree creation time in epoch ms; null when unknown or not a worktree */
+  /**
+   * Worktree creation time in epoch ms; null when unknown or not a worktree.
+   * Also the sort key of the worktree section (newest first). A skewed clock
+   * yields a real-but-wrong value: such a row sorts to the top and reads
+   * "gerade erstellt" — display and order stay consistent with each other.
+   */
   createdAt: number | null;
+  /**
+   * Lowercased haystack for the picker's filter: name plus checkout, without
+   * the age suffix — otherwise "ta" would match every "vor 3 Tagen" row.
+   * Empty on the pinned rows, which the filter never removes.
+   */
+  searchText: string;
 }
 
 export interface TargetsSnapshot {
@@ -90,19 +105,49 @@ function withAge(sublabel: string, createdAt: number | null, nowMs: number): str
 }
 
 /**
+ * Creation time usable as a sort key, or null.
+ *
+ * Mirrors {@link formatWorktreeAge}'s guard so a bogus timestamp is treated as
+ * "unknown" instead of jumping to the top of the list.
+ */
+function usableCreatedAt(value: number | null | undefined): number | null {
+  return value !== null && value !== undefined && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/** Newest first; unknown creation date last; name as the explicit tiebreak. */
+function byRecency(a: CloudTerminalWorktreeEntry, b: CloudTerminalWorktreeEntry): number {
+  const ca = usableCreatedAt(a.createdAt);
+  const cb = usableCreatedAt(b.createdAt);
+  if (ca !== null && cb !== null && ca !== cb) return cb - ca;
+  if (ca !== null && cb === null) return -1;
+  if (ca === null && cb !== null) return 1;
+  // Explicit tiebreak: makes the result independent of sort stability.
+  return a.name.localeCompare(b.name);
+}
+
+/** "1 Session aktiv" / "3 Sessions aktiv" — same wording for root and worktrees. */
+function occupancyBadge(count: number): string {
+  return `${count} ${count === 1 ? 'Session' : 'Sessions'} aktiv`;
+}
+
+/**
  * Builds the picker rows in their fixed display order:
  *
  *   1. Neuer Worktree      — omitted when the project is not a git repo
  *   2. Hauptverzeichnis    — the registered project path
- *   3. existing worktrees  — project root filtered out, sorted by name
+ *   3. existing worktrees  — project root filtered out, newest first
  *
  * The order is deliberately not personalized: "new worktree" stays first so
  * running in a shared checkout is always a conscious choice rather than a
- * remembered default.
+ * remembered default. Within the worktree section recency wins over the
+ * alphabet — with twenty checkouts the one made yesterday is the one being
+ * looked for, and the alphabet buries it in the middle. Worktrees without a
+ * usable creation date sort last, among themselves by name.
  *
- * The project-root row is never occupancy-disabled. Shell terminals, the setup
- * wizard and non-git projects all run there, so blocking it would lock the user
- * out after the first session; instead it carries a "N Sessions aktiv" badge.
+ * No row is occupancy-disabled — neither the project root nor a worktree.
+ * Several sessions may share a directory (shell terminals, the setup wizard
+ * and non-git projects all live in the project root), so occupancy is reported
+ * as a "N Sessions aktiv" badge and the choice is left to the user.
  */
 export function buildTargetRows(
   snapshot: TargetsSnapshot,
@@ -125,9 +170,10 @@ export function buildTargetRows(
       disabledReason: enabled
         ? ''
         : 'Worktree-Erstellung ist in der Konfiguration abgeschaltet',
-      badge: enabled ? null : 'deaktiviert',
+      badges: enabled ? [] : ['deaktiviert'],
       dirty: false,
       createdAt: null,
+      searchText: '',
     });
   }
 
@@ -143,41 +189,40 @@ export function buildTargetRows(
       : 'kein Git-Repository',
     disabled: false,
     disabledReason: '',
-    badge: root.occupiedCount > 0
-      ? `${root.occupiedCount} ${root.occupiedCount === 1 ? 'Session' : 'Sessions'} aktiv`
-      : null,
+    badges: root.occupiedCount > 0 ? [occupancyBadge(root.occupiedCount)] : [],
     dirty: root.clean === false,
     // Only linked worktrees have a creation date; a project root that happens
     // to be one still gets its age from the server entry.
     createdAt: root.createdAt ?? null,
+    searchText: '',
   });
 
   const others = snapshot.worktrees
     .filter((w) => !w.isProjectRoot)
     .slice()
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort(byRecency);
 
   for (const wt of others) {
-    let badge: SessionTargetBadge | null = null;
+    const badges: SessionTargetBadge[] = [];
     let disabled = false;
     let disabledReason = '';
 
-    if (wt.occupied) {
-      badge = 'aktiv';
-      disabled = true;
-      disabledReason = 'Läuft bereits in einer anderen Session';
-    } else if (wt.missing) {
-      badge = 'fehlt';
+    // Only the two technically impossible cases disable a row. Occupancy does
+    // not: a worktree with a live session is selectable exactly like the
+    // project root, and only says so via its badge.
+    if (wt.missing) {
+      badges.push('fehlt');
       disabled = true;
       disabledReason = 'Verzeichnis existiert nicht mehr';
     } else if (wt.locked) {
-      badge = 'gesperrt';
+      badges.push('gesperrt');
       disabled = true;
       disabledReason = 'Worktree ist von git gesperrt';
-    } else if (wt.autoModeManaged) {
-      // Not disabled: auto-mode worktrees are attachable, but the user should
-      // know something else may rewrite or remove them.
-      badge = 'Auto-Mode';
+    } else {
+      // Auto-Mode first: it is the danger signal (auto-mode may rewrite or
+      // remove this worktree), the session count is merely informational.
+      if (wt.autoModeManaged) badges.push('Auto-Mode');
+      if (wt.occupiedCount > 0) badges.push(occupancyBadge(wt.occupiedCount));
     }
 
     rows.push({
@@ -187,13 +232,45 @@ export function buildTargetRows(
       sublabel: withAge(describeCheckout(wt), wt.createdAt ?? null, nowMs),
       disabled,
       disabledReason,
-      badge,
+      badges,
       dirty: wt.clean === false,
       createdAt: wt.createdAt ?? null,
+      searchText: `${wt.name} ${describeCheckout(wt)}`.toLowerCase(),
     });
   }
 
   return rows;
+}
+
+/** Ids of the two rows the search filter never removes. */
+export function isPinnedRowId(id: string): boolean {
+  return id === 'new-worktree' || id === 'main';
+}
+
+/**
+ * Narrows the picker to rows matching `query` (case-insensitive substring on
+ * name and branch).
+ *
+ * The pinned rows always survive. That is not cosmetic: it keeps the listbox
+ * selectable for any query, keeps `defaultTargetRowId` from returning null, and
+ * keeps the "Neuer Worktree" row — and with it its name input — from vanishing
+ * while the user types in it.
+ */
+export function filterTargetRows(rows: SessionTargetRow[], query: string): SessionTargetRow[] {
+  const needle = query.trim().toLowerCase();
+  if (needle === '') return rows;
+  return rows.filter((row) => isPinnedRowId(row.id) || row.searchText.includes(needle));
+}
+
+/**
+ * False only when a non-empty query hid every worktree row — the condition for
+ * the "keine Treffer" hint. True for an empty query, so a still-loading list
+ * (which has no worktree rows yet) never reads as "nothing found".
+ */
+export function hasFilterMatches(rows: SessionTargetRow[], query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (needle === '') return true;
+  return rows.some((row) => !isPinnedRowId(row.id) && row.searchText.includes(needle));
 }
 
 /**

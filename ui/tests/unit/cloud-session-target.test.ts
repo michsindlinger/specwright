@@ -245,7 +245,7 @@ describe('Cloud Terminal session targets', () => {
 
   // ── Occupancy ──────────────────────────────────────────────────────────────
 
-  it('a second session on the same worktree is rejected as occupied', async () => {
+  it('a second session on the same worktree is allowed and counted', async () => {
     const wt = addUserWorktree(repo, 'alpha', 'feature/alpha');
     const target = { target: { kind: 'existing-worktree' as const, path: wt }, explicit: true };
 
@@ -255,10 +255,12 @@ describe('Cloud Terminal session targets', () => {
     await expect(
       mgr.createSession(repo.projectPath, 'claude-code', { model: 'x' },
         undefined, undefined, undefined, undefined, undefined, { sessionTarget: target })
-    ).rejects.toMatchObject({ code: 'TARGET_OCCUPIED' });
+    ).resolves.toBeDefined();
+
+    expect(mgr.getOccupiedPaths().get(pathKey(wt))?.count).toBe(2);
   });
 
-  it('RACE: two concurrent creates on one worktree → exactly one wins', async () => {
+  it('two concurrent creates on one worktree both succeed', async () => {
     const wt = addUserWorktree(repo, 'alpha', 'feature/alpha');
     const target = { target: { kind: 'existing-worktree' as const, path: wt }, explicit: true };
 
@@ -269,16 +271,11 @@ describe('Cloud Terminal session targets', () => {
         undefined, undefined, undefined, undefined, undefined, { sessionTarget: target }),
     ]);
 
-    const fulfilled = results.filter((r) => r.status === 'fulfilled');
-    const rejected = results.filter((r) => r.status === 'rejected');
-    expect(fulfilled).toHaveLength(1);
-    expect(rejected).toHaveLength(1);
-    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
-      code: 'TARGET_OCCUPIED',
-    });
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(2);
+    expect(mgr.getOccupiedPaths().get(pathKey(wt))?.count).toBe(2);
   });
 
-  it('a different worktree stays available while another is occupied', async () => {
+  it('a different worktree also stays available while another is occupied', async () => {
     const alpha = addUserWorktree(repo, 'alpha', 'feature/alpha');
     const beta = addUserWorktree(repo, 'beta', 'feature/beta');
 
@@ -305,6 +302,90 @@ describe('Cloud Terminal session targets', () => {
     expect(mgr.getOccupiedPaths().size).toBe(0);
   });
 
+  // ── Cleanup ownership when a worktree is shared ────────────────────────────
+  //
+  // Since occupancy no longer blocks a target, an owned session worktree can
+  // hold a second session. The owner must not delete it on the way out, and the
+  // cleanup duty must not evaporate either — it is handed to a survivor.
+  //
+  // Note the fixtures live under os.tmpdir() (/var vs /private/var on macOS):
+  // these tests fail if the successor lookup drops its pathKey() normalization.
+
+  /** Session A owning a fresh session worktree, plus attached session B. */
+  async function ownedWorktreeWithAttachedSession() {
+    const a = await mgr.createSession(
+      repo.projectPath, 'claude-code', { model: 'x' },
+      undefined, undefined, undefined, undefined, undefined,
+      { sessionTarget: { target: { kind: 'new-worktree' }, explicit: true } }
+    );
+    const wtPath = fake.lastSpawn?.cwd as string;
+    expect(basename(wtPath)).toBe(`session-${a.sessionId}`);
+
+    const b = await mgr.createSession(
+      repo.projectPath, 'claude-code', { model: 'x' },
+      undefined, undefined, undefined, undefined, undefined,
+      { sessionTarget: { target: { kind: 'existing-worktree', path: wtPath }, explicit: true } }
+    );
+    return { a, b, wtPath };
+  }
+
+  it('SAFETY: closing the owner keeps a worktree another session works in', async () => {
+    const { a, wtPath } = await ownedWorktreeWithAttachedSession();
+
+    await mgr.closeSession(a.sessionId);
+    await new Promise((r) => setImmediate(r));
+
+    expect(existsSync(wtPath)).toBe(true);
+    expect(branchExists(repo, `session/${a.sessionId}`)).toBe(true);
+  });
+
+  it('the last session out removes the handed-over worktree', async () => {
+    const { a, b, wtPath } = await ownedWorktreeWithAttachedSession();
+
+    await mgr.closeSession(a.sessionId);
+    await new Promise((r) => setImmediate(r));
+    expect(existsSync(wtPath)).toBe(true);
+
+    await mgr.closeSession(b.sessionId);
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(existsSync(wtPath)).toBe(false);
+    expect(branchExists(repo, `session/${a.sessionId}`)).toBe(false);
+  });
+
+  it('SAFETY: Ctrl-D on the owner hands over instead of deleting', async () => {
+    const { a, wtPath } = await ownedWorktreeWithAttachedSession();
+
+    fake.emit('terminal.exit', `cloud-${a.sessionId}`, 0);
+    await new Promise((r) => setImmediate(r));
+
+    expect(existsSync(wtPath)).toBe(true);
+  });
+
+  it('SAFETY: shutdown removes the shared worktree exactly once, never mid-session', async () => {
+    // shutdown() disposes sessions whose status is still 'active', so a status
+    // filter alone would let the owner delete the directory under its sibling.
+    const { wtPath } = await ownedWorktreeWithAttachedSession();
+
+    await mgr.shutdown();
+
+    // Everything is gone at the end of shutdown, so removal is correct here —
+    // what matters is that it happened once, without an error path.
+    expect(existsSync(wtPath)).toBe(false);
+  });
+
+  it('two owners closing at the same instant: exactly one cleanup runs', async () => {
+    const { a, b, wtPath } = await ownedWorktreeWithAttachedSession();
+
+    // No await in between: both teardowns interleave in the same tick.
+    const closes = Promise.all([mgr.closeSession(a.sessionId), mgr.closeSession(b.sessionId)]);
+    await closes;
+    await new Promise((r) => setTimeout(r, 50));
+
+    // The token must not have been passed in a circle (which would leak it).
+    expect(existsSync(wtPath)).toBe(false);
+  });
+
   it('terminal.exit releases the target immediately, before the delayed delete', async () => {
     const wt = addUserWorktree(repo, 'alpha', 'feature/alpha');
     const session = await mgr.createSession(
@@ -328,6 +409,28 @@ describe('Cloud Terminal session targets', () => {
     );
     await mgr.closeSession(session.sessionId);
     expect(mgr.getOccupiedPaths().has(pathKey(wt))).toBe(false);
+  });
+
+  // ── Auto-mode removal guard ────────────────────────────────────────────────
+
+  it('foreignSessionsIn reports attached sessions but ignores auto-mode slots', async () => {
+    const wt = addUserWorktree(repo, 'story', 'story/feat/S1');
+    const target = { target: { kind: 'existing-worktree' as const, path: wt }, explicit: true };
+
+    const slot = await mgr.createSession(repo.projectPath, 'claude-code', { model: 'x' },
+      undefined, undefined, undefined, undefined, undefined, { sessionTarget: target });
+    mgr.setAutoModeActive(slot.sessionId, true);
+
+    // Auto-mode's own session must not block auto-mode's cleanup …
+    expect(mgr.foreignSessionsIn(wt)).toEqual([]);
+
+    // … but a user session attached to the same worktree must.
+    const human = await mgr.createSession(repo.projectPath, 'claude-code', { model: 'x' },
+      undefined, undefined, undefined, undefined, undefined, { sessionTarget: target });
+    expect(mgr.foreignSessionsIn(wt)).toEqual([human.sessionId]);
+
+    await mgr.closeSession(human.sessionId);
+    expect(mgr.foreignSessionsIn(wt)).toEqual([]);
   });
 
   // ── .mcp.json seeding ──────────────────────────────────────────────────────

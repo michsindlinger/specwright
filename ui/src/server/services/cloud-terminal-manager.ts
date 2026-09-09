@@ -60,6 +60,7 @@ import { TmuxSessionBackend } from './tmux-session-backend.js';
 import {
   CloudSessionRegistry,
   type PersistedCloudSessionV1,
+  type PersistedWorktreeV1,
 } from './cloud-session-registry.js';
 import { getPasteImageRoot, getSessionRegistryPath } from '../utils/runtime-paths.js';
 
@@ -569,23 +570,14 @@ export class CloudTerminalManager extends EventEmitter {
               target.target.path
             );
 
-            // ── Claim barrier: NO `await` between the check and the assignment.
-            // Node is single-threaded, so a check-then-set with no intervening
-            // await is atomic against a concurrent createSession. Inserting an
-            // await here re-opens the double-attach race.
-            const holder = this.getOccupiedPaths().get(wtPath);
-            if (holder && holder.sessionId !== sessionId) {
-              const error = new Error(
-                `Worktree wird bereits von einer anderen Session verwendet: ${wtPath}`
-              );
-              (error as Error & { code: string }).code =
-                CLOUD_TERMINAL_ERROR_CODES.TARGET_OCCUPIED;
-              throw error;
-            }
+            // Deliberately NOT occupancy-checked, same as the 'main' branch
+            // above: several sessions may share a worktree. The picker shows a
+            // "N Sessions aktiv" badge so sharing stays a conscious choice, and
+            // disposeSessionWorktree hands the cleanup token to a surviving
+            // session instead of deleting the directory underneath it.
             session.effectiveCwd = wtPath;
             effectiveCwd = wtPath;
             baseEnv[SPECWRIGHT_MAIN_PROJECT_PATH_ENV] = mainProjectPath;
-            // ── Claim established; awaits are safe again below.
 
             // Seed-only: never clobber a `.mcp.json` the user maintains.
             const mcp = await ensureMcpConfigInWorktree(mainProjectPath, wtPath);
@@ -738,13 +730,28 @@ export class CloudTerminalManager extends EventEmitter {
         void this.registry.remove(sessionId);
       }
       // Clean up on failure — including a worktree created earlier in this call.
+      // Narrow window, same rule as the teardown path: if somebody already
+      // attached to the fresh worktree, hand the cleanup over instead of
+      // deleting the directory under them.
       if (session.worktreeCleanup) {
-        const { worktreePath, branchName, mainProjectPath, seededClaudeConfig } =
-          session.worktreeCleanup;
-        void removeCloudSessionWorktree(mainProjectPath, worktreePath, branchName, seededClaudeConfig)
-          .catch((err) => console.warn(
-            `[CloudTerminalManager] failed to roll back worktree for ${sessionId}:`, err,
-          ));
+        const owned = session.worktreeCleanup;
+        const { worktreePath, branchName, mainProjectPath, seededClaudeConfig } = owned;
+        const successor = this.findCleanupSuccessor(worktreePath, sessionId);
+        if (successor) {
+          successor.worktreeCleanup = owned;
+          session.worktreeCleanup = undefined;
+          if (successor.tmuxSessionName) {
+            void this.registry.upsert(this.toPersistedEntry(successor));
+          }
+          console.log(
+            `[CloudTerminalManager] rollback kept worktree ${worktreePath}: cleanup handed to ${successor.sessionId}`
+          );
+        } else {
+          void removeCloudSessionWorktree(mainProjectPath, worktreePath, branchName, seededClaudeConfig)
+            .catch((err) => console.warn(
+              `[CloudTerminalManager] failed to roll back worktree for ${sessionId}:`, err,
+            ));
+        }
       }
       this.sessions.delete(sessionId);
       console.error(`[CloudTerminalManager] Failed to create session:`, error);
@@ -795,6 +802,57 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
+   * Another live session in the same directory that can take over an owned
+   * worktree's cleanup duty — or undefined when this session is the last one.
+   *
+   * Deliberately NOT built on `getOccupiedPaths()`: that map names one
+   * representative session per path and, on the teardown path, still counts the
+   * closing session itself. The exclusion has to happen by session id, because
+   * `shutdown()` disposes sessions whose status is still 'active' — a status
+   * filter alone would miss it.
+   *
+   * Candidates that already ran their own dispose (`worktreeDisposed`) are
+   * skipped: two sessions closing at the same instant would otherwise hand the
+   * duty back and forth and neither would ever clean up.
+   */
+  private findCleanupSuccessor(
+    worktreePath: string,
+    excludeSessionId: CloudTerminalSessionId
+  ): ManagedCloudSession | undefined {
+    // `effectiveCwd` is pathKey-normalized, `worktreeCleanup.worktreePath` is not
+    // (macOS: /var vs /private/var) — without this the guard silently never fires.
+    const key = pathKey(worktreePath);
+    for (const candidate of this.sessions.values()) {
+      if (candidate.sessionId === excludeSessionId) continue;
+      if (candidate.status === 'closed') continue;
+      if (candidate.worktreeDisposed) continue;
+      if (candidate.effectiveCwd === key) return candidate;
+    }
+    return undefined;
+  }
+
+  /**
+   * Live sessions inside `worktreePath` that are NOT auto-mode's own slots.
+   *
+   * Auto-mode removes its story/backlog worktrees (partly with `--force`), and
+   * since the picker lets a user attach to an occupied worktree those removals
+   * could delete a directory somebody is working in. Slot sessions carry
+   * `autoModeActive`, so they exclude themselves — which matters because
+   * `slot.cancel()` is fire-and-forget and the slot's own session is usually
+   * still live when the removal runs.
+   */
+  public foreignSessionsIn(worktreePath: string): CloudTerminalSessionId[] {
+    const key = pathKey(worktreePath);
+    const out: CloudTerminalSessionId[] = [];
+    for (const session of this.sessions.values()) {
+      if (session.status === 'closed') continue;
+      if (session.autoModeActive) continue;
+      if (session.effectiveCwd === key) out.push(session.sessionId);
+    }
+    return out;
+  }
+
+  /**
    * Drains the create-time notices of a session (returns and clears them).
    */
   public takePendingNotices(sessionId: CloudTerminalSessionId): CloudTerminalNotice[] {
@@ -812,15 +870,50 @@ export class CloudTerminalManager extends EventEmitter {
    * teardown paths (explicit closeSession + the terminal.exit listener) can
    * both call this without double-removing when they race. Returns the removal
    * promise so shutdown can await it; closeSession/terminal.exit fire-and-forget.
+   *
+   * When another session still works in the same directory the worktree is not
+   * removed — its cleanup token is handed to that session instead, so the last
+   * session leaving the directory performs the removal.
    */
   private disposeSessionWorktree(session: ManagedCloudSession): Promise<void> {
     if (session.worktreeDisposed || !session.worktreeCleanup) {
       return Promise.resolve();
     }
     session.worktreeDisposed = true;
-    const { worktreePath, branchName, mainProjectPath, seededClaudeConfig } =
-      session.worktreeCleanup;
+    const owned = session.worktreeCleanup;
+    const { worktreePath, branchName, mainProjectPath, seededClaudeConfig } = owned;
     const sessionId = session.sessionId;
+
+    // ── Ownership handover, synchronous on purpose ────────────────────────────
+    // Since the picker allows several sessions per worktree, this directory may
+    // still be somebody's cwd. Removing it would delete a live session's files;
+    // merely skipping the removal would leak it forever, because only the
+    // creating session carries the (branded) cleanup token. So the token moves
+    // to a surviving session and the LAST one out does the cleanup.
+    // No `await` between lookup and assignment: Node is single-threaded, which
+    // makes this atomic against a concurrently closing sibling.
+    const successor = this.findCleanupSuccessor(worktreePath, sessionId);
+    if (successor) {
+      // Moving an already-minted token, not forging one — the brand only stops
+      // an *attaching* session from inventing cleanup rights (see
+      // rehydrateOwnedSessionWorktree, which does the same on boot restore).
+      successor.worktreeCleanup = owned;
+      session.worktreeCleanup = undefined;
+      if (successor.tmuxSessionName) {
+        void this.registry.upsert(this.toPersistedEntry(successor));
+      }
+      console.log(
+        `[CloudTerminalManager] worktree ${worktreePath} kept: cleanup handed from ${sessionId} to ${successor.sessionId}`
+      );
+      this.emit(
+        'session.notice',
+        sessionId,
+        'info',
+        `Worktree behalten — eine andere Session arbeitet darin weiter: ${worktreePath}`
+      );
+      return Promise.resolve();
+    }
+
     return removeCloudSessionWorktree(mainProjectPath, worktreePath, branchName, seededClaudeConfig)
       .then((result) => {
         if (result.keptReason === 'dirty') {
@@ -1563,15 +1656,51 @@ export class CloudTerminalManager extends EventEmitter {
     }
 
     const live = await this.tmux.listSessions();
+
+    // Which directories are still in use by a session that survives this boot?
+    // Decided from `entries` + the `live` snapshot rather than `this.sessions`:
+    // restores and reaps run concurrently below, so the map is incomplete while
+    // a reap decides whether it may delete a worktree. The snapshot is taken
+    // before any restore, and boot-restore creates no new tmux sessions, so it
+    // cannot go stale within this function.
+    const survivingByCwd = new Map<string, PersistedCloudSessionV1>();
+    for (const entry of entries) {
+      if (live.has(entry.tmuxSessionName)) {
+        survivingByCwd.set(pathKey(entry.effectiveCwd), entry);
+      }
+    }
+
+    // Cleanup tokens of reaped sessions whose worktree a survivor still uses:
+    // re-homed after the restores, when the surviving session is in the map.
+    const handovers: Array<{ to: CloudTerminalSessionId; worktree: PersistedWorktreeV1 }> = [];
+
     await Promise.allSettled(
       entries.map((entry) =>
         live.has(entry.tmuxSessionName)
-          ? this.restoreEntry(entry)
-          : this.reapDeadEntry(entry)
+          ? this.restoreEntry(entry, survivingByCwd, handovers)
+          : this.reapDeadEntry(entry, survivingByCwd, handovers)
       )
     );
 
-    // Persist the surviving set in one go (drops reaped/failed entries).
+    for (const { to, worktree } of handovers) {
+      const target = this.sessions.get(to);
+      const owned = target ? rehydrateOwnedSessionWorktree(worktree) : undefined;
+      if (!target || !owned) {
+        // Restore of the survivor failed after all — leave the worktree on disk
+        // rather than deleting a directory we can no longer reason about.
+        console.warn(
+          `[CloudTerminalManager] worktree ${worktree.worktreePath} left in place: successor ${to} not restored`
+        );
+        continue;
+      }
+      target.worktreeCleanup = owned;
+      console.log(
+        `[CloudTerminalManager] worktree ${worktree.worktreePath}: cleanup handed to restored session ${to}`
+      );
+    }
+
+    // Persist the surviving set in one go (drops reaped/failed entries) — this
+    // also persists the handovers above.
     const survivors = Array.from(this.sessions.values())
       .filter((s) => s.tmuxSessionName && s.status !== 'closed')
       .map((s) => this.toPersistedEntry(s));
@@ -1583,7 +1712,11 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /** Rebuilds one session from its registry record and reattaches. */
-  private async restoreEntry(entry: PersistedCloudSessionV1): Promise<void> {
+  private async restoreEntry(
+    entry: PersistedCloudSessionV1,
+    survivingByCwd: Map<string, PersistedCloudSessionV1>,
+    handovers: Array<{ to: CloudTerminalSessionId; worktree: PersistedWorktreeV1 }>
+  ): Promise<void> {
     const session: ManagedCloudSession = {
       sessionId: entry.sessionId,
       projectPath: entry.projectPath,
@@ -1629,7 +1762,7 @@ export class CloudTerminalManager extends EventEmitter {
     } catch (err) {
       console.error(`[CloudTerminalManager] failed to reattach ${entry.sessionId}:`, err);
       this.sessions.delete(entry.sessionId);
-      await this.reapDeadEntry(entry);
+      await this.reapDeadEntry(entry, survivingByCwd, handovers);
     }
   }
 
@@ -1656,19 +1789,32 @@ export class CloudTerminalManager extends EventEmitter {
    * treat like an exit that happened in absence — dispose the owned worktree,
    * remove launch artifacts, paste dir and the registry entry.
    */
-  private async reapDeadEntry(entry: PersistedCloudSessionV1): Promise<void> {
+  private async reapDeadEntry(
+    entry: PersistedCloudSessionV1,
+    survivingByCwd: Map<string, PersistedCloudSessionV1>,
+    handovers: Array<{ to: CloudTerminalSessionId; worktree: PersistedWorktreeV1 }>
+  ): Promise<void> {
     console.log(`[CloudTerminalManager] reaping dead session ${entry.sessionId} (tmux session gone)`);
     if (entry.worktree) {
       const owned = rehydrateOwnedSessionWorktree(entry.worktree);
       if (owned) {
-        await removeCloudSessionWorktree(
-          owned.mainProjectPath,
-          owned.worktreePath,
-          owned.branchName,
-          owned.seededClaudeConfig
-        ).catch((err) =>
-          console.warn(`[CloudTerminalManager] worktree cleanup failed for ${entry.sessionId}:`, err)
-        );
+        // A surviving session may sit in this worktree since several sessions
+        // per directory are allowed. Removing it here would delete a live
+        // session's files, and dropping the registry entry (below) would lose
+        // the only cleanup token — so the token is queued for handover instead.
+        const survivor = survivingByCwd.get(pathKey(owned.worktreePath));
+        if (survivor && survivor.sessionId !== entry.sessionId) {
+          handovers.push({ to: survivor.sessionId, worktree: entry.worktree });
+        } else {
+          await removeCloudSessionWorktree(
+            owned.mainProjectPath,
+            owned.worktreePath,
+            owned.branchName,
+            owned.seededClaudeConfig
+          ).catch((err) =>
+            console.warn(`[CloudTerminalManager] worktree cleanup failed for ${entry.sessionId}:`, err)
+          );
+        }
       }
     }
     await this.tmux.cleanupSessionArtifacts(entry.sessionId);

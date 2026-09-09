@@ -503,6 +503,8 @@ export class AosTerminalSession extends LitElement {
     // Target problems are recoverable: the picked worktree got taken or
     // vanished. Go back to step 2 with a fresh list instead of killing the pane.
     if (
+      // TARGET_OCCUPIED is no longer raised (worktrees may be shared); kept so
+      // an older server still lands in this recovery path.
       errorCode === 'TARGET_OCCUPIED' ||
       errorCode === 'TARGET_NOT_FOUND' ||
       errorCode === 'TARGET_NOT_A_WORKTREE' ||

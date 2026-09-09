@@ -175,6 +175,36 @@ describe('CloudTerminalManager boot-restore', () => {
     expect((await registry.load()).entries).toEqual([]);
   });
 
+  it('keeps a dead entry\'s worktree when a restored session still works in it', async () => {
+    const wt = '/tmp/project-worktrees/session-dead';
+    await registry.upsert(
+      persisted('dead', {
+        effectiveCwd: wt,
+        worktree: {
+          worktreePath: wt,
+          branchName: 'session/dead',
+          mainProjectPath: '/tmp/project',
+          seededClaudeConfig: [],
+        },
+      })
+    );
+    // Survivor attached to the very same worktree.
+    await registry.upsert(persisted('alive', { effectiveCwd: wt }));
+    tmux.liveSessions.add('cs-alive');
+
+    const manager = makeManager();
+    await manager.whenReady();
+
+    // Not deleted under the survivor …
+    expect(vi.mocked(removeCloudSessionWorktree)).not.toHaveBeenCalled();
+    // … and the cleanup token moved to it instead of being dropped with the
+    // dead registry entry (otherwise the directory would leak forever).
+    const persistedAlive = (await registry.load()).entries.find((e) => e.sessionId === 'alive');
+    expect(persistedAlive?.worktree).toMatchObject({ worktreePath: wt, branchName: 'session/dead' });
+    expect(rehydrateOwnedSessionWorktree(persistedAlive!.worktree!)).toBeDefined();
+    expect((await registry.load()).entries.some((e) => e.sessionId === 'dead')).toBe(false);
+  });
+
   it('kills orphaned cs-* sessions only when the registry is healthy', async () => {
     await registry.upsert(persisted('known'));
     tmux.liveSessions.add('cs-known');

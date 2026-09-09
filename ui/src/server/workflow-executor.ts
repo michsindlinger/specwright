@@ -1401,6 +1401,12 @@ export class WorkflowExecutor {
         const msg = `Spec-Worktree wurde unsauber zwischen Check und Cleanup — behalten unter ${specWorktreePath}`;
         console.warn(`[Workflow] finalizeSpec: ${msg}`);
         await reportIncident(msg);
+      } else if ((this.cloudTerminalManager?.foreignSessionsIn(specWorktreePath) ?? []).length > 0) {
+        // Somebody is working in this spec worktree (the picker allows several
+        // sessions per directory) — keep it rather than delete their files.
+        console.warn(
+          `[Workflow] finalizeSpec: kept spec worktree ${specWorktreePath} — still in use by a session`
+        );
       } else {
         try {
           execSync(`git worktree remove "${specWorktreePath}"`, { cwd: mainProjectPath, stdio: 'pipe' });
@@ -3335,6 +3341,17 @@ export class WorkflowExecutor {
    * we shouldn't silently discard — keep the worktree and surface a warning.
    */
   public async removeStoryWorktree(projectPath: string, worktreePath: string): Promise<void> {
+    // Never pull the rug out from under an attached session: since the session
+    // picker allows several sessions per worktree, a user may be working in
+    // this story worktree. Auto-mode's own slot sessions are excluded by
+    // `foreignSessionsIn` (they carry `autoModeActive`).
+    const foreign = this.cloudTerminalManager?.foreignSessionsIn(worktreePath) ?? [];
+    if (foreign.length > 0) {
+      console.warn(
+        `[Workflow] PAM-005: kept story worktree ${worktreePath} — in use by session(s) ${foreign.join(', ')}`
+      );
+      return;
+    }
     try {
       execSync(`git worktree remove "${worktreePath}"`, { cwd: projectPath, stdio: 'pipe' });
       execSync('git worktree prune', { cwd: projectPath, stdio: 'pipe' });

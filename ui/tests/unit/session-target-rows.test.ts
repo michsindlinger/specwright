@@ -6,7 +6,10 @@ import { describe, it, expect } from 'vitest';
 import {
   buildTargetRows,
   defaultTargetRowId,
+  filterTargetRows,
   formatWorktreeAge,
+  hasFilterMatches,
+  isPinnedRowId,
   type TargetsSnapshot,
 } from '../../frontend/src/components/terminal/session-target-rows.js';
 import type { CloudTerminalWorktreeEntry } from '../../src/shared/types/cloud-terminal.protocol.js';
@@ -43,17 +46,68 @@ function snapshot(over: Partial<TargetsSnapshot> = {}): TargetsSnapshot {
 }
 
 describe('buildTargetRows', () => {
-  it('orders new-worktree, main, then worktrees sorted by name', () => {
+  it('orders new-worktree, main, then worktrees newest first', () => {
     const rows = buildTargetRows(
       snapshot({
         worktrees: [
           entry(),
-          entry({ path: '/wt/zulu', name: 'zulu', isMain: false, isProjectRoot: false, branch: 'feature/z' }),
-          entry({ path: '/wt/alpha', name: 'alpha', isMain: false, isProjectRoot: false, branch: 'feature/a' }),
+          entry({
+            path: '/wt/alpha', name: 'alpha', isMain: false, isProjectRoot: false,
+            branch: 'feature/a', createdAt: 1_000,
+          }),
+          entry({
+            path: '/wt/zulu', name: 'zulu', isMain: false, isProjectRoot: false,
+            branch: 'feature/z', createdAt: 9_000,
+          }),
         ],
       })
     );
-    expect(rows.map((r) => r.id)).toEqual(['new-worktree', 'main', 'wt:/wt/alpha', 'wt:/wt/zulu']);
+    // zulu is younger, so it wins over the alphabet.
+    expect(rows.map((r) => r.id)).toEqual(['new-worktree', 'main', 'wt:/wt/zulu', 'wt:/wt/alpha']);
+  });
+
+  it('sorts worktrees without a usable creation date last, by name', () => {
+    const rows = buildTargetRows(
+      snapshot({
+        worktrees: [
+          entry(),
+          entry({ path: '/wt/b', name: 'b', isMain: false, isProjectRoot: false, createdAt: null }),
+          entry({ path: '/wt/a', name: 'a', isMain: false, isProjectRoot: false, createdAt: null }),
+          entry({ path: '/wt/dated', name: 'dated', isMain: false, isProjectRoot: false, createdAt: 5_000 }),
+        ],
+      })
+    );
+    expect(rows.slice(2).map((r) => r.id)).toEqual(['wt:/wt/dated', 'wt:/wt/a', 'wt:/wt/b']);
+  });
+
+  it('treats 0, negative and non-finite timestamps as unknown', () => {
+    const rows = buildTargetRows(
+      snapshot({
+        worktrees: [
+          entry(),
+          entry({ path: '/wt/zero', name: 'zero', isMain: false, isProjectRoot: false, createdAt: 0 }),
+          entry({ path: '/wt/neg', name: 'neg', isMain: false, isProjectRoot: false, createdAt: -5 }),
+          entry({ path: '/wt/nan', name: 'nan', isMain: false, isProjectRoot: false, createdAt: NaN }),
+          entry({ path: '/wt/real', name: 'real', isMain: false, isProjectRoot: false, createdAt: 42 }),
+        ],
+      })
+    );
+    expect(rows.slice(2).map((r) => r.id)).toEqual([
+      'wt:/wt/real', 'wt:/wt/nan', 'wt:/wt/neg', 'wt:/wt/zero',
+    ]);
+  });
+
+  it('breaks a tie on identical timestamps by name', () => {
+    const rows = buildTargetRows(
+      snapshot({
+        worktrees: [
+          entry(),
+          entry({ path: '/wt/b', name: 'b', isMain: false, isProjectRoot: false, createdAt: 7_000 }),
+          entry({ path: '/wt/a', name: 'a', isMain: false, isProjectRoot: false, createdAt: 7_000 }),
+        ],
+      })
+    );
+    expect(rows.slice(2).map((r) => r.id)).toEqual(['wt:/wt/a', 'wt:/wt/b']);
   });
 
   it('never lists the project root twice', () => {
@@ -74,7 +128,7 @@ describe('buildTargetRows', () => {
     expect(rows.find((r) => r.id === 'main')?.sublabel).toBe('fix/plan-review');
   });
 
-  it('disables an occupied worktree and badges it "aktiv"', () => {
+  it('keeps an occupied worktree selectable and badges the session count', () => {
     const rows = buildTargetRows(
       snapshot({
         worktrees: [
@@ -87,9 +141,26 @@ describe('buildTargetRows', () => {
       })
     );
     const row = rows.find((r) => r.id === 'wt:/wt/a');
-    expect(row?.disabled).toBe(true);
-    expect(row?.badge).toBe('aktiv');
-    expect(row?.disabledReason).not.toBe('');
+    expect(row?.disabled).toBe(false);
+    expect(row?.disabledReason).toBe('');
+    expect(row?.badges).toEqual(['1 Session aktiv']);
+  });
+
+  it('shows Auto-Mode AND the session count when both apply', () => {
+    const rows = buildTargetRows(
+      snapshot({
+        worktrees: [
+          entry(),
+          entry({
+            path: '/wt/s', name: 's', isMain: false, isProjectRoot: false,
+            branch: 'story/feat/S1', autoModeManaged: true,
+            occupied: true, occupiedCount: 2, occupiedBy: 'cloud-2',
+          }),
+        ],
+      })
+    );
+    // Auto-Mode first: it is the danger signal and must never be masked.
+    expect(rows.find((r) => r.id === 'wt:/wt/s')?.badges).toEqual(['Auto-Mode', '2 Sessions aktiv']);
   });
 
   it('badges missing and locked worktrees and disables them', () => {
@@ -102,8 +173,8 @@ describe('buildTargetRows', () => {
         ],
       })
     );
-    expect(rows.find((r) => r.id === 'wt:/wt/m')).toMatchObject({ badge: 'fehlt', disabled: true });
-    expect(rows.find((r) => r.id === 'wt:/wt/l')).toMatchObject({ badge: 'gesperrt', disabled: true });
+    expect(rows.find((r) => r.id === 'wt:/wt/m')).toMatchObject({ badges: ['fehlt'], disabled: true });
+    expect(rows.find((r) => r.id === 'wt:/wt/l')).toMatchObject({ badges: ['gesperrt'], disabled: true });
   });
 
   it('badges auto-mode worktrees WITHOUT disabling them', () => {
@@ -119,7 +190,7 @@ describe('buildTargetRows', () => {
       })
     );
     expect(rows.find((r) => r.id === 'wt:/wt/s')).toMatchObject({
-      badge: 'Auto-Mode',
+      badges: ['Auto-Mode'],
       disabled: false,
     });
   });
@@ -129,7 +200,7 @@ describe('buildTargetRows', () => {
       snapshot({ projectRoot: entry({ occupied: true, occupiedCount: 2 }) })
     );
     const main = rows.find((r) => r.id === 'main');
-    expect(main?.badge).toBe('2 Sessions aktiv');
+    expect(main?.badges).toEqual(['2 Sessions aktiv']);
     expect(main?.disabled).toBe(false);
   });
 
@@ -137,7 +208,7 @@ describe('buildTargetRows', () => {
     const rows = buildTargetRows(
       snapshot({ projectRoot: entry({ occupied: true, occupiedCount: 1 }) })
     );
-    expect(rows.find((r) => r.id === 'main')?.badge).toBe('1 Session aktiv');
+    expect(rows.find((r) => r.id === 'main')?.badges).toEqual(['1 Session aktiv']);
   });
 
   it('treats unknown cleanliness as not dirty', () => {
@@ -178,7 +249,7 @@ describe('buildTargetRows', () => {
 
   it('disables the new-worktree row when creation is switched off', () => {
     const rows = buildTargetRows(snapshot({ worktreeCreationEnabled: false }));
-    expect(rows[0]).toMatchObject({ id: 'new-worktree', disabled: true, badge: 'deaktiviert' });
+    expect(rows[0]).toMatchObject({ id: 'new-worktree', disabled: true, badges: ['deaktiviert'] });
     expect(rows[0].sublabel).toContain('cloudSessionWorktree');
   });
 
@@ -277,5 +348,66 @@ describe('worktree age', () => {
       NOW
     );
     expect(rows.find((r) => r.id === 'main')?.sublabel).toBe('feature/root · vor 2 Tagen');
+  });
+});
+
+describe('search filter', () => {
+  const rows = () =>
+    buildTargetRows(
+      snapshot({
+        worktrees: [
+          entry(),
+          entry({
+            path: '/wt/recruiting-pool', name: 'session-recruiting-pool',
+            isMain: false, isProjectRoot: false,
+            branch: 'session/recruiting-pool', createdAt: 3_000,
+          }),
+          entry({
+            path: '/wt/harness', name: 'session-harness',
+            isMain: false, isProjectRoot: false,
+            branch: 'fix/tech-postfilter', createdAt: 2_000,
+          }),
+        ],
+      })
+    );
+
+  it('returns the rows unchanged for an empty or whitespace query', () => {
+    expect(filterTargetRows(rows(), '')).toEqual(rows());
+    expect(filterTargetRows(rows(), '   ')).toEqual(rows());
+    expect(hasFilterMatches(rows(), '')).toBe(true);
+  });
+
+  it('matches the worktree name, case-insensitively', () => {
+    const ids = filterTargetRows(rows(), 'RECRUIT').map((r) => r.id);
+    expect(ids).toEqual(['new-worktree', 'main', 'wt:/wt/recruiting-pool']);
+  });
+
+  it('matches the branch', () => {
+    const ids = filterTargetRows(rows(), 'postfilter').map((r) => r.id);
+    expect(ids).toEqual(['new-worktree', 'main', 'wt:/wt/harness']);
+  });
+
+  it('never matches the age suffix — "Tagen" is not a worktree name', () => {
+    const withAges = buildTargetRows(
+      snapshot({
+        worktrees: [
+          entry(),
+          entry({
+            path: '/wt/a', name: 'a', isMain: false, isProjectRoot: false,
+            createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
+          }),
+        ],
+      })
+    );
+    expect(withAges.find((r) => r.id === 'wt:/wt/a')?.sublabel).toContain('Tagen');
+    expect(hasFilterMatches(withAges, 'Tagen')).toBe(false);
+  });
+
+  it('keeps the pinned rows and a usable default even when nothing matches', () => {
+    const filtered = filterTargetRows(rows(), 'zzz-nothing');
+    expect(filtered.map((r) => r.id)).toEqual(['new-worktree', 'main']);
+    expect(filtered.every((r) => isPinnedRowId(r.id))).toBe(true);
+    expect(defaultTargetRowId(filtered)).toBe('new-worktree');
+    expect(hasFilterMatches(rows(), 'zzz-nothing')).toBe(false);
   });
 });

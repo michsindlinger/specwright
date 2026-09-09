@@ -9,6 +9,9 @@ import {
 import {
   buildTargetRows,
   defaultTargetRowId,
+  filterTargetRows,
+  hasFilterMatches,
+  isPinnedRowId,
   type SessionTargetRow,
   type TargetsSnapshot,
 } from './session-target-rows.js';
@@ -61,6 +64,11 @@ export class AosSessionTargetList extends LitElement {
   @state() private focusedId: string | null = null;
   /** Optional user-chosen name for the "Neuer Worktree" row. */
   @state() private worktreeName = '';
+  /** Live search text; narrows the worktree rows, never the pinned ones. */
+  @state() private query = '';
+
+  /** Desktop-only one-shot focus into the search box. */
+  private didAutofocus = false;
 
   /** Correlates responses: several panes request targets over one socket. */
   private readonly requestId = `tgt-${Math.random().toString(36).slice(2)}-${Date.now()}`;
@@ -166,6 +174,41 @@ export class AosSessionTargetList extends LitElement {
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
+    }
+
+    .search {
+      margin-bottom: 0.4rem;
+    }
+
+    .search-input {
+      width: 100%;
+      box-sizing: border-box;
+      background-color: var(--bg-color, #1a1a1a);
+      border: 1px solid var(--border-color, #404040);
+      border-radius: 3px;
+      color: var(--text-color, #e5e5e5);
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.35rem 0.5rem;
+    }
+
+    :host([compact]) .search-input {
+      font-size: 0.85rem;
+      padding: 0.5rem 0.55rem;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent-color, #007acc);
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 0.25rem;
+      flex-shrink: 0;
+      max-width: 45%;
     }
 
     .badge {
@@ -334,9 +377,12 @@ export class AosSessionTargetList extends LitElement {
     const snapshot = message as unknown as TargetsSnapshot;
     this.rows = buildTargetRows(snapshot);
     this.phase = 'ready';
-    // Keep the user's keyboard position across refreshes when still valid.
-    const keep = this.focusedId && this.rows.some((r) => r.id === this.focusedId && !r.disabled);
-    if (!keep) this.focusedId = defaultTargetRowId(this.rows);
+    // Keep the user's keyboard position across refreshes when still valid —
+    // measured against the *visible* rows. `query` is deliberately untouched
+    // here: a background refresh must not wipe what the user is typing.
+    const visible = this.visibleRows;
+    const keep = this.focusedId && visible.some((r) => r.id === this.focusedId && !r.disabled);
+    if (!keep) this.focusedId = defaultTargetRowId(visible);
   }
 
   private handleTargetsError(message: WebSocketMessage): void {
@@ -359,6 +405,47 @@ export class AosSessionTargetList extends LitElement {
     if (!this.worktreeName || this.phase !== 'ready') return;
     const row = this.rows.find((r) => r.id === 'new-worktree');
     if (!row || row.disabled) this.worktreeName = '';
+  }
+
+  /** Rows currently on screen: the filter applied to the loaded rows. */
+  private get visibleRows(): SessionTargetRow[] {
+    return filterTargetRows(this.rows, this.query);
+  }
+
+  private handleQueryInput(e: Event): void {
+    this.query = (e.target as HTMLInputElement).value;
+    // The focused row may have just been filtered away.
+    const visible = this.visibleRows;
+    if (!visible.some((r) => r.id === this.focusedId && !r.disabled)) {
+      this.focusedId = defaultTargetRowId(visible);
+    }
+  }
+
+  /**
+   * Keydown inside the search field.
+   *
+   * The field sits outside the listbox (a text input inside `role="listbox"` is
+   * invalid ARIA), so its keys never reach `handleKeydown` — the list keys are
+   * handled here instead. Escape clears a non-empty query and otherwise bubbles,
+   * so it can still close the picker.
+   */
+  private handleQueryKeydown(e: KeyboardEvent): void {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.moveFocus(e.key === 'ArrowDown' ? 1 : -1);
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.activateFocused();
+      return;
+    }
+    if (e.key === 'Escape' && this.query !== '') {
+      e.preventDefault();
+      e.stopPropagation();
+      this.query = '';
+      this.focusedId = defaultTargetRowId(this.visibleRows);
+    }
   }
 
   private select(row: SessionTargetRow): void {
@@ -435,27 +522,38 @@ export class AosSessionTargetList extends LitElement {
     this.dispatchEvent(new CustomEvent('target-back', { bubbles: true, composed: true }));
   }
 
+  /** Moves the roving focus over the selectable rows that are currently visible. */
+  private moveFocus(delta: number): void {
+    const selectable = this.visibleRows.filter((r) => !r.disabled);
+    if (selectable.length === 0) return;
+    const currentIdx = selectable.findIndex((r) => r.id === this.focusedId);
+    const next = (currentIdx + delta + selectable.length) % selectable.length;
+    this.focusedId = selectable[next].id;
+  }
+
+  /** Starts the focused row (falls back to the first selectable one). */
+  private activateFocused(): void {
+    const selectable = this.visibleRows.filter((r) => !r.disabled);
+    if (selectable.length === 0) return;
+    const currentIdx = selectable.findIndex((r) => r.id === this.focusedId);
+    const row = selectable[currentIdx === -1 ? 0 : currentIdx];
+    if (row) this.select(row);
+  }
+
   /** Roving focus over selectable rows; Enter/Space activates. */
   private handleKeydown(e: KeyboardEvent): void {
     // Second line of defence behind the name field's own selective
     // stopPropagation: typing must never drive the roving focus.
     if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
 
-    const selectable = this.rows.filter((r) => !r.disabled);
-    if (selectable.length === 0) return;
-
-    const currentIdx = selectable.findIndex((r) => r.id === this.focusedId);
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      const delta = e.key === 'ArrowDown' ? 1 : -1;
-      const next = (currentIdx + delta + selectable.length) % selectable.length;
-      this.focusedId = selectable[next].id;
+      this.moveFocus(e.key === 'ArrowDown' ? 1 : -1);
       return;
     }
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      const row = selectable[currentIdx === -1 ? 0 : currentIdx];
-      if (row) this.select(row);
+      this.activateFocused();
     }
   }
 
@@ -466,8 +564,45 @@ export class AosSessionTargetList extends LitElement {
         <button class="back-btn" @click=${this.emitBack}>← Modell ändern</button>
       </div>
 
+      ${this.phase === 'error' ? '' : this.renderSearch()}
       ${this.phase === 'error' ? this.renderError() : this.renderList()}
     `;
+  }
+
+  /**
+   * Search box — rendered outside the listbox on purpose (a text input inside
+   * `role="listbox"` is invalid ARIA). Only shown once real worktrees exist:
+   * in a repo with none it would be a control with nothing to narrow.
+   */
+  private renderSearch() {
+    if (this.phase !== 'ready') return '';
+    if (!this.rows.some((r) => !isPinnedRowId(r.id))) return '';
+    return html`
+      <div class="search">
+        <input
+          class="search-input"
+          type="text"
+          placeholder="Worktree suchen…"
+          aria-label="Worktree-Suche"
+          .value=${this.query}
+          @input=${this.handleQueryInput}
+          @keydown=${this.handleQueryKeydown}
+        />
+      </div>
+    `;
+  }
+
+  /**
+   * One-shot focus into the search box on desktop. Skipped in the compact
+   * layout (mobile / narrow split), where it would pop up the on-screen
+   * keyboard on every picker open.
+   */
+  protected override updated(): void {
+    if (this.didAutofocus || this.compact || this.phase !== 'ready') return;
+    const input = this.renderRoot.querySelector<HTMLInputElement>('.search-input');
+    if (!input) return;
+    this.didAutofocus = true;
+    input.focus();
   }
 
   private renderError() {
@@ -484,9 +619,10 @@ export class AosSessionTargetList extends LitElement {
             sublabel: '',
             disabled: false,
             disabledReason: '',
-            badge: null,
+            badges: [],
             dirty: false,
             createdAt: null,
+            searchText: '',
           })}
         >
           Im Hauptverzeichnis starten
@@ -511,11 +647,12 @@ export class AosSessionTargetList extends LitElement {
             sublabel: 'frische Arbeitskopie',
             disabled: false,
             disabledReason: '',
-            badge: null,
+            badges: [],
             dirty: false,
             createdAt: null,
+            searchText: '',
           }]
-        : this.rows;
+        : this.visibleRows;
 
     return html`
       <div
@@ -540,11 +677,18 @@ export class AosSessionTargetList extends LitElement {
               ${row.id === 'new-worktree' && !row.disabled ? this.renderNameField(row) : ''}
             </div>
             ${row.dirty ? html`<span class="dirty-dot" title="Ungespeicherte Änderungen"></span>` : ''}
-            ${row.badge ? html`<span class="badge">${row.badge}</span>` : ''}
+            ${row.badges.length > 0
+              ? html`<div class="badges">
+                  ${row.badges.map((b) => html`<span class="badge">${b}</span>`)}
+                </div>`
+              : ''}
           </div>
         `)}
         ${this.phase === 'loading'
           ? html`<div class="status">Worktrees werden geladen…</div>`
+          : ''}
+        ${this.phase === 'ready' && !hasFilterMatches(this.rows, this.query)
+          ? html`<div class="status">Keine Worktrees gefunden</div>`
           : ''}
       </div>
     `;

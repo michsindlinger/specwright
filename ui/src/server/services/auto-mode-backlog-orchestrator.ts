@@ -145,7 +145,24 @@ export class AutoModeBacklogOrchestrator extends AutoModeOrchestratorBase {
     await super.cancel();
   }
 
+  /**
+   * Best-effort removal of a finished item's sub-worktree.
+   *
+   * Skipped while a non-auto-mode session works in that directory: the picker
+   * lets a user attach to an occupied worktree, and `--force` would delete
+   * their uncommitted work. Auto-mode's own slot sessions are excluded by
+   * `foreignSessionsIn` (they carry `autoModeActive`), which matters because
+   * `slot.cancel()` is fire-and-forget — the slot's session is often still live
+   * when this runs.
+   */
   private removeItemWorktree(wtPath: string): void {
+    const foreign = this.config.cloudTerminalManager.foreignSessionsIn(wtPath);
+    if (foreign.length > 0) {
+      console.warn(
+        `[BacklogOrchestrator] Kept backlog worktree ${wtPath}: in use by session(s) ${foreign.join(', ')}`
+      );
+      return;
+    }
     try {
       execSync(`git worktree remove --force "${wtPath}"`, { cwd: this.mainPath, stdio: 'pipe' });
       execSync('git worktree prune', { cwd: this.mainPath, stdio: 'pipe' });

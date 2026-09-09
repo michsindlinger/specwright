@@ -694,7 +694,13 @@ export const CLOUD_TERMINAL_ERROR_CODES = {
   TARGET_NOT_A_WORKTREE: 'TARGET_NOT_A_WORKTREE',
   /** Worktree is registered in git metadata but missing on disk */
   TARGET_NOT_FOUND: 'TARGET_NOT_FOUND',
-  /** Another live cloud session already runs in this directory */
+  /**
+   * Another live cloud session already runs in this directory.
+   *
+   * No longer thrown: sessions may share a worktree (see the picker's
+   * "N Sessions aktiv" badge). Kept so clients stay tolerant of older servers
+   * and for a possible future opt-in "exclusive target" mode.
+   */
   TARGET_OCCUPIED: 'TARGET_OCCUPIED',
   /** Explicit 'new-worktree' request while `cloudSessionWorktree` is disabled */
   WORKTREE_CREATION_DISABLED: 'WORKTREE_CREATION_DISABLED',
