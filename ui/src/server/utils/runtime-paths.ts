@@ -25,7 +25,8 @@ const __dirname = dirname(__filename);
 /** Conservative cap for a unix socket path (sun_path is 104 on macOS, 108 on Linux). */
 const MAX_SOCKET_PATH_LEN = 100;
 
-function backendPort(): number {
+/** Backend listen port (PORT env, default 3001) — baked into hook URLs and registry file names. */
+export function backendPort(): number {
   const parsed = process.env.PORT ? parseInt(process.env.PORT, 10) : NaN;
   return Number.isFinite(parsed) ? parsed : 3001;
 }
@@ -55,6 +56,24 @@ export function getPasteImageRoot(): string {
 /** Directory holding generated per-session run scripts and exit-code files. */
 export function getLaunchDir(): string {
   return join(getCloudTerminalRuntimeDir(), 'launch');
+}
+
+/**
+ * Claude Code `--settings` file carrying the Stop hook that reports "agent
+ * finished" back to this backend. Port-suffixed because the hook URL inside
+ * targets exactly this backend's port.
+ */
+export function getClaudeHookSettingsPath(): string {
+  return join(getCloudTerminalRuntimeDir(), `claude-hooks-${backendPort()}.json`);
+}
+
+/**
+ * Shared secret the Stop hook presents to POST /api/cloud-terminal/.../agent-event.
+ * Persisted (not per-boot) so sessions started by an earlier backend process
+ * keep authenticating after a restart.
+ */
+export function getHookSecretPath(): string {
+  return join(getCloudTerminalRuntimeDir(), 'hook-secret');
 }
 
 /** On-disk session registry, port-suffixed so two backends in one checkout never collide. */

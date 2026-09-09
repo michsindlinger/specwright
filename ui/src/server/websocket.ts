@@ -52,6 +52,7 @@ import { setupService, type StepOutput, type StepComplete } from './services/set
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 import type {
   CloudTerminalSessionId,
+  CloudTerminalAgentEvent,
   CloudTerminalType,
   CloudTerminalModelConfig,
   CloudTerminalWorkflowMetadata,
@@ -1564,6 +1565,11 @@ export class WebSocketHandler {
    */
   public getWorkflowExecutor(): WorkflowExecutor {
     return this.workflowExecutor;
+  }
+
+  /** Expose the CloudTerminalManager for the agent-event REST route (Stop hook callback). */
+  public getCloudTerminalManager(): CloudTerminalManager {
+    return this.cloudTerminalManager;
   }
 
   public shutdown(): void {
@@ -5282,6 +5288,20 @@ export class WebSocketHandler {
           sessionId,
           level,
           message: noticeMessage,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    );
+
+    // Agent lifecycle reported by the Claude Code Stop hook (agent-finished bell).
+    this.cloudTerminalManager.on(
+      'session.agent-event',
+      (sessionId: CloudTerminalSessionId, event: CloudTerminalAgentEvent, detail: { preview?: string }) => {
+        this.broadcast({
+          type: 'cloud-terminal:agent-event',
+          sessionId,
+          event,
+          ...(detail.preview ? { preview: detail.preview } : {}),
           timestamp: new Date().toISOString(),
         });
       }

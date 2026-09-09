@@ -11,6 +11,7 @@ import quickTodoRouter from './routes/quick-todo.routes.js';
 import attachmentFileRouter from './routes/attachment-file.routes.js';
 import versionRouter from './routes/version.routes.js';
 import teamRouter from './routes/team.routes.js';
+import { createCloudTerminalRouter } from './routes/cloud-terminal.routes.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -42,6 +43,9 @@ app.use('/api/backlog', quickTodoRouter);
 app.use('/api/attachments', attachmentFileRouter);
 app.use('/api/version', versionRouter);
 app.use('/api/team', teamRouter);
+// Stop-hook callback (agent-finished bell). Resolves wsHandler lazily — it does
+// not exist until server.listen (same reason /health reads it lazily).
+app.use('/api/cloud-terminal', createCloudTerminalRouter(() => wsHandler?.getCloudTerminalManager()));
 
 // Health check endpoint
 app.get('/health', (_req: Request, res: Response) => {

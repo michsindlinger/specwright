@@ -196,6 +196,7 @@ export type CloudTerminalMessageType =
   | 'cloud-terminal:targets:response'
   | 'cloud-terminal:targets:error'
   | 'cloud-terminal:notice'
+  | 'cloud-terminal:agent-event'
   // Bidirectional
   | 'cloud-terminal:data';
 
@@ -395,6 +396,22 @@ export interface CloudTerminalNoticeMessage {
   timestamp: string;
 }
 
+/** Lifecycle events reported by the agent itself (Claude Code hooks). */
+export type CloudTerminalAgentEvent = 'stop';
+
+/**
+ * Server -> Client: the agent inside a claude-code session reported an event.
+ * `stop` = Claude finished a turn (Stop hook). `preview` is a sanitized,
+ * truncated excerpt of the last assistant message, when the hook delivered one.
+ */
+export interface CloudTerminalAgentEventMessage {
+  type: 'cloud-terminal:agent-event';
+  sessionId: CloudTerminalSessionId;
+  event: CloudTerminalAgentEvent;
+  preview?: string;
+  timestamp: string;
+}
+
 /**
  * Response to `cloud-terminal:targets`.
  */
@@ -543,7 +560,8 @@ export type CloudTerminalServerMessage =
   | CloudTerminalPasteImageSavedMessage
   | CloudTerminalTargetsResponseMessage
   | CloudTerminalTargetsErrorMessage
-  | CloudTerminalNoticeMessage;
+  | CloudTerminalNoticeMessage
+  | CloudTerminalAgentEventMessage;
 
 /**
  * Union type of all Cloud Terminal messages

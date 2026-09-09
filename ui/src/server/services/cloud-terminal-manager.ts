@@ -28,12 +28,19 @@ import {
   CloudTerminalModelConfig,
   CloudTerminalWorkflowMetadata,
   CloudTerminalNotice,
+  CloudTerminalAgentEvent,
   CLOUD_TERMINAL_CONFIG,
   CLOUD_TERMINAL_ERROR_CODES,
 } from '../../shared/types/cloud-terminal.protocol.js';
 import { TerminalManager } from './terminal-manager.js';
 import { getCliCommandForModel, getProviderCommand, checkCliAvailability } from '../model-config.js';
 import { PlanBufferExtractor } from '../utils/plan-buffer-extractor.js';
+import { backendPort } from '../utils/runtime-paths.js';
+import {
+  CLOUD_SESSION_ID_ENV,
+  ensureStopHookSettingsFile,
+  loadOrCreateHookSecret,
+} from './claude-stop-hook.js';
 import { loadGithubConfigStatus, loadGithubPat } from '../github-config.js';
 import { resolveMainWorktreePath } from '../utils/worktree-detect.js';
 import { getCloudSessionWorktreeEnabled } from '../general-config.js';
@@ -221,7 +228,19 @@ const PLAN_IDLE_TIMEOUT_MS = 5000;
  * - 'session.blocker-reported' (CloudTerminalSessionId, reason) - LLM emitted <<BLOCKER:reason>> marker (auto-mode only)
  * - 'session.plan-detected' (CloudTerminalSessionId, planText, source: 'auto'|'manual') - Plan box detected; planText is extracted buffer content (plan-review only)
  * - 'session.notice' (CloudTerminalSessionId, level: 'warn'|'info', message) - User-facing notice (e.g. worktree kept due to uncommitted changes, or started without worktree)
+ * - 'session.agent-event' (CloudTerminalSessionId, event: 'stop', { preview? }) - The agent inside a claude-code session reported a lifecycle event via its Stop hook
  */
+/**
+ * Where the Stop-hook settings file and its shared secret live. Tests inject
+ * temp paths; `null` disables the hook entirely (sessions start without
+ * `--settings`).
+ */
+export interface StopHookOptions {
+  settingsPath?: string;
+  secretPath?: string;
+  port?: number;
+}
+
 /**
  * Outcome of a {@link CloudTerminalManager.resizeSession} call.
  * - 'ok'            – resize applied
@@ -267,10 +286,20 @@ export class CloudTerminalManager extends EventEmitter {
   /** Hard cap for the whole boot-restore (restore runs per-session in parallel). */
   private static readonly RESTORE_TIMEOUT_MS = 60_000;
 
+  /**
+   * `--settings` file handed to every claude-code session (Stop hook → agent
+   * finished). Undefined when the hook could not be set up — sessions then
+   * start without it and the bell stays silent (see claude-stop-hook.ts).
+   */
+  private hookSettingsPath?: string;
+  /** Shared secret the Stop hook must present. Undefined ⇔ hookSettingsPath undefined. */
+  private hookSecret?: string;
+
   constructor(
     terminalManager: TerminalManager,
     tmux?: TmuxSessionBackend,
-    registry?: CloudSessionRegistry
+    registry?: CloudSessionRegistry,
+    stopHook: StopHookOptions | null = {}
   ) {
     super();
     this.terminalManager = terminalManager;
@@ -280,6 +309,26 @@ export class CloudTerminalManager extends EventEmitter {
     // Forward TerminalManager events to handle PTY output
     this.setupTerminalManagerListeners();
 
+    // Synchronous on purpose: must exist before the first createSession() or
+    // boot-restore below (restored sessions already carry --settings in their
+    // run script; a new session must not race the file write).
+    if (stopHook !== null) {
+      try {
+        const secret = loadOrCreateHookSecret(stopHook.secretPath);
+        this.hookSettingsPath = ensureStopHookSettingsFile(
+          stopHook.port ?? backendPort(),
+          secret,
+          stopHook.settingsPath
+        );
+        this.hookSecret = secret;
+      } catch (err) {
+        console.warn(
+          '[CloudTerminalManager] Stop-hook setup failed — agent-finished notifications disabled:',
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
+
     this.tmux.logAvailability();
     this.restoreReady = this.startRestore();
   }
@@ -287,6 +336,30 @@ export class CloudTerminalManager extends EventEmitter {
   /** Resolves when boot-restore has settled. See {@link restoreReady}. */
   public whenReady(): Promise<void> {
     return this.restoreReady;
+  }
+
+  /** Shared secret expected from the Stop hook; undefined while the hook is disabled. */
+  public getHookSecret(): string | undefined {
+    return this.hookSecret;
+  }
+
+  /**
+   * Called by the agent-event HTTP route when a session's Stop hook fires.
+   * Returns false (no emit) for unknown, closing or closed sessions — a late
+   * hook after close must not resurrect a bell entry.
+   */
+  public reportAgentEvent(
+    sessionId: CloudTerminalSessionId,
+    event: CloudTerminalAgentEvent,
+    detail: { preview?: string } = {}
+  ): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.closing || session.status === 'closed') {
+      return false;
+    }
+    session.lastActivity = new Date();
+    this.emit('session.agent-event', sessionId, event, detail);
+    return true;
   }
 
   private startRestore(): Promise<void> {
@@ -566,6 +639,11 @@ export class CloudTerminalManager extends EventEmitter {
         if (extraCliArgs && extraCliArgs.length > 0) {
           shellArgs.push(...extraCliArgs);
         }
+        // Stop hook (agent-finished bell). Only for claude CLIs / claude-* wrappers
+        // — a user-configured foreign CLI must not receive an unknown flag.
+        if (this.hookSettingsPath && path.basename(shellCommand).startsWith('claude')) {
+          shellArgs.push('--settings', this.hookSettingsPath);
+        }
         if (initialPrompt) {
           shellArgs.push(initialPrompt);
         }
@@ -573,6 +651,8 @@ export class CloudTerminalManager extends EventEmitter {
           ...baseEnv,
           CLAUDE_MODEL: modelConfig.model,
           CLAUDE_PROVIDER: modelConfig.provider || 'anthropic',
+          // Read by the Stop hook to name this session in its callback.
+          [CLOUD_SESSION_ID_ENV]: sessionId,
           ...(extraEnv ?? {}),
         };
       }

@@ -1,4 +1,4 @@
-import { LitElement, html } from 'lit';
+import { LitElement, html, type PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { ContextProvider } from '@lit/context';
 
@@ -49,6 +49,12 @@ import './components/queue/aos-queue-section.js';
 import './components/queue/aos-specs-section.js';
 import type { QueueItem } from './components/queue/aos-queue-item.js';
 import type { TerminalSession } from './components/terminal/aos-cloud-terminal-sidebar.js';
+import {
+  upsertNotification,
+  removeNotification,
+  pruneNotifications,
+  type AgentNotification,
+} from './components/terminal/agent-notifications.js';
 import type { ProjectSelectedDetail } from './components/aos-project-add-modal.js';
 import type { GitStatusData, GitBranchEntry, GitPrInfo } from '../../src/shared/types/git.protocol.js';
 import type { GlobalGateState } from '../../src/shared/types/concurrency.protocol.js';
@@ -123,6 +129,15 @@ export class AosApp extends LitElement {
 
   @state()
   private activeTerminalSessionId: string | null = null;
+
+  /**
+   * "Agent finished" bell entries (Claude Code Stop hook → cloud-terminal:agent-event).
+   * Kept here because this class owns the sessions and the active id: willUpdate()
+   * clears an entry as soon as its session becomes active by ANY path, and prunes
+   * entries whose session disappeared.
+   */
+  @state()
+  private agentNotifications: AgentNotification[] = [];
 
   /** Remember last active terminal session per project */
   private lastActiveSessionByProject = new Map<string, string>();
@@ -487,6 +502,9 @@ export class AosApp extends LitElement {
   private boundCloudTerminalClosedHandler: MessageHandler = (msg) => {
     this._handleCloudTerminalClosed(msg);
   };
+  private boundCloudTerminalAgentEventHandler: MessageHandler = (msg) => {
+    this._handleCloudTerminalAgentEvent(msg);
+  };
   private boundKeydownHandler = (e: KeyboardEvent) => this._handleGlobalKeydown(e);
   // WTT-003: Handler for workflow-terminal-request custom events
   private _handleWorkflowTerminalRequest = (e: CustomEvent<{
@@ -540,6 +558,7 @@ export class AosApp extends LitElement {
     gateway.on('document-preview.close', this.boundDocumentPreviewCloseHandler);
     // WSM-002: Listen for terminal close events (setup session re-validation)
     gateway.on('cloud-terminal:closed', this.boundCloudTerminalClosedHandler);
+    gateway.on('cloud-terminal:agent-event', this.boundCloudTerminalAgentEventHandler);
     gateway.on('git:status:response', this.boundGitStatusHandler);
     gateway.on('git:branches:response', this.boundGitBranchesHandler);
     gateway.on('git:checkout:response', this.boundGitCheckoutHandler);
@@ -610,6 +629,7 @@ export class AosApp extends LitElement {
     gateway.off('document-preview.close', this.boundDocumentPreviewCloseHandler);
     // WSM-002: Remove terminal close listener
     gateway.off('cloud-terminal:closed', this.boundCloudTerminalClosedHandler);
+    gateway.off('cloud-terminal:agent-event', this.boundCloudTerminalAgentEventHandler);
     gateway.off('git:status:response', this.boundGitStatusHandler);
     gateway.off('git:branches:response', this.boundGitBranchesHandler);
     gateway.off('git:checkout:response', this.boundGitCheckoutHandler);
@@ -966,6 +986,54 @@ export class AosApp extends LitElement {
         session.id === e.detail.sessionId
           ? { ...session, needsInput: false }
           : session
+      );
+    }
+  }
+
+  /**
+   * Stop hook fired in a claude-code session. Adds a bell entry unless the user
+   * is looking at that very session (same rule as needsInput). Sessions of
+   * projects that are not open are unknown here and silently ignored.
+   */
+  private _handleCloudTerminalAgentEvent(msg: Record<string, unknown>): void {
+    const backendId = typeof msg.sessionId === 'string' ? msg.sessionId : null;
+    if (!backendId || msg.event !== 'stop') return;
+    const match = this.terminalSessions.find(s => s.terminalSessionId === backendId);
+    if (!match || match.id === this.activeTerminalSessionId) return;
+    const ts = typeof msg.timestamp === 'string' ? Date.parse(msg.timestamp) : NaN;
+    this.agentNotifications = upsertNotification(this.agentNotifications, {
+      sessionId: match.id,
+      terminalSessionId: backendId,
+      finishedAt: Number.isFinite(ts) ? ts : Date.now(),
+      preview: typeof msg.preview === 'string' ? msg.preview : undefined,
+    });
+  }
+
+  /**
+   * Bell entry clicked in single mode for a session of another project: switch
+   * project and land on that session. `lastActiveSessionByProject` is the hook
+   * handleProjectTabSelect() already uses to pick the session after a switch.
+   */
+  private _handleTerminalSessionJump(e: CustomEvent<{ sessionId: string; projectPath: string }>): void {
+    const { sessionId, projectPath } = e.detail;
+    const project = this.openProjects.find(p => p.path === projectPath);
+    if (project && project.id !== this.activeProjectId) {
+      this.lastActiveSessionByProject.set(project.id, sessionId);
+      this.switchToProject(project.id);
+      return;
+    }
+    this.activeTerminalSessionId = sessionId;
+  }
+
+  override willUpdate(changed: PropertyValues): void {
+    super.willUpdate(changed);
+    if (changed.has('activeTerminalSessionId')) {
+      this.agentNotifications = removeNotification(this.agentNotifications, this.activeTerminalSessionId);
+    }
+    if (changed.has('terminalSessions')) {
+      this.agentNotifications = pruneNotifications(
+        this.agentNotifications,
+        new Set(this.terminalSessions.map(s => s.id))
       );
     }
   }
@@ -2176,7 +2244,9 @@ export class AosApp extends LitElement {
         .allSessions=${this.terminalSessions}
         .projectNames=${this.terminalProjectNames}
         .activeSessionId=${this.activeTerminalSessionId}
+        .agentNotifications=${this.agentNotifications}
         @sidebar-close=${this._handleTerminalClose}
+        @session-jump=${this._handleTerminalSessionJump}
         @new-session=${this._handleNewTerminalSession}
         @session-select=${this._handleTerminalSessionSelect}
         @session-close=${this._handleTerminalSessionClose}

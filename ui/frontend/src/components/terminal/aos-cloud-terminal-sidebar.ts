@@ -10,6 +10,7 @@ import { gateway, type WebSocketMessage } from '../../gateway.js';
 import { hiddenRowPane, clampRowRatio } from './pane-visibility.js';
 import { effectiveZoomedPane, nextZoomedPane, paneShowingProject, ZOOM_GEOM } from './pane-zoom.js';
 import { isPaneZoomShortcut, isEditableTarget } from '../../utils/keyboard-shortcuts.js';
+import { resolveJumpTarget, formatRelativeTime, type AgentNotification } from './agent-notifications.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 import { MobileBreakpointController } from '../../controllers/mobile-breakpoint-controller.js';
 import '../mobile/aos-mobile-terminal-header.js';
@@ -86,6 +87,13 @@ export class AosCloudTerminalSidebar extends LitElement {
   @property({ attribute: false }) allSessions: TerminalSession[] = [];
   /** Map projectPath -> display name, for the pane dropdown's <optgroup> labels. */
   @property({ attribute: false }) projectNames: Record<string, string> = {};
+
+  /** "Agent finished" entries for the header bell (owned by app.ts, see agent-notifications.ts). */
+  @property({ attribute: false }) agentNotifications: AgentNotification[] = [];
+
+  @state() private _bellOpen = false;
+  /** Re-renders the relative times while the bell list is open. */
+  private _bellTicker: ReturnType<typeof setInterval> | null = null;
   @state() private sidebarWidth = 500;
   @state() private isResizing = false;
   @state() private isFullscreen = false;
@@ -255,6 +263,140 @@ export class AosCloudTerminalSidebar extends LitElement {
       .action-btn svg {
         width: 16px;
         height: 16px;
+      }
+
+      /* ── Agent-finished bell ─────────────────────────────────────── */
+      .bell-wrap {
+        position: relative;
+        display: flex;
+      }
+
+      .bell-btn {
+        position: relative;
+        opacity: 0.55;
+      }
+
+      .bell-btn.has-items,
+      .bell-btn:hover,
+      .bell-btn.open {
+        opacity: 1;
+      }
+
+      .bell-badge {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        min-width: 14px;
+        height: 14px;
+        padding: 0 3px;
+        background: var(--color-accent-error, #ef4444);
+        border-radius: 7px;
+        color: #fff;
+        font-size: 9px;
+        font-weight: 700;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+
+      .bell-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 0;
+        width: 340px;
+        max-width: calc(100vw - 24px);
+        max-height: 60vh;
+        overflow-y: auto;
+        background: #2a2a2a;
+        border: 1px solid #555;
+        border-radius: 4px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+        z-index: 200;
+        padding: 4px 0;
+        color: #e0e0e0;
+        text-align: left;
+      }
+
+      .bell-dropdown-header {
+        padding: 6px 12px 4px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #c0c0c0;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid #444;
+        margin-bottom: 4px;
+      }
+
+      .bell-empty {
+        padding: 10px 12px;
+        font-size: 12px;
+        color: #a0a0a0;
+      }
+
+      .bell-row {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding: 6px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #383838;
+        transition: background 0.1s;
+      }
+
+      .bell-row:last-child {
+        border-bottom: none;
+      }
+
+      .bell-row:hover {
+        background: #3a3a3a;
+      }
+
+      .bell-row-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .bell-project {
+        flex: 0 1 auto;
+        max-width: 120px;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .bell-name {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: #e0e0e0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .bell-time {
+        flex: 0 0 auto;
+        font-size: 10px;
+        color: #a0a0a0;
+        white-space: nowrap;
+      }
+
+      .bell-preview {
+        font-size: 11px;
+        color: #b0b0b0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .new-session-btn {
@@ -990,6 +1132,7 @@ export class AosCloudTerminalSidebar extends LitElement {
               </svg>
               Neue Session
             </button>
+            ${this._renderBell()}
             ${this._renderLayoutSwitcher()}
             <button
               class="action-btn"
@@ -1244,13 +1387,167 @@ export class AosCloudTerminalSidebar extends LitElement {
       this._emitSessionSelect(sessionId);
     }
     this._refreshVisibleTerminals();
+    if (sessionId) this._focusSessionTerminal(sessionId);
+  }
+
+  /** Puts keyboard focus into a session's xterm once the pending render has landed. */
+  private _focusSessionTerminal(sessionId: string): void {
     void this.updateComplete.then(() => {
-      if (!sessionId) return;
       const panel = this.querySelector(
         `aos-terminal-session.session-panel[data-session-id="${sessionId}"]`
       ) as AosTerminalSession | null;
       panel?.focusTerminal();
     });
+  }
+
+  // ── Agent-finished bell ──────────────────────────────────────────────────
+
+  /** Entries whose session still exists (app.ts prunes too; this is belt-and-braces). */
+  private _visibleNotifications(): AgentNotification[] {
+    return this.agentNotifications.filter((n) => this.allSessions.some((s) => s.id === n.sessionId));
+  }
+
+  private _renderBell() {
+    const items = this._visibleNotifications();
+    const count = items.length;
+    const title = count === 0
+      ? 'Keine fertigen Agenten'
+      : `${count} Agent${count === 1 ? '' : 'en'} fertig`;
+    return html`
+      <div class="bell-wrap">
+        <button
+          class="action-btn bell-btn ${count > 0 ? 'has-items' : ''} ${this._bellOpen ? 'open' : ''}"
+          @click=${this._toggleBell}
+          title=${title}
+          aria-label=${title}
+          aria-haspopup="true"
+          aria-expanded=${this._bellOpen ? 'true' : 'false'}
+        >
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 2a1 1 0 0 1 1 1v.26A6 6 0 0 1 16 9v3l1.707 1.707A1 1 0 0 1 17 15.5H3a1 1 0 0 1-.707-1.793L4 12V9a6 6 0 0 1 5-5.74V3a1 1 0 0 1 1-1zm0 16a2 2 0 0 0 2-2H8a2 2 0 0 0 2 2z" fill="currentColor"></path>
+          </svg>
+          ${count > 0
+            ? html`<span class="bell-badge" aria-hidden="true">${count > 9 ? '9+' : count}</span>`
+            : nothing}
+        </button>
+        ${this._bellOpen
+          ? html`
+              <div class="bell-dropdown" role="menu">
+                <div class="bell-dropdown-header">Fertige Agenten</div>
+                ${count === 0
+                  ? html`<div class="bell-empty">Keine fertigen Agenten</div>`
+                  : repeat(items, (n) => n.sessionId, (n) => this._renderBellRow(n))}
+              </div>
+            `
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _renderBellRow(n: AgentNotification) {
+    const session = this.allSessions.find((s) => s.id === n.sessionId);
+    if (!session) return nothing;
+    const hue = this._projectHue(session.projectPath);
+    const badgeStyle = { background: `hsl(${hue} 55% 22%)`, color: `hsl(${hue} 70% 80%)` };
+    return html`
+      <div class="bell-row" role="menuitem" @click=${() => this._jumpToNotification(n)}>
+        <div class="bell-row-top">
+          <span class="bell-project" style=${styleMap(badgeStyle)} title=${session.projectPath}>
+            ${this._projectLabel(session.projectPath)}
+          </span>
+          <span class="bell-name" title=${session.name}>${session.name}</span>
+          <span class="bell-time">${formatRelativeTime(n.finishedAt)}</span>
+        </div>
+        ${n.preview ? html`<div class="bell-preview" title=${n.preview}>${n.preview}</div>` : nothing}
+      </div>
+    `;
+  }
+
+  private _toggleBell = (e: Event): void => {
+    e.stopPropagation();
+    if (this._bellOpen) this._closeBell();
+    else this._openBell();
+  };
+
+  private _openBell(): void {
+    this._bellOpen = true;
+    document.addEventListener('click', this.boundBellOutsideClick);
+    document.addEventListener('keydown', this.boundBellKeydown);
+    this._bellTicker = setInterval(() => this.requestUpdate(), 30_000);
+  }
+
+  private _closeBell(): void {
+    if (!this._bellOpen) return;
+    this._bellOpen = false;
+    document.removeEventListener('click', this.boundBellOutsideClick);
+    document.removeEventListener('keydown', this.boundBellKeydown);
+    if (this._bellTicker) {
+      clearInterval(this._bellTicker);
+      this._bellTicker = null;
+    }
+  }
+
+  private boundBellOutsideClick = (e: MouseEvent): void => {
+    const wrap = this.querySelector('.bell-wrap');
+    if (wrap && e.composedPath().includes(wrap)) return;
+    this._closeBell();
+  };
+
+  private boundBellKeydown = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') this._closeBell();
+  };
+
+  /**
+   * Bell entry clicked: bring that session into view. Every branch ends in a
+   * `session-select` reaching app.ts, whose willUpdate() drops the entry.
+   */
+  private _jumpToNotification(n: AgentNotification): void {
+    this._closeBell();
+    const session = this.allSessions.find((s) => s.id === n.sessionId);
+    if (!session) return;
+    const target = resolveJumpTarget({
+      isSplit: this._isSplit,
+      paneSessionIds: this.paneSessionIds,
+      paneCount: this._paneCount,
+      paneProjects: Array.from({ length: this._paneCount }, (_, i) => this._projectOf(i)),
+      zoomedPane: this._effectiveZoom,
+      focusedPane: this.focusedPaneIndex,
+      sessionId: session.id,
+      sessionProject: session.projectPath,
+    });
+    switch (target.kind) {
+      case 'select-tab':
+        if (this.sessions.some((s) => s.id === session.id)) {
+          this._emitSessionSelect(session.id);
+        } else {
+          // Other project in single mode: app.ts switches project and lands on this session.
+          this.dispatchEvent(
+            new CustomEvent('session-jump', {
+              detail: { sessionId: session.id, projectPath: session.projectPath },
+              bubbles: true,
+              composed: true,
+            })
+          );
+        }
+        this._focusSessionTerminal(session.id);
+        return;
+      case 'focus-pane':
+        this._handlePaneFocus(target.pane, session.id);
+        this._focusSessionTerminal(session.id);
+        return;
+      case 'zoom-pane':
+        this._zoomedPane = target.pane;
+        this._afterZoomChange(target.pane);
+        return;
+      case 'assign-pane':
+        // Set the zoom target BEFORE assigning: _assignPaneSession keeps the zoom only
+        // when it targets the zoomed pane itself, and drops it for any other pane.
+        if (target.keepZoom) this._zoomedPane = target.pane;
+        this._assignPaneSession(target.pane, session.id);
+        if (target.keepZoom) this._afterZoomChange(target.pane);
+        else this._focusSessionTerminal(session.id);
+        return;
+    }
   }
 
   /** Drop the maximize indicator for a row-axis (e.g. after a manual splitter drag repositions it). */
@@ -2622,6 +2919,7 @@ export class AosCloudTerminalSidebar extends LitElement {
     gateway.off('plan-review:config.snapshot', this.boundHandleConfigSnapshot);
     gateway.off('gateway.connected', this.boundHandleGatewayConnected);
     document.removeEventListener('keydown', this.boundHandleFullscreenKeydown);
+    this._closeBell();
   }
 }
 
