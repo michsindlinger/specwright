@@ -346,7 +346,8 @@ export class TmuxSessionBackend {
    */
   public async capturePaneHistory(name: string, maxLines: number): Promise<string | null> {
     const res = await this.tmux(
-      ['capture-pane', '-p', '-e', '-t', `=${name}`, '-S', `-${maxLines}`, '-E', '-1'],
+      // `=name:` — a PANE target; tmux 3.7c rejects a bare `=name` here.
+      ['capture-pane', '-p', '-e', '-t', `=${name}:`, '-S', `-${maxLines}`, '-E', '-1'],
       TMUX_CAPTURE_TIMEOUT_MS
     );
     if (!res.ok || res.stdout.length === 0) return null;

@@ -1,6 +1,7 @@
 /**
- * TmuxSessionBackend.captureScreen() against a real tmux server on a private
- * socket. Skipped where tmux is not installed (CI images without it).
+ * TmuxSessionBackend pane captures (captureScreen, capturePaneHistory) against
+ * a real tmux server on a private socket. Skipped where tmux is not installed
+ * (CI images without it).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execFileSync } from 'child_process';
@@ -89,5 +90,42 @@ describe.skipIf(!tmuxAvailable)('TmuxSessionBackend.captureScreen() with a real 
   it('prepends history on request and returns null for an unknown session', async () => {
     expect(await backend.captureScreen('cap', 100)).toContain('Would you like to proceed?');
     expect(await backend.captureScreen('no-such-session')).toBeNull();
+  });
+});
+
+describe.skipIf(!tmuxAvailable)('TmuxSessionBackend.capturePaneHistory() with a real tmux server', () => {
+  let dir: string;
+  let sock: string;
+  let backend: SocketBackend;
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'tmux-hist-'));
+    sock = join(dir, 's');
+    backend = new SocketBackend(sock);
+    // 60 lines into a 5-row pane: everything above the last rows scrolls into history.
+    execFileSync('tmux', [
+      '-S', sock, '-f', '/dev/null',
+      'new-session', '-d', '-s', 'cs-hist', '-x', '40', '-y', '5',
+      'seq 1 60; sleep 60',
+    ]);
+  });
+
+  afterAll(() => {
+    try {
+      execFileSync('tmux', ['-S', sock, 'kill-server'], { stdio: 'ignore' });
+    } catch {
+      // server already gone
+    }
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns the scrollback of the session pane with CRLF line endings (restore after a backend restart)', async () => {
+    let history: string | null = null;
+    for (let i = 0; i < 40 && !history?.includes('50'); i++) {
+      history = await backend.capturePaneHistory('cs-hist', 100);
+      if (!history?.includes('50')) await new Promise((r) => setTimeout(r, 50));
+    }
+    expect(history).not.toBeNull();
+    expect(history).toContain('1\r\n2\r\n3\r\n');
   });
 });
