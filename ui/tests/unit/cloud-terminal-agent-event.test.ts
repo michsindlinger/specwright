@@ -242,6 +242,34 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
       expect(emitted).toEqual([]);
     });
 
+    it('machine text with inferUnblock:false leaves a blocked session blocked', async () => {
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      mgr.reportAgentEvent(id, 'blocked', { reason: 'Berechtigung: ExitPlanMode' });
+      emitted = [];
+
+      expect(mgr.sendInput(id, 'External review consensus …\n', { inferUnblock: false })).toBe(true);
+      expect(emitted).toEqual([]);
+      expect(mgr.getSession(id)?.agentStatus).toBe('blocked');
+      // The explicit default still infers: the user's Enter unblocks.
+      expect(mgr.sendInput(id, '\r', { inferUnblock: true })).toBe(true);
+      expect(emitted).toEqual([{ event: 'user-input', status: 'working' }]);
+    });
+
+    it('review-injected on an already blocked session re-emits with the new reason', async () => {
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      mgr.reportAgentEvent(id, 'blocked', { reason: 'Berechtigung: ExitPlanMode' });
+      emitted = [];
+
+      expect(mgr.reportAgentEvent(id, 'review-injected', { reason: 'Plan-Review eingefügt (2/3 Reviewer)' })).toBe(true);
+      expect(emitted).toEqual([
+        { event: 'review-injected', status: 'blocked', reason: 'Plan-Review eingefügt (2/3 Reviewer)' },
+      ]);
+      expect(mgr.getSession(id)?.agentStatusReason).toBe('Plan-Review eingefügt (2/3 Reviewer)');
+      // Same event, same reason again → nothing new to broadcast.
+      mgr.reportAgentEvent(id, 'review-injected', { reason: 'Plan-Review eingefügt (2/3 Reviewer)' });
+      expect(emitted).toHaveLength(1);
+    });
+
     it('idle-prompt does not bump lastActivity, other hook events do', async () => {
       const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
       mgr.reportAgentEvent(id, 'prompt-submitted');

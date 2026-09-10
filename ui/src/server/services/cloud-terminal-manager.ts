@@ -1182,7 +1182,17 @@ export class CloudTerminalManager extends EventEmitter {
    * @param data - Input data (keystrokes, paste)
    * @returns true if written successfully, false if session not found or not active
    */
-  public sendInput(sessionId: CloudTerminalSessionId, data: string): boolean {
+  /**
+   * Writes to the session's PTY. `inferUnblock` (default true) lets an
+   * answer-shaped keystroke on a blocked session count as the user's answer;
+   * machine-originated text (plan-review inject) passes `false` because it is
+   * not an answer — the dialog it lands in keeps waiting.
+   */
+  public sendInput(
+    sessionId: CloudTerminalSessionId,
+    data: string,
+    opts: { inferUnblock?: boolean } = {}
+  ): boolean {
     const session = this.sessions.get(sessionId);
     if (!session) {
       return false;
@@ -1199,7 +1209,7 @@ export class CloudTerminalManager extends EventEmitter {
       session.lastActivity = new Date();
       // Claude does not report that a permission dialog was answered; an
       // answer-shaped keystroke on a blocked session is the signal.
-      if (session.agentStatus === 'blocked' && isUnblockingInput(data)) {
+      if (opts.inferUnblock !== false && session.agentStatus === 'blocked' && isUnblockingInput(data)) {
         this.applyAgentEvent(session, 'user-input');
       }
     }

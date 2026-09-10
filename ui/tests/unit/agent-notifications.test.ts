@@ -6,6 +6,7 @@ import {
   formatRelativeTime,
   resolveJumpTarget,
   buildBellRows,
+  ringsForAgentEvent,
   type AgentNotification,
   type BellSession,
   type JumpInput,
@@ -178,5 +179,38 @@ describe('buildBellRows()', () => {
     expect(buildBellRows([n('a', 7, 'All done')], [s('a', 'done', 7)], null)[0])
       .toMatchObject({ kind: 'done', preview: 'All done', at: 7 });
     expect(buildBellRows([], [{ id: 'a', agentStatus: 'blocked' }], null)[0]).toMatchObject({ at: 0 });
+  });
+});
+
+describe('ringsForAgentEvent()', () => {
+  const ring = (event: string, status: BellSession['agentStatus'], prevStatus: BellSession['agentStatus'], isActive = false) =>
+    ringsForAgentEvent({ event, status: status ?? 'unknown', prevStatus, isActive });
+
+  it('never rings for the session the user is looking at', () => {
+    expect(ring('stop', 'done', 'working', true)).toBe(false);
+    expect(ring('blocked', 'blocked', 'working', true)).toBe(false);
+    expect(ring('review-injected', 'blocked', 'blocked', true)).toBe(false);
+    expect(ring('review-failed', 'blocked', 'blocked', true)).toBe(false);
+  });
+
+  it('plan-review events ring once each, even when the session was already blocked', () => {
+    expect(ring('review-injected', 'blocked', 'blocked')).toBe(true);
+    expect(ring('review-injected', 'blocked', 'working')).toBe(true);
+    expect(ring('review-failed', 'blocked', 'blocked')).toBe(true);
+  });
+
+  it('every stop rings; a transition into blocked rings once, a repeated blocked does not', () => {
+    expect(ring('stop', 'done', 'working')).toBe(true);
+    expect(ring('stop', 'done', 'done')).toBe(true);
+    expect(ring('blocked', 'blocked', 'working')).toBe(true);
+    expect(ring('blocked', 'blocked', undefined)).toBe(true);
+    expect(ring('blocked', 'blocked', 'blocked')).toBe(false);
+  });
+
+  it('working / idle / unknown events stay silent', () => {
+    expect(ring('prompt-submitted', 'working', 'idle')).toBe(false);
+    expect(ring('user-input', 'working', 'blocked')).toBe(false);
+    expect(ring('idle-timeout', 'idle', 'done')).toBe(false);
+    expect(ring('something-new', 'working', 'working')).toBe(false);
   });
 });

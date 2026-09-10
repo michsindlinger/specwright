@@ -10,9 +10,19 @@ import type { CloudTerminalManager } from '../../src/server/services/cloud-termi
  * PlanReviewOrchestrator (EventEmitter + a handful of methods). Returns the
  * mock + handles to control session metadata and capture sendInput calls.
  */
-function buildMockCtm(opts: { lastDetectedPlanPath?: string | null; sendInputReturns?: boolean } = {}) {
+function buildMockCtm(
+  opts: {
+    lastDetectedPlanPath?: string | null;
+    sendInputReturns?: boolean;
+    /** PTY lifecycle of the mocked session (default active). */
+    sessionStatus?: 'active' | 'paused';
+    /** Agent status of the mocked session (default working). */
+    agentStatus?: 'working' | 'blocked';
+  } = {}
+) {
   const emitter = new EventEmitter();
   const sendInput = vi.fn().mockReturnValue(opts.sendInputReturns ?? true);
+  const reportAgentEvent = vi.fn().mockReturnValue(true);
   const setPlanReviewEnabled = vi.fn();
   const triggerManualReview = vi.fn();
   const waitForIdle = vi.fn().mockResolvedValue(undefined);
@@ -20,6 +30,7 @@ function buildMockCtm(opts: { lastDetectedPlanPath?: string | null; sendInputRet
 
   const ctm = Object.assign(emitter, {
     sendInput,
+    reportAgentEvent,
     setPlanReviewEnabled,
     triggerManualReview,
     waitForIdle,
@@ -27,7 +38,8 @@ function buildMockCtm(opts: { lastDetectedPlanPath?: string | null; sendInputRet
       sessionId: 'sess-1',
       projectPath: '/tmp/project',
       terminalType: 'claude-code' as const,
-      status: 'active' as const,
+      status: opts.sessionStatus ?? ('active' as const),
+      agentStatus: opts.agentStatus ?? ('working' as const),
       buffer: [],
       createdAt: new Date(),
       lastActivity: new Date(),
@@ -39,6 +51,7 @@ function buildMockCtm(opts: { lastDetectedPlanPath?: string | null; sendInputRet
     ctm,
     emitter,
     sendInput,
+    reportAgentEvent,
     setPlanReviewEnabled,
     setPlanPath: (p: string | null) => {
       planPath = p;
@@ -270,5 +283,142 @@ describe('PlanReviewOrchestrator sendSnapshot default reviewers', () => {
     const payload = captureSnapshot(orch, 'sess-1');
 
     expect(payload.reviewers).toEqual([]);
+  });
+});
+
+/**
+ * Agent-status side channel: the orchestrator feeds the tab dot / bell / chime
+ * through reportAgentEvent() so an injected (or failed) review is noticed like
+ * a permission prompt.
+ */
+describe('PlanReviewOrchestrator agent-status reports', () => {
+  const ONE_REVIEWER = { enabled: true, reviewers: [{ providerId: 'mock', modelId: 'mock-1' }] };
+
+  async function run(mock: ReturnType<typeof buildMockCtm>, orch: PlanReviewOrchestrator): Promise<void> {
+    orch.setTabConfig('sess-1', ONE_REVIEWER);
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  }
+
+  it('reports review-injected after a successful inject, before plan-review:injected, without unblock inference', async () => {
+    const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md' });
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+    const injected = vi.fn();
+    orch.on('plan-review:injected', injected);
+
+    await run(mock, orch);
+
+    expect(mock.sendInput).toHaveBeenCalledWith('sess-1', expect.stringMatching(/\n$/), { inferUnblock: false });
+    expect(mock.reportAgentEvent).toHaveBeenCalledOnce();
+    expect(mock.reportAgentEvent).toHaveBeenCalledWith('sess-1', 'review-injected', {
+      reason: 'Plan-Review eingefügt (1/1 Reviewer)',
+    });
+    expect(mock.reportAgentEvent.mock.invocationCallOrder[0]).toBeGreaterThan(mock.sendInput.mock.invocationCallOrder[0]);
+    expect(mock.reportAgentEvent.mock.invocationCallOrder[0]).toBeLessThan(injected.mock.invocationCallOrder[0]);
+  });
+
+  it('counts fulfilled vs selected reviewers in the reason', async () => {
+    const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md' });
+    const orch = new PlanReviewOrchestrator(mock.ctm);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (orch as any).externalReviewer = {
+      reviewPlan: vi
+        .fn()
+        .mockResolvedValueOnce('Finding A')
+        .mockRejectedValueOnce(new Error('timeout')),
+    };
+    orch.setTabConfig('sess-1', {
+      enabled: true,
+      reviewers: [
+        { providerId: 'mock', modelId: 'mock-1' },
+        { providerId: 'mock2', modelId: 'mock-2' },
+      ],
+    });
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(mock.reportAgentEvent).toHaveBeenCalledWith('sess-1', 'review-injected', {
+      reason: 'Plan-Review eingefügt (1/2 Reviewer)',
+    });
+  });
+
+  it('does not report when sendInput fails', async () => {
+    const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md', sendInputReturns: false });
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+
+    await run(mock, orch);
+
+    expect(mock.reportAgentEvent).not.toHaveBeenCalled();
+  });
+
+  it('reports review-failed when every reviewer fails and the session is blocked (plan dialog open)', async () => {
+    const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md', agentStatus: 'blocked' });
+    const orch = new PlanReviewOrchestrator(mock.ctm);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (orch as any).externalReviewer = { reviewPlan: vi.fn().mockRejectedValue(new Error('boom')) };
+    const error = vi.fn();
+    orch.on('plan-review:error', error);
+
+    await run(mock, orch);
+
+    expect(error).toHaveBeenCalledWith('sess-1', 'All reviewers failed');
+    expect(mock.sendInput).not.toHaveBeenCalled();
+    expect(mock.reportAgentEvent).toHaveBeenCalledOnce();
+    expect(mock.reportAgentEvent).toHaveBeenCalledWith('sess-1', 'review-failed', {
+      reason: 'Plan-Review fehlgeschlagen (0/1 Reviewer)',
+    });
+  });
+
+  it('stays silent on total failure when the session is not blocked (nothing provably waits)', async () => {
+    const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md', agentStatus: 'working' });
+    const orch = new PlanReviewOrchestrator(mock.ctm);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (orch as any).externalReviewer = { reviewPlan: vi.fn().mockRejectedValue(new Error('boom')) };
+    const error = vi.fn();
+    orch.on('plan-review:error', error);
+
+    await run(mock, orch);
+
+    expect(error).toHaveBeenCalledOnce();
+    expect(mock.reportAgentEvent).not.toHaveBeenCalled();
+  });
+
+  it('never reports for a session whose PTY is not active', async () => {
+    const paused = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md', sessionStatus: 'paused', agentStatus: 'blocked' });
+    await run(paused, buildOrchestratorWithMockReviewer(paused.ctm));
+    expect(paused.reportAgentEvent).not.toHaveBeenCalled();
+
+    const pausedFail = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md', sessionStatus: 'paused', agentStatus: 'blocked' });
+    const orch = new PlanReviewOrchestrator(pausedFail.ctm);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (orch as any).externalReviewer = { reviewPlan: vi.fn().mockRejectedValue(new Error('boom')) };
+    await run(pausedFail, orch);
+    expect(pausedFail.reportAgentEvent).not.toHaveBeenCalled();
+  });
+
+  it('does not report on a lock collision (a review is still running)', async () => {
+    const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md', agentStatus: 'blocked' });
+    const orch = new PlanReviewOrchestrator(mock.ctm);
+    let release: (v: string) => void = () => {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (orch as any).externalReviewer = {
+      reviewPlan: vi.fn().mockImplementation(() => new Promise<string>((resolve) => { release = resolve; })),
+    };
+    const error = vi.fn();
+    orch.on('plan-review:error', error);
+    orch.setTabConfig('sess-1', ONE_REVIEWER);
+
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'manual');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(error).toHaveBeenCalledWith('sess-1', 'Review already in progress for this session');
+    expect(mock.reportAgentEvent).not.toHaveBeenCalled();
+
+    release('Findings');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(mock.reportAgentEvent).toHaveBeenCalledOnce();
+    expect(mock.reportAgentEvent).toHaveBeenCalledWith('sess-1', 'review-injected', expect.anything());
   });
 });

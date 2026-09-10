@@ -61,6 +61,11 @@ function buildInjectText(
  *   'plan-review:error'            (sessionId, message)
  *
  * websocket.ts (APR-007) listens to these events and forwards to WS clients.
+ *
+ * Besides its own events it feeds the session's agent status (tab dot, bell,
+ * chime) through CloudTerminalManager.reportAgentEvent(): `review-injected`
+ * once the review text sits in Claude's plan dialog, `review-failed` when no
+ * reviewer delivered and the dialog is provably still open (session blocked).
  */
 export class PlanReviewOrchestrator extends EventEmitter {
   private sessions: Map<CloudTerminalSessionId, SessionState> = new Map();
@@ -121,6 +126,24 @@ export class PlanReviewOrchestrator extends EventEmitter {
         prompt,
       })
     );
+  }
+
+  /**
+   * Feeds the agent status (tab dot / bell / chime). Only for a live PTY;
+   * `review-failed` additionally requires the session to be blocked already —
+   * that is the only proof the plan dialog is still open. A manual re-review
+   * while Claude works, or a dialog the user answered meanwhile, must not paint
+   * the tab orange for a review that has nothing to wait for.
+   */
+  private reportReviewStatus(
+    sessionId: CloudTerminalSessionId,
+    event: 'review-injected' | 'review-failed',
+    reason: string
+  ): void {
+    const session = this.cloudTerminalManager.getSession(sessionId);
+    if (!session || session.status !== 'active') return;
+    if (event === 'review-failed' && session.agentStatus !== 'blocked') return;
+    this.cloudTerminalManager.reportAgentEvent(sessionId, event, { reason });
   }
 
   private getOrCreateState(sessionId: CloudTerminalSessionId): SessionState {
@@ -244,6 +267,11 @@ export class PlanReviewOrchestrator extends EventEmitter {
 
       if (fulfilled.length === 0) {
         this.emit('plan-review:error', sessionId, 'All reviewers failed');
+        this.reportReviewStatus(
+          sessionId,
+          'review-failed',
+          `Plan-Review fehlgeschlagen (0/${reviewers.length} Reviewer)`
+        );
         return;
       }
 
@@ -274,9 +302,20 @@ export class PlanReviewOrchestrator extends EventEmitter {
       this.emit('plan-review:aggregated', sessionId, aggregatedText, fallbackReason);
 
       await this.cloudTerminalManager.waitForIdle(sessionId, 500);
-      const written = this.cloudTerminalManager.sendInput(sessionId, aggregatedText + '\n');
+      // Machine text, not the user's answer: must not flip a blocked session to
+      // working (the review lands in the still-open plan dialog).
+      const written = this.cloudTerminalManager.sendInput(sessionId, aggregatedText + '\n', {
+        inferUnblock: false,
+      });
       if (written && planPath) {
         state.lastInjectedPlanPath = planPath;
+      }
+      if (written) {
+        this.reportReviewStatus(
+          sessionId,
+          'review-injected',
+          `Plan-Review eingefügt (${fulfilled.length}/${reviewers.length} Reviewer)`
+        );
       }
 
       this.emit('plan-review:injected', sessionId);

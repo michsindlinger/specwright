@@ -10,6 +10,8 @@ describe('reduceAgentStatus()', () => {
       ['session-start', 'idle'],
       ['prompt-submitted', 'working'],
       ['blocked', 'blocked'],
+      ['review-injected', 'blocked'],
+      ['review-failed', 'blocked'],
       ['unblocked', 'working'],
       ['stop', 'done'],
       ['stop-failure', 'error'],
@@ -42,7 +44,7 @@ describe('bumpsActivity()', () => {
   it('decay events are not activity', () => {
     expect(bumpsActivity('idle-prompt')).toBe(false);
     expect(bumpsActivity('idle-timeout')).toBe(false);
-    for (const e of ['session-start', 'prompt-submitted', 'blocked', 'unblocked', 'stop', 'stop-failure', 'user-input'] as const) {
+    for (const e of ['session-start', 'prompt-submitted', 'blocked', 'unblocked', 'stop', 'stop-failure', 'user-input', 'review-injected', 'review-failed'] as const) {
       expect(bumpsActivity(e)).toBe(true);
     }
   });

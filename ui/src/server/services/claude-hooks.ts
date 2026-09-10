@@ -7,6 +7,8 @@
  * POSTs Claude's stdin payload to this backend; the manager reduces it to an
  * agent status (idle / working / blocked / error / done) and broadcasts a
  * `cloud-terminal:agent-event` so the UI can colour the tab and ring its bell.
+ * Hooks are not the only source: the plan-review orchestrator reports
+ * `review-injected` / `review-failed` through the same manager path.
  *
  * Design notes:
  * - ONE settings file per backend port (not per session): the session id

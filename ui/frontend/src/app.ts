@@ -53,6 +53,7 @@ import {
   upsertNotification,
   removeNotification,
   pruneNotifications,
+  ringsForAgentEvent,
   type AgentNotification,
 } from './components/terminal/agent-notifications.js';
 import type { CloudTerminalAgentStatus } from '../../src/shared/types/cloud-terminal.protocol.js';
@@ -1020,6 +1021,8 @@ export class AosApp extends LitElement {
    *    `blocked` rings the chime — the row itself is derived from the status by
    *    buildBellRows(), so it needs no entry of its own. Neither happens while
    *    the user is looking at that very session (same rule as needsInput).
+   * 3. The chime decision lives in ringsForAgentEvent() (one ring per message
+   *    at most; plan-review events ring even on an already blocked session).
    * Sessions of projects that are not open are unknown here and ignored.
    */
   private _handleCloudTerminalAgentEvent(msg: Record<string, unknown>): void {
@@ -1028,16 +1031,16 @@ export class AosApp extends LitElement {
     const match = this.terminalSessions.find(s => s.terminalSessionId === backendId);
     if (!match) return;
 
+    const event = typeof msg.event === 'string' ? msg.event : '';
+    const isActive = match.id === this.activeTerminalSessionId;
+    let ring = false;
+
     const status = msg.status;
     if (typeof status === 'string' && AGENT_STATUS_VALUES.has(status)) {
       const at = typeof msg.statusAt === 'string' ? Date.parse(msg.statusAt) : NaN;
       const agentStatus = status as CloudTerminalAgentStatus;
-      // Ring once per blockade, not per event: Claude re-notifies while the prompt
-      // keeps waiting, and the bell row is on screen by then.
-      const newlyBlocked =
-        agentStatus === 'blocked' &&
-        match.agentStatus !== 'blocked' &&
-        match.id !== this.activeTerminalSessionId;
+      // Decided against the status BEFORE this message (one ring per blockade).
+      ring = ringsForAgentEvent({ event, status: agentStatus, prevStatus: match.agentStatus, isActive });
       // Server status is authoritative: a session that is working/done/idle
       // is by definition not waiting for input, whatever the regex thought.
       const clearNeedsInput = agentStatus === 'working' || agentStatus === 'done' || agentStatus === 'idle';
@@ -1052,20 +1055,20 @@ export class AosApp extends LitElement {
             }
           : s
       );
-      // Same chime as "agent finished" — it obeys the bell's mute toggle.
-      if (newlyBlocked) playAgentDoneChime();
     }
 
-    if (msg.event !== 'stop' || match.id === this.activeTerminalSessionId) return;
-    const ts = typeof msg.timestamp === 'string' ? Date.parse(msg.timestamp) : NaN;
-    this.agentNotifications = upsertNotification(this.agentNotifications, {
-      sessionId: match.id,
-      terminalSessionId: backendId,
-      finishedAt: Number.isFinite(ts) ? ts : Date.now(),
-      preview: typeof msg.preview === 'string' ? msg.preview : undefined,
-    });
-    // Rings even while the sidebar is closed — that is when it matters most.
-    playAgentDoneChime();
+    if (event === 'stop' && !isActive) {
+      const ts = typeof msg.timestamp === 'string' ? Date.parse(msg.timestamp) : NaN;
+      this.agentNotifications = upsertNotification(this.agentNotifications, {
+        sessionId: match.id,
+        terminalSessionId: backendId,
+        finishedAt: Number.isFinite(ts) ? ts : Date.now(),
+        preview: typeof msg.preview === 'string' ? msg.preview : undefined,
+      });
+    }
+    // Same chime for finished, blocked and plan-review — obeys the bell's mute
+    // toggle and rings even while the sidebar is closed, when it matters most.
+    if (ring) playAgentDoneChime();
   }
 
   /**

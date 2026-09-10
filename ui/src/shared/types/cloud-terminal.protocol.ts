@@ -415,7 +415,10 @@ export type CloudTerminalAgentStatus = 'unknown' | 'idle' | 'working' | 'blocked
  * Agent events. Hook-originated: session-start, prompt-submitted, blocked,
  * unblocked, stop, stop-failure, idle-prompt. Manager-originated: user-input
  * (answer-shaped keystrokes on a blocked session), idle-timeout (done → idle
- * after AGENT_IDLE_AFTER_MS).
+ * after AGENT_IDLE_AFTER_MS). Orchestrator-originated (plan-review-orchestrator.ts):
+ * review-injected (the external plan review sits in Claude's plan dialog, waiting
+ * for the user's Enter), review-failed (no reviewer delivered; the dialog is
+ * still open with nothing to act on).
  */
 export type CloudTerminalAgentEvent =
   | 'session-start'
@@ -426,7 +429,9 @@ export type CloudTerminalAgentEvent =
   | 'stop-failure'
   | 'idle-prompt'
   | 'user-input'
-  | 'idle-timeout';
+  | 'idle-timeout'
+  | 'review-injected'
+  | 'review-failed';
 
 /** Optional payload accompanying an agent event. */
 export interface CloudTerminalAgentEventDetail {

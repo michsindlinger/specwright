@@ -46,6 +46,32 @@ export function pruneNotifications(
   return list.filter((n) => liveSessionIds.has(n.sessionId));
 }
 
+/** What {@link ringsForAgentEvent} needs to know about one agent-event message. */
+export interface RingInput {
+  /** `event` from the message (untyped: an unknown event must not throw). */
+  event: string;
+  /** Reduced status carried by the message. */
+  status: CloudTerminalAgentStatus;
+  /** Status the session had before this message. */
+  prevStatus: CloudTerminalAgentStatus | undefined;
+  /** The user is looking at this very session. */
+  isActive: boolean;
+}
+
+/**
+ * Whether an agent event rings the chime. Never for the session the user is
+ * looking at. The two plan-review events ring once per review even when the
+ * session was already blocked (review-failed only changes the reason, the
+ * status stays). Otherwise: every stop, and each transition into blocked —
+ * not every blocked event, because Claude re-notifies while a prompt waits.
+ */
+export function ringsForAgentEvent(input: RingInput): boolean {
+  if (input.isActive) return false;
+  if (input.event === 'review-injected' || input.event === 'review-failed') return true;
+  if (input.event === 'stop') return true;
+  return input.status === 'blocked' && input.prevStatus !== 'blocked';
+}
+
 /** "gerade eben" | "vor 3 Min" | "vor 2 Std" | "HH:MM" (older than a day). */
 export function formatRelativeTime(finishedAt: number, now: number = Date.now()): string {
   const diffSec = Math.max(0, Math.round((now - finishedAt) / 1000));

@@ -14,6 +14,8 @@ import type { CloudTerminalAgentEvent, CloudTerminalAgentStatus } from '../../sh
  * closed with Stop (user interrupt), idle-timeout ages a `done` session.
  * `done` is deliberately NOT shortened by idle-prompt (~60 s): "finished, come
  * and look" must stay visible for the full AGENT_IDLE_AFTER_MS.
+ * The two review events block like a permission prompt: the injected review
+ * (or its absence) waits for the user's Enter in Claude's plan dialog.
  */
 export function reduceAgentStatus(
   prev: CloudTerminalAgentStatus,
@@ -25,6 +27,8 @@ export function reduceAgentStatus(
     case 'prompt-submitted':
       return 'working';
     case 'blocked':
+    case 'review-injected':
+    case 'review-failed':
       return 'blocked';
     case 'unblocked':
       return 'working';
