@@ -121,9 +121,17 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
   });
 
   it('shell sessions get neither flag nor env', async () => {
-    await mgr.createSession(project, 'shell');
-    expect(terminal.last.args).not.toContain('--settings');
-    expect(terminal.last.env?.[CLOUD_SESSION_ID_ENV]).toBeUndefined();
+    // baseEnv is a copy of process.env, so a test run from inside a cloud terminal would
+    // inherit the session id and see it "set" without the manager ever adding it.
+    const inherited = process.env[CLOUD_SESSION_ID_ENV];
+    delete process.env[CLOUD_SESSION_ID_ENV];
+    try {
+      await mgr.createSession(project, 'shell');
+      expect(terminal.last.args).not.toContain('--settings');
+      expect(terminal.last.env?.[CLOUD_SESSION_ID_ENV]).toBeUndefined();
+    } finally {
+      if (inherited !== undefined) process.env[CLOUD_SESSION_ID_ENV] = inherited;
+    }
   });
 
   it('a non-claude CLI does not receive --settings', async () => {

@@ -7,6 +7,7 @@
  */
 
 import { paneShowingProject } from './pane-zoom.js';
+import type { CloudTerminalAgentStatus } from '../../../../src/shared/types/cloud-terminal.protocol.js';
 
 export interface AgentNotification {
   /** Frontend TerminalSession.id (what the sidebar / panes key on). */
@@ -111,4 +112,68 @@ export function resolveJumpTarget(input: JumpInput): JumpTarget {
     if (other >= 0) pane = other;
   }
   return { kind: 'assign-pane', pane, keepZoom: zoomedPane !== null };
+}
+
+/**
+ * A row in the bell dropdown. Two sources feed it (see {@link buildBellRows}):
+ * `blocked` comes from the live agent status, `done` from a Stop notification.
+ */
+export interface BellRow {
+  sessionId: string;
+  kind: 'blocked' | 'done';
+  /** Epoch ms of the event this row is about. */
+  at: number;
+  /** Reason (blocked) or last-assistant-message excerpt (done), when known. */
+  preview?: string;
+}
+
+/** The session fields {@link buildBellRows} reads. */
+export interface BellSession {
+  id: string;
+  agentStatus?: CloudTerminalAgentStatus;
+  agentStatusAt?: number;
+  agentStatusReason?: string;
+}
+
+/**
+ * What the bell lists: sessions blocked on the user, then agents that finished.
+ *
+ * `blocked` is derived from the live agent status rather than kept as its own
+ * notification, so it appears and disappears exactly when the status does — no
+ * second copy of the state to clear. A session that is blocked never also shows
+ * a done row. The session the user is looking at is never listed (same rule the
+ * Stop path has always used).
+ */
+export function buildBellRows(
+  notifications: readonly AgentNotification[],
+  sessions: readonly BellSession[],
+  activeSessionId: string | null
+): BellRow[] {
+  const blocked: BellRow[] = [];
+  const blockedIds = new Set<string>();
+  for (const s of sessions) {
+    if (s.agentStatus !== 'blocked' || s.id === activeSessionId) continue;
+    blockedIds.add(s.id);
+    blocked.push({
+      sessionId: s.id,
+      kind: 'blocked',
+      at: s.agentStatusAt ?? 0,
+      ...(s.agentStatusReason ? { preview: s.agentStatusReason } : {}),
+    });
+  }
+
+  const known = new Set(sessions.map((s) => s.id));
+  const done: BellRow[] = [];
+  for (const n of notifications) {
+    if (!known.has(n.sessionId) || blockedIds.has(n.sessionId) || n.sessionId === activeSessionId) continue;
+    done.push({
+      sessionId: n.sessionId,
+      kind: 'done',
+      at: n.finishedAt,
+      ...(n.preview ? { preview: n.preview } : {}),
+    });
+  }
+
+  const newestFirst = (a: BellRow, b: BellRow): number => b.at - a.at;
+  return [...blocked.sort(newestFirst), ...done.sort(newestFirst)];
 }

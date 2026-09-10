@@ -11,7 +11,13 @@ import { hiddenRowPane, clampRowRatio } from './pane-visibility.js';
 import { effectiveZoomedPane, nextZoomedPane, paneShowingProject, ZOOM_GEOM } from './pane-zoom.js';
 import { syncSelectValue } from './pane-select-sync.js';
 import { isPaneZoomShortcut, isEditableTarget } from '../../utils/keyboard-shortcuts.js';
-import { resolveJumpTarget, formatRelativeTime, type AgentNotification } from './agent-notifications.js';
+import {
+  resolveJumpTarget,
+  formatRelativeTime,
+  buildBellRows,
+  type AgentNotification,
+  type BellRow,
+} from './agent-notifications.js';
 import { isBellSoundEnabled, setBellSoundEnabled, playAgentDoneChime } from './notification-sound.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 import { MobileBreakpointController } from '../../controllers/mobile-breakpoint-controller.js';
@@ -275,7 +281,7 @@ export class AosCloudTerminalSidebar extends LitElement {
         height: 16px;
       }
 
-      /* ── Agent-finished bell ─────────────────────────────────────── */
+      /* ── Agent bell (blocked / finished) ──────────────────────────── */
       .bell-wrap {
         position: relative;
         display: flex;
@@ -309,6 +315,12 @@ export class AosCloudTerminalSidebar extends LitElement {
         align-items: center;
         justify-content: center;
         pointer-events: none;
+      }
+
+      /* AGENT_STATUS_COLOR.blocked — the bell speaks the same colour as the tab dot. */
+      .bell-btn.has-waiting .bell-badge {
+        background: #ff9800;
+        color: #1a1a1a;
       }
 
       .bell-dropdown {
@@ -392,6 +404,31 @@ export class AosCloudTerminalSidebar extends LitElement {
 
       .bell-row:hover {
         background: #3a3a3a;
+      }
+
+      .bell-row.waiting {
+        border-left: 2px solid #ff9800;
+        padding-left: 10px;
+      }
+
+      .bell-kind {
+        flex: 0 0 auto;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+
+      .bell-kind.done {
+        background: #2f3b2f;
+        color: #8bc98b;
+      }
+
+      .bell-kind.waiting {
+        background: #4a3208;
+        color: #ffb74d;
       }
 
       .bell-row-top {
@@ -1442,21 +1479,32 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   // ── Agent-finished bell ──────────────────────────────────────────────────
 
-  /** Entries whose session still exists (app.ts prunes too; this is belt-and-braces). */
-  private _visibleNotifications(): AgentNotification[] {
-    return this.agentNotifications.filter((n) => this.allSessions.some((s) => s.id === n.sessionId));
+  /**
+   * What the bell lists: sessions blocked on the user (live agent status) plus agents that
+   * finished (Stop notifications). Dead sessions drop out because the rows are built from
+   * `allSessions` (app.ts prunes the notification list too; this is belt-and-braces).
+   */
+  private _visibleNotifications(): BellRow[] {
+    return buildBellRows(this.agentNotifications, this.allSessions, this.activeSessionId);
+  }
+
+  /** "2 warten auf Eingabe, 1 fertig" — blocked first, because that is what needs a human. */
+  private _bellTitle(blocked: number, done: number): string {
+    const parts: string[] = [];
+    if (blocked > 0) parts.push(`${blocked} ${blocked === 1 ? 'wartet' : 'warten'} auf Eingabe`);
+    if (done > 0) parts.push(`${done} fertig`);
+    return parts.length ? parts.join(', ') : 'Keine Agent-Meldungen';
   }
 
   private _renderBell() {
     const items = this._visibleNotifications();
     const count = items.length;
-    const title = count === 0
-      ? 'Keine fertigen Agenten'
-      : `${count} Agent${count === 1 ? '' : 'en'} fertig`;
+    const blocked = items.filter((r) => r.kind === 'blocked').length;
+    const title = this._bellTitle(blocked, count - blocked);
     return html`
       <div class="bell-wrap">
         <button
-          class="action-btn bell-btn ${count > 0 ? 'has-items' : ''} ${this._bellOpen ? 'open' : ''}"
+          class="action-btn bell-btn ${count > 0 ? 'has-items' : ''} ${blocked > 0 ? 'has-waiting' : ''} ${this._bellOpen ? 'open' : ''}"
           @click=${this._toggleBell}
           title=${title}
           aria-label=${title}
@@ -1474,12 +1522,12 @@ export class AosCloudTerminalSidebar extends LitElement {
           ? html`
               <div class="bell-dropdown" role="menu">
                 <div class="bell-dropdown-header">
-                  <span>Fertige Agenten</span>
+                  <span>Agenten</span>
                   ${this._renderSoundToggle()}
                 </div>
                 ${count === 0
-                  ? html`<div class="bell-empty">Keine fertigen Agenten</div>`
-                  : repeat(items, (n) => n.sessionId, (n) => this._renderBellRow(n))}
+                  ? html`<div class="bell-empty">Keine Meldungen</div>`
+                  : repeat(items, (r) => r.sessionId, (r) => this._renderBellRow(r))}
               </div>
             `
           : nothing}
@@ -1487,21 +1535,27 @@ export class AosCloudTerminalSidebar extends LitElement {
     `;
   }
 
-  private _renderBellRow(n: AgentNotification) {
-    const session = this.allSessions.find((s) => s.id === n.sessionId);
+  private _renderBellRow(row: BellRow) {
+    const session = this.allSessions.find((s) => s.id === row.sessionId);
     if (!session) return nothing;
     const hue = this._projectHue(session.projectPath);
     const badgeStyle = { background: `hsl(${hue} 55% 22%)`, color: `hsl(${hue} 70% 80%)` };
+    const blocked = row.kind === 'blocked';
     return html`
-      <div class="bell-row" role="menuitem" @click=${() => this._jumpToNotification(n)}>
+      <div
+        class="bell-row ${blocked ? 'waiting' : ''}"
+        role="menuitem"
+        @click=${() => this._jumpToNotification(row.sessionId)}
+      >
         <div class="bell-row-top">
+          <span class="bell-kind ${blocked ? 'waiting' : 'done'}">${blocked ? 'wartet' : 'fertig'}</span>
           <span class="bell-project" style=${styleMap(badgeStyle)} title=${session.projectPath}>
             ${this._projectLabel(session.projectPath)}
           </span>
           <span class="bell-name" title=${session.name}>${session.name}</span>
-          <span class="bell-time">${formatRelativeTime(n.finishedAt)}</span>
+          <span class="bell-time">${row.at > 0 ? formatRelativeTime(row.at) : ''}</span>
         </div>
-        ${n.preview ? html`<div class="bell-preview" title=${n.preview}>${n.preview}</div>` : nothing}
+        ${row.preview ? html`<div class="bell-preview" title=${row.preview}>${row.preview}</div>` : nothing}
       </div>
     `;
   }
@@ -1570,17 +1624,15 @@ export class AosCloudTerminalSidebar extends LitElement {
   };
 
   /**
-   * Bell entry clicked: bring that session into view. Every branch ends in a
+   * Bell row clicked: bring that session into view. Every branch ends in a
    * `session-select` reaching app.ts, whose willUpdate() drops the entry.
+   * The row for the already-active session is never rendered (buildBellRows
+   * filters it), so there is no "jump to where I already am" case here.
    */
-  private _jumpToNotification(n: AgentNotification): void {
+  private _jumpToNotification(sessionId: string): void {
     this._closeBell();
-    const session = this.allSessions.find((s) => s.id === n.sessionId);
+    const session = this.allSessions.find((s) => s.id === sessionId);
     if (!session) return;
-    // Jumping onto the already-active session emits nothing below (early return), and app.ts
-    // only drops an entry when activeTerminalSessionId actually changes — force the event so
-    // the row cannot survive the click.
-    if (this.activeSessionId === session.id) this._emitSessionSelect(session.id, true);
     const target = resolveJumpTarget({
       isSplit: this._isSplit,
       paneSessionIds: this.paneSessionIds,
@@ -2477,13 +2529,9 @@ export class AosCloudTerminalSidebar extends LitElement {
     this._emitSessionSelect(sessionId);
   }
 
-  /**
-   * Keep app.ts' activeTerminalSessionId in sync with the focused pane (toolbar/shortcuts).
-   * `force` re-emits for the already-active session — app.ts reacts to a property CHANGE, so
-   * without it a bell jump onto the active session would silently keep its entry.
-   */
-  private _emitSessionSelect(sessionId: string, force = false) {
-    if (!force && this.activeSessionId === sessionId) return;
+  /** Keep app.ts' activeTerminalSessionId in sync with the focused pane (toolbar/shortcuts). */
+  private _emitSessionSelect(sessionId: string) {
+    if (this.activeSessionId === sessionId) return;
     this.activeSessionId = sessionId;
     this.dispatchEvent(
       new CustomEvent('session-select', {

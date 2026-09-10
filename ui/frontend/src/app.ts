@@ -1016,8 +1016,10 @@ export class AosApp extends LitElement {
    * A Claude Code hook fired in a claude-code session. Two consumers:
    * 1. the agent status on the session (every event, active tab included) —
    *    the server has already reduced it, the client only stores it;
-   * 2. the bell, on `stop` only, unless the user is looking at that very
-   *    session (same rule as needsInput).
+   * 2. the bell: a `stop` becomes a notification entry, and a session going
+   *    `blocked` rings the chime — the row itself is derived from the status by
+   *    buildBellRows(), so it needs no entry of its own. Neither happens while
+   *    the user is looking at that very session (same rule as needsInput).
    * Sessions of projects that are not open are unknown here and ignored.
    */
   private _handleCloudTerminalAgentEvent(msg: Record<string, unknown>): void {
@@ -1030,6 +1032,12 @@ export class AosApp extends LitElement {
     if (typeof status === 'string' && AGENT_STATUS_VALUES.has(status)) {
       const at = typeof msg.statusAt === 'string' ? Date.parse(msg.statusAt) : NaN;
       const agentStatus = status as CloudTerminalAgentStatus;
+      // Ring once per blockade, not per event: Claude re-notifies while the prompt
+      // keeps waiting, and the bell row is on screen by then.
+      const newlyBlocked =
+        agentStatus === 'blocked' &&
+        match.agentStatus !== 'blocked' &&
+        match.id !== this.activeTerminalSessionId;
       // Server status is authoritative: a session that is working/done/idle
       // is by definition not waiting for input, whatever the regex thought.
       const clearNeedsInput = agentStatus === 'working' || agentStatus === 'done' || agentStatus === 'idle';
@@ -1044,6 +1052,8 @@ export class AosApp extends LitElement {
             }
           : s
       );
+      // Same chime as "agent finished" — it obeys the bell's mute toggle.
+      if (newlyBlocked) playAgentDoneChime();
     }
 
     if (msg.event !== 'stop' || match.id === this.activeTerminalSessionId) return;

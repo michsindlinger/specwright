@@ -5,7 +5,9 @@ import {
   pruneNotifications,
   formatRelativeTime,
   resolveJumpTarget,
+  buildBellRows,
   type AgentNotification,
+  type BellSession,
   type JumpInput,
 } from '../../frontend/src/components/terminal/agent-notifications.js';
 
@@ -132,5 +134,49 @@ describe('resolveJumpTarget()', () => {
       sessionProject: '/p2',
     });
     expect(r).toEqual({ kind: 'assign-pane', pane: 1, keepZoom: false });
+  });
+});
+
+describe('buildBellRows()', () => {
+  const s = (id: string, agentStatus?: BellSession['agentStatus'], agentStatusAt = 0, reason?: string): BellSession => ({
+    id,
+    agentStatus,
+    agentStatusAt,
+    agentStatusReason: reason,
+  });
+
+  it('lists blocked sessions above finished agents', () => {
+    const rows = buildBellRows([n('done-1', 500)], [s('done-1', 'done', 500), s('blk', 'blocked', 1)], null);
+    expect(rows.map((r) => [r.sessionId, r.kind])).toEqual([
+      ['blk', 'blocked'],
+      ['done-1', 'done'],
+    ]);
+  });
+
+  it('orders newest first inside each group', () => {
+    const sessions = [s('b-old', 'blocked', 1), s('b-new', 'blocked', 9), s('d-old', 'idle'), s('d-new', 'idle')];
+    const rows = buildBellRows([n('d-old', 2), n('d-new', 8)], sessions, null);
+    expect(rows.map((r) => r.sessionId)).toEqual(['b-new', 'b-old', 'd-new', 'd-old']);
+  });
+
+  it('never lists the session the user is looking at', () => {
+    expect(buildBellRows([n('a', 1)], [s('a', 'blocked', 1)], 'a')).toEqual([]);
+    expect(buildBellRows([n('a', 1)], [s('a', 'done', 1)], 'a')).toEqual([]);
+  });
+
+  it('drops notifications whose session is gone', () => {
+    expect(buildBellRows([n('ghost', 1)], [s('other', 'idle')], null)).toEqual([]);
+  });
+
+  it('shows a blocked session once, never also as finished', () => {
+    const rows = buildBellRows([n('a', 1, 'All done')], [s('a', 'blocked', 2, 'Berechtigung: Bash')], null);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ kind: 'blocked', preview: 'Berechtigung: Bash', at: 2 });
+  });
+
+  it('carries the stop preview through and copes with a missing status timestamp', () => {
+    expect(buildBellRows([n('a', 7, 'All done')], [s('a', 'done', 7)], null)[0])
+      .toMatchObject({ kind: 'done', preview: 'All done', at: 7 });
+    expect(buildBellRows([], [{ id: 'a', agentStatus: 'blocked' }], null)[0]).toMatchObject({ at: 0 });
   });
 });
