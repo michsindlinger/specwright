@@ -5982,9 +5982,12 @@ export class WebSocketHandler {
       return;
     }
 
-    const session = this.cloudTerminalManager.getSession(sessionId);
+    // Raw chunks joined without separator (preserves exact PTY output), plus the
+    // tmux attach-mode preamble for tmux-backed sessions — the frontend resets
+    // xterm before replaying, and a trimmed buffer no longer carries those modes.
+    const buffer = this.cloudTerminalManager.getReplayBuffer(sessionId);
 
-    if (!session) {
+    if (buffer === undefined) {
       const errorResponse: WebSocketMessage = {
         type: 'cloud-terminal:error',
         code: 'SESSION_NOT_FOUND',
@@ -5995,9 +5998,6 @@ export class WebSocketHandler {
       client.send(JSON.stringify(errorResponse));
       return;
     }
-
-    // Concatenate raw buffer chunks (no separator - preserves exact PTY output)
-    const buffer = session.buffer.join('');
 
     const response: WebSocketMessage = {
       type: 'cloud-terminal:buffer-response',

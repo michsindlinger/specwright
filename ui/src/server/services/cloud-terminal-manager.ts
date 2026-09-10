@@ -38,6 +38,7 @@ import { TerminalManager } from './terminal-manager.js';
 import { getCliCommandForModel, getProviderCommand, checkCliAvailability } from '../model-config.js';
 import { PlanBufferExtractor } from '../utils/plan-buffer-extractor.js';
 import { backendPort } from '../utils/runtime-paths.js';
+import { buildReplayBuffer } from './cloud-terminal-replay.js';
 import {
   CLOUD_SESSION_ID_ENV,
   ensureHookSettingsFile,
@@ -1302,6 +1303,17 @@ export class CloudTerminalManager extends EventEmitter {
       console.error(`[CloudTerminalManager] Failed to resize session ${sessionId}:`, error);
       return 'resize_failed';
     }
+  }
+
+  /**
+   * Replay buffer for a `cloud-terminal:buffer-request`: the raw PTY chunks,
+   * prefixed with the tmux client's attach modes when the session is tmux-backed
+   * (see cloud-terminal-replay.ts for why). Undefined when the session is unknown.
+   */
+  public getReplayBuffer(sessionId: CloudTerminalSessionId): string | undefined {
+    const session = this.sessions.get(sessionId);
+    if (!session) return undefined;
+    return buildReplayBuffer(session.buffer, Boolean(session.tmuxSessionName));
   }
 
   /**
