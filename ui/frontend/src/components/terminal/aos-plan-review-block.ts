@@ -31,6 +31,8 @@ export class AosPlanReviewBlock extends LitElement {
   @state() private reviewState: ReviewState = 'idle';
   @state() private reviewers: Map<string, ReviewerBlock> = new Map();
   @state() private injected = false;
+  /** From plan-review:injected — false: typed without reading the screen back (prompt, or a dialog without a tmux screen). */
+  @state() private injectVerified: boolean | null = null;
   @state() private errorMessage = '';
   @state() private source: 'auto' | 'manual' = 'auto';
   @state() private expanded = true;
@@ -231,6 +233,7 @@ export class AosPlanReviewBlock extends LitElement {
     if (!this.matchesSession(msg)) return;
     this.reviewers = new Map();
     this.injected = false;
+    this.injectVerified = null;
     this.errorMessage = '';
     this.source = (msg.source as 'auto' | 'manual') ?? 'auto';
     this.reviewState = 'running';
@@ -260,6 +263,7 @@ export class AosPlanReviewBlock extends LitElement {
   private onInjected(msg: WebSocketMessage): void {
     if (!this.matchesSession(msg)) return;
     this.injected = true;
+    this.injectVerified = typeof msg.verified === 'boolean' ? msg.verified : null;
     this.reviewState = 'done';
   }
 
@@ -353,6 +357,9 @@ export class AosPlanReviewBlock extends LitElement {
               : nothing}
             ${this.clusteringFallback
               ? html`<div class="fallback-line">Consensus clustering unavailable (${FALLBACK_LABELS[this.clusteringFallback] ?? this.clusteringFallback}) — showing individual reviews</div>`
+              : nothing}
+            ${this.injected && this.injectVerified === false
+              ? html`<div class="fallback-line">Inserted without a check — the screen could not be read back</div>`
               : nothing}
             ${[...this.reviewers.values()].map((b) => this.renderReviewerBlock(b))}
           </div>

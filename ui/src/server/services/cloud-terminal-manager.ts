@@ -207,6 +207,8 @@ export const BLOCKER_PATTERN = /<<BLOCKER:([^>]+)>>/;
  * Detects the closing bar of a Claude Code TUI plan box (╰──...──╯).
  * Checked per terminal.data chunk; extraction uses the full buffer.
  * Detection is best-effort — manual trigger is the reliable fallback.
+ * Note (2026-09): current Claude Code draws the plan dialog without a box, so
+ * this no longer fires; "Review last plan" is the working path.
  */
 export const PLAN_BOX_PATTERN = /╰─{10,}╯/;
 
@@ -224,6 +226,24 @@ const PLAN_DEDUP_MS = 30 * 1000;
  * Max time waitForIdle will wait before resolving regardless of activity (ms).
  */
 const PLAN_IDLE_TIMEOUT_MS = 5000;
+
+/**
+ * Raw buffer tail read as "screen" when no tmux pane is available — enough
+ * for a full redraw of the plan dialog with a long review typed into it.
+ */
+export const SCREEN_TAIL_CHARS = 256 * 1024;
+
+/** Last `max` chars of a chunk list, without joining the whole (up to 10 MB) buffer. */
+function bufferTail(chunks: readonly string[], max: number): string {
+  const parts: string[] = [];
+  let len = 0;
+  for (let i = chunks.length - 1; i >= 0 && len < max; i--) {
+    parts.push(chunks[i]);
+    len += chunks[i].length;
+  }
+  const tail = parts.reverse().join('');
+  return tail.length > max ? tail.slice(tail.length - max) : tail;
+}
 
 /**
  * CloudTerminalManager - Multi-session terminal manager
@@ -1617,6 +1637,26 @@ export class CloudTerminalManager extends EventEmitter {
         }
       }, 50);
     });
+  }
+
+  /**
+   * What the user sees in the session right now. tmux-backed: the pane as
+   * plain text (`live: true`), with `scrollback` history lines above it when
+   * asked. Otherwise, or when the capture fails: the raw PTY buffer tail
+   * (`live: false`) — escapes intact and possibly holding stale Ink frames,
+   * see utils/plan-dialog-state.ts.
+   */
+  public async readScreen(
+    sessionId: CloudTerminalSessionId,
+    opts: { scrollback?: number } = {}
+  ): Promise<{ text: string; live: boolean }> {
+    const session = this.sessions.get(sessionId);
+    if (!session) return { text: '', live: false };
+    if (session.tmuxSessionName) {
+      const screen = await this.tmux.captureScreen(session.tmuxSessionName, opts.scrollback ?? 0);
+      if (screen !== null) return { text: screen, live: true };
+    }
+    return { text: bufferTail(session.buffer, SCREEN_TAIL_CHARS), live: false };
   }
 
   /**

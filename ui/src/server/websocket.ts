@@ -5362,10 +5362,11 @@ export class WebSocketHandler {
       }
     );
 
-    this.planReviewOrchestrator.on('plan-review:injected', (sessionId: string) => {
+    this.planReviewOrchestrator.on('plan-review:injected', (sessionId: string, verified?: boolean) => {
       this.broadcast({
         type: 'plan-review:injected',
         sessionId,
+        ...(verified !== undefined ? { verified } : {}),
         timestamp: new Date().toISOString(),
       });
     });

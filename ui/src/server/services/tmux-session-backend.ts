@@ -354,6 +354,21 @@ export class TmuxSessionBackend {
     return res.stdout.replace(/\n/g, '\r\n');
   }
 
+  /**
+   * The pane as the user sees it: plain text (no SGR), soft-wrapped lines
+   * joined (-J). `scrollbackLines` > 0 prepends that much history — for
+   * content taller than the pane. Returns null when the call fails.
+   */
+  public async captureScreen(name: string, scrollbackLines = 0): Promise<string | null> {
+    // `=name:` — capture-pane takes a PANE target; a bare `=name` is rejected
+    // ("can't find pane", tmux 3.7c). The trailing colon selects the session's
+    // current window and its active pane.
+    const args = ['capture-pane', '-p', '-J', '-t', `=${name}:`];
+    if (scrollbackLines > 0) args.push('-S', `-${scrollbackLines}`);
+    const res = await this.tmux(args, TMUX_CAPTURE_TIMEOUT_MS);
+    return res.ok && res.stdout.length > 0 ? res.stdout : null;
+  }
+
   /** Inner command's exit code from the run script's exit file, if present. */
   public async readExitCode(sessionId: CloudTerminalSessionId): Promise<number | undefined> {
     try {

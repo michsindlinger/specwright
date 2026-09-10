@@ -21,7 +21,7 @@ vi.mock('../../src/server/general-config.js', () => ({
   getWorktreeMaxConcurrent: () => 3,
 }));
 
-import { CloudTerminalManager } from '../../src/server/services/cloud-terminal-manager.js';
+import { CloudTerminalManager, SCREEN_TAIL_CHARS } from '../../src/server/services/cloud-terminal-manager.js';
 import { CLOUD_TERMINAL_CONFIG } from '../../src/shared/types/cloud-terminal.protocol.js';
 import { CloudSessionRegistry } from '../../src/server/services/cloud-session-registry.js';
 import type { TmuxSessionBackend } from '../../src/server/services/tmux-session-backend.js';
@@ -60,6 +60,12 @@ class FakeTmux {
   async hasSession() { return true; }
   async killSession() {}
   async capturePaneHistory() { return null; }
+  public screen: string | null = null;
+  public captures: Array<{ name: string; scrollback: number }> = [];
+  async captureScreen(name: string, scrollback = 0) {
+    this.captures.push({ name, scrollback });
+    return this.screen;
+  }
   async readExitCode() { return undefined; }
   async cleanupSessionArtifacts() {}
   async killOrphans() {}
@@ -182,6 +188,42 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
     mgr.closeSession(session.sessionId);
     expect(mgr.reportAgentEvent(session.sessionId, 'stop')).toBe(false);
     expect(events).toHaveLength(1);
+  });
+
+  describe('readScreen()', () => {
+    it('direct spawn: the raw buffer tail, capped at SCREEN_TAIL_CHARS, not live', async () => {
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      const exec = terminal.last.executionId;
+      terminal.emit('terminal.data', exec, '\x1b[1mhello\x1b[0m');
+      const first = await mgr.readScreen(id);
+      expect(first.live).toBe(false);
+      expect(first.text.endsWith('\x1b[1mhello\x1b[0m')).toBe(true);
+
+      const chunk = 'x'.repeat(64 * 1024);
+      for (let i = 0; i < 6; i++) terminal.emit('terminal.data', exec, chunk);
+      terminal.emit('terminal.data', exec, 'END');
+      const { text } = await mgr.readScreen(id);
+      expect(text.length).toBe(SCREEN_TAIL_CHARS);
+      expect(text.endsWith('END')).toBe(true);
+    });
+
+    it('tmux-backed: the captured pane (scrollback on request); buffer tail when the capture fails', async () => {
+      tmux.enabled = true;
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      tmux.screen = ' Would you like to proceed?';
+      expect(await mgr.readScreen(id, { scrollback: 2000 })).toEqual({ text: ' Would you like to proceed?', live: true });
+      expect(tmux.captures[tmux.captures.length - 1]).toEqual({ name: `cs-${id}`, scrollback: 2000 });
+
+      tmux.screen = null;
+      terminal.emit('terminal.data', terminal.last.executionId, 'buffered');
+      const fallback = await mgr.readScreen(id);
+      expect(fallback.live).toBe(false);
+      expect(fallback.text.endsWith('buffered')).toBe(true);
+    });
+
+    it('unknown session: empty and not live', async () => {
+      expect(await mgr.readScreen('cloud-1-1' as never)).toEqual({ text: '', live: false });
+    });
   });
 
   describe('agent status', () => {

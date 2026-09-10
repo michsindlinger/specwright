@@ -18,11 +18,15 @@ function buildMockCtm(
     sessionStatus?: 'active' | 'paused';
     /** Agent status of the mocked session (default working). */
     agentStatus?: 'working' | 'blocked';
+    /** Hook reason of the mocked session, e.g. 'Berechtigung: ExitPlanMode'. */
+    agentStatusReason?: string;
   } = {}
 ) {
   const emitter = new EventEmitter();
   const sendInput = vi.fn().mockReturnValue(opts.sendInputReturns ?? true);
   const reportAgentEvent = vi.fn().mockReturnValue(true);
+  // Default: a live screen without a plan dialog → the REPL inject path.
+  const readScreen = vi.fn().mockResolvedValue({ text: '', live: true });
   const setPlanReviewEnabled = vi.fn();
   const triggerManualReview = vi.fn();
   const waitForIdle = vi.fn().mockResolvedValue(undefined);
@@ -31,6 +35,7 @@ function buildMockCtm(
   const ctm = Object.assign(emitter, {
     sendInput,
     reportAgentEvent,
+    readScreen,
     setPlanReviewEnabled,
     triggerManualReview,
     waitForIdle,
@@ -40,6 +45,7 @@ function buildMockCtm(
       terminalType: 'claude-code' as const,
       status: opts.sessionStatus ?? ('active' as const),
       agentStatus: opts.agentStatus ?? ('working' as const),
+      agentStatusReason: opts.agentStatusReason,
       buffer: [],
       createdAt: new Date(),
       lastActivity: new Date(),
@@ -52,6 +58,7 @@ function buildMockCtm(
     emitter,
     sendInput,
     reportAgentEvent,
+    readScreen,
     setPlanReviewEnabled,
     setPlanPath: (p: string | null) => {
       planPath = p;
@@ -420,5 +427,258 @@ describe('PlanReviewOrchestrator agent-status reports', () => {
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(mock.reportAgentEvent).toHaveBeenCalledOnce();
     expect(mock.reportAgentEvent).toHaveBeenCalledWith('sess-1', 'review-injected', expect.anything());
+  });
+});
+
+/**
+ * Inject into Claude's plan dialog: the dialog drops typed text unless the
+ * free-text option is focused. A fake dialog reacts to the keys the
+ * orchestrator sends and renders what a tmux capture would show.
+ */
+describe('PlanReviewOrchestrator inject into the plan dialog', () => {
+  const DOWN = '\x1b[B';
+  const UP = '\x1b[A';
+  const LABELS = ['Yes, and switch to BYPASS PERMISSIONS', 'Yes, manually approve edits', 'Tell Claude what to change'];
+  const ONE = { enabled: true, reviewers: [{ providerId: 'mock', modelId: 'mock-1' }] };
+  type Mock = ReturnType<typeof buildMockCtm>;
+  interface Behaviour { frozen?: boolean; dropText?: boolean; labels?: string[] }
+
+  const render = (labels: string[], focus: number) => ({
+    text: [' Would you like to proceed?', ...labels.map((l, i) => ` ${i + 1 === focus ? '❯' : ' '} ${i + 1}. ${l}`)].join('\n'),
+    live: true,
+  });
+
+  /** Arrow keys move the pointer (unless frozen); text lands in the free-text option only when it is focused. */
+  function fakeDialog(mock: Mock, start: number, b: Behaviour = {}): Behaviour {
+    const labels = [...(b.labels ?? LABELS)];
+    const free = labels.indexOf('Tell Claude what to change') + 1;
+    let focus = start;
+    mock.sendInput.mockImplementation((_id: string, data: string) => {
+      if (data === DOWN) {
+        if (!b.frozen) focus = Math.min(focus + 1, labels.length);
+      } else if (data === UP) {
+        if (!b.frozen) focus = Math.max(focus - 1, 1);
+      } else if (focus === free && !b.dropText) {
+        labels[free - 1] = data.split('\n')[0];
+      }
+      return true;
+    });
+    mock.readScreen.mockImplementation(async () => render(labels, focus));
+    return b;
+  }
+
+  function setup(opts: Parameters<typeof buildMockCtm>[0] = {}) {
+    const mock = buildMockCtm({
+      lastDetectedPlanPath: '/p/foo.md',
+      agentStatus: 'blocked',
+      agentStatusReason: 'Berechtigung: ExitPlanMode',
+      ...opts,
+    });
+    const orch = new PlanReviewOrchestrator(mock.ctm);
+    const reviewPlan = vi.fn().mockResolvedValue('Mock reviewer findings');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (orch as any).externalReviewer = { reviewPlan };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (orch as any).sleep = () => Promise.resolve();
+    const started = vi.fn();
+    const injected = vi.fn();
+    const error = vi.fn();
+    orch.on('plan-review:started', started);
+    orch.on('plan-review:injected', injected);
+    orch.on('plan-review:error', error);
+    orch.setTabConfig('sess-1', ONE);
+    return { mock, orch, reviewPlan, started, injected, error };
+  }
+
+  async function trigger(mock: Mock, source: 'auto' | 'manual' = 'auto'): Promise<void> {
+    mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', source);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  }
+
+  const sent = (mock: Mock): string[] => mock.sendInput.mock.calls.map((c: unknown[]) => c[1] as string);
+  const keys = (mock: Mock): string[] => sent(mock).filter((d) => d === DOWN || d === UP);
+  const texts = (mock: Mock): string[] => sent(mock).filter((d) => d !== DOWN && d !== UP);
+
+  it('moves the pointer from option 1 to 3 key by key, types without a newline, verifies, reports', async () => {
+    const t = setup();
+    fakeDialog(t.mock, 1);
+    await trigger(t.mock);
+
+    expect(keys(t.mock)).toEqual([DOWN, DOWN]);
+    expect(texts(t.mock)).toHaveLength(1);
+    expect(texts(t.mock)[0].startsWith('Please address these issues')).toBe(true);
+    expect(texts(t.mock)[0].endsWith('\n')).toBe(false);
+    const lastKey = t.mock.sendInput.mock.calls.findLastIndex((c: unknown[]) => c[1] === DOWN);
+    const textAt = t.mock.sendInput.mock.calls.findIndex((c: unknown[]) => c[1] !== DOWN);
+    expect(textAt).toBeGreaterThan(lastKey);
+    for (const call of t.mock.sendInput.mock.calls) expect(call[2]).toEqual({ inferUnblock: false });
+
+    expect(t.error).not.toHaveBeenCalled();
+    expect(t.injected).toHaveBeenCalledWith('sess-1', true);
+    expect(t.mock.reportAgentEvent).toHaveBeenCalledWith('sess-1', 'review-injected', {
+      reason: 'Plan-Review eingefügt (1/1 Reviewer)',
+    });
+  });
+
+  it('sends no keys when the free-text option is focused already, and goes up when it is below', async () => {
+    const at3 = setup();
+    fakeDialog(at3.mock, 3);
+    await trigger(at3.mock);
+    expect(keys(at3.mock)).toEqual([]);
+    expect(at3.injected).toHaveBeenCalledWith('sess-1', true);
+
+    const below = setup();
+    fakeDialog(below.mock, 4, { labels: ['Yes', 'Yes, manually', 'Tell Claude what to change', 'Something new'] });
+    await trigger(below.mock);
+    expect(keys(below.mock)).toEqual([UP]);
+    expect(below.injected).toHaveBeenCalledWith('sess-1', true);
+  });
+
+  it('never types when the pointer does not move: bounded keys, focus error, review kept', async () => {
+    const t = setup();
+    fakeDialog(t.mock, 1, { frozen: true });
+    await trigger(t.mock);
+
+    expect(keys(t.mock)).toEqual([DOWN, DOWN, DOWN]);
+    expect(texts(t.mock)).toEqual([]);
+    expect(t.injected).not.toHaveBeenCalled();
+    expect(t.error).toHaveBeenCalledWith('sess-1', expect.stringContaining('nothing was typed'));
+    expect(t.mock.reportAgentEvent).toHaveBeenCalledWith('sess-1', 'review-failed', {
+      reason: 'Plan-Review nicht angekommen (1/1 Reviewer)',
+    });
+  });
+
+  it('hook says the dialog is open but the screen is unreadable: nothing typed', async () => {
+    const t = setup();
+    await trigger(t.mock);
+
+    expect(sent(t.mock)).toEqual([]);
+    expect(t.error).toHaveBeenCalledWith('sess-1', expect.stringContaining('could not be read'));
+    expect(t.injected).not.toHaveBeenCalled();
+  });
+
+  it('screen reads that never settle: nothing typed, no keys', async () => {
+    const t = setup();
+    let i = 0;
+    t.mock.readScreen.mockImplementation(async () => render(LABELS, (i++ % 2) + 1));
+    await trigger(t.mock);
+
+    expect(sent(t.mock)).toEqual([]);
+    expect(t.error).toHaveBeenCalledWith('sess-1', expect.stringContaining('could not be read'));
+  });
+
+  it('navigates from the settled state after unstable first reads', async () => {
+    const t = setup();
+    fakeDialog(t.mock, 1);
+    t.mock.readScreen
+      .mockResolvedValueOnce(render(LABELS, 1))
+      .mockResolvedValueOnce(render(LABELS, 2))
+      .mockResolvedValueOnce(render(LABELS, 1));
+    await trigger(t.mock);
+
+    expect(keys(t.mock)).toEqual([DOWN, DOWN]);
+    expect(t.injected).toHaveBeenCalledWith('sess-1', true);
+  });
+
+  it('no dialog by hook or screen (REPL): typed with a newline, unverified', async () => {
+    const t = setup({ agentStatus: 'working', agentStatusReason: undefined });
+    await trigger(t.mock);
+
+    expect(keys(t.mock)).toEqual([]);
+    expect(texts(t.mock)).toHaveLength(1);
+    expect(texts(t.mock)[0].endsWith('\n')).toBe(true);
+    expect(t.injected).toHaveBeenCalledWith('sess-1', false);
+  });
+
+  it('text not visible in the option after typing: error, not injected, path not remembered', async () => {
+    const t = setup();
+    fakeDialog(t.mock, 3, { dropText: true });
+    await trigger(t.mock);
+
+    expect(texts(t.mock)).toHaveLength(1);
+    expect(t.injected).not.toHaveBeenCalled();
+    expect(t.error).toHaveBeenCalledWith('sess-1', expect.stringContaining('did not show up in option 3'));
+
+    // Not remembered as injected: the next automatic detection reviews again.
+    await trigger(t.mock);
+    expect(t.reviewPlan).toHaveBeenCalledTimes(2);
+  });
+
+  it('a manual trigger re-injects a review that did not land — without another reviewer run', async () => {
+    const t = setup();
+    const b = fakeDialog(t.mock, 3, { dropText: true });
+    await trigger(t.mock);
+    expect(t.error).toHaveBeenCalledOnce();
+
+    b.dropText = false;
+    await trigger(t.mock, 'manual');
+    expect(t.reviewPlan).toHaveBeenCalledOnce();
+    expect(t.started).toHaveBeenCalledTimes(2);
+    expect(t.started).toHaveBeenLastCalledWith('sess-1', 'manual', 1);
+    expect(t.injected).toHaveBeenCalledWith('sess-1', true);
+
+    // Delivered → cache cleared: the next manual trigger reviews afresh.
+    await trigger(t.mock, 'manual');
+    expect(t.reviewPlan).toHaveBeenCalledTimes(2);
+  });
+
+  it('turning auto-review off drops a pending review', async () => {
+    const t = setup();
+    fakeDialog(t.mock, 3, { dropText: true });
+    await trigger(t.mock);
+    t.orch.setTabConfig('sess-1', { ...ONE, enabled: false });
+    t.orch.setTabConfig('sess-1', ONE);
+
+    await trigger(t.mock, 'manual');
+    expect(t.reviewPlan).toHaveBeenCalledTimes(2);
+  });
+
+  it('inactive session: nothing sent, not-active error', async () => {
+    const t = setup({ sessionStatus: 'paused' });
+    fakeDialog(t.mock, 1);
+    await trigger(t.mock);
+
+    expect(sent(t.mock)).toEqual([]);
+    expect(t.error).toHaveBeenCalledWith('sess-1', expect.stringContaining('not active'));
+    expect(t.injected).not.toHaveBeenCalled();
+  });
+
+  it('raw-buffer mode: a hook-open dialog is never navigated blind — fails first, types unverified on the explicit re-trigger', async () => {
+    const t = setup();
+    t.mock.readScreen.mockResolvedValue({ text: render(LABELS, 1).text, live: false });
+    await trigger(t.mock);
+
+    expect(sent(t.mock)).toEqual([]);
+    expect(t.error).toHaveBeenCalledWith('sess-1', expect.stringContaining('no tmux screen'));
+    expect(t.injected).not.toHaveBeenCalled();
+
+    await trigger(t.mock, 'manual');
+    expect(t.reviewPlan).toHaveBeenCalledOnce();
+    expect(keys(t.mock)).toEqual([]);
+    expect(texts(t.mock)).toHaveLength(1);
+    expect(texts(t.mock)[0].endsWith('\n')).toBe(false);
+    expect(t.injected).toHaveBeenCalledWith('sess-1', false);
+  });
+
+  it('raw-buffer mode, hooks say no dialog: a stale frame in the buffer is ignored, submitted at the prompt', async () => {
+    const t = setup({ agentStatus: 'working', agentStatusReason: undefined });
+    t.mock.readScreen.mockResolvedValue({ text: render(LABELS, 1).text, live: false });
+    await trigger(t.mock);
+
+    expect(keys(t.mock)).toEqual([]);
+    expect(texts(t.mock)[0].endsWith('\n')).toBe(true);
+    expect(t.injected).toHaveBeenCalledWith('sess-1', false);
+  });
+
+  it('sanitizes the review before typing: CR and ESC never reach the TUI', async () => {
+    const t = setup();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (t.orch as any).externalReviewer = { reviewPlan: vi.fn().mockResolvedValue('Line one\r\nLine two\rthree \x1b[A up') };
+    fakeDialog(t.mock, 3);
+    await trigger(t.mock);
+
+    const typed = texts(t.mock)[0];
+    expect(typed).not.toMatch(/[\r\x1b]/);
+    expect(typed).toContain('Line one\nLine two\nthree [A up');
   });
 });

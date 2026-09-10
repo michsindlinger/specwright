@@ -82,6 +82,9 @@ export interface PlanReviewAggregated {
 export interface PlanReviewInjected {
   type: 'plan-review:injected';
   sessionId: CloudTerminalSessionId;
+  /** true: seen in the plan dialog's free-text option; false: typed without reading the screen back
+   *  (at the prompt, or into a dialog of a session without a tmux screen). */
+  verified?: boolean;
   timestamp: string;
 }
 
