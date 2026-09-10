@@ -1,20 +1,15 @@
+// @vitest-environment happy-dom
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ProjectSelectedDetail } from '../../frontend/src/components/aos-project-add-modal.js';
 
-// Mock the recently opened service
+// Recents are supplied by the app from the shared workspace (server state),
+// so the modal no longer touches recentlyOpenedService.
 const mockEntries = [
   { path: '/Users/dev/project-a', name: 'project-a', lastOpened: Date.now() - 1000 },
   { path: '/Users/dev/project-b', name: 'project-b', lastOpened: Date.now() - 86400000 },
   { path: '/Users/dev/project-c', name: 'project-c', lastOpened: Date.now() - 172800000 }
 ];
-
-vi.mock('../../frontend/src/services/recently-opened.service.js', () => ({
-  recentlyOpenedService: {
-    getRecentlyOpened: vi.fn(() => mockEntries),
-    addRecentlyOpened: vi.fn(),
-    hasProject: vi.fn((path: string) => mockEntries.some(e => e.path === path))
-  }
-}));
 
 describe('AosProjectAddModal', () => {
   describe('Component structure', () => {
@@ -35,6 +30,28 @@ describe('AosProjectAddModal', () => {
       const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
       const instance = new AosProjectAddModal();
       expect(instance.openProjectPaths).toEqual([]);
+    });
+
+    it('should take recentProjects as a property (shared workspace), defaulting to empty', async () => {
+      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
+      const instance = new AosProjectAddModal();
+      expect(instance.recentProjects).toEqual([]);
+      instance.recentProjects = mockEntries;
+      expect(instance.recentProjects).toHaveLength(3);
+    });
+
+    it('removing a recent dispatches recent-remove instead of touching storage', async () => {
+      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
+      const instance = new AosProjectAddModal();
+      instance.recentProjects = mockEntries;
+      const seen: string[] = [];
+      instance.addEventListener('recent-remove', (e) => seen.push((e as CustomEvent<{ path: string }>).detail.path));
+      const remove = (instance as unknown as { handleRemoveRecentProject: (e: Event, entry: { path: string; name: string; lastOpened: number }) => void })
+        .handleRemoveRecentProject.bind(instance);
+      remove(new Event('click'), mockEntries[1]);
+      expect(seen).toEqual(['/Users/dev/project-b']);
+      // The list itself is only refreshed by the next workspace:state.
+      expect(instance.recentProjects).toHaveLength(3);
     });
   });
 
@@ -184,28 +201,4 @@ describe('AosProjectAddModal', () => {
     });
   });
 
-  describe('Directory validation', () => {
-    it('validateAgentOsFolder should check for agent-os directory', async () => {
-      const { AosProjectAddModal } = await import('../../frontend/src/components/aos-project-add-modal.js');
-      const instance = new AosProjectAddModal();
-
-      const validateAgentOsFolder = (instance as unknown as {
-        validateAgentOsFolder: (handle: FileSystemDirectoryHandle) => Promise<boolean>
-      }).validateAgentOsFolder.bind(instance);
-
-      // Mock directory handle with agent-os folder
-      const mockHandleWithAgentOs = {
-        getDirectoryHandle: vi.fn().mockResolvedValue({})
-      } as unknown as FileSystemDirectoryHandle;
-
-      expect(await validateAgentOsFolder(mockHandleWithAgentOs)).toBe(true);
-
-      // Mock directory handle without agent-os folder
-      const mockHandleWithoutAgentOs = {
-        getDirectoryHandle: vi.fn().mockRejectedValue(new Error('Not found'))
-      } as unknown as FileSystemDirectoryHandle;
-
-      expect(await validateAgentOsFolder(mockHandleWithoutAgentOs)).toBe(false);
-    });
-  });
 });

@@ -504,6 +504,12 @@ export interface CloudTerminalClosedMessage {
   sessionId: CloudTerminalSessionId;
   /** Exit code if process terminated */
   exitCode?: number;
+  /**
+   * 'user' when a client closed the session via cloud-terminal:close — every
+   * client then drops the tab. Absent for a plain process exit, which keeps
+   * the tab with its exit message.
+   */
+  closedBy?: 'user';
   timestamp: string;
 }
 

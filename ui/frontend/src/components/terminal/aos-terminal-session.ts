@@ -455,7 +455,7 @@ export class AosTerminalSession extends LitElement {
       const createNotices = message.notices as CloudTerminalNotice[] | undefined;
       if (createNotices?.length) this.notices = [...this.notices, ...createNotices];
 
-      const session = message.session as { effectiveCwd?: string } | undefined;
+      const session = message.session as { effectiveCwd?: string; createdAt?: string } | undefined;
 
       // Notify parent with terminalType so app.ts can update session name/type
       this.dispatchEvent(
@@ -466,6 +466,8 @@ export class AosTerminalSession extends LitElement {
             terminalType: this.selectedTerminalType,
             // Ground truth from the server, not what we asked for.
             effectiveCwd: session?.effectiveCwd,
+            // Server timestamp: every device sorts auto-names on it.
+            createdAt: session?.createdAt,
           },
           bubbles: true,
           composed: true,

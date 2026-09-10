@@ -82,6 +82,15 @@ export function getSessionRegistryPath(): string {
 }
 
 /**
+ * Shared workspace state (open projects, recents, tab names) — one per backend,
+ * so every browser talking to this backend sees the same workspace. Port-suffixed
+ * like the session registry so a branch backend never touches the main one.
+ */
+export function getWorkspaceStatePath(): string {
+  return join(getRuntimeDir(), `workspace-${backendPort()}.json`);
+}
+
+/**
  * Directory for the tmux server socket. Created 0700 on first use.
  * Default os.tmpdir() works for local dev (no PrivateTmp there); the droplet
  * overrides via SPECWRIGHT_TMUX_SOCKET_DIR to a /var/lib path shared with the

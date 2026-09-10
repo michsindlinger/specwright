@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { recentlyOpenedService, type RecentlyOpenedEntry } from '../services/recently-opened.service.js';
+import type { RecentlyOpenedEntry } from '../services/recently-opened.service.js';
 import { projectStateService } from '../services/project-state.service.js';
 
 /**
@@ -17,6 +17,7 @@ export interface ProjectSelectedDetail {
  *
  * @fires project-selected - Fired when a project is selected. Detail: { path: string, name: string }
  * @fires modal-close - Fired when the modal is closed without selection
+ * @fires recent-remove - Fired to remove an entry from the shared recents. Detail: { path }
  */
 @customElement('aos-project-add-modal')
 export class AosProjectAddModal extends LitElement {
@@ -30,8 +31,11 @@ export class AosProjectAddModal extends LitElement {
    */
   @property({ type: Array }) openProjectPaths: string[] = [];
 
-  @state()
-  private recentlyOpened: RecentlyOpenedEntry[] = [];
+  /**
+   * Recently opened projects — supplied by the app from the shared workspace
+   * (server state), so every device shows the same list.
+   */
+  @property({ attribute: false }) recentProjects: RecentlyOpenedEntry[] = [];
 
   @state()
   private errorMessage: string | null = null;
@@ -56,7 +60,6 @@ export class AosProjectAddModal extends LitElement {
 
   override updated(changedProperties: Map<string, unknown>): void {
     if (changedProperties.has('open') && this.open) {
-      this.loadRecentlyOpened();
       this.errorMessage = null;
       this.pathInput = '';
       this.isValidating = false;
@@ -66,10 +69,6 @@ export class AosProjectAddModal extends LitElement {
         pathInput?.focus();
       });
     }
-  }
-
-  private loadRecentlyOpened(): void {
-    this.recentlyOpened = recentlyOpenedService.getRecentlyOpened();
   }
 
   private handleKeyDown(e: KeyboardEvent): void {
@@ -130,8 +129,14 @@ export class AosProjectAddModal extends LitElement {
 
   private handleRemoveRecentProject(e: Event, entry: RecentlyOpenedEntry): void {
     e.stopPropagation(); // Prevent triggering the item click
-    recentlyOpenedService.removeRecentlyOpened(entry.path);
-    this.loadRecentlyOpened(); // Refresh the list
+    // The app forwards this to the shared workspace; the list refreshes via workspace:state.
+    this.dispatchEvent(
+      new CustomEvent<{ path: string }>('recent-remove', {
+        detail: { path: entry.path },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   private selectProject(path: string, name: string): void {
@@ -217,7 +222,7 @@ export class AosProjectAddModal extends LitElement {
   }
 
   private renderRecentlyOpenedList() {
-    if (this.recentlyOpened.length === 0) {
+    if (this.recentProjects.length === 0) {
       return html`
         <div class="project-add-modal__empty">
           <span class="project-add-modal__empty-text">Keine kürzlich geöffneten Projekte</span>
@@ -227,7 +232,7 @@ export class AosProjectAddModal extends LitElement {
 
     return html`
       <ul class="project-add-modal__list" role="listbox" aria-label="Kürzlich geöffnete Projekte">
-        ${this.recentlyOpened.map((entry) => {
+        ${this.recentProjects.map((entry) => {
           const isAlreadyOpen = this.isProjectAlreadyOpen(entry.path);
           return html`
             <li

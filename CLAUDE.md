@@ -136,6 +136,15 @@ specwright/                          # Repository root
   entries on reinstall (no skip-if-exists). Guard: `bash scripts/check-mcp-launcher.sh` fails if
   any installer re-introduces an `npx`-based kanban command.
 
+**Shared workspace (v3.38.0+):**
+- Open projects, recents and tab names are server state in `<runtime>/workspace-<port>.json`
+  (`services/workspace-state.ts`, WS messages `workspace:*` in `shared/types/workspace.protocol.ts`).
+  Every mutation broadcasts the full `workspace:state` to all clients — never persist these in
+  localStorage again. Device-local keys that stay in the browser: `specwright-active-project`,
+  `cloud-terminal-layout-mode`, `cloud-terminal-pane-*`, `cloud-terminal-split-ratios`,
+  `cloud-terminal-sidebar-width`.
+- Project ids are `pathKey(path)` from the server; the first-seen raw `path` is what sessions match on.
+
 **When modifying UI frontend:**
 - Follow Lit component patterns from `.claude/skills/frontend-lit/`
 - Use `aos-` prefix for all new components

@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.38.0 - 2026-09-10
+
+### Neu
+- **Geteilter Arbeitsbereich pro Backend.** Welche Projekte offen sind, welche kürzlich geöffnet wurden und wie Terminal-Tabs benannt sind, merkt sich jetzt das Backend in `runtime/workspace-<port>.json` — nicht mehr der einzelne Browser. Jeder Client (Mac, iPhone über Tailscale) fragt beim Verbinden `workspace:get` und bekommt danach jede Änderung als vollständigen `workspace:state`-Broadcast. Sechs Nachrichten: `workspace:get`, `workspace:open-project` (mit `workspace:ack` → Server-Projekt-ID), `workspace:close-project`, `workspace:remove-recent`, `workspace:set-session-name`, `workspace:import` (einmalige Migration). Typen in `src/shared/types/workspace.protocol.ts`, Store in `services/workspace-state.ts` (versioniert, tmp+rename, Write-Chain wie die Session-Registry), Handler in `services/workspace-handler.ts` (ohne WebSocketServer testbar).
+- **Terminals anderer Geräte erscheinen live.** Ein `cloud-terminal:created`, dessen `requestId` nicht zu einem eigenen Tab gehört, wird als Tab übernommen, wenn das Projekt offen ist. Auto-Mode-Sessions, die bisher in keinem Browser live auftauchten, bekommen jetzt ebenfalls ein `created` (ohne `requestId`) vom Server.
+- **Bewusst geschlossene Tabs verschwinden überall.** `cloud-terminal:closed` trägt `closedBy: 'user'`, wenn ein Client `cloud-terminal:close` geschickt hat; nur dann entfernen alle Clients den Tab. Ein Prozess-Ende (`exit`) lässt den Tab wie bisher mit „Prozess beendet“ stehen.
+- **Deterministische Tab-Nummern.** „Claude Session N“ / „Terminal N“ werden aus `createdAt` (dann Backend-ID) pro Projekt und Typ abgeleitet (`components/terminal/session-naming.ts`, ein Choke-Point in `willUpdate`), nicht mehr aus der Ankunftsreihenfolge im Browser. Eigene Namen kommen aus dem Workspace und gewinnen.
+- **Erstbefüllung.** Fehlt die Workspace-Datei beim Start, gelten alle Projekte mit laufenden Sessions als offen. Beim ersten Laden schickt ein Browser seinen alten localStorage-Stand (`specwright-open-projects`, `specwright-recently-opened`, `cloud-terminal-session-names`) einmalig per `workspace:import`; der Server füllt nur noch leere Felder.
+
+### Geändert
+- Projekt-ID ist jetzt der normalisierte Pfad (`pathKey`) vom Server, nicht mehr `project-<Zeitstempel>` pro Browser. Der zuerst gesehene Roh-Pfad bleibt gespeichert, weil laufende Sessions exakt dagegen gematcht werden.
+- `aos-project-add-modal` bekommt die Recents als Property `recentProjects` und meldet Entfernen als Event `recent-remove`; der Zugriff auf `recentlyOpenedService` entfällt.
+- `session-connected` (aos-terminal-session) liefert `createdAt` des Servers mit.
+- Gerätelokal bleiben: aktives Projekt (`specwright-active-project`), Split-Layout, Pane-Zuordnung, Zoom, Sidebar-Breite.
+- Fallback: antwortet ein (älteres) Backend 5 s lang nicht auf `workspace:get`, greift einmalig der alte localStorage-Restore.
+
+### Tests
+- `workspace-state.test.ts` (11), `workspace-handler.test.ts` (8), `session-naming.test.ts` (7) neu; `aos-project-add-modal.test.ts` auf Property/Event umgestellt.
+
 ## 3.37.0 - 2026-09-09
 
 ### Neu

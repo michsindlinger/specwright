@@ -59,6 +59,9 @@ import {
 import type { CloudTerminalAgentStatus } from '../../src/shared/types/cloud-terminal.protocol.js';
 import { playAgentDoneChime } from './components/terminal/notification-sound.js';
 import type { ProjectSelectedDetail } from './components/aos-project-add-modal.js';
+import type { RecentlyOpenedEntry } from './services/recently-opened.service.js';
+import type { WorkspaceState } from '../../src/shared/types/workspace.protocol.js';
+import { assignAutoNames, isOwnCreateRequest, toRestoredTab, type BackendSessionLike, type WorkflowMetadataLike } from './components/terminal/session-naming.js';
 import type { GitStatusData, GitBranchEntry, GitPrInfo } from '../../src/shared/types/git.protocol.js';
 import type { GlobalGateState } from '../../src/shared/types/concurrency.protocol.js';
 
@@ -113,6 +116,22 @@ export class AosApp extends LitElement {
 
   @state()
   private activeProjectId: string | null = null;
+
+  /**
+   * Shared workspace (server state, mirrored on every device): recents for the
+   * add-project modal and user-given tab names keyed by backend session id.
+   * Open projects live in `openProjects`; the active project stays device-local.
+   */
+  @state()
+  private recentProjects: RecentlyOpenedEntry[] = [];
+
+  private sessionNames: Record<string, string> = {};
+  private workspaceReady = false;
+  /** Projects we already asked `cloud-terminal:list` for on this connection. */
+  private listedProjectPaths = new Set<string>();
+  /** requestId → path of workspace:open-project calls awaiting their ack. */
+  private pendingOpen = new Map<string, string>();
+  private workspaceFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   @state()
   private showAddProjectModal = false;
@@ -293,6 +312,9 @@ export class AosApp extends LitElement {
   private boundConnectedHandler: MessageHandler = () => {
     if (this.isReconnecting) {
       this.showToast('Verbindung wiederhergestellt', 'success');
+      // A reconnect may have missed workspace broadcasts and session events.
+      this.listedProjectPaths.clear();
+      this.requestWorkspace();
     }
     this.isReconnecting = false;
   };
@@ -525,6 +547,21 @@ export class AosApp extends LitElement {
   private boundCloudTerminalAgentEventHandler: MessageHandler = (msg) => {
     this._handleCloudTerminalAgentEvent(msg);
   };
+  private boundCloudTerminalCreatedHandler: MessageHandler = (msg) => {
+    this._handleCloudTerminalCreatedElsewhere(msg);
+  };
+  private boundWorkspaceStateHandler: MessageHandler = (msg) => {
+    void this._handleWorkspaceState(msg);
+  };
+  private boundWorkspaceAckHandler: MessageHandler = (msg) => {
+    void this._handleWorkspaceAck(msg);
+  };
+  private boundWorkspaceErrorHandler: MessageHandler = (msg) => {
+    const requestId = typeof msg.requestId === 'string' ? msg.requestId : undefined;
+    if (requestId && !this.pendingOpen.has(requestId)) return;
+    if (requestId) this.pendingOpen.delete(requestId);
+    this.showToast(`Projekt konnte nicht geöffnet werden: ${String(msg.message ?? msg.code ?? 'unbekannt')}`, 'warning');
+  };
   private boundKeydownHandler = (e: KeyboardEvent) => this._handleGlobalKeydown(e);
   // WTT-003: Handler for workflow-terminal-request custom events
   private _handleWorkflowTerminalRequest = (e: CustomEvent<{
@@ -579,6 +616,10 @@ export class AosApp extends LitElement {
     // WSM-002: Listen for terminal close events (setup session re-validation)
     gateway.on('cloud-terminal:closed', this.boundCloudTerminalClosedHandler);
     gateway.on('cloud-terminal:agent-event', this.boundCloudTerminalAgentEventHandler);
+    gateway.on('cloud-terminal:created', this.boundCloudTerminalCreatedHandler);
+    gateway.on('workspace:state', this.boundWorkspaceStateHandler);
+    gateway.on('workspace:ack', this.boundWorkspaceAckHandler);
+    gateway.on('workspace:error', this.boundWorkspaceErrorHandler);
     gateway.on('git:status:response', this.boundGitStatusHandler);
     gateway.on('git:branches:response', this.boundGitBranchesHandler);
     gateway.on('git:checkout:response', this.boundGitCheckoutHandler);
@@ -650,6 +691,10 @@ export class AosApp extends LitElement {
     // WSM-002: Remove terminal close listener
     gateway.off('cloud-terminal:closed', this.boundCloudTerminalClosedHandler);
     gateway.off('cloud-terminal:agent-event', this.boundCloudTerminalAgentEventHandler);
+    gateway.off('cloud-terminal:created', this.boundCloudTerminalCreatedHandler);
+    gateway.off('workspace:state', this.boundWorkspaceStateHandler);
+    gateway.off('workspace:ack', this.boundWorkspaceAckHandler);
+    gateway.off('workspace:error', this.boundWorkspaceErrorHandler);
     gateway.off('git:status:response', this.boundGitStatusHandler);
     gateway.off('git:branches:response', this.boundGitBranchesHandler);
     gateway.off('git:checkout:response', this.boundGitCheckoutHandler);
@@ -855,8 +900,8 @@ export class AosApp extends LitElement {
       this.activeTerminalSessionId = null;
     }
 
-    // Persist state
-    this.persistProjectState();
+    // Active project is device-local (the phone may look at another project).
+    this.persistActiveProject();
   }
 
   private async handleProjectTabClose(
@@ -882,7 +927,9 @@ export class AosApp extends LitElement {
     }
 
     this.updateContextProvider();
-    this.persistProjectState();
+    this.persistActiveProject();
+    // Optimistic locally; the server broadcast converges every device.
+    gateway.send({ type: 'workspace:close-project', id: projectId, timestamp: new Date().toISOString() });
   }
 
   private handleAddProject(): void {
@@ -891,6 +938,10 @@ export class AosApp extends LitElement {
 
   private handleAddProjectModalClose(): void {
     this.showAddProjectModal = false;
+  }
+
+  private _handleRecentRemove(e: CustomEvent<{ path: string }>): void {
+    gateway.send({ type: 'workspace:remove-recent', path: e.detail.path, timestamp: new Date().toISOString() });
   }
 
   private handleWorkflowModalClose(): void {
@@ -964,21 +1015,6 @@ export class AosApp extends LitElement {
     };
     this.terminalSessions = [...this.terminalSessions, newSession];
     this.activeTerminalSessionId = newSession.id;
-  }
-
-  /**
-   * Generate a type-specific session name.
-   * Shell terminals: "Terminal 1", "Terminal 2", ...
-   * Claude Code sessions: "Claude Session 1", "Claude Session 2", ...
-   */
-  private _generateSessionName(projectPath: string, terminalType: 'shell' | 'claude-code'): string {
-    const projectSessions = this.terminalSessions.filter(s => s.projectPath === projectPath);
-    if (terminalType === 'shell') {
-      const shellCount = projectSessions.filter(s => s.terminalType === 'shell').length;
-      return `Terminal ${shellCount + 1}`;
-    }
-    const claudeCount = projectSessions.filter(s => s.terminalType !== 'shell').length;
-    return `Claude Session ${claudeCount + 1}`;
   }
 
   /**
@@ -1093,6 +1129,9 @@ export class AosApp extends LitElement {
       this.agentNotifications = removeNotification(this.agentNotifications, this.activeTerminalSessionId);
     }
     if (changed.has('terminalSessions')) {
+      // One choke point for tab names (list, adoption, connect, rename): the
+      // helper returns the same array when nothing changes, so no extra cycle.
+      this.terminalSessions = assignAutoNames(this.terminalSessions, this.sessionNames);
       this.agentNotifications = pruneNotifications(
         this.agentNotifications,
         new Set(this.terminalSessions.map(s => s.id))
@@ -1122,9 +1161,19 @@ export class AosApp extends LitElement {
     this.terminalSessions = this.terminalSessions.map(s =>
       s.id === sessionId ? { ...s, name, customNameSet: true } : s
     );
-    // Persist by stable backend id so the name survives reload (the .id changes to `restored-…`).
+    // Shared by stable backend id: every device shows the same tab name.
     const session = this.terminalSessions.find(s => s.id === sessionId);
-    if (session?.terminalSessionId) this._persistSessionName(session.terminalSessionId, name);
+    if (session?.terminalSessionId) this._shareSessionName(session.terminalSessionId, name);
+  }
+
+  private _shareSessionName(terminalSessionId: string, name: string): void {
+    this.sessionNames = { ...this.sessionNames, [terminalSessionId]: name };
+    gateway.send({
+      type: 'workspace:set-session-name',
+      sessionId: terminalSessionId,
+      name,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   private _handleTerminalSessionClose(e: CustomEvent<{ sessionId: string }>): void {
@@ -1138,8 +1187,7 @@ export class AosApp extends LitElement {
         sessionId: session.terminalSessionId,
         timestamp: new Date().toISOString(),
       });
-      // Drop the persisted name — the session is gone for good.
-      this._removeSessionName(session.terminalSessionId);
+      // The server drops the shared name when the session is gone.
     }
 
     this.terminalSessions = this.terminalSessions.filter(s => s.id !== sessionId);
@@ -1151,12 +1199,13 @@ export class AosApp extends LitElement {
     }
   }
 
-  private _handleTerminalSessionConnected(e: CustomEvent<{ sessionId: string; terminalSessionId: string; terminalType?: 'shell' | 'claude-code'; effectiveCwd?: string }>): void {
-    const { sessionId, terminalSessionId, terminalType, effectiveCwd } = e.detail;
+  private _handleTerminalSessionConnected(e: CustomEvent<{ sessionId: string; terminalSessionId: string; terminalType?: 'shell' | 'claude-code'; effectiveCwd?: string; createdAt?: string }>): void {
+    const { sessionId, terminalSessionId, terminalType, effectiveCwd, createdAt } = e.detail;
     const resolvedType = terminalType || 'claude-code';
+    const created = createdAt ? Date.parse(createdAt) : NaN;
 
-    // Update session with backend ID, terminalType, and type-specific name.
-    // Skip the auto-name overwrite if the user has already renamed this tab.
+    // Update session with backend ID, terminalType and the server's createdAt
+    // (all devices sort auto-names on it). willUpdate() assigns the name.
     this.terminalSessions = this.terminalSessions.map(s => {
       if (s.id !== sessionId) return s;
       const updated = {
@@ -1164,17 +1213,16 @@ export class AosApp extends LitElement {
         terminalSessionId,
         terminalType: resolvedType,
         ...(effectiveCwd ? { effectiveCwd } : {}),
-        ...(s.customNameSet ? {} : { name: this._generateSessionName(s.projectPath, resolvedType) }),
+        ...(Number.isFinite(created) ? { createdAt: new Date(created) } : {}),
       };
-      // Rename-before-connect: a custom name set before terminalSessionId existed can now be
-      // persisted against the stable backend id.
-      if (updated.customNameSet) this._persistSessionName(terminalSessionId, updated.name);
+      // Rename-before-connect: a custom name set before terminalSessionId existed
+      // can now be shared against the stable backend id.
+      if (updated.customNameSet) this._shareSessionName(terminalSessionId, updated.name);
       return updated;
     });
   }
 
-  // --- Tab-name persistence (keyed by the stable backend terminalSessionId, not the ephemeral
-  // frontend .id which regenerates as `restored-<id>` on reload). ---
+  // --- Legacy tab-name store (localStorage) — read once for the workspace migration only. ---
 
   private _loadSessionNames(): Record<string, string> {
     try {
@@ -1190,36 +1238,6 @@ export class AosApp extends LitElement {
     }
   }
 
-  private _persistSessionName(terminalSessionId: string, name: string): void {
-    if (!terminalSessionId) return;
-    try {
-      const map = this._loadSessionNames();
-      map[terminalSessionId] = name;
-      // Cap to avoid unbounded growth from sessions closed backend-side (no close event → no
-      // _removeSessionName). Object keys keep insertion order → drop the oldest on overflow.
-      const keys = Object.keys(map);
-      if (keys.length > 200) {
-        for (const k of keys.slice(0, keys.length - 200)) delete map[k];
-      }
-      localStorage.setItem('cloud-terminal-session-names', JSON.stringify(map));
-    } catch {
-      // localStorage unavailable
-    }
-  }
-
-  private _removeSessionName(terminalSessionId: string): void {
-    if (!terminalSessionId) return;
-    try {
-      const map = this._loadSessionNames();
-      if (terminalSessionId in map) {
-        delete map[terminalSessionId];
-        localStorage.setItem('cloud-terminal-session-names', JSON.stringify(map));
-      }
-    } catch {
-      // localStorage unavailable
-    }
-  }
-
   private handleWorkflowStart(e: CustomEvent<{ commandId: string; argument?: string; model?: string }>): void {
     const { commandId, argument, model } = e.detail;
 
@@ -1231,44 +1249,42 @@ export class AosApp extends LitElement {
     });
   }
 
-  private async handleProjectSelected(
-    e: CustomEvent<ProjectSelectedDetail>
-  ): Promise<void> {
+  private handleProjectSelected(e: CustomEvent<ProjectSelectedDetail>): void {
     const { path, name } = e.detail;
-
-    // Generate unique ID for the project
-    const id = `project-${Date.now()}`;
-
-    // Add to open projects
-    const newProject: Project = { id, name, path };
-    this.openProjects = [...this.openProjects, newProject];
-    this.activeProjectId = id;
-
-    // Update recently opened
-    recentlyOpenedService.addRecentlyOpened(path, name);
-
-    // Close modal
     this.showAddProjectModal = false;
+    this.requestOpenProject(path, name);
+  }
 
-    // Initialize project context with backend (also sends WebSocket message)
-    const result = await projectStateService.switchProject(newProject);
-    if (!result.success) {
-      this.showToast(`Failed to initialize project: ${result.error}`, 'warning');
-    }
+  /**
+   * Opens a project in the shared workspace. The server dedupes by normalised
+   * path, broadcasts the new state to every device and acks us with the
+   * server-side project id, which we then activate (see _handleWorkspaceAck).
+   */
+  private requestOpenProject(path: string, name: string): void {
+    const requestId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `open-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    this.pendingOpen.set(requestId, path);
+    gateway.send({
+      type: 'workspace:open-project',
+      requestId,
+      path,
+      name,
+      timestamp: new Date().toISOString(),
+    });
+  }
 
-    // Update context provider and persist state
-    this.updateContextProvider();
-    this.persistProjectState();
-
-    // Load git status for newly opened project
-    this._loadGitStatus();
-
-    // Reset file tree to show new project's files
-    const sidebar = this.querySelector('aos-file-tree-sidebar') as { reset(): void } | null;
-    if (sidebar) sidebar.reset();
-
+  private async _handleWorkspaceAck(msg: Record<string, unknown>): Promise<void> {
+    const requestId = typeof msg.requestId === 'string' ? msg.requestId : '';
+    const projectId = typeof msg.projectId === 'string' ? msg.projectId : '';
+    if (!requestId || !this.pendingOpen.has(requestId)) return;
+    const requestedPath = this.pendingOpen.get(requestId)!;
+    this.pendingOpen.delete(requestId);
+    const project = this.openProjects.find(p => p.id === projectId);
+    if (!project) return; // state broadcast not applied yet — the next state will carry it
+    await this.activateProject(project);
     // WSM-003: Validate project and navigate to getting-started if needed
-    this._validateAndNavigate(path);
+    this._validateAndNavigate(project.path || requestedPath);
   }
 
   /**
@@ -1425,6 +1441,20 @@ export class AosApp extends LitElement {
     const sessionId = msg.sessionId as string;
     const exitCode = msg.exitCode as number | undefined;
 
+    // Closed deliberately on some device → the tab disappears everywhere.
+    // (No-op on the closing device: it already removed the tab.)
+    if (msg.closedBy === 'user') {
+      const tab = this.terminalSessions.find(s => s.terminalSessionId === sessionId);
+      if (tab) {
+        this.terminalSessions = this.terminalSessions.filter(s => s.id !== tab.id);
+        if (this.activeTerminalSessionId === tab.id) {
+          const remaining = this.terminalSessions.filter(s => s.projectPath === tab.projectPath);
+          this.activeTerminalSessionId = remaining.length > 0 ? remaining[remaining.length - 1].id : null;
+        }
+      }
+      return;
+    }
+
     // Find the matching setup session
     const setupSession = this.terminalSessions.find(
       s => s.terminalSessionId === sessionId && s.isSetupSession === true
@@ -1491,18 +1521,7 @@ export class AosApp extends LitElement {
       this.switchToProject(existing.id);
       return;
     }
-
-    this.openProjects = [...this.openProjects, project];
-    this.activeProjectId = project.id;
-
-    projectStateService.switchProject(project).then((result) => {
-      if (!result.success) {
-        this.showToast(`Failed to initialize project: ${result.error}`, 'warning');
-      }
-    });
-
-    this.updateContextProvider();
-    this.persistProjectState();
+    this.requestOpenProject(project.path, project.name);
   }
 
   /**
@@ -1515,11 +1534,22 @@ export class AosApp extends LitElement {
     this.handleProjectTabClose(event as CustomEvent<{ projectId: string }>);
   }
 
-  /**
-   * Persist current project state to localStorage.
-   */
-  private persistProjectState(): void {
-    projectStateService.persistState(this.openProjects, this.activeProjectId);
+  /** The active project is device-local: the phone may look at another project than the Mac. */
+  private persistActiveProject(): void {
+    try {
+      if (this.activeProjectId) localStorage.setItem('specwright-active-project', this.activeProjectId);
+      else localStorage.removeItem('specwright-active-project');
+    } catch {
+      // localStorage unavailable
+    }
+  }
+
+  private loadActiveProjectId(): string | null {
+    try {
+      return localStorage.getItem('specwright-active-project');
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -1529,21 +1559,178 @@ export class AosApp extends LitElement {
   private restoreProjectStateWhenConnected(): void {
     if (gateway.getConnectionStatus()) {
       // Already connected, restore immediately
-      this.restoreProjectState();
+      this.requestWorkspace();
     } else {
       // Wait for connection, then restore
       const onConnected = () => {
         gateway.off('gateway.connected', onConnected);
-        this.restoreProjectState();
+        this.requestWorkspace();
       };
       gateway.on('gateway.connected', onConnected);
     }
   }
 
   /**
-   * Restore project state from localStorage after browser refresh.
+   * Asks the backend for the shared workspace. Falls back to the legacy
+   * localStorage restore once if no `workspace:state` arrives (older backend).
+   */
+  private requestWorkspace(): void {
+    gateway.send({ type: 'workspace:get', timestamp: new Date().toISOString() });
+    if (this.workspaceReady || this.workspaceFallbackTimer) return;
+    this.workspaceFallbackTimer = setTimeout(() => {
+      this.workspaceFallbackTimer = null;
+      if (!this.workspaceReady) void this.restoreProjectState();
+    }, 5000);
+  }
+
+  /**
+   * Applies a `workspace:state` broadcast: open projects, recents and shared
+   * tab names. Active project stays device-local (kept if still open, else the
+   * remembered one, else the first). Terminal sessions are listed once per
+   * project per connection.
+   */
+  private async _handleWorkspaceState(msg: Record<string, unknown>): Promise<void> {
+    const state = msg.state as WorkspaceState | undefined;
+    if (!state || !Array.isArray(state.openProjects)) return;
+    const firstState = !this.workspaceReady;
+    this.workspaceReady = true;
+    if (this.workspaceFallbackTimer) {
+      clearTimeout(this.workspaceFallbackTimer);
+      this.workspaceFallbackTimer = null;
+    }
+
+    const projects: Project[] = state.openProjects.map(p => ({ id: p.id, name: p.name, path: p.path }));
+    this.openProjects = projects;
+
+    // Active project: keep, else remembered, else first.
+    const remembered = this.loadActiveProjectId();
+    const nextActive =
+      (this.activeProjectId && projects.some(p => p.id === this.activeProjectId) ? this.activeProjectId : null) ??
+      (remembered && projects.some(p => p.id === remembered) ? remembered : null) ??
+      (projects[0]?.id ?? null);
+    const activeChanged = nextActive !== this.activeProjectId;
+    // MPRO-006: when the active project changes, the backend context switch
+    // (project.switch) must land BEFORE consumers see the new active project,
+    // otherwise the dashboard requests specs against "no project selected".
+    // activateProject() does exactly that; only the unchanged case can
+    // publish the new project list right away.
+    if (!activeChanged) this.updateContextProvider();
+
+    this.recentProjects = (Array.isArray(state.recentProjects) ? state.recentProjects : []).map(r => ({
+      path: r.path,
+      name: r.name,
+      lastOpened: Date.parse(r.lastOpened) || Date.now(),
+    }));
+
+    const names = state.sessionNames && typeof state.sessionNames === 'object' ? state.sessionNames : {};
+    this.sessionNames = names;
+    this.terminalSessions = assignAutoNames(this.terminalSessions, names);
+
+    // Drop tabs of projects that were closed elsewhere.
+    const openPaths = new Set(projects.map(p => p.path));
+    const remaining = this.terminalSessions.filter(s => openPaths.has(s.projectPath));
+    if (remaining.length !== this.terminalSessions.length) {
+      this.terminalSessions = remaining;
+      if (this.activeTerminalSessionId && !remaining.some(s => s.id === this.activeTerminalSessionId)) {
+        this.activeTerminalSessionId = null;
+      }
+    }
+
+    // List terminal sessions for projects we have not asked about on this connection.
+    for (const project of projects) {
+      if (this.listedProjectPaths.has(project.path)) continue;
+      this.listedProjectPaths.add(project.path);
+      gateway.send({ type: 'cloud-terminal:list', projectPath: project.path, timestamp: new Date().toISOString() });
+    }
+
+    if (activeChanged && nextActive) {
+      const project = projects.find(p => p.id === nextActive);
+      if (project) await this.activateProject(project);
+    } else if (activeChanged) {
+      this.activeTerminalSessionId = null;
+      this._handleDocumentPreviewClose();
+    }
+
+    if (firstState) {
+      this.migrateLocalWorkspaceOnce(state);
+      // Validate the active project on first load (WSM-003), as the old restore did.
+      const active = projects.find(p => p.id === this.activeProjectId);
+      if (active) this._validateProjectState(active.path);
+    }
+  }
+
+  /**
+   * Makes a project the active one on this device: backend context switch,
+   * git status, file tree, remembered terminal tab. Shared by tab select,
+   * workspace ack and workspace state.
+   */
+  private async activateProject(project: Project): Promise<void> {
+    const result = await projectStateService.switchProject(project);
+    if (!result.success) {
+      this.showToast(`Failed to switch project: ${result.error}`, 'error');
+    }
+    const previousProject = this.openProjects.find(p => p.id === this.activeProjectId);
+    if (previousProject && previousProject.id !== project.id && this.activeTerminalSessionId) {
+      this.lastActiveSessionByProject.set(previousProject.id, this.activeTerminalSessionId);
+    }
+    this.activeProjectId = project.id;
+    this.updateContextProvider();
+    this.persistActiveProject();
+    this._handleDocumentPreviewClose();
+    this._loadGitStatus();
+    const sidebar = this.querySelector('aos-file-tree-sidebar') as { reset(): void } | null;
+    if (sidebar) sidebar.reset();
+    const projectSessions = this.terminalSessions.filter(s => s.projectPath === project.path);
+    if (projectSessions.length > 0) {
+      const remembered = this.lastActiveSessionByProject.get(project.id);
+      const rememberedExists = remembered && projectSessions.some(s => s.id === remembered);
+      this.activeTerminalSessionId = rememberedExists ? remembered : projectSessions[0].id;
+    } else {
+      this.activeTerminalSessionId = null;
+    }
+  }
+
+  /**
+   * One-time upload of this browser's legacy localStorage workspace (open
+   * projects, recents, tab names). The server fills only fields that are still
+   * empty, so a late device never overwrites a workspace others already use.
+   */
+  private migrateLocalWorkspaceOnce(serverState: WorkspaceState): void {
+    const FLAG = 'specwright-workspace-migrated';
+    let migrated: string | null = null;
+    try { migrated = localStorage.getItem(FLAG); } catch { return; }
+    if (migrated) return;
+
+    const stored = projectStateService.loadPersistedState();
+    const recents = recentlyOpenedService.getRecentlyOpened();
+    const names = this._loadSessionNames();
+    const openProjects = (stored?.openProjects ?? []).map(p => ({ path: p.path, name: p.name }));
+    if (openProjects.length || recents.length || Object.keys(names).length) {
+      gateway.send({
+        type: 'workspace:import',
+        ...(openProjects.length ? { openProjects } : {}),
+        ...(recents.length ? { recentProjects: recents } : {}),
+        ...(Object.keys(names).length ? { sessionNames: names } : {}),
+        timestamp: new Date().toISOString(),
+      });
+    }
+    // Carry the old (random) active id over by path, if that project is (or becomes) open.
+    if (stored?.activeProjectId && !this.loadActiveProjectId()) {
+      const oldActive = stored.openProjects.find(p => p.id === stored.activeProjectId);
+      const match = oldActive && serverState.openProjects.find(p => p.path === oldActive.path);
+      if (match) {
+        try { localStorage.setItem('specwright-active-project', match.id); } catch { /* ignore */ }
+      }
+    }
+    try { localStorage.setItem(FLAG, new Date().toISOString()); } catch { /* ignore */ }
+  }
+
+  /**
+   * LEGACY fallback: restore project state from localStorage. Only used when the
+   * backend never answered `workspace:get` (older backend during a rolling update).
    */
   private async restoreProjectState(): Promise<void> {
+    if (this.workspaceReady) return;
     const storedState = projectStateService.loadPersistedState();
     if (!storedState || storedState.openProjects.length === 0) {
       return;
@@ -1598,7 +1785,7 @@ export class AosApp extends LitElement {
     }
 
     this.updateContextProvider();
-    this.persistProjectState();
+    this.persistActiveProject();
 
     // Restore terminal sessions for all open projects
     this.restoreTerminalSessions();
@@ -1698,58 +1885,16 @@ export class AosApp extends LitElement {
    * Merges backend sessions into frontend terminalSessions state.
    */
   private handleCloudTerminalListResponse(msg: Record<string, unknown>): void {
-    const backendSessions = msg.sessions as Array<{
-      sessionId: string;
-      projectPath: string;
-      status: string;
-      terminalType?: 'shell' | 'claude-code';
-      modelConfig?: { model: string; provider?: string };
-      createdAt: string;
-      agentStatus?: CloudTerminalAgentStatus;
-      agentStatusAt?: string;
-      agentStatusReason?: string;
-    }> | undefined;
-
+    const backendSessions = msg.sessions as BackendSessionLike[] | undefined;
     if (!backendSessions || backendSessions.length === 0) {
       return;
     }
 
-    // Convert backend sessions to frontend TerminalSession format
-    const persistedNames = this._loadSessionNames();
-    let shellIndex = 0;
-    let claudeIndex = 0;
-    const newSessions: TerminalSession[] = backendSessions
-      .filter(s => s.status !== 'closed')
-      .map((backendSession) => {
-        // Check if we already have this session
-        const existing = this.terminalSessions.find(
-          ts => ts.terminalSessionId === backendSession.sessionId
-        );
-        if (existing) {
-          return existing;
-        }
-
-        // Resolve terminal type (backward compat: default to 'claude-code')
-        const type = backendSession.terminalType || 'claude-code';
-        // Rehydrate a user-set name (keyed by stable backend id); else auto-generate.
-        const persisted = persistedNames[backendSession.sessionId];
-        const name = persisted ?? (type === 'shell'
-          ? `Terminal ${++shellIndex}`
-          : `Claude Session ${++claudeIndex}`);
-
-        // Create new frontend session entry
-        return {
-          id: `restored-${backendSession.sessionId}`,
-          name,
-          status: backendSession.status === 'active' ? 'active' : 'disconnected',
-          createdAt: new Date(backendSession.createdAt),
-          projectPath: backendSession.projectPath,
-          terminalSessionId: backendSession.sessionId,
-          terminalType: type,
-          customNameSet: persisted != null,
-          ...agentStatusFields(backendSession),
-        } as TerminalSession;
-      });
+    // Tabs for sessions we do not know yet. Names are settled by willUpdate().
+    const known = new Set(this.terminalSessions.map(s => s.terminalSessionId));
+    const sessionsToAdd: TerminalSession[] = backendSessions
+      .filter(b => b.status !== 'closed' && !known.has(b.sessionId))
+      .map(b => toRestoredTab(b));
 
     // A list response after a (re)connect is the freshest agent-status source
     // for sessions we already know — refresh them in place.
@@ -1758,18 +1903,16 @@ export class AosApp extends LitElement {
     const refreshedSessions = this.terminalSessions.map(s => {
       const b = s.terminalSessionId ? byBackendId.get(s.terminalSessionId) : undefined;
       if (!b || b.agentStatus === undefined) return s;
-      const fields = agentStatusFields(b);
+      const fields = agentStatusFields({
+        agentStatus: b.agentStatus,
+        agentStatusAt: typeof b.agentStatusAt === 'string' ? b.agentStatusAt : b.agentStatusAt?.toISOString(),
+        agentStatusReason: b.agentStatusReason,
+      });
       if (fields.agentStatus === s.agentStatus && fields.agentStatusAt === s.agentStatusAt && fields.agentStatusReason === s.agentStatusReason) return s;
       refreshed = true;
       return { ...s, ...fields };
     });
     if (refreshed) this.terminalSessions = refreshedSessions;
-
-    // Merge with existing sessions (avoid duplicates)
-    const existingIds = new Set(this.terminalSessions.map(s => s.terminalSessionId));
-    const sessionsToAdd = newSessions.filter(
-      s => s.terminalSessionId && !existingIds.has(s.terminalSessionId)
-    );
 
     if (sessionsToAdd.length > 0) {
       this.terminalSessions = [...this.terminalSessions, ...sessionsToAdd];
@@ -1781,6 +1924,26 @@ export class AosApp extends LitElement {
           this.activeTerminalSessionId = currentProjectSessions[0].id;
         }
       }
+    }
+  }
+
+  /**
+   * A session was created by another device (or by an auto-mode orchestrator):
+   * adopt it as a tab if its project is open here. Our own creates are
+   * correlated by requestId and handled by aos-terminal-session.
+   */
+  private _handleCloudTerminalCreatedElsewhere(msg: Record<string, unknown>): void {
+    if (isOwnCreateRequest(this.terminalSessions, msg.requestId)) return;
+    const session = msg.session as BackendSessionLike | undefined;
+    const sessionId = typeof msg.sessionId === 'string' ? msg.sessionId : session?.sessionId;
+    if (!session || !sessionId) return;
+    if (this.terminalSessions.some(s => s.terminalSessionId === sessionId)) return;
+    if (!this.openProjects.some(p => p.path === session.projectPath)) return;
+    const tab = toRestoredTab({ ...session, sessionId }, msg.workflowMetadata as WorkflowMetadataLike | undefined);
+    this.terminalSessions = [...this.terminalSessions, tab];
+    const activeProject = this.openProjects.find(p => p.id === this.activeProjectId);
+    if (!this.activeTerminalSessionId && activeProject?.path === session.projectPath) {
+      this.activeTerminalSessionId = tab.id;
     }
   }
 
@@ -2282,8 +2445,10 @@ export class AosApp extends LitElement {
       <aos-project-add-modal
         .open=${this.showAddProjectModal}
         .openProjectPaths=${this.openProjects.map((p) => p.path)}
+        .recentProjects=${this.recentProjects}
         @project-selected=${this.handleProjectSelected}
         @modal-close=${this.handleAddProjectModalClose}
+        @recent-remove=${this._handleRecentRemove}
       ></aos-project-add-modal>
       <aos-context-menu
         @menu-item-select=${this.handleMenuItemSelect}

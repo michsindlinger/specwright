@@ -50,6 +50,10 @@ import type { TabReviewConfig } from './services/plan-review-orchestrator.js';
 import { VoiceCallService } from './services/voice-call.service.js';
 import { setupService, type StepOutput, type StepComplete } from './services/setup.service.js';
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
+import { WorkspaceStateStore } from './services/workspace-state.js';
+import { WorkspaceHandler } from './services/workspace-handler.js';
+import { getWorkspaceStatePath } from './utils/runtime-paths.js';
+import { existsSync } from 'fs';
 import type {
   CloudTerminalSessionId,
   CloudTerminalAgentEvent,
@@ -101,6 +105,13 @@ export class WebSocketHandler {
   private previewWatcher: PreviewWatcher;
   private dependencyAnalysisService: DependencyAnalysisService;
   private unsubscribeConcurrency: (() => void) | null = null;
+  /** Shared workspace (open projects, recents, tab names) — one per backend. */
+  private workspaceStore: WorkspaceStateStore;
+  private workspaceHandler: WorkspaceHandler;
+  /** Sessions the user closed via cloud-terminal:close — their `closed` event carries closedBy:'user'. */
+  private userClosedSessionIds = new Set<string>();
+  /** Sessions created through a WS create handler (they broadcast their own `created`). */
+  private wsCreatedSessionIds = new Set<string>();
 
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server });
@@ -121,6 +132,9 @@ export class WebSocketHandler {
     this.dependencyAnalysisService = new DependencyAnalysisService();
     this.previewWatcher = new PreviewWatcher();
     this.previewWatcher.init();
+    this.workspaceStore = new WorkspaceStateStore(getWorkspaceStatePath(), { pathKey, pathExists: (p: string): boolean => existsSync(p) });
+    this.workspaceHandler = new WorkspaceHandler(this.workspaceStore, (m) => this.broadcast(m as WebSocketMessage));
+    this.bootWorkspace();
     this.setupConnectionHandler();
     this.startHeartbeat();
     this.setupCloudTerminalListeners();
@@ -128,6 +142,27 @@ export class WebSocketHandler {
     this.setupVoiceCallListeners();
     this.setupSetupListeners();
     this.setupConcurrencyBroadcast();
+  }
+
+  /**
+   * Loads the shared workspace once boot-restore has settled. First boot
+   * without a file: projects with live sessions count as open (a phone
+   * connecting before the Mac still sees the agents). Names of sessions that
+   * did not survive the restart are pruned.
+   */
+  private bootWorkspace(): void {
+    void this.cloudTerminalManager.whenReady().then(async () => {
+      const { existed } = await this.workspaceStore.load();
+      const live = this.cloudTerminalManager.getAllSessions();
+      if (!existed) {
+        const seeded = this.workspaceStore.seedFromSessions(live);
+        if (seeded > 0) console.log(`[WebSocket] workspace seeded with ${seeded} project(s) from live sessions`);
+      }
+      const pruned = this.workspaceStore.pruneSessionNames(new Set(live.map((s) => s.sessionId)));
+      if (pruned > 0) console.log(`[WebSocket] workspace: pruned ${pruned} stale tab name(s)`);
+    }).catch((err) => {
+      console.error('[WebSocket] workspace boot failed:', err);
+    });
   }
 
   private setupConcurrencyBroadcast(): void {
@@ -443,6 +478,18 @@ export class WebSocketHandler {
           break;
         case 'settings.general.get':
           this.handleSettingsGeneralGet(client);
+          break;
+        case 'workspace:get':
+        case 'workspace:open-project':
+        case 'workspace:close-project':
+        case 'workspace:remove-recent':
+        case 'workspace:set-session-name':
+        case 'workspace:import':
+          // Gated like cloud-terminal handlers: the workspace is seeded from
+          // restored sessions, so it must not answer before restore settled.
+          this.gateOnCloudTerminalRestore(() => {
+            this.workspaceHandler.handle(message as Record<string, unknown>, (m) => client.send(JSON.stringify(m)));
+          });
           break;
         case 'settings.general.update':
           this.handleSettingsGeneralUpdate(client, message);
@@ -4978,6 +5025,7 @@ export class WebSocketHandler {
         this.cloudTerminalManager.sendInput(session.sessionId, `/${commandPrefix}:build-development-team\n`);
       }, 1000);
 
+      this.wsCreatedSessionIds.add(session.sessionId);
       // Send cloud-terminal:created for the terminal UI
       const createdResponse: WebSocketMessage = {
         type: 'cloud-terminal:created',
@@ -5226,13 +5274,38 @@ export class WebSocketHandler {
 
     // Session closed
     this.cloudTerminalManager.on('session.closed', (sessionId: CloudTerminalSessionId, exitCode?: number) => {
+      // closedBy:'user' lets every client drop the tab; a plain process exit
+      // keeps the tab with its "Prozess beendet" message (today's UX).
+      const closedByUser = this.userClosedSessionIds.delete(sessionId);
+      this.wsCreatedSessionIds.delete(sessionId);
       const message: WebSocketMessage = {
         type: 'cloud-terminal:closed',
         sessionId,
         exitCode,
+        ...(closedByUser ? { closedBy: 'user' } : {}),
         timestamp: new Date().toISOString()
       };
       this.broadcast(message);
+      // A session that is gone for good takes its tab name with it.
+      this.workspaceHandler.onSessionClosed(sessionId);
+    });
+
+    // Sessions not created through a WS handler (auto-mode orchestrators) never
+    // announced themselves — every client only learned of them after a reload.
+    // Broadcast a `created` without requestId so open clients adopt the tab live.
+    this.cloudTerminalManager.on('session.created', (created: { sessionId: CloudTerminalSessionId }) => {
+      const sessionId = created.sessionId;
+      setImmediate(() => {
+        if (this.wsCreatedSessionIds.has(sessionId)) return;
+        const session = this.cloudTerminalManager.getSession(sessionId);
+        if (!session || session.status === 'closed') return;
+        this.broadcast({
+          type: 'cloud-terminal:created',
+          sessionId,
+          session,
+          timestamp: new Date().toISOString(),
+        });
+      });
     });
 
     // Session paused
@@ -5490,6 +5563,7 @@ export class WebSocketHandler {
       // (the client does not know the sessionId yet), so they ride along here.
       const notices = this.cloudTerminalManager.takePendingNotices(session.sessionId);
 
+      this.wsCreatedSessionIds.add(session.sessionId);
       // Send created response with requestId for correlation
       const createdResponse: WebSocketMessage = {
         type: 'cloud-terminal:created',
@@ -5689,6 +5763,7 @@ export class WebSocketHandler {
         `[WebSocket] Workflow session created: ${session.sessionId} for command: ${workflowMetadata.workflowCommand}`
       );
 
+      this.wsCreatedSessionIds.add(session.sessionId);
       // Send created response with workflow metadata and requestId for correlation
       const createdResponse: WebSocketMessage = {
         type: 'cloud-terminal:created',
@@ -5730,7 +5805,10 @@ export class WebSocketHandler {
       return;
     }
 
+    // Mark BEFORE the close: the session.closed listener reads the set synchronously.
+    this.userClosedSessionIds.add(sessionId);
     const closed = this.cloudTerminalManager.closeSession(sessionId);
+    if (!closed) this.userClosedSessionIds.delete(sessionId);
 
     if (!closed) {
       const errorResponse: WebSocketMessage = {
