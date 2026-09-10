@@ -9,6 +9,7 @@ import type { AosTerminalSession } from './aos-terminal-session.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
 import { hiddenRowPane, clampRowRatio } from './pane-visibility.js';
 import { effectiveZoomedPane, nextZoomedPane, paneShowingProject, ZOOM_GEOM } from './pane-zoom.js';
+import { syncSelectValue } from './pane-select-sync.js';
 import { isPaneZoomShortcut, isEditableTarget } from '../../utils/keyboard-shortcuts.js';
 import { resolveJumpTarget, formatRelativeTime, type AgentNotification } from './agent-notifications.js';
 import { isBellSoundEnabled, setBellSoundEnabled, playAgentDoneChime } from './notification-sound.js';
@@ -1576,6 +1577,10 @@ export class AosCloudTerminalSidebar extends LitElement {
     this._closeBell();
     const session = this.allSessions.find((s) => s.id === n.sessionId);
     if (!session) return;
+    // Jumping onto the already-active session emits nothing below (early return), and app.ts
+    // only drops an entry when activeTerminalSessionId actually changes — force the event so
+    // the row cannot survive the click.
+    if (this.activeSessionId === session.id) this._emitSessionSelect(session.id, true);
     const target = resolveJumpTarget({
       isSplit: this._isSplit,
       paneSessionIds: this.paneSessionIds,
@@ -2180,9 +2185,12 @@ export class AosCloudTerminalSidebar extends LitElement {
       if (p) usedElsewhere.add(p);
     }
 
+    // `?selected` below is only correct on the first paint — the displayed selection is
+    // corrected imperatively afterwards by _syncPaneSelects() (see pane-select-sync.ts).
     return html`
       <select
         class="pane-select"
+        data-pane=${paneIndex}
         @change=${(e: Event) =>
           this._assignPaneProject(paneIndex, (e.target as HTMLSelectElement).value || null)}
       >
@@ -2201,6 +2209,27 @@ export class AosCloudTerminalSidebar extends LitElement {
         )}
       </select>
     `;
+  }
+
+  /**
+   * A <select>'s selection is DOM state, not template state: once the user has picked an
+   * option, `?selected` attribute changes are ignored (dirty options), and lit commits an
+   * element's own parts before its child option parts — so neither binding can move the
+   * selection reliably (see pane-select-sync.ts). The pane dropdowns are therefore corrected
+   * imperatively after every render.
+   *
+   * `data-pane` is required rather than DOM order: a hidden pane renders no header at all
+   * (`_isPaneHidden`), so the n-th `.pane-select` is not pane n — while zoomed there is
+   * exactly one, and it is not necessarily pane 0.
+   */
+  private _syncPaneSelects(): void {
+    if (!this._isSplit) return;
+    const count = this._paneCount;
+    for (const select of this.querySelectorAll<HTMLSelectElement>('select.pane-select[data-pane]')) {
+      const idx = Number.parseInt(select.dataset.pane ?? '', 10);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= count) continue;
+      syncSelectValue(select, this._projectOf(idx) ?? '');
+    }
   }
 
   private _renderLoadingOverlay() {
@@ -2448,9 +2477,13 @@ export class AosCloudTerminalSidebar extends LitElement {
     this._emitSessionSelect(sessionId);
   }
 
-  /** Keep app.ts' activeTerminalSessionId in sync with the focused pane (toolbar/shortcuts). */
-  private _emitSessionSelect(sessionId: string) {
-    if (this.activeSessionId === sessionId) return;
+  /**
+   * Keep app.ts' activeTerminalSessionId in sync with the focused pane (toolbar/shortcuts).
+   * `force` re-emits for the already-active session — app.ts reacts to a property CHANGE, so
+   * without it a bell jump onto the active session would silently keep its entry.
+   */
+  private _emitSessionSelect(sessionId: string, force = false) {
+    if (!force && this.activeSessionId === sessionId) return;
     this.activeSessionId = sessionId;
     this.dispatchEvent(
       new CustomEvent('session-select', {
@@ -2943,6 +2976,10 @@ export class AosCloudTerminalSidebar extends LitElement {
     // measurement above so a first measure + heal batch into one render (no 2-pane flash), and the
     // internal idempotency guard makes the every-update call a cheap no-op when ratios are safe.
     this._healRowRatios();
+
+    // Last on purpose: _reconcilePanes() above may still rewrite paneSessionIds, which (being
+    // @state) schedules another update whose sync then sees the settled value.
+    this._syncPaneSelects();
   }
 
   override connectedCallback() {

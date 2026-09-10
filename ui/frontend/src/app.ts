@@ -998,6 +998,9 @@ export class AosApp extends LitElement {
 
   private _handleTerminalSessionSelect(e: CustomEvent<{ sessionId: string; clearNeedsInput?: boolean }>): void {
     this.activeTerminalSessionId = e.detail.sessionId;
+    // Drop the bell entry here as well as in willUpdate(): a forced re-select of the already
+    // active session (bell jump) does not change the property, so willUpdate never runs.
+    this.agentNotifications = removeNotification(this.agentNotifications, e.detail.sessionId);
 
     // WTT-004: Clear needsInput flag when tab becomes active
     if (e.detail.clearNeedsInput) {
