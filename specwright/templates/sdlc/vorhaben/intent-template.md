@@ -1,24 +1,25 @@
 ---
-intent_id: "INT-JJJJ-NNN"
-titel: "[TITEL]"
-status: "entwurf"
-version: "0.1.0"
-autor: "[AUTOR]"
-verantwortlich: "[ROLLE]"
-erstellt: "JJJJ-MM-TT"
-geaendert: "JJJJ-MM-TT"
-risikoklasse: "niedrig"
-groesse: "S"
-bypass: "nein"
-bypass_grund: ""
-bezuege:
-  product: "docs/product-brief.md"
-  spec: ""
-  plan: ""
-  board_karte: ""
-  adr: []
-  ersetzt: ""
-schlagworte: []
+intent_id: "INT-JJJJ-NNN"  
+titel: "[TITEL]"  
+status: "entwurf"  
+version: "0.1.0"  
+autor: "[AUTOR]"  
+verantwortlich: "[ROLLE]"  
+erstellt: "JJJJ-MM-TT"  
+geaendert: "JJJJ-MM-TT"  
+risikoklasse: "niedrig"  
+groesse: "S"  
+bypass: "nein"  
+bypass_grund: ""  
+bezuege:  
+  product: "docs/product-brief.md"  
+  spec: ""  
+  plan: ""  
+  board_karte: ""  
+  adr: []  
+  ersetzt: ""  
+schlagworte: []  
+
 ---
 
 # Absicht: [TITEL]

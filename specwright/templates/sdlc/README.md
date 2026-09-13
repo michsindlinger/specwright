@@ -18,6 +18,8 @@ Dazu `hooks/`: drei deterministische Leitplanken für `.claude/settings.json`.
 
 ## Ablauf je Vorhaben
 
+Vier Slash-Commands, ein Vorhaben: `/intent` → `/spec` → `/plan` → `/build` (Commands in `.claude/commands/specwright/`, Workflows in `specwright/workflows/core/{intent,spec,plan,build}.md`). Die alten Commands (`create-spec`, `execute-tasks`, …) bleiben bis zum Schnitt in Phase 4 bestehen; Installer kennen die neuen noch nicht.
+
 1. **`intent.md`** — was und warum, in den Worten der Person mit der Idee. Fachlich. Committen.
 2. **`spec.md`** — was genau, fachlich. Keine Technik, keine Architektur. Die Projekt-Docs werden gelesen und markieren **Bedenken**; entschieden wird nichts. Freigabe durch die verantwortliche Rolle.
 3. **`design/`** (optional) — nur bei UI-Änderung: Mock, committet. Ohne Mock kein „entspricht dem Mock" in der Definition of Done.
@@ -34,9 +36,11 @@ Dazu `hooks/`: drei deterministische Leitplanken für `.claude/settings.json`.
 - `architecture.md` ist das Soll. Das Drift-Skript vergleicht das Ist (Compose, Manifeste, Traces) dagegen.
 - `CLAUDE.md` bleibt unter einer Seite und verweist auf die Projekt-Docs statt sie zu enthalten.
 
-## Sprache
+## Sprache und Form
 
 Vorlagen und ausgefüllte Dokumente auf Deutsch, Dateinamen und Schlüssel auf Englisch (`intent.md`, `status:`). Eine englische Fassung folgt, wenn Specwright veröffentlicht wird.
+
+Dokumente müssen in MacDown lesbar sein (kein Frontmatter-Support dort): Platzhalter in `[…]`, nie `<…>`; Leerzeile vor jeder Liste und Tabelle; im YAML-Kopf jede Zeile mit zwei Leerzeichen abschließen und eine Leerzeile vor dem schließenden `---` lassen — sonst wird der Kopf zu einem Absatz und die letzte Zeile zur Überschrift. Beides ist gültiges YAML.
 
 ## Herkunft
 
