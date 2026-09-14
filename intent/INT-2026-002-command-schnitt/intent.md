@@ -2,7 +2,7 @@
 intent_id: "INT-2026-002"  
 titel: "Command-Schnitt 45 → 23, ein Installer-Manifest, Specwright lebt den v4-Flow selbst"  
 status: "angenommen"  
-version: "1.0.0"  
+version: "1.0.1"  
 autor: "Claude (Gespräch mit Michael Sindlinger)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-14"  
@@ -13,7 +13,7 @@ bypass: "nein"
 bypass_grund: ""  
 bezuege:  
   product: "docs/product-brief.md (entsteht in diesem Vorhaben, AK-08)"  
-  spec: ""  
+  spec: "spec.md"  
   plan: ""  
   board_karte: "Specwright — Backlog Board · „AI-native SDLC v4 — Flow nach Anthropic-Playbook neu aufsetzen“"  
   adr: []  
@@ -98,7 +98,7 @@ Nicht Teil des Problems: Die Web-UI (Auto-Mode) treibt Stories über `execute-ta
 | ID | Frage | Blockiert | Zuständig | Frist |
 |---|---|---|---|---|
 | OF-01 | Bleibt die Ablage im Repo-Root (`intent/`, `docs/`) oder soll alles unter `specwright/` liegen wie in v3? | *entschieden 2026-09-14 (Product Owner)*: Root bleibt → RB-04, B-07 | — | — |
-| OF-02 | Bleiben `document-feature`, `update-changelog`, `extract-design`, `check-update`, `add-learning`, `add-skill` (KEEP 6 laut Gesamtplan) auch dann, wenn niemand sie im Pilot benutzt hat? | nein — bis dahin bleiben sie (Löschen ist später billig, Wiederherstellen teuer) | Product Owner | mit `/spec` |
+| OF-02 | Bleiben `document-feature`, `update-changelog`, `extract-design`, `check-update`, `add-learning`, `add-skill` (KEEP 6 laut Gesamtplan) auch dann, wenn niemand sie im Pilot benutzt hat? | *entschieden 2026-09-14 (Product Owner, Spec-Freigabe AN-S02)*: bleiben → B-01 | — | — |
 | OF-03 | Wie heißt der Verify-Befehl in einem Repo ohne Root-`package.json`? | *entschieden 2026-09-14 (Product Owner)*: `scripts/verify.sh` im Root, ruft die `ui`-Skripte auf → B-08 | — | — |
 
 ---
@@ -159,6 +159,7 @@ Nicht Teil des Problems: Die Web-UI (Auto-Mode) treibt Stories über `execute-ta
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-14 | OF-02 entschieden (bleiben), `bezuege.spec` gesetzt — keine Änderung an Zielen oder Kriterien | OF-02, B-01 | — |
 | 1.0.0 | 2026-09-14 | Freigabe durch Product Owner (Michael Sindlinger) im Gespräch; OF-02 bleibt offen bis `/spec` | alle | Michael Sindlinger, 2026-09-14 |
 | 0.2.0 | 2026-09-14 | OF-01 und OF-03 entschieden (Root-Ablage, `scripts/verify.sh`), B-07/B-08 ergänzt; OF-02 bleibt offen bis `/spec` | OF-01, OF-03, B-07, B-08, RB-04 | — |
 | 0.1.0 | 2026-09-14 | Entwurf nach Gespräch (O5–O9 entschieden: UI-Modell bleibt, REMOVE-Liste 22, nur Schnitt + Manifest + Dogfood, Update löscht aktiv, Risikoklasse mittel) | alle | — |
