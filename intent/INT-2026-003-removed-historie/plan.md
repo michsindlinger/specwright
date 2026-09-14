@@ -1,7 +1,7 @@
 # Plan: Update erkennt jede jemals ausgelieferte Fassung einer entfernten Datei
 
 > **Intent:** `intent.md` (INT-2026-003, 1.0.0) · **Spec:** entfällt (bypass: Bugfix in der Lieferkette, Größe S; Verhalten durch INT-2026-002 spec.md FA-07/FA-08 festgelegt)
-> **Status:** umgesetzt — PR #40 offen, CI `verify` grün auf PR-Head `161836c` (Run `34823948378`, ubuntu, 1 min 43 s); Merge = Michaels Schritt
+> **Status:** umgesetzt — PR #40 gemergt `badaefe` (14.09., von Michael beauftragt), CI `verify` grün (Runs `34823948378` auf `161836c`, `34824142065` auf `dfb43bc`); §10 beide Schritte erledigt
 > **Erstellt:** 2026-09-14 (Handoff-Fortsetzung, Bypass ohne Plan Mode — Recherche in §2 belegt) · **Freigabe:** Product Owner (Michael Sindlinger) mit dem PR
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `dc9647c`, §3 Datenbesitz „Lieferumfang", AR-01, AP-02, §9), `CLAUDE.md` (Konventionen „Lieferumfang", „Installer"), `docs/security.md` §5 (Verbotsliste — keine Host-Daten, keine Test-Kürzung)
 
@@ -129,8 +129,8 @@ Sechs Dateien, alle über den Installer-Test verbunden (§5); Aufwand unter eine
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| PR-Freigabe und Merge nach `main` (löst Auto-Deploy der Web-UI aus; kein UI-Code geändert) | Michael | nach CI grün | [ ] |
-| `install.sh --global --update` auf dem Mac erneut ausführen — erwartet 0 Löschungen (Reste am 14.09. von Hand entfernt) | Michael | nach Merge | [ ] |
+| PR-Freigabe und Merge nach `main` (löst Auto-Deploy der Web-UI aus; kein UI-Code geändert) | Michael | nach CI grün | [x] `badaefe`, 14.09. (Michael: „Mach A1 und A2") |
+| `install.sh --global --update` auf dem Mac erneut ausführen — erwartet 0 Löschungen (Reste am 14.09. von Hand entfernt) | Michael | nach Merge | [x] 14.09. 10:51, Exit 0, `~/.specwright/.version` = 4.0.1, keine Reste, keine „lokal geändert"-Meldung |
 
 ## 11. Schätzung
 

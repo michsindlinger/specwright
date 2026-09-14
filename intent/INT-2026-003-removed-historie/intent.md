@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-003"  
 titel: "Update erkennt jede jemals ausgelieferte Fassung einer entfernten Datei"  
-status: "angenommen"  
-version: "1.0.1"  
+status: "umgesetzt"  
+version: "1.0.2"  
 autor: "Claude (aus Handoff 2026-09-14, Befund F18)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-14"  
@@ -20,8 +20,8 @@ bezuege:
   ersetzt: ""  
 schlagworte: [installer, removed-tsv, update, lieferkette, bypass]  
 freigabe:  
-  von: "Product Owner (Michael Sindlinger) — Freigabe des Bypass-Wegs steht aus, Umsetzung läuft unter ER-01 (kein Datenverlust, keine Außenwirkung vor dem Merge)"  
-  am: ""  
+  von: "Product Owner (Michael Sindlinger) — Merge von PR #40 und globales Update ausdrücklich beauftragt („Mach A1 und A2“)"  
+  am: "2026-09-14"  
 
 ---
 
@@ -85,5 +85,6 @@ Keine.
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.2 | 2026-09-14 | Status `umgesetzt`: PR #40 gemergt `badaefe`, CI grün (Runs 34823948378, 34824142065), Mac global auf 4.0.1 mit 0 Resten (plan.md §10 beide Schritte erledigt) | — | Product Owner, 2026-09-14 |
 | 1.0.1 | 2026-09-14 | Messung in §1 korrigiert: 5 fehlende Prüfsummen in 4 Dateien (erste Zählung hatte den Lösch-Commit als Fassung mitgezählt) | §1 | — |
 | 1.0.0 | 2026-09-14 | Kern-Schicht, Bypass laut `templates/sdlc/README.md` (Bugfix, Größe S) | alle | Umsetzung gestartet unter ER-01; Michaels Freigabe mit dem PR |
