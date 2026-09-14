@@ -5,6 +5,8 @@
 # von Altlasten unterscheiden kann. Eine Zeile wird nur nach einem grünen CI-Lauf gestrichen —
 # nie nach einem lokalen Lauf (Pilot-Lehre INT-2026-001: lokal grün, CI rot).
 # Pfade relativ zu ui/. `flaky:`-Präfix: zählt als bekannt rot, wird nie als repariert gemeldet.
+# flaky: in CI grün (Runs 34816030121, 34816191647) und rot (34819352547, 14.09.), lokal 2 von 4 rot; Datei seit b5c71c9 unverändert.
+flaky:tests/unit/kanban-lock.test.ts
 tests/integration/websocket-terminal.test.ts
 tests/integration/workflow.test.ts
 tests/unit/aos-terminal.test.ts
