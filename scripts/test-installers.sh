@@ -9,8 +9,9 @@
 #                                                            und gemeldet, keep.txt still übersprungen, Backups im Ordner,
 #                                                            nichts außerhalb der Listen angefasst
 #   T5  check-manifest.sh                                  → rot, wenn eine Manifest-Zeile fehlt; danach wieder grün
+#   T6  removed-hashes.sh (INT-2026-003)                   → Guard rot, wenn eine Prüfsumme aus der Historie fehlt; Skript idempotent
 #
-# Braucht: bash, curl (nicht nötig bei file://), git (T4 stellt alte Dateien aus eecb1cd6 her).
+# Braucht: bash, curl (nicht nötig bei file://), git (T4 stellt alte Dateien aus eecb1cd6 und der ältesten Fassung her).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 REPO=$PWD
@@ -68,6 +69,9 @@ while IFS=$'\t' read -r ver gelt dst hashes; do
     mkdir -p "$t4/$(dirname "$dst")"
     git show "eecb1cd6:$dst" > "$t4/$dst" 2>/dev/null && fixture_count=$((fixture_count + 1))
 done < specwright/removed.tsv
+# INT-2026-003: eine Datei in ihrer ältesten Fassung — Projekte, die Versionen übersprungen haben, müssen genauso aufräumen
+oldest=$(git log --format=%H -- specwright/workflows/core/add-story.md | tail -1)
+git show "$oldest:specwright/workflows/core/add-story.md" > "$t4/specwright/workflows/core/add-story.md" || err "T4: älteste Fassung nicht herstellbar"
 echo "eigene Änderung" >> "$t4/.claude/commands/specwright/add-story.md"          # lokal geändert → bleibt
 printf '%s\n' ".claude/commands/specwright/plan-platform.md" > "$t4/specwright/keep.txt"  # bewusst behalten → still
 echo "# eigene Notiz" > "$t4/intent-notiz.md"; mkdir -p "$t4/intent/INT-x"; echo x > "$t4/intent/INT-x/intent.md"  # außerhalb der Listen
@@ -79,6 +83,8 @@ grep -q 'add-story.md (nicht gelöscht: lokal geändert' "$tmp_root/t4.log" && o
 [[ -f "$t4/.claude/commands/specwright/plan-platform.md" ]] && ok "T4: keep.txt respektiert" || err "T4: keep.txt-Datei gelöscht"
 grep -q 'commands/specwright/plan-platform.md' "$tmp_root/t4.log" && err "T4: keep.txt-Datei wurde gemeldet (soll still sein)" || ok "T4: keep.txt still"
 [[ -f "$t4/.claude/commands/specwright/validate-market.md" ]] && err "T4: validate-market.md nicht gelöscht" || ok "T4: entfernte Dateien gelöscht"
+[[ -f "$t4/specwright/workflows/core/add-story.md" ]] && err "T4: älteste Fassung von workflows/core/add-story.md nicht gelöscht (INT-2026-003)" || ok "T4: älteste Fassung erkannt und gelöscht"
+grep -q 'workflows/core/add-story.md (gelöscht' "$tmp_root/t4.log" && ok "T4: älteste Fassung im Log genannt" || err "T4: Löschung der ältesten Fassung nicht genannt"
 deleted=$(grep -c '(gelöscht, entfernt seit' "$tmp_root/t4.log" || true)
 [[ "$deleted" -eq $((fixture_count - 2)) ]] && ok "T4: $deleted Löschungen einzeln genannt (Fixture $fixture_count, 2 behalten)" || err "T4: $deleted Löschungen genannt, erwartet $((fixture_count - 2))"
 [[ -f "$t4/intent-notiz.md" && -f "$t4/intent/INT-x/intent.md" && -f "$t4/specwright/config.yml" ]] && ok "T4: Dateien außerhalb der Listen unberührt" || err "T4: fremde Dateien angefasst"
@@ -92,6 +98,17 @@ if bash scripts/check-manifest.sh >/dev/null 2>&1; then err "T5: Guard bleibt gr
 cp "$tmp_root/manifest.bak" specwright/manifest.tsv
 bash scripts/check-manifest.sh >/dev/null 2>&1 && ok "T5: Guard grün nach Wiederherstellung" || err "T5: Guard rot auf echtem Manifest"
 
-[[ $fail -eq 0 ]] && echo "✅ Installer-Test: T1–T5 grün" || echo "❌ Installer-Test: Fehler (Logs unter $tmp_root — wird gelöscht; erneut mit KEEP_TMP=1)"
+# --- T6 (INT-2026-003) -----------------------------------------------------------------------
+cp specwright/removed.tsv "$tmp_root/removed.bak"
+# erste Zeile mit mehreren Prüfsummen auf die erste kürzen → Guard muss rot werden und das Skript nennen
+awk -F'\t' 'BEGIN{OFS="\t"} !done && $0 !~ /^#/ && $4 ~ /,/ {sub(/,.*/, "", $4); done=1} {print}' "$tmp_root/removed.bak" > specwright/removed.tsv
+cmp -s "$tmp_root/removed.bak" specwright/removed.tsv && err "T6: keine Zeile mit mehreren Prüfsummen in removed.tsv"
+t6=$(bash scripts/check-manifest.sh 2>&1); t6rc=$?
+[[ $t6rc -ne 0 ]] && echo "$t6" | grep -q 'removed-hashes.sh' && ok "T6: Guard rot bei fehlender Prüfsumme, nennt removed-hashes.sh" || err "T6: Guard bleibt grün oder nennt removed-hashes.sh nicht (Exit $t6rc)"
+cp "$tmp_root/removed.bak" specwright/removed.tsv
+bash scripts/removed-hashes.sh >/dev/null 2>&1 && bash scripts/removed-hashes.sh >/dev/null 2>&1 || err "T6: removed-hashes.sh Exit ≠ 0"
+cmp -s "$tmp_root/removed.bak" specwright/removed.tsv && ok "T6: removed-hashes.sh idempotent (kein Diff nach zwei Läufen)" || { err "T6: removed-hashes.sh ändert removed.tsv — Liste im Repo veraltet?"; cp "$tmp_root/removed.bak" specwright/removed.tsv; }
+
+[[ $fail -eq 0 ]] && echo "✅ Installer-Test: T1–T6 grün" || echo "❌ Installer-Test: Fehler (Logs unter $tmp_root — wird gelöscht; erneut mit KEEP_TMP=1)"
 [[ "${KEEP_TMP:-}" == 1 ]] && trap - EXIT && echo "Logs: $tmp_root"
 exit $fail

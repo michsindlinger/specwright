@@ -1,6 +1,7 @@
 # In Specwright entfernte Dateien — update-specwright.sh / install.sh --update löschen sie in Projekten,
 # wenn die Prüfsumme der vorgefundenen Datei einer hier gelisteten Fassung entspricht; sonst bleibt sie liegen und wird gemeldet.
 # Spalten (TAB): version	geltung	ziel	sha256[,sha256…]   (Ziel wie in manifest.tsv; global: Präfix specwright/ entfällt)
+# Prüfsummen = alle Fassungen der Datei aus der Git-Historie; erzeugen mit: bash scripts/removed-hashes.sh (Guard: --check in check-manifest.sh)
 # Bewusst behalten: Zielpfad in specwright/keep.txt des Projekts eintragen.
 4.0.0	both	.claude/agents/business-analyst.md	80ca34bc1eb055c34eb8db67dbaecc3fae0e13ad8c7c4dec8225df0eb7142037
 4.0.0	both	.claude/agents/marketing-system__content-creator.md	2e340c6da175dc8d4ba495ea878b8823c006f2e52432576c17854839c362e2f3
@@ -36,7 +37,7 @@
 4.0.0	project	.claude/skills/manage-memory/SKILL.md	6f23e4c19828790bf01a1ab7f265011f59913f906ef0e348a5cea5e7ddb06973
 4.0.0	project	.claude/skills/recall-memory/SKILL.md	b133d363f874fb72b04f81e78208f4b1e4eca55a2c3558bfbe22110fff8aafa8
 4.0.0	project	.claude/skills/save-memory/SKILL.md	6051a49f62c04ce2d3541ab286ebdcd0e8eed8cc0d3b15660e027a807551500b
-4.0.0	global	specwright/templates/CLAUDE-PLATFORM.md	415419f66087f0c17951e67d82252bd837beb4768c614c0fc3dd6a0dc161556a
+4.0.0	global	specwright/templates/CLAUDE-PLATFORM.md	415419f66087f0c17951e67d82252bd837beb4768c614c0fc3dd6a0dc161556a,094a9615acccc6fac28ce83a2b97ada3c85e0c4d45e11eee3db25973bd31b52d
 4.0.0	global	specwright/templates/market-validation/ad-campaigns.md	9a78384ed2d1cec753353cfbc70126fb26a3b465b99d41cc1b4d21d1362b007a
 4.0.0	global	specwright/templates/market-validation/analytics-setup.md	6bd38990e732a0aeffecbefb285c6cca08a4a8e96d98f8bf3ca8429c61c776d5
 4.0.0	global	specwright/templates/market-validation/competitor-analysis.md	9dcc679b49cfc1f7cac78545875be50f4a9c57d3d5690ab86ab4f1d649d319ab
@@ -53,8 +54,8 @@
 4.0.0	global	specwright/templates/platform/platform-roadmap-template.md	231155f7aebf263318425120b9c28acc29aa25bfe1e5738e08553de4b268c35b
 4.0.0	global	specwright/templates/skills/manage-memory/SKILL.md	6f23e4c19828790bf01a1ab7f265011f59913f906ef0e348a5cea5e7ddb06973
 4.0.0	global	specwright/templates/skills/recall-memory/SKILL.md	b133d363f874fb72b04f81e78208f4b1e4eca55a2c3558bfbe22110fff8aafa8
-4.0.0	global	specwright/templates/skills/save-memory/SKILL.md	6051a49f62c04ce2d3541ab286ebdcd0e8eed8cc0d3b15660e027a807551500b
-4.0.0	project	specwright/workflows/core/add-story.md	d540dfb549a782cfd4ec0e2a8d6097117255f306926b894c5b9427359822445c
+4.0.0	global	specwright/templates/skills/save-memory/SKILL.md	6051a49f62c04ce2d3541ab286ebdcd0e8eed8cc0d3b15660e027a807551500b,897d03ffcd252c8257cfbe6f4ac10c849128220ca6458357df9a97cc9b4f2cde
+4.0.0	project	specwright/workflows/core/add-story.md	d540dfb549a782cfd4ec0e2a8d6097117255f306926b894c5b9427359822445c,c8a9d45046a38d048ce8905823ec425ff8de7428a666216d2f5cd52db62be77a,1787fe1eb719f077bc47d1bd97315efe34f429d9ce864b89e321a5e003666c01
 4.0.0	project	specwright/workflows/core/analyze-blockers.md	4c68c00699ec4b173bd9c286de3dd74073ce00c1daf169449777fa19d966460f
 4.0.0	project	specwright/workflows/core/analyze-feasibility.md	05293f714780c2cb063741418d276a1715b5a529cfc6735127a2d8f033614c80
 4.0.0	project	specwright/workflows/core/brainstorm-growth-ideas.md	dbd238bbf49cbef74d9ace7ccad03c176b32b2b4ce22dd8ccfd166c00d93a361
@@ -62,7 +63,7 @@
 4.0.0	project	specwright/workflows/core/plan-platform.md	ab67b7f4fb7424b529a1c0875241c7af002b994267f56ef4c0fd9f54eae1b47e
 4.0.0	project	specwright/workflows/core/retroactive-doc.md	d8829e6dfe9d6e3de1d9f193fc2721cf49b7ff72b3e47a51c41acb8a4a2d0b21
 4.0.0	project	specwright/workflows/core/transfer-and-create-bug.md	cea1bc023b670a699835688378e43213c3cd735dce8c2521f725ce62e8b2d5eb
-4.0.0	project	specwright/workflows/core/transfer-and-create-spec.md	c196bb015b777117c1a9f6c0912e81d36d65d972704505fe16cd31a148f2d57d
+4.0.0	project	specwright/workflows/core/transfer-and-create-spec.md	c196bb015b777117c1a9f6c0912e81d36d65d972704505fe16cd31a148f2d57d,9972499c98612d1a843cf128ff6a32b85b2552b0761b24adb602f3b378448cfd
 4.0.0	project	specwright/workflows/core/transfer-and-plan-product.md	ffd3cd74c069adfbb6d840d1c99b0b5cb59ead13e7c2c34821a86474ad283fd5
 4.0.0	project	specwright/workflows/core/validate-estimation.md	d6cfbaf50b1e484a41cbe33bf13361396bce2eea47b12104099798376ed9f296
 4.0.0	project	specwright/workflows/marketing/create-content-plan.md	64f28b1002a09d92170b725275a2a25be205b7f8b486540bcbed322d4627072f
