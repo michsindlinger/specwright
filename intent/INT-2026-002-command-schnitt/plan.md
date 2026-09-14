@@ -1,7 +1,7 @@
 # Plan: Command-Schnitt 45 → 23, ein Installer-Manifest, Specwright lebt den v4-Flow selbst
 
 > **Intent:** `intent.md` (INT-2026-002, 1.0.1) · **Spec:** `spec.md` (freigegeben 14.09.)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt (PR #38 offen, Merge und §10 ausstehend)
 > **Erstellt:** 2026-09-14 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-14
 > **Pflichtinput gelesen:** `docs/architecture.md` — existiert noch nicht (entsteht hier, §4 #40); ersatzweise `CLAUDE.md` (269 Zeilen, Stand `73ddbe5`), `README.md`, `spec.md` §7; `docs/security.md` — existiert noch nicht, Verbotsliste ersatzweise aus `CLAUDE.md` „Production Safety Rules" und `spec.md` §5.
 
