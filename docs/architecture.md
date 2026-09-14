@@ -1,0 +1,114 @@
+# Architektur: Specwright — Soll
+
+> **Stand:** 2026-09-14, Branch `feat/INT-2026-002-command-schnitt` · **Verantwortlich:** Tech Lead (Michael Sindlinger)
+> **Rolle dieses Dokuments:** das SOLL. Pflichtinput im Plan Mode. Verschiebt ein Plan eine Grenze, ändert dieselbe PR dieses Dokument.
+> **Prinzipien der Firma:** Firmen-Repo SBS (entsteht in Phase 3) — dieses Dokument darf sie konkretisieren, nicht verletzen.
+
+## 1. Überblick
+
+```mermaid
+flowchart LR
+    DEV[Entwickler + Claude Code] --> CMD[Befehle + Workflows]
+    CMD --> TPL[Vorlagen, Standards, Hooks]
+    INST[Installer] --> MAN[manifest.tsv / removed.tsv]
+    MAN --> LIB[install-lib.sh]
+    LIB --> PROJ[Projekt: specwright/, .claude/]
+    LIB --> GLOB[~/.specwright, ~/.claude]
+    UI[Web-UI Express + Lit] --> MCP[Kanban-MCP-Server]
+    UI --> PROJ
+    MCP --> KJ[(kanban.json, memory.db)]
+```
+
+Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen, Workflows, Vorlagen, Standards und Hooks, das Installer in Projekte kopieren, und eine optionale **Web-UI** (Express-Backend, Lit-Frontend), die Projekte anzeigt, Claude-Sitzungen startet und den Story-Pfad über den Kanban-MCP-Server treibt. Daten liegen in den Projekten (Dateien) und für die UI in Laufzeitdateien auf dem Host; es gibt keine zentrale Datenbank.
+
+## 2. Services und Komponenten
+
+| Name | Verantwortung (ein Satz) | Technologie | Pfad / Repo | Owner |
+|---|---|---|---|---|
+| Befehle | Ein Slash-Befehl je Aufgabe, verweist auf genau einen Workflow | Markdown | `.claude/commands/specwright/` | Michael |
+| Workflows | Schrittfolge, die der Hauptagent ausführt (kein Sub-Agent für Kernarbeit) | Markdown | `specwright/workflows/` | Michael |
+| Vorlagen und Standards | Dokumentvorlagen (v4: `templates/sdlc/`), Skill-Vorlagen, Coding-Standards mit Hybrid-Lookup | Markdown, JSON | `specwright/templates/`, `specwright/standards/` | Michael |
+| Hooks | Deterministische Leitplanken für Claude Code (`PreToolUse`) | Bash + python3 | `specwright/templates/sdlc/hooks/`, im Repo `.claude/hooks/` | Michael |
+| Installer | Fünf Skripte mit einer gemeinsamen Bibliothek, lesen das Manifest, schreiben Projekt und Global-Verzeichnisse | Bash 3.2-tauglich | `install.sh`, `setup*.sh`, `update-specwright.sh`, `specwright/scripts/install-lib.sh` | Michael |
+| Kanban-MCP-Server | MCP-Werkzeuge für `kanban.json`, Backlog, Memory-Store | TypeScript, `tsx` direkt gestartet | `specwright/scripts/mcp/` | Michael |
+| Web-UI Backend | Projekte, Sessions, Cloud-Terminal (tmux), Auto-Mode-Orchestrierung, WebSocket | Express, TypeScript, Claude Code SDK, node-pty | `ui/src/server/` | Michael |
+| Web-UI Frontend | Oberfläche als Web Components | Lit, Vite, TypeScript strict | `ui/frontend/src/` (`aos-*`) | Michael |
+
+## 3. Datenbesitz
+
+| Datenobjekt | Besitzer | Speicher | Andere lesen über | Mandantentrennung |
+|---|---|---|---|---|
+| Vorhaben (`intent/INT-…/`), Projekt-Docs (`docs/`) | Projekt-Repo | Git | Dateisystem | ein Nutzer |
+| Lieferumfang | Specwright-Repo | `specwright/manifest.tsv`, `specwright/removed.tsv` | Installer über Raw-URL oder `file://` | — |
+| Installierte Version je Projekt | Installer | `specwright/.installed-version` | `check-update.sh` | — |
+| `kanban.json`, Backlog | Kanban-MCP-Server | Projekt-Dateien | UI über MCP-Werkzeuge und Datei-Watcher | — |
+| Memory-Store | Kanban-MCP-Server | `~/.specwright/memory.db` (SQLite) | MCP-Werkzeuge `memory_*` | — |
+| Workspace der UI (offene Projekte, Tabs) | UI-Backend | `<runtime>/workspace-<port>.json` | WebSocket `workspace:*` | pro Backend-Instanz |
+| Terminal-Sitzungen | UI-Backend | tmux-Server + Disk-Registry | WebSocket | pro Host |
+
+## 4. Erlaubte Abhängigkeiten
+
+| ID | Regel | Grund | Prüfung |
+|---|---|---|---|
+| AR-01 | Kein Installer führt eine eigene Dateiliste; alle lesen `specwright/manifest.tsv` über `install-lib.sh`. | Installer-Drift war zweimal die Ursache fehlender Befehle | `scripts/check-manifest.sh` (c) in CI |
+| AR-02 | MCP-Server werden direkt gestartet (`$MCP_DIR/node_modules/.bin/tsx …`), nie über `npx`. | `npx` spawnt eine 3–4-Prozess-Kette je Server; RAM/Swap auf dem Droplet | `scripts/check-mcp-launcher.sh` |
+| AR-03 | Git-Operationen am Hauptrepo laufen unter `withMainProjectLock` (außen), `kanban.json`-Schreiben unter `withKanbanLock` (innen); nie umgekehrt. | ABBA-Deadlock zwischen UI und MCP-Subprozess | Review; Tests in `ui/tests/unit/kanban-lock.test.ts` |
+| AR-04 | Server-Code kennt Projektverzeichnisse nur über `projectDir()`/`projectDotDir()` (`ui/src/server/utils/project-dirs.ts`); nie `specwright/` oder `agent-os/` hart kodiert. | Rückwärtskompatibilität alter Projekte | Import-Scan, Review |
+| AR-05 | Workspace-Zustand (Projekte, Recents, Tab-Namen) lebt im Backend und wird als Ganzes gebroadcastet; nie in `localStorage`. | Gleiche Sicht auf jedem Gerät | Review |
+| AR-06 | Framework-Änderungen dürfen nie von der Web-UI abhängen; die UI ist optional. | Installierbar ohne Node | Installer-Test läuft ohne `ui/` |
+| AR-07 | Vorhaben und Projekt-Docs liegen im Repo-Root (`intent/`, `docs/`); `specwright/` enthält nur Werkzeug. | Produkt-Artefakte müssen ohne Specwright-Kenntnis auffindbar sein (B-07, INT-2026-002) | Review |
+
+**Verboten, ausdrücklich:** Befehle oder Workflows, die Sub-Agenten für Kernarbeit delegieren (Kontextverlust); Secrets in Vorlagen oder Installern; Änderungen an Tests oder Bezugslisten, damit etwas grün wird; Droplet-Hostnamen, Pfade oder Tokens in diesem öffentlichen Repo.
+
+## 5. Externe Systeme
+
+| System | Wofür | Aufruf aus | Ausfall bedeutet | Zugang liegt in |
+|---|---|---|---|---|
+| GitHub Raw (`raw.githubusercontent.com/michsindlinger/specwright/main`) | Quelle aller Installer-Downloads | Installer | Installation unmöglich (`curl -f` bricht ab); Tests nutzen `file://` | öffentlich |
+| GitHub Actions | CI (`scripts/verify.sh`) | Push/PR | kein Tor — lokal grün zählt dann nicht | Repo |
+| Claude Code SDK / CLI | Sitzungen aus der UI | UI-Backend | UI ohne Agent | `security.md` §3 |
+| Cloud-Host (Linux, systemd, Auto-Deploy bei Push auf `main`) | Web-UI im Betrieb | — | UI nicht erreichbar; Framework unbetroffen | außerhalb des Repos |
+
+## 6. Tech-Stack
+
+| Schicht | Technologie | Version | Pinning |
+|---|---|---|---|
+| Framework | Markdown, Bash | Bash ≥ 3.2 (macOS) | keine Bash-4-Features in Installern |
+| MCP-Server | TypeScript über `tsx` | `tsx` exakt `4.21.0` im MCP-Verzeichnis | exakt |
+| UI-Backend | Node ≥ 20, Express, ws, node-pty | `ui/package.json` | caret |
+| UI-Frontend | Lit, Vite, TypeScript strict | `ui/frontend/package.json` | caret |
+| Tests | Vitest (UI), Bash-Tests (Installer) | — | — |
+
+## 7. Projektspezifische Prinzipien
+
+- **AP-01:** Der Hauptagent führt Workflows selbst aus; Utility-Agenten (`context-fetcher`, `file-creator`, `git-workflow`, `date-checker`) nur für kontextfreie Handgriffe. — Grund: Sub-Agenten verlieren den Plan-Kontext (Migration 2026-02).
+- **AP-02:** Ein Bruch im Lieferumfang ist erlaubt (nur ein Nutzer), aber nie ohne Update-Weg und Versionssprung (`removed.tsv`, Major-Version). — Grund: Altprojekte müssen ohne Handarbeit nachziehen können.
+- **AP-03:** CI ist die Wahrheit für „grün"; lokale Läufe sind Vorprüfung. — Grund: Pilot INT-2026-001 (lokal grün, CI rot).
+- **AP-04:** Ziel, noch nicht gelebt: Drift-Erkennung (§9) läuft nur für Manifest und MCP-Launcher, nicht für UI-Abhängigkeiten.
+
+## 8. Entscheidungen
+
+- ADR-Ordner: `docs/adr/` (bestehend; die Vorlage nennt `docs/decisions/` — hier gewinnt der vorhandene Ordner).
+- Entscheidungen, die dieses Soll geprägt haben: Gesamtplan `AI-native-SDLC-Plan-2026-09-13` (D1–D13), INT-2026-002 (Manifest, Bibliothek, harter Schnitt, Root-Ablage).
+
+## 9. Drift-Erkennung
+
+- **Skript:** `scripts/verify.sh` — ruft `scripts/check-manifest.sh` (AR-01) und `scripts/check-mcp-launcher.sh` (AR-02); läuft lokal und in `.github/workflows/verify.yml`.
+- **Quelle des Ist:** Dateisystem des Repos (Lieferverzeichnisse), Installer-Quelltext.
+- **Geprüfte Regeln:** AR-01, AR-02. AR-03 bis AR-07 nur per Review (AP-04).
+- **Bei Verstoß:** PR rot; Befund als Karte im Board Specwright oder als `intent.md`.
+
+## 10. Bekannte Abweichungen (Ist ≠ Soll)
+
+| Abweichung | Regel | Seit | Karte / Intent | Plan |
+|---|---|---|---|---|
+| `ui/src/server/utils/mcp-profile.ts` kennt das Profil `validate-market`, dessen Befehl entfernt ist; Profil-Datei bleibt liegen | — | 2026-09-14 | Board Specwright, Aufräum-Karte | Phase 5 (UI-Neuentwurf) |
+| `specwright/templates/agents/` (8 Vorlagen) und einige Agenten/Skills werden von keinem Workflow referenziert | — | 2026-09-14 | Aufräum-Karte | separates Vorhaben |
+| Specwright trägt eigene v3-Artefakte (`specwright/{specs,product,brainstorming,knowledge}`) | AR-07 | 2026-02 | Aufräum-Karte | archivieren wie bei Applai |
+| Web-UI-Ausführungsmodell (Story pro Session) widerspricht dem v4-Grundsatz „Plan ist die Einheit" | AP-01 | 2026-09-13 | Gesamtplan Phase 5 | UI-Neuentwurf |
+
+## Änderungsprotokoll
+
+| Datum | Änderung | PR / ADR |
+|---|---|---|
+| 2026-09-14 | Erstfassung (INT-2026-002) | PR folgt |

@@ -1,269 +1,74 @@
-# CLAUDE.md - Specwright
+# CLAUDE.md — Specwright
 
-> Specwright Development Guide
-> Last Updated: 2026-02-15
-> Type: Framework Repository (Monorepo: Framework + Web UI)
+> Stand: 2026-09-14 · Firma: SBS · Unter einer Seite halten. Wird jede Sitzung ganz gelesen.
 
-## Purpose
-Essential guidance for Claude Code development in the Specwright repository. This is the **framework repository** that provides workflows, templates, agents, and skills for spec-driven development, plus an optional **Web UI** for visual project management.
+## Projekt in drei Zeilen
 
-## Zusammenarbeit & Arbeitsweise
+Specwright ist das Framework für den AI-native SDLC: Befehle, Workflows, Vorlagen und Hooks, die Installer in Projekte kopieren, plus eine optionale Web-UI. Nutzer ist Michael allein; das Repo ist öffentlich und soll den Ablauf selbst vorleben. Schwerpunkt jetzt: v4 (Vorhaben-Flow) ausrollen, Web-UI später neu denken (Phase 5).
 
-- **Code ist Source of Truth**: Antworten IMMER im Code verifizieren, nicht nur aus Memory-Einträgen oder Doku ableiten. Memory/Specwright/CLAUDE.md sind Hinweise, kein Beweis – sie können veraltet sein. Vor Empfehlungen/Aussagen die betroffenen Dateien (Compose, Service-Code, Config) tatsächlich lesen. Nennt ein Memory-Eintrag eine Datei/Funktion/Flag: Existenz im Code bestätigen.
-- **Ideen kritisch hinterfragen**: Vorschläge des Users NICHT reflexartig bestätigen. Jede Idee challengen – Annahmen prüfen, Alternativen nennen, Risiken/Trade-offs offenlegen. Ziel ist die beste Lösung, nicht die schnellste Zustimmung. Bei Widerspruch: begründen, nicht nachgeben um des Friedens willen.
+## Befehle
 
-## Repository Structure
+| Zweck | Befehl | Gesunde Ausgabe endet mit |
+|---|---|---|
+| Alles prüfen (vor jeder Fertigmeldung) | `bash scripts/verify.sh` | `verify: OK` |
+| Schnell (ohne UI-Tests) | `bash scripts/verify.sh --fast` | `verify: OK` |
+| Lieferumfang gegen Manifest | `bash scripts/check-manifest.sh` | `✅ Manifest: …` |
+| Installer gegen lokalen Stand | `bash scripts/test-installers.sh` | `✅ Installer-Test: T1–T5 grün` |
+| UI-Tests gegen Bezugsliste | `cd ui && npx vitest run --reporter=json --outputFile=../vitest-results.json; cd .. && node scripts/check-vitest-baseline.mjs vitest-results.json` | `✅ Keine neue rote Testdatei.` |
+| UI lokal | `cd ui && npm run dev:backend` (3001) · `cd ui/frontend && npm run dev` (5173) | — |
 
-**This is NOT a product project - it's the Specwright framework itself.**
+`verify` = Installer-Syntax, Guards (Manifest, MCP-Launcher), Installer-Test, `CLAUDE.md` ≤ 90 Zeilen, UI-Lint, UI-Builds, Vitest gegen `ui/tests/known-failures.txt`. Dauer ~2 min lokal. CI: `.github/workflows/verify.yml`.
 
-```
-specwright/                          # Repository root
-├── specwright/                      # Framework
-│   ├── workflows/
-│   │   ├── core/                    # Core workflows (plan-product, create-spec, etc.)
-│   │   ├── team/                    # Team workflows (create-project-agents, assign-skills)
-│   │   ├── skill/                   # Skill creation workflows
-│   │   ├── validation/              # Market validation workflows
-│   │   └── meta/                    # Meta workflows (pre-flight)
-│   ├── templates/                   # All templates (product, platform, docs, skills)
-│   ├── standards/                   # Global coding standards
-│   ├── docs/                        # Documentation and guides
-│   ├── profiles/                    # Tech-stack profiles
-│   ├── scripts/mcp/                 # MCP server files
-│   └── config.yml                   # Configuration
-│
-├── ui/                              # Web UI (Express + Lit)
-│   ├── package.json                 # Backend dependencies
-│   ├── tsconfig.json
-│   ├── vitest.config.ts
-│   ├── nodemon.json
-│   ├── config.json                  # UI project configuration
-│   ├── src/
-│   │   ├── server/                  # Express + WebSocket + Claude SDK
-│   │   └── shared/                  # Shared types
-│   ├── tests/                       # Vitest tests
-│   └── frontend/                    # Lit frontend
-│       ├── package.json
-│       ├── vite.config.ts
-│       ├── index.html
-│       └── src/                     # 70+ Lit components (aos-*)
-│
-├── .claude/
-│   ├── commands/specwright/         # 34 slash command definitions
-│   ├── agents/                      # 13 utility agents
-│   └── skills/                      # User-invocable + UI skills
-│       ├── review-implementation-plan/
-│       ├── architect-refinement/    # UI: Architecture refinement
-│       ├── backend-express/         # UI: Express backend patterns
-│       ├── frontend-lit/            # UI: Lit component patterns
-│       ├── domain-specwright-ui/    # UI: Business domain knowledge
-│       ├── po-requirements/         # UI: PO requirements
-│       └── quality-gates/           # UI: Quality standards
-│
-├── docs/
-│   └── ui-specs/                    # UI feature specifications
-│
-├── setup.sh                         # Framework installation
-├── setup-claude-code.sh             # Claude Code commands (--with-ui for UI skills)
-├── setup-devteam-global.sh          # Global templates installation
-├── setup-mcp.sh                     # MCP server installation
-└── setup-ui.sh                      # UI dependency installation
-```
+## Verzeichniskarte
 
-## Development Standards (load via context-fetcher when needed)
-- **Tech Stack Defaults**: specwright/standards/tech-stack.md
-- **Code Style Preferences**: specwright/standards/code-style.md
-- **Best Practices Philosophy**: specwright/standards/best-practices.md
+- `specwright/` — Werkzeug: `workflows/`, `templates/` (v4: `templates/sdlc/`), `standards/`, `mcp-profiles/`, `scripts/mcp/` (Kanban-MCP), `scripts/install-lib.sh`, **`manifest.tsv`** (Lieferumfang), `removed.tsv` (Entferntes mit Prüfsummen)
+- `.claude/commands/specwright/` (23 Befehle) · `.claude/agents/` · `.claude/skills/` · `.claude/hooks/`
+- `ui/` — Web-UI: `src/server/` (Express, WS, Auto-Mode), `frontend/src/` (Lit, `aos-*`), `tests/`
+- `intent/` — Vorhaben (`intent.md`, `spec.md`, `plan.md`) · `docs/` — Projekt-Docs · `docs/adr/` — ADRs
+- Installer im Root: `install.sh`, `setup.sh`, `setup-claude-code.sh`, `setup-devteam-global.sh`, `update-specwright.sh`, `check-update.sh`, `setup-mcp.sh`, `setup-ui.sh`
 
-## Critical Rules
-- **FOLLOW ALL INSTRUCTIONS** - Mandatory, not optional
-- **ASK FOR CLARIFICATION** - If uncertain about any requirement
-- **MINIMIZE CHANGES** - Edit only what's necessary
-- **PRESERVE BACKWARD COMPATIBILITY** - Changes affect all users of the framework
+## Projekt-Docs (lesen, wenn die Aufgabe sie berührt)
 
-## Framework Development Guidelines
+- `docs/product-brief.md` — für wen, welches Problem, Domänenbegriffe (Vorhaben, Manifest, Bezugsliste)
+- `docs/architecture.md` — **Pflicht im Plan Mode.** Komponenten, Datenbesitz, Regeln AR-01…AR-07, bekannte Abweichungen
+- `docs/security.md` — Datenklassen (Repo ist öffentlich!), Geheimnisse, Verbotsliste
+- `docs/design.md` — Terminal- und UI-Muster, was „entspricht dem Mock" heißt
 
-**When modifying workflows:**
-- Test changes conceptually before committing
-- Update version numbers in workflow frontmatter
-- Ensure template references use hybrid lookup (project -> global)
-- Update setup scripts if new files are added
+## Arbeitsweise
 
-**When adding templates:**
-- Add to `specwright/templates/` directory
-- Update `setup-devteam-global.sh` to include in global installation
-- Use consistent placeholder naming: `[PLACEHOLDER_NAME]`
+- **Code ist die Wahrheit.** Memory, Docs und diese Datei sind Hinweise; vor jeder Aussage die Datei lesen. **Ideen kritisch prüfen**, Alternativen und Risiken nennen, nicht reflexartig zustimmen.
+- Vorhaben laufen als `intent/INT-JJJJ-NNN-kurzname/`: `/intent` → `/spec` → `/plan` → `/build` → PR. Vorlagen: `specwright/templates/sdlc/`. **Bypass:** Bugfix oder unter 1 Tag → `intent.md` (Kern) direkt zu `plan.md`.
+- `plan.md` entsteht im Plan Mode und wird vor dem ersten Code committet. Eine Sitzung setzt den ganzen Plan um; Zerlegung nur laut Plan §7, Integration in der Hauptsitzung.
+- Verschiebt ein Plan eine Architekturgrenze (AR-nn): `docs/architecture.md` in derselben PR.
+- Board `25-Sindlinger-Business-Solutions/Projekte/Specwright/Specwright — Backlog Board.md` (Vault): Karte verweist auf den `intent/`-Ordner; Stand dort nachziehen (Skill `obsidian-po-board`).
+- Der lokale Checkout `main` gehört Michael (kann ungestaged sein): Vorhaben in Worktrees unter `../specwright-worktrees/`, Merge nur per PR.
 
-**When adding commands:**
-- Create in `.claude/commands/specwright/`
-- Reference corresponding workflow in `specwright/workflows/`
+## Konventionen
 
-## UI Development Guidelines
+- **Lieferumfang:** neue Datei → Zeile in `specwright/manifest.tsv` (Art, Geltung, Quelle, Ziel); entfernte Datei → Zeile in `removed.tsv` mit Prüfsumme(n) der letzten Fassung. Kein Installer bekommt eine eigene Liste (AR-01). Bruch nur mit Update-Weg und Versionssprung (`VERSION` = `FRAMEWORK_VERSION` in `install.sh`).
+- **Installer:** Bash 3.2-tauglich (kein `mapfile`, keine assoziativen Arrays); Downloads nur über `install-lib.sh` (`curl -f`, `file://` für Tests).
+- **Workflows:** Hauptagent führt aus; Utility-Agenten nur für kontextfreie Handgriffe. Vorlagen mit Hybrid-Lookup (Projekt → `~/.specwright`). Platzhalter `[…]`, nie `<…>`.
+- **UI:** TypeScript strict, kein `any`; Präfix `aos-`; `projectDir()` statt harter Pfade (AR-04); Lock-Hierarchie `withMainProjectLock` außen, `withKanbanLock` innen (AR-03); Workspace-Zustand im Backend (AR-05); MCP direkt starten, nie `npx` (AR-02).
+- **Commits:** Conventional Commits, deutsch erlaubt, Bezug `INT-JJJJ-NNN`. **Docs:** Deutsch, echte Umlaute, MacDown-tauglich (Leerzeile vor Listen, Frontmatter-Zeilen mit zwei Leerzeichen).
+- ADR-Pflicht bei: Datenhaltung, Lieferkette (Installer/Manifest), Auth der UI, MCP-Startmodell.
 
-**Tech Stack:**
-- Backend: Express.js + TypeScript, WebSocket (ws), Claude Code SDK
-- Frontend: Lit Web Components, Vite, TypeScript strict mode
-- Testing: Vitest
-- All components use `aos-` prefix (e.g., `aos-kanban-board`, `aos-chat-view`)
+## Definition of Done
 
-**Directory naming (backward compatibility):**
-- Server code supports both `specwright/` and `agent-os/` project directories
-- Use `ui/src/server/utils/project-dirs.ts` for path resolution
-- Never hardcode `agent-os` or `specwright` directory names in server code
+`verify: OK` und Ausgabe im PR · PR-Check grün (CI ist die Wahrheit; Bezugsliste nie nach lokalem Lauf kürzen) · jedes AK/FA hat einen Test · Verbindungen aus `plan.md` §5 nachgewiesen · E2E-Pfad läuft · bei UI: Screenshot neben Mock · `architecture.md` aktuell · Abweichungen in `plan.md` §14 · 2x-Regel geprüft · Board nachgezogen.
+Schlägt ein Test fehl: Code reparieren, nicht den Test, nicht die Bezugsliste.
 
-**When modifying UI backend:**
-- Run `cd ui && npm test` after changes
-- Run `cd ui && npm run lint` to check for errors
-- Use `projectDir()` / `projectDotDir()` from `project-dirs.ts` for project paths
+## Fehler, die Claude hier schon zweimal gemacht hat
 
-**Parallel Auto-Mode Locking (v3.28.0+):**
-- Main-repo git ops serialized via `withMainProjectLock` (`utils/main-project-mutex.ts`) — intra-process async mutex per main-project path.
-- `kanban.json` writes serialized via `withKanbanLock` (`utils/kanban-lock.ts`) — cross-process file-based mutex (MCP server runs as subprocess).
-- **Lock hierarchy (invariant):** `withMainProjectLock` (outer) → `withKanbanLock` (inner). Never reverse — ABBA deadlock.
-- New git index ops on the main repo must be wrapped in `withMainProjectLock`.
+- Installer-Liste ergänzt, aber nicht in allen Skripten (je ein Befehl am 2026-02-27 und am 2026-09-14) → seit 4.0.0 Manifest + Guard; neue Datei ohne Manifest-Zeile bricht `verify`.
+- Lokal grün für CI-grün gehalten (Pilot INT-2026-001; Worktree-node-pty) → Bezugsliste nur nach CI-Lauf ändern; im Worktree `chmod +x ui/node_modules/node-pty/prebuilds/*/spawn-helper` nach `npm ci`.
 
-**MCP Server Launch Model (v3.32.0+):**
-- MCP servers are launched **directly**, never via `npx`/`npm exec`. The npx form spawns a
-  3–4 process wrapper chain per server; with several parallel Claude sessions this bloated
-  RAM/swap on the cloud droplet (~480MB / 1.5G swap).
-- **kanban:** `$MCP_DIR/node_modules/.bin/tsx $MCP_DIR/kanban-mcp-server.ts` — `tsx` is pinned
-  (exact `4.21.0`) in the mcp dir's `package.json` `dependencies` (not devDependencies → survives
-  `--production`). ~2 procs (tsx CLI + worker).
-- **supabase:** global `mcp-server-supabase` (absolute path, e.g. `/usr/bin/mcp-server-supabase`),
-  pinned version. ~1 proc. Configured user-scope (`~/.claude.json`), not per-project.
-- **firebase:** `firebase mcp` (global firebase-tools binary). ~1 proc.
-- Generators (`install.sh`, `setup-mcp.sh`) emit the `.bin/tsx` form and **upgrade** legacy `npx`
-  entries on reinstall (no skip-if-exists). Guard: `bash scripts/check-mcp-launcher.sh` fails if
-  any installer re-introduces an `npx`-based kanban command.
+## Hooks aktiv (`.claude/settings.json`)
 
-**Shared workspace (v3.38.0+):**
-- Open projects, recents and tab names are server state in `<runtime>/workspace-<port>.json`
-  (`services/workspace-state.ts`, WS messages `workspace:*` in `shared/types/workspace.protocol.ts`).
-  Every mutation broadcasts the full `workspace:state` to all clients — never persist these in
-  localStorage again. Device-local keys that stay in the browser: `specwright-active-project`,
-  `cloud-terminal-layout-mode`, `cloud-terminal-pane-*`, `cloud-terminal-split-ratios`,
-  `cloud-terminal-sidebar-width`.
-- Project ids are `pathKey(path)` from the server; the first-seen raw `path` is what sessions match on.
+`protect-tests` (Testdateien im Fix-Modus, `ui/tests/known-failures.txt` immer gesperrt) · `no-secrets` (Commit mit Secret-Muster blockiert) · `production-gate` (Befehle mit `deploy`+`prod` nur mit `RELEASE_APPROVAL`)
 
-**When modifying UI frontend:**
-- Follow Lit component patterns from `.claude/skills/frontend-lit/`
-- Use `aos-` prefix for all new components
-- Run `cd ui/frontend && npm run build` to verify
+## Nie
 
-**Starting the UI locally:**
-- `cd ui && npm run dev:backend` (Port 3001)
-- `cd ui/frontend && npm run dev` (Port 5173)
-
-## Sub-Agents
-
-### Utility & Support
-- **context-fetcher** - Load documents on demand
-- **date-checker** - Determine today's date
-- **file-creator** - Create files and apply templates
-- **git-workflow** - Git operations, commits, PRs
-
-## Essential Commands
-
-```bash
-# Product Planning
-/plan-product            # Single-product planning
-/plan-platform           # Multi-module platform planning
-
-# Team Setup
-/build-development-team  # Create DevTeam skills
-/create-project-agents   # Create project-specific agents
-/assign-skills-to-agent  # Assign skills to agents
-
-# Vorhaben (SDLC v4, seit 3.33.0): intent → spec → plan → build
-/intent                  # Vorhaben festhalten (intent/INT-JJJJ-NNN/intent.md)
-/spec                    # Fachliche Spec (spec.md)
-/plan                    # Umsetzungsplan (plan.md)
-/build                   # Plan umsetzen bis PR
-
-# Feature Development
-/create-spec             # Create detailed specifications
-/change-spec             # Modify existing spec (add/remove/change features)
-/add-story               # Add story to existing spec
-/execute-tasks           # Execute planned tasks
-/document-feature        # Document completed features
-/retroactive-doc         # Document existing features
-/retroactive-spec        # Create spec from existing code
-
-# Bug Management & Quick Tasks
-/add-bug                 # Add bug with root-cause analysis
-/add-todo                # Add lightweight task to backlog
-
-# Analysis & Estimation
-/analyze-product         # Analyze existing codebase for Specwright setup
-/analyze-feasibility     # Feasibility analysis on product brief
-/analyze-blockers        # External dependency/blocker analysis
-/estimate-spec           # Effort estimation for spec
-/validate-estimation     # Validate existing estimation
-
-# Feedback & Changelog
-/process-feedback        # Categorize customer feedback (spec/bug/todo)
-/update-changelog        # Generate bilingual changelog
-
-# Skill Management
-/add-skill               # Create custom skills
-/add-learning            # Add insight to skill dos-and-donts
-/add-domain              # Add business domain documentation
-
-# Brainstorming
-/start-brainstorming     # Interactive idea exploration
-/brainstorm-growth-ideas      # Brainstorm growth opportunities
-/transfer-and-create-spec  # Convert brainstorming to spec
-/transfer-and-create-bug   # Convert brainstorming to bug
-/transfer-and-plan-product # Convert brainstorming to product plan
-
-# Design & Marketing
-/extract-design          # Extract design system from URL/screenshot
-/create-instagram-account  # Instagram marketing strategy
-/create-content-plan     # 7-day Instagram content plan
-
-# Market Validation
-/validate-market         # Validate new product ideas
-/validate-market-for-existing  # Validate existing products
-
-# Memory (Cross-Session Knowledge)
-/save-memory             # Save session knowledge to Memory DB
-/recall-memory           # Browse and recall stored memories
-/manage-memory           # Housekeeping: archive, update, delete memories
-```
-
-## Quality Requirements
-
-**Framework Checks:**
-- Ensure all workflow steps are numbered correctly
-- Verify template paths use hybrid lookup
-- Check that setup scripts include all new files
-- Test slash commands work correctly
-
-**UI Checks (when modifying ui/):**
-- `cd ui && npm test` - all tests pass
-- `cd ui && npm run lint` - no errors
-- `cd ui && npm run build:backend` - backend compiles
-- `cd ui/frontend && npm run build` - frontend compiles
-- Follow TypeScript strict mode (no `any` types)
-
-## Production Safety Rules
-
-**CRITICAL RESTRICTIONS:**
-- Never break backward compatibility without migration path
-- Never remove templates without deprecation notice
-- Always update setup scripts when adding files
-- Test changes in a separate project before committing
-
-## Workflow Development
-
-**Adding a new workflow:**
-1. Create workflow in `specwright/workflows/core/[workflow-name].md`
-2. Create command in `.claude/commands/specwright/[command-name].md`
-3. Add any new templates to `specwright/templates/`
-4. Update `setup.sh` to download the workflow
-5. Update `setup-claude-code.sh` to download the command
-6. Update `setup-devteam-global.sh` for new templates
-
----
-
-**Remember:** This repository is used by many projects. Changes here affect all Specwright users. Quality, backward compatibility, and documentation are paramount. The Web UI is an optional component - framework changes must never depend on the UI being installed.
+- Update-Läufe auf `main` eines fremden Projekts oder auf dem Cloud-Host ohne Freigabe; Merge nach `main` löst den Auto-Deploy der UI aus — Merge ist Michaels Schritt.
+- Tests löschen, Bezugsliste kürzen, Auth lockern, damit etwas grün wird.
+- Hostnamen, Pfade, Nutzer, Ports des Cloud-Hosts oder Tokens ins Repo (öffentlich).
+- Dateien im Repo-Root anlegen außer den in der Verzeichniskarte genannten.

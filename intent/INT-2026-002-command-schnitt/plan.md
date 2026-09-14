@@ -1,7 +1,7 @@
 # Plan: Command-Schnitt 45 → 23, ein Installer-Manifest, Specwright lebt den v4-Flow selbst
 
 > **Intent:** `intent.md` (INT-2026-002, 1.0.1) · **Spec:** `spec.md` (freigegeben 14.09.)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-14 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-14
 > **Pflichtinput gelesen:** `docs/architecture.md` — existiert noch nicht (entsteht hier, §4 #40); ersatzweise `CLAUDE.md` (269 Zeilen, Stand `73ddbe5`), `README.md`, `spec.md` §7; `docs/security.md` — existiert noch nicht, Verbotsliste ersatzweise aus `CLAUDE.md` „Production Safety Rules" und `spec.md` §5.
 
@@ -246,4 +246,12 @@ Hook `production-gate`: kein Befehl in diesem Vorhaben enthält `deploy`+`prod`;
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-14 | Schritt 0: nur bekannte Treffer (`mcp-profile.ts:35-36`; zwei Kommentare in `specwright/scripts/mcp/kanban-mcp-server.ts`, bleibt laut NZ-01); `setup_memory_db_fallback` legt die SQLite-Ablage des MCP-Memory-Stores an, hängt nicht an den Memory-Befehlen; Flag heißt `--yes`, nicht `--non-interactive` | — | §4 #17 (kein neues Flag nötig), §6 |
+| 2026-09-14 | Zusätzlich gelöscht: `setup-market-validation-project.sh` (im Plan nur das `-global`-Skript genannt); 3 Repo-Kopien der Skills (`.claude/skills/{architect-refinement,atomicity-validator,po-requirements}/SKILL.md`) von `add-story`-Nennungen bereinigt | Referenzsuche nach dem Schnitt | §4 #6, #12 |
+| 2026-09-14 | Manifest liefert **alle** `templates/skills/` (100 Dateien statt 20 wie bisher in `install.sh` gelistet) und `workflows/skill/` (29, bisher von keinem Installer ausgeliefert, obwohl `add-skill` sie braucht) — Drift-Korrektur, keine neue Funktion | Installer-Listen waren unvollständig | §3 Punkt 1, §4 #14 |
+| 2026-09-14 | Neue Manifest-Arten `doc` (3 Dateien `specwright/docs/`, die `setup.sh`/`install.sh` ins Projekt legen) und `script` (`specwright/scripts/auto-execute.sh`); `install-lib.sh`, `manifest.tsv`, `removed.tsv` selbst als `repo-only` | im Plan übersehen | §3 Punkt 1 |
+| 2026-09-14 | `install.sh` legte bisher Specwrights eigene `CLAUDE.md` als Projekt-`CLAUDE.md` an; jetzt `templates/sdlc/projekt/CLAUDE-template.md` (wie `setup.sh`, `update-specwright.sh`) | Fehler im Bestand, beim Umbau gesehen | §4 #17 |
+| 2026-09-14 | MCP-Skripte (`specwright/scripts/mcp/*.ts`) laufen als Manifest-Art `mcp-script` mit Geltung `global` (Ziel `~/.specwright/scripts/mcp/`) über `sw_install`; `install_mcp` behält Paket-Anlage und Registrierung | `mcp_files`-Array war eine weitere Liste | §4 #17 |
+| 2026-09-14 | Guard (f) nimmt `specwright/scripts/mcp/` und `specwright/mcp-profiles/` aus (Kommentare bzw. bewusst bleibendes Profil) | NZ-01, Spec §7 Zeile 6 | §3 Punkt 5 |
+| 2026-09-14 | UI-Test-Baseline: im Worktree waren 6 weitere Suiten rot (`posix_spawnp failed`) — Ursache: `node-pty/prebuilds/*/spawn-helper` ohne Ausführrecht nach `npm ci`; `chmod +x` behebt es. Bezugsliste bleibt bei den 7 Dateien aus dem Hauptcheckout; Hinweis in `CLAUDE.md` „Fehler zweimal“ | Umgebung, kein Repo-Fehler | §2, §8 |
+| 2026-09-14 | `scripts/test-installers.sh`: `install.sh` verlangt ein beschreibbares `$HOME` (T1 legt es an); Grep-Filter für T1/T4 auf exakte Pfade eingeengt (traf `mcp-profiles/validate-market.json` bzw. den Workflow `plan-platform.md`) | Testfehler, nicht Produktfehler | §4 #24 |
