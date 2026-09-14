@@ -7,9 +7,9 @@
 
 ## In einfachen Worten
 
-**Worum geht es?** Seit Specwright 4.0.0 gibt es eine Liste der Dateien, die das Framework nicht mehr ausliefert — 72 Stück, etwa alte Befehle und Vorlagen. Wenn ein Projekt Specwright aktualisiert, schaut das Update in jedes dieser 72 Dateien im Projekt hinein und vergleicht einen Fingerabdruck des Inhalts (eine Prüfsumme) mit der Liste. Stimmt der Fingerabdruck, wird gelöscht. Stimmt er nicht, geht das Update davon aus, dass jemand die Datei im Projekt bewusst verändert hat, lässt sie liegen und meldet „lokal geändert". Das Problem: In der Liste steht je Datei nur ein einziger Fingerabdruck, der der allerletzten Fassung. Fast jede dieser Dateien hat aber im Lauf der Zeit 2 bis 4 verschiedene Fassungen gehabt. Ein Projekt, das nicht bei jeder Specwright-Version nachgezogen hat, besitzt eine ältere Fassung — und bekommt beim Update 72 mal die Meldung „lokal geändert", obwohl niemand je etwas daran geändert hat. Genau das ist am 14.09. auf Michaels Mac passiert und musste von Hand aufgeräumt werden.
+**Worum geht es?** Seit Specwright 4.0.0 gibt es eine Liste der Dateien, die das Framework nicht mehr ausliefert — 72 Stück, etwa alte Befehle und Vorlagen. Wenn ein Projekt Specwright aktualisiert, schaut das Update in jedes dieser 72 Dateien im Projekt hinein und vergleicht einen Fingerabdruck des Inhalts (eine Prüfsumme) mit der Liste. Stimmt der Fingerabdruck, wird gelöscht. Stimmt er nicht, geht das Update davon aus, dass jemand die Datei im Projekt bewusst verändert hat, lässt sie liegen und meldet „lokal geändert". Das Problem: In der Liste steht je Datei nur ein einziger Fingerabdruck, der der allerletzten Fassung. 4 dieser Dateien haben im Lauf der Zeit 2 bis 3 verschiedene Fassungen gehabt, zusammen fehlen 5 Fingerabdrücke. Ein Projekt, das nicht bei jeder Specwright-Version nachgezogen hat, besitzt eine ältere Fassung — und bekommt beim Update die Meldung „lokal geändert", obwohl niemand je etwas daran geändert hat. Heute betrifft das 4 Dateien; jede künftige Entfernung einer älteren Datei vergrößert die Zahl, solange die Liste von Hand gepflegt wird. Genau das ist am 14.09. auf Michaels Mac passiert und musste von Hand aufgeräumt werden.
 
-**Was ändert sich?** Nach diesem Vorhaben stehen in der Liste je Datei alle Fingerabdrücke, die diese Datei jemals hatte — 149 statt 72. Das Update erkennt damit jede Fassung, die Specwright je ausgeliefert hat, und löscht sie. Was wirklich jemand im Projekt verändert hat, bleibt weiterhin liegen und wird gemeldet; daran ändert sich nichts. Außerdem gibt es ein kleines Skript, das diese Fingerabdrücke aus der Git-Historie erzeugt, und eine Prüfung, die bei jedem Pull Request anschlägt, wenn jemand eine Datei entfernt, aber die Fingerabdrücke nicht nachgezogen hat. Die Versionsnummer geht auf 4.0.1, damit Projekte, die schon auf 4.0.0 sind, beim nächsten `check-update.sh` den Hinweis bekommen, noch einmal zu aktualisieren.
+**Was ändert sich?** Nach diesem Vorhaben stehen in der Liste je Datei alle Fingerabdrücke, die diese Datei jemals hatte — 77 statt 72. Das Update erkennt damit jede Fassung, die Specwright je ausgeliefert hat, und löscht sie. Was wirklich jemand im Projekt verändert hat, bleibt weiterhin liegen und wird gemeldet; daran ändert sich nichts. Außerdem gibt es ein kleines Skript, das diese Fingerabdrücke aus der Git-Historie erzeugt, und eine Prüfung, die bei jedem Pull Request anschlägt, wenn jemand eine Datei entfernt, aber die Fingerabdrücke nicht nachgezogen hat. Die Versionsnummer geht auf 4.0.1, damit Projekte, die schon auf 4.0.0 sind, beim nächsten `check-update.sh` den Hinweis bekommen, noch einmal zu aktualisieren.
 
 **Wie wird das gemacht?** Erstens der Test zuerst: Der bestehende Installer-Test baut ein altes Projekt nach und lässt das Update darüber laufen. Ich lasse ihn eine Datei in ihrer ältesten Fassung hinlegen — damit wird der Test rot und beweist den Fehler. Zweitens das Skript: Es geht die 72 Zeilen der Liste durch, holt aus Git jede Fassung der Datei, berechnet den Fingerabdruck und schreibt alle in die Zeile. Läuft es ein zweites Mal, ändert es nichts mehr. Drittens die Wächter-Prüfung: Dasselbe Skript kann im Prüfmodus laufen und sagt dann nur „Liste ist veraltet, führe mich aus" — das hängen wir in die vorhandene Manifest-Prüfung, die in jedem Pull Request läuft. Viertens wird die Liste einmal erzeugt und eingecheckt; der Test wird grün. Dazu ein Test für den Wächter selbst, eine Zeile in der Projektregel-Datei, ein Changelog-Eintrag und die Versionsnummer.
 
@@ -19,7 +19,7 @@
 
 ## 1. Kurzfassung
 
-`specwright/removed.tsv` bekommt je Eintrag die Prüfsummen aller Fassungen aus der `main`-Historie (149 statt 72), erzeugt von `scripts/removed-hashes.sh` (Bash 3.2, idempotent, Vereinigung aus vorhandenen und historischen Prüfsummen). Derselbe Befehl mit `--check` läuft als Prüfpunkt (d) in `scripts/check-manifest.sh` und macht `verify` rot, wenn die Liste hinter der Historie zurückbleibt. Der Installer-Test T4 stellt eine Datei in ihrer ältesten Fassung her und erwartet die Löschung (rot vor dem Fix, grün danach); neues T6 prüft den Guard und die Idempotenz. `install-lib.sh` bleibt unverändert; Version 4.0.1.
+`specwright/removed.tsv` bekommt je Eintrag die Prüfsummen aller Fassungen aus der `main`-Historie (77 statt 72: 5 fehlende in 4 Dateien), erzeugt von `scripts/removed-hashes.sh` (Bash 3.2, idempotent, Vereinigung aus vorhandenen und historischen Prüfsummen). Derselbe Befehl mit `--check` läuft als Prüfpunkt (d) in `scripts/check-manifest.sh` und macht `verify` rot, wenn die Liste hinter der Historie zurückbleibt. Der Installer-Test T4 stellt eine Datei in ihrer ältesten Fassung her und erwartet die Löschung (rot vor dem Fix, grün danach); neues T6 prüft den Guard und die Idempotenz. `install-lib.sh` bleibt unverändert; Version 4.0.1.
 
 ## 2. Ausgangslage im Code
 
@@ -27,7 +27,7 @@
 |---|---|---|
 | Löschlogik | `specwright/scripts/install-lib.sh:151-177` `sw_remove_obsolete`: liest Spalte 4 als kommagetrennte Liste (`:164`), Treffer → `rm -f`, sonst `SW_KEPT_MODIFIED` + Meldung (`:169-171`) | wiederverwendbar, unverändert — mehrere Prüfsummen je Zeile werden bereits unterstützt |
 | Prüfsummen-Helfer | `install-lib.sh:67-71` `sw_sha256` (`sha256sum` → `shasum -a 256` → `openssl`) | Muster für das neue Skript (gleiche Fallback-Kette) |
-| Liste | `specwright/removed.tsv`: 4 Kommentarzeilen + 72 Einträge, **jeder mit genau 1 Prüfsumme** | zu ergänzen; Messung 2026-09-14: `git log -- <ziel>` je Eintrag → 2–4 verschiedene Fassungen, 149 verschiedene Prüfsummen gesamt; alle 72 gelisteten Werte sind in der Historie enthalten (0 fehlend) |
+| Liste | `specwright/removed.tsv`: 4 Kommentarzeilen + 72 Einträge, **jeder mit genau 1 Prüfsumme** | zu ergänzen; Messung 2026-09-14 (`removed-hashes.sh --check`): 4 Einträge mit 2–3 Fassungen, 5 fehlende Prüfsummen (`templates/CLAUDE-PLATFORM.md` +1, `templates/skills/save-memory/SKILL.md` +1, `workflows/core/add-story.md` +2, `workflows/core/transfer-and-create-spec.md` +1); alle 72 gelisteten Werte sind in der Historie enthalten |
 | Herkunft der Lücke | INT-2026-002 `plan.md` §3 Punkt 2 sah `eecb1cd6` + `05364c1^` vor; §12 nahm das Review-Finding „nur eine Prüfsumme" mit „mehrere Prüfsummen je Zeile" an — umgesetzt wurde nur `eecb1cd6` | Ursache: Prüfsummen von Hand aus zwei Commits statt aus der Historie; deshalb jetzt Skript + Guard |
 | Guard | `scripts/check-manifest.sh:56-61` Punkt (d): prüft nur „Prüfsumme vorhanden" und „nicht zugleich im Manifest" | um Aufruf `removed-hashes.sh --check` erweitern |
 | Installer-Test | `scripts/test-installers.sh:60-86` T4: Fixture aus `git show eecb1cd6:<ziel>` für alle project/both-Einträge (`:65-70`), erwartet `fixture_count - 2` Löschungen (`:82-83`) | eine Datei stattdessen in ältester Fassung → heute rot (AK-01); T6 neu nach T5-Muster (`:88-93`) |
@@ -62,7 +62,7 @@ Ein Skript `scripts/removed-hashes.sh` (nicht ausgeliefert — `scripts/` ist ke
 | # | Datei / Komponente | Art | Was | Herkunft |
 |---|---|---|---|---|
 | 1 | `scripts/removed-hashes.sh` | neu | Erzeugen (Standard) und Prüfen (`--check`) der Prüfsummen aus der Git-Historie; Bash 3.2; Fallback-Kette für sha256 wie `install-lib.sh:67-71` | AK-01, AK-03, AK-04 |
-| 2 | `specwright/removed.tsv` | ändern | Kopfkommentar nennt das Skript; 72 Einträge mit allen Prüfsummen (149) | AK-01 |
+| 2 | `specwright/removed.tsv` | ändern | Kopfkommentar nennt das Skript; 72 Einträge mit allen Prüfsummen (77) | AK-01 |
 | 3 | `scripts/check-manifest.sh` | ändern | Punkt (d): zusätzlich `bash scripts/removed-hashes.sh --check`, Fehlermeldung durchreichen; Kopfkommentar | AK-03 |
 | 4 | `scripts/test-installers.sh` | ändern | T4: `specwright/workflows/core/add-story.md` aus ältester Fassung (`git log --format=%H -- … \| tail -1`) statt `eecb1cd6`; Assertion „gelöscht und im Log genannt". T6 neu: eine Prüfsumme aus einer Zeile mit ≥ 2 entfernen → `check-manifest.sh` rot; zurück → grün; Skript zweimal laufen lassen → `git diff --quiet -- specwright/removed.tsv`; Kopfkommentar T1–T6 | AK-01, AK-02, AK-03, AK-04 |
 | 5 | `VERSION`, `install.sh:18` | ändern | 4.0.1 | RB-03 |
@@ -78,7 +78,7 @@ Ein Skript `scripts/removed-hashes.sh` (nicht ausgeliefert — `scripts/` ist ke
 |---|---|---|---|---|---|
 | `check-manifest.sh` (d) | `removed-hashes.sh --check` | Skriptaufruf | Exit 0/1, Meldung auf stderr | `grep -n 'removed-hashes.sh --check' scripts/check-manifest.sh` | — |
 | `removed-hashes.sh` | `specwright/removed.tsv` | Datei lesen/schreiben | 4 Spalten TAB, Spalte 4 kommagetrennt | `bash scripts/removed-hashes.sh --check; echo $?` → 0 | — |
-| `removed.tsv` (149 Prüfsummen) | `install-lib.sh:164` | Datei lesen | kommagetrennte Liste | T4: älteste Fassung von `add-story.md` gelöscht | — |
+| `removed.tsv` (77 Prüfsummen) | `install-lib.sh:164` | Datei lesen | kommagetrennte Liste | T4: älteste Fassung von `add-story.md` gelöscht | — |
 | `test-installers.sh` T6 | `check-manifest.sh`, `removed-hashes.sh` | Skriptaufruf | Exit-Code | `bash scripts/test-installers.sh` → `T1–T6 grün` | — |
 | `verify.sh` | `check-manifest.sh` | bestehend (`:26`) | — | `bash scripts/verify.sh --fast` | — |
 
@@ -88,8 +88,8 @@ Ein Skript `scripts/removed-hashes.sh` (nicht ausgeliefert — `scripts/` ist ke
 ## 6. Reihenfolge der Arbeit
 
 1. Test zuerst: T4 auf älteste Fassung von `add-story.md` umstellen → `bash scripts/test-installers.sh` rot mit „nicht gelöscht" (Fehler bestätigt).
-2. `scripts/removed-hashes.sh` schreiben; `--check` → Exit 1 mit 72 betroffenen Zielen.
-3. Skript ausführen → `removed.tsv` mit 149 Prüfsummen; zweiter Lauf → `git diff --quiet` (AK-04); `--check` → Exit 0.
+2. `scripts/removed-hashes.sh` schreiben; `--check` → Exit 1 mit 4 betroffenen Zielen (5 Prüfsummen).
+3. Skript ausführen → `removed.tsv` mit 77 Prüfsummen; zweiter Lauf → `git diff --quiet` (AK-04); `--check` → Exit 0.
 4. `check-manifest.sh` (d) erweitern; T6 anlegen; `bash scripts/test-installers.sh` → T1–T6 grün.
 5. Version 4.0.1, Changelog, `CLAUDE.md`-Zeile; `bash scripts/check-manifest.sh` grün (Guard e).
 6. Verbindungen nachweisen (§5), `bash scripts/verify.sh` → `verify: OK`; Ausgabe in den PR.
@@ -122,7 +122,7 @@ Sechs Dateien, alle über den Installer-Test verbunden (§5); Aufwand unter eine
 |---|---|---|---|---|
 | Update löscht jetzt eine Datei, die ein Projekt in alter Fassung bewusst weiterbenutzt | niedrig | niedrig | Nur Byte-identische ausgelieferte Fassungen; Bericht je Datei; Git im Projekt; `keep.txt` | Projektinhaber beim Lesen des Berichts |
 | Guard rot in Umgebungen ohne Historie (flacher Klon, Tarball) | niedrig | niedrig | `--check` überspringt bei `is-shallow-repository` = true mit Hinweis | Entwickler |
-| Laufzeit des Guards (72 × 2–4 `git show`) | niedrig | niedrig | Messung lokal < 5 s; Teil des ~2-min-`verify` | — |
+| Laufzeit des Guards (72 Einträge, ~80 `git show`) | niedrig | niedrig | Messung lokal < 5 s; Teil des ~2-min-`verify` | — |
 | Historie enthält eine Fassung, die nie ausgeliefert wurde (nur kurz auf `main`) | niedrig | keine | Löschen einer Datei, die exakt diesem Inhalt entspricht, ist trotzdem korrekt — sie stammt aus Specwright | — |
 
 ## 10. Manuelle Schritte
@@ -162,4 +162,5 @@ Sechs Dateien, alle über den Installer-Test verbunden (§5); Aufwand unter eine
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
+| 2026-09-14 | Erste Messung (Handoff, Board-Karte, Plan v1) nannte „2–4 Fassungen je Datei, 72 von 72 betroffen, 149 Prüfsummen"; richtig: 4 Dateien, 5 fehlende Prüfsummen, 77 gesamt | Die Zählung hatte den Lösch-Commit als Fassung mitgezählt (`git show` auf einen Commit ohne die Datei liefert leere Eingabe → Prüfsumme des Leerstrings). Das Skript überspringt solche Commits (Pipefail + `continue`) | §2, §3, „In einfachen Worten" korrigiert; Ursache und Nutzen des Vorhabens unverändert |
 | 2026-09-14 | `CHANGELOG.md` endet bei 3.38.0; 4.0.0 hat keinen Eintrag | Befund beim Lesen von `check-update.sh`; nicht Teil dieses Vorhabens | Hinweis für die Aufräum-Karte im Board |

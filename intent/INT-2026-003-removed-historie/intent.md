@@ -2,7 +2,7 @@
 intent_id: "INT-2026-003"  
 titel: "Update erkennt jede jemals ausgelieferte Fassung einer entfernten Datei"  
 status: "angenommen"  
-version: "1.0.0"  
+version: "1.0.1"  
 autor: "Claude (aus Handoff 2026-09-14, Befund F18)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-14"  
@@ -37,7 +37,7 @@ freigabe:
 
 ## 1. Problem und Anlass
 
-`sw_remove_obsolete` in `specwright/scripts/install-lib.sh:151-177` löscht eine entfernte Datei nur, wenn ihre Prüfsumme in der Spalte `sha256` von `specwright/removed.tsv` steht; sonst bleibt sie liegen und wird als „lokal geändert" gemeldet [Q: `install-lib.sh:163-171`]. Die Liste enthält je Datei genau eine Prüfsumme — die der Fassung `eecb1cd6` (3.33.0) [Q: `specwright/removed.tsv`, 72 Einträge, alle mit einem Wert; Plan INT-2026-002 §3 Punkt 2 sah für geänderte Dateien zusätzlich `05364c1^` vor, das ist nicht in der Datei gelandet]. Auf `main` existieren je Datei 2 bis 4 verschiedene Fassungen, bei 72 von 72 Einträgen mehr als gelistet [Q: Messung 2026-09-14, `git log -- <ziel>` je Zeile, siehe `plan.md` §2]. Anlass: Beim globalen Update auf Michaels Mac am 14.09. blieb `~/.specwright/templates/CLAUDE-PLATFORM.md` als „lokal geändert" liegen und musste von Hand gelöscht werden — es war eine ältere ausgelieferte Fassung, nie von Hand angefasst [Q: Handoff 2026-09-14 10:20, Abschnitt „Was wurde gemacht"]. Mit jeder künftigen Entfernung wiederholt sich das für jedes Projekt, das nicht bei jeder Version nachgezogen hat.
+`sw_remove_obsolete` in `specwright/scripts/install-lib.sh:151-177` löscht eine entfernte Datei nur, wenn ihre Prüfsumme in der Spalte `sha256` von `specwright/removed.tsv` steht; sonst bleibt sie liegen und wird als „lokal geändert" gemeldet [Q: `install-lib.sh:163-171`]. Die Liste enthält je Datei genau eine Prüfsumme — die der Fassung `eecb1cd6` (3.33.0) [Q: `specwright/removed.tsv`, 72 Einträge, alle mit einem Wert; Plan INT-2026-002 §3 Punkt 2 sah für geänderte Dateien zusätzlich `05364c1^` vor, das ist nicht in der Datei gelandet]. Bei 4 der 72 Einträge liegen auf `main` 2 bis 3 verschiedene Fassungen, gelistet ist nur eine — insgesamt fehlen 5 Prüfsummen, darunter die ältere Fassung von `specwright/templates/CLAUDE-PLATFORM.md` [Q: `bash scripts/removed-hashes.sh --check` am 2026-09-14, siehe `plan.md` §2]. Die Zahl ist klein, weil die meisten entfernten Dateien nur eine Fassung hatten; jede künftige Entfernung einer älteren Datei vergrößert sie. Anlass: Beim globalen Update auf Michaels Mac am 14.09. blieb `~/.specwright/templates/CLAUDE-PLATFORM.md` als „lokal geändert" liegen und musste von Hand gelöscht werden — es war eine ältere ausgelieferte Fassung, nie von Hand angefasst [Q: Handoff 2026-09-14 10:20, Abschnitt „Was wurde gemacht"]. Mit jeder künftigen Entfernung wiederholt sich das für jedes Projekt, das nicht bei jeder Version nachgezogen hat.
 
 ## 2. Betroffene
 
@@ -85,4 +85,5 @@ Keine.
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-14 | Messung in §1 korrigiert: 5 fehlende Prüfsummen in 4 Dateien (erste Zählung hatte den Lösch-Commit als Fassung mitgezählt) | §1 | — |
 | 1.0.0 | 2026-09-14 | Kern-Schicht, Bypass laut `templates/sdlc/README.md` (Bugfix, Größe S) | alle | Umsetzung gestartet unter ER-01; Michaels Freigabe mit dem PR |

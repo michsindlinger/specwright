@@ -45,7 +45,7 @@ Specwright ist das Framework für den AI-native SDLC: Befehle, Workflows, Vorlag
 
 ## Konventionen
 
-- **Lieferumfang:** neue Datei → Zeile in `specwright/manifest.tsv` (Art, Geltung, Quelle, Ziel); entfernte Datei → Zeile in `removed.tsv` mit Prüfsumme(n) der letzten Fassung. Kein Installer bekommt eine eigene Liste (AR-01). Bruch nur mit Update-Weg und Versionssprung (`VERSION` = `FRAMEWORK_VERSION` in `install.sh`).
+- **Lieferumfang:** neue Datei → Zeile in `specwright/manifest.tsv` (Art, Geltung, Quelle, Ziel); entfernte Datei → Zeile in `removed.tsv`, Prüfsummen aller Fassungen per `bash scripts/removed-hashes.sh` (Guard prüft gegen die Historie). Kein Installer bekommt eine eigene Liste (AR-01). Bruch nur mit Update-Weg und Versionssprung (`VERSION` = `FRAMEWORK_VERSION` in `install.sh`).
 - **Installer:** Bash 3.2-tauglich (kein `mapfile`, keine assoziativen Arrays); Downloads nur über `install-lib.sh` (`curl -f`, `file://` für Tests).
 - **Workflows:** Hauptagent führt aus; Utility-Agenten nur für kontextfreie Handgriffe. Vorlagen mit Hybrid-Lookup (Projekt → `~/.specwright`). Platzhalter `[…]`, nie `<…>`.
 - **UI:** TypeScript strict, kein `any`; Präfix `aos-`; `projectDir()` statt harter Pfade (AR-04); Lock-Hierarchie `withMainProjectLock` außen, `withKanbanLock` innen (AR-03); Workspace-Zustand im Backend (AR-05); MCP direkt starten, nie `npx` (AR-02).

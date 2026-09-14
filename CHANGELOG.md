@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.0.1 - 2026-09-14
+
+### Behoben
+- **Update erkennt jede ausgelieferte Fassung entfernter Dateien** (INT-2026-003). `specwright/removed.tsv` führte je entfernter Datei nur die Prüfsumme der letzten Fassung; Projekte mit einer älteren Fassung bekamen beim Update „lokal geändert" statt einer Löschung (4 Dateien betroffen, u. a. `templates/CLAUDE-PLATFORM.md`). Jetzt stehen die Prüfsummen aller Fassungen aus der Git-Historie in der Liste (77 statt 72), erzeugt von `scripts/removed-hashes.sh`; `check-manifest.sh` prüft mit `--check`, dass die Liste nicht hinter der Historie zurückbleibt. Installer-Test: T4 stellt eine Datei in ältester Fassung her, T6 prüft Guard und Idempotenz. Löschlogik (`install-lib.sh`) unverändert: ohne Prüfsummentreffer bleibt eine Datei liegen. Nach dem Update auf 4.0.1 einmal `update-specwright.sh` laufen lassen, falls beim 4.0.0-Update Dateien als „lokal geändert" liegen blieben.
+
 ## 3.38.0 - 2026-09-10
 
 ### Neu

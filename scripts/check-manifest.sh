@@ -4,7 +4,8 @@
 #   (a) jede Quelle im Manifest existiert im Repo
 #   (b) jede Datei in einem Lieferverzeichnis steht im Manifest (auch als repo-only)
 #   (c) kein Installer führt noch eine eigene Dateiliste (download_file "$REPO_URL/… außer erlaubter Ausnahmen)
-#   (d) removed.tsv und manifest.tsv überschneiden sich nicht; removed-Zeilen haben Prüfsummen
+#   (d) removed.tsv und manifest.tsv überschneiden sich nicht; removed-Zeilen haben Prüfsummen — und zwar alle
+#       Fassungen aus der Git-Historie (scripts/removed-hashes.sh --check, INT-2026-003; in flachen Klonen übersprungen)
 #   (e) VERSION == install.sh FRAMEWORK_VERSION
 #   (f) kein in 4.0.0 entfernter Befehlsname in ausgelieferten Dateien, README.md, CLAUDE.md, check-update.sh
 #
@@ -59,6 +60,8 @@ while IFS=$'\t' read -r ver gelt dst hashes; do
     [[ -n "$hashes" ]] || err "$REMOVED: $dst ohne Prüfsumme"
     grep -qE $'\t'"$dst"$'\t'"$dst"'$' "$MANIFEST" && err "$dst steht in removed.tsv UND im Manifest"
 done < "$REMOVED"
+# Prüfsummen vollständig gegen die Git-Historie (INT-2026-003)
+rh=$(bash scripts/removed-hashes.sh --check 2>&1 >/dev/null) || err "$rh"
 
 # (e) Version synchron
 v=$(tr -d '[:space:]' < VERSION)
