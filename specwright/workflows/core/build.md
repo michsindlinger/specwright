@@ -55,6 +55,7 @@ IF §7 Variante B:
 FOR EACH Schritt in §6:
   - Schritt 0 (lesende Vorprüfung) zuerst; Treffer → §14 und ggf. Plananpassung vor dem ersten Edit
   - umsetzen, prüfbaren Zustand herstellen (Test grün, grep-Treffer, Ausgabe)
+  - Imports automatisiert einfügen: bei mehrzeiligen Import-Blöcken ans Blockende, nie in den Block (Pilot-Lehre)
   - Abweichung → §14 mit Datum, Grund, betroffenem Abschnitt
 RULE: Nichts anfassen, was in §4 „Nicht betroffen" steht. Neue Dateien nur in den Ablageorten laut `CLAUDE.md`.
 RULE: `security.md` §5 Verbotsliste gilt; Produktionsdaten nur nach §10-Freigabe.
@@ -69,6 +70,8 @@ RUN Verify-Befehl aus `CLAUDE.md` → muss grün sein; Ausgabe für den PR siche
 RUN jeden Nachweis-Befehl aus §5; Ergebnisse sichern.
 RUN E2E-Pfad aus §8; bei UI Screenshot neben Mock; bei manuellem Pfad Protokoll mit Schritten und Ergebnis.
 IF etwas rot: zurück zu Step 3. Kein Überspringen, keine Änderung an Tests/Baselines, keine Schwellen.
+RULE: CI ist die Wahrheit. Ein lokal grüner Lauf rechtfertigt nie, eine Bezugsliste bekannter roter Tests zu kürzen — erst der grüne PR-Check. Lokale und CI-Umgebung weichen ab (Pilot: lokal grün, CI rot wegen verschachteltem ESM-Paket).
+AFTER PR: PR-Checks abwarten; rot → Ursache im CI-Log, nicht lokal nachstellen und für erledigt erklären.
 
 </step>
 

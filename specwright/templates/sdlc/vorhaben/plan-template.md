@@ -91,7 +91,8 @@
 |---|---|---|---|
 | AK-01 | […] | `tests/…` | Unit / Integration / E2E |
 
-- **Verify-Befehl:** `[npm run verify]` — muss grün sein, Ausgabe wird im PR zitiert.
+- **Verify-Befehl:** `[npm run verify]` — muss grün sein, Ausgabe wird im PR zitiert. **CI ist die Wahrheit:** lokal grün zählt erst, wenn die PR-Checks grün sind. Bezugslisten bekannter roter Tests (Baselines) werden nie aufgrund eines lokalen Laufs gekürzt.
+- **Datenkorrektur (falls Bestandsdaten angefasst werden):** Werkzeug mit Lesemodus (zählt, berichtet, schreibt nichts) → Bericht an die freigebende Person → Freigabe je Umgebung/Mandant → Schreiben mit Backup und Rückweg → Nachmessung im Lesemodus muss 0 Abweichungen zeigen. Die Nachmessung ist ein Nachweis in dieser Tabelle (Art „Messung").
 - **Angeschlossen (E2E-Pfad):** [ein Nutzerpfad von Auslöser bis Ergebnis, der die Verbindungen aus Abschnitt 5 durchläuft; wie geprüft: Playwright / Screenshot / manuell mit Protokoll].
 - **Bugfix:** Test zuerst, Fehlschlag bestätigt, dann Fix ohne Änderung am Test. Hook `protect-tests` aktiv.
 - **UI:** Ergebnis entspricht `design/[mock]` — Prüfung per [Screenshot/Playwright].
@@ -104,7 +105,9 @@
 
 ## 10. Manuelle Schritte
 
-<!-- Alles, was ein Mensch tun muss: Secrets setzen, Flag schalten, Migration freigeben, Deploy autorisieren. Mit Zeitpunkt (vor Umsetzung / vor Merge / vor Deploy). Sonst „Keine." -->
+<!-- Alles, was ein Mensch tun muss: Secrets setzen, Flag schalten, Migration freigeben, Deploy autorisieren. Mit Zeitpunkt (vor Umsetzung / vor Merge / vor Deploy). Sonst „Keine."
+     Jeder Schritt nennt den Weg belegt (Skript, Workflow-Datei, Befehl mit Pfad). `[Uncertain]` ist hier nicht freigabefähig: entweder im Code belegen oder „Weg klären“ als eigener Schritt mit Wer und Wann.
+     Deploy-Schritte laufen nur mit Freigabe (Hook `production-gate`); Freigabe-Datei nach dem Deploy löschen. -->
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
@@ -129,7 +132,7 @@
 - [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
 - [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
 - [ ] E2E-Pfad läuft (Abschnitt 8).
-- [ ] `verify` grün, Ausgabe im PR.
+- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
 - [ ] `docs/architecture.md` angepasst, falls Abschnitt 3 „Ja".
 - [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
 - [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.

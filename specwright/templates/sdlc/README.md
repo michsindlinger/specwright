@@ -35,6 +35,7 @@ Vier Slash-Commands, ein Vorhaben: `/intent` → `/spec` → `/plan` → `/build
 - Repo ist die Wahrheit für Vorhaben. Obsidian-Board-Karten verweisen auf `intent/INT-…`.
 - `architecture.md` ist das Soll. Das Drift-Skript vergleicht das Ist (Compose, Manifeste, Traces) dagegen.
 - `CLAUDE.md` bleibt unter einer Seite und verweist auf die Projekt-Docs statt sie zu enthalten.
+- CI ist die Wahrheit für „grün". Lokale Läufe sind Vorprüfung; Bezugslisten bekannter roter Tests ändern sich nur nach einem CI-Lauf.
 
 ## Sprache und Form
 

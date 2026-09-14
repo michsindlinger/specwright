@@ -46,7 +46,7 @@
 
 ## Definition of Done
 
-`verify` grün und Ausgabe im PR · jedes AK/FA hat einen Test · Verbindungen aus `plan.md` §5 nachgewiesen · E2E-Pfad läuft · bei UI: Screenshot neben Mock · `architecture.md` aktuell · Abweichungen in `plan.md` §14 · 2x-Regel geprüft.
+`verify` grün und Ausgabe im PR · PR-Checks grün (CI ist die Wahrheit, Baselines nie nach lokalem Lauf kürzen) · jedes AK/FA hat einen Test · Verbindungen aus `plan.md` §5 nachgewiesen · E2E-Pfad läuft · bei UI: Screenshot neben Mock · `architecture.md` aktuell · Abweichungen in `plan.md` §14 · 2x-Regel geprüft.
 Schlägt ein Test fehl: Code reparieren, nicht den Test.
 
 ## Fehler, die Claude hier schon zweimal gemacht hat

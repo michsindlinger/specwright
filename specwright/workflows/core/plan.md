@@ -86,6 +86,8 @@ RULE: Zerlegung nie aus Gewohnheit. Pilot-Maßstab: „Parallelisierung brächte
 WRITE §8: je AK/FA ein Test mit Datei und Art; Verify-Befehl; E2E-Pfad, der die Verbindungen aus §5 durchläuft; Bugfix-Anteil → Test zuerst; UI → Mock/Screenshot.
 WRITE §9 Risiken mit „Wer merkt es".
 WRITE §10 manuelle Schritte: Freigaben, Deploys, Datenläufe je Umgebung, Hook `production-gate`.
+RULE: Jeder Schritt in §10 nennt den Weg belegt (Skript, Workflow-Datei, Befehl mit Pfad). `[Uncertain]` in §10 ist nicht freigabefähig — im Code nachsehen (`scripts/`, `.github/workflows/`, `package.json`-Skripte) oder „Weg klären“ als eigenen Schritt mit Wer und Wann eintragen. Pilot: Functions-Deploy stand als `[Uncertain]` im freigegebenen Plan und wurde erst am Deploy-Tag gefunden.
+RULE: Bestandsdaten anfassen → §10 enthält die Kette Lesemodus → Bericht → Freigabe je Umgebung → Schreiben mit Backup/Rückweg → Nachmessung = 0; §8 führt die Nachmessung als Nachweis „Messung".
 WRITE §11 Schätzung mit Spanne und Grund der Unsicherheit.
 
 </step>
