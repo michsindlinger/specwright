@@ -14,7 +14,7 @@ bypass_grund: ""
 bezuege:  
   product: "docs/product-brief.md (entsteht in diesem Vorhaben, AK-08)"  
   spec: "spec.md"  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: "Specwright — Backlog Board · „AI-native SDLC v4 — Flow nach Anthropic-Playbook neu aufsetzen“"  
   adr: []  
   ersetzt: ""  
