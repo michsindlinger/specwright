@@ -37,6 +37,13 @@ Vier Slash-Commands, ein Vorhaben: `/intent` → `/spec` → `/plan` → `/build
 - `CLAUDE.md` bleibt unter einer Seite und verweist auf die Projekt-Docs statt sie zu enthalten.
 - CI ist die Wahrheit für „grün". Lokale Läufe sind Vorprüfung; Bezugslisten bekannter roter Tests ändern sich nur nach einem CI-Lauf.
 
+## Update und Lieferumfang (seit 4.0.0)
+
+- Jede ausgelieferte Datei steht in `specwright/manifest.tsv`; alle Installer lesen diese eine Liste. Neue Datei → Zeile ergänzen, `scripts/check-manifest.sh` prüft.
+- Entfernte Dateien stehen in `specwright/removed.tsv` mit Prüfsummen. `update-specwright.sh` löscht sie im Projekt nur, wenn die Datei unverändert ist; Verändertes bleibt und wird gemeldet.
+- Bewusst behalten: Zielpfad in `specwright/keep.txt` des Projekts eintragen — dann schweigt das Update.
+- Sicherungskopien ersetzter Dateien liegen unter `specwright/backups/<Zeitstempel>/`, nie neben der Datei. Ordner nach Sichtung löschen.
+
 ## Sprache und Form
 
 Vorlagen und ausgefüllte Dokumente auf Deutsch, Dateinamen und Schlüssel auf Englisch (`intent.md`, `status:`). Eine englische Fassung folgt, wenn Specwright veröffentlicht wird.

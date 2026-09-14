@@ -212,9 +212,7 @@ Use the file-creator subagent to fill the Refinement Brief section in `session.m
   [how it sits inside the existing system]
 
   ### Suggested next step
-  - [ ] Spec (use: `/transfer-and-create-spec`)
-  - [ ] Bug (use: `/transfer-and-create-bug`)
-  - [ ] Product plan (use: `/transfer-and-plan-product`)
+  - [ ] Vorhaben festhalten (use: `/intent` — danach `/spec` oder bei Bypass `/plan`)
   - [ ] More discovery (resume this session)
   - [ ] Park for later
 </brief_template>

@@ -1,0 +1,14 @@
+# Bekannte rote Vitest-Dateien in ui/ — Bezugsgröße für scripts/check-vitest-baseline.mjs.
+#
+# Diese Datei ist keine Erlaubnisliste. Sie hält fest, was am 14.09.2026 rot war (gemessen im
+# Hauptcheckout, 534 Testdateien, 7 rot, 1.601 Tests, 7 rot), damit das Tor NEUE Regressionen
+# von Altlasten unterscheiden kann. Eine Zeile wird nur nach einem grünen CI-Lauf gestrichen —
+# nie nach einem lokalen Lauf (Pilot-Lehre INT-2026-001: lokal grün, CI rot).
+# Pfade relativ zu ui/. `flaky:`-Präfix: zählt als bekannt rot, wird nie als repariert gemeldet.
+tests/integration/websocket-terminal.test.ts
+tests/integration/workflow.test.ts
+tests/unit/aos-terminal.test.ts
+tests/unit/execution-store.test.ts
+tests/unit/model-config.test.ts
+tests/unit/terminal-manager.test.ts
+tests/unit/workflow-view.test.ts

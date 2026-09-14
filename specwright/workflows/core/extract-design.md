@@ -12,14 +12,14 @@ installation: global
 ## What's New in v2.0
 
 - **Main Agent Pattern**: Main Agent loads design-system-extraction Skill and executes directly
-- **Standalone command**: Can be used independently outside of validate-market workflow
+- **Standalone command**: Can be used independently of any other workflow
 
 ## Overview
 
 Extract design tokens, color palettes, typography, spacing, and component patterns from a reference URL or screenshot. Creates a structured design-system.md that can be used for landing pages, UI development, or brand consistency.
 
 **When to use:**
-- Before building a landing page (standalone or via /validate-market)
+- Before building a landing page
 - When onboarding an existing project that needs design documentation
 - When replicating a reference design's visual language
 

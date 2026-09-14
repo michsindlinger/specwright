@@ -1,0 +1,29 @@
+name: verify
+
+# CI ist die Wahrheit (Pilot-Lehre INT-2026-001). Läuft dieselbe Kette wie lokal: scripts/verify.sh.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # test-installers.sh stellt alte Dateien aus der Historie her (git show)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            ui/package-lock.json
+            ui/frontend/package-lock.json
+      - name: Install UI dependencies
+        run: |
+          npm ci --prefix ui --no-audit --no-fund
+          npm ci --prefix ui/frontend --no-audit --no-fund
+      - name: verify
+        run: bash scripts/verify.sh

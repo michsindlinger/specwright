@@ -1,32 +1,22 @@
 #!/bin/bash
-
-# =============================================================================
-# NOTE: Consider using the unified installer instead:
-#   curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash
-# This script remains available as standalone fallback for power users.
-# =============================================================================
-
 # Specwright - Project Installation
-# Installs core Specwright structure for spec-driven development
-# Version: 3.0 - Open Source Core
+# Installs the framework (workflows, standards, templates, docs, config) into the current project.
+# File lists live in specwright/manifest.tsv; loading logic in specwright/scripts/install-lib.sh.
+#
+#   curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup.sh | bash
+#   bash setup.sh --overwrite-workflows
+#   SPECWRIGHT_REPO_URL=file:///path/to/specwright bash setup.sh   # local source (tests)
 
 set -e
 
-REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
-OVERWRITE_WORKFLOWS=false
-OVERWRITE_STANDARDS=false
+REPO_URL="${SPECWRIGHT_REPO_URL:-https://raw.githubusercontent.com/michsindlinger/specwright/main}"
 
-# Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --overwrite-workflows)
-            OVERWRITE_WORKFLOWS=true
-            shift
-            ;;
-        --overwrite-standards)
-            OVERWRITE_STANDARDS=true
-            shift
-            ;;
+        --overwrite-workflows) export SW_OVERWRITE_WORKFLOW=true; shift ;;
+        --overwrite-standards) export SW_OVERWRITE_STANDARD=true; shift ;;
+        --overwrite)           export SW_OVERWRITE=true; shift ;;
+        --dry-run)             export SW_DRY_RUN=true; shift ;;
         -h|--help)
             echo "Specwright - Project Installation"
             echo ""
@@ -35,344 +25,96 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --overwrite-workflows      Overwrite existing workflow files"
             echo "  --overwrite-standards      Overwrite existing standards files"
+            echo "  --overwrite                Overwrite every existing file"
+            echo "  --dry-run                  Show what would happen, write nothing"
             echo "  -h, --help                 Show this help message"
             echo ""
-            echo "Installs Specwright in current project."
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1"
-            echo "Use -h or --help for usage information"
-            exit 1
-            ;;
+            echo "Installs Specwright in the current project."
+            exit 0 ;;
+        *) echo "Unknown option: $1"; echo "Use -h or --help for usage information"; exit 1 ;;
     esac
 done
 
-echo "Specwright v3.0 - Project Installation"
+# --- load shared installer library --------------------------------------------------------------
+export SW_REPO_URL="$REPO_URL"
+case "$REPO_URL" in
+    file://*) . "${REPO_URL#file://}/specwright/scripts/install-lib.sh" ;;
+    *) _lib=$(mktemp); curl -sSLf "$REPO_URL/specwright/scripts/install-lib.sh" -o "$_lib" || { echo "Error: cannot load $REPO_URL/specwright/scripts/install-lib.sh"; exit 1; }; . "$_lib"; rm -f "$_lib" ;;
+esac
+sw_fetch_manifest || exit 1
+
+echo "Specwright - Project Installation"
 echo "Installing core structure in current project..."
 echo ""
 
-# Create project directories
-echo "Creating directory structure..."
-mkdir -p specwright/standards
-mkdir -p specwright/workflows/core
-mkdir -p specwright/workflows/meta
-mkdir -p specwright/workflows/marketing
-mkdir -p specwright/workflows/team
-mkdir -p specwright/workflows/validation
-mkdir -p specwright/scripts
-mkdir -p specwright/templates
-mkdir -p specwright/templates/product
-mkdir -p specwright/templates/sdlc/vorhaben
-mkdir -p specwright/templates/sdlc/projekt
-mkdir -p specwright/templates/sdlc/hooks
-mkdir -p specwright/docs
-
-# Function to download file if it doesn't exist or if overwrite is enabled
-download_file() {
-    local url=$1
-    local path=$2
-    local category=$3
-
-    if [[ -f "$path" ]]; then
-        if [[ "$category" == "standards" && "$OVERWRITE_STANDARDS" == true ]] ||
-           [[ "$category" == "workflows" && "$OVERWRITE_WORKFLOWS" == true ]]; then
-            echo "Overwriting $path..."
-            curl -sSL "$url" -o "$path"
-        else
-            echo "Skipping $path (already exists)"
-        fi
-    else
-        echo "Downloading $path..."
-        curl -sSL "$url" -o "$path"
-    fi
-}
-
-# ===============================================================
-# STANDARDS
-# ===============================================================
+echo "=== Standards ($(sw_count standard project)) ==="
+sw_install standard project
+echo "=== Documentation ($(sw_count doc project)) ==="
+sw_install doc project
+echo "=== Workflows ($(sw_count workflow project)) ==="
+sw_install workflow project
+echo "=== Templates ($(sw_count template project)) ==="
+sw_install template project
+echo "=== MCP profiles ($(sw_count mcp-profile project)) ==="
+sw_install mcp-profile project
+echo "=== Scripts ($(sw_count script project)) ==="
+sw_install script project
+[[ -f specwright/scripts/auto-execute.sh ]] && chmod +x specwright/scripts/auto-execute.sh
 
 echo ""
-echo "=== Installing Standards ==="
-
-download_file "$REPO_URL/specwright/standards/code-style.md" "specwright/standards/code-style.md" "standards"
-download_file "$REPO_URL/specwright/standards/best-practices.md" "specwright/standards/best-practices.md" "standards"
-download_file "$REPO_URL/specwright/standards/plan-review-guidelines.md" "specwright/standards/plan-review-guidelines.md" "standards"
-download_file "$REPO_URL/specwright/standards/atomicity-guidelines.md" "specwright/standards/atomicity-guidelines.md" "standards"
-
-# ===============================================================
-# DOCS - Documentation and Guides
-# ===============================================================
-
-echo ""
-echo "=== Installing Documentation ==="
-
-download_file "$REPO_URL/specwright/docs/story-sizing-guidelines.md" "specwright/docs/story-sizing-guidelines.md" "docs"
-download_file "$REPO_URL/specwright/docs/mcp-setup-guide.md" "specwright/docs/mcp-setup-guide.md" "docs"
-download_file "$REPO_URL/specwright/docs/agent-learning-guide.md" "specwright/docs/agent-learning-guide.md" "docs"
-
-# ===============================================================
-# WORKFLOWS - Core Workflows
-# ===============================================================
-
-echo ""
-echo "=== Installing Core Workflows ==="
-
-# Meta workflow
-download_file "$REPO_URL/specwright/workflows/meta/pre-flight.md" "specwright/workflows/meta/pre-flight.md" "workflows"
-
-# Security
-download_file "$REPO_URL/specwright/templates/product/secrets-template.md" "specwright/templates/product/secrets-template.md" "templates"
-
-# SDLC v4 templates (14): intent/spec/plan, Projekt-Docs, Hooks
-download_file "$REPO_URL/specwright/templates/sdlc/README.md" "specwright/templates/sdlc/README.md" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/vorhaben/intent-template.md" "specwright/templates/sdlc/vorhaben/intent-template.md" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/vorhaben/spec-template.md" "specwright/templates/sdlc/vorhaben/spec-template.md" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/vorhaben/plan-template.md" "specwright/templates/sdlc/vorhaben/plan-template.md" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/projekt/product-brief-template.md" "specwright/templates/sdlc/projekt/product-brief-template.md" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/projekt/architecture-template.md" "specwright/templates/sdlc/projekt/architecture-template.md" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/projekt/security-template.md" "specwright/templates/sdlc/projekt/security-template.md" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/projekt/design-template.md" "specwright/templates/sdlc/projekt/design-template.md" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/projekt/CLAUDE-template.md" "specwright/templates/sdlc/projekt/CLAUDE-template.md" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/hooks/README.md" "specwright/templates/sdlc/hooks/README.md" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/hooks/settings.json" "specwright/templates/sdlc/hooks/settings.json" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/hooks/protect-tests.sh" "specwright/templates/sdlc/hooks/protect-tests.sh" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/hooks/no-secrets.sh" "specwright/templates/sdlc/hooks/no-secrets.sh" "templates"
-download_file "$REPO_URL/specwright/templates/sdlc/hooks/production-gate.sh" "specwright/templates/sdlc/hooks/production-gate.sh" "templates"
-
-# Product planning
-download_file "$REPO_URL/specwright/workflows/core/plan-product.md" "specwright/workflows/core/plan-product.md" "workflows"
-
-# Platform planning
-download_file "$REPO_URL/specwright/workflows/core/plan-platform.md" "specwright/workflows/core/plan-platform.md" "workflows"
-
-# Team setup
-download_file "$REPO_URL/specwright/workflows/core/build-development-team.md" "specwright/workflows/core/build-development-team.md" "workflows"
-
-# Spec development
-download_file "$REPO_URL/specwright/workflows/core/create-spec.md" "specwright/workflows/core/create-spec.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/add-story.md" "specwright/workflows/core/add-story.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/retroactive-doc.md" "specwright/workflows/core/retroactive-doc.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/retroactive-spec.md" "specwright/workflows/core/retroactive-spec.md" "workflows"
-
-# Bug management
-download_file "$REPO_URL/specwright/workflows/core/add-bug.md" "specwright/workflows/core/add-bug.md" "workflows"
-
-# SDLC v4: Vorhaben-Flow intent → spec → plan → build
-download_file "$REPO_URL/specwright/workflows/core/intent.md" "specwright/workflows/core/intent.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/spec.md" "specwright/workflows/core/spec.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/plan.md" "specwright/workflows/core/plan.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/build.md" "specwright/workflows/core/build.md" "workflows"
-
-# Task execution (Phase-based architecture v3.0)
-mkdir -p specwright/workflows/core/execute-tasks
-mkdir -p specwright/workflows/core/execute-tasks/shared
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/entry-point.md" "specwright/workflows/core/execute-tasks/entry-point.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-1.md" "specwright/workflows/core/execute-tasks/spec-phase-1.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-1-lean.md" "specwright/workflows/core/execute-tasks/spec-phase-1-lean.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-2.md" "specwright/workflows/core/execute-tasks/spec-phase-2.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3.md" "specwright/workflows/core/execute-tasks/spec-phase-3.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-lean.md" "specwright/workflows/core/execute-tasks/spec-phase-3-lean.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-code-review.md" "specwright/workflows/core/execute-tasks/spec-phase-3-code-review.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-integration-validation.md" "specwright/workflows/core/execute-tasks/spec-phase-3-integration-validation.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-3-finalize-pr.md" "specwright/workflows/core/execute-tasks/spec-phase-3-finalize-pr.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/backlog-phase-1.md" "specwright/workflows/core/execute-tasks/backlog-phase-1.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/backlog-phase-2.md" "specwright/workflows/core/execute-tasks/backlog-phase-2.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/backlog-phase-3.md" "specwright/workflows/core/execute-tasks/backlog-phase-3.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/shared/resume-context.md" "specwright/workflows/core/execute-tasks/shared/resume-context.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/shared/error-handling.md" "specwright/workflows/core/execute-tasks/shared/error-handling.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/execute-tasks/shared/skill-extraction.md" "specwright/workflows/core/execute-tasks/shared/skill-extraction.md" "workflows"
-
-# MCP Profiles (v3.22.0: per-workflow MCP allowlists for reduced context)
-mkdir -p specwright/mcp-profiles
-download_file "$REPO_URL/specwright/mcp-profiles/execute-tasks.json" "specwright/mcp-profiles/execute-tasks.json" "mcp-profile"
-download_file "$REPO_URL/specwright/mcp-profiles/create-spec.json" "specwright/mcp-profiles/create-spec.json" "mcp-profile"
-download_file "$REPO_URL/specwright/mcp-profiles/validate-market.json" "specwright/mcp-profiles/validate-market.json" "mcp-profile"
-download_file "$REPO_URL/specwright/mcp-profiles/mcp-always-on-template.json" "specwright/mcp-profiles/mcp-always-on-template.json" "mcp-profile"
-download_file "$REPO_URL/specwright/mcp-profiles/README.md" "specwright/mcp-profiles/README.md" "mcp-profile"
-
-# Guidelines
-mkdir -p specwright/workflows/core/guidelines
-download_file "$REPO_URL/specwright/workflows/core/guidelines/model-selection.md" "specwright/workflows/core/guidelines/model-selection.md" "workflows"
-
-# Backlog / Quick tasks
-download_file "$REPO_URL/specwright/workflows/core/add-todo.md" "specwright/workflows/core/add-todo.md" "workflows"
-
-# Brainstorming
-download_file "$REPO_URL/specwright/workflows/core/start-brainstorming.md" "specwright/workflows/core/start-brainstorming.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/transfer-and-create-spec.md" "specwright/workflows/core/transfer-and-create-spec.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/transfer-and-create-bug.md" "specwright/workflows/core/transfer-and-create-bug.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/transfer-and-plan-product.md" "specwright/workflows/core/transfer-and-plan-product.md" "workflows"
-
-# Skill management
-download_file "$REPO_URL/specwright/workflows/core/add-skill.md" "specwright/workflows/core/add-skill.md" "workflows"
-
-# Self-learning
-download_file "$REPO_URL/specwright/workflows/core/add-learning.md" "specwright/workflows/core/add-learning.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/add-domain.md" "specwright/workflows/core/add-domain.md" "workflows"
-
-# Spec management
-download_file "$REPO_URL/specwright/workflows/core/change-spec.md" "specwright/workflows/core/change-spec.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/document-feature.md" "specwright/workflows/core/document-feature.md" "workflows"
-# User-action flag (v3.14): retroactive migration command
-download_file "$REPO_URL/specwright/workflows/core/flag-user-actions.md" "specwright/workflows/core/flag-user-actions.md" "workflows"
-
-# Analysis & Estimation
-download_file "$REPO_URL/specwright/workflows/core/analyze-product.md" "specwright/workflows/core/analyze-product.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/analyze-feasibility.md" "specwright/workflows/core/analyze-feasibility.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/analyze-blockers.md" "specwright/workflows/core/analyze-blockers.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/estimate-spec.md" "specwright/workflows/core/estimate-spec.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/validate-estimation.md" "specwright/workflows/core/validate-estimation.md" "workflows"
-
-# Feedback & Changelog
-download_file "$REPO_URL/specwright/workflows/core/process-feedback.md" "specwright/workflows/core/process-feedback.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/core/update-changelog.md" "specwright/workflows/core/update-changelog.md" "workflows"
-
-# Design extraction
-download_file "$REPO_URL/specwright/workflows/core/extract-design.md" "specwright/workflows/core/extract-design.md" "workflows"
-
-# Growth brainstorming
-download_file "$REPO_URL/specwright/workflows/core/brainstorm-growth-ideas.md" "specwright/workflows/core/brainstorm-growth-ideas.md" "workflows"
-
-# Marketing workflows
-download_file "$REPO_URL/specwright/workflows/marketing/create-instagram-account.md" "specwright/workflows/marketing/create-instagram-account.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/marketing/create-content-plan.md" "specwright/workflows/marketing/create-content-plan.md" "workflows"
-
-# Team workflows
-download_file "$REPO_URL/specwright/workflows/team/create-project-agents.md" "specwright/workflows/team/create-project-agents.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/team/assign-skills-to-agent.md" "specwright/workflows/team/assign-skills-to-agent.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/team/add-team-member.md" "specwright/workflows/team/add-team-member.md" "workflows"
-
-# Validation workflows
-download_file "$REPO_URL/specwright/workflows/validation/validate-market.md" "specwright/workflows/validation/validate-market.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/validation/validate-market-for-existing.md" "specwright/workflows/validation/validate-market-for-existing.md" "workflows"
-download_file "$REPO_URL/specwright/workflows/validation/README.md" "specwright/workflows/validation/README.md" "workflows"
-
-# Automation script
-download_file "$REPO_URL/specwright/scripts/auto-execute.sh" "specwright/scripts/auto-execute.sh" "workflows"
-chmod +x specwright/scripts/auto-execute.sh
-
-# ===============================================================
-# CONFIGURATION
-# ===============================================================
-
-echo ""
-echo "=== Setting up Configuration ==="
-
-if [[ ! -f "specwright/config.yml" ]]; then
+echo "=== Configuration ==="
+if [[ "${SW_DRY_RUN:-false}" == true ]]; then
+    echo "(dry run) specwright/config.yml, CLAUDE.md"
+elif [[ ! -f "specwright/config.yml" ]]; then
+    mkdir -p specwright
     cat > specwright/config.yml << 'EOF'
 # Specwright Configuration
-# Version: 3.0
-
-# Project Information
 project:
   name: "[PROJECT_NAME]"  # Customize this
-
-# DevTeam System
 devteam:
   enabled: false  # Set to true after /build-development-team
-
-# Workflow Settings
 workflows:
   auto_commit_per_story: true  # Git commit after each story completion
-
-# Standards Lookup
 standards:
-  # Order: project first, then global fallback
-  # Project: specwright/standards/code-style.md
-  # Global: ~/.specwright/standards/code-style.md
   use_global_fallback: true
 EOF
-    echo "Created specwright/config.yml"
-    echo "Customize project.name in specwright/config.yml"
+    echo "Created specwright/config.yml — customize project.name"
 else
     echo "Skipping specwright/config.yml (already exists)"
 fi
 
-# ===============================================================
-# CLAUDE.md
-# ===============================================================
-
-echo ""
-echo "=== Setting up CLAUDE.md ==="
-
-if [[ -f "CLAUDE.md" ]]; then
-    echo "CLAUDE.md already exists - creating CLAUDE.md.template for reference"
-    download_file "$REPO_URL/CLAUDE.md" "CLAUDE.md.template" "claude"
-    echo "Consider merging CLAUDE.md.template into your existing CLAUDE.md"
-else
-    echo "Creating CLAUDE.md from template..."
-    download_file "$REPO_URL/CLAUDE.md" "CLAUDE.md" "claude"
-    echo "Customize CLAUDE.md with your project-specific information"
+if [[ "${SW_DRY_RUN:-false}" != true ]]; then
+    if [[ -f "CLAUDE.md" ]]; then
+        [[ -f CLAUDE.md.template ]] || sw_fetch "$REPO_URL/specwright/templates/sdlc/projekt/CLAUDE-template.md" CLAUDE.md.template
+        echo "CLAUDE.md exists — v4 template saved as CLAUDE.md.template for reference"
+    else
+        sw_fetch "$REPO_URL/specwright/templates/sdlc/projekt/CLAUDE-template.md" CLAUDE.md
+        echo "Created CLAUDE.md from the v4 template — fill in the placeholders"
+    fi
 fi
 
-# ===============================================================
-# MCP SERVER (OPTIONAL)
-# ===============================================================
-
 echo ""
-echo "=== Installing Kanban MCP Server (optional) ==="
-
-if command -v npx >/dev/null 2>&1; then
-  echo "Installing Kanban MCP Server..."
-  bash setup-mcp.sh
+echo "=== Kanban MCP Server (optional) ==="
+if [[ "${SW_DRY_RUN:-false}" == true ]]; then
+    echo "(dry run) skipped"
+elif command -v npx >/dev/null 2>&1 && [[ -f setup-mcp.sh ]]; then
+    bash setup-mcp.sh
 else
-  echo "npx not found - MCP server installation skipped"
-  echo "Install Node.js to enable MCP tools for kanban management"
-  echo "You can run setup-mcp.sh manually later after installing Node.js"
+    echo "Skipped — run setup-mcp.sh later (needs Node.js)."
 fi
 
-# ===============================================================
-# SUMMARY
-# ===============================================================
+sw_report
+sw_cleanup
 
 echo ""
 echo "========================================="
-echo "Specwright v3.0 Installed!"
+echo "Specwright $(sw_fetch "$REPO_URL/VERSION" "$SW_TMP.version" 2>/dev/null && cat "$SW_TMP.version"; rm -f "$SW_TMP.version") installed"
 echo "========================================="
 echo ""
-echo "Installed Structure:"
-echo ""
-echo "  specwright/"
-echo "    ├── standards/              (3 core files)"
-echo "    ├── workflows/core/         (29 core workflows)"
-echo "    │   ├── execute-tasks/      (13 phase files)"
-echo "    │   └── guidelines/         (1 file)"
-echo "    ├── workflows/team/         (2 team workflows)"
-echo "    ├── workflows/validation/   (3 validation workflows)"
-echo "    ├── workflows/marketing/    (2 marketing workflows)"
-echo "    ├── workflows/meta/         (1 meta workflow)"
-echo "    ├── scripts/                (1 automation script)"
-echo "    └── config.yml              (minimal configuration)"
-echo ""
-echo "  CLAUDE.md                     (project instructions template)"
-echo ""
-echo "Next Steps:"
-echo ""
-echo "1. Customize CLAUDE.md:"
-echo "   nano CLAUDE.md"
-echo ""
-echo "2. Install Claude Code support:"
-echo "   curl -sSL $REPO_URL/setup-claude-code.sh | bash"
-echo ""
-echo "3. Install global templates (recommended):"
-echo "   curl -sSL $REPO_URL/setup-devteam-global.sh | bash"
-echo ""
-echo "4. Start your workflow:"
-echo "   /plan-product        -> Product planning"
-echo "   /plan-platform       -> Multi-module platform planning"
-echo "   /build-development-team -> DevTeam setup"
-echo ""
-echo "5. Feature development:"
-echo "   /create-spec         -> Create user stories"
-echo "   /execute-tasks       -> Execute stories"
-echo ""
-echo "6. Quick tasks & bugs:"
-echo "   /add-todo            -> Add quick task to backlog"
-echo "   /add-bug             -> Add bug with root-cause analysis"
-echo ""
-echo "7. Brainstorming:"
-echo "   /start-brainstorming -> Interactive idea exploration"
+echo "Next steps:"
+echo "  1. Customize CLAUDE.md"
+echo "  2. Claude Code commands:  curl -sSL $REPO_URL/setup-claude-code.sh | bash"
+echo "  3. Global templates:      curl -sSL $REPO_URL/setup-devteam-global.sh | bash"
+echo "  4. Start:  /intent → /spec → /plan → /build   (or /plan-product for a new product)"
 echo ""
 echo "For more info: https://github.com/michsindlinger/specwright"
-echo ""

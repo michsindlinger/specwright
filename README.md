@@ -34,18 +34,19 @@ curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/insta
 The installer auto-detects your environment and installs everything needed:
 - Global templates & standards (`~/.specwright/`)
 - Project workflows, standards & configuration
-- Claude Code commands (34) & agents (13)
-- Market validation workflows
+- Claude Code commands (23), agents (11) & skills (2)
 - MCP server (if Node.js is available)
 
 ### Start building
 
 ```bash
-/plan-product              # Create product brief, tech stack, roadmap
-/build-development-team    # Set up skills and quality gates
-/create-spec               # Create feature spec with user stories
-/execute-tasks             # Execute stories with self-review
+/intent                    # Capture a Vorhaben: what, why, evidence
+/spec INT-2026-001         # Functional spec
+/plan INT-2026-001         # Technical plan (Plan Mode)
+/build INT-2026-001        # Implement in one session, verify, PR
 ```
+
+For a brand-new product start with `/plan-product`; the Web-UI auto mode still uses `/create-spec` + `/execute-tasks`.
 
 ### Installer Options
 
@@ -111,23 +112,33 @@ You add your project directories within the UI and switch between them freely. E
 
 ## Core Commands
 
+Specwright v4 ships 23 commands. The four **Vorhaben** commands are the main path; the rest support product setup, the Web-UI execution path and housekeeping.
+
 | Command | Description |
 |---------|-------------|
+| `/intent` | Capture a Vorhaben as `intent/INT-YYYY-NNN-slug/intent.md` — what and why, with evidence from the code |
+| `/spec` | Functional spec from an accepted intent (`spec.md`) |
+| `/plan` | Technical plan in Plan Mode (`plan.md`) — the unit of execution |
+| `/build` | Implement the approved plan in one session, verify, PR |
 | `/plan-product` | Single-product planning (brief, tech-stack, roadmap) |
-| `/plan-platform` | Multi-module platform planning |
+| `/analyze-product` | Analyze an existing codebase for Specwright setup |
 | `/build-development-team` | Create skills for your tech stack |
-| `/create-spec` | Create detailed feature specification |
-| `/add-story` | Add story to existing spec |
-| `/execute-tasks` | Execute stories with phase-based workflow |
+| `/create-spec` | Create a story-based spec (Web-UI execution path) |
+| `/change-spec` | Modify an existing spec |
+| `/execute-tasks` | Execute stories (Web-UI auto mode) |
 | `/add-bug` | Add bug with root-cause analysis |
 | `/add-todo` | Add lightweight task to backlog |
-| `/retroactive-doc` | Document existing features |
 | `/retroactive-spec` | Create spec from existing code |
-| `/add-skill` | Create custom skills |
-| `/add-learning` | Add insights to skill knowledge |
-| `/add-domain` | Add business domain documentation |
-| `/start-brainstorming` | Interactive idea exploration |
-| `/validate-market` | Validate product ideas |
+| `/estimate-spec` | Effort estimation for a spec |
+| `/document-feature` | Document a completed feature |
+| `/update-changelog` | Generate bilingual changelog |
+| `/process-feedback` | Categorize customer feedback |
+| `/start-brainstorming` | Interactive idea exploration (ends in `/intent`) |
+| `/add-skill` · `/add-learning` · `/add-domain` | Skills and domain knowledge |
+| `/extract-design` | Extract a design system from URL/screenshot |
+| `/check-update` | Check for a newer Specwright version |
+
+All shipped files are listed in `specwright/manifest.tsv`; every installer reads that one list (`scripts/check-manifest.sh` guards it). Files removed in a release are in `specwright/removed.tsv` — `update-specwright.sh` deletes them from projects when unchanged, keeps and reports locally modified ones, and respects `specwright/keep.txt`.
 
 ## How It Works
 
@@ -192,15 +203,6 @@ Templates and standards use a two-level lookup:
 2. **Global**: `~/.specwright/templates/` (fallback)
 
 This allows global defaults with per-project customization.
-
-## Optional: Market Validation
-
-Market validation is included in the project installer. Just use the commands:
-
-```bash
-/validate-market "Your product idea"
-/validate-market-for-existing       # For existing products
-```
 
 ## Optional: Kanban MCP Server
 

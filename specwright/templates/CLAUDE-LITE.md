@@ -22,12 +22,12 @@ Essential guidance for Claude Code development. **Context is loaded on-demand** 
 
 ### Specwright Workflows (Loaded automatically via Skill system when invoked)
 Available via slash commands - NO need to preload:
+- `/intent` `/spec` `/plan` `/build` - Vorhaben-Flow (Specwright v4): Absicht → Spec → Plan → Umsetzung
 - `/plan-product` - Single-product planning
-- `/plan-platform` - Multi-module platform planning
 - `/build-development-team` - Create DevTeam agents
 - `/create-spec` - Feature specifications
 - `/execute-tasks` - Task execution
-- `/retroactive-doc` - Document existing features
+- `/document-feature` - Document completed features
 
 ## Critical Rules
 - **FOLLOW ALL INSTRUCTIONS** - Mandatory, not optional
@@ -86,7 +86,6 @@ DELEGATE to context-fetcher:
 
 1. **Product/Platform Planning:**
    - `/plan-product` → Single cohesive products
-   - `/plan-platform` → Multi-module platforms
 
 2. **Team Setup:**
    - `/build-development-team` → Creates DevTeam agents & skills
@@ -100,39 +99,8 @@ DELEGATE to context-fetcher:
    - `/add-bug` → Adds bug to existing spec
 
 5. **Documentation:**
-   - `/retroactive-doc` → Documents existing features
+   - `/document-feature` → Documents completed features
 
-6. **Memory (Cross-Session Knowledge):**
-   - `/save-memory` → Save session knowledge to persistent Memory DB
-   - `/recall-memory` → Browse, search, and recall stored memories
-   - `/manage-memory` → Housekeeping: archive, update, delete memories
-
-## Memory System
-
-Specwright includes a persistent Memory DB (`~/.specwright/memory.db`) for cross-session knowledge retention.
-
-**When to use:**
-- End of productive session: `/save-memory` to persist decisions, patterns, learnings
-- Start of new session: `/recall-memory` to load relevant context from previous work
-- Periodically: `/manage-memory` to archive stale entries and maintain memory health
-
-**Importance Levels:**
-- `strategic` — Long-lived: architecture decisions, domain knowledge, business rules
-- `operational` — Medium-term: project decisions, current patterns (default)
-- `tactical` — Short-lived: debugging notes, session-specific findings
-
-**MCP Tools (available directly):**
-- `memory_store` — Save with upsert logic + importance level
-- `memory_search` — Full-text search (FTS5)
-- `memory_recall` — Browse by ID/topic/tag, `format: 'context'` for compact LLM injection
-- `memory_update` — Partial update of existing entries
-- `memory_delete` — Archive (soft) or permanent delete
-- `memory_stats` — System health overview
-
-**Directory Structure:**
-- `specwright/product/` - Product vision, tech-stack, roadmap
-- `specwright/specs/` - Feature specifications
-- `specwright/team/` - DevTeam agents and skills
 
 ## Development Notes
 - Bitte merke dir, wir nutzen hier in diesem Branch die V2-Komponenten für die Projekte und die Profile im Moment und für die Seite Teams und Settings.

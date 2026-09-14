@@ -57,7 +57,7 @@ Both Product and Platform projects use specwright/product/tech-stack.md.
 
     PROCEED to step 2
   ELSE:
-    INFORM user: "No tech-stack.md found. Please run /plan-product or /plan-platform first."
+    INFORM user: "No tech-stack.md found. Please run /plan-product first."
     EXIT workflow
 </conditional_logic>
 

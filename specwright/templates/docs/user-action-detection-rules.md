@@ -1,8 +1,7 @@
 # User-Action Detection Rules
 
 > Source of truth for the `requiresUserAction` flag (v3.14+).
-> Loaded by `create-spec.md`, `add-story.md`, `change-spec.md`, and
-> `flag-user-actions.md` workflows. Single file → no drift between flows.
+> Loaded by the `create-spec.md` and `change-spec.md` workflows. Single file → no drift between flows.
 
 ## Purpose
 
@@ -47,8 +46,7 @@ Be conservative. The following are NOT user-action — AI can do them:
 - Database migrations (when run via tooling)
 - Generating dev fixtures / seed data
 
-When uncertain, **don't flag** — the user can flag later via
-`/specwright:flag-user-actions`.
+When uncertain, **don't flag** — the user can flag later by setting `requiresUserAction` in the story frontmatter.
 
 ## Confirmation UX (consistent across workflows)
 
