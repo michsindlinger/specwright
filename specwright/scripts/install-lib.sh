@@ -154,21 +154,21 @@ sw_remove_obsolete() { # geltung(project|global)
     while IFS=$'\t' read -r ver g dest hashes; do
         [[ -n "$dest" && "$ver" != \#* ]] || continue
         [[ "$g" == "$gelt" || "$g" == both ]] || continue
-        local path=$dest
-        [[ "$gelt" == global ]] && path=$(sw_global_dest "$dest")
-        [[ -f "$path" ]] || continue
+        local target=$dest
+        [[ "$gelt" == global ]] && target=$(sw_global_dest "$dest")
+        [[ -f "$target" ]] || continue
         if [[ "$gelt" == project && -f "$SW_KEEP_FILE" ]] && grep -qxF -- "$dest" "$SW_KEEP_FILE"; then
             SW_KEPT_BY_LIST=$((SW_KEPT_BY_LIST + 1)); continue
         fi
-        have=$(sw_sha256 "$path"); matched=false
+        have=$(sw_sha256 "$target"); matched=false
         for h in $(printf '%s' "$hashes" | tr ',' ' '); do [[ "$h" == "$have" ]] && matched=true; done
         if [[ "$matched" == true ]]; then
-            if [[ "$SW_DRY_RUN" == true ]]; then sw_say "  - $path (würde gelöscht, entfernt seit $ver)"
-            else rm -f "$path"; sw_say "  - $path (gelöscht, entfernt seit $ver)"; fi
-            SW_REMOVED=$((SW_REMOVED + 1)); SW_REMOVED_LIST="$SW_REMOVED_LIST$path"$'\n'
+            if [[ "$SW_DRY_RUN" == true ]]; then sw_say "  - $target (würde gelöscht, entfernt seit $ver)"
+            else rm -f "$target"; sw_say "  - $target (gelöscht, entfernt seit $ver)"; fi
+            SW_REMOVED=$((SW_REMOVED + 1)); SW_REMOVED_LIST="$SW_REMOVED_LIST$target"$'\n'
         else
-            SW_KEPT_MODIFIED=$((SW_KEPT_MODIFIED + 1)); SW_KEPT_LIST="$SW_KEPT_LIST$path"$'\n'
-            sw_say "  ! $path (nicht gelöscht: lokal geändert — behalten per $SW_KEEP_FILE oder von Hand löschen)"
+            SW_KEPT_MODIFIED=$((SW_KEPT_MODIFIED + 1)); SW_KEPT_LIST="$SW_KEPT_LIST$target"$'\n'
+            sw_say "  ! $target (nicht gelöscht: lokal geändert — behalten per $SW_KEEP_FILE oder von Hand löschen)"
         fi
     done < "$SW_TMP/removed.tsv"
     # leere Verzeichnisse, die nur entfernte Dateien enthielten, verschwinden
