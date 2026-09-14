@@ -1,7 +1,7 @@
 # Plan: Command-Schnitt 45 → 23, ein Installer-Manifest, Specwright lebt den v4-Flow selbst
 
 > **Intent:** `intent.md` (INT-2026-002, 1.0.1) · **Spec:** `spec.md` (freigegeben 14.09.)
-> **Status:** umgesetzt (PR #38 offen, Merge und §10 ausstehend)
+> **Status:** umgesetzt (PR #38 gemergt `3ade63f7`, 14.09.; CI `verify` grün auf PR-Head, Run `34816030121`)
 > **Erstellt:** 2026-09-14 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-14
 > **Pflichtinput gelesen:** `docs/architecture.md` — existiert noch nicht (entsteht hier, §4 #40); ersatzweise `CLAUDE.md` (269 Zeilen, Stand `73ddbe5`), `README.md`, `spec.md` §7; `docs/security.md` — existiert noch nicht, Verbotsliste ersatzweise aus `CLAUDE.md` „Production Safety Rules" und `spec.md` §5.
 
@@ -204,11 +204,11 @@ Der Schnitt (Schritt 2) bestimmt den Inhalt von Manifest, Entfernt-Liste, README
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| Marktvalidierungs-Vorlagen sichern: `cp -R specwright/templates/market-validation/ "<Vault>/AI/Rohmaterial/Specwright-Marktvalidierung-2026-09/"` (Vault-Pfad aus `CLAUDE.md`, global) — Michael sichtet, „behalten/verwerfen" | Claude (Kopie), Michael (Sichtung) | vor Schritt 2 | [ ] |
-| Applai-Nachweis auf Branch: `cd ~/cloud-mount-mutagen/applai-nextjs && git checkout -b chore/specwright-4.0.0 main && SPECWRIGHT_REPO_URL=file://<worktree> bash <worktree>/update-specwright.sh`; `git status` ins Protokoll; Branch als PR anbieten oder verwerfen (Michael) | Claude (Lauf), Michael (Entscheid über PR) | Schritt 7 | [ ] |
-| PR-Review und Merge (`gh pr merge --merge`, wie alle Merges im Repo) = Veröffentlichung 4.0.0 + Auto-Deploy der UI auf dem Droplet (`autodeploy.timer`, 2-min-Poll auf `main`, laut Memory „Cloud Auto-Deploy + Gate") | Michael | nach `verify: OK` + PR-Check grün | [ ] |
+| Marktvalidierungs-Vorlagen sichern: `cp -R specwright/templates/market-validation/ "<Vault>/AI/Rohmaterial/Specwright-Marktvalidierung-2026-09/"` (Vault-Pfad aus `CLAUDE.md`, global) — Michael sichtet, „behalten/verwerfen" | Claude (Kopie), Michael (Sichtung) | vor Schritt 2 | [x] Kopie 14.09. (8 Dateien) · [ ] Sichtung Michael |
+| Applai-Nachweis auf Branch: `cd ~/cloud-mount-mutagen/applai-nextjs && git checkout -b chore/specwright-4.0.0 main && SPECWRIGHT_REPO_URL=file://<worktree> bash <worktree>/update-specwright.sh`; `git status` ins Protokoll; Branch als PR anbieten oder verwerfen (Michael) | Claude (Lauf), Michael (Entscheid über PR) | Schritt 7 | [x] Lauf 14.09., Commit `0c1acaf5` (45 gelöscht, 0 lokal geändert) · [ ] Entscheid PR |
+| PR-Review und Merge (`gh pr merge --merge`, wie alle Merges im Repo) = Veröffentlichung 4.0.0 + Auto-Deploy der UI auf dem Droplet (`autodeploy.timer`, 2-min-Poll auf `main`, laut Memory „Cloud Auto-Deploy + Gate") | Michael | nach `verify: OK` + PR-Check grün | [x] 14.09., `3ade63f7` |
 | Globale Reste auf dem Mac räumen: `bash <(curl -sSL …/main/install.sh) --global --update` (ruft `sw_remove_obsolete global`) — oder `rm` der drei Pfade aus §9 | Claude mit Michaels Freigabe | nach Merge | [ ] |
-| Board-Karte: Stand + PR-Link; Aufräum-Karte anlegen (`templates/agents/`, unreferenzierte Agenten/Skills, `validate-market.json` Phase 5) | Claude | laufend | [ ] |
+| Board-Karte: Stand + PR-Link; Aufräum-Karte anlegen (`templates/agents/`, unreferenzierte Agenten/Skills, `validate-market.json` Phase 5) | Claude | laufend | [x] 14.09. |
 
 Hook `production-gate`: kein Befehl in diesem Vorhaben enthält `deploy`+`prod`; der Merge ist der Deploy und liegt bei Michael.
 
@@ -232,15 +232,15 @@ Hook `production-gate`: kein Befehl in diesem Vorhaben enthält `deploy`+`prod`;
 
 ## 13. Definition of Done
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test bzw. den genannten Nachweis.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Protokoll im PR.
-- [ ] `verify: OK`, Ausgabe im PR — und PR-Check grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` angelegt (Abschnitt 3: neu, AR-01 bis AR-03).
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
-- [ ] Board-Karte verweist auf `intent/INT-2026-002-command-schnitt/`, Stand nachgezogen; Aufräum-Karte angelegt.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test bzw. den genannten Nachweis (T1–T5, Guard, Review der Docs; AK-12 Sichtung offen).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8), Protokoll im PR (T1, T4, Applai-Branch).
+- [x] `verify: OK`, Ausgabe im PR — und PR-Check grün (Run `34816030121`, ubuntu).
+- [x] `docs/architecture.md` angelegt (AR-01 bis AR-07).
+- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert — offen: Sichtung Rohmaterial, Entscheid Applai-PR, globale Reste am Mac.
+- [x] Abweichungen in Abschnitt 14 eingetragen (9).
+- [x] 2x-Regel-Check: zwei Zeilen in `CLAUDE.md` (Installer-Drift, lokal grün ≠ CI grün).
+- [x] Board-Karte verweist auf `intent/INT-2026-002-command-schnitt/`, Stand nachgezogen; Aufräum-Karte angelegt.
 
 ## 14. Abweichungen bei der Umsetzung
 

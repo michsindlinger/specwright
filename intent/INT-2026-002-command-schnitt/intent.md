@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-002"  
 titel: "Command-Schnitt 45 → 23, ein Installer-Manifest, Specwright lebt den v4-Flow selbst"  
-status: "angenommen"  
-version: "1.0.1"  
+status: "umgesetzt"  
+version: "1.0.2"  
 autor: "Claude (Gespräch mit Michael Sindlinger)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-14"  
@@ -159,6 +159,7 @@ Nicht Teil des Problems: Die Web-UI (Auto-Mode) treibt Stories über `execute-ta
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.2 | 2026-09-14 | Umgesetzt: PR #38 gemergt (`3ade63f7`), Specwright 4.0.0 auf `main`; Status `umgesetzt` | — | — |
 | 1.0.1 | 2026-09-14 | OF-02 entschieden (bleiben), `bezuege.spec` gesetzt — keine Änderung an Zielen oder Kriterien | OF-02, B-01 | — |
 | 1.0.0 | 2026-09-14 | Freigabe durch Product Owner (Michael Sindlinger) im Gespräch; OF-02 bleibt offen bis `/spec` | alle | Michael Sindlinger, 2026-09-14 |
 | 0.2.0 | 2026-09-14 | OF-01 und OF-03 entschieden (Root-Ablage, `scripts/verify.sh`), B-07/B-08 ergänzt; OF-02 bleibt offen bis `/spec` | OF-01, OF-03, B-07, B-08, RB-04 | — |
