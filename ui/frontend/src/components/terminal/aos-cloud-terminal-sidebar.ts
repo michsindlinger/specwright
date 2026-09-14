@@ -1021,11 +1021,16 @@ export class AosCloudTerminalSidebar extends LitElement {
         overflow: hidden;
       }
 
+      /* Must stay a flex column: aos-terminal-session's .session-container is a
+         flex child (flex:1) since the split-screen fix, no longer absolute/inset:0.
+         display:block here collapsed it to 0px, so xterm never initialised on
+         mobile (deferred init waits for a non-zero container). */
       .mobile-log-area aos-terminal-session {
         flex: 1;
         min-height: 0;
         overflow: hidden;
-        display: block;
+        display: flex;
+        flex-direction: column;
       }
     `;
     document.head.appendChild(style);
