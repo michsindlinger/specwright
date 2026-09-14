@@ -174,6 +174,12 @@ specwright/                          # Repository root
 /create-project-agents   # Create project-specific agents
 /assign-skills-to-agent  # Assign skills to agents
 
+# Vorhaben (SDLC v4, seit 3.33.0): intent → spec → plan → build
+/intent                  # Vorhaben festhalten (intent/INT-JJJJ-NNN/intent.md)
+/spec                    # Fachliche Spec (spec.md)
+/plan                    # Umsetzungsplan (plan.md)
+/build                   # Plan umsetzen bis PR
+
 # Feature Development
 /create-spec             # Create detailed specifications
 /change-spec             # Modify existing spec (add/remove/change features)

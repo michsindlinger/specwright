@@ -123,6 +123,7 @@ echo ""
 echo "Updating core workflows..."
 
 workflow_files=(
+    "intent.md" "spec.md" "plan.md" "build.md"
     "plan-product.md"
     "plan-platform.md"
     "create-spec.md"
@@ -177,6 +178,7 @@ if [[ -d ".claude/commands/specwright" ]]; then
     echo "Updating Claude Code commands..."
 
     command_files=(
+        "intent.md" "spec.md" "plan.md" "build.md"
         "plan-product.md" "plan-platform.md"
         "create-spec.md"
         "add-story.md" "add-bug.md" "add-todo.md"

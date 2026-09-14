@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="1.0"
-FRAMEWORK_VERSION="3.32.0"
+FRAMEWORK_VERSION="3.33.0"
 REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
 
 # =============================================================================
@@ -462,6 +462,9 @@ install_global() {
     if [[ "$FLAG_DRY_RUN" != true ]]; then
         mkdir -p "$G/standards"
         mkdir -p "$G/templates/product"
+        mkdir -p "$G/templates/sdlc/vorhaben"
+        mkdir -p "$G/templates/sdlc/projekt"
+        mkdir -p "$G/templates/sdlc/hooks"
         mkdir -p "$G/templates/platform"
         mkdir -p "$G/templates/concept"
         mkdir -p "$G/templates/docs"
@@ -517,6 +520,24 @@ install_global() {
     substep "CLAUDE templates" "2"
     download_file "$REPO_URL/specwright/templates/CLAUDE-LITE.md" "$G/templates/CLAUDE-LITE.md"
     download_file "$REPO_URL/specwright/templates/CLAUDE-PLATFORM.md" "$G/templates/CLAUDE-PLATFORM.md"
+    substep_done
+
+    # --- SDLC v4 templates (14): intent/spec/plan, Projekt-Docs, Hooks ---
+    substep "SDLC v4 templates" "14"
+    download_file "$REPO_URL/specwright/templates/sdlc/README.md" "$G/templates/sdlc/README.md"
+    download_file "$REPO_URL/specwright/templates/sdlc/vorhaben/intent-template.md" "$G/templates/sdlc/vorhaben/intent-template.md"
+    download_file "$REPO_URL/specwright/templates/sdlc/vorhaben/spec-template.md" "$G/templates/sdlc/vorhaben/spec-template.md"
+    download_file "$REPO_URL/specwright/templates/sdlc/vorhaben/plan-template.md" "$G/templates/sdlc/vorhaben/plan-template.md"
+    download_file "$REPO_URL/specwright/templates/sdlc/projekt/product-brief-template.md" "$G/templates/sdlc/projekt/product-brief-template.md"
+    download_file "$REPO_URL/specwright/templates/sdlc/projekt/architecture-template.md" "$G/templates/sdlc/projekt/architecture-template.md"
+    download_file "$REPO_URL/specwright/templates/sdlc/projekt/security-template.md" "$G/templates/sdlc/projekt/security-template.md"
+    download_file "$REPO_URL/specwright/templates/sdlc/projekt/design-template.md" "$G/templates/sdlc/projekt/design-template.md"
+    download_file "$REPO_URL/specwright/templates/sdlc/projekt/CLAUDE-template.md" "$G/templates/sdlc/projekt/CLAUDE-template.md"
+    download_file "$REPO_URL/specwright/templates/sdlc/hooks/README.md" "$G/templates/sdlc/hooks/README.md"
+    download_file "$REPO_URL/specwright/templates/sdlc/hooks/settings.json" "$G/templates/sdlc/hooks/settings.json"
+    download_file "$REPO_URL/specwright/templates/sdlc/hooks/protect-tests.sh" "$G/templates/sdlc/hooks/protect-tests.sh"
+    download_file "$REPO_URL/specwright/templates/sdlc/hooks/no-secrets.sh" "$G/templates/sdlc/hooks/no-secrets.sh"
+    download_file "$REPO_URL/specwright/templates/sdlc/hooks/production-gate.sh" "$G/templates/sdlc/hooks/production-gate.sh"
     substep_done
 
     # --- Product templates (11) ---
@@ -783,7 +804,7 @@ install_project() {
     substep_done
 
     # Core workflows
-    substep "Core workflows" "32"
+    substep "Core workflows" "36"
     # Meta
     download_file "$REPO_URL/specwright/workflows/meta/pre-flight.md" "specwright/workflows/meta/pre-flight.md" "workflow"
     # Security template
@@ -800,6 +821,11 @@ install_project() {
     download_file "$REPO_URL/specwright/workflows/core/retroactive-spec.md" "specwright/workflows/core/retroactive-spec.md" "workflow"
     # Bug management
     download_file "$REPO_URL/specwright/workflows/core/add-bug.md" "specwright/workflows/core/add-bug.md" "workflow"
+    # SDLC v4: Vorhaben-Flow intent → spec → plan → build (4)
+    download_file "$REPO_URL/specwright/workflows/core/intent.md" "specwright/workflows/core/intent.md" "workflow"
+    download_file "$REPO_URL/specwright/workflows/core/spec.md" "specwright/workflows/core/spec.md" "workflow"
+    download_file "$REPO_URL/specwright/workflows/core/plan.md" "specwright/workflows/core/plan.md" "workflow"
+    download_file "$REPO_URL/specwright/workflows/core/build.md" "specwright/workflows/core/build.md" "workflow"
     # Execute tasks (12)
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/entry-point.md" "specwright/workflows/core/execute-tasks/entry-point.md" "workflow"
     download_file "$REPO_URL/specwright/workflows/core/execute-tasks/spec-phase-1.md" "specwright/workflows/core/execute-tasks/spec-phase-1.md" "workflow"
@@ -1210,9 +1236,10 @@ install_claude_code() {
         mkdir -p .claude/skills/manage-memory
     fi
 
-    # Commands (40)
-    substep "Commands" "40"
+    # Commands (44)
+    substep "Commands" "44"
     local command_files=(
+        intent.md spec.md plan.md build.md
         plan-product.md plan-platform.md
         create-spec.md change-spec.md
         add-story.md add-bug.md add-todo.md
@@ -1347,6 +1374,10 @@ print_summary() {
     echo "  2. Run /plan-product to start planning"
     echo ""
     echo "  Quick reference:"
+    echo "    /intent                 Vorhaben festhalten (intent.md)"
+    echo "    /spec                   Fachliche Spec (spec.md)"
+    echo "    /plan                   Umsetzungsplan (plan.md)"
+    echo "    /build                  Plan umsetzen bis PR"
     echo "    /plan-product           Product planning"
     echo "    /build-development-team Create development skills"
     echo "    /create-spec            Create user stories"
