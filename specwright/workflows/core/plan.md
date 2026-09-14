@@ -2,7 +2,7 @@
 description: Technischer Plan im Plan Mode — Einheit der Ausführung, mit Zerlegung und Verbindungsnachweisen
 globs:
 alwaysApply: false
-version: 1.0
+version: 1.1
 encoding: UTF-8
 ---
 
@@ -32,7 +32,8 @@ Dritter Schritt des AI-native SDLC (Specwright v4). Erarbeitet lesend den techni
 REQUIRE `INT-JJJJ-NNN`. READ `intent.md` (`status: angenommen`) und `spec.md` (`Status: freigegeben`) — oder `bypass: ja` in `intent.md` (dann gilt nur `intent.md`).
 LOAD Pflichtinput: `docs/architecture.md` (Soll, Regeln AR-nn, bekannte Abweichungen), `CLAUDE.md` (Verify-Befehl, Konventionen, Hooks), `docs/security.md` (Verbotsliste, Pflichtprüfungen).
 LOAD Vorlage `specwright/templates/sdlc/vorhaben/plan-template.md` (hybrid).
-ENTER Plan Mode (lesend). Kein Edit, kein Write außer `plan.md` am Ende.
+ENTER Plan Mode (lesend) — bis einschließlich Schritt 7. Kein Edit, kein Write.
+NOTE: Claude Code lässt im Plan Mode nur `~/.claude/plans/<slug>.md` zu; `intent/…/plan.md` wird dort nicht angenommen. Die Datei entsteht deshalb erst in Schritt 9a, nach dem Verlassen des Plan Mode.
 
 </step>
 
@@ -102,17 +103,31 @@ WRITE „Minimalinvasiv geprüft": was wiederverwendet, was gestrichen.
 
 </step>
 
-<step number="8" name="schreiben_und_freigabe">
+<step number="8" name="plan_mode_verlassen">
 
-### Step 8: plan.md schreiben, vorlegen, Freigabe
+### Step 8: Plan Mode verlassen
 
-WRITE `intent/INT-JJJJ-NNN-*/plan.md`:
+CALL `ExitPlanMode`. Der Dialog „Would you like to proceed?" ist die Vorprüfung, **nicht** die Freigabe des Plans — die Freigabe erfolgt in Schritt 9b gegen die Datei im Intent-Ordner.
+RULE: Vor dem Verlassen keine Zusage über den Speicherort machen. `~/.claude/plans/<slug>.md` ist Arbeitskopie, nicht Ablage; sie wird von der nächsten Plan-Mode-Sitzung überschrieben.
+
+</step>
+
+<step number="9" name="schreiben_und_freigabe">
+
+### Step 9a: plan.md als Entwurf schreiben
+
+WRITE `intent/INT-JJJJ-NNN-*/plan.md` mit `Status: entwurf`:
   - oben `## In einfachen Worten` (globale Plan-Regel: Worum geht es, was ändert sich, wie, was kann schiefgehen, was entscheiden)
   - danach die Vorlagen-Abschnitte 1–14
-PRESENT Teil „In einfachen Worten" im Chat, Details als Kurzliste mit Verweis auf die Datei. Unsicherheiten benennen.
-WAIT for Freigabe.
+  - Inhalt 1:1 aus Schritt 2–7; nichts nachträglich umformulieren, was im Plan Mode entschieden wurde.
+NO COMMIT. Kein weiterer Edit außer dieser Datei.
+PRESENT Teil „In einfachen Worten" im Chat, Details als Kurzliste mit Verweis auf die Datei (`intent/INT-JJJJ-NNN-*/plan.md`). Unsicherheiten benennen.
+
+### Step 9b: Freigabe
+
+WAIT for Freigabe. Die Person liest `plan.md` im Intent-Ordner; externe Reviewer bekommen denselben Pfad.
+ON Änderungswunsch: `plan.md` anpassen, erneut vorlegen. Bleibt `Status: entwurf`.
 ON Freigabe: `Status: freigegeben`, Freigabe Rolle + Datum, `intent.md` `bezuege.plan: "plan.md"`, COMMIT `plan(INT-JJJJ-NNN): Plan freigegeben`.
-EXIT Plan Mode.
 
 NEXT: `/build INT-JJJJ-NNN`
 

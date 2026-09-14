@@ -23,7 +23,7 @@ Vier Slash-Commands, ein Vorhaben: `/intent` → `/spec` → `/plan` → `/build
 1. **`intent.md`** — was und warum, in den Worten der Person mit der Idee. Fachlich. Committen.
 2. **`spec.md`** — was genau, fachlich. Keine Technik, keine Architektur. Die Projekt-Docs werden gelesen und markieren **Bedenken**; entschieden wird nichts. Freigabe durch die verantwortliche Rolle.
 3. **`design/`** (optional) — nur bei UI-Änderung: Mock, committet. Ohne Mock kein „entspricht dem Mock" in der Definition of Done.
-4. **`plan.md`** — wie, technisch. Entsteht im Plan Mode, liest `architecture.md` als Pflichtinput. Enthält den Abschnitt **Zerlegung**. Freigabe, dann Umsetzung in derselben Sitzung.
+4. **`plan.md`** — wie, technisch. Entsteht im Plan Mode (der nur `~/.claude/plans/` beschreiben darf) und wird nach dessen Verlassen als Entwurf in den Intent-Ordner geschrieben; liest `architecture.md` als Pflichtinput. Enthält den Abschnitt **Zerlegung**. Freigabe, dann Umsetzung in derselben Sitzung.
 5. **Bauen und prüfen** — ein Verify-Befehl, Exit ≠ 0 bei Fehler. Definition of Done steht in `CLAUDE.md`.
 6. **PR** — Review gegen `spec.md`, `plan.md`, `architecture.md`. Verschiebt der Plan eine Architekturgrenze, ändert dieselbe PR `architecture.md`.
 7. **Betrieb** — Befunde (Alarme, Drift-Skript, geplante Agenten) werden zu neuen `intent.md`.
