@@ -1,7 +1,7 @@
 # Plan: Update erkennt jede jemals ausgelieferte Fassung einer entfernten Datei
 
 > **Intent:** `intent.md` (INT-2026-003, 1.0.0) · **Spec:** entfällt (bypass: Bugfix in der Lieferkette, Größe S; Verhalten durch INT-2026-002 spec.md FA-07/FA-08 festgelegt)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt — PR #40 offen, CI `verify` grün auf PR-Head `161836c` (Run `34823948378`, ubuntu, 1 min 43 s); Merge = Michaels Schritt
 > **Erstellt:** 2026-09-14 (Handoff-Fortsetzung, Bypass ohne Plan Mode — Recherche in §2 belegt) · **Freigabe:** Product Owner (Michael Sindlinger) mit dem PR
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `dc9647c`, §3 Datenbesitz „Lieferumfang", AR-01, AP-02, §9), `CLAUDE.md` (Konventionen „Lieferumfang", „Installer"), `docs/security.md` §5 (Verbotsliste — keine Host-Daten, keine Test-Kürzung)
 
@@ -148,15 +148,15 @@ Sechs Dateien, alle über den Installer-Test verbunden (§5); Aufwand unter eine
 
 ## 13. Definition of Done
 
-- [ ] AK-01 bis AK-04 haben einen grünen Test (§8).
-- [ ] Nachweise aus §5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad (T4) läuft.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün.
-- [ ] `docs/architecture.md`: keine Änderung nötig (§3 Nein).
-- [ ] Manuelle Schritte (§10) im PR als offen markiert.
-- [ ] Abweichungen in §14.
-- [ ] 2x-Regel: Prüfsummen von Hand statt aus der Historie — erstes Vorkommen, kein `CLAUDE.md`-Eintrag; Guard verhindert das zweite.
-- [ ] Board-Karte verweist auf `intent/INT-2026-003-removed-historie/`, Stand nachgezogen.
+- [x] AK-01 bis AK-04 haben einen grünen Test (§8) — T4 (3 Assertions), T6 (2); lokal `Installer-Test: T1–T6 grün`.
+- [x] Nachweise aus §5 ausgeführt und im PR #40 zitiert.
+- [x] E2E-Pfad (T4) läuft — `update-specwright.sh` → `install-lib.sh` → `removed.tsv`, älteste Fassung gelöscht und genannt.
+- [x] `verify` grün lokal (`verify: OK`, 70 s), Ausgabe im PR — PR-Checks: siehe Status im Kopf (CI ist die Wahrheit).
+- [x] `docs/architecture.md`: keine Änderung nötig (§3 Nein).
+- [x] Manuelle Schritte (§10) im PR als offen markiert.
+- [x] Abweichungen in §14 (Messfehler, Changelog-Lücke).
+- [x] 2x-Regel: Prüfsummen von Hand statt aus der Historie — erstes Vorkommen, kein `CLAUDE.md`-Eintrag; Guard verhindert das zweite. Messfehler „Lösch-Commit als Fassung" → Memory-Notiz, kein `CLAUDE.md`-Eintrag.
+- [x] Board-Karte verweist auf `intent/INT-2026-003-removed-historie/`, Stand nachgezogen (Lane In Arbeit, 14.09.).
 
 ## 14. Abweichungen bei der Umsetzung
 
