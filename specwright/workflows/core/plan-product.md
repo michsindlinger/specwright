@@ -37,7 +37,7 @@ Generate comprehensive product documentation for new projects: product-brief, te
 
 ### Step 1: Check for Existing Product Brief
 
-Use context-fetcher to check if product-brief.md already exists (e.g., from validate-market).
+Use context-fetcher to check if product-brief.md already exists.
 
 <conditional_logic>
   IF specwright/product/product-brief.md exists:

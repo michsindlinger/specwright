@@ -294,8 +294,7 @@ Present estimation summary and allow user to review.
 **User Options:**
 1. Accept estimation
 2. Adjust assumptions and re-estimate
-3. Run external validation (/validate-estimation)
-4. Request detailed explanation
+3. Request detailed explanation
 
 </step>
 

@@ -15,7 +15,7 @@ alwaysApply: false
 ## When to Use
 
 - **`/create-spec` Step 3.5.1** (V1 Classic only) — primary use
-- Optional in `/add-story`, `/add-bug`, `/change-spec` when new stories are introduced
+- Optional in `/add-bug`, `/change-spec` when new stories are introduced
 - V2 Lean mode uses an inline simplified subset directly in Step 2.6-lean — not this skill
 
 This skill is **advisory**. It surfaces atomicity flags; the user decides whether to refine or accept.

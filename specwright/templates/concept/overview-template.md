@@ -83,7 +83,6 @@
 |----------|-------|-----------------|
 | `/optimize-profile-match` | Profil auf diese Anfrage optimieren | Vor Versand |
 | `/prepare-interview` | Interview-Vorbereitung vertiefen | Vor Interview |
-| `/analyze-feasibility` | Technische Machbarkeit des POC | Bei POC-Bedarf |
 
 ---
 

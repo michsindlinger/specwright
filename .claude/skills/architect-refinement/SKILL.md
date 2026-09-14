@@ -14,7 +14,6 @@ alwaysApply: false
 
 This skill guides you when doing technical refinement for:
 - New stories in `/create-spec`
-- Added stories in `/add-story`
 - Quick tasks in `/add-todo`
 - Bug stories in `/add-bug`
 

@@ -38,12 +38,12 @@ Create detailed feature specifications: Main agent gathers fachliche requirement
 **v3.14 Changes (User-Action Flag):**
 - **NEW: `requiresUserAction` flag** — stories/tasks that require a manual user step the AI cannot perform autonomously (external credentials, 3rd-party UI config, etc.) are flagged at creation time.
 - **NEW: Step 6.5 (V2 Lean) and Step 8.15 (V1 Classic)** — detect user-action items based on the shared `user-action-detection-rules.md` template, confirm with user, persist the flag.
-- **NEW: Shared template** — `specwright/templates/docs/user-action-detection-rules.md` is the single source of truth, also used by `add-story`, `change-spec`, and `flag-user-actions`.
+- **NEW: Shared template** — `specwright/templates/docs/user-action-detection-rules.md` is the single source of truth, also used by `change-spec`.
 - **Auto-mode integration:** flagged items are skipped by auto-mode; the kanban UI shows a `⚠ Aktion nötig` badge plus a `✓ Aktion erledigt` button. Confirming the button moves the item directly to `done`.
 - **Setup impact:** `setup-devteam-global.sh` ships the new template.
 
 **v3.13 Changes (Template Extraction):**
-- **CHANGED: Step 2.2 — clarification template extracted to `specwright/templates/docs/requirements-clarification-template.md`** — shared with `transfer-and-create-spec.md` v2.0+. Loaded via hybrid lookup (project → global fallback). Eliminates drift risk between create-spec and transfer flow.
+- **CHANGED: Step 2.2 — clarification template extracted to `specwright/templates/docs/requirements-clarification-template.md`** — loaded via hybrid lookup (project → global fallback).
 - **Setup impact:** `setup-devteam-global.sh` now ships the new template.
 
 **v3.12 Changes (Description-Cap + Story-Size-Awareness):**
@@ -452,7 +452,7 @@ Before generating user stories, create a summary document for user approval.
      - `[DATE]` → today's date (YYYY-MM-DD from date-checker)
      - All bracketed placeholders → content gathered in Step 2.1 dialog
 
-     The template is shared with `transfer-and-create-spec.md` (v2.0+) — keep them in sync via the template file, not by editing inline.
+     Keep the wording in the template file, not inline.
 
   4. PRESENT clarification document to user
   5. OPEN document preview via MCP tool `document_preview_open`:

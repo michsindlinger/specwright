@@ -1,325 +1,83 @@
 #!/bin/bash
-
-# =============================================================================
-# NOTE: Consider using the unified installer instead:
-#   curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/install.sh | bash
-# This script remains available as standalone fallback for power users.
-# =============================================================================
-
 # Specwright - Claude Code Setup
-# Installs Claude Code specific commands and agents
-# Version: 3.0 - Open Source Core
+# Installs the Claude Code commands, skills and utility agents into the current project.
+# File lists live in specwright/manifest.tsv; loading logic in specwright/scripts/install-lib.sh.
+#
+#   curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/setup-claude-code.sh | bash
+#   bash setup-claude-code.sh --overwrite
+#   SPECWRIGHT_REPO_URL=file:///path/to/specwright bash setup-claude-code.sh   # local source (tests)
 
 set -e
 
-REPO_URL="https://raw.githubusercontent.com/michsindlinger/specwright/main"
+REPO_URL="${SPECWRIGHT_REPO_URL:-https://raw.githubusercontent.com/michsindlinger/specwright/main}"
 
-# Parse flags
-WITH_UI=false
 for arg in "$@"; do
     case "$arg" in
-        --with-ui) WITH_UI=true ;;
+        --overwrite) export SW_OVERWRITE=true ;;
+        --dry-run)   export SW_DRY_RUN=true ;;
+        --with-ui)   : ;;  # kept for compatibility; UI skills are repo-internal since 4.0.0
+        -h|--help)
+            echo "Specwright - Claude Code Setup"; echo ""
+            echo "Usage: $0 [--overwrite] [--dry-run]"
+            echo "  --overwrite   Replace existing command/agent/skill files (a backup goes to specwright/backups/<timestamp>/)"
+            echo "  --dry-run     Show what would happen, write nothing"
+            exit 0 ;;
+        *) echo "Unknown option: $arg"; exit 1 ;;
     esac
 done
 
 echo "Specwright - Claude Code Setup"
 echo "Installing Claude Code configuration in current project..."
-if [ "$WITH_UI" = true ]; then
-    echo "(with UI skills and commands)"
-fi
 echo ""
 
-# Check if base Specwright is installed in project
 if [[ ! -d "specwright/workflows" ]]; then
     echo "Error: Specwright base installation not found in current project."
     echo ""
     echo "Please run the base setup first:"
     echo "  curl -sSL $REPO_URL/setup.sh | bash"
-    echo ""
     exit 1
 fi
 
-# Create Claude Code specific directories
-echo "Creating Claude Code directories..."
-mkdir -p .claude/commands/specwright
-mkdir -p .claude/agents
+# --- load shared installer library --------------------------------------------------------------
+export SW_REPO_URL="$REPO_URL"
+case "$REPO_URL" in
+    file://*) . "${REPO_URL#file://}/specwright/scripts/install-lib.sh" ;;
+    *) _lib=$(mktemp); curl -sSLf "$REPO_URL/specwright/scripts/install-lib.sh" -o "$_lib" || { echo "Error: cannot load $REPO_URL/specwright/scripts/install-lib.sh"; exit 1; }; . "$_lib"; rm -f "$_lib" ;;
+esac
+sw_fetch_manifest || exit 1
 
-# Function to download file
-download_file() {
-    local url=$1
-    local path=$2
+echo "=== Commands ($(sw_count command project)) ==="
+sw_install command project
+echo "=== Skills ($(sw_count skill project)) ==="
+sw_install skill project
+echo "=== Utility agents ($(sw_count agent project)) ==="
+sw_install agent project
 
-    echo "Downloading $path..."
-    curl -sSL "$url" -o "$path"
-}
-
-# ===============================================================
-# COMMANDS - Core Commands (37)
-# ===============================================================
-
-echo ""
-echo "=== Installing Core Commands ==="
-
-command_files=(
-    # SDLC v4: Vorhaben-Flow
-    "intent.md"
-    "spec.md"
-    "plan.md"
-    "build.md"
-
-    # Product planning
-    "plan-product.md"
-    "plan-platform.md"
-
-    # Spec development
-    "create-spec.md"
-    "change-spec.md"
-
-    # Stories & Bugs
-    "add-story.md"
-    "add-bug.md"
-    "add-todo.md"
-    # User-action flag (v3.14): retroactive migration command
-    "flag-user-actions.md"
-
-    # Task execution
-    "execute-tasks.md"
-
-    # Documentation
-    "retroactive-doc.md"
-    "retroactive-spec.md"
-    "document-feature.md"
-
-    # Team setup
-    "build-development-team.md"
-    "create-project-agents.md"
-    "assign-skills-to-agent.md"
-    "add-skill.md"
-
-    # Self-Learning
-    "add-learning.md"
-    "add-domain.md"
-    "add-team-member.md"
-
-    # Brainstorming
-    "start-brainstorming.md"
-    "brainstorm-growth-ideas.md"
-
-    # Validation
-    "validate-market.md"
-    "validate-market-for-existing.md"
-
-    # Transfer
-    "transfer-and-create-spec.md"
-    "transfer-and-create-bug.md"
-    "transfer-and-plan-product.md"
-
-    # Analysis & Estimation
-    "analyze-product.md"
-    "analyze-feasibility.md"
-    "analyze-blockers.md"
-    "estimate-spec.md"
-    "validate-estimation.md"
-
-    # Feedback & Changelog
-    "process-feedback.md"
-    "update-changelog.md"
-
-    # Design extraction
-    "extract-design.md"
-
-    # Marketing
-    "create-instagram-account.md"
-    "create-content-plan.md"
-
-    # Memory
-    "save-memory.md"
-    "recall-memory.md"
-    "manage-memory.md"
-)
-
-for file in "${command_files[@]}"; do
-    download_file "$REPO_URL/.claude/commands/specwright/$file" ".claude/commands/specwright/$file"
-done
-
-# ===============================================================
-# SKILLS - User-Invocable Skills
-# ===============================================================
-
-echo ""
-echo "=== Installing Skills ==="
-
-mkdir -p .claude/skills/review-implementation-plan
-mkdir -p .claude/skills/save-memory
-mkdir -p .claude/skills/recall-memory
-mkdir -p .claude/skills/manage-memory
-mkdir -p .claude/skills/atomicity-validator
-
-download_file "$REPO_URL/.claude/skills/review-implementation-plan/SKILL.md" ".claude/skills/review-implementation-plan/SKILL.md"
-download_file "$REPO_URL/specwright/templates/skills/save-memory/SKILL.md" ".claude/skills/save-memory/SKILL.md"
-download_file "$REPO_URL/specwright/templates/skills/recall-memory/SKILL.md" ".claude/skills/recall-memory/SKILL.md"
-download_file "$REPO_URL/specwright/templates/skills/manage-memory/SKILL.md" ".claude/skills/manage-memory/SKILL.md"
-download_file "$REPO_URL/specwright/templates/skills/atomicity-validator/SKILL.md" ".claude/skills/atomicity-validator/SKILL.md"
-
-# ===============================================================
-# AGENTS - Utility Agents
-# ===============================================================
-
-echo ""
-echo "=== Installing Utility Agents ==="
-
-# Core utility agents
-download_file "$REPO_URL/.claude/agents/context-fetcher.md" ".claude/agents/context-fetcher.md"
-download_file "$REPO_URL/.claude/agents/file-creator.md" ".claude/agents/file-creator.md"
-download_file "$REPO_URL/.claude/agents/git-workflow.md" ".claude/agents/git-workflow.md"
-download_file "$REPO_URL/.claude/agents/date-checker.md" ".claude/agents/date-checker.md"
-download_file "$REPO_URL/.claude/agents/test-runner.md" ".claude/agents/test-runner.md"
-download_file "$REPO_URL/.claude/agents/codebase-analyzer.md" ".claude/agents/codebase-analyzer.md"
-
-# Product planning agents
-download_file "$REPO_URL/.claude/agents/product-strategist.md" ".claude/agents/product-strategist.md"
-download_file "$REPO_URL/.claude/agents/tech-architect.md" ".claude/agents/tech-architect.md"
-download_file "$REPO_URL/.claude/agents/design-extractor.md" ".claude/agents/design-extractor.md"
-download_file "$REPO_URL/.claude/agents/ux-designer.md" ".claude/agents/ux-designer.md"
-download_file "$REPO_URL/.claude/agents/business-analyst.md" ".claude/agents/business-analyst.md"
-download_file "$REPO_URL/.claude/agents/validation-specialist.md" ".claude/agents/validation-specialist.md"
-download_file "$REPO_URL/.claude/agents/estimation-specialist.md" ".claude/agents/estimation-specialist.md"
-
-# ===============================================================
-# SUMMARY
-# ===============================================================
+sw_report
+sw_cleanup
 
 echo ""
 echo "=================================="
 echo "Claude Code Setup Complete!"
 echo "=================================="
 echo ""
-echo "Installed Structure:"
+echo "  .claude/commands/specwright/   ($(sw_count command project) commands)"
+echo "  .claude/skills/                ($(sw_count skill project) skills)"
+echo "  .claude/agents/                ($(sw_count agent project) utility agents)"
 echo ""
-echo "  .claude/"
-echo "    ├── commands/specwright/   (37 commands)"
-echo "    ├── skills/              (2 user-invocable skills)"
-echo "    └── agents/              (13 utility agents)"
+echo "Vorhaben-Flow (Specwright v4):"
+echo "  /intent                   -> Vorhaben festhalten (intent.md)"
+echo "  /spec [INT-id]            -> Fachliche Spec (spec.md)"
+echo "  /plan [INT-id]            -> Umsetzungsplan (plan.md)"
+echo "  /build [INT-id]           -> Plan umsetzen bis PR"
 echo ""
-echo "Available Commands:"
-echo ""
-echo "  Product Planning:"
-echo "    /plan-product             -> Single-product planning"
-echo "    /plan-platform            -> Multi-module platform planning"
-echo ""
-echo "  Team Setup:"
-echo "    /build-development-team   -> Create skills for main agent"
-echo "    /create-project-agents    -> Create project-specific agents"
-echo "    /assign-skills-to-agent   -> Assign skills to agents"
-echo ""
-echo "  SDLC v4 (Vorhaben-Flow):"
-echo "    /intent                   -> Vorhaben festhalten (intent.md)"
-echo "    /spec [INT-id]            -> Fachliche Spec (spec.md)"
-echo "    /plan [INT-id]            -> Umsetzungsplan (plan.md)"
-echo "    /build [INT-id]           -> Plan umsetzen bis PR"
-echo ""
-echo "  Feature Development:"
-echo "    /create-spec              -> Create spec with user stories"
-echo "    /add-story [spec]         -> Add story to existing spec"
-echo "    /retroactive-doc          -> Document existing features"
-echo "    /retroactive-spec         -> Create spec from existing code"
-echo ""
-echo "  Bug Management:"
-echo "    /add-bug                  -> Add bug with root-cause analysis"
-echo ""
-echo "  Quick Tasks:"
-echo "    /add-todo                 -> Add lightweight task to backlog"
-echo ""
-echo "  Execution:"
-echo "    /execute-tasks            -> Execute stories directly"
-echo "    /execute-tasks backlog    -> Execute quick tasks from backlog"
-echo ""
-echo "  Self-Learning:"
-echo "    /add-learning             -> Add insight to skill dos-and-donts.md"
-echo "    /add-domain               -> Add business domain documentation"
-echo ""
-echo "  Spec Management:"
-echo "    /change-spec              -> Change existing spec (add/modify/remove)"
-echo "    /document-feature         -> Document completed features"
-echo ""
-echo "  Analysis & Estimation:"
-echo "    /analyze-product          -> Analyze existing codebase for Specwright"
-echo "    /analyze-feasibility      -> Feasibility analysis on product brief"
-echo "    /analyze-blockers         -> External blocker analysis"
-echo "    /estimate-spec            -> Effort estimation for spec"
-echo "    /validate-estimation      -> Validate existing estimation"
-echo ""
-echo "  Feedback & Changelog:"
-echo "    /process-feedback         -> Categorize customer feedback"
-echo "    /update-changelog         -> Generate bilingual changelog"
-echo ""
-echo "  Brainstorming:"
-echo "    /start-brainstorming      -> Interactive idea exploration"
-echo "    /brainstorm-growth-ideas    -> Brainstorm growth opportunities"
-echo "    /transfer-and-create-spec -> Convert brainstorming to spec"
-echo "    /transfer-and-create-bug  -> Convert brainstorming to bug report"
-echo "    /transfer-and-plan-product -> Convert brainstorming to product plan"
-echo ""
-echo "  Market Validation:"
-echo "    /validate-market          -> Validate new product ideas"
-echo "    /validate-market-for-existing -> Validate existing products"
-echo ""
-echo "  Design & Marketing:"
-echo "    /extract-design           -> Extract design system from URL"
-echo "    /create-instagram-account -> Instagram marketing strategy"
-echo "    /create-content-plan      -> 7-day Instagram content plan"
-echo ""
-echo "  Skill Management:"
-echo "    /add-skill                -> Create custom skills"
-echo ""
-echo "  Plan Review:"
-echo "    /review-implementation-plan -> Review implementation plans"
-echo ""
-echo "  Memory:"
-echo "    /save-memory                -> Save session knowledge to Memory DB"
-echo "    /recall-memory              -> Browse and recall stored memories"
-echo "    /manage-memory              -> Housekeeping: archive, update, delete memories"
-echo ""
-# ===============================================================
-# UI SKILLS (optional, with --with-ui flag)
-# ===============================================================
-
-if [ "$WITH_UI" = true ]; then
-    echo ""
-    echo "Installing UI development skills..."
-    mkdir -p .claude/skills/architect-refinement
-    mkdir -p .claude/skills/backend-express
-    mkdir -p .claude/skills/frontend-lit
-    mkdir -p .claude/skills/po-requirements
-    mkdir -p .claude/skills/quality-gates
-    mkdir -p .claude/skills/domain-specwright-ui
-
-    download_file "$REPO_URL/.claude/skills/architect-refinement/SKILL.md" ".claude/skills/architect-refinement/SKILL.md"
-    download_file "$REPO_URL/.claude/skills/backend-express/SKILL.md" ".claude/skills/backend-express/SKILL.md"
-    download_file "$REPO_URL/.claude/skills/backend-express/api-design.md" ".claude/skills/backend-express/api-design.md"
-    download_file "$REPO_URL/.claude/skills/backend-express/dos-and-donts.md" ".claude/skills/backend-express/dos-and-donts.md"
-    download_file "$REPO_URL/.claude/skills/backend-express/services.md" ".claude/skills/backend-express/services.md"
-    download_file "$REPO_URL/.claude/skills/backend-express/testing.md" ".claude/skills/backend-express/testing.md"
-    download_file "$REPO_URL/.claude/skills/backend-express/websocket.md" ".claude/skills/backend-express/websocket.md"
-    download_file "$REPO_URL/.claude/skills/frontend-lit/SKILL.md" ".claude/skills/frontend-lit/SKILL.md"
-    download_file "$REPO_URL/.claude/skills/frontend-lit/api-integration.md" ".claude/skills/frontend-lit/api-integration.md"
-    download_file "$REPO_URL/.claude/skills/frontend-lit/components.md" ".claude/skills/frontend-lit/components.md"
-    download_file "$REPO_URL/.claude/skills/frontend-lit/dos-and-donts.md" ".claude/skills/frontend-lit/dos-and-donts.md"
-    download_file "$REPO_URL/.claude/skills/frontend-lit/forms-validation.md" ".claude/skills/frontend-lit/forms-validation.md"
-    download_file "$REPO_URL/.claude/skills/frontend-lit/state-management.md" ".claude/skills/frontend-lit/state-management.md"
-    download_file "$REPO_URL/.claude/skills/po-requirements/SKILL.md" ".claude/skills/po-requirements/SKILL.md"
-    download_file "$REPO_URL/.claude/skills/quality-gates/SKILL.md" ".claude/skills/quality-gates/SKILL.md"
-    download_file "$REPO_URL/.claude/skills/domain-specwright-ui/SKILL.md" ".claude/skills/domain-specwright-ui/SKILL.md"
-
-    echo "UI skills installed!"
-fi
-
-echo "Recommended Workflow:"
-echo ""
-echo "1. /plan-product -> Product vision, tech stack, roadmap"
-echo "2. /build-development-team -> Skills and quality gates"
-echo "3. /create-spec -> User stories with DoR/DoD"
-echo "4. /execute-tasks -> Direct execution with self-review"
+echo "Product & team:"
+echo "  /plan-product /analyze-product /build-development-team"
+echo "Specs & execution (Web-UI path):"
+echo "  /create-spec /change-spec /add-bug /add-todo /execute-tasks /retroactive-spec /estimate-spec"
+echo "Documentation & feedback:"
+echo "  /document-feature /update-changelog /process-feedback /start-brainstorming"
+echo "Skills & design:"
+echo "  /add-skill /add-learning /add-domain /extract-design /check-update"
 echo ""
 echo "For more info: https://github.com/michsindlinger/specwright"
-echo ""

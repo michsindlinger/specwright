@@ -14,7 +14,6 @@ alwaysApply: false
 
 This skill guides you when:
 - Creating new user stories with `/create-spec`
-- Adding stories with `/add-story`
 - Adding quick tasks with `/add-todo`
 - Creating bug stories with `/add-bug`
 

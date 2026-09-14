@@ -12,6 +12,6 @@ Run a discovery interview to refine a feature idea or bug seed into shared under
 
 **Anti-patterns:** No solutions, no estimates, no specs, no architecture choices.
 
-**Next steps after session:** `/transfer-and-create-spec`, `/transfer-and-create-bug`, `/transfer-and-plan-product`.
+**Next steps after session:** `/intent` (Vorhaben festhalten), danach `/spec` oder bei Bypass `/plan`.
 
 Refer to the instructions located in @specwright/workflows/core/start-brainstorming.md

@@ -32,9 +32,7 @@ specwright/specs/YYYY-MM-DD-retro-[feature-name]/
 └── code-references.md     # Referenced code files
 ```
 
-**Difference from /retroactive-doc:**
-- This creates spec files (spec.md, spec-lite.md) ready for change management
-- /retroactive-doc creates user-facing documentation in .specwright/docs/
+This creates spec files (spec.md, spec-lite.md) ready for change management. User-facing documentation of a finished feature is `/document-feature`.
 
 <pre_flight_check>
   EXECUTE: specwright/workflows/meta/pre-flight.md
