@@ -63,6 +63,9 @@ mkdir -p specwright/workflows/validation
 mkdir -p specwright/scripts
 mkdir -p specwright/templates
 mkdir -p specwright/templates/product
+mkdir -p specwright/templates/sdlc/vorhaben
+mkdir -p specwright/templates/sdlc/projekt
+mkdir -p specwright/templates/sdlc/hooks
 mkdir -p specwright/docs
 
 # Function to download file if it doesn't exist or if overwrite is enabled
@@ -121,6 +124,22 @@ download_file "$REPO_URL/specwright/workflows/meta/pre-flight.md" "specwright/wo
 # Security
 download_file "$REPO_URL/specwright/templates/product/secrets-template.md" "specwright/templates/product/secrets-template.md" "templates"
 
+# SDLC v4 templates (14): intent/spec/plan, Projekt-Docs, Hooks
+download_file "$REPO_URL/specwright/templates/sdlc/README.md" "specwright/templates/sdlc/README.md" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/vorhaben/intent-template.md" "specwright/templates/sdlc/vorhaben/intent-template.md" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/vorhaben/spec-template.md" "specwright/templates/sdlc/vorhaben/spec-template.md" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/vorhaben/plan-template.md" "specwright/templates/sdlc/vorhaben/plan-template.md" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/projekt/product-brief-template.md" "specwright/templates/sdlc/projekt/product-brief-template.md" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/projekt/architecture-template.md" "specwright/templates/sdlc/projekt/architecture-template.md" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/projekt/security-template.md" "specwright/templates/sdlc/projekt/security-template.md" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/projekt/design-template.md" "specwright/templates/sdlc/projekt/design-template.md" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/projekt/CLAUDE-template.md" "specwright/templates/sdlc/projekt/CLAUDE-template.md" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/hooks/README.md" "specwright/templates/sdlc/hooks/README.md" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/hooks/settings.json" "specwright/templates/sdlc/hooks/settings.json" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/hooks/protect-tests.sh" "specwright/templates/sdlc/hooks/protect-tests.sh" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/hooks/no-secrets.sh" "specwright/templates/sdlc/hooks/no-secrets.sh" "templates"
+download_file "$REPO_URL/specwright/templates/sdlc/hooks/production-gate.sh" "specwright/templates/sdlc/hooks/production-gate.sh" "templates"
+
 # Product planning
 download_file "$REPO_URL/specwright/workflows/core/plan-product.md" "specwright/workflows/core/plan-product.md" "workflows"
 
@@ -138,6 +157,12 @@ download_file "$REPO_URL/specwright/workflows/core/retroactive-spec.md" "specwri
 
 # Bug management
 download_file "$REPO_URL/specwright/workflows/core/add-bug.md" "specwright/workflows/core/add-bug.md" "workflows"
+
+# SDLC v4: Vorhaben-Flow intent → spec → plan → build
+download_file "$REPO_URL/specwright/workflows/core/intent.md" "specwright/workflows/core/intent.md" "workflows"
+download_file "$REPO_URL/specwright/workflows/core/spec.md" "specwright/workflows/core/spec.md" "workflows"
+download_file "$REPO_URL/specwright/workflows/core/plan.md" "specwright/workflows/core/plan.md" "workflows"
+download_file "$REPO_URL/specwright/workflows/core/build.md" "specwright/workflows/core/build.md" "workflows"
 
 # Task execution (Phase-based architecture v3.0)
 mkdir -p specwright/workflows/core/execute-tasks

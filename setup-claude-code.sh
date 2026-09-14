@@ -61,6 +61,12 @@ echo ""
 echo "=== Installing Core Commands ==="
 
 command_files=(
+    # SDLC v4: Vorhaben-Flow
+    "intent.md"
+    "spec.md"
+    "plan.md"
+    "build.md"
+
     # Product planning
     "plan-product.md"
     "plan-platform.md"
@@ -205,6 +211,12 @@ echo "  Team Setup:"
 echo "    /build-development-team   -> Create skills for main agent"
 echo "    /create-project-agents    -> Create project-specific agents"
 echo "    /assign-skills-to-agent   -> Assign skills to agents"
+echo ""
+echo "  SDLC v4 (Vorhaben-Flow):"
+echo "    /intent                   -> Vorhaben festhalten (intent.md)"
+echo "    /spec [INT-id]            -> Fachliche Spec (spec.md)"
+echo "    /plan [INT-id]            -> Umsetzungsplan (plan.md)"
+echo "    /build [INT-id]           -> Plan umsetzen bis PR"
 echo ""
 echo "  Feature Development:"
 echo "    /create-spec              -> Create spec with user stories"
