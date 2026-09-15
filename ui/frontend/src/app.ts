@@ -2,7 +2,6 @@ import { LitElement, html, type PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { ContextProvider } from '@lit/context';
 
-import './views/dashboard-view.js';
 import './views/aos-vorhaben-view.js';
 import './views/chat-view.js';
 import './views/settings-view.js';
@@ -16,27 +15,18 @@ import './components/toast-notification.js';
 import './components/loading-spinner.js';
 import './components/aos-project-tabs.js';
 import './components/aos-project-add-modal.js';
-import './components/aos-context-menu.js';
-import './components/aos-quick-todo-modal.js';
 import './components/aos-notepad-panel.js';
 import './components/terminal/aos-cloud-terminal-sidebar.js';
 import './components/mobile/aos-mobile-sheet.js';
 import './components/mobile/aos-mobile-top-bar.js';
 import './components/mobile/aos-mobile-project-scroller.js';
-import './components/mobile/aos-mobile-segmented.js';
 import './components/mobile/aos-mobile-bottom-nav.js';
-import './components/mobile/aos-mobile-focus-strip.js';
-import './components/mobile/aos-mobile-project-card.js';
 import './components/mobile/aos-mobile-terminal-pill.js';
 import './components/mobile/aos-mobile-side-drawer.js';
-import './components/mobile/aos-mobile-action-sheet.js';
 import './components/mobile/aos-mobile-terminal-header.js';
 import './components/mobile/aos-mobile-session-tabs.js';
 import './components/mobile/aos-mobile-connection-bar.js';
 import './components/mobile/aos-mobile-quick-replies.js';
-import './components/mobile/aos-mobile-story-card.js';
-import './components/mobile/aos-mobile-story-list.js';
-import './components/mobile/aos-mobile-story-sheet.js';
 import './components/file-editor/aos-file-tree-sidebar.js';
 import './components/file-editor/aos-file-editor-panel.js';
 import './components/document-preview/aos-document-preview-panel.js';
@@ -45,10 +35,6 @@ import './components/git/aos-git-status-bar.js';
 import './components/git/aos-git-commit-dialog.js';
 import './components/git/aos-git-diff-viewer.js';
 import './components/git/aos-git-pull-strategy-dialog.js';
-import './components/queue/aos-global-queue-panel.js';
-import './components/queue/aos-queue-section.js';
-import './components/queue/aos-specs-section.js';
-import type { QueueItem } from './components/queue/aos-queue-item.js';
 import type { TerminalSession } from './components/terminal/aos-cloud-terminal-sidebar.js';
 import {
   upsertNotification,
@@ -82,7 +68,6 @@ function agentStatusFields(b: { agentStatus?: CloudTerminalAgentStatus; agentSta
     agentStatusReason: b.agentStatusReason,
   };
 }
-import type { MenuSelectEventDetail } from './components/aos-context-menu.js';
 import { recentlyOpenedService } from './services/recently-opened.service.js';
 import { projectStateService } from './services/project-state.service.js';
 import { routerService } from './services/router.service.js';
@@ -93,7 +78,6 @@ import {
   type Project,
   type ProjectContextValue,
 } from './context/project-context.js';
-import type { ProviderInfo } from './components/workflow-card.js';
 import type { ViewType } from './types/route.types.js';
 
 type Route = ViewType;
@@ -107,7 +91,7 @@ interface NavItem {
 @customElement('aos-app')
 export class AosApp extends LitElement {
   @state()
-  private currentRoute: Route = 'dashboard';
+  private currentRoute: Route = 'vorhaben';
 
   @state()
   private isReconnecting = false;
@@ -136,18 +120,6 @@ export class AosApp extends LitElement {
 
   @state()
   private showAddProjectModal = false;
-
-  @state()
-  private showWorkflowModal = false;
-
-  @state()
-  private workflowModalCommand: { id: string; name: string; description: string } | null = null;
-
-  @state()
-  private workflowModalMode: 'direct' | 'add-story' = 'direct';
-
-  @state()
-  private providers: ProviderInfo[] = [];
 
   @state()
   private isTerminalSidebarOpen = false;
@@ -218,9 +190,6 @@ export class AosApp extends LitElement {
   @state()
   private pullStrategyRetryPush = false;
 
-  @state()
-  private showQuickTodoModal = false;
-
   /** Floating notepad (Cmd/Ctrl+Shift+E); the panel owns the shortcut and reports via events. */
   @state()
   private showNotepad = false;
@@ -261,20 +230,6 @@ export class AosApp extends LitElement {
   @state()
   private frameworkUpdateChangelog = '';
 
-  // GSQ-005: Bottom Panel state
-  @state()
-  private isBottomPanelOpen = false;
-
-  @state()
-  private bottomPanelActiveTab: 'queue-specs' | 'log' = 'queue-specs';
-
-  // GSQ-005: Queue state (migrated from dashboard-view)
-  @state()
-  private globalQueue: QueueItem[] = [];
-
-  @state()
-  private isQueueRunning = false;
-
   @state()
   private claudeConcurrency: GlobalGateState | null = null;
 
@@ -288,7 +243,6 @@ export class AosApp extends LitElement {
   private navItems: NavItem[] = [
     { route: 'vorhaben', label: 'Vorhaben', icon: 'vorhaben' },
     { route: 'projekt', label: 'Projekt', icon: 'projekt' },
-    { route: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { route: 'team', label: 'Team', icon: 'team' },
     { route: 'getting-started', label: 'Getting Started', icon: 'getting-started' },
     { route: 'chat', label: 'Chat', icon: 'chat' },
@@ -303,8 +257,6 @@ export class AosApp extends LitElement {
       this._handleDocumentPreviewClose();
     }
   };
-  private boundContextMenuHandler = (e: Event) =>
-    this.handleContextMenu(e as MouseEvent);
   private boundReconnectingHandler: MessageHandler = (msg) => {
     this.isReconnecting = true;
     this.showToast(
@@ -324,12 +276,6 @@ export class AosApp extends LitElement {
   private boundErrorHandler: MessageHandler = (msg) => {
     const errorMessage = (msg.message as string) || 'Ein Fehler ist aufgetreten';
     this.showToast(errorMessage, 'error');
-  };
-  private boundModelProvidersHandler: MessageHandler = (msg) => {
-    const providers = msg.providers as ProviderInfo[] | undefined;
-    if (providers && providers.length > 0) {
-      this.providers = providers;
-    }
   };
   private boundCloudTerminalListHandler: MessageHandler = (msg) => {
     this.handleCloudTerminalListResponse(msg);
@@ -499,38 +445,8 @@ export class AosApp extends LitElement {
       dialog?.setCommitMessage(data.message);
     }
   };
-  // GSQ-005: Queue gateway handlers
-  private boundQueueStateHandler: MessageHandler = (msg) => {
-    const items = (msg.items as QueueItem[]) || [];
-    const isQueueRunning = msg.isQueueRunning as boolean | undefined;
-    this.globalQueue = items;
-    if (isQueueRunning !== undefined) {
-      this.isQueueRunning = isQueueRunning;
-    }
-  };
   private boundClaudeConcurrencyHandler: MessageHandler = (msg) => {
     this.claudeConcurrency = msg.state as GlobalGateState;
-  };
-  private boundQueueStartAckHandler: MessageHandler = (msg) => {
-    const isQueueRunning = msg.isQueueRunning as boolean | undefined;
-    if (isQueueRunning !== undefined) {
-      this.isQueueRunning = isQueueRunning;
-    }
-
-    // WTT-003: Open terminal tab for queue item execution
-    const item = msg.item as { specId: string; specName: string; projectPath?: string; storyId?: string } | undefined;
-    if (item) {
-      this._openWorkflowTerminalTab({
-        command: 'execute-tasks',
-        argument: item.storyId ? `${item.specId} ${item.storyId}` : item.specId,
-        specId: item.specId,
-        storyId: item.storyId,
-        projectPath: item.projectPath,
-      });
-    }
-  };
-  private boundQueueCompleteHandler: MessageHandler = () => {
-    this.isQueueRunning = false;
   };
   // DPP-004: Document Preview handlers
   private boundDocumentPreviewOpenHandler: MessageHandler = (msg) => {
@@ -566,20 +482,7 @@ export class AosApp extends LitElement {
     this.showToast(`Projekt konnte nicht geöffnet werden: ${String(msg.message ?? msg.code ?? 'unbekannt')}`, 'warning');
   };
   private boundKeydownHandler = (e: KeyboardEvent) => this._handleGlobalKeydown(e);
-  // WTT-003: Handler for workflow-terminal-request custom events
-  private _handleWorkflowTerminalRequest = (e: CustomEvent<{
-    command: string;
-    argument?: string;
-    model?: string;
-    specId?: string;
-    storyId?: string;
-    gitStrategy?: string;
-    projectPath?: string;
-  }>): void => {
-    this._openWorkflowTerminalTab(e.detail);
-  };
-
-  // Handler for open-terminal-session events from story-card claude-log-panel.
+  // Handler for open-terminal-session events (Vorhaben page „Sitzung öffnen").
   // Maps the backend CloudTerminalSessionId to the frontend TerminalSession.id
   // (which is what aos-cloud-terminal-sidebar matches activeSessionId against).
   private _handleOpenTerminalSession = (e: CustomEvent<{ sessionId: string }>): void => {
@@ -605,13 +508,11 @@ export class AosApp extends LitElement {
     super.connectedCallback();
     routerService.on('route-changed', this.boundRouteChangeHandler);
     routerService.init();
-    window.addEventListener('contextmenu', this.boundContextMenuHandler);
 
     // Setup gateway listeners
     gateway.on('gateway.reconnecting', this.boundReconnectingHandler);
     gateway.on('gateway.connected', this.boundConnectedHandler);
     gateway.on('gateway.error', this.boundErrorHandler);
-    gateway.on('model.providers.list', this.boundModelProvidersHandler);
     gateway.on('cloud-terminal:list-response', this.boundCloudTerminalListHandler);
     // DPP-004: Document Preview handlers
     gateway.on('document-preview.open', this.boundDocumentPreviewOpenHandler);
@@ -634,19 +535,11 @@ export class AosApp extends LitElement {
     gateway.on('git:pr-info:response', this.boundGitPrInfoHandler);
     gateway.on('git:generate-commit-message:response', this.boundGitGenerateCommitMessageHandler);
     gateway.on('git:error', this.boundGitErrorHandler);
-    // GSQ-005: Queue gateway handlers
-    gateway.on('queue.state', this.boundQueueStateHandler);
-    gateway.on('queue.start.ack', this.boundQueueStartAckHandler);
-    gateway.on('queue.complete', this.boundQueueCompleteHandler);
     // CCB: Global Claude concurrency state
     gateway.on('claude.concurrency.state', this.boundClaudeConcurrencyHandler);
-    // GSQ-005: Keyboard shortcut
     document.addEventListener('keydown', this.boundKeydownHandler);
 
-    // WTT-003: Listen for workflow-terminal-request events
-    document.addEventListener('workflow-terminal-request', this._handleWorkflowTerminalRequest as EventListener);
-
-    // Listen for open-terminal-session events from story-card claude-log-panel
+    // Listen for open-terminal-session events (Vorhaben page)
     document.addEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
 
     // Global error handler
@@ -656,37 +549,18 @@ export class AosApp extends LitElement {
       this.handleUnhandledRejection.bind(this)
     );
 
-    // GSQ-005: Restore bottom panel height from localStorage
-    try {
-      const savedHeight = localStorage.getItem('global-queue-panel-height');
-      if (savedHeight) {
-        const height = parseInt(savedHeight, 10);
-        if (height >= 200) {
-          this._bottomPanelHeight = height;
-        }
-      }
-    } catch {
-      // localStorage unavailable
-    }
 
     // Connect WebSocket first, then restore project state after connection
     gateway.connect();
     this.restoreProjectStateWhenConnected();
-
-    // Load model providers when connected
-    if (gateway.getConnectionStatus()) {
-      gateway.send({ type: 'model.providers.list' });
-    }
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     routerService.off('route-changed', this.boundRouteChangeHandler);
-    window.removeEventListener('contextmenu', this.boundContextMenuHandler);
     gateway.off('gateway.reconnecting', this.boundReconnectingHandler);
     gateway.off('gateway.connected', this.boundConnectedHandler);
     gateway.off('gateway.error', this.boundErrorHandler);
-    gateway.off('model.providers.list', this.boundModelProvidersHandler);
     gateway.off('cloud-terminal:list-response', this.boundCloudTerminalListHandler);
     // DPP-004: Remove Document Preview listeners
     gateway.off('document-preview.open', this.boundDocumentPreviewOpenHandler);
@@ -709,100 +583,15 @@ export class AosApp extends LitElement {
     gateway.off('git:pr-info:response', this.boundGitPrInfoHandler);
     gateway.off('git:generate-commit-message:response', this.boundGitGenerateCommitMessageHandler);
     gateway.off('git:error', this.boundGitErrorHandler);
-    // GSQ-005: Cleanup queue handlers + keyboard shortcut
-    gateway.off('queue.state', this.boundQueueStateHandler);
-    gateway.off('queue.start.ack', this.boundQueueStartAckHandler);
-    gateway.off('queue.complete', this.boundQueueCompleteHandler);
     // CCB: Global Claude concurrency state
     gateway.off('claude.concurrency.state', this.boundClaudeConcurrencyHandler);
     document.removeEventListener('keydown', this.boundKeydownHandler);
-    // WTT-003: Remove workflow-terminal-request listener
-    document.removeEventListener('workflow-terminal-request', this._handleWorkflowTerminalRequest as EventListener);
     document.removeEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
   }
 
   private handleGlobalError(event: ErrorEvent): void {
     console.error('Global error:', event.error);
     this.showToast('Ein unerwarteter Fehler ist aufgetreten', 'error');
-  }
-
-  private handleContextMenu(event: MouseEvent): void {
-    // Prevent browser context menu
-    event.preventDefault();
-
-    // Guard: Don't show context menu if a modal is already open
-    if (this.showAddProjectModal || this.showWorkflowModal || this.showQuickTodoModal) {
-      return;
-    }
-
-    // Get reference to context menu element (light DOM)
-    const contextMenu = this.querySelector(
-      'aos-context-menu'
-    ) as unknown as { show: (x: number, y: number) => void };
-
-    // Show context menu at cursor position
-    contextMenu?.show(event.clientX, event.clientY);
-  }
-
-  private handleMenuItemSelect(event: CustomEvent<MenuSelectEventDetail>): void {
-    // Note: Context menu closes itself automatically when item is clicked
-    const { action } = event.detail;
-
-    // Handle different menu actions
-    switch (action) {
-      case 'add-story':
-        // Open workflow modal in add-story mode (with spec selector)
-        this.workflowModalMode = 'add-story';
-        this.workflowModalCommand = {
-          id: 'specwright:add-story',
-          name: 'Story hinzufügen',
-          description: 'Eine neue Story zu einer bestehenden Spec hinzufügen'
-        };
-        this.showWorkflowModal = true;
-        break;
-
-      case 'create-spec':
-        // Open workflow modal for create-spec
-        this.workflowModalMode = 'direct';
-        this.workflowModalCommand = {
-          id: 'specwright:create-spec',
-          name: 'Neue Spec erstellen',
-          description: 'Eine neue Feature-Spezifikation erstellen'
-        };
-        this.showWorkflowModal = true;
-        break;
-
-      case 'create-bug':
-        // Open workflow modal for add-bug
-        this.workflowModalMode = 'direct';
-        this.workflowModalCommand = {
-          id: 'specwright:add-bug',
-          name: 'Bug erstellen',
-          description: 'Einen neuen Bug zur Bearbeitung erfassen'
-        };
-        this.showWorkflowModal = true;
-        break;
-
-      case 'create-todo':
-        // Open workflow modal for add-todo
-        this.workflowModalMode = 'direct';
-        this.workflowModalCommand = {
-          id: 'specwright:add-todo',
-          name: 'TODO erstellen',
-          description: 'Eine neue Aufgabe zum Backlog hinzufügen'
-        };
-        this.showWorkflowModal = true;
-        break;
-
-      case 'quick-todo':
-        // Open Quick-To-Do modal
-        this.showQuickTodoModal = true;
-        break;
-
-      default:
-        console.log('Unknown context menu action:', action);
-        this.showToast(`Unbekannte Aktion: ${action}`, 'warning');
-    }
   }
 
   private handleUnhandledRejection(event: PromiseRejectionEvent): void {
@@ -824,7 +613,6 @@ export class AosApp extends LitElement {
     const icons: Record<string, unknown> = {
       vorhaben: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>`,
       projekt: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`,
-      dashboard: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
       chat: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
       'getting-started': html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>`,
       team: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
@@ -842,7 +630,6 @@ export class AosApp extends LitElement {
     const titles: Record<Route, string> = {
       vorhaben: 'Vorhaben',
       projekt: 'Projekt',
-      dashboard: 'Dashboard',
       team: 'Team',
       'getting-started': 'Getting Started',
       chat: 'Chat',
@@ -867,7 +654,7 @@ export class AosApp extends LitElement {
     }
 
     // MPRO-006: First switch project context in backend, THEN update UI
-    // This ensures WebSocket has the correct projectId before Dashboard loads specs
+    // This ensures WebSocket has the correct projectId before views load project data
     const result = await projectStateService.switchProject(project);
     if (!result.success) {
       this.showToast(`Failed to switch project: ${result.error}`, 'error');
@@ -950,24 +737,6 @@ export class AosApp extends LitElement {
   private _handleRecentRemove(e: CustomEvent<{ path: string }>): void {
     gateway.send({ type: 'workspace:remove-recent', path: e.detail.path, timestamp: new Date().toISOString() });
   }
-
-  private handleWorkflowModalClose(): void {
-    this.showWorkflowModal = false;
-    this.workflowModalCommand = null;
-    this.workflowModalMode = 'direct';
-  }
-
-  private handleQuickTodoModalClose(): void {
-    this.showQuickTodoModal = false;
-  }
-
-  private handleQuickTodoSaved(e: CustomEvent<{ itemId: string }>): void {
-    const { itemId } = e.detail;
-    this.showQuickTodoModal = false;
-    this.showToast(`Quick-To-Do erstellt (${itemId})`, 'success');
-  }
-
-  // --- Document Preview Panel Event Handlers ---
 
   private _handleDocumentPreviewClose(): void {
     this.isDocumentPreviewOpen = false;
@@ -1618,7 +1387,7 @@ export class AosApp extends LitElement {
     const activeChanged = nextActive !== this.activeProjectId;
     // MPRO-006: when the active project changes, the backend context switch
     // (project.switch) must land BEFORE consumers see the new active project,
-    // otherwise the dashboard requests specs against "no project selected".
+    // otherwise consumers ask the backend against "no project selected".
     // activateProject() does exactly that; only the unchanged case can
     // publish the new project list right away.
     if (!activeChanged) this.updateContextProvider();
@@ -2068,69 +1837,13 @@ export class AosApp extends LitElement {
     this.pullStrategyRetryPush = false;
   }
 
-  // --- GSQ-007: Queue event handlers (from queue-section and specs-section) ---
-
-  private _handleQueueAdd(e: CustomEvent): void {
-    const detail = e.detail as {
-      specId: string;
-      specName: string;
-      projectPath?: string;
-      projectName?: string;
-      position?: number;
-      gitStrategy?: { strategy: string };
-      itemType?: 'spec' | 'backlog';
-    };
-
-    // For backlogs, check specId + projectPath combo; for specs, check specId
-    const projectPath = detail.projectPath || this.openProjects.find(p => p.id === this.activeProjectId)?.path || '';
-    const existsInQueue = detail.itemType === 'backlog'
-      ? this.globalQueue.some(item => item.specId === 'backlog' && item.projectPath === projectPath)
-      : this.globalQueue.some(item => item.specId === detail.specId);
-    if (existsInQueue) {
-      this.showToast(detail.itemType === 'backlog' ? 'Backlog ist bereits in der Queue' : 'Spec ist bereits in der Queue', 'warning');
-      return;
-    }
-
-    const activeProject = this.openProjects.find(p => p.id === this.activeProjectId);
-    gateway.sendQueueAdd(
-      detail.specId,
-      detail.specName,
-      detail.projectPath || activeProject?.path || '',
-      detail.projectName || activeProject?.name || '',
-      detail.gitStrategy?.strategy as 'branch' | 'worktree' | 'current-branch' | undefined,
-      detail.position,
-      detail.itemType
-    );
-  }
-
-  private _handleQueueRemove(e: CustomEvent<{ itemId: string; specId: string }>): void {
-    gateway.sendQueueRemove(e.detail.itemId);
-  }
-
-  private _handleQueueReorder(e: CustomEvent<{ itemId: string; fromIndex: number; toIndex: number }>): void {
-    gateway.sendQueueReorder(e.detail.itemId, e.detail.toIndex);
-  }
-
-  private _handleQueueStart(): void {
-    gateway.sendQueueStart();
-  }
-
-  private _handleQueueStop(): void {
-    gateway.sendQueueStop();
-  }
-
   private _handleShowToast(e: CustomEvent<{ message: string; type: 'success' | 'error' | 'info' | 'warning' }>): void {
     this.showToast(e.detail.message, e.detail.type);
   }
 
-  // --- GSQ-005: Bottom Panel Event Handlers ---
+  // --- Keyboard shortcuts ---
 
   private _handleGlobalKeydown(e: KeyboardEvent): void {
-    // Cmd/Ctrl+Shift+Q toggles bottom panel
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'Q') {
-      e.preventDefault();
-      this.isBottomPanelOpen = !this.isBottomPanelOpen;
-    }
     // Cmd/Ctrl+D toggles cloud terminal sidebar
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 'd') {
       e.preventDefault();
@@ -2138,17 +1851,14 @@ export class AosApp extends LitElement {
     }
   }
 
-  // WTT-003: Open a workflow terminal tab from UI triggers (kanban, dashboard, queue)
+  // WTT-003: Open a workflow terminal tab from UI triggers (Team, Getting Started)
   private _openWorkflowTerminalTab(detail: {
     command: string;
     argument?: string;
     model?: string;
-    specId?: string;
-    storyId?: string;
-    gitStrategy?: string;
     projectPath?: string;
   }): void {
-    const { command, argument, model, specId, storyId, projectPath } = detail;
+    const { command, argument, model, projectPath } = detail;
 
     // Resolve project path
     const resolvedProjectPath = projectPath || this.openProjects.find(p => p.id === this.activeProjectId)?.path || '';
@@ -2158,7 +1868,7 @@ export class AosApp extends LitElement {
       return;
     }
 
-    // Build workflow context: only the argument (e.g., spec ID, story ID)
+    // Build workflow context: only the argument
     const workflowContext = argument?.trim() || undefined;
 
     // Parse model to get provider and model ID
@@ -2198,7 +1908,7 @@ export class AosApp extends LitElement {
       this.isTerminalSidebarOpen = true;
     }
 
-    console.log('[App] Opened workflow terminal tab:', { command, argument, specId, storyId, sessionId });
+    console.log('[App] Opened workflow terminal tab:', { command, argument, sessionId });
   }
 
   // WTT-003: Parse model string to provider and model ID
@@ -2224,29 +1934,6 @@ export class AosApp extends LitElement {
 
     const providerId = modelProviderMap[model];
     return { providerId, modelId: model };
-  }
-
-  private _handleBottomPanelToggle(): void {
-    this.isBottomPanelOpen = !this.isBottomPanelOpen;
-  }
-
-  private _handleBottomPanelClose(): void {
-    this.isBottomPanelOpen = false;
-  }
-
-  private _handleBottomPanelTabChange(e: CustomEvent<{ tab: string }>): void {
-    this.bottomPanelActiveTab = e.detail.tab as 'queue-specs' | 'log';
-  }
-
-  private _handleBottomPanelResize(e: CustomEvent<{ height: number }>): void {
-    this._bottomPanelHeight = e.detail.height;
-    this.requestUpdate();
-  }
-
-  private _bottomPanelHeight = 350;
-
-  private _getBottomPanelHeight(): number {
-    return this._bottomPanelHeight;
   }
 
   private _mapGitErrorMessage(code: string | undefined, rawMessage: string, operation: string | undefined): string {
@@ -2300,14 +1987,6 @@ export class AosApp extends LitElement {
           @add-project=${this.handleAddProject}
           @vorhaben-session-started=${this._handleVorhabenSessionStarted}
         ></aos-vorhaben-view>`;
-      case 'dashboard':
-        return html`<aos-dashboard-view
-          .gitStatus=${this.gitStatus}
-          .gitPrInfo=${this.gitPrInfo}
-          @show-toast=${this._handleShowToast}
-          @terminal-pill-tap=${this._handleTerminalToggle}
-          @add-project=${this.handleAddProject}
-        ></aos-dashboard-view>`;
       case 'getting-started':
         return html`<aos-getting-started-view
           .hasProductBrief=${this.projectHasProductBrief}
@@ -2380,31 +2059,10 @@ export class AosApp extends LitElement {
                 Files
               </a>
             </li>
-            <li class="nav-item">
-              <a
-                class="nav-link ${this.isBottomPanelOpen ? 'active' : ''}"
-                @click=${this._handleBottomPanelToggle}
-              >
-                <span class="nav-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="vertical-align: middle;">
-                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                  </svg>
-                </span>
-                Queue${this.globalQueue.length > 0 ? html` <span class="queue-count">(${this.globalQueue.length})</span>` : ''}
-                ${this.isQueueRunning
-                  ? html`<span class="queue-badge" aria-label="Queue läuft"></span>`
-                  : ''}
-              </a>
-            </li>
           </ul>
         </nav>
       </aside>
-      <main class="main-content" style="${this.isBottomPanelOpen ? `padding-bottom: ${this._getBottomPanelHeight()}px` : ''}">
+      <main class="main-content">
         <header class="header">
           <h2 class="header-title">${this.getPageTitle()}</h2>
           <div class="header-actions">
@@ -2468,21 +2126,6 @@ export class AosApp extends LitElement {
         <div class="view-container">${this.renderView()}</div>
         <aos-file-editor-panel .sidebarOpen=${this.isFileTreeOpen}></aos-file-editor-panel>
       </main>
-      <aos-global-queue-panel
-        .isOpen=${this.isBottomPanelOpen}
-        .activeTab=${this.bottomPanelActiveTab}
-        .queue=${this.globalQueue}
-        .isQueueRunning=${this.isQueueRunning}
-        @panel-close=${this._handleBottomPanelClose}
-        @tab-change=${this._handleBottomPanelTabChange}
-        @panel-resize=${this._handleBottomPanelResize}
-        @queue-add=${this._handleQueueAdd}
-        @queue-remove=${this._handleQueueRemove}
-        @queue-reorder=${this._handleQueueReorder}
-        @queue-start=${this._handleQueueStart}
-        @queue-stop=${this._handleQueueStop}
-        @show-toast=${this._handleShowToast}
-      ></aos-global-queue-panel>
       <aos-toast-notification></aos-toast-notification>
       <aos-git-diff-viewer></aos-git-diff-viewer>
       <aos-project-add-modal
@@ -2493,23 +2136,6 @@ export class AosApp extends LitElement {
         @modal-close=${this.handleAddProjectModalClose}
         @recent-remove=${this._handleRecentRemove}
       ></aos-project-add-modal>
-      <aos-context-menu
-        @menu-item-select=${this.handleMenuItemSelect}
-      ></aos-context-menu>
-      <aos-create-spec-modal
-        .open=${this.showWorkflowModal}
-        .command=${this.workflowModalCommand}
-        .mode=${this.workflowModalMode}
-        .providers=${this.providers}
-        @modal-close=${this.handleWorkflowModalClose}
-        @workflow-start-interactive=${this.handleWorkflowStart}
-      ></aos-create-spec-modal>
-      <aos-quick-todo-modal
-        .open=${this.showQuickTodoModal}
-        .projectPath=${this.openProjects.find(p => p.id === this.activeProjectId)?.path ?? null}
-        @modal-close=${this.handleQuickTodoModalClose}
-        @quick-todo-saved=${this.handleQuickTodoSaved}
-      ></aos-quick-todo-modal>
       <aos-notepad-panel
         .open=${this.showNotepad}
         @notepad-toggle=${() => { this.showNotepad = !this.showNotepad; }}

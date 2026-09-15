@@ -164,7 +164,8 @@ export class AosVorhabenView extends LitElement {
   private onNavTap(e: CustomEvent<{ item: BottomNavItem }>): void {
     switch (e.detail.item) {
       case 'home':
-        this.go('dashboard');
+        // Stage 3: the old dashboard is gone; „Home" on the phone is the project page (AN-S19).
+        this.go('projekt');
         break;
       case 'specs':
         this.go('vorhaben');

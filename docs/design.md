@@ -1,6 +1,6 @@
 # Design: Specwright
 
-> **Stand:** 2026-09-14 · **Verantwortlich:** Michael Sindlinger
+> **Stand:** 2026-09-15 · **Verantwortlich:** Michael Sindlinger
 > **Rolle dieses Dokuments:** Pflichtlektüre für jede Spec mit UI-Anteil (Bedenken) und für jeden Plan, der die Web-UI ändert. Legt fest, was „entspricht dem Mock" bedeutet.
 > **Marke:** Farben, Schrift, Tonalität kommen aus dem Firmen-Repo (`brand.md`, Phase 3). Hier steht nur, wie das Produkt sie anwendet.
 
@@ -57,7 +57,6 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 
 | Stelle | Abweichung vom Muster | Karte / Intent |
 |---|---|---|
-| Web-UI insgesamt | Story-Kanban-Sicht statt Vorhaben-Sicht (`intent/`-Ordner mit Phase) | Gesamtplan Phase 5 |
 | Installer-Ausgaben der Alt-Skripte | uneinheitlich bis 3.33.0; ab 4.0.0 über `install-lib.sh` vereinheitlicht | INT-2026-002 |
 
 ## Änderungsprotokoll
@@ -65,3 +64,4 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | Datum | Änderung | PR |
 |---|---|---|
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
+| 2026-09-15 | §7: Abweichung „Story-Kanban-Sicht" erledigt — die Web-UI zeigt Vorhaben (INT-2026-004, Stufe 1–3) | PR #46 |

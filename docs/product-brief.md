@@ -1,7 +1,7 @@
 # Produkt: Specwright
 
 > **Firma:** Sindlinger Business Solutions — Auftrag, Werte, Marke: Firmen-Repo (`mission.md`, `brand.md`; entsteht in Phase 3 des SDLC-Umbaus)
-> **Stand:** 2026-09-14 · **Verantwortlich:** Product Owner (Michael Sindlinger)
+> **Stand:** 2026-09-15 · **Verantwortlich:** Product Owner (Michael Sindlinger)
 > **Gilt für:** jede `intent.md` (Feld `bezuege.product`), jede Spec (Bedenken-Prüfung), Plan Mode
 
 ## 1. In einem Satz
@@ -36,9 +36,9 @@ Ohne festen Ablauf zerfällt Softwarearbeit mit einem Agenten in Chat-Sitzungen:
 | Projekt-Docs-Vorlagen (`product-brief`, `architecture`, `security`, `design`, `CLAUDE`) | Agent im Plan Mode | live |
 | Hooks `protect-tests`, `no-secrets`, `production-gate` | jedes Projekt | live |
 | Installer (`install.sh`, `setup*.sh`, `update-specwright.sh`) aus einem Manifest, Update räumt Entferntes auf | Entwickler | in Arbeit (INT-2026-002) |
-| Alt-Befehle für Produktplanung, Story-Specs, Bugs, Skills, Changelog (`/plan-product`, `/create-spec`, `/add-bug`, …) | Entwickler, Web-UI | live, Umbau je Befehl später |
-| Web-UI: Projekte, Kanban, Auto-Mode über `execute-tasks`, Cloud-Terminal, Shared Workspace | Entwickler (Mac, Handy, Droplet) | live; Neuentwurf in Phase 5 |
-| Kanban-MCP-Server mit Memory-Store | Web-UI, Auto-Mode | live |
+| Alt-Befehle für Produktplanung, Story-Specs, Bugs, Skills, Changelog (`/plan-product`, `/create-spec`, `/add-bug`, …) | Entwickler (Terminal) | live, Umbau je Befehl später |
+| Web-UI: Vorhaben-Übersicht, Dokument-Leser, Review-Kanal, Projekt-Seite, Cloud-Terminal, Shared Workspace | Entwickler (Mac, Handy, Droplet) | live (INT-2026-004) |
+| Kanban-MCP-Server mit Memory-Store | Alt-Befehle in Sitzungen | live; Abbau als eigenes Vorhaben |
 
 ## 6. Erfolgsmaße
 
@@ -60,14 +60,14 @@ Ohne festen Ablauf zerfällt Softwarearbeit mit einem Agenten in Chat-Sitzungen:
 
 | Begriff | Bedeutung | Nicht zu verwechseln mit |
 |---|---|---|
-| Vorhaben | Eine abgeschlossene Änderung mit `intent/INT-JJJJ-NNN-kurzname/` und den drei Dokumenten | Story (v3-Einheit, nur noch im Web-UI-Pfad) |
+| Vorhaben | Eine abgeschlossene Änderung mit `intent/INT-JJJJ-NNN-kurzname/` und den drei Dokumenten | Story (v3-Einheit; aus der Web-UI entfernt in INT-2026-004) |
 | Absicht (`intent.md`) | Was und warum, fachlich, mit Belegen; ab Risikoklasse mittel mit Vertragsschicht | Product-Brief (Produktebene) |
 | Plan (`plan.md`) | Technischer Plan aus dem Plan Mode, Einheit der Ausführung | Roadmap |
 | Projekt-Docs | `docs/{product-brief,architecture,security,design}.md` — Soll und Grenzen eines Projekts | Firmen-Repo (Mission, Marke) |
 | Manifest | `specwright/manifest.tsv`: Art, Geltung, Quelle, Ziel jeder ausgelieferten Datei | `removed.tsv` (Entferntes) |
 | Bezugsliste | Bekannte rote Tests, gegen die Verify nur Neues meldet; nur nach CI-Lauf kürzen | Erlaubnisliste |
 | Hybrid-Lookup | Datei erst im Projekt (`specwright/…`), dann global (`~/.specwright/…`) suchen | — |
-| Web-UI-Pfad | `/create-spec` + `/execute-tasks` + `kanban.json`, bis Phase 5 unverändert | Vorhaben-Flow |
+| Web-UI-Pfad | ehemals `/create-spec` + `/execute-tasks` + `kanban.json` in der UI — abgelöst durch den Vorhaben-Flow (INT-2026-004); die Alt-Befehle laufen nur noch im Terminal | Vorhaben-Flow |
 
 ## 9. Mandanten und Umgebungen
 

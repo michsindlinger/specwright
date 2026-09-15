@@ -59,7 +59,7 @@ export const defaultProjectContext: ProjectContextValue = {
  * });
  *
  * @example
- * // In consumer (dashboard-view.ts):
+ * // In consumer (e.g. aos-vorhaben-view.ts):
  * import { consume } from '@lit/context';
  * import { projectContext, ProjectContextValue } from '../context/project-context.js';
  *

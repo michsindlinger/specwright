@@ -411,28 +411,6 @@ describe('Cloud Terminal session targets', () => {
     expect(mgr.getOccupiedPaths().has(pathKey(wt))).toBe(false);
   });
 
-  // ── Auto-mode removal guard ────────────────────────────────────────────────
-
-  it('foreignSessionsIn reports attached sessions but ignores auto-mode slots', async () => {
-    const wt = addUserWorktree(repo, 'story', 'story/feat/S1');
-    const target = { target: { kind: 'existing-worktree' as const, path: wt }, explicit: true };
-
-    const slot = await mgr.createSession(repo.projectPath, 'claude-code', { model: 'x' },
-      undefined, undefined, undefined, undefined, undefined, { sessionTarget: target });
-    mgr.setAutoModeActive(slot.sessionId, true);
-
-    // Auto-mode's own session must not block auto-mode's cleanup …
-    expect(mgr.foreignSessionsIn(wt)).toEqual([]);
-
-    // … but a user session attached to the same worktree must.
-    const human = await mgr.createSession(repo.projectPath, 'claude-code', { model: 'x' },
-      undefined, undefined, undefined, undefined, undefined, { sessionTarget: target });
-    expect(mgr.foreignSessionsIn(wt)).toEqual([human.sessionId]);
-
-    await mgr.closeSession(human.sessionId);
-    expect(mgr.foreignSessionsIn(wt)).toEqual([]);
-  });
-
   // ── .mcp.json seeding ──────────────────────────────────────────────────────
 
   it('seeds .mcp.json into an attached worktree when it is missing', async () => {

@@ -7,13 +7,10 @@
  * auto-mode path (which already creates its own worktrees), and workflow tabs
  * are all excluded — this helper only backs the interactive path.
  *
- * Namespaces are deliberately disjoint from the auto-mode helpers in
- * `worktree-story.ts`:
- *   - branch:    `session/<id>`   (vs `feature/<f>`, `story/<f>/<s>`)
- *   - worktree:  `session-<id>`   (vs `<feature>-<storyId>`, `backlog-<slug>`)
+ * Namespaces: branch `session/<id>`, worktree `session-<id>`.
  *
  * Reuses the erprobten building blocks from `worktree-story.ts`
- * (`isWorktreeClean`, `copyMcpConfigToWorktree`, `ensureSpecwrightRuntimeGitignored`)
+ * (`isWorktreeClean`, `copyMcpConfigToWorktree`, `ensureClaudeConfigInWorktree`)
  * and serializes main-repo index mutations via `withMainProjectLock`.
  */
 
@@ -29,13 +26,11 @@ import {
   copyMcpConfigToWorktree,
   ensureClaudeConfigInWorktree,
   removeSeededClaudeConfig,
-  ensureSpecwrightRuntimeGitignored,
 } from './worktree-story.js';
 
 /**
- * Env var read by the kanban MCP server to route runtime writes (kanban.json,
- * backlog-index.json) back to the main repo instead of the session worktree.
- * MUST match the literal used by the auto-mode path (`auto-mode-story-slot.ts`).
+ * Env var read by the kanban MCP server to route its runtime writes back to the
+ * main repo instead of the session worktree.
  */
 export const SPECWRIGHT_MAIN_PROJECT_PATH_ENV = 'SPECWRIGHT_MAIN_PROJECT_PATH';
 
@@ -219,12 +214,9 @@ function branchExists(mainProjectPath: string, branchName: string): boolean {
 /**
  * Creates a fresh worktree at `${proj}-worktrees/session-${sessionId}` on a new
  * `session/${sessionId}` branch forked from `base`, then seeds `.mcp.json` so
- * Claude in the worktree can reach the kanban MCP server.
- *
- * `ensureSpecwrightRuntimeGitignored` is called **before** acquiring the main
- * lock because it acquires the same (non-reentrant) lock internally — nesting
- * would deadlock. Only the `git worktree add` (which mutates the main repo's
- * worktree metadata + packed-refs) runs under `withMainProjectLock`.
+ * Claude in the worktree can reach the kanban MCP server. Only the
+ * `git worktree add` (which mutates the main repo's worktree metadata +
+ * packed-refs) runs under `withMainProjectLock`.
  */
 export async function createCloudSessionWorktree(
   mainProjectPath: string,
@@ -237,9 +229,6 @@ export async function createCloudSessionWorktree(
   const key = name && name.length > 0 ? name : sessionId;
   const worktreePath = cloudSessionWorktreePath(mainProjectPath, key);
   const branchName = cloudSessionBranchName(key);
-
-  // Self-locking — MUST stay outside withMainProjectLock (non-reentrant mutex).
-  await ensureSpecwrightRuntimeGitignored(mainProjectPath);
 
   await withMainProjectLock(mainProjectPath, 'cloud-session-worktree-add', async () => {
     // Pre-flight only for named worktrees — a session id cannot collide. This

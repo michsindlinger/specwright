@@ -1,6 +1,6 @@
 # Sicherheit: Specwright
 
-> **Stand:** 2026-09-14 · **Verantwortlich:** Michael Sindlinger
+> **Stand:** 2026-09-15 · **Verantwortlich:** Michael Sindlinger
 > **Rolle dieses Dokuments:** Pflichtlektüre beim Schreiben jeder Spec (Bedenken), jedes Plans und jedes Reviews. Die Verbotsliste (Abschnitt 5) ist für Agenten bindend und durch Hooks abgesichert.
 > **Firmenrichtlinie:** Firmen-Repo SBS (entsteht in Phase 3)
 
@@ -81,7 +81,7 @@
 
 | Lücke | Risiko | Karte / Intent | Frist |
 |---|---|---|---|
-| Web-UI ohne Nutzerverwaltung (T-06) | mittel (netzseitig begrenzt) | Gesamtplan Phase 5 | UI-Neuentwurf |
+| Web-UI ohne Nutzerverwaltung (T-06) | mittel (netzseitig begrenzt) | eigenes Vorhaben (Board-Karte „UI-Nutzerverwaltung") | offen |
 | Installer ohne Signaturprüfung (T-05) | niedrig (ein Nutzer) | — | keine |
 | Hooks liegen nicht in Managed Settings, lokal abschaltbar | niedrig | Board Specwright | — |
 
@@ -90,3 +90,4 @@
 | Datum | Änderung | PR |
 |---|---|---|
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
+| 2026-09-15 | §7: T-06 verweist auf ein eigenes Vorhaben statt auf den Gesamtplan Phase 5 (INT-2026-004, Stufe 3); §4 Stand unverändert offen | PR #46 |

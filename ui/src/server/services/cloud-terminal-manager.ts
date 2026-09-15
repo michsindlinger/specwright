@@ -99,15 +99,6 @@ interface ManagedCloudSession extends CloudTerminalSession {
   /** Flag to track if buffer overflow warning was logged */
   bufferOverflowWarned?: boolean;
 
-  /** True when this session is being driven by auto-mode and should be scanned for prompts */
-  autoModeActive?: boolean;
-
-  /** Dedup timestamp: last time a prompt was detected (enforces a cool-down) */
-  lastPromptDetectedAt?: Date;
-
-  /** True once `<<BLOCKER:reason>>` was detected — prevents duplicate emissions. */
-  blockerReported?: boolean;
-
   /** True when plan-review mode is active for this session. */
   planReviewEnabled?: boolean;
 
@@ -167,9 +158,6 @@ interface ManagedCloudSession extends CloudTerminalSession {
    */
   closing?: boolean;
 
-  /** Restored from a registry entry with autoMode=true (orchestrator does not re-attach in v1). */
-  restoredAutoMode?: boolean;
-
   /** Consecutive failed re-attach attempts after an isolated attach-client death. */
   reattachAttempts?: number;
 
@@ -184,26 +172,6 @@ interface ManagedCloudSession extends CloudTerminalSession {
 }
 
 /**
- * Regex for detecting interactive prompts in terminal output.
- *
- * Anchored to line ends / Claude-Code-AskUserQuestion-UI markers to avoid
- * false positives on natural Claude commentary (e.g. "Do you want to refactor?"
- * or "Phase 1 done. Continue with Phase 2?" appearing in summary text).
- *
- * Layered safety:
- *   Layer 1 — `--disallowed-tools AskUserQuestion` blocks the tool itself
- *   Layer 2 — `<<BLOCKER:reason>>` marker for Auto-Mode-aware blockers
- *   Layer 3 — this pattern, anchored to actual prompt-shaped output
- */
-export const PROMPT_PATTERN = /\((?:y|yes)\/(?:n|no)\)\??\s*$|\[(?:Y|y)\/(?:N|n)\]\??\s*$|^\s*Press\s+(?:Enter|Return)(?:\s+to\s+continue)?\s*\.?\s*$|Enter to select.*navigate.*Esc to cancel|^\s*\d+\.\s+(?:Chat about this|Type something\.)\s*$|Do you want to proceed\?[\s\S]{0,500}?Esc to cancel.*?Tab to amend/im;
-
-/**
- * Marker the LLM is instructed to emit on unrecoverable blockers in Auto-Mode.
- * Matches `<<BLOCKER:reason>>` (reason captured in group 1).
- */
-export const BLOCKER_PATTERN = /<<BLOCKER:([^>]+)>>/;
-
-/**
  * Detects the closing bar of a Claude Code TUI plan box (╰──...──╯).
  * Checked per terminal.data chunk; extraction uses the full buffer.
  * Detection is best-effort — manual trigger is the reliable fallback.
@@ -211,11 +179,6 @@ export const BLOCKER_PATTERN = /<<BLOCKER:([^>]+)>>/;
  * this no longer fires; "Review last plan" is the working path.
  */
 export const PLAN_BOX_PATTERN = /╰─{10,}╯/;
-
-/**
- * Cool-down between prompt-detected emissions for the same session (ms).
- */
-const PROMPT_DEDUP_MS = 60 * 1000;
 
 /**
  * Cool-down between plan-detected emissions for the same session (ms).
@@ -255,8 +218,6 @@ function bufferTail(chunks: readonly string[], max: number): string {
  * - 'session.resumed' (CloudTerminalSessionId) - Session resumed
  * - 'session.data' (CloudTerminalSessionId, string) - Terminal output
  * - 'session.error' (CloudTerminalSessionId, Error) - Session error
- * - 'session.prompt-detected' (CloudTerminalSessionId, matchedText) - Interactive prompt detected in output (auto-mode only)
- * - 'session.blocker-reported' (CloudTerminalSessionId, reason) - LLM emitted <<BLOCKER:reason>> marker (auto-mode only)
  * - 'session.plan-detected' (CloudTerminalSessionId, planText, source: 'auto'|'manual') - Plan box detected; planText is extracted buffer content (plan-review only)
  * - 'session.notice' (CloudTerminalSessionId, level: 'warn'|'info', message) - User-facing notice (e.g. worktree kept due to uncommitted changes, or started without worktree)
  * - 'session.agent-event' (CloudTerminalSessionId, event, { preview?, reason?, status, statusAt }) - Agent status changed (Claude Code hooks, keystrokes on a blocked session, idle decay). `stop` still drives the bell.
@@ -533,8 +494,8 @@ export class CloudTerminalManager extends EventEmitter {
     // Generate internal execution ID for TerminalManager
     const executionId = `cloud-${sessionId}`;
 
-    // Normalize the target. Callers that pass neither (auto-mode, workflow tabs,
-    // setup shells) run in `projectPath` exactly as they always did.
+    // Normalize the target. Callers that pass neither (workflow tabs, setup
+    // shells) run in `projectPath` exactly as they always did.
     const target: ParsedTarget =
       options?.sessionTarget ??
       (options?.isolateInWorktree
@@ -631,8 +592,8 @@ export class CloudTerminalManager extends EventEmitter {
               );
               effectiveCwd = owned.worktreePath;
               session.effectiveCwd = pathKey(owned.worktreePath);
-              // Route kanban/backlog runtime writes back to the main repo (same
-              // mechanism auto-mode uses) so per-session copies never diverge.
+              // Route the kanban MCP's runtime writes back to the main repo so
+              // per-session copies never diverge.
               baseEnv[SPECWRIGHT_MAIN_PROJECT_PATH_ENV] = mainProjectPath;
               // Ownership: this session created it, so teardown may remove it.
               session.worktreeCleanup = owned;
@@ -883,11 +844,6 @@ export class CloudTerminalManager extends EventEmitter {
    * Closed sessions are excluded: `terminal.exit` flips `status` to 'closed'
    * before the delayed map delete, so Ctrl-D frees the target immediately
    * rather than five seconds later.
-   *
-   * Auto-mode story/backlog slots create their sessions with the worktree as
-   * `projectPath`, so they land in this map automatically. Spec-level
-   * worktrees that carry no session remain invisible — see the picker's
-   * "Auto-Mode" badge for the mitigation.
    */
   public getOccupiedPaths(): Map<string, { sessionId: CloudTerminalSessionId; count: number }> {
     const out = new Map<string, { sessionId: CloudTerminalSessionId; count: number }>();
@@ -931,27 +887,6 @@ export class CloudTerminalManager extends EventEmitter {
       if (candidate.effectiveCwd === key) return candidate;
     }
     return undefined;
-  }
-
-  /**
-   * Live sessions inside `worktreePath` that are NOT auto-mode's own slots.
-   *
-   * Auto-mode removes its story/backlog worktrees (partly with `--force`), and
-   * since the picker lets a user attach to an occupied worktree those removals
-   * could delete a directory somebody is working in. Slot sessions carry
-   * `autoModeActive`, so they exclude themselves — which matters because
-   * `slot.cancel()` is fire-and-forget and the slot's own session is usually
-   * still live when the removal runs.
-   */
-  public foreignSessionsIn(worktreePath: string): CloudTerminalSessionId[] {
-    const key = pathKey(worktreePath);
-    const out: CloudTerminalSessionId[] = [];
-    for (const session of this.sessions.values()) {
-      if (session.status === 'closed') continue;
-      if (session.autoModeActive) continue;
-      if (session.effectiveCwd === key) out.push(session.sessionId);
-    }
-    return out;
   }
 
   /**
@@ -1182,17 +1117,6 @@ export class CloudTerminalManager extends EventEmitter {
       // Treat as success so the client doesn't falsely see SESSION_NOT_FOUND.
       console.log(`[CloudTerminalManager] Resume requested for already-active session ${sessionId}`);
       this.emit('session.resumed', sessionId, '');
-      // One-time heads-up for a restored auto-mode session: the claude process
-      // survived the restart, but the orchestrator bookkeeping did not.
-      if (session.restoredAutoMode) {
-        session.restoredAutoMode = undefined;
-        this.emit(
-          'session.notice',
-          sessionId,
-          'info',
-          'Session hat einen Backend-Neustart überlebt. Auto-Mode-Überwachung läuft für diese Session nicht weiter — Claude arbeitet, aber ohne Orchestrator.'
-        );
-      }
       return '';
     }
 
@@ -1442,11 +1366,6 @@ export class CloudTerminalManager extends EventEmitter {
       // Track latest activity on output too — the stall watchdog reads this.
       session.lastActivity = new Date();
 
-      if (session.autoModeActive) {
-        this.detectPrompt(session, data);
-        this.detectBlocker(session, data);
-      }
-
       if (session.planReviewEnabled) {
         session.lastDataAt = new Date();
         this.detectPlanBox(session, data);
@@ -1580,27 +1499,6 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
-   * Mark a session as being driven by auto-mode.
-   * Only auto-mode sessions get scanned for interactive prompts.
-   */
-  public setAutoModeActive(sessionId: CloudTerminalSessionId, active: boolean): void {
-    const session = this.sessions.get(sessionId);
-    if (!session) {
-      return;
-    }
-    session.autoModeActive = active;
-    if (!active) {
-      session.lastPromptDetectedAt = undefined;
-      session.blockerReported = undefined;
-    }
-    // Keep the persisted autoMode flag current so a restore after restart can
-    // flag the session (orchestrator does not re-attach in v1).
-    if (session.tmuxSessionName) {
-      void this.registry.upsert(this.toPersistedEntry(session));
-    }
-  }
-
-  /**
    * Enable or disable plan-review scanning for a session.
    * When disabled, resets plan-detection state.
    */
@@ -1681,45 +1579,6 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
-   * Scan an output chunk for interactive prompt patterns.
-   * Emits `session.prompt-detected` at most once per PROMPT_DEDUP_MS per session.
-   */
-  private detectPrompt(session: ManagedCloudSession, data: string): void {
-    const now = Date.now();
-    if (session.lastPromptDetectedAt && now - session.lastPromptDetectedAt.getTime() < PROMPT_DEDUP_MS) {
-      return;
-    }
-
-    const match = PROMPT_PATTERN.exec(data);
-    if (!match) {
-      return;
-    }
-
-    session.lastPromptDetectedAt = new Date(now);
-    const matchedText = match[0];
-    console.warn(`[CloudTerminalManager] Prompt detected in session ${session.sessionId}: ${JSON.stringify(matchedText)}`);
-    this.emit('session.prompt-detected', session.sessionId, matchedText);
-  }
-
-  /**
-   * Scan an output chunk for a `<<BLOCKER:reason>>` marker emitted by the
-   * LLM in Auto-Mode. Emits `session.blocker-reported` once per session.
-   */
-  private detectBlocker(session: ManagedCloudSession, data: string): void {
-    if (session.blockerReported) {
-      return;
-    }
-    const match = BLOCKER_PATTERN.exec(data);
-    if (!match) {
-      return;
-    }
-    session.blockerReported = true;
-    const reason = match[1].trim();
-    console.warn(`[CloudTerminalManager] Blocker reported in session ${session.sessionId}: ${reason}`);
-    this.emit('session.blocker-reported', session.sessionId, reason);
-  }
-
-  /**
    * Scan an output chunk for the TUI plan-box closing marker.
    * On match, extracts plan text from buffer and emits `session.plan-detected`.
    * Emits at most once per PLAN_DEDUP_MS per session.
@@ -1765,7 +1624,7 @@ export class CloudTerminalManager extends EventEmitter {
             seededClaudeConfig: [...wt.seededClaudeConfig],
           }
         : undefined,
-      autoMode: session.autoModeActive === true,
+      autoMode: false,
       agentStatus: session.agentStatus,
       agentStatusAt: session.agentStatusAt?.toISOString(),
       agentStatusReason: session.agentStatusReason,
@@ -1888,7 +1747,6 @@ export class CloudTerminalManager extends EventEmitter {
       agentStatus: entry.agentStatus ?? 'unknown',
       agentStatusAt: entry.agentStatusAt ? new Date(entry.agentStatusAt) : undefined,
       agentStatusReason: entry.agentStatusReason,
-      restoredAutoMode: entry.autoMode || undefined,
       worktreeCleanup: entry.worktree
         ? rehydrateOwnedSessionWorktree(entry.worktree)
         : undefined,
@@ -1910,11 +1768,6 @@ export class CloudTerminalManager extends EventEmitter {
 
     try {
       this.reattachRestoredSession(session);
-      if (entry.autoMode) {
-        console.warn(
-          `[CloudTerminalManager] restored auto-mode session ${entry.sessionId} as plain terminal — orchestrator does not re-attach (v1 limitation)`
-        );
-      }
     } catch (err) {
       console.error(`[CloudTerminalManager] failed to reattach ${entry.sessionId}:`, err);
       this.sessions.delete(entry.sessionId);

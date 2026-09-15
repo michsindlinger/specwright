@@ -162,9 +162,9 @@ export interface CloudTerminalSession {
  * Cloud Terminal Workflow metadata for workflow-triggered sessions
  */
 export interface CloudTerminalWorkflowMetadata {
-  /** Workflow command to execute (e.g., '/execute-tasks') */
+  /** Workflow command to execute (e.g., '/specwright:add-team-member') */
   workflowCommand: string;
-  /** Short workflow name for display (e.g., 'execute-tasks') */
+  /** Short workflow name for display (e.g., 'add-team-member') */
   workflowName: string;
   /** Context argument (e.g., spec ID, story ID) */
   workflowContext?: string;

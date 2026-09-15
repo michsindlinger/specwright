@@ -10,7 +10,7 @@ import { routerService } from '../../services/router.service.js';
 import type { ViewType } from '../../types/route.types.js';
 import './aos-mobile-sheet.js';
 
-export type DrawerNavRoute = 'vorhaben' | 'projekt' | 'dashboard' | 'specs' | 'cloud-terminal' | 'prompt-templates' | 'settings';
+export type DrawerNavRoute = 'vorhaben' | 'projekt' | 'cloud-terminal' | 'prompt-templates' | 'settings';
 
 @customElement('aos-mobile-side-drawer')
 export class AosMobileSideDrawer extends LitElement {
@@ -18,7 +18,7 @@ export class AosMobileSideDrawer extends LitElement {
   @property({ type: String }) avatarSrc = '';
   @property({ type: String }) avatarInitials = '';
   @property({ type: String }) workspaceName = '';
-  @property({ type: String }) activeRoute: DrawerNavRoute = 'dashboard';
+  @property({ type: String }) activeRoute: DrawerNavRoute = 'vorhaben';
 
   @consume({ context: projectContext, subscribe: true })
   private _projectCtx: ProjectContextValue = defaultProjectContext;
@@ -36,7 +36,6 @@ export class AosMobileSideDrawer extends LitElement {
     const routerRoutes: Partial<Record<DrawerNavRoute, ViewType>> = {
       vorhaben: 'vorhaben',
       projekt: 'projekt',
-      dashboard: 'dashboard',
       'prompt-templates': 'prompt-templates',
       settings: 'settings',
     };
@@ -82,21 +81,6 @@ export class AosMobileSideDrawer extends LitElement {
         </svg>
       `;
     }
-    if (route === 'dashboard') {
-      return html`
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-          <path d="M2 8L9 2l7 6v8a1 1 0 0 1-1 1H12v-5H6v5H3a1 1 0 0 1-1-1V8Z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
-        </svg>
-      `;
-    }
-    if (route === 'specs') {
-      return html`
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-          <rect x="2" y="2" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.4" fill="none"/>
-          <path d="M5 6.5h8M5 9.5h6M5 12.5h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        </svg>
-      `;
-    }
     if (route === 'cloud-terminal') {
       return html`
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
@@ -128,8 +112,6 @@ export class AosMobileSideDrawer extends LitElement {
     const navItems: { route: DrawerNavRoute; label: string }[] = [
       { route: 'vorhaben', label: 'Vorhaben' },
       { route: 'projekt', label: 'Projekt' },
-      { route: 'dashboard', label: 'Dashboard' },
-      { route: 'specs', label: 'Specs' },
       { route: 'cloud-terminal', label: 'Terminal' },
       { route: 'prompt-templates', label: 'Prompt Templates' },
       { route: 'settings', label: 'Settings' },
