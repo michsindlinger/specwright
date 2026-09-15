@@ -1,7 +1,7 @@
 # Plan: Nächster Schritt aus der Web-UI — Sitzung sichtbar im Vollbild, Befehl mit `specwright:`-Präfix
 
 > **Intent:** `intent.md` (INT-2026-005, 1.0.0) · **Spec:** entfällt (bypass: zwei Bugs in INT-2026-004, Größe S; Verhalten durch INT-2026-004 spec.md Ablauf E Schritt 6, FA-35, FA-21 festgelegt)
-> **Status:** umgesetzt — PR folgt (Merge = Michael); Bau beauftragt (Michael, „Mach A1", Board-Sitzung 15.09.)
+> **Status:** umgesetzt — **PR #49** offen (Merge = Michael), CI `verify` grün (Run 35023234917 auf `7bd02fb`); Bau beauftragt (Michael, „Mach A1", Board-Sitzung 15.09.)
 > **Erstellt:** 2026-09-15 (Bypass ohne Plan Mode — Recherche in §2 belegt gegen `origin/main` `ed29667`) · **Freigabe:** Product Owner (Michael Sindlinger) mit dem PR
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `ed29667`, §2 Frontend/Backend, AR-04, AR-05, §10), `CLAUDE.md` (Konventionen UI, Hooks, „Nie"), `docs/security.md` §2 (T-06: UI führt Befehle über das Terminal aus — unverändert), `docs/design.md` §7
 
@@ -201,7 +201,7 @@ Acht Quelldateien, über das Start-Ereignis und die Befehlsfunktion verbunden; u
 - [x] AK-01 bis AK-04 haben einen grünen Test (§8): `agent-notifications` 31, `aos-cloud-terminal-solo` 4, `vorhaben-reader` 32, `vorhaben-service` 7, `vorhaben-service-stage2` 15, `aos-vorhaben-stage2` 9 — alle grün.
 - [x] Nachweise aus §5 ausgeführt (grep: 5 Dateien `stepCommand`, 0 Kurzform-Reste, `showSessionSolo` app 5/sidebar 2, `soloJumpTarget` 2 Dateien) und im PR zitiert.
 - [x] E2E-Pfad (Playwright, Split-2 und Einzel, Klick auf „Spec schreiben") läuft: 14/14 Prüfungen grün, Protokoll `design/e2e-protokoll.txt`, Screenshots `design/ist-vollbild-{split,single}.png`.
-- [x] `verify` grün lokal (`verify: OK`, 58 s), Ausgabe im PR — PR-Check: siehe Status im Kopf (CI ist die Wahrheit).
+- [x] `verify` grün lokal (`verify: OK`, 58 s), Ausgabe im PR — PR-Check grün (CI Run 35023234917).
 - [x] `docs/architecture.md`: keine Änderung nötig (§3 Nein).
 - [x] Manuelle Schritte (§10) im PR als offen markiert.
 - [x] Abweichungen in §14.
