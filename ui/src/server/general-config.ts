@@ -1,12 +1,10 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 
 export interface GeneralConfig {
   baseBranch: string;
   reviewPrompt: string;
-  worktreeMaxConcurrent: number;
   /**
    * When true (default), each interactive claude-code Cloud Terminal session
    * starts in its own throwaway git worktree. Emergency-off switch for a
@@ -39,7 +37,6 @@ export const DEFAULT_REVIEW_PROMPT =
 const DEFAULT_CONFIG: GeneralConfig = {
   baseBranch: 'main',
   reviewPrompt: DEFAULT_REVIEW_PROMPT,
-  worktreeMaxConcurrent: 2,
   cloudSessionWorktree: true,
 };
 
@@ -115,26 +112,6 @@ export function getCloudSessionWorktreeEnabled(projectPath?: string): boolean {
   return loadGeneralConfig(projectPath).cloudSessionWorktree !== false;
 }
 
-export function getWorktreeMaxConcurrent(projectPath?: string): number {
-  const value = loadGeneralConfig(projectPath).worktreeMaxConcurrent;
-  // Defensive: if config file predates this field, spread of DEFAULT_CONFIG
-  // already covers it, but extra guard for malformed data.
-  if (!Number.isInteger(value) || value < 1 || value > ProjectConcurrencyGate.MAX_CONCURRENT) {
-    return DEFAULT_CONFIG.worktreeMaxConcurrent;
-  }
-  return value;
-}
-
-export function validateMaxConcurrent(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isInteger(value)) {
-    throw new Error(`worktreeMaxConcurrent must be an integer, got ${typeof value}`);
-  }
-  if (value < 1 || value > ProjectConcurrencyGate.MAX_CONCURRENT) {
-    throw new Error(`worktreeMaxConcurrent must be between 1 and ${ProjectConcurrencyGate.MAX_CONCURRENT}, got ${value}`);
-  }
-  return value;
-}
-
 function validateBranch(branch: string): string {
   const trimmed = branch.trim();
   if (!trimmed) {
@@ -159,9 +136,6 @@ export function updateGeneralConfig(updates: Partial<GeneralConfig>, projectPath
       throw new Error('Review prompt cannot be empty');
     }
     validated.reviewPrompt = trimmed;
-  }
-  if (updates.worktreeMaxConcurrent !== undefined) {
-    validated.worktreeMaxConcurrent = validateMaxConcurrent(updates.worktreeMaxConcurrent);
   }
   if (updates.cloudSessionWorktree !== undefined) {
     if (typeof updates.cloudSessionWorktree !== 'boolean') {

@@ -17,6 +17,7 @@ import {
   type ViewType,
   type RouteChangeHandler,
   VALID_VIEWS,
+  VIEW_ALIASES,
   DEFAULT_VIEW,
 } from '../types/route.types.js';
 
@@ -89,6 +90,11 @@ class RouterService {
     }
 
     const parts = raw.split('/').filter(Boolean);
+    const alias = VIEW_ALIASES[parts[0]];
+    if (alias) {
+      // Old address (e.g. `#/dashboard/...`): the view survives, its sub-path does not.
+      return { view: alias, params: {}, segments: [] };
+    }
     const viewCandidate = parts[0] as ViewType;
     const view: ViewType = VALID_VIEWS.includes(viewCandidate) ? viewCandidate : 'not-found';
     const segments = parts.slice(1);

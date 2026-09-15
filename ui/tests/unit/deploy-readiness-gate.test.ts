@@ -1,75 +1,18 @@
 /**
- * Unit tests for the deploy-readiness gate (defer auto-deploy while auto-mode runs).
+ * Unit tests for the deploy-readiness gate (`/api/status/deploy-readiness`).
  *
- * Covers WorkflowExecutor.isAnyAutoModeActive() / getAutoModeCounts() — the single
- * source of truth the /api/status/deploy-readiness route uses. The orchestrator maps
- * are the authoritative signal; the cloud-session `autoModeActive` flag is
- * deliberately NOT used because it is never reset to false.
+ * The auto-mode half of the gate (WorkflowExecutor.isAnyAutoModeActive) went
+ * with the story path in INT-2026-004, stage 3; what remains is the review
+ * channel: a sent-but-unconfirmed answer keeps the gate closed for ≤ 10 s.
  */
-
-import { describe, it, expect, beforeEach } from 'vitest';
-import { WorkflowExecutor } from '../../src/server/workflow-executor.js';
-
-interface OrchestratorMap {
-  autoModeSpecOrchestrators: Map<string, unknown>;
-  autoModeBacklogOrchestrators: Map<string, unknown>;
-}
-
-let executor: WorkflowExecutor;
-
-beforeEach(() => {
-  executor = new WorkflowExecutor();
-});
-
-describe('WorkflowExecutor.isAnyAutoModeActive', () => {
-  it('is false when no orchestrators are registered', () => {
-    expect(executor.isAnyAutoModeActive()).toBe(false);
-  });
-
-  it('is true when a spec orchestrator is registered', () => {
-    (executor as unknown as OrchestratorMap).autoModeSpecOrchestrators.set('spec-x', {});
-    expect(executor.isAnyAutoModeActive()).toBe(true);
-  });
-
-  it('is true when a backlog orchestrator is registered', () => {
-    (executor as unknown as OrchestratorMap).autoModeBacklogOrchestrators.set('/proj', {});
-    expect(executor.isAnyAutoModeActive()).toBe(true);
-  });
-
-  it('returns to false after the orchestrator is removed (run completed)', () => {
-    const maps = executor as unknown as OrchestratorMap;
-    maps.autoModeSpecOrchestrators.set('spec-x', {});
-    expect(executor.isAnyAutoModeActive()).toBe(true);
-    maps.autoModeSpecOrchestrators.delete('spec-x');
-    expect(executor.isAnyAutoModeActive()).toBe(false);
-  });
-});
-
-describe('WorkflowExecutor.getAutoModeCounts', () => {
-  it('reports zero counts when idle', () => {
-    expect(executor.getAutoModeCounts()).toEqual({
-      specOrchestrators: 0,
-      backlogOrchestrators: 0,
-    });
-  });
-
-  it('reports the number of registered spec and backlog orchestrators', () => {
-    const maps = executor as unknown as OrchestratorMap;
-    maps.autoModeSpecOrchestrators.set('spec-a', {});
-    maps.autoModeSpecOrchestrators.set('spec-b', {});
-    maps.autoModeBacklogOrchestrators.set('/proj', {});
-    expect(executor.getAutoModeCounts()).toEqual({
-      specOrchestrators: 2,
-      backlogOrchestrators: 1,
-    });
-  });
-});
 
 /**
  * INT-2026-004 (FA-34, V-12): the second half of the gate — a review answer
  * that was sent but not confirmed keeps the gate closed for at most 10 s.
- * The route in index.ts ORs this with isAnyAutoModeActive().
+ * Since stage 3 (story path removed) this is the only signal the route in
+ * index.ts reads.
  */
+import { describe, it, expect, beforeEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';

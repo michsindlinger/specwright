@@ -42,7 +42,11 @@ export interface PersistedCloudSessionV1 {
   runScriptPath: string;
   /** Ownership record of a per-session worktree this session created (if any). */
   worktree?: PersistedWorktreeV1;
-  /** True when the session was driven by an auto-mode orchestrator. */
+  /**
+   * Always `false` since INT-2026-004 stage 3 (auto-mode went with the story
+   * path). Kept in the on-disk shape so registries written by older backends
+   * still parse; readers must not act on it.
+   */
   autoMode: boolean;
   /** Display only. */
   workflowName?: string;

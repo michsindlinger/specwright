@@ -3,10 +3,7 @@ import { spawn, ChildProcess } from 'child_process';
 import { existsSync } from 'fs';
 import { getProviderCommand, getDefaultSelection } from './model-config.js';
 import type { ImageInfo } from './image-storage.js';
-import { SpecsReader } from './specs-reader.js';
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
-
-const specsReader = new SpecsReader();
 
 /**
  * Spawns a process using the user's login shell to ensure OAuth credentials
@@ -89,8 +86,7 @@ export class ClaudeHandler {
   public async handleChatSend(
     client: WebSocketClient,
     message: string,
-    projectPath: string,
-    specId?: string
+    projectPath: string
   ): Promise<void> {
     const sessionId = this.getOrCreateSession(client.clientId, projectPath);
     const session = this.sessions.get(sessionId)!;
@@ -121,15 +117,7 @@ export class ClaudeHandler {
 
     session.isStreaming = true;
 
-    // Load spec context if specId is provided
-    let fullMessage = message;
-    if (specId) {
-      console.log(`[Claude] Loading spec context for ${specId}`);
-      const specContext = await specsReader.getSpecContext(projectPath, specId);
-      fullMessage = `Context from Spec ${specId}:\n${specContext}\n\nUser Message: ${message}`;
-    }
-
-    await this.streamResponse(client, session, fullMessage);
+    await this.streamResponse(client, session, message);
   }
 
   /**

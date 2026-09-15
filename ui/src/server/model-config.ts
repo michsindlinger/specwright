@@ -152,12 +152,12 @@ const warnedLegacyModelIds = new Set<string>();
  * its `body.model.includes(",")` branch and is silently replaced by
  * `Router.default`, so every dropdown entry resolved to the same model.
  *
- * Story models are persisted in `kanban.json` (`specs-reader.updateStoryModel`),
- * so IDs written before that change still carry the bare slug. Without this
- * fallback they match no provider at all and drop into the anthropic default
- * branch of `getCliCommandForModel()` — running the story on the real Anthropic
- * account with a model name it does not know, and logging nothing but a
- * `console.log`.
+ * Persisted model ids (defaults and step defaults in `model-config.json`, the
+ * last model choice of a Vorhaben in the runtime state) written before that
+ * change still carry the bare slug. Without this fallback they match no
+ * provider at all and drop into the anthropic default branch of
+ * `getCliCommandForModel()` — running on the real Anthropic account with a
+ * model name it does not know, and logging nothing but a `console.log`.
  *
  * Deliberately NOT a suffix or fuzzy match: only the exact
  * `${provider.id},${modelId}` form counts, so a legacy ID can never bind to an
@@ -188,7 +188,7 @@ export function resolveModelId(
         warnedLegacyModelIds.add(modelId);
         console.warn(
           `[ModelConfig] legacy model id '${modelId}' resolved to '${legacyId}' — ` +
-          `update the stored value in kanban.json to silence this`
+          `update the stored value to silence this`
         );
       }
       return { provider, model };
@@ -597,7 +597,7 @@ export function setDefaults(providerId: string, modelId: string): ModelConfig {
  */
 export function getCliCommandForModel(modelId: string): { command: string; args: string[] } {
   // Searches all providers, including the legacy `<providerId>,<slug>` form for
-  // model IDs persisted in kanban.json before that migration.
+  // model IDs persisted before that migration.
   const resolved = resolveModelId(modelId);
   if (resolved) {
     const { provider, model } = resolved;

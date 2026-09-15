@@ -93,7 +93,7 @@ export class AosFileContextMenu extends LitElement {
 
   /**
    * Adjust position to keep menu within viewport bounds.
-   * Follows the same pattern as aos-context-menu.
+   * Positioned at the cursor, closes on outside click and Escape.
    */
   private adjustPosition(x: number, y: number): { x: number; y: number } {
     const estimatedWidth = 200;

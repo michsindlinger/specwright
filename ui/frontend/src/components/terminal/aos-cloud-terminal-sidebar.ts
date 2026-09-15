@@ -44,7 +44,7 @@ export interface TerminalSession {
   terminalType?: 'shell' | 'claude-code';
   /** Workflow session flag - if true, this is a workflow execution tab */
   isWorkflow?: boolean;
-  /** Workflow name (e.g., "execute-tasks") - used as tab title prefix */
+  /** Workflow name (e.g., "add-team-member") - used as tab title prefix */
   workflowName?: string;
   /** Workflow context (e.g., "FE-001") - used as tab title suffix */
   workflowContext?: string;
@@ -2754,7 +2754,7 @@ export class AosCloudTerminalSidebar extends LitElement {
    * Open a workflow tab programmatically.
    * Creates a new workflow session and opens the sidebar if closed.
    *
-   * @param workflowName - Workflow name (e.g., 'execute-tasks')
+   * @param workflowName - Workflow name (e.g., 'add-team-member')
    * @param workflowContext - Context identifier (e.g., spec ID, story ID)
    * @param projectPath - Project path for the session
    * @param options - Optional workflow configuration
