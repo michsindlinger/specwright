@@ -1,8 +1,8 @@
 # Spec: Web-UI zeigt Vorhaben statt Stories: Dokumente lesen, an Review-Punkten antworten
 
-> **Intent:** `intent.md` (INT-2026-004, Version 1.1.0)
+> **Intent:** `intent.md` (INT-2026-004, Version 1.2.0)
 > **Status:** freigegeben
-> **Erstellt:** 2026-09-15 · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-15
+> **Erstellt:** 2026-09-15 · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-15 (FA-01–FA-42; Ergänzung FA-43–FA-48 zu Intent 1.2.0 am selben Tag)
 > **Gelesene Projekt-Docs:** `docs/product-brief.md`, `docs/architecture.md`, `docs/security.md`, `docs/design.md` (Stand: Commit 8351674)
 
 <!-- Die Spec ist FACHLICH. Sie beschreibt, was Nutzer erleben und was fachlich gelten muss.
@@ -12,7 +12,7 @@
 
 ## 1. Zusammenfassung
 
-Nach diesem Vorhaben öffnet Michael die Web-UI und sieht als Erstes eine Liste aller Vorhaben seiner offenen Projekte mit Phase und dem Hinweis, welche gerade auf ihn warten (Z-01, AK-01 bis AK-04). Er liest `intent.md`, `spec.md` und `plan.md` in der UI so, wie sie in MacDown aussehen, am Mac und am Handy (Z-02, AK-05, AK-06), schreibt Anmerkungen an der Stelle, an der er gerade liest, und schickt sie gesammelt oder gibt das Dokument frei — die Antwort landet als Eingabe in der wartenden Claude-Sitzung (Z-03, AK-07 bis AK-11, AK-14, AK-15). Den nächsten Schritt eines Vorhabens startet er per Knopf und wählt dabei das Modell der Sitzung, vorbelegt mit einem Standard je Schritt (Z-04, AK-12, AK-16). Kanban, Story-Karten, Backlog und der Auto-Mode je Story sind aus der UI verschwunden; der Rahmen (Sidebar, Projekt-Tabs, Cloud-Terminal, Settings, Team, Mobile-Shell, Notizblock) bleibt (Z-05, AK-13, NZ-01).
+Nach diesem Vorhaben öffnet Michael die Web-UI und sieht als Erstes eine Liste aller Vorhaben seiner offenen Projekte mit Phase und dem Hinweis, welche gerade auf ihn warten (Z-01, AK-01 bis AK-04). Er liest `intent.md`, `spec.md` und `plan.md` in der UI so, wie sie in MacDown aussehen, am Mac und am Handy (Z-02, AK-05, AK-06), schreibt Anmerkungen an der Stelle, an der er gerade liest, und schickt sie gesammelt oder gibt das Dokument frei — die Antwort landet als Eingabe in der wartenden Claude-Sitzung (Z-03, AK-07 bis AK-11, AK-14, AK-15). Den nächsten Schritt eines Vorhabens startet er per Knopf und wählt dabei das Modell der Sitzung, vorbelegt mit einem Standard je Schritt (Z-04, AK-12, AK-16). Je Projekt gibt es eine Projekt-Seite, auf der er die fünf Projekt-Docs liest und bearbeitet (Z-06, AK-17); sie ist so geschnitten, dass später Messquellen und ein Verbesserungs-Loop dort Platz finden (RB-08, NZ-09). Kanban, Story-Karten, Backlog und der Auto-Mode je Story sind aus der UI verschwunden; der Rahmen (Sidebar, Projekt-Tabs, Cloud-Terminal, Settings, Team, Mobile-Shell, Notizblock) bleibt (Z-05, AK-13, NZ-01).
 
 ## 2. Nutzer und Abläufe
 
@@ -106,6 +106,17 @@ Alle Abläufe haben einen Nutzer: Michael. Am Mac und am Handy gelten dieselben 
 2. Michael öffnet das Vorhaben, liest `build-stand.md` (vorausgewählt) und wählt „Bau fortsetzen" (Ablauf E). Eine neue Sitzung übernimmt.
 3. Ergebnis: Die Fortsetzung läuft ohne Terminal-Tippen.
 
+### Ablauf J: Projekt-Docs lesen und bearbeiten (AK-17)
+
+1. Michael öffnet die Projekt-Seite eines Projekts (Mac: Reiter „Projekt" neben „Vorhaben", gebunden an das aktive Projekt; Handy: über die Projektkarte auf „Home" oder das Menü der Vorhaben-Seite).
+2. Die Seite zeigt den Abschnitt „Projekt-Docs" mit fünf Einträgen in fester Reihenfolge: Product Brief, Architektur, Sicherheit, Design, `CLAUDE.md` — je mit Stand (letzte Änderung) und dem Hinweis „nicht committet", falls die Datei im Projekt uncommittete Änderungen hat. Fehlt eine Datei, steht das dort mit dem Weg, sie anzulegen (Vorlage per `/intent`-Flow; die UI legt nichts an).
+3. Michael öffnet einen Eintrag: gerendert wie im Leser (Ablauf B, Schritt 4). Er wählt „Bearbeiten" und sieht den Text als Rohtext in einem Eingabefeld, mit Umschalter „Vorschau".
+4. Michael ändert den Text und wählt „Speichern". Die UI schreibt die Datei im Projekt; die Seite zeigt „gespeichert HH:MM · nicht committet". Commit bleibt Sache von Michael oder der nächsten Sitzung.
+5. Hat sich die Datei seit dem Öffnen auf der Platte geändert (Stand beim Öffnen ≠ aktueller Stand), lehnt die UI das Speichern ab, zeigt beide Stände und bietet „neu laden" (die eigene Änderung bleibt im Feld erhalten) oder „trotzdem überschreiben".
+6. Ungespeicherte Änderungen bleiben beim Wechsel der Seite als Entwurf erhalten (wie Anmerkungen, FA-26) und werden beim Öffnen des Eintrags mit Hinweis wieder angeboten.
+7. Am Handy: derselbe Ablauf in einem Pane; Bearbeiten und Vorschau als zwei Reiter.
+8. Ergebnis: Die Dokumente, die jeder Befehl liest, sind ohne MacDown und ohne Terminal gepflegt; die Projekt-Seite hat weitere Abschnitte frei für später (RB-08).
+
 ## 3. Fachliche Anforderungen
 
 <!-- Eine Zeile = eine prüfbare Aussage. Modalverben groß. Herkunft = AK/Z/NZ aus intent.md oder „neu (Grund)". -->
@@ -193,7 +204,18 @@ Bei `bypass: ja` zeigt die Phase den Zusatz „Spec entfällt".
 | FA-41 | Je Schritt (Absicht, Spec, Plan, Bau) MUSS ein Standardmodell einstellbar sein, in den Einstellungen unter „Modelle" neben dem heutigen allgemeinen Standard; ohne Einstellung gilt Claude Opus; die Einstellung gilt für alle Projekte. | AK-16 | Test |
 | FA-42 | Die Übersicht und die Vorhaben-Seite MÜSSEN bei einer zugeordneten Sitzung deren Modell nennen. | AK-16; neu (Grund: Michael soll sehen, welches Modell gerade arbeitet) | Stichprobe |
 
-### 3.5 Abbau
+### 3.5 Projekt-Docs
+
+| ID | Anforderung | Herkunft | Prüfung |
+|---|---|---|---|
+| FA-43 | Wenn Michael die Projekt-Seite eines Projekts öffnet, MUSS die UI die fünf Projekt-Docs (B-12) in fester Reihenfolge mit Stand und Commit-Hinweis listen; fehlende Dateien werden als fehlend genannt, nicht angelegt. | AK-17, B-12 | Test |
+| FA-44 | Wenn Michael ein Projekt-Doc öffnet, MUSS die UI es gerendert zeigen wie ein Vorhaben-Dokument (FA-17) und auf „Bearbeiten" den Rohtext in einem Eingabefeld mit Umschalter „Vorschau" anbieten — am Mac und am Handy. | AK-17 | Test + Stichprobe (Screenshot) |
+| FA-45 | Wenn Michael „Speichern" wählt, MUSS die UI genau diese Datei im registrierten Projektverzeichnis schreiben, keine andere, und danach „gespeichert HH:MM · nicht committet" zeigen; sie DARF NICHT committen. | AK-17; CLAUDE.md (keine automatischen Commits) | Test |
+| FA-46 | Falls die Datei seit dem Öffnen auf der Platte geändert wurde, MUSS die UI das Speichern zurückhalten, beide Stände nennen und „neu laden" (eigene Änderung bleibt im Feld) oder „trotzdem überschreiben" anbieten. | AK-17; neu (Grund: Agent-Sitzungen ändern Projekt-Docs) | Test |
+| FA-47 | Ungespeicherte Änderungen an einem Projekt-Doc MÜSSEN als Entwurf erhalten bleiben — über Seitenwechsel, Neuladen und Gerätewechsel — bis Michael speichert oder verwirft. | AK-17, FA-26 | Test |
+| FA-48 | Die Projekt-Seite MUSS als Sicht mit benannten Abschnitten aufgebaut sein (heute: „Projekt-Docs", „Neues Vorhaben"), sodass weitere Abschnitte (Messquellen, Läufe, Befunde) hinzukommen, ohne Übersicht, Leser oder Vorhaben-Seite zu ändern; und die Zeile eines Vorhabens MUSS eine Herkunft (von Michael / automatisch) aufnehmen können, ohne dass die Übersicht umgebaut wird. Sichtbar wird davon heute nichts. | RB-08, NZ-09 | Review |
+
+### 3.6 Abbau
 
 | ID | Anforderung | Herkunft | Prüfung |
 |---|---|---|---|
@@ -232,6 +254,11 @@ Bei `bypass: ja` zeigt die Phase den Zusatz „Spec entfällt".
 | Phase PR, Sitzung wartet | „wartet auf dich · Bau · plan.md"; kein „Freigeben" | FA-20, FA-29 |
 | Absicht-Entwurf ohne Sitzung | kein nächster Schritt; Hinweis „Entwurf im Terminal fortsetzen" (bestätigt, Product Owner 15.09.) | FA-12 |
 | Alte Adresse einer Kanban- oder Story-Sicht wird aufgerufen | Übersicht wird gezeigt | FA-36 |
+| Projekt-Doc fehlt (z. B. Projekt ohne `docs/design.md`) | Eintrag „fehlt" mit Hinweis auf die Vorlage; kein Anlegen aus der UI | FA-43 |
+| Projekt-Doc wird gespeichert, während eine Sitzung im Worktree dieselbe Datei ändert | zwei Arbeitskopien, kein Konflikt in der UI; Git löst es beim Merge wie jede parallele Änderung; die Projekt-Seite nennt, dass Worktrees existieren | FA-45, AN-S18 |
+| Projekt-Doc auf der Platte geändert, während Michael editiert | Speichern zurückgehalten, beide Stände, „neu laden" oder „trotzdem überschreiben" | FA-46 |
+| Speichern schlägt fehl (Rechte, Platte) | Fehler inline mit Ursache; Text bleibt im Feld und als Entwurf | FA-45, FA-47 |
+| Michael bearbeitet `CLAUDE.md` am Handy | möglich, gleicher Ablauf; kein Sonderfall | FA-44 |
 
 ## 5. Daten, fachlich
 
@@ -248,6 +275,8 @@ Bei `bypass: ja` zeigt die Phase den Zusatz „Spec entfällt".
 | Standardmodell je Schritt (vier Werte) | entsteht beim Einstellen; ändert sich beim Umstellen; ohne Einstellung Claude Opus | Michael | intern (UI-Konfiguration wie das heutige Standardmodell) |
 | Letzte Modellwahl je Vorhaben und Schritt | entsteht beim Start eines Schritts; wird beim nächsten Start desselben Schritts vorbelegt | Michael | intern |
 | Kennzahl EK-01/EK-02 (Anzahl und Dauer der Antworten) | aus dem Protokoll ablesbar | Michael | intern |
+| Projekt-Docs (fünf Dateien je Projekt) | gelesen aus dem Projekt; **geändert** beim Speichern aus der UI (nur diese fünf, nur im Projekt, ohne Commit) | Michael | wie das jeweilige Projekt (bei Specwright öffentlich) |
+| Entwürfe zu Projekt-Docs (Datei, Text, Stand beim Öffnen) | entstehen beim Bearbeiten; verschwinden beim Speichern oder Verwerfen; auf allen Geräten dieselben | Michael | intern (können Projektinhalt enthalten, wie Anmerkungen) |
 | Story-Daten der Projekte (Kanban, Backlog) | verschwinden aus der UI; bleiben als Dateien liegen, unverändert | niemand mehr über die UI | wie bisher |
 
 ## 6. Was der Nutzer sieht
@@ -258,6 +287,7 @@ Bei `bypass: ja` zeigt die Phase den Zusatz „Spec entfällt".
 - **Vorhaben-Seite:** Kopf mit Kennung, Titel, Phase, Zustand und — falls wartend — dem Review-Hinweis („Sitzung ‚spec INT-2026-004' wartet auf deine Antwort zu spec.md · Schritt Spec"); Dokumentwahl in fester Reihenfolge; Leser mit MacDown-naher Darstellung inklusive Mermaid; Randmarken je Absatz für Anmerkungen (Mac), Tippen auf Absatz (Handy); Anmerkungen als Marken im Text; Sendeleiste unten mit Zähler, Zielsitzung, „Änderungen schicken", „Freigeben" (nur mit Review-Dokument), sonst Grund + nächster Schritt; Protokoll der gesendeten Antworten unter dem Kopf, aufklappbar; nächster Schritt als einziger Hauptknopf mit Modellwahl daneben, wenn keine Sitzung wartet oder arbeitet; bei zugeordneter Sitzung deren Modell im Kopf.
 - **Sammelansicht:** alle Anmerkungen des Dokuments in Dokumentreihenfolge, je Bezug + Text, bearbeiten/löschen, dann „Änderungen schicken". Am Handy als Bogen von unten.
 - **Bestätigung „Freigeben":** Dokument, Version/Stand, Zielsitzung, Hinweis auf ungesendete Anmerkungen; ein Knopf.
+- **Projekt-Seite (Mac: Reiter „Projekt" neben „Vorhaben", an das aktive Projekt gebunden; Handy: über die Projektkarte auf „Home" oder das Menü der Vorhaben-Seite):** Kopf mit Projektname, Arbeitskopie, Hinweis auf Worktrees; Abschnitt „Projekt-Docs" mit fünf Einträgen (Name, Stand, „nicht committet"); Eintrag öffnen → Leser mit Umschalter „Bearbeiten | Vorschau", Eingabefeld für Rohtext, „Speichern" als einzige Hauptaktion, Zeile „gespeichert HH:MM · nicht committet"; Konflikthinweis mit beiden Ständen; Abschnitt „Neues Vorhaben". Weitere Abschnitte (Messquellen, Läufe, Befunde) sind vorgesehen, aber nicht sichtbar (RB-08).
 - **Rahmen:** unverändert bis auf zwei Stellen: Zähler/Abzeichen zählen wartende Vorhaben; Einstellungen → Modelle bekommt vier Felder „Standard je Schritt" (Absicht, Spec, Plan, Bau) neben dem heutigen Standardmodell. Story-Reiter und Karten am Handy entfallen (dritte Stufe).
 - **Weniger ist mehr:** je Bildschirm eine Hauptaktion — Übersicht: Zeile öffnen; Vorhaben-Seite: Antworten oder nächster Schritt; kein Element ohne Aufgabe.
 - **Mocks (Pflicht nach design.md §6: neue Seite, neuer Ablauf, geänderte Navigation):**
@@ -267,6 +297,7 @@ Bei `bypass: ja` zeigt die Phase den Zusatz „Spec entfällt".
     - `design/04-vorhaben-anmerkung-handy.png` — Anmerkung am Handy: Tippen auf Absatz, Eingabefeld mit Bezug, Sendeleiste
     - `design/05-sammelansicht.png` — gesammelte Anmerkungen in Dokumentreihenfolge (Mac und Handy)
     - `design/06-zustaende.png` — Laden, Fehler, „nicht bestätigt", Grund-Hinweise der Sendeleiste; Einstellungen → Modelle mit den vier Schritt-Standards
+    - `design/07-projekt-seite.png` — Projekt-Seite am Mac (Liste der fünf Docs, Editor mit Vorschau, Konflikthinweis) und am Handy (Bearbeiten | Vorschau)
     - Die Mocks liegen seit 15.09. unter `design/` (je `.png` mit `.html`-Quelle, gemeinsames `mock.css`); der Plan bezieht sich auf sie. Mock 03 zeigt zwei Zustände (03a wartend, 03b ohne Sitzung), Mock 04 und 05 je Mac und Handy.
 
 ## 7. Bedenken aus den Projekt-Docs
@@ -300,6 +331,12 @@ Geprüft gegen Stand 8351674.
 | product-brief.md §5 (Zeile „Web-UI: Projekte, Kanban, Auto-Mode …"), §8 („Web-UI-Pfad … bis Phase 5 unverändert"; „Story … nur noch im Web-UI-Pfad") | Drei Stellen beschreiben den Story-Pfad als Stand. | FA-36 | offen — an den Plan delegiert, nicht blockierend. Vorschlag: in der PR der dritten Stufe nachziehen (analog RB-07). |
 | architecture.md §3 Datenbesitz; security.md §1 (UI-Konfiguration intern, ungestaged) | Standardmodell je Schritt und letzte Modellwahl je Vorhaben sind neue Konfigurations- und Zustandsdaten; heute liegt das Standardmodell in der UI-Konfiguration, die Story-Wahl in den Story-Daten (die entfallen). | FA-40, FA-41, FA-42 | offen — an den Plan delegiert, nicht blockierend. Vorschlag: Schritt-Standards neben dem heutigen Standardmodell in der Modell-Konfiguration; letzte Wahl in der Zuordnung (Zeile oben). Keine neue Abhängigkeit (ER-02): Anbieter und Modelle sind konfiguriert. |
 | intent NZ-01 (Settings bleiben, wie sie sind) | FA-41 fügt der Modelle-Seite vier Felder hinzu. | FA-41 | geklärt: Michael 15.09. („so wie heute bei den Stories … einstellbar"); kein Neubau, eine Ergänzung im bestehenden Abschnitt. Bestätigung: AN-S15. |
+| security.md §2 (Agent darf Repo-Dateien auf Branches ändern; T-06 UI führt Befehle aus), §5, §6 (Endpunkt anlegen oder ändern) | Die UI schreibt erstmals Dateien in ein Projekt-Repo. Fachlich begrenzt auf die fünf Projekt-Docs im registrierten Projektverzeichnis (FA-45), kein Commit, keine anderen Pfade. | FA-45 | offen — an den Plan delegiert, nicht blockierend. Der Plan nennt laut §6: Zugriffsbegrenzung (bestehender Kanal), Eingabevalidierung (nur die fünf Dateinamen, keine Pfadanteile, Größenlimit), Datenklasse. |
+| CLAUDE.md (global): „Never create automatic Git commits"; architecture.md §3 (Vorhaben und Projekt-Docs gehören dem Projekt-Repo, Speicher Git) | Speichern aus der UI erzeugt uncommittete Änderungen im Arbeitsbaum des Projekts; der Besitz bleibt beim Repo. | FA-45 | geklärt fachlich (FA-45: kein Commit; Hinweis „nicht committet"). Wer committet: Michael oder die nächste Sitzung — wie heute nach MacDown. |
+| architecture.md AR-04 (Projektverzeichnisse nur über die zentrale Auflösung) | Lesen und Schreiben der fünf Dateien muss über dieselbe Auflösung laufen wie alles andere. | FA-43, FA-45 | offen — an den Plan delegiert, nicht blockierend (Review-Regel, kein fachlicher Spielraum). |
+| design.md §6 (neue Seite → Mock Pflicht) | Die Projekt-Seite ist eine neue Seite. | Abschnitt 6 | geklärt: Mock 07, gleiche Sitzung wie Mocks 01–06. |
+| product-brief.md §7 (keine Firmenwissens-Ablage) | Der Editor darf nicht zur allgemeinen Dateiablage werden. | FA-43 | geklärt fachlich (B-12: genau fünf Dateien; ADRs und andere `docs/`-Dateien nicht, AN-S16). |
+| intent RB-08 / NZ-09 (Loop vorsehen, nicht bauen) | Vorsorge ohne sichtbare Funktion: Projekt-Seite mit Abschnitten, Zeilenmodell mit Herkunftsfeld. Was „vorsehen" konkret kostet, entscheidet der Plan; die Regel „alles messbar" gehört in Vorlagen (NZ-04) → eigenes Vorhaben. | FA-48 | offen — an den Plan delegiert, nicht blockierend. Vorschlag: Projekt-Seite als Sicht mit Abschnittsliste; Vorhaben-Zeile mit optionalem Feld „Herkunft", das die Übersicht heute nicht anzeigt; sonst nichts. Eigenes Vorhaben für Loop + Messbarkeits-Regel als Board-Karte anlegen. |
 | product-brief.md §2 (Nutzer: Agent, der ein Projekt frisch öffnet) | Unberührt: Der Agent liest weiter Dateien, nicht die UI (AR-06). | — | geklärt: keine Reibung. |
 
 ## 8. Nicht im Umfang
@@ -315,7 +352,9 @@ Geprüft gegen Stand 8351674.
 - NZ-07: Keine Migration alter Story-Daten.
 - NZ-08: Keine Mehrbenutzer-Funktionen, keine Anmeldung.
 - Zusätzlich ausgeschlossen beim Schreiben der Spec:
-    - Lesen der Projekt-Docs (`docs/product-brief.md` usw.) in der UI: Das heutige Docs-Panel gehört zur Arbeitsfläche und entfällt mit ihr; ein Leser für Projekt-Docs ist ein Kandidat für ein Folge-Vorhaben (AN-S08).
+    - Das heutige Docs-Panel (liest die v3-Produktdokumente unter dem Werkzeug-Ordner) entfällt mit der Arbeitsfläche (AN-S08). Projekt-Docs (B-12) werden stattdessen auf der Projekt-Seite gelesen und bearbeitet (Ablauf J) — seit 1.2.0.
+    - Bearbeiten anderer Dateien als der fünf Projekt-Docs (ADRs, Vorlagen, Vorhaben-Dokumente, beliebige Repo-Dateien); Anlegen fehlender Projekt-Docs aus der UI; Commit aus der UI.
+    - Self-Improving-Loop (Cron, Messquellen wie BetterStack oder Sentry, automatische Absichten) und die Regel „alles ist messbar" in Vorlagen oder `CLAUDE.md`-Vorlage (NZ-09) — eigenes Vorhaben; hier nur die Vorsorge nach FA-48.
     - Wiederaufnahme eines Absicht-Entwurfs per Knopf: Der `/intent`-Workflow kennt keine Wiederaufnahme (NZ-04); Phase Absicht hat keinen nächsten Schritt.
     - Merge des PR aus der UI (ER-07).
     - Automatisches Nachsenden von Anmerkungen, sobald eine Sitzung bereit wird (FA-30).
@@ -343,16 +382,21 @@ Geprüft gegen Stand 8351674.
 - **AN-S12:** Alles, was weder Story-Pfad (B-07) noch Rahmen (B-08) ist (Prompt-Vorlagen, SDK-Chat, Plan-Review), bleibt unverändert. — bestätigt am 2026-09-15 von Product Owner
 - **AN-S13:** Nach dem Senden verschwinden die Anmerkungen aus dem Dokument und sind nur noch im Protokoll sichtbar (Ablauf C, Schritt 8). Alternative wäre, sie als „gesendet" im Text stehen zu lassen. — bestätigt am 2026-09-15 von Product Owner
 - **AN-S14:** Am Mac wechselt „nächster Schritt" ins Terminal der neuen Sitzung, am Handy nicht (FA-35). — bestätigt am 2026-09-15 von Product Owner
+- **AN-S16:** Projekt-Docs sind genau die fünf Dateien aus B-12; ADRs und andere Dateien unter `docs/` sind in diesem Vorhaben weder lesbar noch bearbeitbar in der UI (engste Auslegung von „die wichtigen Specwright-Dateien … etc."). — bestätigt am 2026-09-15 von Product Owner
+- **AN-S17:** Speichern schreibt ohne Commit; Stand-Konflikte werden wie bei der Freigabe erkannt (Stand beim Öffnen ≠ aktueller Stand), mit „trotzdem überschreiben" als bewusster Ausnahme. — bestätigt am 2026-09-15 von Product Owner
+- **AN-S18:** Bearbeitet wird die Kopie im registrierten Projektverzeichnis; existieren Worktrees, nennt die Projekt-Seite das, bietet aber keine Wahl der Arbeitskopie. — bestätigt am 2026-09-15 von Product Owner
+- **AN-S19:** Die Projekt-Seite ist am Mac ein Reiter „Projekt" neben „Vorhaben" (an das aktive Projekt gebunden), am Handy über die Projektkarte auf „Home" und das Menü der Vorhaben-Seite erreichbar; „Neues Vorhaben" liegt dort und bleibt zusätzlich in der Übersicht. — bestätigt am 2026-09-15 von Product Owner
+- **AN-S20:** Loop-Vorsorge (FA-48) heißt: Abschnittsstruktur der Projekt-Seite und ein freies Herkunftsfeld je Vorhaben-Zeile; keine Konfiguration, keine Anzeige, keine Datenquelle in diesem Vorhaben. — bestätigt am 2026-09-15 von Product Owner
 - **AN-S15:** Standardmodelle je Schritt gelten für alle Projekte und liegen in den Einstellungen unter „Modelle"; die Wahl beim Start gilt für diesen Start und wird je Vorhaben und Schritt als Vorbelegung gemerkt (FA-40, FA-41). Engere Alternativen (nur globaler Standard ohne Schritt-Unterscheidung; kein Merken je Vorhaben) wären weniger als „wie heute je Story". — bestätigt am 2026-09-15 von Product Owner
 
 ## 10. Freigabe
 
 - [x] Jede FA hat Herkunft und Prüfung.
-- [x] Jedes AK der intent.md ist von mindestens einer FA abgedeckt (Matrix unten, AK-01 bis AK-16).
+- [x] Jedes AK der intent.md ist von mindestens einer FA abgedeckt (Matrix unten, AK-01 bis AK-17).
 - [x] Abschnitt 7 vollständig geklärt oder begründet offen (offene Zeilen: an den Plan delegiert, nicht blockierend).
 - [x] Keine Technik, keine Architektur, keine Dateinamen in diesem Dokument (Dokumentnamen der Vorhaben sind Fachbegriffe; Pfade nur in Abschnitt 7 als Herkunft).
 - [x] Bei risikoklasse hoch: Tech Lead hat gelesen. (nicht zutreffend, mittel)
-- **Freigegeben:** Product Owner (Michael Sindlinger), 2026-09-15, Commit siehe `git log -- spec.md`
+- **Freigegeben:** Product Owner (Michael Sindlinger), 2026-09-15, Commit siehe `git log -- spec.md` (zwei Freigaben: Erstfassung, Ergänzung 1.2.0)
 
 **Zuordnung AK → FA:**
 
@@ -374,3 +418,5 @@ Geprüft gegen Stand 8351674.
 | AK-14 | FA-23, FA-24 |
 | AK-15 | FA-25 |
 | AK-16 | FA-35, FA-40, FA-41, FA-42 |
+| AK-17 | FA-43, FA-44, FA-45, FA-46, FA-47 |
+| RB-08 | FA-48 |

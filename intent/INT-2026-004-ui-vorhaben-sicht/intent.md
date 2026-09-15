@@ -2,7 +2,7 @@
 intent_id: "INT-2026-004"  
 titel: "Web-UI zeigt Vorhaben statt Stories: Dokumente lesen, an Review-Punkten antworten"  
 status: "angenommen"  
-version: "1.1.0"  
+version: "1.2.0"  
 autor: "Michael Sindlinger (Idee, 15.09.2026) · Claude (Text, Belege)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-15"  
@@ -18,7 +18,7 @@ bezuege:
   board_karte: "Specwright — Backlog Board · „AI-native SDLC v4 — Flow nach Anthropic-Playbook neu aufsetzen" (In Arbeit, Phase 5) — eigene Karte folgt"  
   adr: []  
   ersetzt: ""  
-schlagworte: [web-ui, vorhaben, review-punkt, phase-5, story-pfad-abbau, mobil]  
+schlagworte: [web-ui, vorhaben, review-punkt, phase-5, story-pfad-abbau, mobil, projekt-docs]  
 freigabe:  
   von: "Product Owner (Michael Sindlinger)"  
   am: "2026-09-15"  
@@ -32,8 +32,8 @@ freigabe:
 ## Absicht in drei Sätzen
 
 - **Zweck:** Michael soll am Mac und am Handy sehen, welche Vorhaben in seinen Projekten in welcher Phase stehen, die drei Dokumente eines Vorhabens (`intent.md`, `spec.md`, `plan.md`) bequem lesen und an jedem Freigabe-Punkt des Flows aus der Oberfläche antworten können — ohne ins Terminal zu tippen.
-- **Kernaufgaben:** (1) Eine Übersicht aller Vorhaben über alle offenen Projekte mit Phase und „wartet auf dich"; (2) die Dokumente lesbar anzeigen; (3) Anmerkungen und Freigaben aus der Oberfläche in die wartende Claude-Sitzung bringen; (4) den Story-Pfad (Kanban, Auto-Mode je Story) aus der Oberfläche entfernen.
-- **Endzustand:** Ein Vorhaben läuft von `/intent` bis zum PR, und Michael hat jede Freigabe am Handy oder Mac in der UI gegeben (AK-01 bis AK-15); Kanban-, Story- und Backlog-Sichten gibt es nicht mehr (AK-13).
+- **Kernaufgaben:** (1) Eine Übersicht aller Vorhaben über alle offenen Projekte mit Phase und „wartet auf dich"; (2) die Dokumente lesbar anzeigen; (3) Anmerkungen und Freigaben aus der Oberfläche in die wartende Claude-Sitzung bringen; (4) den Story-Pfad (Kanban, Auto-Mode je Story) aus der Oberfläche entfernen; (5) die Projekt-Docs eines Projekts (`docs/product-brief.md`, `architecture.md`, `security.md`, `design.md`, `CLAUDE.md`) in der Oberfläche lesen und bearbeiten.
+- **Endzustand:** Ein Vorhaben läuft von `/intent` bis zum PR, und Michael hat jede Freigabe am Handy oder Mac in der UI gegeben (AK-01 bis AK-16), die Projekt-Docs pflegt er in der UI (AK-17); Kanban-, Story- und Backlog-Sichten gibt es nicht mehr (AK-13).
 
 ## 1. Problem und Anlass
 
@@ -49,7 +49,7 @@ Der Story-Pfad sitzt tief: 87 Stellen in 12 Dateien unter `ui/` lesen `kanban.js
 
 | Wer oder was | Was ändert sich |
 |---|---|
-| Michael am Mac | Startseite zeigt Vorhaben statt Specs/Kanban; Dokumente und Freigaben in der UI; Kanban, Story-Sichten, Backlog, Auto-Mode je Story verschwinden |
+| Michael am Mac | Startseite zeigt Vorhaben statt Specs/Kanban; Dokumente und Freigaben in der UI; Projekt-Docs je Projekt lesen und bearbeiten; Kanban, Story-Sichten, Backlog, Auto-Mode je Story verschwinden |
 | Michael am Handy | Neuer Hauptfall: Dokument lesen, Anmerkung schreiben, freigeben — ohne Terminal |
 | Claude-Sitzungen im Cloud-Terminal | Unverändert; erhalten Anmerkungen und Freigaben als Eingabe statt per Tastatur |
 | Systeme | `ui/src/server/` (Backend, WebSocket, Deploy-Gate), `ui/frontend/src/` (Arbeitsfläche, Mobile), `ui/tests/`, `docs/architecture.md` §10; Workflows nur, falls OF-01 einen Marker verlangt; Cloud-Host (Auto-Deploy bei Merge). **Unberührt:** Kanban-MCP-Server, Installer, Manifest, Vorlagen. |
@@ -63,6 +63,7 @@ Der Story-Pfad sitzt tief: 87 Stellen in 12 Dateien unter `ui/` lesen `kanban.js
 - **Z-03 Antworten:** An jedem Freigabe-Punkt des Flows aus der UI antworten (freigeben oder Änderungen mit Bezug auf Absatz oder ID), und zwar an der Stelle im Dokument, an der Michael gerade liest; die Antwort erreicht die wartende Sitzung.
 - **Z-04 Starten:** Den nächsten Schritt eines Vorhabens (`/intent`, `/spec`, `/plan`, `/build`) aus der UI in einer Sitzung anstoßen.
 - **Z-05 Ein Ablauf:** Die UI zeigt nur noch den Vorhaben-Flow; der Story-Pfad ist aus der Oberfläche verschwunden.
+- **Z-06 Projekt-Docs pflegen:** Die Dokumente, die jeder Befehl des Flows liest (Projekt-Docs, `CLAUDE.md`), je Projekt in der UI lesen und bearbeiten — am Mac und am Handy. Ergänzt 15.09. (Michael: „die wichtigen Specwright-Dateien … editieren können").
 
 ## 4. Nicht-Ziele
 
@@ -70,12 +71,13 @@ Der Story-Pfad sitzt tief: 87 Stellen in 12 Dateien unter `ui/` lesen `kanban.js
 
 - **NZ-01:** Kein Neubau des Rahmens — Workspace-Sidebar, Projekt-Tabs, Cloud-Terminal (tmux, Replay, Hooks), Settings, Team, Mobile-Shell bleiben, wie sie sind. Entschieden Michael 15.09. („Arbeitsfläche neu, Rahmen bleibt").
 - **NZ-02:** Kein Umbau oder Abbau des Kanban-MCP-Servers und des Memory-Stores (`specwright/scripts/mcp/`); sie bleiben installiert. Abbau ist ein eigenes Vorhaben (Aufräum-Karte im Board).
-- **NZ-03:** Kein Editieren der Dokumente in der UI — die Dokumente schreibt der Agent; Michael schreibt Anmerkungen. Entschieden Michael 15.09. („Anmerkungen + Knopf → Sitzung").
+- **NZ-03:** Kein Editieren der **Vorhaben-Dokumente** (`intent.md`, `spec.md`, `plan.md`, `build-stand.md`) in der UI — die schreibt der Agent; Michael schreibt Anmerkungen. Entschieden Michael 15.09. („Anmerkungen + Knopf → Sitzung"). Präzisiert 15.09.: Projekt-Docs (B-12) sind davon ausgenommen (Z-06).
 - **NZ-04:** Keine Änderung am Flow selbst (Vorlagen, Schritte, Freigabe-Regeln der Workflows). Ausnahme nur, falls OF-01 einen Marker verlangt.
 - **NZ-05:** Keine Website und keine Vault-Zwischenlösung „Cockpit" (beide aus Gesamtplan Phase 5); Letztere entfällt durch dieses Vorhaben.
 - **NZ-06:** Kein Umbau des externen Plan-Reviews (Plan-Review-Orchestrator, Reviewer-Konfiguration) und der SDK-Chat-Ansicht.
 - **NZ-07:** Keine Migration alter `kanban.json`- oder Backlog-Daten; sie bleiben in den Projekten liegen und werden nicht mehr gelesen.
 - **NZ-08:** Keine Mehrbenutzer-Funktionen, keine Anmeldung (`docs/product-brief.md` §7, `docs/security.md` §2).
+- **NZ-09:** Kein Self-Improving-Loop (Cron je Projekt, der Messprotokolle aus Produktion/Staging — eigene Logs und Traces, Dienste wie BetterStack oder Sentry — prüft und daraus neue Absichten anlegt) und keine Regel „alles ist messbar" in Vorlagen oder `CLAUDE.md`-Vorlage. Beides ist ein eigenes Vorhaben (Framework, NZ-04). Die UI sieht dafür Platz vor (RB-08). Entschieden Michael 15.09. („noch kein Implementierungsgegenstand, aber vorsehen").
 
 ## 5. Abnahmekriterien
 
@@ -101,6 +103,7 @@ Der Story-Pfad sitzt tief: 87 Stellen in 12 Dateien unter `ui/` lesen `kanban.js
 | AK-14 | Solange Michael in einem Dokument liest, MUSS er an der gerade sichtbaren Stelle eine Anmerkung beginnen können, ohne zum Dokumentende zu scrollen; der Bezug (Absatz, Überschrift oder ID) wird von der Stelle übernommen. | Z-03 | Test + Stichprobe |
 | AK-15 | Wenn Michael mehrere Anmerkungen an verschiedenen Stellen geschrieben hat, MUSS die UI sie gesammelt und in Dokumentreihenfolge zeigen, bevor er sie schickt. | Z-03 | Test |
 | AK-16 | Wenn Michael den nächsten Schritt eines Vorhabens startet, MUSS die UI ihn das Modell der Sitzung wählen lassen — vorbelegt mit einem je Schritt (Absicht, Spec, Plan, Bau) einstellbaren Standard, der ohne Einstellung Claude Opus ist, wählbar aus allen in den Einstellungen konfigurierten Modellen (z. B. GLM, Grok), wie heute je Story. | Z-04 | Test |
+| AK-17 | Wenn Michael ein Projekt geöffnet hat, MUSS die UI dessen Projekt-Docs (B-12) gerendert zeigen und als Text bearbeiten und speichern lassen — am Mac und am Handy; Speichern schreibt die Datei im Projekt, ohne Commit. | Z-06 | Test + Stichprobe (Screenshot) |
 
 ## 6. Randbedingungen
 
@@ -115,6 +118,7 @@ Der Story-Pfad sitzt tief: 87 Stellen in 12 Dateien unter `ui/` lesen `kanban.js
 | RB-05 | Sicherheit | Repo ist öffentlich: keine Hostnamen, Pfade, Nutzer, Ports des Cloud-Hosts; Anmerkungen und Freigaben laufen nur über den bestehenden Backend-Kanal (netzebenen-begrenzt), kein neuer offener Endpunkt. | `docs/security.md` §2, §5 |
 | RB-06 | Betrieb | Tests der entfernten Story-Sichten werden mit den Komponenten entfernt und in `plan.md` §14 gelistet; die Bezugsliste `ui/tests/known-failures.txt` wird nur nach CI-Lauf geändert und nie gekürzt, damit etwas grün wird. | `CLAUDE.md` „Definition of Done", „Nie"; Hook `protect-tests` |
 | RB-07 | Betrieb | `docs/architecture.md` §10 und `docs/design.md` §7 werden in derselben PR nachgezogen (Abweichung „Story pro Session" entfällt). | `CLAUDE.md` „Arbeitsweise" |
+| RB-08 | Design | Die Arbeitsfläche ist so geschnitten, dass sie später ohne Umbau einen Self-Improving-Loop aufnimmt (NZ-09): je Projekt eine Projekt-Seite (B-13) mit Abschnitten, in der heute die Projekt-Docs liegen und später Messquellen, Läufe und Befunde; und ein Vorhaben kann eine Herkunft tragen (von Michael angelegt oder automatisch aus einer Messung), die Übersicht und Leser anzeigen, ohne umgebaut zu werden. Keine Funktion davon wird jetzt gebaut. | Michael, 15.09. („in der neuen UI bereits vorsehen, damit wir später keine teuren Änderungen machen müssen") |
 
 ## 7. Offene Fragen
 
@@ -146,6 +150,8 @@ Der Story-Pfad sitzt tief: 87 Stellen in 12 Dateien unter `ui/` lesen `kanban.js
 - **B-09 Sitzung des Vorhabens:** Eine Cloud-Terminal-Sitzung im Projekt des Vorhabens, in der ein v4-Befehl mit dessen Kennung läuft oder zuletzt lief. Zuordnung legt die Spec fest.
 - **B-10 Drei PRs:** Lieferung in drei Pull Requests — (1) Übersicht und Lesen, (2) Review-Kanal (Anmerkungen, Freigabe, nächster Schritt), (3) Abbau des Story-Pfads. Jede PR für sich `verify: OK` und deploybar; genauer Schnitt, Reihenfolge und Abhängigkeiten in `plan.md` §7. Entschieden 2026-09-15 (Product Owner, OF-03).
 - **B-11 Modell:** Die Modellwahl einer Claude-Sitzung (Anbieter + Modell), wie sie heute in den Einstellungen unter „Modelle" konfiguriert ist und je Story auf der Karte gewählt wird. Ergänzt 2026-09-15 (Product Owner, AK-16).
+- **B-12 Projekt-Docs:** Die fünf Dateien, die jeder Befehl des Flows liest: `docs/product-brief.md`, `docs/architecture.md`, `docs/security.md`, `docs/design.md` und `CLAUDE.md` im Repo-Root des Projekts (AR-07). Nicht dazu: ADRs, Vorhaben-Dokumente, Vorlagen unter `specwright/`. Ergänzt 2026-09-15 (Product Owner, AK-17).
+- **B-13 Projekt-Seite:** Die Sicht auf ein einzelnes Projekt in der Arbeitsfläche, getrennt von der projektübergreifenden Übersicht: heute Projekt-Docs (B-12) und „Neues Vorhaben"; später Messquellen und Loop (RB-08). Ergänzt 2026-09-15 (Product Owner).
 
 ## 9. Erfolgskennzahlen
 
@@ -204,6 +210,7 @@ Der Story-Pfad sitzt tief: 87 Stellen in 12 Dateien unter `ui/` lesen `kanban.js
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.2.0 | 2026-09-15 | Z-06 und AK-17 ergänzt (Projekt-Docs lesen und bearbeiten); NZ-03 auf Vorhaben-Dokumente präzisiert (Bedeutung unverändert); NZ-09 und RB-08 ergänzt (Self-Improving-Loop: nicht bauen, Platz vorsehen); B-12, B-13. MINOR, weil nichts Bestehendes seine Bedeutung ändert | Z-06, AK-17, NZ-03, NZ-09, RB-08, B-12, B-13 | Product Owner (Michael Sindlinger), 2026-09-15 (Hinweis nach Sichtung der Mocks) |
 | 1.1.0 | 2026-09-15 | AK-16 ergänzt: Modellwahl je Schritt beim Start (Standard je Schritt, Claude Opus ohne Einstellung); B-11 Modell | AK-16, B-11 | Product Owner (Michael Sindlinger), 2026-09-15 (Hinweis bei der Spec-Vorlage) |
 | 1.0.0 | 2026-09-15 | Freigabe; OF-03 entschieden (drei PRs) → B-10, §10 Stufen | OF-03, B-10 | Product Owner (Michael Sindlinger), 2026-09-15 |
 | 0.2.0 | 2026-09-15 | AK-14, AK-15 ergänzt (Anmerkung an der gelesenen Stelle, gesammelt in Dokumentreihenfolge); Z-03, B-05 präzisiert; OF-01, OF-02, OF-04 entschieden → B-04, B-05, B-06, B-08 | Z-03, AK-14, AK-15, B-04–B-06, B-08, OF-01/02/04 | — |
