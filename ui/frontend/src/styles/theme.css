@@ -14048,3 +14048,36 @@ aos-model-selector .model-option.selected .model-name {
   letter-spacing: 0.05em;
   flex-shrink: 0;
 }
+
+/* =================================================================
+   VORHABEN VIEW (INT-2026-004) — light-DOM parts: view frame, mobile shell.
+   The document reader (aos-dokument-leser) carries its own styles (shadow DOM).
+   ================================================================= */
+.vorhaben-view {
+  max-width: 1180px;
+}
+.vorhaben-status {
+  color: var(--color-text-secondary);
+  padding: var(--spacing-md);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+.vorhaben-btn {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+@media (max-width: 767px) {
+  .vorhaben-mobile-content {
+    padding: var(--spacing-md);
+    padding-bottom: calc(var(--spacing-xl) * 2);
+  }
+  .vorhaben-mobile-content .vorhaben-view {
+    max-width: none;
+  }
+}

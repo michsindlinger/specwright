@@ -1,0 +1,88 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Mock 07 — Projekt-Seite</title><link rel="stylesheet" href="mock.css">
+<style>
+.docs{display:grid;grid-template-columns:320px 1fr;gap:24px;flex:1;min-height:0}
+.doclist .item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;background:var(--bg2)}
+.doclist .item.on{border-color:var(--acc)}
+.doclist .item .n{font-weight:500}
+.doclist .item .m{font-size:12px;color:var(--t3);font-family:var(--mono)}
+.doclist .item .m.u{color:var(--warn)}
+.doclist .item.missing{border-style:dashed;color:var(--t3)}
+.editor{border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);display:flex;flex-direction:column;min-height:0}
+.editor .ehead{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border)}
+.editor .ehead .seg{display:flex;border:1px solid var(--border2);border-radius:6px;overflow:hidden}
+.editor .ehead .seg span{padding:4px 12px;font-size:13px;color:var(--t2)}
+.editor .ehead .seg span.on{background:var(--bg-el);color:var(--t1)}
+.editor .ta{flex:1;padding:14px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--t1);white-space:pre-wrap;overflow:hidden}
+.editor .ta .cur{display:inline-block;width:1px;height:14px;background:var(--acc);vertical-align:text-bottom}
+.editor .efoot{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--border)}
+.sec-h{font-size:12px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin:0 0 8px}
+.reserved{border:1px dashed var(--border);border-radius:var(--r);padding:10px 12px;color:var(--t3);font-size:12px;font-family:var(--mono)}
+</style></head>
+<body><div class="stage">
+<div>
+<div class="caption">07a · Projekt-Seite am Mac (Reiter „Projekt", aktives Projekt) · Editor mit Vorschau, Konflikthinweis · FA-43–FA-48</div>
+<div class="screen mac">
+  <aside class="sidebar">
+    <div class="logo"><i></i> Specwright</div>
+    <div class="sec">Projekte</div>
+    <div class="item on">Specwright <span class="dot wait"></span></div><div class="item">Applai <span class="dot wait"></span></div><div class="item">Kreis Lippe <span class="dot ok"></span></div><div class="item">Brodybookings <span class="dot"></span></div><div class="item">kinder-phone <span class="dot wait"></span></div><div class="item">RD-Recruiting <span class="dot"></span></div>
+    <div class="spacer"></div><div class="item">Team</div><div class="item">Einstellungen</div>
+  </aside>
+  <div class="main">
+    <div class="topbar"><div class="tabs"><div class="tab">Vorhaben</div><div class="tab on">Projekt</div><div class="tab">Terminal</div><div class="tab">Chat</div></div><div class="grow"></div><span class="kbd">⌘⇧E Notizblock</span></div>
+    <div class="content" style="display:flex;flex-direction:column;overflow:hidden">
+      <h1>Specwright</h1>
+      <p class="sub">Arbeitskopie <span class="kbd">main</span> · 2 Worktrees vorhanden (session/neue-ui, INT-2026-005) — bearbeitet wird die Hauptkopie</p>
+      <div class="docs">
+        <div class="doclist">
+          <div class="sec-h">Projekt-Docs</div>
+          <div class="item"><span class="n">Product Brief</span><span class="m">14.09.</span></div>
+          <div class="item on"><span class="n">Architektur</span><span class="m u">geändert · nicht committet</span></div>
+          <div class="item"><span class="n">Sicherheit</span><span class="m">14.09.</span></div>
+          <div class="item missing"><span class="n">Design</span><span class="m">fehlt · Vorlage im Flow</span></div>
+          <div class="item"><span class="n">CLAUDE.md</span><span class="m">15.09.</span></div>
+          <div class="sec-h" style="margin-top:20px">Neues Vorhaben</div>
+          <div class="item" style="gap:8px"><span class="n" style="flex:1">Absicht beginnen</span><span class="select" style="padding:3px 8px;font-size:12px">Opus</span><span class="btn sm primary">/intent</span></div>
+          <div class="sec-h" style="margin-top:20px">Vorgesehen (RB-08)</div>
+          <div class="reserved">Messquellen · Läufe · Befunde — nicht sichtbar, nur Platz im Aufbau</div>
+        </div>
+        <div class="editor">
+          <div class="ehead"><b>docs/architecture.md</b><span class="kbd">Stand 15.09. 16:40</span><span class="grow"></span><div class="seg"><span class="on">Bearbeiten</span><span>Vorschau</span></div></div>
+          <div class="banner" style="margin:12px 14px 0;border-color:var(--warn);background:rgba(245,158,11,.06)"><span class="dot" style="background:var(--warn)"></span><span>Datei auf der Platte geändert um <b>16:52</b> (Sitzung ‚build INT-2026-005'?) — du bearbeitest den Stand 16:40</span><span class="grow"></span><span class="btn sm">Neu laden</span><span class="btn ghost sm">Trotzdem überschreiben</span></div>
+          <div class="ta"># Architektur: Specwright — Soll
+
+> **Stand:** 2026-09-15 · **Verantwortlich:** Tech Lead (Michael Sindlinger)
+
+## 4. Erlaubte Abhängigkeiten
+
+| ID | Regel | Grund | Prüfung |
+|---|---|---|---|
+| AR-05 | Nutzerzustand der UI (Projekte, Recents, Tab-Namen, Entwürfe, Protokoll) lebt im Backend und wird als Ganzes gebroadcastet; nie in `localStorage`. | Gleiche Sicht auf jedem Gerät | Review |<span class="cur"></span>
+| AR-06 | Framework-Änderungen dürfen nie von der Web-UI abhängen; die UI ist optional. | Installierbar ohne Node | Installer-Test läuft ohne `ui/` |
+| AR-07 | Vorhaben und Projekt-Docs liegen im Repo-Root (`intent/`, `docs/`); `specwright/` enthält nur Werkzeug. | … | Review |</div>
+          <div class="efoot"><span class="kbd" style="color:var(--t3)">Entwurf gesichert · auf allen Geräten</span><span class="grow"></span><span class="btn ghost">Verwerfen</span><span class="btn primary">Speichern</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<div>
+<div class="caption">07b · Projekt-Seite am Handy · Bearbeiten | Vorschau</div>
+<div class="screen phone">
+  <div class="ptop"><span class="ic">‹</span><span>Specwright · Architektur</span><span class="ic">⋯</span></div>
+  <div class="pbody" style="display:flex;flex-direction:column;padding:0">
+    <div class="doctabs" style="padding:0 12px"><div class="on">Bearbeiten</div><div>Vorschau</div></div>
+    <div class="ta" style="flex:1;padding:12px;font-family:var(--mono);font-size:12px;line-height:1.55;white-space:pre-wrap;overflow:hidden"># Architektur: Specwright — Soll
+
+## 4. Erlaubte Abhängigkeiten
+
+| AR-05 | Nutzerzustand der UI (Projekte, Recents, Tab-Namen, Entwürfe, Protokoll) lebt im Backend …<span class="cur" style="display:inline-block;width:1px;height:13px;background:var(--acc);vertical-align:text-bottom"></span>
+| AR-06 | Framework-Änderungen dürfen nie von der Web-UI abhängen …
+| AR-07 | Vorhaben und Projekt-Docs liegen im Repo-Root …</div>
+    <div class="psend"><span class="kbd" style="color:var(--t3);font-size:11px">gespeichert 16:41 · nicht committet</span><span class="grow"></span><span class="btn sm primary">Speichern</span></div>
+    <div style="height:200px;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:12px;border-top:1px solid var(--border)">Tastatur</div>
+  </div>
+</div>
+</div>
+</div></body></html>

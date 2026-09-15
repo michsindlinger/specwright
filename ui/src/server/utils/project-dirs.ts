@@ -90,3 +90,27 @@ export function projectDir(projectPath: string, ...subpath: string[]): string {
 export function projectDotDir(projectPath: string, ...subpath: string[]): string {
   return join(projectPath, resolveDotDir(projectPath), ...subpath);
 }
+
+/**
+ * Vorhaben folder of a project copy (AR-07: `intent/` lives in the repo root,
+ * not under specwright/). `cwd` may be the registered project or a worktree.
+ */
+export function intentDir(cwd: string): string {
+  return join(cwd, 'intent');
+}
+
+/** Fixed relative paths of the five project docs (INT-2026-004, FA-43). */
+export const PROJECT_DOC_REL_PATHS = {
+  'product-brief': 'docs/product-brief.md',
+  architecture: 'docs/architecture.md',
+  security: 'docs/security.md',
+  design: 'docs/design.md',
+  claude: 'CLAUDE.md',
+} as const;
+
+export type ProjectDocPathKey = keyof typeof PROJECT_DOC_REL_PATHS;
+
+/** Absolute path of one project doc — the only resolution the UI uses (AR-04). */
+export function projectDocPath(projectPath: string, key: ProjectDocPathKey): string {
+  return join(projectPath, PROJECT_DOC_REL_PATHS[key]);
+}
