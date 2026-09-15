@@ -1,8 +1,8 @@
 ---
-intent_id: "INT-2026-005"  
+intent_id: "INT-2026-006"  
 titel: "Plan-Review: Anthropic-Reviewer und Konsens-Aggregator laufen unabhängig von den MCP-Servern des Nutzers"  
 status: "angenommen"  
-version: "1.0.0"  
+version: "1.0.1"  
 autor: "Claude (aus Michaels Screenshot vom 2026-09-15, Reproduktion am selben Tag)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-15"  
@@ -27,7 +27,7 @@ freigabe:
 
 # Absicht: Plan-Review: Anthropic-Reviewer und Konsens-Aggregator laufen unabhängig von den MCP-Servern des Nutzers
 
-<!-- Ablage: intent/INT-2026-005-plan-review-mcp-ballast/intent.md -->
+<!-- Ablage: intent/INT-2026-006-plan-review-mcp-ballast/intent.md -->
 
 ## Absicht in drei Sätzen
 
@@ -98,6 +98,7 @@ Keine offenen Fragen.
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-15 | Umnummerierung INT-2026-005 → INT-2026-006: Nummer auf `main` bereits an „Nächster Schritt aus der Web-UI" vergeben (PR #49); Plan freigegeben, `bezuege.plan` gesetzt | — | Product Owner, 2026-09-15 |
 | 1.0.0 | 2026-09-15 | Freigabe; OF-01 und OF-02 entschieden (NZ-05 bleibt, Versionsabstand als eigene Karte); Bypass nach `templates/sdlc/README.md` (Bugfix, Größe S) | OF-01, OF-02 | Product Owner, 2026-09-15 |
 | 0.1.0 | 2026-09-15 | Entwurf aus Screenshot und Reproduktion (beide SDK-Aufrufer, beide Binaries, Gegenprobe `--strict-mcp-config`) | alle | — |
 
