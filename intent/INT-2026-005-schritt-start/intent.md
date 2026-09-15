@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-005"  
 titel: "Nächster Schritt aus der Web-UI: Sitzung sichtbar im Vollbild, Befehl mit specwright:-Präfix"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.0.1"  
 autor: "Claude (aus Michaels Test 15.09. 22:40, Board-Karten Quick Wins)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-15"  
@@ -90,4 +90,5 @@ Keine.
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-15 | Status `umgesetzt`: PR #49 gemergt `16b07f9` (Michael: „merge #48 und #49"), CI grün Run 35023234917 | — | Product Owner, 15.09. |
 | 1.0.0 | 2026-09-15 | Kern-Schicht, Bypass (zwei Bugs aus Michaels Test, Größe S) | alle | Product Owner, 15.09. („Mach A1") |

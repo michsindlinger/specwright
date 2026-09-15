@@ -1,7 +1,7 @@
 # Plan: Nächster Schritt aus der Web-UI — Sitzung sichtbar im Vollbild, Befehl mit `specwright:`-Präfix
 
 > **Intent:** `intent.md` (INT-2026-005, 1.0.0) · **Spec:** entfällt (bypass: zwei Bugs in INT-2026-004, Größe S; Verhalten durch INT-2026-004 spec.md Ablauf E Schritt 6, FA-35, FA-21 festgelegt)
-> **Status:** umgesetzt — **PR #49** offen (Merge = Michael), CI `verify` grün (Run 35023234917 auf `7bd02fb`); Bau beauftragt (Michael, „Mach A1", Board-Sitzung 15.09.)
+> **Status:** umgesetzt — **PR #49 gemergt `16b07f9`** (15.09., Michael), CI `verify` grün (Run 35023234917 auf `7bd02fb`); Bau beauftragt (Michael, „Mach A1", Board-Sitzung 15.09.)
 > **Erstellt:** 2026-09-15 (Bypass ohne Plan Mode — Recherche in §2 belegt gegen `origin/main` `ed29667`) · **Freigabe:** Product Owner (Michael Sindlinger) mit dem PR
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `ed29667`, §2 Frontend/Backend, AR-04, AR-05, §10), `CLAUDE.md` (Konventionen UI, Hooks, „Nie"), `docs/security.md` §2 (T-06: UI führt Befehle über das Terminal aus — unverändert), `docs/design.md` §7
 
@@ -179,7 +179,7 @@ Acht Quelldateien, über das Start-Ereignis und die Befehlsfunktion verbunden; u
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| PR-Freigabe und Merge nach `main` (löst Auto-Deploy der Web-UI aus) | Michael | nach CI grün | [ ] |
+| PR-Freigabe und Merge nach `main` (löst Auto-Deploy der Web-UI aus) | Michael | nach CI grün | [x] `16b07f9`, 15.09. |
 | Haupt-Checkout `git pull --ff-only`, Frontend bauen, Backend 3001 neu starten | Michael / nächste Sitzung | nach Merge | [ ] |
 
 ## 11. Schätzung
