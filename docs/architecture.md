@@ -116,4 +116,4 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | 2026-09-14 | Erstfassung (INT-2026-002) | PR folgt |
 | 2026-09-15 | §3 Nutzerzustand der UI, AR-05 erweitert (INT-2026-004, Stufe 1) | ADR-0002 |
 | 2026-09-15 | §2 Backend-Zeile um Vorhaben-Sicht/Review-Kanal, §5 Deploy-Gate um unbestätigte Review-Antworten (INT-2026-004, Stufe 2) | PR #45 |
-| 2026-09-15 | Story-Pfad aus der UI entfernt: §1 Diagramm und Text (UI → MCP nur noch über Sitzungen), §2 ohne Auto-Mode, §3 `kanban.json` ohne UI-Leser, AR-03 auf den MCP-Server beschränkt, §5 Gate ohne Auto-Mode, §10 Zeile „Story pro Session" erledigt, zwei neue Abweichungen (INT-2026-004, Stufe 3) | PR 3 |
+| 2026-09-15 | Story-Pfad aus der UI entfernt: §1 Diagramm und Text (UI → MCP nur noch über Sitzungen), §2 ohne Auto-Mode, §3 `kanban.json` ohne UI-Leser, AR-03 auf den MCP-Server beschränkt, §5 Gate ohne Auto-Mode, §10 Zeile „Story pro Session" erledigt, zwei neue Abweichungen (INT-2026-004, Stufe 3) | PR #46 |

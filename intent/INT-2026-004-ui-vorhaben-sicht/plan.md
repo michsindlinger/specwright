@@ -1,7 +1,7 @@
 # Plan: Web-UI zeigt Vorhaben statt Stories: Dokumente lesen, an Review-Punkten antworten
 
 > **Intent:** `intent.md` (INT-2026-004, Version 1.2.0) · **Spec:** `spec.md` (freigegeben, FA-01–FA-48)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt · PR #46 (Stufe 3; Stufe 1 PR #44, Stufe 2 PR #45)
 > **Erstellt:** 2026-09-15 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-15
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand ff74bd3), `CLAUDE.md`, `docs/security.md`, `docs/design.md`, Mocks `design/01–07`
 

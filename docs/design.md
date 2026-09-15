@@ -64,4 +64,4 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | Datum | Änderung | PR |
 |---|---|---|
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
-| 2026-09-15 | §7: Abweichung „Story-Kanban-Sicht" erledigt — die Web-UI zeigt Vorhaben (INT-2026-004, Stufe 1–3) | PR 3 |
+| 2026-09-15 | §7: Abweichung „Story-Kanban-Sicht" erledigt — die Web-UI zeigt Vorhaben (INT-2026-004, Stufe 1–3) | PR #46 |

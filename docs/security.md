@@ -90,4 +90,4 @@
 | Datum | Änderung | PR |
 |---|---|---|
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
-| 2026-09-15 | §7: T-06 verweist auf ein eigenes Vorhaben statt auf den Gesamtplan Phase 5 (INT-2026-004, Stufe 3); §4 Stand unverändert offen | PR 3 |
+| 2026-09-15 | §7: T-06 verweist auf ein eigenes Vorhaben statt auf den Gesamtplan Phase 5 (INT-2026-004, Stufe 3); §4 Stand unverändert offen | PR #46 |
