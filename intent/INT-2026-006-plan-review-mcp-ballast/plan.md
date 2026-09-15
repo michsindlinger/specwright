@@ -1,7 +1,7 @@
 # Plan: Plan-Review ohne MCP-Ballast — Reviewer und Aggregator laufen ohne die MCP-Server des Nutzers
 
 > **Intent:** `intent.md` (INT-2026-006, Version 1.0.0 — umnummeriert von INT-2026-005, siehe §6 Schritt 0) · **Spec:** entfällt (bypass: Bugfix im Review-Kanal der UI, Größe S; Verhalten durch `specwright/specs/2026-04-30-auto-plan-review` festgelegt)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt (PR #51, Merge steht aus)
 > **Erstellt:** 2026-09-15 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-15
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `77c635a`: §2 Backend, AR-02, AR-04, §5 Claude Code SDK), `CLAUDE.md` (Verify, Konventionen UI, Hooks, „Nie"), `docs/security.md` (§1 `~/.claude.json` vertraulich, §5 Verbotsliste, §6 Pflichtprüfungen)
 
