@@ -1,9 +1,9 @@
 import { query as claudeQuery } from '@anthropic-ai/claude-agent-sdk';
-import { buildProviderEnv } from '../utils/provider-env.js';
+import { buildSdkCallOptions } from '../utils/sdk-call-options.js';
 import type { FallbackReason } from '../../shared/types/plan-review.protocol.js';
 
 const AGGREGATOR_PROVIDER_ID = 'anthropic';
-const AGGREGATOR_MODEL_ID = 'haiku';
+export const AGGREGATOR_MODEL_ID = 'haiku';
 const AGGREGATOR_TIMEOUT_MS = 180_000;
 /** Shorter cap for the single corrective retry — a re-prompt should resolve fast
  *  and this bounds the worst-case added latency on the auto-review path. */
@@ -70,7 +70,7 @@ function reviewerKey(r: { providerId: string; modelId: string }): string {
   return `${r.providerId}:${r.modelId}`;
 }
 
-function buildAggregatorPrompt(mapped: MappedReviewer[]): string {
+export function buildAggregatorPrompt(mapped: MappedReviewer[]): string {
   const sections = mapped
     .map((r) => `[Reviewer key=${reviewerKey(r)}]\n${truncateForPrompt(r.output)}`)
     .join('\n\n');
@@ -190,15 +190,12 @@ async function callAggregatorLLM(
     const session = claudeQuery({
       prompt,
       options: {
+        // No tools, no MCP servers, provider auth — shared policy with the
+        // external reviewer (INT-2026-006).
+        ...buildSdkCallOptions(AGGREGATOR_PROVIDER_ID, []),
         maxTurns: AGGREGATOR_MAX_TURNS,
-        tools: [],
-        allowedTools: [],
-        permissionMode: 'bypassPermissions',
-        allowDangerouslySkipPermissions: true,
         cwd: projectPath,
         abortController: ac,
-        env: buildProviderEnv(AGGREGATOR_PROVIDER_ID),
-        settingSources: ['user'],
         model: AGGREGATOR_MODEL_ID,
       },
     });
