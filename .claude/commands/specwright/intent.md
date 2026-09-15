@@ -10,6 +10,6 @@ Refer to the instructions located in specwright/workflows/core/intent.md
 - Vorlage `templates/sdlc/vorhaben/intent-template.md`; Vertragsschicht nur ab Risikoklasse mittel
 - Größe S oder Bugfix → `bypass: ja` möglich (direkt zu `/plan`), sonst `/spec`
 - Definition of Ready prüfen, Freigabe einholen, dann `status: angenommen`, Version 1.0.0, Commit
-- Board-Karte verweist auf den Ordner (Skill `obsidian-po-board`)
+- Board-Karte verweist auf den Ordner; Nachziehen nicht hier, sondern in eigener kurzer Sitzung — Abschlussbericht endet mit dem Block „Für das Board"
 
 **Nächster Schritt:** `/spec INT-JJJJ-NNN` oder bei Bypass `/plan INT-JJJJ-NNN`

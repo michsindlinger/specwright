@@ -34,7 +34,8 @@
 - **Bypass:** Bugfix oder unter 1 Tag → `intent.md` (Kern) direkt zu `plan.md`.
 - `plan.md` entsteht im Plan Mode und wird vor dem ersten Code committet. Eine Sitzung setzt den ganzen Plan um. Zerlegung nur laut Plan Abschnitt 7, Integration immer in der Hauptsitzung.
 - Verschiebt ein Plan eine Architekturgrenze: `docs/architecture.md` in derselben PR.
-- Board-Karte verweist auf den `intent/`-Ordner; Stand dort nachziehen.
+- Board-Karte verweist auf den `intent/`-Ordner. Nachziehen in einer eigenen kurzen Sitzung, nie am Ende einer Bau- oder Plansitzung: Der Abschlussbericht endet mit dem Block „Für das Board".
+- Kontextdeckel ~200k in Bausitzungen: Stand in `plan.md` §14 und `build-stand.md`, WIP-Commit, neue Sitzung mit `/build`.
 
 ## Konventionen
 

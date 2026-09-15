@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.0.2 - 2026-09-15
+
+### Geändert
+- **Board und Fahrplan raus aus der Bausitzung** (`workflows/core/build.md` 1.1, `intent.md`, Commands `build`/`intent`, `templates/sdlc/{README, projekt/CLAUDE-template, vorhaben/plan-template}`). Intent- und Bausitzungen enden mit dem Block „Für das Board" (Projekt, Karte, Spalte, Beleg, Stand, Verweis auf den Intent-Ordner); das Nachziehen von Board und Fahrplan läuft in einer eigenen kurzen Sitzung nach `/clear`. Gemessen 15.09.2026 in Kreis Lippe: 30–35 % der Tokens eines Builds gingen in Board-Runden am Sitzungsende, jede auf vollem Kontext.
+- **Kontextdeckel im Build.** Ab ~200k Kontext: Stand in `plan.md` §14 und `intent/INT-…/build-stand.md`, WIP-Commit, STOP, Fortsetzen in neuer Sitzung mit `/build` (Step 1 erkennt `Status: in_umsetzung` und liest `build-stand.md`). „Eine Sitzung" bleibt die Einheit der Ausführung, ist aber ein Arbeitszusammenhang und kein Chatfenster ohne Ende. Ein Build mit 640k Kontext hat am 15.09.2026 das Sitzungslimit gerissen.
+
 ## 4.0.1 - 2026-09-14
 
 ### Behoben

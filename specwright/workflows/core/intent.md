@@ -2,7 +2,7 @@
 description: Vorhaben als intent.md festhalten — fachlich, belegt, freigegeben
 globs:
 alwaysApply: false
-version: 1.0
+version: 1.1
 encoding: UTF-8
 ---
 
@@ -109,7 +109,7 @@ ON Freigabe:
   - Entschiedene OF-Zeilen als „*entschieden Datum (Rolle)*: …" mit Verweis auf AK/NZ
   - Änderungsprotokoll: Zeile 1.0.0 mit Freigabe
   - COMMIT: `intent(INT-JJJJ-NNN): <Titel> — angenommen` mit Kurzfassung der Entscheidungen
-  - Board: Karte anlegen oder verweisen (`bezuege.board_karte`), Skill `obsidian-po-board`
+  - Board: `bezuege.board_karte` eintragen, falls eine Karte existiert. Karte anlegen oder nachziehen **nicht hier**: Der Abschlussbericht endet mit dem Block „Für das Board" (Projekt, Karte, Spalte, Beleg, Stand, Verweis auf den Intent-Ordner); das Nachziehen läuft in einer eigenen kurzen Sitzung nach `/clear` (Skill `obsidian-po-board`).
 
 NEXT: `/spec INT-JJJJ-NNN` — oder bei `bypass: ja`: `/plan INT-JJJJ-NNN`
 
