@@ -2,7 +2,7 @@
 intent_id: "INT-2026-004"  
 titel: "Web-UI zeigt Vorhaben statt Stories: Dokumente lesen, an Review-Punkten antworten"  
 status: "angenommen"  
-version: "1.0.0"  
+version: "1.1.0"  
 autor: "Michael Sindlinger (Idee, 15.09.2026) · Claude (Text, Belege)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-15"  
@@ -13,7 +13,7 @@ bypass: "nein"
 bypass_grund: ""  
 bezuege:  
   product: "docs/product-brief.md"  
-  spec: ""  
+  spec: "spec.md"  
   plan: ""  
   board_karte: "Specwright — Backlog Board · „AI-native SDLC v4 — Flow nach Anthropic-Playbook neu aufsetzen" (In Arbeit, Phase 5) — eigene Karte folgt"  
   adr: []  
@@ -100,6 +100,7 @@ Der Story-Pfad sitzt tief: 87 Stellen in 12 Dateien unter `ui/` lesen `kanban.js
 | AK-13 | Das System DARF NICHT mehr Kanban-, Story- oder Backlog-Sichten oder einen Auto-Mode je Story anbieten — am Mac und am Handy. | Z-05 | Review + Test (Komponenten entfernt) |
 | AK-14 | Solange Michael in einem Dokument liest, MUSS er an der gerade sichtbaren Stelle eine Anmerkung beginnen können, ohne zum Dokumentende zu scrollen; der Bezug (Absatz, Überschrift oder ID) wird von der Stelle übernommen. | Z-03 | Test + Stichprobe |
 | AK-15 | Wenn Michael mehrere Anmerkungen an verschiedenen Stellen geschrieben hat, MUSS die UI sie gesammelt und in Dokumentreihenfolge zeigen, bevor er sie schickt. | Z-03 | Test |
+| AK-16 | Wenn Michael den nächsten Schritt eines Vorhabens startet, MUSS die UI ihn das Modell der Sitzung wählen lassen — vorbelegt mit einem je Schritt (Absicht, Spec, Plan, Bau) einstellbaren Standard, der ohne Einstellung Claude Opus ist, wählbar aus allen in den Einstellungen konfigurierten Modellen (z. B. GLM, Grok), wie heute je Story. | Z-04 | Test |
 
 ## 6. Randbedingungen
 
@@ -144,6 +145,7 @@ Der Story-Pfad sitzt tief: 87 Stellen in 12 Dateien unter `ui/` lesen `kanban.js
 - **B-08 Rahmen:** Workspace-Sidebar, Projekt-Tabs, Cloud-Terminal samt tmux und Hooks, Bell-Ton beim Wechsel „arbeitet → wartet", Settings, Team, Mobile-Shell (Top-Bar, Bottom-Nav, Drawer, Terminal-Keys), Notizblock (Cmd+Shift+E). Bleibt (NZ-01; Bell: OF-04, entschieden 2026-09-15).
 - **B-09 Sitzung des Vorhabens:** Eine Cloud-Terminal-Sitzung im Projekt des Vorhabens, in der ein v4-Befehl mit dessen Kennung läuft oder zuletzt lief. Zuordnung legt die Spec fest.
 - **B-10 Drei PRs:** Lieferung in drei Pull Requests — (1) Übersicht und Lesen, (2) Review-Kanal (Anmerkungen, Freigabe, nächster Schritt), (3) Abbau des Story-Pfads. Jede PR für sich `verify: OK` und deploybar; genauer Schnitt, Reihenfolge und Abhängigkeiten in `plan.md` §7. Entschieden 2026-09-15 (Product Owner, OF-03).
+- **B-11 Modell:** Die Modellwahl einer Claude-Sitzung (Anbieter + Modell), wie sie heute in den Einstellungen unter „Modelle" konfiguriert ist und je Story auf der Karte gewählt wird. Ergänzt 2026-09-15 (Product Owner, AK-16).
 
 ## 9. Erfolgskennzahlen
 
@@ -202,6 +204,7 @@ Der Story-Pfad sitzt tief: 87 Stellen in 12 Dateien unter `ui/` lesen `kanban.js
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.1.0 | 2026-09-15 | AK-16 ergänzt: Modellwahl je Schritt beim Start (Standard je Schritt, Claude Opus ohne Einstellung); B-11 Modell | AK-16, B-11 | Product Owner (Michael Sindlinger), 2026-09-15 (Hinweis bei der Spec-Vorlage) |
 | 1.0.0 | 2026-09-15 | Freigabe; OF-03 entschieden (drei PRs) → B-10, §10 Stufen | OF-03, B-10 | Product Owner (Michael Sindlinger), 2026-09-15 |
 | 0.2.0 | 2026-09-15 | AK-14, AK-15 ergänzt (Anmerkung an der gelesenen Stelle, gesammelt in Dokumentreihenfolge); Z-03, B-05 präzisiert; OF-01, OF-02, OF-04 entschieden → B-04, B-05, B-06, B-08 | Z-03, AK-14, AK-15, B-04–B-06, B-08, OF-01/02/04 | — |
 | 0.1.0 | 2026-09-15 | Entwurf nach Gespräch (4 Rückfragen: Zuschnitt, Review-Weg, Übersicht, Handy) und Codebelegen | alle | — |
