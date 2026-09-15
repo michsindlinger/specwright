@@ -91,6 +91,15 @@ export function getWorkspaceStatePath(): string {
 }
 
 /**
+ * Vorhaben user state (session↔Vorhaben assignments, review drafts, protocol,
+ * last model per step, project-doc drafts) — one per backend like the
+ * workspace state (ADR-0002). Port-suffixed for the same reason.
+ */
+export function getVorhabenStatePath(): string {
+  return join(getRuntimeDir(), `vorhaben-${backendPort()}.json`);
+}
+
+/**
  * Directory for the tmux server socket. Created 0700 on first use.
  * Default os.tmpdir() works for local dev (no PrivateTmp there); the droplet
  * overrides via SPECWRIGHT_TMUX_SOCKET_DIR to a /var/lib path shared with the

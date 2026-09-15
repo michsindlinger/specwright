@@ -52,7 +52,11 @@ import { setupService, type StepOutput, type StepComplete } from './services/set
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 import { WorkspaceStateStore } from './services/workspace-state.js';
 import { WorkspaceHandler } from './services/workspace-handler.js';
-import { getWorkspaceStatePath } from './utils/runtime-paths.js';
+import { getWorkspaceStatePath, getVorhabenStatePath } from './utils/runtime-paths.js';
+import { VorhabenStateStore } from './services/vorhaben-state.js';
+import { VorhabenService } from './services/vorhaben-service.js';
+import { VorhabenHandler } from './services/vorhaben-handler.js';
+import { ProjectDocsService } from './services/project-docs.service.js';
 import { existsSync } from 'fs';
 import type {
   CloudTerminalSessionId,
@@ -108,6 +112,9 @@ export class WebSocketHandler {
   /** Shared workspace (open projects, recents, tab names) — one per backend. */
   private workspaceStore: WorkspaceStateStore;
   private workspaceHandler: WorkspaceHandler;
+  private vorhabenStore: VorhabenStateStore;
+  private vorhabenService: VorhabenService;
+  private vorhabenHandler: VorhabenHandler;
   /** Sessions the user closed via cloud-terminal:close — their `closed` event carries closedBy:'user'. */
   private userClosedSessionIds = new Set<string>();
   /** Sessions created through a WS create handler (they broadcast their own `created`). */
@@ -134,6 +141,14 @@ export class WebSocketHandler {
     this.previewWatcher.init();
     this.workspaceStore = new WorkspaceStateStore(getWorkspaceStatePath(), { pathKey, pathExists: (p: string): boolean => existsSync(p) });
     this.workspaceHandler = new WorkspaceHandler(this.workspaceStore, (m) => this.broadcast(m as WebSocketMessage));
+    // INT-2026-004: Vorhaben view — reads intent/ of the open projects, broadcasts vorhaben:state.
+    this.vorhabenStore = new VorhabenStateStore(getVorhabenStatePath());
+    this.vorhabenService = new VorhabenService({
+      workspace: this.workspaceStore,
+      store: this.vorhabenStore,
+      broadcast: (m) => this.broadcast(m as WebSocketMessage),
+    });
+    this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage));
     this.bootWorkspace();
     this.setupConnectionHandler();
     this.startHeartbeat();
@@ -160,6 +175,11 @@ export class WebSocketHandler {
       }
       const pruned = this.workspaceStore.pruneSessionNames(new Set(live.map((s) => s.sessionId)));
       if (pruned > 0) console.log(`[WebSocket] workspace: pruned ${pruned} stale tab name(s)`);
+      const vh = await this.vorhabenStore.load();
+      if (!vh.healthy) console.warn('[WebSocket] vorhaben state was unreadable — started empty (backup kept)');
+      const t0 = Date.now();
+      await this.vorhabenService.start();
+      console.log(`[WebSocket] vorhaben: first scan in ${Date.now() - t0} ms (${this.vorhabenService.getState().rows.length} rows)`);
     }).catch((err) => {
       console.error('[WebSocket] workspace boot failed:', err);
     });
@@ -489,6 +509,21 @@ export class WebSocketHandler {
           // restored sessions, so it must not answer before restore settled.
           this.gateOnCloudTerminalRestore(() => {
             this.workspaceHandler.handle(message as Record<string, unknown>, (m) => client.send(JSON.stringify(m)));
+            if (message.type === 'workspace:open-project' || message.type === 'workspace:close-project' || message.type === 'workspace:import') {
+              this.vorhabenService.scheduleRescan();
+            }
+          });
+          break;
+        case 'vorhaben:get':
+        case 'vorhaben:doc.read':
+        case 'vorhaben:design.read':
+        case 'project-docs:list':
+        case 'project-docs:read':
+        case 'project-docs:write':
+        case 'project-docs:draft.set':
+        case 'project-docs:draft.clear':
+          this.gateOnCloudTerminalRestore(() => {
+            this.vorhabenHandler.handle(message as Record<string, unknown>, (m) => client.send(JSON.stringify(m)));
           });
           break;
         case 'settings.general.update':
@@ -1633,6 +1668,7 @@ export class WebSocketHandler {
     this.wss.close();
     // DPP-002: Clean up PreviewWatcher
     this.previewWatcher.stop();
+    this.vorhabenService.stop();
     // MPRO-005: Clean up WebSocketManager
     webSocketManager.shutdown();
   }
