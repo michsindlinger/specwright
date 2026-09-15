@@ -1,6 +1,6 @@
 # Architektur: Specwright — Soll
 
-> **Stand:** 2026-09-14, Branch `feat/INT-2026-002-command-schnitt` · **Verantwortlich:** Tech Lead (Michael Sindlinger)
+> **Stand:** 2026-09-15, Branch `feat/INT-2026-004-ui-s3` · **Verantwortlich:** Tech Lead (Michael Sindlinger)
 > **Rolle dieses Dokuments:** das SOLL. Pflichtinput im Plan Mode. Verschiebt ein Plan eine Grenze, ändert dieselbe PR dieses Dokument.
 > **Prinzipien der Firma:** Firmen-Repo SBS (entsteht in Phase 3) — dieses Dokument darf sie konkretisieren, nicht verletzen.
 
@@ -14,12 +14,13 @@ flowchart LR
     MAN --> LIB[install-lib.sh]
     LIB --> PROJ[Projekt: specwright/, .claude/]
     LIB --> GLOB[~/.specwright, ~/.claude]
-    UI[Web-UI Express + Lit] --> MCP[Kanban-MCP-Server]
-    UI --> PROJ
+    UI[Web-UI Express + Lit] --> PROJ
+    UI --> SESS[Claude-Sitzungen tmux]
+    SESS --> MCP[Kanban-MCP-Server]
     MCP --> KJ[(kanban.json, memory.db)]
 ```
 
-Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen, Workflows, Vorlagen, Standards und Hooks, das Installer in Projekte kopieren, und eine optionale **Web-UI** (Express-Backend, Lit-Frontend), die Projekte anzeigt, Claude-Sitzungen startet und den Story-Pfad über den Kanban-MCP-Server treibt. Daten liegen in den Projekten (Dateien) und für die UI in Laufzeitdateien auf dem Host; es gibt keine zentrale Datenbank.
+Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen, Workflows, Vorlagen, Standards und Hooks, das Installer in Projekte kopieren, und eine optionale **Web-UI** (Express-Backend, Lit-Frontend), die die Vorhaben der offenen Projekte zeigt, ihre Dokumente lesbar macht, Antworten an wartende Claude-Sitzungen schickt und Sitzungen startet. Den Kanban-MCP-Server benutzen nur noch die Sitzungen als Werkzeug; die UI liest und schreibt keine Story-Daten mehr (INT-2026-004, Stufe 3). Daten liegen in den Projekten (Dateien) und für die UI in Laufzeitdateien auf dem Host; es gibt keine zentrale Datenbank.
 
 ## 2. Services und Komponenten
 
@@ -31,7 +32,7 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | Hooks | Deterministische Leitplanken für Claude Code (`PreToolUse`) | Bash + python3 | `specwright/templates/sdlc/hooks/`, im Repo `.claude/hooks/` | Michael |
 | Installer | Fünf Skripte mit einer gemeinsamen Bibliothek, lesen das Manifest, schreiben Projekt und Global-Verzeichnisse | Bash 3.2-tauglich | `install.sh`, `setup*.sh`, `update-specwright.sh`, `specwright/scripts/install-lib.sh` | Michael |
 | Kanban-MCP-Server | MCP-Werkzeuge für `kanban.json`, Backlog, Memory-Store | TypeScript, `tsx` direkt gestartet | `specwright/scripts/mcp/` | Michael |
-| Web-UI Backend | Projekte, Sessions, Cloud-Terminal (tmux), Vorhaben-Sicht und Review-Kanal (Antworten als Bracketed Paste in die wartende PTY, Bestätigung über den `UserPromptSubmit`-Hook), Auto-Mode-Orchestrierung, WebSocket | Express, TypeScript, Claude Code SDK, node-pty | `ui/src/server/` | Michael |
+| Web-UI Backend | Projekte, Sessions, Cloud-Terminal (tmux), Vorhaben-Sicht und Review-Kanal (Antworten als Bracketed Paste in die wartende PTY, Bestätigung über den `UserPromptSubmit`-Hook), WebSocket | Express, TypeScript, Claude Code SDK, node-pty | `ui/src/server/` | Michael |
 | Web-UI Frontend | Oberfläche als Web Components | Lit, Vite, TypeScript strict | `ui/frontend/src/` (`aos-*`) | Michael |
 
 ## 3. Datenbesitz
@@ -41,7 +42,7 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | Vorhaben (`intent/INT-…/`), Projekt-Docs (`docs/`) | Projekt-Repo | Git | Dateisystem | ein Nutzer |
 | Lieferumfang | Specwright-Repo | `specwright/manifest.tsv`, `specwright/removed.tsv` | Installer über Raw-URL oder `file://` | — |
 | Installierte Version je Projekt | Installer | `specwright/.installed-version` | `check-update.sh` | — |
-| `kanban.json`, Backlog | Kanban-MCP-Server | Projekt-Dateien | UI über MCP-Werkzeuge und Datei-Watcher | — |
+| `kanban.json`, Backlog | Kanban-MCP-Server | Projekt-Dateien | MCP-Werkzeuge der Sitzungen (die UI liest nicht mehr, INT-2026-004) | — |
 | Memory-Store | Kanban-MCP-Server | `~/.specwright/memory.db` (SQLite) | MCP-Werkzeuge `memory_*` | — |
 | Workspace der UI (offene Projekte, Tabs) | UI-Backend | `<runtime>/workspace-<port>.json` | WebSocket `workspace:*` | pro Backend-Instanz |
 | Nutzerzustand der UI (Zuordnung Sitzung↔Vorhaben, Anmerkungs-Entwürfe, Protokoll, letzte Modellwahl, Doc-Entwürfe) | UI-Backend | `<runtime>/vorhaben-<port>.json` (ADR-0002) | WebSocket `vorhaben:*`, `project-docs:*` | pro Backend-Instanz |
@@ -53,7 +54,7 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 |---|---|---|---|
 | AR-01 | Kein Installer führt eine eigene Dateiliste; alle lesen `specwright/manifest.tsv` über `install-lib.sh`. | Installer-Drift war zweimal die Ursache fehlender Befehle | `scripts/check-manifest.sh` (c) in CI |
 | AR-02 | MCP-Server werden direkt gestartet (`$MCP_DIR/node_modules/.bin/tsx …`), nie über `npx`. | `npx` spawnt eine 3–4-Prozess-Kette je Server; RAM/Swap auf dem Droplet | `scripts/check-mcp-launcher.sh` |
-| AR-03 | Git-Operationen am Hauptrepo laufen unter `withMainProjectLock` (außen), `kanban.json`-Schreiben unter `withKanbanLock` (innen); nie umgekehrt. | ABBA-Deadlock zwischen UI und MCP-Subprozess | Review; Tests in `ui/tests/unit/kanban-lock.test.ts` |
+| AR-03 | Innerhalb des Kanban-MCP-Servers (`specwright/scripts/mcp/`): Git-Operationen am Hauptrepo unter `withMainProjectLock` (außen), `kanban.json`-Schreiben unter `withKanbanLock` (innen); nie umgekehrt. Die UI schreibt keine Story-Daten mehr; ihr Hauptrepo-Lock (`ui/src/server/utils/main-project-mutex.ts`) sichert nur noch das Anlegen von Session-Worktrees. | ABBA-Deadlock zwischen Prozessen, die dieselben Dateien halten | Review; `specwright/scripts/mcp/kanban-lock.ts` |
 | AR-04 | Server-Code kennt Projektverzeichnisse nur über `projectDir()`/`projectDotDir()` (`ui/src/server/utils/project-dirs.ts`); nie `specwright/` oder `agent-os/` hart kodiert. | Rückwärtskompatibilität alter Projekte | Import-Scan, Review |
 | AR-05 | Workspace- **und Nutzerzustand** der UI (Projekte, Recents, Tab-Namen; Zuordnung Sitzung↔Vorhaben, Entwürfe, Protokoll) lebt im Backend und wird als Ganzes gebroadcastet; nie in `localStorage`. | Gleiche Sicht auf jedem Gerät | Review; Tests `ui/tests/unit/vorhaben-state.test.ts`, `workspace-handler.test.ts` |
 | AR-06 | Framework-Änderungen dürfen nie von der Web-UI abhängen; die UI ist optional. | Installierbar ohne Node | Installer-Test läuft ohne `ui/` |
@@ -68,7 +69,7 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | GitHub Raw (`raw.githubusercontent.com/michsindlinger/specwright/main`) | Quelle aller Installer-Downloads | Installer | Installation unmöglich (`curl -f` bricht ab); Tests nutzen `file://` | öffentlich |
 | GitHub Actions | CI (`scripts/verify.sh`) | Push/PR | kein Tor — lokal grün zählt dann nicht | Repo |
 | Claude Code SDK / CLI | Sitzungen aus der UI | UI-Backend | UI ohne Agent | `security.md` §3 |
-| Cloud-Host (Linux, systemd, Auto-Deploy bei Push auf `main`) | Web-UI im Betrieb; der Deploy-Timer fragt vor dem Neustart `GET /api/status/deploy-readiness` und wartet bei 423 (Auto-Mode aktiv oder eine gesendete, noch unbestätigte Review-Antwort — höchstens 10 s) | — | UI nicht erreichbar; Framework unbetroffen | außerhalb des Repos |
+| Cloud-Host (Linux, systemd, Auto-Deploy bei Push auf `main`) | Web-UI im Betrieb; der Deploy-Timer fragt vor dem Neustart `GET /api/status/deploy-readiness` und wartet bei 423 (eine gesendete, noch unbestätigte Review-Antwort — höchstens 10 s) | — | UI nicht erreichbar; Framework unbetroffen | außerhalb des Repos |
 
 ## 6. Tech-Stack
 
@@ -103,10 +104,10 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 
 | Abweichung | Regel | Seit | Karte / Intent | Plan |
 |---|---|---|---|---|
-| `ui/src/server/utils/mcp-profile.ts` kennt das Profil `validate-market`, dessen Befehl entfernt ist; Profil-Datei bleibt liegen | — | 2026-09-14 | Board Specwright, Aufräum-Karte | Phase 5 (UI-Neuentwurf) |
+| `specwright/mcp-profiles/` (Profile `execute-tasks`, `create-spec`, `validate-market`) hat seit INT-2026-004 Stufe 3 keinen Leser mehr in der UI (`mcp-profile.ts` entfernt); Profil-Dateien und README bleiben liegen | — | 2026-09-15 | Aufräum-Karte | separates Vorhaben (Kanban-MCP-Abbau, NZ-02) |
+| `workflow.*`-Handler in `ui/src/server/websocket.ts` und der PTY-Pfad in `workflow-executor.ts` haben nach Stufe 3 keinen Frontend-Aufrufer mehr (Team/Getting Started laufen über `cloud-terminal:create-workflow`) | — | 2026-09-15 | Aufräum-Karte | separates Vorhaben |
 | `specwright/templates/agents/` (8 Vorlagen) und einige Agenten/Skills werden von keinem Workflow referenziert | — | 2026-09-14 | Aufräum-Karte | separates Vorhaben |
 | Specwright trägt eigene v3-Artefakte (`specwright/{specs,product,brainstorming,knowledge}`) | AR-07 | 2026-02 | Aufräum-Karte | archivieren wie bei Applai |
-| Web-UI-Ausführungsmodell (Story pro Session) widerspricht dem v4-Grundsatz „Plan ist die Einheit" | AP-01 | 2026-09-13 | Gesamtplan Phase 5 | UI-Neuentwurf |
 
 ## Änderungsprotokoll
 
@@ -114,4 +115,5 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 |---|---|---|
 | 2026-09-14 | Erstfassung (INT-2026-002) | PR folgt |
 | 2026-09-15 | §3 Nutzerzustand der UI, AR-05 erweitert (INT-2026-004, Stufe 1) | ADR-0002 |
-| 2026-09-15 | §2 Backend-Zeile um Vorhaben-Sicht/Review-Kanal, §5 Deploy-Gate um unbestätigte Review-Antworten (INT-2026-004, Stufe 2) | PR 2 |
+| 2026-09-15 | §2 Backend-Zeile um Vorhaben-Sicht/Review-Kanal, §5 Deploy-Gate um unbestätigte Review-Antworten (INT-2026-004, Stufe 2) | PR #45 |
+| 2026-09-15 | Story-Pfad aus der UI entfernt: §1 Diagramm und Text (UI → MCP nur noch über Sitzungen), §2 ohne Auto-Mode, §3 `kanban.json` ohne UI-Leser, AR-03 auf den MCP-Server beschränkt, §5 Gate ohne Auto-Mode, §10 Zeile „Story pro Session" erledigt, zwei neue Abweichungen (INT-2026-004, Stufe 3) | PR 3 |
