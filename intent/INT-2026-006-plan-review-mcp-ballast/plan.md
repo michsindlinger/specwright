@@ -254,7 +254,7 @@ Drei Quelldateien und drei Testdateien hängen an einer gemeinsamen Funktion (§
 - [x] Jede AK aus Abschnitt 8 hat einen grünen Test bzw. eine dokumentierte Messung (AK-01–AK-04 Unit + Mess-Skript); Stichprobe in der UI (AK-01/AK-02 manuell) steht aus — Michael, §10.
 - [x] Alle sechs Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
 - [ ] E2E-Pfad läuft (Abschnitt 8): Stichprobe mit Screenshot — offen, Michael vor Merge (§10). Die beiden SDK-Abschnitte des Pfads sind durch das Mess-Skript belegt.
-- [ ] `verify` grün (lokal `verify: OK`, Ausgabe im PR) — PR-Checks grün: offen bis CI-Lauf.
+- [x] `verify` grün (lokal `verify: OK`, Ausgabe im PR) — PR-Check `verify` grün (Run 35027280608, 1m33s).
 - [x] `docs/architecture.md` unverändert (Abschnitt 3 „Nein").
 - [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert (offen: Stichprobe, Merge, Board).
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (3 Zeilen).
