@@ -1,8 +1,8 @@
 /**
  * aos-dokument-leser — renders one Vorhaben document (or the design/ folder)
  * MacDown-near: headings, lists, tables, code, Mermaid, frontmatter table
- * (FA-17). Light DOM on purpose: the global `.markdown-body`, `.code-block`
- * and Mermaid styles of theme.css apply, as they do for chat messages.
+ * (FA-17). Shadow DOM: the shared markdownStyles plus its own sheet — the
+ * reader is used inside other shadow roots, where theme.css never reaches.
  *
  * Stage 1: reading, images from design/, "Dokument geändert — neu laden"
  * with the reading position kept (FA-19). Stage 2 adds the annotation marks.
@@ -15,6 +15,8 @@ import { vorhabenService } from '../../services/vorhaben.service.js';
 import { renderMermaidDiagrams } from '../../utils/mermaid-render.js';
 import { renderDocument } from './vorhaben-markdown.js';
 import { formatClock } from './vorhaben-sort.js';
+import { markdownStyles } from '../../styles/markdown-styles.js';
+import { dokumentLeserStyles } from './dokument-leser-styles.js';
 import type { VorhabenDocKey } from '../../../../src/shared/types/vorhaben.protocol.js';
 
 export type LeserDoc = VorhabenDocKey | 'design';
@@ -42,18 +44,11 @@ export class AosDokumentLeser extends LitElement {
   private pendingScrollTo: string | null = null;
   private loadToken = 0;
 
-  protected override createRenderRoot(): HTMLElement {
-    return this;
-  }
+  static override styles = [markdownStyles, dokumentLeserStyles];
 
-  override connectedCallback(): void {
-    super.connectedCallback();
-    this.addEventListener('click', this.onClick);
-  }
-
-  override disconnectedCallback(): void {
-    super.disconnectedCallback();
-    this.removeEventListener('click', this.onClick);
+  /** Query root for headings, Mermaid containers and copy buttons. */
+  private get root(): ParentNode {
+    return this.renderRoot;
   }
 
   protected override willUpdate(changed: PropertyValues<this>): void {
@@ -75,11 +70,11 @@ export class AosDokumentLeser extends LitElement {
   }
 
   protected override async updated(): Promise<void> {
-    await renderMermaidDiagrams(this);
+    await renderMermaidDiagrams(this.root);
     if (this.pendingScrollTo) {
       const id = this.pendingScrollTo;
       this.pendingScrollTo = null;
-      const target = this.querySelector(`#${CSS.escape(id)}`);
+      const target = [...this.root.querySelectorAll<HTMLElement>('[id]')].find((el) => el.id === id);
       target?.scrollIntoView({ block: 'start' });
     }
   }
@@ -92,7 +87,7 @@ export class AosDokumentLeser extends LitElement {
   }
 
   private firstVisibleHeadingId(): string | null {
-    const headings = this.querySelectorAll<HTMLElement>('.markdown-body h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
+    const headings = this.root.querySelectorAll<HTMLElement>('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
     for (const h of headings) {
       const rect = h.getBoundingClientRect();
       if (rect.bottom >= 0) return h.id;
@@ -159,7 +154,7 @@ export class AosDokumentLeser extends LitElement {
 
   override render() {
     return html`
-      <div class="vorhaben-leser">
+      <div class="vorhaben-leser" @click=${this.onClick}>
         ${this.changedAt !== null
           ? html`<div class="leser-reload" role="status">
               <span>Dokument geändert um ${formatClock(this.changedAt)}</span>

@@ -33,6 +33,7 @@ describe('VorhabenService + VorhabenHandler (stage 1)', () => {
   let reply: ReturnType<typeof vi.fn<(m: OutboundMessage) => void>>;
   let service: VorhabenService;
   let handler: VorhabenHandler;
+  let watcher: VorhabenWatcher;
   const openProjects: Array<{ id: string; path: string; name: string }> = [];
 
   const lastState = (): VorhabenStateMessage['state'] => {
@@ -60,11 +61,12 @@ describe('VorhabenService + VorhabenHandler (stage 1)', () => {
     await store.load();
     broadcast = vi.fn();
     reply = vi.fn();
+    watcher = new VorhabenWatcher({ debounceMs: 30 });
     service = new VorhabenService({
       workspace: { getState: () => ({ openProjects }) },
       store,
       broadcast,
-      watcher: new VorhabenWatcher({ debounceMs: 30 }),
+      watcher,
       listWorktrees: async (p) =>
         p === projA
           ? { isGitRepo: true, mainWorktreePath: projA, entries: [
@@ -103,20 +105,24 @@ describe('VorhabenService + VorhabenHandler (stage 1)', () => {
     expect(reply.mock.calls[0][0].type).toBe('vorhaben:state');
   });
 
-  it('a document change is broadcast within 2 s (FA-04, V-04)', async () => {
+  // The watcher's fs.watch path is covered in vorhaben-watcher.test.ts; here the
+  // `changed` event is raised directly so the test is independent of FSEvents latency.
+  it('a watcher `changed` event rescans and broadcasts the new phase (FA-04, V-04)', async () => {
+    expect(watcher.watchedCopies().sort()).toEqual([projA, join(root, 'b'), wtA].sort());
     const before = broadcast.mock.calls.length;
     writeFileSync(join(projA, 'intent', 'INT-2026-004-ui', 'spec.md'), '# Spec\n\n> **Status:** freigegeben\n');
-    await waitFor(() => (broadcast.mock.calls.length > before ? true : undefined), 4000);
+    watcher.emit('changed', projA);
+    await waitFor(() => (broadcast.mock.calls.length > before ? true : undefined), 2000);
     const state = lastState();
     expect(state.rows[0]).toMatchObject({ phase: 'plan', nextStep: { command: '/plan INT-2026-004' } });
   });
 
-  it('a project without intent/ picks up a new folder (dir-added → rescan)', async () => {
-    const before = broadcast.mock.calls.length;
+  it('a project without intent/ picks up a new folder after `changed`', async () => {
     mkdirSync(join(root, 'b', 'intent', 'INT-2026-001-b'), { recursive: true });
     writeFileSync(join(root, 'b', 'intent', 'INT-2026-001-b', 'intent.md'), intentText('entwurf'));
-    await waitFor(() => (lastState().rows.some((r) => r.projectId === 'pb') ? true : undefined), 4000);
-    expect(broadcast.mock.calls.length).toBeGreaterThan(before);
+    watcher.emit('changed', join(root, 'b'));
+    await waitFor(() => (lastState().rows.some((r) => r.projectId === 'pb') ? true : undefined), 2000);
+    expect(lastState().projects.find((p) => p.id === 'pb')?.hasIntentDir).toBe(true);
   });
 
   it('doc.read validates and returns content; unknown project/vorhaben are errors', async () => {

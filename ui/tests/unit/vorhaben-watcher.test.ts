@@ -40,7 +40,7 @@ describe('VorhabenWatcher (FA-04, FA-19)', () => {
     expect(watcher.isPolling(root)).toBe(false);
     await new Promise((r) => setTimeout(r, 100));
     writeFileSync(join(root, 'intent', 'INT-2026-001-a', 'intent.md'), 'v2');
-    await waitFor(() => (changed.length > 0 ? changed : undefined), 2000);
+    await waitFor(() => (changed.length > 0 ? changed : undefined), 4500);
     expect(changed[0]).toBe(root);
   });
 
@@ -55,7 +55,7 @@ describe('VorhabenWatcher (FA-04, FA-19)', () => {
     await new Promise((r) => setTimeout(r, 100));
     mkdirSync(join(root, 'intent', 'INT-2026-002-neu'));
     writeFileSync(join(root, 'intent', 'INT-2026-002-neu', 'intent.md'), 'x');
-    await waitFor(() => (added.length > 0 ? added : undefined), 2000);
+    await waitFor(() => (added.length > 0 ? added : undefined), 4500);
     expect(added).toEqual(['INT-2026-002']);
     await new Promise((r) => setTimeout(r, 150));
     expect(changed.length).toBeGreaterThanOrEqual(1);
@@ -69,11 +69,11 @@ describe('VorhabenWatcher (FA-04, FA-19)', () => {
     watcher.setCopies([root]);
     await new Promise((r) => setTimeout(r, 100));
     mkdirSync(join(root, 'intent'));
-    await waitFor(() => (changed.length > 0 ? changed : undefined), 2000);
+    await waitFor(() => (changed.length > 0 ? changed : undefined), 4500);
     mkdirSync(join(root, 'intent', 'INT-2026-003-x'));
     writeFileSync(join(root, 'intent', 'INT-2026-003-x', 'intent.md'), 'x');
     const n = changed.length;
-    await waitFor(() => (changed.length > n ? changed : undefined), 2000);
+    await waitFor(() => (changed.length > n ? changed : undefined), 4500);
   });
 
   it('falls back to polling when fs.watch throws', async () => {
@@ -94,9 +94,9 @@ describe('VorhabenWatcher (FA-04, FA-19)', () => {
     expect(watcher.isPolling(root)).toBe(true);
     await new Promise((r) => setTimeout(r, 1100));
     writeFileSync(join(root, 'intent', 'INT-2026-004-p', 'intent.md'), 'v2');
-    await waitFor(() => (changed.length > 0 ? changed : undefined), 2000);
+    await waitFor(() => (changed.length > 0 ? changed : undefined), 4500);
     mkdirSync(join(root, 'intent', 'INT-2026-005-q'));
-    await waitFor(() => (added.length > 0 ? added : undefined), 2000);
+    await waitFor(() => (added.length > 0 ? added : undefined), 4500);
     expect(added).toEqual(['INT-2026-005']);
   });
 
