@@ -1,7 +1,7 @@
 # Plan: Plan-Review ohne MCP-Ballast — Reviewer und Aggregator laufen ohne die MCP-Server des Nutzers
 
 > **Intent:** `intent.md` (INT-2026-006, Version 1.0.0 — umnummeriert von INT-2026-005, siehe §6 Schritt 0) · **Spec:** entfällt (bypass: Bugfix im Review-Kanal der UI, Größe S; Verhalten durch `specwright/specs/2026-04-30-auto-plan-review` festgelegt)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-15 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-15
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `77c635a`: §2 Backend, AR-02, AR-04, §5 Claude Code SDK), `CLAUDE.md` (Verify, Konventionen UI, Hooks, „Nie"), `docs/security.md` (§1 `~/.claude.json` vertraulich, §5 Verbotsliste, §6 Pflichtprüfungen)
 
@@ -222,9 +222,9 @@ Drei Quelldateien und drei Testdateien hängen an einer gemeinsamen Funktion (§
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
 | Umnummerierung INT-2026-005 → INT-2026-006: `git mv intent/INT-2026-005-plan-review-mcp-ballast intent/INT-2026-006-plan-review-mcp-ballast`, `intent_id`, Ablage-Kommentar, Plan-Header; im Freigabe-Commit `plan(INT-2026-006): Plan freigegeben` (Workflow `specwright/workflows/core/plan.md` Schritt 9b) | Claude, diese Sitzung | bei Freigabe, vor `/build` | [x] Commit der Freigabe |
-| Zweig umbenennen: `git branch -m session/reviewer-fix fix/INT-2026-006-plan-review-mcp-ballast` (Konvention der bisherigen PRs: `feat/INT-…`, `fix/INT-…`) | Claude, Build-Sitzung | vor dem ersten Build-Commit | [ ] |
-| Arbeitsplatz: `git rebase origin/main`; `cd ui && npm ci && chmod +x node_modules/node-pty/prebuilds/*/spawn-helper` (CLAUDE.md „Fehler, die Claude hier schon zweimal gemacht hat") | Claude, Build-Sitzung | vor Umsetzung | [ ] |
-| Mess-Lauf auf dem Mac: `cd ui && npx tsx scripts/smoke-test-sdk-isolation.ts` mit Michaels `~/.claude.json` (OAuth in `~/.claude`; 2 Haiku-Aufrufe); Ausgabe in den PR | Claude, Build-Sitzung (Mac) | vor PR | [ ] |
+| Zweig umbenennen: `git branch -m session/reviewer-fix fix/INT-2026-006-plan-review-mcp-ballast` (Konvention der bisherigen PRs: `feat/INT-…`, `fix/INT-…`) | Claude, Build-Sitzung | vor dem ersten Build-Commit | [x] 2026-09-15 |
+| Arbeitsplatz: `git rebase origin/main`; `cd ui && npm ci && chmod +x node_modules/node-pty/prebuilds/*/spawn-helper` (CLAUDE.md „Fehler, die Claude hier schon zweimal gemacht hat") | Claude, Build-Sitzung | vor Umsetzung | [x] 2026-09-15, plus `cd ui/frontend && npm ci` (§14) |
+| Mess-Lauf auf dem Mac: `cd ui && npx tsx scripts/smoke-test-sdk-isolation.ts` mit Michaels `~/.claude.json` (OAuth in `~/.claude`; 2 Haiku-Aufrufe); Ausgabe in den PR | Claude, Build-Sitzung (Mac) | vor PR | [x] 2026-09-15: Reviewer tools 3, mcp_servers 0, 6.964 Prompt-Tokens; Aggregator tools 0, mcp_servers 0, 5.035 Prompt-Tokens; Exit 0 |
 | Stichprobe in der UI: Backend lokal (`cd ui && npm run dev:backend`, Port 3001, CLAUDE.md „Befehle"), Plan-Review mit Anthropic + GLM auslösen, Konsens-Fassung sichtbar; Screenshot in den PR | Michael | vor Merge | [ ] |
 | Merge nach `main` → Auto-Deploy der UI auf den Cloud-Host (`architecture.md` §5; Merge ist Michaels Schritt, `production-gate` nicht berührt) | Michael | Merge | [ ] |
 | Board nachziehen in eigener Sitzung (`obsidian-po-board`): Karte dieses Vorhabens → `✅ Erledigt` mit PR; Karte „SDK-gebündeltes Claude Code 2.0.77 vs. global 2.1.273" → Needs Discovery (OF-02; Prüfschritt: Mess-Skript nach Update); Karte „`prompt-template-extractor` und `voice-call` auf `buildSdkCallOptions` umstellen" (gleiche Ursache) | Claude, Board-Sitzung nach `/clear` | nach Merge | [ ] |
@@ -251,18 +251,20 @@ Drei Quelldateien und drei Testdateien hängen an einer gemeinsamen Funktion (§
 
 ## 13. Definition of Done
 
-- [ ] Jede AK aus Abschnitt 8 hat einen grünen Test bzw. eine dokumentierte Messung/Stichprobe.
-- [ ] Alle sechs Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8): Stichprobe mit Screenshot.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` unverändert (Abschnitt 3 „Nein").
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Regressionsklasse „SDK-Aufrufer laufen auseinander" (`28965af`, jetzt MCP) → Vorschlag für `CLAUDE.md` im PR: „Neue SDK-Aufrufer gehen über `buildSdkCallOptions`."
-- [ ] Abschlussbericht endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-006-plan-review-mcp-ballast/`, zwei Folgekarten); Nachziehen in eigener Sitzung.
+- [x] Jede AK aus Abschnitt 8 hat einen grünen Test bzw. eine dokumentierte Messung (AK-01–AK-04 Unit + Mess-Skript); Stichprobe in der UI (AK-01/AK-02 manuell) steht aus — Michael, §10.
+- [x] Alle sechs Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [ ] E2E-Pfad läuft (Abschnitt 8): Stichprobe mit Screenshot — offen, Michael vor Merge (§10). Die beiden SDK-Abschnitte des Pfads sind durch das Mess-Skript belegt.
+- [ ] `verify` grün (lokal `verify: OK`, Ausgabe im PR) — PR-Checks grün: offen bis CI-Lauf.
+- [x] `docs/architecture.md` unverändert (Abschnitt 3 „Nein").
+- [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert (offen: Stichprobe, Merge, Board).
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (3 Zeilen).
+- [x] 2x-Regel-Check: Regressionsklasse „SDK-Aufrufer laufen auseinander" (`28965af`, jetzt MCP) → Vorschlag für `CLAUDE.md` im PR: „Neue SDK-Aufrufer gehen über `buildSdkCallOptions`."
+- [x] Abschlussbericht endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-006-plan-review-mcp-ballast/`, zwei Folgekarten); Nachziehen in eigener Sitzung.
 
 ## 14. Abweichungen bei der Umsetzung
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-15 | Arbeitsplatz brauchte zusätzlich `cd ui/frontend && npm ci` | Schritt 0(d) nannte nur `cd ui && npm ci`; `verify` Schritt 4 (`build:ui`) und die Vitest-Bezugsliste lesen `ui/frontend/node_modules` — ohne sie 21 TS2307-Fehler und 6 „neue" rote Testdateien, alle umgebungsbedingt. Nach `npm ci` im Frontend `verify: OK` | §6 Schritt 0, §10 Arbeitsplatz; Vorschlag für `CLAUDE.md` im PR (2x-Regel-Nachbar: Worktree-node_modules) |
+| 2026-09-15 | Nachweis `grep -n "buildSdkCallOptions" external-reviewer.ts` liefert 3 Treffer statt 2 | Der angepasste Kommentar `:47` nennt die Funktion beim Namen | §5 (Import, Kommentar, Aufruf — Verbindung wie geplant) |
+| 2026-09-15 | Mess-Skript prüft zusätzlich `result = success` je Aufruf (2 Zeilen mehr in der Tabelle) | Ohne erfolgreiches `result` wären `tools`/`mcp_servers` ohne Aussage; kein neuer Messgegenstand | §3, §8 (Messwerte unverändert: 3/0, 0/0, 5.035 < 20.000) |
