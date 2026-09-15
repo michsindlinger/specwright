@@ -1725,8 +1725,7 @@ export class AosApp extends LitElement {
     // usually arrives before this broadcast, so the selection waits here.
     if (this.pendingSelectSessionId === sessionId) {
       this.pendingSelectSessionId = null;
-      this.activeTerminalSessionId = tab.id;
-      this.isTerminalSidebarOpen = true;
+      this._showSessionSolo(tab.id);
     }
   }
 
@@ -1743,12 +1742,27 @@ export class AosApp extends LitElement {
     if (!sessionId) return;
     const match = this.terminalSessions.find(s => s.terminalSessionId === sessionId);
     if (match) {
-      this.activeTerminalSessionId = match.id;
-      this.isTerminalSidebarOpen = true;
+      this._showSessionSolo(match.id);
       return;
     }
     this.pendingSelectSessionId = sessionId;
   };
+
+  /**
+   * Put one session alone on the screen (INT-2026-005): open the sidebar, make the
+   * session active, then let the sidebar go fullscreen and zoom its pane — after the
+   * render, so the sidebar already lists the tab in `allSessions`. In single mode with
+   * another project active the sidebar answers with `session-jump` and
+   * `_handleTerminalSessionJump` switches the project.
+   */
+  private _showSessionSolo(tabId: string): void {
+    this.activeTerminalSessionId = tabId;
+    this.isTerminalSidebarOpen = true;
+    void this.updateComplete.then(() => {
+      const sidebar = this.querySelector('aos-cloud-terminal-sidebar') as { showSessionSolo(id: string): void } | null;
+      sidebar?.showSessionSolo(tabId);
+    });
+  }
 
   // --- Git Event Handlers ---
 

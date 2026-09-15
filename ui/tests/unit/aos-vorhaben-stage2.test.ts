@@ -272,4 +272,21 @@ describe('aos-naechster-schritt (FA-35, FA-40)', () => {
     expect(started[0]).toEqual({ sessionId: 'cs-9', step: 'build', intentId: 'INT-2026-004' });
     el.remove();
   });
+
+  it('shows the namespaced command when none is passed in (INT-2026-005: /intent alone is not a Claude Code command)', async () => {
+    await import('../../frontend/src/components/vorhaben/aos-naechster-schritt.js');
+    const el = document.createElement('aos-naechster-schritt');
+    el.projectId = 'p';
+    el.projectPath = '/p';
+    el.step = 'intent';
+    document.body.appendChild(el);
+    await settle(el);
+    expect(el.shadowRoot!.textContent).toContain('/specwright:intent');
+    expect(el.shadowRoot!.textContent).not.toMatch(/<code>\/intent<|\s\/intent\b/);
+    el.step = 'plan';
+    el.intentId = 'INT-2026-004';
+    await settle(el);
+    expect(el.shadowRoot!.textContent).toContain('/specwright:plan INT-2026-004');
+    el.remove();
+  });
 });

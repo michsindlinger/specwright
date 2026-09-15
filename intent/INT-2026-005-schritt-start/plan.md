@@ -1,7 +1,7 @@
 # Plan: Nächster Schritt aus der Web-UI — Sitzung sichtbar im Vollbild, Befehl mit `specwright:`-Präfix
 
 > **Intent:** `intent.md` (INT-2026-005, 1.0.0) · **Spec:** entfällt (bypass: zwei Bugs in INT-2026-004, Größe S; Verhalten durch INT-2026-004 spec.md Ablauf E Schritt 6, FA-35, FA-21 festgelegt)
-> **Status:** freigegeben — Bau beauftragt (Michael, „Mach A1", Board-Sitzung 15.09.)
+> **Status:** umgesetzt — PR folgt (Merge = Michael); Bau beauftragt (Michael, „Mach A1", Board-Sitzung 15.09.)
 > **Erstellt:** 2026-09-15 (Bypass ohne Plan Mode — Recherche in §2 belegt gegen `origin/main` `ed29667`) · **Freigabe:** Product Owner (Michael Sindlinger) mit dem PR
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `ed29667`, §2 Frontend/Backend, AR-04, AR-05, §10), `CLAUDE.md` (Konventionen UI, Hooks, „Nie"), `docs/security.md` §2 (T-06: UI führt Befehle über das Terminal aus — unverändert), `docs/design.md` §7
 
@@ -198,17 +198,21 @@ Acht Quelldateien, über das Start-Ereignis und die Befehlsfunktion verbunden; u
 
 ## 13. Definition of Done
 
-- [ ] AK-01 bis AK-04 haben einen grünen Test (§8).
-- [ ] Nachweise aus §5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad (Playwright, Split-2, Klick) läuft; Screenshot in `design/`.
-- [ ] `verify` grün lokal (`verify: OK`), Ausgabe im PR — PR-Check grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md`: keine Änderung nötig (§3 Nein).
-- [ ] Manuelle Schritte (§10) im PR als offen markiert.
-- [ ] Abweichungen in §14.
-- [ ] 2x-Regel geprüft.
+- [x] AK-01 bis AK-04 haben einen grünen Test (§8): `agent-notifications` 31, `aos-cloud-terminal-solo` 4, `vorhaben-reader` 32, `vorhaben-service` 7, `vorhaben-service-stage2` 15, `aos-vorhaben-stage2` 9 — alle grün.
+- [x] Nachweise aus §5 ausgeführt (grep: 5 Dateien `stepCommand`, 0 Kurzform-Reste, `showSessionSolo` app 5/sidebar 2, `soloJumpTarget` 2 Dateien) und im PR zitiert.
+- [x] E2E-Pfad (Playwright, Split-2 und Einzel, Klick auf „Spec schreiben") läuft: 14/14 Prüfungen grün, Protokoll `design/e2e-protokoll.txt`, Screenshots `design/ist-vollbild-{split,single}.png`.
+- [x] `verify` grün lokal (`verify: OK`, 58 s), Ausgabe im PR — PR-Check: siehe Status im Kopf (CI ist die Wahrheit).
+- [x] `docs/architecture.md`: keine Änderung nötig (§3 Nein).
+- [x] Manuelle Schritte (§10) im PR als offen markiert.
+- [x] Abweichungen in §14.
+- [x] 2x-Regel: „Befehlsform an mehreren Stellen von Hand zusammengesetzt" — erstes Vorkommen; Funktion `stepCommand` verhindert das zweite. Kein `CLAUDE.md`-Eintrag.
 - [ ] Board: Block „Für das Board" im Abschlussbericht (Karten Quick Wins → Erledigt nach Merge).
 
 ## 14. Abweichungen bei der Umsetzung
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
+| 2026-09-15 | `soloJumpTarget` bekommt die Pane-Belegung als zweiten Parameter und legt eine Hintergrund-Sitzung in ein leeres Pane, bevor sie das betrachtete Pane verdrängt. | E2E-Lauf 1: Split-2 mit Pane 0 = Shell (Projekt A), Pane 1 leer → die neue Sitzung landete in Pane 0 (Glocken-Regel c „betrachtetes Pane"), die Shell fiel aus dem Pane. Nach dem Entzoomen soll die alte Anordnung plus neue Sitzung stehen, nicht minus Shell. | §3 Entwurf, §8 (ein Testfall mehr), `agent-notifications.test.ts` unter `ALLOW_TEST_EDITS=1` angepasst — Signaturänderung, keine Erwartung gelockert |
+| 2026-09-15 | Komponententest `aos-cloud-terminal-solo.test.ts` nach dem Marker unter `ALLOW_TEST_EDITS=1` ergänzt: der Stub für `aos-terminal-session` braucht `refreshTerminal()`/`focusTerminal()`, weil `_setFullscreen` alle Panels refittet. | Testgerüst unvollständig (Stub), nicht die Erwartung; Fehlerbild `node.refreshTerminal is not a function`. | §8 |
+| 2026-09-15 | E2E-Nachweis für den getippten Befehl über `ps` (positionales Argument des `claude`-Prozesses, `cloud-terminal-manager.ts:702`) statt über den Terminal-Output. | `cloud-terminal:output` geht nur an angehängte Clients, der Sniffer-Client bekam 0 Bytes. | §8 |
+| 2026-09-15 | E2E-Skript bleibt im Scratchpad (nicht in `design/`). | Enthält absolute Mac-Pfade; Repo ist öffentlich. Protokoll und Screenshots liegen in `design/`. | §6 Schritt 6 |

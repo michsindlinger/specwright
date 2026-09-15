@@ -141,6 +141,26 @@ export function resolveJumpTarget(input: JumpInput): JumpTarget {
 }
 
 /**
+ * Sharpen a jump into "alone on the screen" (INT-2026-005, FA-35): whatever pane the
+ * session ends up in gets zoomed, as Cmd/Ctrl+Shift+Enter would. A background session
+ * takes an empty pane before it evicts one — after un-zooming the user finds the old
+ * arrangement plus the new session, not minus a shell. Single mode has no panes, so
+ * `select-tab` stays as it is (the tab already fills the area).
+ */
+export function soloJumpTarget(target: JumpTarget, paneSessionIds: readonly (string | null)[]): JumpTarget {
+  switch (target.kind) {
+    case 'focus-pane':
+      return { kind: 'zoom-pane', pane: target.pane };
+    case 'assign-pane': {
+      const empty = paneSessionIds[target.pane] ? paneSessionIds.findIndex((id) => !id) : -1;
+      return { kind: 'assign-pane', pane: empty >= 0 ? empty : target.pane, keepZoom: true };
+    }
+    default:
+      return target;
+  }
+}
+
+/**
  * A row in the bell dropdown. Two sources feed it (see {@link buildBellRows}):
  * `blocked` comes from the live agent status, `done` from a Stop notification.
  */

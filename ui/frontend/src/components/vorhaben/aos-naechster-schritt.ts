@@ -1,16 +1,16 @@
 /**
  * aos-naechster-schritt — "Nächster Schritt: Plan erstellen — startet eine
- * Sitzung mit /plan INT-…" with the model choice (pre-set to the last model
+ * Sitzung mit /specwright:plan INT-…" with the model choice (pre-set to the last model
  * of this Vorhaben and step, else the step default, FA-40) and the target
  * (project or an existing worktree, new worktree — the picker's data,
  * V-14) and the start button (FA-35, mock 03b). Also used on the project page
- * for a new Vorhaben (`/intent`).
+ * for a new Vorhaben (`/specwright:intent`).
  */
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { vorhabenService, type ModelListInfo } from '../../services/vorhaben.service.js';
-import type { ModelSelection, VorhabenStep } from '../../../../src/shared/types/vorhaben.protocol.js';
+import { stepCommand, type ModelSelection, type VorhabenStep } from '../../../../src/shared/types/vorhaben.protocol.js';
 import type { CloudTerminalSessionTarget, CloudTerminalWorktreeEntry } from '../../../../src/shared/types/cloud-terminal.protocol.js';
 import '../model-selector.js';
 
@@ -202,7 +202,7 @@ export class AosNaechsterSchritt extends LitElement {
 
   override render() {
     const label = this.label || STEP_TEXT[this.step];
-    const command = this.command || (this.step === 'intent' ? '/intent' : `/${this.step} ${this.intentId}`);
+    const command = this.command || stepCommand(this.step, this.intentId || undefined);
     return html`<div class="kasten">
       <span class="text">
         ${this.compact ? nothing : html`<strong>Nächster Schritt:</strong> ${label} — `}startet eine Sitzung mit <code>${command}</code>${this.modelLabel()}

@@ -1,0 +1,14 @@
+✅ Übersicht: Befehl mit Präfix — /specwright:spec INT-2026-002
+✅ A: Ausgangslage split-2, kein Vollbild — ["split-2",false,["restored-cloud-1789505957136-1",null]]
+✅ Vorhaben-Seite zeigt Befehl mit Präfix —  Nächster Schritt: Spec schreiben — startet eine Sitzung mit /specwright:spec INT-2026-002 Im Projekt Neuer Worktree Spe
+✅ A: neue Sitzung im Tab-Bestand — [["restored-cloud-1789505957136-1","Terminal 1","session-neue-ui","cloud-1789505957136-1"],["restored-cloud-1789505964462-2","spec INT-2026-002","e2e-projekt","cloud-1789505964462-2"]]
+✅ A: Sidebar offen + Vollbild — [true,true]
+✅ A: Sitzung liegt in einem Pane (Projekt B → Pane 1) — ["restored-cloud-1789505957136-1","restored-cloud-1789505964462-2"]
+✅ A: dieses Pane ist gezoomt — zoom=1 pane=1
+✅ A: Sitzung aktiv — restored-cloud-1789505964462-2
+✅ Vorhaben-Seite zeigt Befehl mit Präfix —  Nächster Schritt: Spec schreiben — startet eine Sitzung mit /specwright:spec INT-2026-002 Im Projekt Neuer Worktree Spe
+✅ B: Vollbild — true
+✅ B: aktives Projekt ist B (Projektwechsel über session-jump) — /private/tmp/claude-502/-Users-michaelsindlinger-Entwicklung-specwright-worktrees-session-neue-ui/5f3973c3-7e5e-4203-901b-c3eb8ea54533/scratchpad/e2e-projekt vs /private/tmp/claude-502/-Users-michaelsindlinger-Entwicklung-specwright-worktrees-session-neue-ui/5f3973c3-7e5e-4203-901b-c3eb8ea54533/scratchpad/e2e-projekt
+✅ B: Sitzung aktiv — restored-cloud-1789505978872-3 vs restored-cloud-1789505978872-3
+✅ Backend startet claude mit „/specwright:spec INT-2026-002“ als Eingabe (ps) — 1 von 3 Sitzungen
+✅ keine Seitenfehler

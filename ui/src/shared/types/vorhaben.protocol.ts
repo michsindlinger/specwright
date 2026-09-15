@@ -25,8 +25,18 @@ export type VorhabenZustand =
   | 'keine_sitzung'
   | 'sitzung_beendet';
 
-/** The four v4 steps; `build` is spelled like the command (`/build`). */
+/** The four v4 steps; `build` is spelled like the command (`/specwright:build`). */
 export type VorhabenStep = 'intent' | 'spec' | 'plan' | 'build';
+
+/**
+ * Claude Code name of a step command. The commands live in `.claude/commands/specwright/`,
+ * so the namespace is part of the name — `/intent` alone is not a command (INT-2026-005).
+ * Shared by the backend (typed into the session) and the frontend (shown next to the button).
+ */
+export function stepCommand(step: VorhabenStep, intentId?: string): string {
+  const name = `/specwright:${step}`;
+  return step === 'intent' || !intentId ? name : `${name} ${intentId}`;
+}
 
 /** Documents of a Vorhaben folder in fixed reader order (FA-17). */
 export type VorhabenDocKey = 'intent' | 'spec' | 'plan' | 'build-stand';

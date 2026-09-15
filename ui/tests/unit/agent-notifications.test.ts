@@ -5,6 +5,7 @@ import {
   pruneNotifications,
   formatRelativeTime,
   resolveJumpTarget,
+  soloJumpTarget,
   buildBellRows,
   ringsForAgentEvent,
   type AgentNotification,
@@ -135,6 +136,26 @@ describe('resolveJumpTarget()', () => {
       sessionProject: '/p2',
     });
     expect(r).toEqual({ kind: 'assign-pane', pane: 1, keepZoom: false });
+  });
+});
+
+describe('soloJumpTarget() (INT-2026-005)', () => {
+  const full = ['a1', 'b1'];
+  it('turns a plain pane focus into a zoom — the session must be alone on the screen', () => {
+    expect(soloJumpTarget({ kind: 'focus-pane', pane: 1 }, full)).toEqual({ kind: 'zoom-pane', pane: 1 });
+  });
+  it('keeps the zoom on the pane a background session is assigned to, even when nothing was zoomed', () => {
+    expect(soloJumpTarget({ kind: 'assign-pane', pane: 0, keepZoom: false }, full)).toEqual({ kind: 'assign-pane', pane: 0, keepZoom: true });
+    expect(soloJumpTarget({ kind: 'assign-pane', pane: 3, keepZoom: true }, ['a', 'b', 'c', 'd'])).toEqual({ kind: 'assign-pane', pane: 3, keepZoom: true });
+  });
+  it('prefers an empty pane over evicting the session the user was looking at (E2E finding 15.09.)', () => {
+    expect(soloJumpTarget({ kind: 'assign-pane', pane: 0, keepZoom: false }, ['a1', null])).toEqual({ kind: 'assign-pane', pane: 1, keepZoom: true });
+    // the target pane itself is empty → stays
+    expect(soloJumpTarget({ kind: 'assign-pane', pane: 1, keepZoom: false }, ['a1', null])).toEqual({ kind: 'assign-pane', pane: 1, keepZoom: true });
+  });
+  it('leaves single mode and an existing zoom target alone', () => {
+    expect(soloJumpTarget({ kind: 'select-tab' }, [])).toEqual({ kind: 'select-tab' });
+    expect(soloJumpTarget({ kind: 'zoom-pane', pane: 2 }, ['a', 'b', 'c', 'd'])).toEqual({ kind: 'zoom-pane', pane: 2 });
   });
 });
 

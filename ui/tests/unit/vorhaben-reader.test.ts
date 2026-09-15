@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, utimesSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { stepCommand } from '../../src/shared/types/vorhaben.protocol.js';
 
 import {
   parseIntentHead,
@@ -140,12 +141,22 @@ describe('deriveZustand (FA-13, one case per value; FA-14 decay)', () => {
   });
 });
 
+describe('stepCommand (INT-2026-005)', () => {
+  it('names the command with its namespace — the commands live in .claude/commands/specwright/', () => {
+    expect(stepCommand('intent')).toBe('/specwright:intent');
+    expect(stepCommand('intent', 'INT-2026-004')).toBe('/specwright:intent');
+    expect(stepCommand('spec', 'INT-2026-004')).toBe('/specwright:spec INT-2026-004');
+    expect(stepCommand('plan', 'INT-2026-004')).toBe('/specwright:plan INT-2026-004');
+    expect(stepCommand('build', 'INT-2026-004')).toBe('/specwright:build INT-2026-004');
+  });
+});
+
 describe('deriveNextStep (FA-12)', () => {
   it('per phase', () => {
-    expect(deriveNextStep('bau', 'INT-2026-001', false)).toEqual({ step: 'build', command: '/build INT-2026-001', label: 'Bau starten' });
+    expect(deriveNextStep('bau', 'INT-2026-001', false)).toEqual({ step: 'build', command: '/specwright:build INT-2026-001', label: 'Bau starten' });
     expect(deriveNextStep('bau', 'INT-2026-001', true)?.label).toBe('Bau fortsetzen');
-    expect(deriveNextStep('plan', 'INT-2026-001', false)?.command).toBe('/plan INT-2026-001');
-    expect(deriveNextStep('spec', 'INT-2026-001', false)?.command).toBe('/spec INT-2026-001');
+    expect(deriveNextStep('plan', 'INT-2026-001', false)?.command).toBe('/specwright:plan INT-2026-001');
+    expect(deriveNextStep('spec', 'INT-2026-001', false)?.command).toBe('/specwright:spec INT-2026-001');
     expect(deriveNextStep('absicht', 'INT-2026-001', false)).toBeUndefined();
     expect(deriveNextStep('pr', 'INT-2026-001', false)).toBeUndefined();
     expect(deriveNextStep('umgesetzt', 'INT-2026-001', false)).toBeUndefined();
@@ -197,7 +208,7 @@ describe('scanCopy / toRow on a temp dir', () => {
       step: 'plan',
       zustand: 'keine_sitzung',
       titel: 'Web-UI zeigt Vorhaben',
-      nextStep: { command: '/plan INT-2026-004' },
+      nextStep: { command: '/specwright:plan INT-2026-004' },
       arbeitskopie: 'main',
     });
     expect(row?.reviewDoc).toBeUndefined();
