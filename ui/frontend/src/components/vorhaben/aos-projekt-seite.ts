@@ -3,8 +3,8 @@
  * hint on worktrees), section "Projekt-Docs" (five entries with stand and
  * commit hint, FA-43), the editor, section "Neues Vorhaben". Built as a list
  * of named sections so more can be added without touching the overview or
- * the reader (FA-48). Stage 1: "Absicht beginnen" is a terminal hint; stage 2
- * makes it a button.
+ * the reader (FA-48). "Absicht beginnen" starts an `/intent` session with
+ * model choice (stage 2, FA-35).
  */
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
@@ -12,6 +12,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { ProjectDocDraft, ProjectDocEntry, ProjectDocKey, VorhabenProjectInfo } from '../../../../src/shared/types/vorhaben.protocol.js';
 import { vorhabenService } from '../../services/vorhaben.service.js';
 import './aos-projekt-doc-editor.js';
+import './aos-naechster-schritt.js';
 
 interface ProjektSection {
   id: 'docs' | 'neu';
@@ -229,9 +230,19 @@ export class AosProjektSeite extends LitElement {
         </div>
       </section>`;
     }
+    const p = this.project;
     return html`<section class="abschnitt" aria-label=${section.label}>
       <h2 class="abschnitt-titel">${section.label}</h2>
-      <div class="neu"><span>Absicht beginnen</span><span>im Terminal: <code>/intent</code></span></div>
+      ${p
+        ? html`<aos-naechster-schritt
+            .projectId=${p.id}
+            .projectPath=${p.path}
+            step="intent"
+            label="Absicht beginnen"
+            command="/intent"
+            .mobile=${this.mobile}
+          ></aos-naechster-schritt>`
+        : html`<div class="neu"><span>Absicht beginnen</span><span>im Terminal: <code>/intent</code></span></div>`}
     </section>`;
   }
 }

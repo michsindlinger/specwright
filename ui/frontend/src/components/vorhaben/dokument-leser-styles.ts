@@ -192,4 +192,125 @@ export const dokumentLeserStyles = css`
     border: none;
     background: transparent;
   }
+
+  /* ---- stage 2: anchors, marks, tap bar (FA-23/FA-24) ---- */
+  .leser-werkzeuge {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+  }
+  .leser-gesamt-btn {
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+  }
+  .leser-tipp {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+  }
+  .markdown-body.annotierbar {
+    padding-left: 32px;
+  }
+  .markdown-body.annotierbar.mobil {
+    padding-left: 0;
+  }
+  .markdown-body.annotierbar [data-ordinal] {
+    position: relative;
+    border-radius: var(--radius-sm);
+    outline: none;
+  }
+  /* Mac: the mark in the left gutter — on hover/focus, permanent with an Anmerkung */
+  .markdown-body.annotierbar:not(.mobil) [data-ordinal]::before {
+    content: '+';
+    position: absolute;
+    left: -30px;
+    top: 0.15em;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    border-radius: 50%;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-family: var(--font-family-mono);
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 0.12s;
+  }
+  .markdown-body.annotierbar:not(.mobil) [data-ordinal]:hover::before,
+  .markdown-body.annotierbar:not(.mobil) [data-ordinal]:focus-visible::before {
+    opacity: 1;
+  }
+  .markdown-body.annotierbar [data-ordinal][data-anmerkung]::before {
+    content: attr(data-anmerkung);
+    opacity: 1;
+    background: var(--color-accent-primary);
+    border-color: var(--color-accent-primary);
+    color: var(--color-bg-primary);
+    font-weight: 600;
+  }
+  .markdown-body.annotierbar.mobil [data-ordinal][data-anmerkung]::before {
+    content: attr(data-anmerkung);
+    position: static;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+    margin-right: 6px;
+    border-radius: 50%;
+    text-align: center;
+    background: var(--color-accent-primary);
+    color: var(--color-bg-primary);
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-family-mono);
+  }
+  .markdown-body.annotierbar [data-ordinal][data-anmerkung] {
+    box-shadow: inset 3px 0 0 var(--color-accent-primary);
+    padding-left: 6px;
+  }
+  .markdown-body.annotierbar tr[data-anmerkung] {
+    box-shadow: inset 3px 0 0 var(--color-accent-primary);
+  }
+  .markdown-body.annotierbar:not(.mobil) [data-ordinal]:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-accent-primary);
+  }
+  .markdown-body .leser-aktiv,
+  .markdown-body .leser-getippt {
+    background: rgba(var(--color-accent-primary-rgb, 0, 212, 255), 0.08);
+    box-shadow: 0 0 0 1px var(--color-accent-primary);
+  }
+  .leser-tapbar {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin: var(--spacing-xs) 0 var(--spacing-sm);
+  }
+  .leser-tapbar-btn {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+  }
+  .leser-tapbar-btn.primary {
+    background: var(--color-accent-primary);
+    border-color: var(--color-accent-primary);
+    color: var(--color-bg-primary);
+    font-weight: 600;
+  }
+  .markdown-body aos-anmerkung-editor {
+    display: block;
+  }
 `;

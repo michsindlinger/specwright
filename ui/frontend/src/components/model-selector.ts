@@ -22,6 +22,14 @@ export class AosModelSelector extends LitElement {
   /** Pre-select a model by ID (embedded mode) */
   @property({ type: String }) externalSelectedModelId = '';
 
+  /**
+   * Provider of `externalSelectedModelId` (embedded mode). Model ids repeat
+   * across providers (`opus` in anthropic and deepseek); with the provider
+   * set, the pre-selection is exact. Optional — callers that pass only the
+   * model id keep today's first-match behaviour (INT-2026-004).
+   */
+  @property({ type: String }) externalSelectedProviderId = '';
+
   /** Disable the selector */
   @property({ type: Boolean }) disabled = false;
 
@@ -173,7 +181,7 @@ export class AosModelSelector extends LitElement {
     super.willUpdate(changedProperties);
 
     // Embedded mode: sync providers and selection from properties
-    if (changedProperties.has('externalProviders') || changedProperties.has('externalSelectedModelId')) {
+    if (changedProperties.has('externalProviders') || changedProperties.has('externalSelectedModelId') || changedProperties.has('externalSelectedProviderId')) {
       if (this.isEmbedded) {
         this.providers = this.externalProviders;
         this.isLoading = false;
@@ -184,8 +192,9 @@ export class AosModelSelector extends LitElement {
 
   private syncExternalSelection(): void {
     if (!this.externalSelectedModelId || this.providers.length === 0) return;
-    // Find the model across all providers
+    // Find the model across all providers (provider-scoped when the caller says which)
     for (const provider of this.providers) {
+      if (this.externalSelectedProviderId && provider.id !== this.externalSelectedProviderId) continue;
       const model = provider.models.find(m => m.id === this.externalSelectedModelId);
       if (model) {
         this.selectedModel = model;

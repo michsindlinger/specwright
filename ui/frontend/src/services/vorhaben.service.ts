@@ -6,12 +6,29 @@
 
 import { gateway, type WebSocketMessage } from '../gateway.js';
 import type {
+  Anmerkung,
+  ModelSelection,
   ProjectDocEntry,
   ProjectDocKey,
+  ProtokollArt,
+  ProtokollEintrag,
+  SendeGrund,
   VorhabenDocKey,
   VorhabenErrorMessage,
   VorhabenState,
+  VorhabenStep,
 } from '../../../src/shared/types/vorhaben.protocol.js';
+import type { CloudTerminalSessionTarget, CloudTerminalTargetsResponseMessage } from '../../../src/shared/types/cloud-terminal.protocol.js';
+import type { ModelSelectorProvider } from '../components/model-selector.js';
+
+/** `model.list` reply as the Vorhaben page needs it (FA-40/FA-41). */
+export interface ModelListInfo {
+  providers: ModelSelectorProvider[];
+  defaultSelection: ModelSelection;
+  stepDefaults: Record<VorhabenStep, ModelSelection>;
+}
+
+export type SendResult = { ok: true; entry: ProtokollEintrag } | { ok: false; grund: SendeGrund; message: string; currentStand?: number };
 
 export type VorhabenStateListener = (state: VorhabenState | null) => void;
 
@@ -107,14 +124,74 @@ export class VorhabenClientService {
     gateway.send({ type: 'project-docs:draft.clear', projectId, key });
   }
 
+  // ---- stage 2: review channel ----
+
+  setDraft(projectId: string, intentId: string, doc: VorhabenDocKey, anmerkung: Anmerkung): void {
+    gateway.send({ type: 'vorhaben:draft.set', projectId, intentId, doc, anmerkung });
+  }
+
+  deleteDraft(projectId: string, intentId: string, doc: VorhabenDocKey, id: string): void {
+    gateway.send({ type: 'vorhaben:draft.delete', projectId, intentId, doc, id });
+  }
+
+  /** "Änderungen schicken" / "Freigeben" (FA-27/FA-28); a refusal comes back as `ok:false` with the reason (FA-30). */
+  send(projectId: string, intentId: string, doc: VorhabenDocKey, art: ProtokollArt, stand: number): Promise<SendResult> {
+    return this.request<{ type: string; entry?: ProtokollEintrag; grund?: SendeGrund; message?: string; currentStand?: number }>(
+      ['vorhaben:sent', 'vorhaben:send-rejected'],
+      { type: 'vorhaben:send', projectId, intentId, doc, art, stand }
+    ).then((r) =>
+      r.type === 'vorhaben:sent' && r.entry
+        ? { ok: true as const, entry: r.entry }
+        : { ok: false as const, grund: r.grund ?? 'senden_fehlgeschlagen', message: r.message ?? '', ...(r.currentStand !== undefined ? { currentStand: r.currentStand } : {}) }
+    );
+  }
+
+  /** Starts the next step as a session in the project (FA-35). */
+  startStep(projectId: string, intentId: string | undefined, step: VorhabenStep, model: ModelSelection, sessionTarget?: CloudTerminalSessionTarget): Promise<{ sessionId: string }> {
+    return this.request<{ sessionId: string }>('vorhaben:step-started', {
+      type: 'vorhaben:start-step',
+      projectId,
+      ...(intentId ? { intentId } : {}),
+      step,
+      model,
+      ...(sessionTarget ? { sessionTarget } : {}),
+    });
+  }
+
+  /** Providers, general default and per-step defaults from the settings. */
+  modelList(): Promise<ModelListInfo> {
+    return new Promise((resolve, reject) => {
+      const onList = (msg: WebSocketMessage): void => {
+        gateway.off('model.list', onList);
+        clearTimeout(timer);
+        resolve({
+          providers: (msg.providers as ModelSelectorProvider[]) ?? [],
+          defaultSelection: (msg.defaultSelection as ModelSelection) ?? { providerId: 'anthropic', modelId: 'opus' },
+          stepDefaults: (msg.stepDefaults as Record<VorhabenStep, ModelSelection>) ?? ({} as Record<VorhabenStep, ModelSelection>),
+        });
+      };
+      const timer = setTimeout(() => {
+        gateway.off('model.list', onList);
+        reject(new VorhabenRequestError('TIMEOUT', 'Keine Antwort vom Backend'));
+      }, REQUEST_TIMEOUT_MS);
+      gateway.on('model.list', onList);
+      gateway.send({ type: 'model.list' });
+    });
+  }
+
+  /** Where a session could run (project root, worktrees) — the existing picker's data. */
+  targets(projectPath: string): Promise<CloudTerminalTargetsResponseMessage> {
+    return this.request<CloudTerminalTargetsResponseMessage>('cloud-terminal:targets:response', { type: 'cloud-terminal:targets', projectPath }, 'cloud-terminal:targets:error');
+  }
+
   /** Sends a request with a fresh requestId; resolves on the matching reply, rejects on vorhaben:error. */
-  private request<T>(replyType: string | string[], message: WebSocketMessage): Promise<T & { type: string }> {
+  private request<T>(replyType: string | string[], message: WebSocketMessage, errorType = 'vorhaben:error'): Promise<T & { type: string }> {
     const requestId = `vh-${Date.now()}-${++this.requestCounter}`;
     const types = Array.isArray(replyType) ? replyType : [replyType];
     return new Promise((resolve, reject) => {
       const cleanup = (): void => {
         for (const t of types) gateway.off(t, onReply);
-        gateway.off('vorhaben:error', onError);
+        gateway.off(errorType, onError);
         clearTimeout(timer);
       };
       const onReply = (msg: WebSocketMessage): void => {
@@ -133,7 +210,7 @@ export class VorhabenClientService {
         reject(new VorhabenRequestError('TIMEOUT', 'Keine Antwort vom Backend'));
       }, REQUEST_TIMEOUT_MS);
       for (const t of types) gateway.on(t, onReply);
-      gateway.on('vorhaben:error', onError);
+      gateway.on(errorType, onError);
       gateway.send({ ...message, requestId });
     });
   }

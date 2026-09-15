@@ -1952,7 +1952,34 @@ export class AosApp extends LitElement {
     if (!this.activeTerminalSessionId && activeProject?.path === session.projectPath) {
       this.activeTerminalSessionId = tab.id;
     }
+    // A step started from the Vorhaben page (INT-2026-004, FA-35): the reply
+    // usually arrives before this broadcast, so the selection waits here.
+    if (this.pendingSelectSessionId === sessionId) {
+      this.pendingSelectSessionId = null;
+      this.activeTerminalSessionId = tab.id;
+      this.isTerminalSidebarOpen = true;
+    }
   }
+
+  /** Backend session id to select once its tab is adopted (see above). */
+  private pendingSelectSessionId: string | null = null;
+
+  /**
+   * Vorhaben page started a step (FA-35, Mac only — the phone stops the event
+   * in the view): jump into the terminal of that session. If the tab is not
+   * adopted yet, remember the id and select on adoption.
+   */
+  private _handleVorhabenSessionStarted = (e: CustomEvent<{ sessionId: string }>): void => {
+    const { sessionId } = e.detail;
+    if (!sessionId) return;
+    const match = this.terminalSessions.find(s => s.terminalSessionId === sessionId);
+    if (match) {
+      this.activeTerminalSessionId = match.id;
+      this.isTerminalSidebarOpen = true;
+      return;
+    }
+    this.pendingSelectSessionId = sessionId;
+  };
 
   // --- Git Event Handlers ---
 
@@ -2271,6 +2298,7 @@ export class AosApp extends LitElement {
           @show-toast=${this._handleShowToast}
           @terminal-pill-tap=${this._handleTerminalToggle}
           @add-project=${this.handleAddProject}
+          @vorhaben-session-started=${this._handleVorhabenSessionStarted}
         ></aos-vorhaben-view>`;
       case 'dashboard':
         return html`<aos-dashboard-view
