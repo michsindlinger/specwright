@@ -348,7 +348,7 @@ Self-Review nach Skill `review-implementation-plan` (Vollständigkeit, Konsisten
 - [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (je Stufe die dort zugeordneten). *Stufe 3: FA-36 `router-alias.test.ts` + `story-path-removed.test.ts`, FA-39/EK-04 `story-path-removed.test.ts`, FA-38 Bezugsliste + Stichprobe §14.*
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert (S1 in PR 1, S2 in PR 2, S3 in PR 3). *V-17 in PR 3.*
 - [x] E2E-Pfad läuft (PR 2), Screenshots neben Mocks (PR 1, PR 2), Rahmen-Stichprobe (PR 3). *§14, `design/ist-stufe3/`.*
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit). *PR 1, PR 2 grün; PR 3: lokal `verify: OK`, CI-Lauf beim Anlegen des PR offen — abhaken nach grünem Check.*
+- [x] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit). *PR 1, PR 2 grün; PR 3 (#46): lokal `verify: OK`, CI `verify` grün auf `77c635a` (Lauf 35015596309) und nach der Bezugslisten-Kürzung auf `11a2612`.*
 - [x] `docs/architecture.md` je Stufe angepasst; ADR-0002 in PR 1. *Stufe 3: §1/§2/§3/AR-03/§5/§10 + `design.md` §7, `product-brief.md` §5/§8, `security.md` §7.*
 - [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert. *Offen: Merge PR 3, Board-Karten (eigene Sitzung), Standardmodelle je Schritt (optional).*
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (inkl. Spike-Ergebnis, Löschliste Stufe 3, Messwert FA-07).
