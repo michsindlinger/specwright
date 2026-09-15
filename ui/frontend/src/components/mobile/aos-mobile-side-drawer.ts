@@ -10,7 +10,7 @@ import { routerService } from '../../services/router.service.js';
 import type { ViewType } from '../../types/route.types.js';
 import './aos-mobile-sheet.js';
 
-export type DrawerNavRoute = 'dashboard' | 'specs' | 'cloud-terminal' | 'prompt-templates' | 'settings';
+export type DrawerNavRoute = 'vorhaben' | 'projekt' | 'dashboard' | 'specs' | 'cloud-terminal' | 'prompt-templates' | 'settings';
 
 @customElement('aos-mobile-side-drawer')
 export class AosMobileSideDrawer extends LitElement {
@@ -34,6 +34,8 @@ export class AosMobileSideDrawer extends LitElement {
 
   private _onNavTap(route: DrawerNavRoute): void {
     const routerRoutes: Partial<Record<DrawerNavRoute, ViewType>> = {
+      vorhaben: 'vorhaben',
+      projekt: 'projekt',
       dashboard: 'dashboard',
       'prompt-templates': 'prompt-templates',
       settings: 'settings',
@@ -65,6 +67,21 @@ export class AosMobileSideDrawer extends LitElement {
   }
 
   private _navIcon(route: DrawerNavRoute) {
+    if (route === 'vorhaben') {
+      return html`
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M7 4.5h9M7 9h9M7 13.5h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <circle cx="3.5" cy="4.5" r="1" fill="currentColor"/><circle cx="3.5" cy="9" r="1" fill="currentColor"/><circle cx="3.5" cy="13.5" r="1" fill="currentColor"/>
+        </svg>
+      `;
+    }
+    if (route === 'projekt') {
+      return html`
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M2 5a1.5 1.5 0 0 1 1.5-1.5h3l1.5 1.5h6A1.5 1.5 0 0 1 15.5 6.5v6A1.5 1.5 0 0 1 14 14H3.5A1.5 1.5 0 0 1 2 12.5z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+        </svg>
+      `;
+    }
     if (route === 'dashboard') {
       return html`
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
@@ -109,6 +126,8 @@ export class AosMobileSideDrawer extends LitElement {
     const { openProjects, activeProject } = this._projectCtx;
 
     const navItems: { route: DrawerNavRoute; label: string }[] = [
+      { route: 'vorhaben', label: 'Vorhaben' },
+      { route: 'projekt', label: 'Projekt' },
       { route: 'dashboard', label: 'Dashboard' },
       { route: 'specs', label: 'Specs' },
       { route: 'cloud-terminal', label: 'Terminal' },

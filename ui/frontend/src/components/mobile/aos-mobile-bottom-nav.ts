@@ -9,6 +9,8 @@ export class AosMobileBottomNav extends LitElement {
   @property({ type: String, reflect: true }) activeItem: BottomNavItem = 'home';
   /** Session count override (when > 0). Otherwise live-subscribed via cloudTerminalService. */
   @property({ type: Number }) sessionsCount = 0;
+  /** INT-2026-004 (FA-37): Vorhaben waiting for the user — badge on the "Vorhaben" item. */
+  @property({ type: Number }) waitingCount = 0;
 
   @state() private _liveSessions = 0;
 
@@ -75,15 +77,18 @@ export class AosMobileBottomNav extends LitElement {
 
         <button
           class="nav-item ${this.activeItem === 'specs' ? 'nav-item--active' : ''}"
-          aria-label="Specs"
+          aria-label="Vorhaben${this.waitingCount > 0 ? `, ${this.waitingCount} warten auf dich` : ''}"
           aria-current=${this.activeItem === 'specs' ? 'page' : nothing}
           @click=${() => this._onNavTap('specs')}
         >
-          <svg class="nav-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-            <rect x="3" y="3" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            <path d="M7 8h8M7 12h6M7 16h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          <span class="nav-label">Specs</span>
+          <span class="nav-icon-wrap">
+            <svg class="nav-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+              <rect x="3" y="3" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              <path d="M7 8h8M7 12h6M7 16h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            ${this._badge(this.waitingCount)}
+          </span>
+          <span class="nav-label">Vorhaben</span>
         </button>
 
         <button

@@ -3,6 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { ContextProvider } from '@lit/context';
 
 import './views/dashboard-view.js';
+import './views/aos-vorhaben-view.js';
 import './views/chat-view.js';
 import './views/settings-view.js';
 import './views/prompt-templates-view.js';
@@ -285,6 +286,8 @@ export class AosApp extends LitElement {
   });
 
   private navItems: NavItem[] = [
+    { route: 'vorhaben', label: 'Vorhaben', icon: 'vorhaben' },
+    { route: 'projekt', label: 'Projekt', icon: 'projekt' },
     { route: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { route: 'team', label: 'Team', icon: 'team' },
     { route: 'getting-started', label: 'Getting Started', icon: 'getting-started' },
@@ -819,6 +822,8 @@ export class AosApp extends LitElement {
 
   private renderNavIcon(icon: string) {
     const icons: Record<string, unknown> = {
+      vorhaben: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>`,
+      projekt: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`,
       dashboard: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
       chat: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
       'getting-started': html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>`,
@@ -835,6 +840,8 @@ export class AosApp extends LitElement {
 
   private getPageTitle(): string {
     const titles: Record<Route, string> = {
+      vorhaben: 'Vorhaben',
+      projekt: 'Projekt',
       dashboard: 'Dashboard',
       team: 'Team',
       'getting-started': 'Getting Started',
@@ -2257,6 +2264,14 @@ export class AosApp extends LitElement {
 
   private renderView() {
     switch (this.currentRoute) {
+      case 'vorhaben':
+      case 'projekt':
+        return html`<aos-vorhaben-view
+          .route=${this.currentRoute}
+          @show-toast=${this._handleShowToast}
+          @terminal-pill-tap=${this._handleTerminalToggle}
+          @add-project=${this.handleAddProject}
+        ></aos-vorhaben-view>`;
       case 'dashboard':
         return html`<aos-dashboard-view
           .gitStatus=${this.gitStatus}

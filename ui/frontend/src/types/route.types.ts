@@ -4,13 +4,13 @@
  */
 
 /** All supported top-level view routes */
-export type ViewType = 'dashboard' | 'team' | 'chat' | 'settings' | 'getting-started' | 'call' | 'prompt-templates' | 'not-found';
+export type ViewType = 'vorhaben' | 'projekt' | 'dashboard' | 'team' | 'chat' | 'settings' | 'getting-started' | 'call' | 'prompt-templates' | 'not-found';
 
 /** Valid view routes (excludes 'not-found' which is a fallback) */
-export const VALID_VIEWS: readonly ViewType[] = ['dashboard', 'team', 'chat', 'settings', 'getting-started', 'call', 'prompt-templates'] as const;
+export const VALID_VIEWS: readonly ViewType[] = ['vorhaben', 'projekt', 'dashboard', 'team', 'chat', 'settings', 'getting-started', 'call', 'prompt-templates'] as const;
 
-/** Default route when no hash or empty hash */
-export const DEFAULT_VIEW: ViewType = 'dashboard';
+/** Default route when no hash or empty hash (INT-2026-004: the Vorhaben overview). */
+export const DEFAULT_VIEW: ViewType = 'vorhaben';
 
 /** Parsed representation of a hash-based URL */
 export interface ParsedRoute {

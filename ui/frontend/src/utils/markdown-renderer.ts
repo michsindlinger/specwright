@@ -22,7 +22,7 @@ let mermaidIdCounter = 0;
  * - Language header display
  * - Copy button integration support
  */
-const renderer = {
+export const codeRenderer = {
   code({ text, lang }: Tokens.Code): string {
     // Handle Mermaid diagrams separately
     if (lang === 'mermaid') {
@@ -62,7 +62,7 @@ const renderer = {
  * - gfm: true - Tables, strikethrough, autolinks
  * - breaks: true - Convert \n to <br> (important for chat)
  */
-marked.use({ renderer, gfm: true, breaks: true });
+marked.use({ renderer: codeRenderer, gfm: true, breaks: true });
 
 /**
  * Escape HTML entities to prevent XSS

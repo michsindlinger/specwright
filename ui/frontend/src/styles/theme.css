@@ -14048,3 +14048,174 @@ aos-model-selector .model-option.selected .model-name {
   letter-spacing: 0.05em;
   flex-shrink: 0;
 }
+
+/* =================================================================
+   VORHABEN VIEW (INT-2026-004) — light-DOM parts: view frame, document
+   reader (uses the global .markdown-body / .code-block styles), mobile shell
+   ================================================================= */
+.vorhaben-view {
+  max-width: 1180px;
+}
+.vorhaben-status {
+  color: var(--color-text-secondary);
+  padding: var(--spacing-md);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+.vorhaben-btn {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+.vorhaben-leser {
+  position: relative;
+}
+.vorhaben-leser .leser-reload {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  border: 1px solid var(--color-accent-warning);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  font-size: var(--font-size-sm);
+}
+.vorhaben-leser .leser-reload-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+.vorhaben-leser .leser-status {
+  color: var(--color-text-secondary);
+  padding: var(--spacing-md);
+}
+.vorhaben-leser .leser-error {
+  color: var(--color-accent-error);
+}
+.vorhaben-leser .markdown-body {
+  max-width: 900px;
+}
+.vorhaben-leser .markdown-body .kopffelder {
+  width: auto;
+  margin: 0 0 var(--spacing-lg);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.vorhaben-leser .markdown-body .kopffelder th {
+  text-align: left;
+  color: var(--color-text-muted);
+  font-weight: normal;
+  padding-right: var(--spacing-lg);
+  white-space: nowrap;
+}
+.vorhaben-leser .markdown-body .kopffelder td {
+  word-break: break-word;
+}
+/* FA-18: no horizontal page scroll on phones — wide tables and code scroll in their own box */
+.vorhaben-leser .markdown-body table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.vorhaben-leser .markdown-body pre {
+  overflow-x: auto;
+}
+.vorhaben-leser .markdown-body img {
+  max-width: 100%;
+  height: auto;
+}
+.vorhaben-leser .markdown-body .mermaid-container {
+  margin: var(--spacing-md) 0;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.vorhaben-leser .markdown-body .mermaid-diagram {
+  padding: var(--spacing-md);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100px;
+  overflow-x: auto;
+}
+.vorhaben-leser .markdown-body .mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+.vorhaben-leser .markdown-body .mermaid-fallback {
+  padding: var(--spacing-md);
+}
+.vorhaben-leser .markdown-body .mermaid-fallback pre {
+  margin: 0;
+  padding: var(--spacing-sm);
+  background-color: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+.vorhaben-leser .markdown-body .mermaid-error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  background-color: rgba(var(--color-accent-error-rgb), 0.1);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+}
+.vorhaben-leser .leser-design {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+.vorhaben-leser .leser-figure {
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+}
+.vorhaben-leser .leser-figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.vorhaben-leser .leser-figure figcaption,
+.vorhaben-leser .leser-file {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+.vorhaben-leser .leser-file {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+@media (max-width: 767px) {
+  .vorhaben-mobile-content {
+    padding: var(--spacing-md);
+    padding-bottom: calc(var(--spacing-xl) * 2);
+  }
+  .vorhaben-mobile-content .vorhaben-view {
+    max-width: none;
+  }
+}
