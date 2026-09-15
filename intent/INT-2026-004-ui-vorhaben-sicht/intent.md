@@ -1,7 +1,7 @@
 ---
 intent_id: "INT-2026-004"  
 titel: "Web-UI zeigt Vorhaben statt Stories: Dokumente lesen, an Review-Punkten antworten"  
-status: "angenommen"  
+status: "umgesetzt"  
 version: "1.2.0"  
 autor: "Michael Sindlinger (Idee, 15.09.2026) · Claude (Text, Belege)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
