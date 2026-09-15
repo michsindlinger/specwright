@@ -1,6 +1,6 @@
 # Bau-Stand INT-2026-004
 
-> Stufe 1 fertig (Branch `feat/INT-2026-004-ui-s1`, PR folgt) · nächste: **Stufe 2 ab Schritt 0** (Spike AN-03: Bracketed Paste + `prompt`-Feld)
+> Stufe 1 fertig (Branch `feat/INT-2026-004-ui-s1`, PR #44) · nächste: **Stufe 2 ab Schritt 0** (Spike AN-03: Bracketed Paste + `prompt`-Feld)
 > Fortsetzen: `/build INT-2026-004` in einer neuen Sitzung nach dem Merge von PR 1, Branch `feat/INT-2026-004-ui-s2` von `main`.
 
 ## Erledigt (Stufe 1, Plan §6)
