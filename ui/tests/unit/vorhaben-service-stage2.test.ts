@@ -159,10 +159,10 @@ describe('VorhabenService stage 2', () => {
   it('startStep creates the session with the command as initial prompt, names the tab, assigns and remembers the model (FA-35, FA-40, V-13)', async () => {
     const before = row();
     expect(before.zustand).toBe('keine_sitzung');
-    expect(before.nextStep?.command).toBe('/spec INT-2026-004');
+    expect(before.nextStep?.command).toBe('/specwright:spec INT-2026-004');
     const { sessionId } = await service.startStep('pa', 'INT-2026-004', 'spec', { providerId: 'glm', modelId: 'glm-5.2' }, undefined);
     expect(manager.created[0]).toEqual([
-      projA, 'claude-code', { model: 'glm-5.2', provider: 'glm' }, undefined, undefined, '/spec INT-2026-004', undefined, undefined,
+      projA, 'claude-code', { model: 'glm-5.2', provider: 'glm' }, undefined, undefined, '/specwright:spec INT-2026-004', undefined, undefined,
       { sessionTarget: { target: { kind: 'main' }, explicit: true } },
     ]);
     expect(setSessionName).toHaveBeenCalledWith(sessionId, 'spec INT-2026-004');
@@ -200,7 +200,7 @@ describe('VorhabenService stage 2', () => {
 
   it('/intent claims the first folder that appears under its cwd (FA-21)', async () => {
     const { sessionId } = await service.startStep('pa', undefined, 'intent', { providerId: 'anthropic', modelId: 'opus' }, undefined);
-    expect((manager.created[0] as unknown[])[5]).toBe('/intent');
+    expect((manager.created[0] as unknown[])[5]).toBe('/specwright:intent');
     expect(setSessionName).toHaveBeenCalledWith(sessionId, 'intent');
     expect(store.getPendingIntents()).toHaveLength(1);
     const dir = join(projA, 'intent', 'INT-2026-006-neu');

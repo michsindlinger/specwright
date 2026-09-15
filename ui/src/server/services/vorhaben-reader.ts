@@ -19,6 +19,7 @@ import {
   type VorhabenSessionRef,
   type VorhabenStep,
   type VorhabenZustand,
+  stepCommand,
 } from '../../shared/types/vorhaben.protocol.js';
 
 export const INTENT_ID_RE = /^INT-\d{4}-\d{3}$/;
@@ -141,11 +142,11 @@ export function stepOfPhase(phase: VorhabenPhase): VorhabenStep | undefined {
 export function deriveNextStep(phase: VorhabenPhase, intentId: string, hasBuildStand: boolean): VorhabenNextStep | undefined {
   switch (phase) {
     case 'bau':
-      return { step: 'build', command: `/build ${intentId}`, label: hasBuildStand ? 'Bau fortsetzen' : 'Bau starten' };
+      return { step: 'build', command: stepCommand('build', intentId), label: hasBuildStand ? 'Bau fortsetzen' : 'Bau starten' };
     case 'plan':
-      return { step: 'plan', command: `/plan ${intentId}`, label: 'Plan erstellen' };
+      return { step: 'plan', command: stepCommand('plan', intentId), label: 'Plan erstellen' };
     case 'spec':
-      return { step: 'spec', command: `/spec ${intentId}`, label: 'Spec schreiben' };
+      return { step: 'spec', command: stepCommand('spec', intentId), label: 'Spec schreiben' };
     default:
       return undefined;
   }

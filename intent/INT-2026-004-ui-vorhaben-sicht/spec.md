@@ -74,6 +74,8 @@ Alle Abläufe haben einen Nutzer: Michael. Am Mac und am Handy gelten dieselben 
 4. Michael wählt den Schritt. Die UI startet im Projekt eine Claude-Sitzung wie heute über den Rahmen (Auswahl Arbeitskopie: Projekt oder Worktree, wie bisher) mit dem gewählten Modell und gibt den Befehl als erste Eingabe ein.
 5. Die Sitzung ist ab jetzt die Sitzung des Vorhabens (FA-21). Die Übersicht zeigt „arbeitet" und das Modell der Sitzung; sobald die Sitzung am Review-Punkt anhält, „wartet auf dich".
 6. Am Mac springt die UI ins Terminal der neuen Sitzung; am Handy bleibt Michael auf der Vorhaben-Seite und sieht den Zustand.
+
+> Schreibweise der Befehle: `/intent`, `/spec INT-…`, `/plan INT-…`, `/build INT-…` sind in diesem Dokument Kurznamen der Schritte. Der Befehl, den die UI in die Sitzung gibt und neben dem Knopf zeigt, trägt den Namensraum von Claude Code: `/specwright:intent`, `/specwright:spec INT-…` usw. (Nachtrag 2026-09-15, INT-2026-005.)
 7. Die Standards je Schritt (Absicht, Spec, Plan, Bau) stellt Michael einmal in den Einstellungen unter „Modelle" ein, neben dem heutigen allgemeinen Standardmodell; ohne Einstellung gilt Claude Opus.
 8. Ergebnis: Der nächste Schritt läuft mit dem gewünschten Modell, ohne dass Michael den Befehl getippt hat.
 

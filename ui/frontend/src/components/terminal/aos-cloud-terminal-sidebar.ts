@@ -17,6 +17,8 @@ import {
   buildBellRows,
   type AgentNotification,
   type BellRow,
+  type JumpTarget,
+  soloJumpTarget,
 } from './agent-notifications.js';
 import { isBellSoundEnabled, setBellSoundEnabled, playAgentDoneChime } from './notification-sound.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
@@ -1638,7 +1640,25 @@ export class AosCloudTerminalSidebar extends LitElement {
     this._closeBell();
     const session = this.allSessions.find((s) => s.id === sessionId);
     if (!session) return;
-    const target = resolveJumpTarget({
+    this._jumpTo(session, this._jumpTargetFor(session));
+  }
+
+  /**
+   * Bring a session to the front ALONE (INT-2026-005, FA-35): fullscreen, the session in its
+   * project's pane (or the pane the user is looking at), that pane zoomed — what
+   * Cmd/Ctrl+Shift+Enter does by hand. In single mode with another project active the jump
+   * goes through `session-jump`, like the bell. app.ts calls this after the Vorhaben page
+   * started a step, once the new tab is in `allSessions`.
+   */
+  showSessionSolo(sessionId: string): void {
+    const session = this.allSessions.find((s) => s.id === sessionId);
+    if (!session) return;
+    this._setFullscreen(true);
+    this._jumpTo(session, soloJumpTarget(this._jumpTargetFor(session), this.paneSessionIds.slice(0, this._paneCount)));
+  }
+
+  private _jumpTargetFor(session: TerminalSession): JumpTarget {
+    return resolveJumpTarget({
       isSplit: this._isSplit,
       paneSessionIds: this.paneSessionIds,
       paneCount: this._paneCount,
@@ -1648,6 +1668,10 @@ export class AosCloudTerminalSidebar extends LitElement {
       sessionId: session.id,
       sessionProject: session.projectPath,
     });
+  }
+
+  /** Shared tail of the bell jump and {@link showSessionSolo}: act on a resolved target. */
+  private _jumpTo(session: TerminalSession, target: JumpTarget): void {
     switch (target.kind) {
       case 'select-tab':
         if (this.sessions.some((s) => s.id === session.id)) {
@@ -2357,9 +2381,15 @@ export class AosCloudTerminalSidebar extends LitElement {
    * new size applies immediately — we refit xterm after a layout reflow.
    */
   private _toggleFullscreen() {
-    this.isFullscreen = !this.isFullscreen;
+    this._setFullscreen(!this.isFullscreen);
+  }
+
+  /** Fullscreen on/off with the follow-ups a layout change needs; no-op when already there. */
+  private _setFullscreen(on: boolean) {
+    if (this.isFullscreen === on) return;
+    this.isFullscreen = on;
     // Quad is fullscreen-only — leaving fullscreen downgrades to 2-split (top row survives).
-    if (!this.isFullscreen && this.layoutMode === 'quad-4') {
+    if (!on && this.layoutMode === 'quad-4') {
       this._setLayout('split-2');
     }
     this.updateContentOffset();

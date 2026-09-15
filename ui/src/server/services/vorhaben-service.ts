@@ -49,6 +49,7 @@ import {
   type VorhabenState,
   type VorhabenStateMessage,
   type VorhabenStep,
+  stepCommand,
 } from '../../shared/types/vorhaben.protocol.js';
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
 
@@ -441,7 +442,7 @@ export class VorhabenService {
     } catch (err) {
       throw new VorhabenError('INVALID_MESSAGE', err instanceof SessionTargetError ? err.message : 'ungültiges Sitzungsziel');
     }
-    const command = step === 'intent' ? '/intent' : `/${step} ${intentId}`;
+    const command = stepCommand(step, intentId);
     let created: { sessionId: string; effectiveCwd: string };
     try {
       created = await sessions.createSession(

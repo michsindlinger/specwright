@@ -92,7 +92,7 @@ describe('VorhabenService + VorhabenHandler (stage 1)', () => {
       ['INT-2026-004', 'main', 'pa'],
       ['INT-2026-005', 'feat/neu', 'pa'],
     ]);
-    expect(state.rows[0]).toMatchObject({ phase: 'spec', zustand: 'keine_sitzung', designFiles: ['mock.css', 'x.png'], nextStep: { command: '/spec INT-2026-004' } });
+    expect(state.rows[0]).toMatchObject({ phase: 'spec', zustand: 'keine_sitzung', designFiles: ['mock.css', 'x.png'], nextStep: { command: '/specwright:spec INT-2026-004' } });
     expect(state.projects).toEqual([
       expect.objectContaining({ id: 'pa', arbeitskopie: 'main', worktrees: ['feat/neu'], hasIntentDir: true }),
       expect.objectContaining({ id: 'pb', hasIntentDir: false, worktrees: [] }),
@@ -114,7 +114,7 @@ describe('VorhabenService + VorhabenHandler (stage 1)', () => {
     watcher.emit('changed', projA);
     await waitFor(() => (broadcast.mock.calls.length > before ? true : undefined), 2000);
     const state = lastState();
-    expect(state.rows[0]).toMatchObject({ phase: 'plan', nextStep: { command: '/plan INT-2026-004' } });
+    expect(state.rows[0]).toMatchObject({ phase: 'plan', nextStep: { command: '/specwright:plan INT-2026-004' } });
   });
 
   it('a project without intent/ picks up a new folder after `changed`', async () => {
