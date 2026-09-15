@@ -69,7 +69,7 @@ Alle Abläufe haben einen Nutzer: Michael. Am Mac und am Handy gelten dieselben 
 ### Ablauf E: Nächsten Schritt starten (AK-12, AK-16)
 
 1. Michael öffnet ein Vorhaben, das keine wartende Sitzung hat (Zustand „keine Sitzung", „Sitzung beendet" oder „Bau unterbrochen"), oder ein Projekt ohne Vorhaben.
-2. Die Vorhaben-Seite bietet genau einen nächsten Schritt, abhängig von der Phase (FA-12): Spec → „Spec schreiben" (`/spec INT-…`), Plan → „Plan erstellen" (`/plan INT-…`), Bau → „Bau starten" bzw. „Bau fortsetzen" (`/build INT-…`). In der Übersicht bietet jedes Projekt „Neues Vorhaben" (`/intent`).
+2. Die Vorhaben-Seite bietet genau einen nächsten Schritt, abhängig von der Phase (FA-12): Spec → „Spec schreiben" (`/spec INT-…`), Plan → „Plan erstellen" (`/plan INT-…`), Bau → „Bau starten" bzw. „Bau fortsetzen" (`/build INT-…`). „Neues Vorhaben" (`/intent`) bietet die Projekt-Seite (FA-48); die Übersicht zeigt es nur bei Projekten ohne Vorhaben-Ordner als „Erstes Vorhaben anlegen" (FA-05). — Geändert 2026-09-15 nach der Umsetzung (Product Owner, Entscheidung D2 der Board-Sitzung): die Übersicht bleibt Liste, Projekt-Aktionen liegen auf der Projekt-Seite; der Bau war hier spec-abweichend, die Spec folgt dem Bau.
 3. Neben dem Knopf steht die Modellwahl (wie heute auf der Story-Karte): vorbelegt mit dem zuletzt für dieses Vorhaben und diesen Schritt gewählten Modell, sonst mit dem Standard des Schritts. Michael kann ein anderes der konfigurierten Modelle wählen (Claude Opus, GLM, Grok, …); die Wahl gilt für diesen Start.
 4. Michael wählt den Schritt. Die UI startet im Projekt eine Claude-Sitzung wie heute über den Rahmen (Auswahl Arbeitskopie: Projekt oder Worktree, wie bisher) mit dem gewählten Modell und gibt den Befehl als erste Eingabe ein.
 5. Die Sitzung ist ab jetzt die Sitzung des Vorhabens (FA-21). Die Übersicht zeigt „arbeitet" und das Modell der Sitzung; sobald die Sitzung am Review-Punkt anhält, „wartet auf dich".
@@ -385,7 +385,7 @@ Geprüft gegen Stand 8351674.
 - **AN-S16:** Projekt-Docs sind genau die fünf Dateien aus B-12; ADRs und andere Dateien unter `docs/` sind in diesem Vorhaben weder lesbar noch bearbeitbar in der UI (engste Auslegung von „die wichtigen Specwright-Dateien … etc."). — bestätigt am 2026-09-15 von Product Owner
 - **AN-S17:** Speichern schreibt ohne Commit; Stand-Konflikte werden wie bei der Freigabe erkannt (Stand beim Öffnen ≠ aktueller Stand), mit „trotzdem überschreiben" als bewusster Ausnahme. — bestätigt am 2026-09-15 von Product Owner
 - **AN-S18:** Bearbeitet wird die Kopie im registrierten Projektverzeichnis; existieren Worktrees, nennt die Projekt-Seite das, bietet aber keine Wahl der Arbeitskopie. — bestätigt am 2026-09-15 von Product Owner
-- **AN-S19:** Die Projekt-Seite ist am Mac ein Reiter „Projekt" neben „Vorhaben" (an das aktive Projekt gebunden), am Handy über die Projektkarte auf „Home" und das Menü der Vorhaben-Seite erreichbar; „Neues Vorhaben" liegt dort und bleibt zusätzlich in der Übersicht. — bestätigt am 2026-09-15 von Product Owner
+- **AN-S19:** Die Projekt-Seite ist am Mac ein Reiter „Projekt" neben „Vorhaben" (an das aktive Projekt gebunden), am Handy über die Projektkarte auf „Home" und das Menü der Vorhaben-Seite erreichbar; „Neues Vorhaben" liegt nur dort; die Übersicht zeigt bei Projekten ohne Vorhaben „Erstes Vorhaben anlegen" (FA-05). — bestätigt am 2026-09-15 von Product Owner; Nachtrag 2026-09-15 (D2): „bleibt zusätzlich in der Übersicht" gestrichen, siehe Ablauf E Schritt 2.
 - **AN-S20:** Loop-Vorsorge (FA-48) heißt: Abschnittsstruktur der Projekt-Seite und ein freies Herkunftsfeld je Vorhaben-Zeile; keine Konfiguration, keine Anzeige, keine Datenquelle in diesem Vorhaben. — bestätigt am 2026-09-15 von Product Owner
 - **AN-S15:** Standardmodelle je Schritt gelten für alle Projekte und liegen in den Einstellungen unter „Modelle"; die Wahl beim Start gilt für diesen Start und wird je Vorhaben und Schritt als Vorbelegung gemerkt (FA-40, FA-41). Engere Alternativen (nur globaler Standard ohne Schritt-Unterscheidung; kein Merken je Vorhaben) wären weniger als „wie heute je Story". — bestätigt am 2026-09-15 von Product Owner
 
@@ -397,6 +397,7 @@ Geprüft gegen Stand 8351674.
 - [x] Keine Technik, keine Architektur, keine Dateinamen in diesem Dokument (Dokumentnamen der Vorhaben sind Fachbegriffe; Pfade nur in Abschnitt 7 als Herkunft).
 - [x] Bei risikoklasse hoch: Tech Lead hat gelesen. (nicht zutreffend, mittel)
 - **Freigegeben:** Product Owner (Michael Sindlinger), 2026-09-15, Commit siehe `git log -- spec.md` (zwei Freigaben: Erstfassung, Ergänzung 1.2.0)
+- **Nachtrag 2026-09-15 (nach Umsetzung):** Ablauf E Schritt 2 und AN-S19 an den Bau angepasst — „Neues Vorhaben" nur auf der Projekt-Seite (Product Owner, D2 der Board-Sitzung). Keine FA geändert, keine neue Freigabe nötig.
 
 **Zuordnung AK → FA:**
 
