@@ -45,12 +45,14 @@ describe('tokenMatches()', () => {
 
 describe('POST /api/cloud-terminal/:sessionId/agent-event', () => {
   const report = vi.fn<(id: string, ev: string, d: { preview?: string; reason?: string }) => boolean>();
-  const manager = { getHookSecret: () => SECRET, reportAgentEvent: report } as unknown as CloudTerminalManager;
+  const reportPrompt = vi.fn<(id: string, prompt: string) => boolean>();
+  const manager = { getHookSecret: () => SECRET, reportAgentEvent: report, reportPromptText: reportPrompt } as unknown as CloudTerminalManager;
   const auth = { [HOOK_TOKEN_HEADER]: SECRET };
   let warn: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     report.mockReset().mockReturnValue(true);
+    reportPrompt.mockReset().mockReturnValue(true);
     warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
   afterEach(() => warn.mockRestore());
@@ -124,6 +126,25 @@ describe('POST /api/cloud-terminal/:sessionId/agent-event', () => {
       expect(out.status).toBe(204);
       expect(report).toHaveBeenLastCalledWith('cloud-1-1', ev, detail);
     }
+  });
+
+  it('forwards the UserPromptSubmit prompt server-internally, never in the agent-event detail (INT-2026-004)', () => {
+    const { res, out } = fakeRes();
+    handlerOf(() => manager)(
+      fakeReq('cloud-1-1', auth, { hook_event_name: 'UserPromptSubmit', prompt: '/plan INT-2026-004\nzweite Zeile' }),
+      res
+    );
+    expect(out.status).toBe(204);
+    expect(report).toHaveBeenLastCalledWith('cloud-1-1', 'prompt-submitted', {});
+    expect(reportPrompt).toHaveBeenCalledWith('cloud-1-1', '/plan INT-2026-004\nzweite Zeile');
+  });
+
+  it('does not forward prompt text for other events or when the session is inactive', () => {
+    handlerOf(() => manager)(fakeReq('cloud-1-1', auth, { hook_event_name: 'Stop', prompt: 'x' }), fakeRes().res);
+    expect(reportPrompt).not.toHaveBeenCalled();
+    report.mockReturnValue(false);
+    handlerOf(() => manager)(fakeReq('cloud-1-1', auth, { hook_event_name: 'UserPromptSubmit', prompt: 'x' }), fakeRes().res);
+    expect(reportPrompt).not.toHaveBeenCalled();
   });
 
   it('404 when the manager rejects (unknown/closed session)', () => {

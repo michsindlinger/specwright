@@ -23,11 +23,22 @@ interface ModelProvider {
   models: Model[];
 }
 
+type StepKey = 'intent' | 'spec' | 'plan' | 'build';
+
 interface ModelConfig {
   defaultProvider: string;
   defaultModel: string;
   providers: ModelProvider[];
+  /** INT-2026-004 (FA-41): default model per v4 step; absent = "wie Standard" (anthropic/opus). */
+  stepDefaults?: Partial<Record<StepKey, { providerId: string; modelId: string }>>;
 }
+
+const STEP_LABELS: Array<[StepKey, string]> = [
+  ['intent', 'Absicht'],
+  ['spec', 'Spec'],
+  ['plan', 'Plan'],
+  ['build', 'Bau'],
+];
 
 type SettingsSection = 'models' | 'general' | 'voice' | 'git' | 'appearance' | 'setup';
 
@@ -479,6 +490,22 @@ export class AosSettingsView extends LitElement {
       providerId,
       modelId
     });
+  }
+
+  /** FA-41: `providerId::modelId` or '' (= wie Standard) for one step. */
+  private setStepDefault(step: StepKey, value: string): void {
+    this.saving = true;
+    if (!value) {
+      gateway.send({ type: 'settings.step-defaults.update', step, providerId: null, modelId: null });
+      return;
+    }
+    const [providerId, modelId] = value.split('::');
+    gateway.send({ type: 'settings.step-defaults.update', step, providerId, modelId });
+  }
+
+  private stepDefaultValue(step: StepKey): string {
+    const sel = this.config?.stepDefaults?.[step];
+    return sel ? `${sel.providerId}::${sel.modelId}` : '';
   }
 
   private isDefault(providerId: string, modelId: string): boolean {
@@ -1043,6 +1070,45 @@ export class AosSettingsView extends LitElement {
         ${this.addingProvider ? this.renderNewProviderForm() : ''}
 
         ${this.config.providers.map(provider => this.renderProviderCard(provider))}
+
+        ${this.renderStepDefaults()}
+      </div>
+    `;
+  }
+
+  /**
+   * INT-2026-004 (FA-41): "Standard je Schritt" — one select per v4 step next
+   * to the general default. Empty = "wie Standard" (anthropic/opus when
+   * configured, else the general default). Global for all projects.
+   */
+  private renderStepDefaults() {
+    if (!this.config) return html``;
+    const fallback = this.config.providers.some(p => p.id === 'anthropic' && p.models.some(m => m.id === 'opus'))
+      ? 'Claude Opus'
+      : `${this.config.defaultProvider}/${this.config.defaultModel}`;
+    return html`
+      <div class="provider-card step-defaults" data-testid="step-defaults">
+        <h4 style="margin: 0 0 var(--spacing-xs) 0">Standard je Schritt</h4>
+        <p class="section-description">Modell, mit dem die Vorhaben-Seite einen Schritt startet. Ohne Einstellung gilt ${fallback}. Gilt für alle Projekte.</p>
+        ${STEP_LABELS.map(([step, label]) => html`
+          <div class="form-field step-default-row">
+            <label for="step-default-${step}">${label}</label>
+            <div class="general-input-row">
+              <select
+                id="step-default-${step}"
+                ?disabled=${this.saving}
+                @change=${(e: Event) => this.setStepDefault(step, (e.target as HTMLSelectElement).value)}
+              >
+                <option value="" ?selected=${this.stepDefaultValue(step) === ''}>wie Standard (${fallback})</option>
+                ${this.config!.providers.flatMap(provider => provider.models.map(model => html`
+                  <option value="${provider.id}::${model.id}" ?selected=${this.stepDefaultValue(step) === `${provider.id}::${model.id}`}>
+                    ${provider.name} · ${model.name}
+                  </option>
+                `))}
+              </select>
+            </div>
+          </div>
+        `)}
       </div>
     `;
   }

@@ -148,6 +148,39 @@ describe('CloudTerminalManager boot-restore', () => {
     expect(manager.getOccupiedPaths().has('/tmp/project-worktrees/session-s1')).toBe(true);
   });
 
+  it('restores the persisted agent status (FA-22) and re-persists it on every agent event', async () => {
+    await registry.upsert(
+      persisted('s1', {
+        agentStatus: 'done',
+        agentStatusAt: '2026-09-15T14:00:00.000Z',
+        agentStatusReason: undefined,
+      })
+    );
+    tmux.liveSessions.add('cs-s1');
+
+    const manager = makeManager();
+    await manager.whenReady();
+
+    const session = manager.getSession('s1');
+    expect(session?.agentStatus).toBe('done');
+    expect(session?.agentStatusAt?.toISOString()).toBe('2026-09-15T14:00:00.000Z');
+
+    // A hook fires → status changes → the registry entry carries the new status.
+    expect(manager.reportAgentEvent('s1', 'prompt-submitted')).toBe(true);
+    await new Promise((r) => setTimeout(r, 50));
+    const stored = (await registry.load()).entries.find((e) => e.sessionId === 's1');
+    expect(stored?.agentStatus).toBe('working');
+    expect(typeof stored?.agentStatusAt).toBe('string');
+  });
+
+  it('entries without agent status fields (older files) restore as unknown', async () => {
+    await registry.upsert(persisted('s2'));
+    tmux.liveSessions.add('cs-s2');
+    const manager = makeManager();
+    await manager.whenReady();
+    expect(manager.getSession('s2')?.agentStatus).toBe('unknown');
+  });
+
   it('reaps a dead entry: worktree disposed, artifacts cleaned, registry entry removed', async () => {
     await registry.upsert(
       persisted('dead', {

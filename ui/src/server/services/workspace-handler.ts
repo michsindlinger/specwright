@@ -129,6 +129,13 @@ export class WorkspaceHandler {
     }
   }
 
+  /** Server-side rename (Vorhaben step start names its tab); broadcasts on change. */
+  public setSessionName(sessionId: string, name: string | null): boolean {
+    const changed = this.store.setSessionName(sessionId, name);
+    if (changed) this.broadcast(this.stateMessage());
+    return changed;
+  }
+
   /** A session is gone for good: drop its name. Broadcasts only when something changed. */
   public onSessionClosed(sessionId: string): boolean {
     const changed = this.store.setSessionName(sessionId, null);

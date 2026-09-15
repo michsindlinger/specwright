@@ -20,7 +20,7 @@ import { vorhabenService } from '../services/vorhaben.service.js';
 import { MobileBreakpointController } from '../controllers/mobile-breakpoint-controller.js';
 import type { ParsedRoute, ViewType } from '../types/route.types.js';
 import type { ProjectDocKey, VorhabenRow, VorhabenState } from '../../../src/shared/types/vorhaben.protocol.js';
-import { PROJECT_DOC_KEYS, VORHABEN_DOC_ORDER } from '../../../src/shared/types/vorhaben.protocol.js';
+import { PROJECT_DOC_KEYS, VORHABEN_DOC_ORDER, draftKey } from '../../../src/shared/types/vorhaben.protocol.js';
 import { countWaitingForMe } from '../components/vorhaben/vorhaben-sort.js';
 import { defaultDoc } from '../components/vorhaben/aos-vorhaben-seite.js';
 import type { LeserDoc } from '../components/vorhaben/aos-dokument-leser.js';
@@ -143,6 +143,18 @@ export class AosVorhabenView extends LitElement {
     this.go('projekt', [encodeURIComponent(e.detail.projectId)]);
   }
 
+  /**
+   * A step was started from this view (FA-35): on the Mac the event bubbles
+   * on to app.ts, which selects the new tab and opens the terminal sidebar;
+   * on the phone Michael stays on the page (AN-S14).
+   */
+  private onSessionStarted(e: CustomEvent<{ sessionId: string; step: string }>): void {
+    if (this.breakpoint.isMobile) {
+      e.stopPropagation();
+      this.dispatchEvent(new CustomEvent('show-toast', { bubbles: true, composed: true, detail: { message: 'Sitzung gestartet', type: 'success' } }));
+    }
+  }
+
   private onDocSelect(e: CustomEvent<{ key: ProjectDocKey | null }>): void {
     const pid = this.currentProjectId();
     if (!pid) return;
@@ -211,11 +223,19 @@ export class AosVorhabenView extends LitElement {
     if (this.route === 'projekt') return this.renderProjekt();
     const { row, missing } = this.currentRow();
     if (row) {
+      const doc = this.currentDoc(row);
+      const state = this.vorhabenState;
+      const drafts = doc !== 'design' && state ? state.drafts[draftKey(row.projectId, row.intentId, doc)] ?? [] : [];
       return html`<aos-vorhaben-seite
         .row=${row}
-        .doc=${this.currentDoc(row)}
+        .doc=${doc}
+        .mobile=${this.breakpoint.isMobile}
+        .drafts=${drafts}
+        .protocol=${state?.protocol ?? []}
+        .lastModel=${state?.lastModel ?? {}}
         @vorhaben-back=${() => this.go('vorhaben')}
         @doc-change=${this.onDocChange}
+        @vorhaben-session-started=${this.onSessionStarted}
       ></aos-vorhaben-seite>`;
     }
     if (missing) {
@@ -249,6 +269,7 @@ export class AosVorhabenView extends LitElement {
       .selectedKey=${this.currentDocKey()}
       .mobile=${this.breakpoint.isMobile}
       @doc-select=${this.onDocSelect}
+      @vorhaben-session-started=${this.onSessionStarted}
     ></aos-projekt-seite>`;
   }
 }

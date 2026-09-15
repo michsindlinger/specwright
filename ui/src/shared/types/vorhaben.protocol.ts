@@ -8,7 +8,7 @@
  * apply partial updates (same contract as workspace:state).
  */
 
-import type { CloudTerminalAgentStatus } from './cloud-terminal.protocol.js';
+import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from './cloud-terminal.protocol.js';
 
 // ---- Model ----
 
@@ -131,10 +131,81 @@ export interface ProjectDocDraft {
   updatedAt: string;
 }
 
+// ---- Review channel (stage 2: FA-21ff) ----
+
+/** Model selection as the settings know it. */
+export interface ModelSelection {
+  providerId: string;
+  modelId: string;
+}
+
+/**
+ * One review draft (FA-23–FA-26). The reference is derived from the block the
+ * user picked (FA-24) and cannot be edited; `ordinal` keeps document order,
+ * `snippet` relocates the mark after the document changed.
+ */
+export interface Anmerkung {
+  id: string;
+  /** Block index in the rendered document; -1 = "Dokument gesamt". */
+  ordinal: number;
+  /** 'AK-03' · '§6' · heading text · first words · 'Dokument gesamt'. */
+  ref: string;
+  /** Normalized text of the block (≤ 200 chars) for relocation. */
+  snippet: string;
+  text: string;
+  updatedAt: string;
+}
+
+export type ProtokollArt = 'aenderungen' | 'freigabe';
+export type ProtokollStatus = 'gesendet' | 'angenommen' | 'nicht_bestaetigt';
+
+/** One sent answer (FA-31/FA-32). */
+export interface ProtokollEintrag {
+  id: string;
+  projectId: string;
+  intentId: string;
+  doc: VorhabenDocKey;
+  art: ProtokollArt;
+  /** Number of Anmerkungen (aenderungen) — 0 for freigabe. */
+  anzahl: number;
+  /** "Stand" as shown in the sent text: `1.2.0` (intent) or `2026-09-15 16:42`. */
+  stand: string;
+  sessionId: string;
+  sessionName: string;
+  /** The exact text handed to the session. */
+  text: string;
+  /** Sent Anmerkungen (moved out of the drafts, AN-S13). */
+  anmerkungen: Anmerkung[];
+  status: ProtokollStatus;
+  sentAt: string;
+  acceptedAt?: string;
+}
+
+/** Why a send was refused (FA-30 plus the two stand checks). */
+export type SendeGrund =
+  | 'keine_sitzung'
+  | 'arbeitet'
+  | 'dialog'
+  | 'beendet'
+  | 'stand_veraltet'
+  | 'kein_review_dokument'
+  | 'keine_anmerkungen'
+  | 'senden_fehlgeschlagen';
+
+export const draftKey = (projectId: string, intentId: string, doc: VorhabenDocKey): string => `${projectId}::${intentId}::${doc}`;
+export const lastModelKey = (projectId: string, intentId: string, step: VorhabenStep): string => `${projectId}::${intentId}::${step}`;
+export const assignmentKey = (projectId: string, intentId: string): string => `${projectId}::${intentId}`;
+
 export interface VorhabenState {
   rows: VorhabenRow[];
   projects: VorhabenProjectInfo[];
   docDrafts: Record<string, ProjectDocDraft>;
+  /** `draftKey(...)` → Anmerkungen in document order (FA-26). */
+  drafts: Record<string, Anmerkung[]>;
+  /** Newest first. */
+  protocol: ProtokollEintrag[];
+  /** `lastModelKey(...)` → last model chosen for that step (FA-40). */
+  lastModel: Record<string, ModelSelection>;
   /** True until the first full scan finished after boot. */
   loading: boolean;
   updatedAt: string;
@@ -216,7 +287,70 @@ export interface ProjectDocsDraftClearMessage {
   key: ProjectDocKey;
 }
 
+export interface VorhabenDraftSetMessage {
+  type: 'vorhaben:draft.set';
+  projectId: string;
+  intentId: string;
+  doc: VorhabenDocKey;
+  anmerkung: Anmerkung;
+}
+
+export interface VorhabenDraftDeleteMessage {
+  type: 'vorhaben:draft.delete';
+  projectId: string;
+  intentId: string;
+  doc: VorhabenDocKey;
+  id: string;
+}
+
+export interface VorhabenSendMessage {
+  type: 'vorhaben:send';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+  doc: VorhabenDocKey;
+  art: ProtokollArt;
+  /** mtimeMs of the document as the client read it (FA-27/FA-28 "Stand"). */
+  stand: number;
+}
+
+export interface VorhabenStartStepMessage {
+  type: 'vorhaben:start-step';
+  requestId?: string;
+  projectId: string;
+  /** Absent for `intent` (new Vorhaben). */
+  intentId?: string;
+  step: VorhabenStep;
+  model: ModelSelection;
+  /** Where the session runs; absent = main project. */
+  sessionTarget?: CloudTerminalSessionTarget;
+}
+
 // ---- Server → Client ----
+
+export interface VorhabenSentMessage {
+  type: 'vorhaben:sent';
+  requestId?: string;
+  entry: ProtokollEintrag;
+}
+
+export interface VorhabenSendRejectedMessage {
+  type: 'vorhaben:send-rejected';
+  requestId?: string;
+  grund: SendeGrund;
+  message: string;
+  /** For `stand_veraltet`: the current mtimeMs on disk. */
+  currentStand?: number;
+}
+
+export interface VorhabenStepStartedMessage {
+  type: 'vorhaben:step-started';
+  requestId?: string;
+  sessionId: string;
+  projectId: string;
+  intentId?: string;
+  step: VorhabenStep;
+}
 
 export interface VorhabenStateMessage {
   type: 'vorhaben:state';
@@ -285,7 +419,10 @@ export type VorhabenErrorCode =
   | 'UNKNOWN_VORHABEN'
   | 'NOT_FOUND'
   | 'TOO_LARGE'
-  | 'IO_ERROR';
+  | 'IO_ERROR'
+  | 'START_FAILED';
+
+export const ANMERKUNG_MAX_CHARS = 4000;
 
 export interface VorhabenErrorMessage {
   type: 'vorhaben:error';

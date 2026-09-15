@@ -17,10 +17,24 @@ export interface ModelProvider {
   models: Model[];
 }
 
+/** The four v4 steps (INT-2026-004, FA-41). */
+export type StepKey = 'intent' | 'spec' | 'plan' | 'build';
+export const STEP_KEYS: readonly StepKey[] = ['intent', 'spec', 'plan', 'build'];
+
+export interface StepDefault {
+  providerId: string;
+  modelId: string;
+}
+
 export interface ModelConfig {
   defaultProvider: string;
   defaultModel: string;
   providers: ModelProvider[];
+  /**
+   * Per-step default model (FA-41). Absent step → `anthropic/opus` when
+   * configured, else the general default. Global (all projects).
+   */
+  stepDefaults?: Partial<Record<StepKey, StepDefault>>;
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -501,6 +515,51 @@ export function removeProvider(providerId: string): ModelConfig {
     }
   }
 
+  saveModelConfig(updatedConfig);
+  return updatedConfig;
+}
+
+/** Built-in fallback for steps without a configured default (FA-41: "ohne Einstellung gilt Claude Opus"). */
+const STEP_FALLBACK: StepDefault = { providerId: 'anthropic', modelId: 'opus' };
+
+/**
+ * Model for a v4 step: configured step default (if still present in the
+ * config) → anthropic/opus (if present) → general default.
+ */
+export function getStepDefault(step: StepKey): StepDefault {
+  const config = loadModelConfig();
+  const configured = config.stepDefaults?.[step];
+  if (configured && getModel(configured.providerId, configured.modelId)) return { ...configured };
+  if (getModel(STEP_FALLBACK.providerId, STEP_FALLBACK.modelId)) return { ...STEP_FALLBACK };
+  return getDefaultSelection();
+}
+
+/** Resolved defaults for all four steps (for `model.list`). */
+export function getStepDefaults(): Record<StepKey, StepDefault> {
+  return {
+    intent: getStepDefault('intent'),
+    spec: getStepDefault('spec'),
+    plan: getStepDefault('plan'),
+    build: getStepDefault('build'),
+  };
+}
+
+/** Sets (or with `null` clears) the default model of one step; validates against the config. */
+export function setStepDefault(step: StepKey, selection: StepDefault | null): ModelConfig {
+  if (!STEP_KEYS.includes(step)) {
+    throw new Error(`Unknown step: ${step}`);
+  }
+  const config = loadModelConfig();
+  const stepDefaults: Partial<Record<StepKey, StepDefault>> = { ...(config.stepDefaults ?? {}) };
+  if (selection === null) {
+    delete stepDefaults[step];
+  } else {
+    if (!getModel(selection.providerId, selection.modelId)) {
+      throw new Error(`Model not found: ${selection.providerId}/${selection.modelId}`);
+    }
+    stepDefaults[step] = { providerId: selection.providerId, modelId: selection.modelId };
+  }
+  const updatedConfig: ModelConfig = { ...config, stepDefaults };
   saveModelConfig(updatedConfig);
   return updatedConfig;
 }

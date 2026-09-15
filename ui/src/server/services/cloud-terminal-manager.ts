@@ -396,6 +396,21 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
+   * Prompt text of a `UserPromptSubmit` hook, forwarded server-internally
+   * only (INT-2026-004: session↔Vorhaben assignment and send confirmation).
+   * Emitted as `session.prompt-text`; never part of `session.agent-event` or
+   * any broadcast, and never persisted.
+   */
+  public reportPromptText(sessionId: CloudTerminalSessionId, prompt: string): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.closing || session.status === 'closed') {
+      return false;
+    }
+    this.emit('session.prompt-text', sessionId, prompt);
+    return true;
+  }
+
+  /**
    * Reduces an agent event into the session's status and broadcasts it.
    * Emits on every status or reason change, and on every `stop` (the bell
    * wants each finished turn). Arms the done → idle decay timer; any later
@@ -427,6 +442,12 @@ export class CloudTerminalManager extends EventEmitter {
       // Optional chaining: vitest fake-timer handles have no unref().
       timer.unref?.();
       session.agentIdleTimer = timer;
+    }
+
+    // tmux-backed sessions outlive a restart; persist the status with them so
+    // the restore does not reset a waiting session to `unknown` (FA-22).
+    if (session.tmuxSessionName) {
+      void this.registry.upsert(this.toPersistedEntry(session));
     }
 
     this.emit('session.agent-event', session.sessionId, event, {
@@ -1745,6 +1766,9 @@ export class CloudTerminalManager extends EventEmitter {
           }
         : undefined,
       autoMode: session.autoModeActive === true,
+      agentStatus: session.agentStatus,
+      agentStatusAt: session.agentStatusAt?.toISOString(),
+      agentStatusReason: session.agentStatusReason,
     };
   }
 
@@ -1861,7 +1885,9 @@ export class CloudTerminalManager extends EventEmitter {
       tmuxSessionName: entry.tmuxSessionName,
       runScriptPath: entry.runScriptPath || undefined,
       restored: true,
-      agentStatus: 'unknown',
+      agentStatus: entry.agentStatus ?? 'unknown',
+      agentStatusAt: entry.agentStatusAt ? new Date(entry.agentStatusAt) : undefined,
+      agentStatusReason: entry.agentStatusReason,
       restoredAutoMode: entry.autoMode || undefined,
       worktreeCleanup: entry.worktree
         ? rehydrateOwnedSessionWorktree(entry.worktree)

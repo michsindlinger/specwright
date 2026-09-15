@@ -81,6 +81,12 @@ export function createCloudTerminalRouter(
       reject(404, 'session not active');
       return;
     }
+    // The submitted prompt travels server-internally only (Vorhaben
+    // assignment, send confirmation) — it is deliberately not part of the
+    // agent-event detail and never reaches a broadcast or a log line.
+    if (body.hook_event_name === 'UserPromptSubmit' && typeof body.prompt === 'string') {
+      manager.reportPromptText(sessionId as CloudTerminalSessionId, body.prompt);
+    }
     res.status(204).end();
   });
 
