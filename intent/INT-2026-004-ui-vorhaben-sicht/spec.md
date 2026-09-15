@@ -267,7 +267,7 @@ Bei `bypass: ja` zeigt die Phase den Zusatz „Spec entfällt".
     - `design/04-vorhaben-anmerkung-handy.png` — Anmerkung am Handy: Tippen auf Absatz, Eingabefeld mit Bezug, Sendeleiste
     - `design/05-sammelansicht.png` — gesammelte Anmerkungen in Dokumentreihenfolge (Mac und Handy)
     - `design/06-zustaende.png` — Laden, Fehler, „nicht bestätigt", Grund-Hinweise der Sendeleiste; Einstellungen → Modelle mit den vier Schritt-Standards
-    - Die Mocks entstehen direkt nach der Spec-Freigabe, vor `/plan` (Product Owner, 15.09.); der Plan bezieht sich auf sie.
+    - Die Mocks liegen seit 15.09. unter `design/` (je `.png` mit `.html`-Quelle, gemeinsames `mock.css`); der Plan bezieht sich auf sie. Mock 03 zeigt zwei Zustände (03a wartend, 03b ohne Sitzung), Mock 04 und 05 je Mac und Handy.
 
 ## 7. Bedenken aus den Projekt-Docs
 
