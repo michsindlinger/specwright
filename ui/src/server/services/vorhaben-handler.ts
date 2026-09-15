@@ -8,8 +8,11 @@
  */
 
 import {
+  ANMERKUNG_MAX_CHARS,
   PROJECT_DOC_KEYS,
   VORHABEN_DOC_ORDER,
+  type Anmerkung,
+  type ModelSelection,
   type ProjectDocKey,
   type ProjectDocsConflictMessage,
   type ProjectDocsDocMessage,
@@ -20,9 +23,14 @@ import {
   type VorhabenDocMessage,
   type VorhabenErrorCode,
   type VorhabenErrorMessage,
+  type VorhabenSendRejectedMessage,
+  type VorhabenSentMessage,
+  type VorhabenStep,
+  type VorhabenStepStartedMessage,
 } from '../../shared/types/vorhaben.protocol.js';
+import type { CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
 import { INTENT_ID_RE } from './vorhaben-reader.js';
-import { VorhabenError, type VorhabenService } from './vorhaben-service.js';
+import { SendRejectedError, VorhabenError, type VorhabenService } from './vorhaben-service.js';
 import { ProjectDocNotFoundError, ProjectDocTooLargeError, type ProjectDocsService } from './project-docs.service.js';
 import type { VorhabenStateStore } from './vorhaben-state.js';
 
@@ -33,6 +41,10 @@ export const VORHABEN_MESSAGE_TYPES = new Set([
   'vorhaben:get',
   'vorhaben:doc.read',
   'vorhaben:design.read',
+  'vorhaben:draft.set',
+  'vorhaben:draft.delete',
+  'vorhaben:send',
+  'vorhaben:start-step',
   'project-docs:list',
   'project-docs:read',
   'project-docs:write',
@@ -43,6 +55,37 @@ export const VORHABEN_MESSAGE_TYPES = new Set([
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 const isDocKey = (v: unknown): v is VorhabenDocKey => typeof v === 'string' && (VORHABEN_DOC_ORDER as readonly string[]).includes(v);
 const isProjectDocKey = (v: unknown): v is ProjectDocKey => typeof v === 'string' && (PROJECT_DOC_KEYS as readonly string[]).includes(v);
+const STEPS: readonly string[] = ['intent', 'spec', 'plan', 'build'];
+const isStep = (v: unknown): v is VorhabenStep => typeof v === 'string' && STEPS.includes(v);
+const ANMERKUNG_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS = /[\x00-\x08\x0b-\x1f\x7f]/g;
+const cleanText = (v: string, max: number): string => v.replace(/\r\n?/g, '\n').replace(CONTROL_CHARS, '').slice(0, max);
+
+/** Validates the client's Anmerkung; returns null when malformed. */
+function parseAnmerkung(v: unknown): Anmerkung | null {
+  if (!v || typeof v !== 'object') return null;
+  const a = v as Record<string, unknown>;
+  if (typeof a.id !== 'string' || !ANMERKUNG_ID_RE.test(a.id)) return null;
+  if (typeof a.ordinal !== 'number' || !Number.isInteger(a.ordinal) || a.ordinal < -1) return null;
+  if (typeof a.text !== 'string' || typeof a.ref !== 'string' || typeof a.snippet !== 'string') return null;
+  return {
+    id: a.id,
+    ordinal: a.ordinal,
+    ref: cleanText(a.ref, 200).replace(/\s+/g, ' ').trim() || 'Dokument gesamt',
+    snippet: cleanText(a.snippet, 200),
+    text: cleanText(a.text, ANMERKUNG_MAX_CHARS),
+    updatedAt: typeof a.updatedAt === 'string' ? a.updatedAt : new Date().toISOString(),
+  };
+}
+
+function parseModel(v: unknown): ModelSelection | null {
+  if (!v || typeof v !== 'object') return null;
+  const m = v as Record<string, unknown>;
+  if (typeof m.providerId !== 'string' || typeof m.modelId !== 'string' || !m.providerId || !m.modelId) return null;
+  if (m.providerId.length > 64 || m.modelId.length > 128) return null;
+  return { providerId: m.providerId, modelId: m.modelId };
+}
 
 export class VorhabenHandler {
   constructor(
@@ -90,6 +133,78 @@ export class VorhabenHandler {
         void this.service
           .readDesign(projectId, intentId, file)
           .then((dataUrl) => reply({ type: 'vorhaben:design', ...(requestId ? { requestId } : {}), projectId, intentId, file, dataUrl } as VorhabenDesignMessage))
+          .catch((err) => reply(this.fromError(err, requestId)));
+        return true;
+      }
+
+      case 'vorhaben:draft.set': {
+        const target = this.vorhabenDoc(message, reply, requestId);
+        if (!target) return true;
+        const anmerkung = parseAnmerkung(message.anmerkung);
+        if (!anmerkung) {
+          reply(this.error('INVALID_MESSAGE', 'anmerkung {id, ordinal, ref, snippet, text} ist erforderlich', requestId));
+          return true;
+        }
+        if (this.store.setDraft(target.projectId, target.intentId, target.doc, anmerkung)) this.broadcast(this.service.stateMessage());
+        return true;
+      }
+
+      case 'vorhaben:draft.delete': {
+        const target = this.vorhabenDoc(message, reply, requestId);
+        if (!target) return true;
+        const id = str(message.id);
+        if (!id) {
+          reply(this.error('INVALID_MESSAGE', 'id ist erforderlich', requestId));
+          return true;
+        }
+        if (this.store.deleteDraft(target.projectId, target.intentId, target.doc, id)) this.broadcast(this.service.stateMessage());
+        return true;
+      }
+
+      case 'vorhaben:send': {
+        const target = this.vorhabenDoc(message, reply, requestId);
+        if (!target) return true;
+        const art = message.art;
+        const stand = message.stand;
+        if ((art !== 'aenderungen' && art !== 'freigabe') || typeof stand !== 'number' || !Number.isFinite(stand)) {
+          reply(this.error('INVALID_MESSAGE', 'art (aenderungen|freigabe) und stand (number) sind erforderlich', requestId));
+          return true;
+        }
+        void this.service
+          .send(target.projectId, target.intentId, target.doc, art, stand)
+          .then((entry) => reply({ type: 'vorhaben:sent', ...(requestId ? { requestId } : {}), entry } as VorhabenSentMessage))
+          .catch((err) => {
+            if (err instanceof SendRejectedError) {
+              reply({
+                type: 'vorhaben:send-rejected',
+                ...(requestId ? { requestId } : {}),
+                grund: err.grund,
+                message: err.message,
+                ...(err.currentStand !== undefined ? { currentStand: err.currentStand } : {}),
+              } as VorhabenSendRejectedMessage);
+              return;
+            }
+            reply(this.fromError(err, requestId));
+          });
+        return true;
+      }
+
+      case 'vorhaben:start-step': {
+        const project = this.project(message, reply, requestId);
+        if (!project) return true;
+        const step = message.step;
+        const intentId = str(message.intentId);
+        const model = parseModel(message.model);
+        if (!isStep(step) || !model || (intentId !== undefined && !INTENT_ID_RE.test(intentId)) || (step !== 'intent' && !intentId)) {
+          reply(this.error('INVALID_MESSAGE', 'step, model {providerId, modelId} und (außer bei intent) intentId sind erforderlich', requestId));
+          return true;
+        }
+        const sessionTarget = message.sessionTarget as CloudTerminalSessionTarget | undefined;
+        void this.service
+          .startStep(project.id, intentId, step, model, sessionTarget)
+          .then(({ sessionId }) =>
+            reply({ type: 'vorhaben:step-started', ...(requestId ? { requestId } : {}), sessionId, projectId: project.id, ...(intentId ? { intentId } : {}), step } as VorhabenStepStartedMessage)
+          )
           .catch((err) => reply(this.fromError(err, requestId)));
         return true;
       }
@@ -174,6 +289,19 @@ export class VorhabenHandler {
       default:
         return false;
     }
+  }
+
+  /** projectId (open), intentId (INT-JJJJ-NNN) and doc (enum) of a message. */
+  private vorhabenDoc(message: Record<string, unknown>, reply: Reply, requestId?: string): { projectId: string; intentId: string; doc: VorhabenDocKey } | undefined {
+    const project = this.project(message, reply, requestId);
+    if (!project) return undefined;
+    const intentId = str(message.intentId);
+    const doc = message.doc;
+    if (!intentId || !INTENT_ID_RE.test(intentId) || !isDocKey(doc)) {
+      reply(this.error('INVALID_MESSAGE', 'intentId (INT-JJJJ-NNN) und doc sind erforderlich', requestId));
+      return undefined;
+    }
+    return { projectId: project.id, intentId, doc };
   }
 
   private project(message: Record<string, unknown>, reply: Reply, requestId?: string): { id: string; path: string; name: string } | undefined {

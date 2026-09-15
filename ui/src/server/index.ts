@@ -60,20 +60,26 @@ app.get('/health', (_req: Request, res: Response) => {
 
 // Deploy-readiness gate (localhost-only, unauthenticated — bound to HOST=127.0.0.1
 // in production). Polled by the auto-deploy script before restarting the service so
-// a redeploy is deferred while an auto-mode run is active. Reads `wsHandler` lazily
-// (same pattern as /health): if it's still null the server is mid-startup, so we
-// report ready=true (fail-open — a restart now is harmless).
+// a redeploy is deferred while an auto-mode run is active or a review answer was
+// sent but not yet confirmed by the session (INT-2026-004, FA-34 — at most 10 s).
+// Reads `wsHandler` lazily (same pattern as /health): if it's still null the server
+// is mid-startup, so we report ready=true (fail-open — a restart now is harmless).
+// JSON keys stay additive (`ready`, `reason`, `autoMode`); the host script reads
+// the HTTP status.
 app.get('/api/status/deploy-readiness', (_req: Request, res: Response) => {
   if (!wsHandler) {
-    res.status(200).json({ ready: true, reason: 'starting', autoMode: { specOrchestrators: 0, backlogOrchestrators: 0 } });
+    res.status(200).json({ ready: true, reason: 'starting', autoMode: { specOrchestrators: 0, backlogOrchestrators: 0 }, reviewSend: { pending: false } });
     return;
   }
   const we = wsHandler.getWorkflowExecutor();
-  const busy = we.isAnyAutoModeActive();
+  const autoMode = we.isAnyAutoModeActive();
+  const reviewPending = wsHandler.getVorhabenService().hasPendingSend();
+  const busy = autoMode || reviewPending;
   res.status(busy ? 423 : 200).json({
     ready: !busy,
-    reason: busy ? 'auto-mode-active' : 'idle',
+    reason: autoMode ? 'auto-mode-active' : reviewPending ? 'review-send-pending' : 'idle',
     autoMode: we.getAutoModeCounts(),
+    reviewSend: { pending: reviewPending },
   });
 });
 

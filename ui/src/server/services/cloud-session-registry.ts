@@ -19,6 +19,7 @@ import type {
   CloudTerminalSessionId,
   CloudTerminalType,
   CloudTerminalModelConfig,
+  CloudTerminalAgentStatus,
 } from '../../shared/types/cloud-terminal.protocol.js';
 
 export interface PersistedWorktreeV1 {
@@ -45,6 +46,15 @@ export interface PersistedCloudSessionV1 {
   autoMode: boolean;
   /** Display only. */
   workflowName?: string;
+  /**
+   * Last reduced agent status (INT-2026-004, FA-22): restored so "wartet auf
+   * dich" survives a backend restart instead of falling back to `unknown`
+   * until the next hook fires. All three optional — older files stay valid.
+   */
+  agentStatus?: CloudTerminalAgentStatus;
+  /** ISO timestamp of `agentStatus`. */
+  agentStatusAt?: string;
+  agentStatusReason?: string;
 }
 
 interface CloudSessionRegistryFileV1 {

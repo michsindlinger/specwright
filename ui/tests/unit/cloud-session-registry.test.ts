@@ -42,6 +42,14 @@ describe('CloudSessionRegistry', () => {
     expect(result).toEqual({ entries: [], healthy: true });
   });
 
+  it('round-trips the optional agent status fields (FA-22)', async () => {
+    await registry.upsert(entry('a', { agentStatus: 'done', agentStatusAt: '2026-09-15T14:00:00.000Z', agentStatusReason: 'x' }));
+    await registry.upsert(entry('b'));
+    const { entries } = await registry.load();
+    expect(entries.find((e) => e.sessionId === 'a')).toMatchObject({ agentStatus: 'done', agentStatusAt: '2026-09-15T14:00:00.000Z', agentStatusReason: 'x' });
+    expect(entries.find((e) => e.sessionId === 'b')?.agentStatus).toBeUndefined();
+  });
+
   it('round-trips upsert / remove / replaceAll', async () => {
     await registry.upsert(entry('a'));
     await registry.upsert(entry('b', { autoMode: true }));

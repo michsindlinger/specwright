@@ -34,6 +34,9 @@ import {
   removeModel,
   updateModel,
   setDefaults,
+  setStepDefault,
+  getStepDefaults,
+  type StepKey,
   type ModelConfig,
   type Model,
   type ModelProvider
@@ -147,6 +150,9 @@ export class WebSocketHandler {
       workspace: this.workspaceStore,
       store: this.vorhabenStore,
       broadcast: (m) => this.broadcast(m as WebSocketMessage),
+      // Stage 2: review channel + next step run through the terminal manager.
+      sessions: this.cloudTerminalManager,
+      setSessionName: (sessionId, name) => this.workspaceHandler.setSessionName(sessionId, name),
     });
     this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage));
     this.bootWorkspace();
@@ -496,6 +502,9 @@ export class WebSocketHandler {
         case 'settings.defaults.update':
           this.handleSettingsDefaultsUpdate(client, message);
           break;
+        case 'settings.step-defaults.update':
+          this.handleSettingsStepDefaultsUpdate(client, message);
+          break;
         case 'settings.general.get':
           this.handleSettingsGeneralGet(client);
           break;
@@ -517,6 +526,10 @@ export class WebSocketHandler {
         case 'vorhaben:get':
         case 'vorhaben:doc.read':
         case 'vorhaben:design.read':
+        case 'vorhaben:draft.set':
+        case 'vorhaben:draft.delete':
+        case 'vorhaben:send':
+        case 'vorhaben:start-step':
         case 'project-docs:list':
         case 'project-docs:read':
         case 'project-docs:write':
@@ -1117,6 +1130,8 @@ export class WebSocketHandler {
       type: 'model.list',
       providers: transformedProviders,
       defaultSelection,
+      // INT-2026-004 (FA-40/41): resolved per-step defaults for the Vorhaben page.
+      stepDefaults: getStepDefaults(),
       timestamp: new Date().toISOString()
     };
     client.send(JSON.stringify(response));
@@ -1654,6 +1669,11 @@ export class WebSocketHandler {
   /** Expose the CloudTerminalManager for the agent-event REST route (Stop hook callback). */
   public getCloudTerminalManager(): CloudTerminalManager {
     return this.cloudTerminalManager;
+  }
+
+  /** Expose the Vorhaben service for the deploy-readiness gate (FA-34). */
+  public getVorhabenService(): VorhabenService {
+    return this.vorhabenService;
   }
 
   public shutdown(): void {
@@ -3941,6 +3961,36 @@ export class WebSocketHandler {
         timestamp: new Date().toISOString()
       };
       client.send(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * FA-41: default model per v4 step. `providerId`/`modelId` set the step,
+   * `null` for both clears it (back to "wie Standard"). Answers like
+   * `settings.defaults.update` with the whole config.
+   */
+  private handleSettingsStepDefaultsUpdate(client: WebSocketClient, message: WebSocketMessage): void {
+    const step = message.step as StepKey;
+    const providerId = message.providerId as string | null | undefined;
+    const modelId = message.modelId as string | null | undefined;
+    const clear = providerId === null && modelId === null;
+    if (!step || (!clear && (!providerId || !modelId))) {
+      client.send(JSON.stringify({
+        type: 'settings.error',
+        error: 'step and providerId/modelId (or null to clear) are required',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+    try {
+      const config = setStepDefault(step, clear ? null : { providerId: providerId as string, modelId: modelId as string });
+      client.send(JSON.stringify({ type: 'settings.config', config, timestamp: new Date().toISOString() }));
+    } catch (error) {
+      client.send(JSON.stringify({
+        type: 'settings.error',
+        error: error instanceof Error ? error.message : 'Failed to update step defaults',
+        timestamp: new Date().toISOString()
+      }));
     }
   }
 
