@@ -43,16 +43,30 @@ export class AosSendeLeiste extends LitElement {
   @property({ type: Boolean }) docChanged = false;
 
   static override styles = css`
+    /* Mac: fixed above the page (main-content has overflow-x:hidden, so sticky
+       would never engage); left of the app sidebar, right of the terminal. */
     :host {
       display: block;
-      position: sticky;
+      position: fixed;
       bottom: 0;
-      z-index: 5;
+      left: var(--sidebar-width, 0px);
+      right: var(--terminal-open-width, 0px);
+      z-index: 50;
       background: var(--color-bg-primary);
       border-top: 1px solid var(--color-border);
-      padding: var(--spacing-sm) var(--spacing-md);
+      padding: var(--spacing-sm) var(--spacing-xl);
       font-family: var(--font-family);
       font-size: var(--font-size-sm);
+      box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.25);
+      transition: right 0.3s ease;
+    }
+    /* Phone: the page scrolls inside .mobile-content → sticky above the bottom nav. */
+    :host([mobile]) {
+      position: sticky;
+      left: auto;
+      right: auto;
+      padding: var(--spacing-sm) var(--spacing-md);
+      box-shadow: none;
     }
     .zeile {
       display: flex;

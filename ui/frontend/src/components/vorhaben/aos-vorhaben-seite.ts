@@ -4,9 +4,11 @@
  * (FA-15), protocol of sent answers (FA-31), document tabs in fixed order
  * (FA-17), the reader with annotation marks (FA-23), the send bar
  * (FA-27–FA-30), the collection view (FA-25), the "Freigeben" confirmation
- * (FA-28/FA-29) and the next step with model choice when no session works
- * or waits (FA-12/FA-35/FA-40). Drafts and protocol come from
- * `vorhaben:state`; this component only sends messages.
+ * (FA-28/FA-29 — an own small dialog: aos-confirm-dialog is light DOM styled
+ * by theme.css and stays unstyled inside a shadow root) and the next step
+ * with model choice when no session works or waits (FA-12/FA-35/FA-40).
+ * Drafts and protocol come from `vorhaben:state`; this component only sends
+ * messages.
  */
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
@@ -22,7 +24,6 @@ import './aos-sende-leiste.js';
 import './aos-anmerkungen-sammel.js';
 import './aos-vorhaben-protokoll.js';
 import './aos-naechster-schritt.js';
-import '../aos-confirm-dialog.js';
 import type { LeserDoc } from './aos-dokument-leser.js';
 
 /** FA-20: review doc when present, else the newest document. */
@@ -166,15 +167,75 @@ export class AosVorhabenSeite extends LitElement {
       background: var(--color-accent-success);
     }
     .inhalt {
-      padding-bottom: var(--spacing-lg);
+      /* room for the fixed send bar */
+      padding-bottom: 72px;
     }
     .send-fehler {
       color: var(--color-accent-error);
       font-size: var(--font-size-sm);
       margin: var(--spacing-xs) 0;
     }
-    .freigabe-text {
-      white-space: pre-line;
+    /* Freigabe confirmation (mock 06) — above the terminal sidebar */
+    .schleier {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-md);
+    }
+    .dialog {
+      width: min(440px, 100%);
+      background: var(--color-bg-primary);
+      border: 1px solid var(--color-accent-primary);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-md) var(--spacing-lg);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      font-size: var(--font-size-sm);
+    }
+    .dialog h2 {
+      margin: 0 0 var(--spacing-xs);
+      font-size: var(--font-size-md);
+      font-weight: var(--font-weight-semibold);
+      font-family: var(--font-family-mono);
+      word-break: break-word;
+    }
+    .dialog .ziel {
+      color: var(--color-text-secondary);
+      margin-bottom: var(--spacing-sm);
+    }
+    .dialog .warnung {
+      border: 1px solid var(--color-accent-warning);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-xs) var(--spacing-sm);
+      margin-bottom: var(--spacing-sm);
+      background: rgba(255, 180, 0, 0.06);
+    }
+    .dialog .warnung strong {
+      color: var(--color-accent-warning);
+    }
+    .dialog .aktionen {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--spacing-sm);
+    }
+    .dialog button {
+      font: inherit;
+      font-size: var(--font-size-sm);
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      background: transparent;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+    }
+    .dialog button.primary {
+      background: var(--color-accent-primary);
+      border-color: var(--color-accent-primary);
+      color: var(--color-bg-primary);
+      font-weight: var(--font-weight-semibold);
     }
   `;
 
@@ -275,17 +336,6 @@ export class AosVorhabenSeite extends LitElement {
       return;
     }
     this.freigabeOpen = true;
-  }
-
-  private freigabeMessage(): string {
-    const doc = this.docKey;
-    if (!doc) return '';
-    const s = this.row.session;
-    const lines = [`an Sitzung ‚${s?.name ?? '?'}' · ${this.row.projectName}`];
-    if (this.drafts.length > 0) {
-      lines.push(`${this.drafts.length} ${this.drafts.length === 1 ? 'Anmerkung' : 'Anmerkungen'} ungesendet — bleibt erhalten, wird nicht mitgeschickt.`);
-    }
-    return lines.join('\n');
   }
 
   private freigabeTitle(): string {
@@ -391,18 +441,31 @@ export class AosVorhabenSeite extends LitElement {
         @anmerkung-save=${this.onAnmerkungSave}
         @anmerkung-delete=${this.onAnmerkungDelete}
       ></aos-anmerkungen-sammel>
-      <aos-confirm-dialog
-        .open=${this.freigabeOpen}
-        .title=${this.freigabeTitle()}
-        .message=${this.freigabeMessage()}
-        confirmText="Freigeben"
-        @confirm=${() => {
-          this.freigabeOpen = false;
-          void this.send('freigabe');
-        }}
-        @cancel=${() => (this.freigabeOpen = false)}
-      ></aos-confirm-dialog>
+      ${this.freigabeOpen ? this.renderFreigabeDialog() : nothing}
     `;
+  }
+
+  /** Mock 06 "Freigeben · Bestätigung": document + stand, target session, hint on unsent Anmerkungen (FA-29). */
+  private renderFreigabeDialog() {
+    const s = this.row.session;
+    const n = this.drafts.length;
+    const confirm = (): void => {
+      this.freigabeOpen = false;
+      void this.send('freigabe');
+    };
+    return html`<div class="schleier" @click=${() => (this.freigabeOpen = false)}>
+      <div class="dialog" role="dialog" aria-modal="true" aria-label="Freigabe bestätigen" @click=${(e: Event) => e.stopPropagation()}>
+        <h2>${this.freigabeTitle()}</h2>
+        <div class="ziel">an Sitzung <strong>${s?.name ?? '?'}</strong> · ${this.row.projectName}</div>
+        ${n > 0
+          ? html`<div class="warnung"><strong>${n} ${n === 1 ? 'Anmerkung' : 'Anmerkungen'} ungesendet</strong> — bleibt erhalten, wird nicht mitgeschickt.</div>`
+          : nothing}
+        <div class="aktionen">
+          <button type="button" @click=${() => (this.freigabeOpen = false)}>Abbrechen</button>
+          <button type="button" class="primary" @click=${confirm}>Freigeben</button>
+        </div>
+      </div>
+    </div>`;
   }
 
   private renderHinweis() {

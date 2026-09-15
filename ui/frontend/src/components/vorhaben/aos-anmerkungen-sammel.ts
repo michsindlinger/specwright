@@ -31,11 +31,12 @@ export class AosAnmerkungenSammel extends LitElement {
   @state() private editingId: string | null = null;
 
   static override styles = css`
+    /* Above the terminal sidebar (z-index 1000) — a modal over everything. */
     :host {
       display: none;
       position: fixed;
       inset: 0;
-      z-index: 60;
+      z-index: 1100;
       font-family: var(--font-family);
     }
     :host([open]) {
