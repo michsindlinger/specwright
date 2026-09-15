@@ -137,7 +137,7 @@
 - [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
 - [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
 - [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
-- [ ] Board-Karte verweist auf `intent/INT-JJJJ-NNN/`, Stand nachgezogen.
+- [ ] Abschlussbericht endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-JJJJ-NNN/`); Nachziehen in eigener Sitzung.
 
 ## 14. Abweichungen bei der Umsetzung
 
