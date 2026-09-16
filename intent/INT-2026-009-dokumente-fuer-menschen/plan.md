@@ -1,11 +1,13 @@
 # Plan INT-2026-009: Dokumente für Menschen — Leser-Kennzeichnung und Rückfragen mit Kontext
 
 > **Intent:** `intent/INT-2026-009-dokumente-fuer-menschen/intent.md` (angenommen 16.09., Bypass: Größe S) · **Spec:** entfällt
-> **Status:** freigegeben (Fassung 2 nach externem Review, 3 Reviewer, 24 Findings, §12) · **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („freigabe", Chat)
+> **Status:** in_umsetzung (Fassung 2 nach externem Review, 3 Reviewer, 24 Findings, §12) · **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („freigabe", Chat)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `4c97b63`, §2 Vorlagen/Workflows, AR-01, AR-06, AP-02), `CLAUDE.md` (Konventionen Lieferumfang, Manifest, Bash 3.2), `docs/security.md` §5/§6 (Lieferumfang → Manifest-Zeile, Guard grün)
 > **Branch:** `feat/INT-2026-009-dokumente-fuer-menschen` ab `4c97b63` (die beiden Intent-Commits wandern mit), Worktree `../specwright-worktrees/session-sdlc-ui`
 
 ## In einfachen Worten
+
+<!-- leser: mensch -->
 
 **Worum geht es?** Wenn ein Vorhaben durch Absicht, Spec und Plan läuft, entstehen drei Dokumente. Michael liest sie, um zu entscheiden: Ist die Absicht richtig verstanden? Passt der Plan? Beim Lesen stolpert er heute über zwei Dinge. Erstens stehen in den Dokumenten lange Teile, die nur der Agent beim Bauen braucht: Dateipfade mit Zeilennummern, Tabellen mit Verbindungen zwischen Programmteilen, Testpläne. Für Michaels Entscheidung tragen die nichts bei, er muss sie überspringen. Zweitens stellt der Agent seine Rückfragen mit einem Kürzel wie „OF-03 bestätigen?", und weil ein Dokument Dutzende solcher Kürzel hat, scrollt Michael zurück, um nachzusehen, worum es überhaupt geht.
 
@@ -23,11 +25,17 @@ Geprüft wird das Ganze nicht mit einem künstlichen Testlauf, sondern an der er
 
 ## Details
 
+<!-- leser: mensch -->
+
 ### 1. Kurzfassung
+
+<!-- leser: mensch -->
 
 Die drei Vorhaben-Vorlagen bekommen als erste Zeile unter jeder Überschrift (Ebenen `##`–`####`) einen Marker `<!-- leser: mensch -->` oder `<!-- leser: agent -->`; die plan-Vorlage erhält zusätzlich die Struktur `## In einfachen Worten` → `## Details` → `### 1.…14.` (wie INT-2026-008). Die Regeln R1–R4 (Marker, Rückfragen mit Kontext, Vorlegen nur mit dem Mensch-Teil, Abgleich mit sichtbarem Eintrag) stehen einmal in `specwright/workflows/meta/leser-und-rueckfragen.md`, geladen von den vier Kern-Workflows und an jeder ASK/PRESENT/WAIT-Stelle referenziert. Ein Guard `scripts/check-leser-marker.sh` trägt die vollständige Soll-Zuordnung je Vorlage (einzige Wahrheit), prüft die Vorlagen dagegen und prüft Dokumente auf „keine Marker oder alle Hauptüberschriften markiert". Er hängt in `verify.sh` und `test-installers.sh` (T7). E2E ist die erste echte Sitzung `/spec INT-2026-010` auf dem Branch. Version 4.0.2 → 4.1.0 in eigenem Commit. Kein UI-Code, keine AR-Änderung.
 
 ### 2. Ausgangslage im Code
+
+<!-- leser: agent -->
 
 | Bereich | Heute (Datei:Zeile) | Bedeutung für dieses Vorhaben |
 |---|---|---|
@@ -44,7 +52,11 @@ Die drei Vorhaben-Vorlagen bekommen als erste Zeile unter jeder Überschrift (Eb
 
 ### 3. Entwurf
 
+<!-- leser: agent -->
+
 #### Ansatz
+
+<!-- leser: agent -->
 
 1. **Marker-Syntax und Platz (R1).** Genau eine Zeile `<!-- leser: mensch -->` oder `<!-- leser: agent -->` als **erste nicht-leere Zeile nach einer Überschrift** (höchstens eine Leerzeile dazwischen). Nichts anderes darf dazwischenstehen, insbesondere kein Hinweis-Kommentar, keine Tabelle. Guard-Regex: `^<!-- leser: (mensch|agent) -->$`. Ein Marker an anderer Stelle ist ein Fehler.
 2. **Geltung und Ebenen.** Ein Marker gilt von seiner Überschrift bis zur nächsten Überschrift gleicher oder höherer Ebene. **Vorlagen:** jede Überschrift der Ebenen `##`, `###`, `####` trägt einen Marker (kein Erben). **Dokumente** (ausgefüllte intent/spec/plan): entweder kein Marker im ganzen Dokument (dann gilt alles als `mensch`, AK-07), oder jede Überschrift der Ebenen `##` und `###` trägt einen; `####` und tiefer dürfen erben (nächster markierter Vorfahr). Teilweise markierte Dokumente sind ein Fehler; der Guard nennt jede unmarkierte Überschrift. Die H1 (`# Absicht: …`, `# Spec: …`, `# Plan …`) trägt keinen Marker.
@@ -69,6 +81,8 @@ Die drei Vorhaben-Vorlagen bekommen als erste Zeile unter jeder Überschrift (Eb
 
 #### Verworfene Alternativen
 
+<!-- leser: agent -->
+
 | Alternative | Warum nicht |
 |---|---|
 | Sichtbare Überschriften-Suffixe (`## 5. Verbindungen (Agent)`) oder eigene Überschrift „Technik" | Verletzt AK-02 (sichtbar in MacDown/GitHub); ändert Überschriftentexte, auf die Anker und Workflows verweisen. |
@@ -85,11 +99,15 @@ Die drei Vorhaben-Vorlagen bekommen als erste Zeile unter jeder Überschrift (Eb
 
 #### Architektur-Auswirkung
 
+<!-- leser: agent -->
+
 - **Nein** — bleibt innerhalb von `architecture.md` §2 (Vorlagen/Workflows sind Markdown, Owner Michael), AR-01 (neue Datei → Manifest-Zeile, Guard prüft), AR-06 (kein UI-Bezug), AP-02 (kein Bruch, Minor-Sprung). Kein ADR.
 
 `security.md` §6: Lieferumfang aufnehmen → Manifest-Zeile für `meta/leser-und-rueckfragen.md`, Guard grün. Kein Endpunkt, kein externes System, keine personenbezogenen Daten. Installer-Skripte: nur `install.sh:18` Versionskonstante; `test-installers.sh` läuft in `verify`.
 
 ### 4. Änderungen
+
+<!-- leser: agent -->
 
 | # | Datei / Komponente | Art | Was | Herkunft | Commit |
 |---|---|---|---|---|---|
@@ -115,6 +133,8 @@ Die drei Vorhaben-Vorlagen bekommen als erste Zeile unter jeder Überschrift (Eb
 
 ### 5. Verbindungen
 
+<!-- leser: agent -->
+
 | Von | Nach | Art | Schnittstelle | Nachweis (Befehl) | Teil |
 |---|---|---|---|---|---|
 | 4 Kern-Workflows | Meta-Datei | EXECUTE-Verweis | `EXECUTE: specwright/workflows/meta/leser-und-rueckfragen.md` | `for f in intent spec plan build; do grep -c "meta/leser-und-rueckfragen.md" specwright/workflows/core/$f.md; done` → 4, 3, 4, 3 (EXECUTE + RULE-Stellen aus §4) | — |
@@ -132,6 +152,8 @@ Die drei Vorhaben-Vorlagen bekommen als erste Zeile unter jeder Überschrift (Eb
 
 ### 6. Reihenfolge der Arbeit
 
+<!-- leser: agent -->
+
 0. **Lesende Vorprüfung:** `grep -rn "In einfachen Worten\|## 1\. Kurzfassung\|^## [0-9]*\. \|## Details" specwright/workflows specwright/templates .claude/commands .claude/skills ui/src ui/frontend/src scripts docs/*.md` → Konsumenten der Plan-Überschriften. Erwartet: `workflows/core/plan.md`, `commands/specwright/plan.md`, Vorlagen selbst, `docs/*.md` (eigene §). **Entscheidung:** Treffer, der Überschriftenebene `## n.` in plan.md auswertet → wenn ≤ 5 Zeilen Anpassung, in Commit B mitziehen und in §14 nennen; sonst STOP, Rückfrage nach R2 („F-n, Konsument X liest `## n.`: Vorschlag …"). → prüfbar: Trefferliste im PR-Text.
 1. Branch `feat/INT-2026-009-dokumente-fuer-menschen` ab `4c97b63`. → `git branch --show-current`.
 2. Guard schreiben (Standard + `--doc`, Soll-Tabellen intent/spec/plan-neu), `chmod +x`. → Standardmodus **rot** (Vorlagen noch ohne Marker); `--doc intent/*/*.md` grün mit „18 ohne Marker" (dieser Plan noch nicht im Ordner).
@@ -148,15 +170,23 @@ Die drei Vorhaben-Vorlagen bekommen als erste Zeile unter jeder Überschrift (Eb
 
 ### 7. Zerlegung
 
+<!-- leser: agent -->
+
 #### Variante A — nicht zerlegbar, eine Sitzung
+
+<!-- leser: agent -->
 
 Sieben Dateien mit einem gemeinsamen Vertrag (Marker-Regex, Soll-Tabellen), Guard und Vorlagen greifen ineinander; drei sequentielle Commits in einer Sitzung, geschätzt unter drei Stunden plus E2E-Sitzung.
 
 #### Variante B — parallel in Worktrees
 
+<!-- leser: agent -->
+
 Entfällt.
 
 ### 8. Tests und Nachweis
+
+<!-- leser: agent -->
 
 | AK | Test | Datei | Art |
 |---|---|---|---|
@@ -175,6 +205,8 @@ Entfällt.
 
 ### 9. Risiken
 
+<!-- leser: mensch -->
+
 | Risiko | Wahrscheinlichkeit | Wirkung | Gegenmaßnahme | Wer merkt es |
 |---|---|---|---|---|
 | R2/R3 sind Prosa; Agent fragt trotzdem ohne Kontext oder trägt Technik vor | mittel | niedrig (Ärger, kein Datenverlust) | RULE an allen zehn Stellen; Beispielzeile in R2; E2E-Protokoll mit Zitaten; bei Verstoß Regel an der Stelle nachschärfen (neues kleines Vorhaben, kein Hook) | Michael bei der nächsten Rückfrage |
@@ -186,6 +218,8 @@ Entfällt.
 | E2E-Sitzung erzeugt einen Spec-Entwurf im PR, der später überarbeitet wird | sicher | niedrig | `Status: entwurf`, Commit-Nachricht nennt Herkunft; `/spec INT-2026-010` setzt darauf auf | Michael im PR |
 
 ### 10. Manuelle Schritte
+
+<!-- leser: mensch -->
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
@@ -199,9 +233,13 @@ Kein `production-gate`-Befehl, keine Bestandsdaten.
 
 ### 11. Schätzung
 
+<!-- leser: mensch -->
+
 2–3 h Umbau plus 30–45 min E2E-Sitzung. Unsicherheit: `awk`-Parsing für Position und Reihenfolge (Ebenen, Soll-Tabelle) und der Guard-Schalter zwischen Commit A und B; E2E ist eine echte Sitzung mit Michaels Beteiligung.
 
 ### 12. Review des Plans
+
+<!-- leser: mensch -->
 
 Externer Review (3 Reviewer: anthropic:opus, glm:glm-5.3, minimax:MiniMax-M3), 24 Findings; jedes entschieden.
 
@@ -240,6 +278,8 @@ Externer Review (3 Reviewer: anthropic:opus, glm:glm-5.3, minimax:MiniMax-M3), 2
 
 ### 13. Definition of Done
 
+<!-- leser: agent -->
+
 - [ ] Jedes AK aus §8 hat einen grünen Nachweis (AK-01/03/07 Guard + T7, AK-02 Guard + Screenshot, AK-04–06 grep + E2E-Protokoll).
 - [ ] Alle Nachweise aus §5 ausgeführt und im PR zitiert.
 - [ ] E2E-Sitzung gelaufen, Protokoll unter `design/`, Spec-Entwurf 010 committet.
@@ -252,6 +292,12 @@ Externer Review (3 Reviewer: anthropic:opus, glm:glm-5.3, minimax:MiniMax-M3), 2
 
 ### 14. Abweichungen bei der Umsetzung
 
+<!-- leser: mensch -->
+
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-16 | Guard `--doc` prüft 20 Dokumente (19 ohne Marker, 1 markiert) statt 19/18 | `intent/INT-2026-010/intent.md` wurde nach der Planerstellung committet (`4c97b63`) | §2 „Bestehende Dokumente", §5 Zeile 8, §8 AK-07 |
+| 2026-09-16 | Struktur-Satz für `plan.md`-Workflow Step 9a schon in Commit A statt B | Step 9a wurde in einem Edit mit der R3-RULE umgebaut; Workflow ist Text, Commit A blieb grün | §4 #7 |
+| 2026-09-16 | T7(c) nimmt eine Kopie der intent-Vorlage als „teilweise markiertes Dokument", nicht ein Repo-Dokument | Bei Commit A gab es noch kein markiertes Dokument im Repo (dieser Plan wird erst in Schritt 8 markiert); die Vorlage ist für `--doc` ein gültiges Dokument | §3.7 |
+| 2026-09-16 | Guard überspringt Zeilen in ```-Zäunen | zwei bestehende Pläne (005, 008) enthalten Codeblöcke; eine `## `-Zeile darin wäre sonst eine Überschrift | §3.6 (Ergänzung, kein Bruch) |
+| 2026-09-16 | Schritt 0: Treffer `.claude/commands/specwright/plan.md:10` („oben zusätzlich `## In einfachen Worten`") nicht angepasst | Commands sind „Nicht betroffen"; die Zeile wertet keine Ebene aus und bleibt inhaltlich richtig | §4 Nicht betroffen, §6 Schritt 0 |
