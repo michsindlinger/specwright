@@ -380,7 +380,7 @@ Die Stufen hängen linear voneinander ab (Karten brauchen den Verlauf und den Di
 | Schritt | Wer | Wann | Weg (belegt) | Erledigt |
 |---|---|---|---|---|
 | **Deepgram- und ElevenLabs-Schlüssel rotieren** (beide im öffentlichen Repo seit Commit `65799ee`); neue Werte nur in die lokale `ui/config/voice-config.json` | Michael | sofort (unabhängig von jeder PR) | Anbieter-Konsolen (außerhalb des Repos); Datei lokal bearbeiten; Backend neu starten (Cache `voice-config.ts:18`) | [ ] |
-| PR 0 (Hotfix Schlüsseldatei) mergen | Michael | sofort nach Rotation | GitHub „Merge"; Guard in `scripts/verify.sh` | [ ] |
+| PR 0 (Hotfix Schlüsseldatei) mergen | Michael | sofort nach Rotation | GitHub „Merge"; Guard in `scripts/verify.sh` | [x] PR #52, 2026-09-16 (CI grün) |
 | Messung AN-01/EK-02 (Schritt 0 Stufe 1) am Branch-Backend mit Scratch-Projekt, Ergebnis in §14 | Claude (Bau-Sitzung) | Stufe 1, Schritt 0 | `cd ui && PORT=3111 SPECWRIGHT_RUNTIME_DIR=/tmp/sw-3111 npm run start:backend` (`ui/package.json` `start:backend`); Node-Skript im Scratchpad (Rezept Memory „Cloud-Terminal E2E via Playwright") | [ ] |
 | PR #51 mergen (Plan-Review ohne MCP-Ballast) | Michael | vor Stufe 2 | GitHub „Merge" | [ ] |
 | Spike TUI (Schritt 0 Stufe 2), Fixtures committen | Claude (Bau-Sitzung) | Stufe 2, Schritt 0 | wie Messung; `tmux capture-pane` über `readScreen` | [ ] |
@@ -534,4 +534,5 @@ Self-Review nach Skill `review-implementation-plan` (Vollständigkeit, Konsisten
 | 2026-09-16 | `pasteLocked`: der Aufrufer erhält die Antwort nach dem Paste; Enter folgt nach 150 ms und erst dann wird der Lock freigegeben (Paste + Enter bleiben ein logischer Schreibvorgang, ohne dass `send()` auf den Timer wartet — die bestehenden Tests mit Fake-Timern laufen weiter) | Fake-Timer in `vorhaben-service-stage2.test.ts` | §3 Byte-Ebene |
 | 2026-09-16 | `applyAgentEvent`: `blocked` ohne `blockKind` (Notification, alte Payloads) → `unbekannt`; `review-injected`/`review-failed` behalten den vorhandigen `blockKind` | FA-10 | §3 A.2 |
 | 2026-09-16 | Gesprächsdienst meldet bei Transkript-Schließung eines hook-offenen Dialogs `user-input` an den Manager, wenn der Status noch `blocked` ist (Esc im Terminal liefert weder `PostToolUse` noch `Stop`) | Messung (c) plan_esc | §3 Zustandsmaschine, FA-14 |
+| 2026-09-16 | **Schlüsselrotation zurückgestellt (Entscheid Michael):** PR #52 gemergt, Deepgram-/ElevenLabs-Schlüssel bleiben vorerst — die Werte stehen weiter in der öffentlichen Git-Historie (Commit `65799ee`); §10 Zeile 1 bleibt offen, §13 „Schlüsselrotation vor Merge PR 1 bestätigt" ist damit nicht erfüllbar und wird im PR 1 als offen markiert | PO-Entscheid 16.09. | §10, §13 |
 | 2026-09-16 | **Kontextdeckel nach Schritt 4** (Stufe 1 Schritte 5–8 offen): Stand in `build-stand.md`, WIP-Commit; Fortsetzen mit `/build INT-2026-007` | Workflow Step 3 | §6 Stufe 1 |
