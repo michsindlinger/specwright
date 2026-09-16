@@ -102,6 +102,23 @@ describe('aggregateFindings', () => {
     expect(mockedQuery).not.toHaveBeenCalled();
   });
 
+  it('runs the aggregator without MCP servers and without tools (AK-02, AK-03)', async () => {
+    mockClaudeReturning(JSON.stringify({ clusters: [] }));
+    await aggregateFindings([REV_A, REV_B], '/tmp/x');
+
+    expect(mockedQuery).toHaveBeenCalledTimes(1);
+    const call = mockedQuery.mock.calls[0][0] as { options?: Record<string, unknown> };
+    const opts = call.options ?? {};
+    expect(opts.strictMcpConfig).toBe(true);
+    expect('mcpServers' in opts).toBe(false);
+    expect(opts.tools).toEqual([]);
+    expect(opts.allowedTools).toEqual([]);
+    expect(opts.maxTurns).toBe(1);
+    expect(opts.model).toBe('haiku');
+    expect(opts.settingSources).toEqual(['user']);
+    expect(opts.cwd).toBe('/tmp/x');
+  });
+
   it('returns clustered findings for 3/3 agreement', async () => {
     mockClaudeReturning(
       JSON.stringify({
