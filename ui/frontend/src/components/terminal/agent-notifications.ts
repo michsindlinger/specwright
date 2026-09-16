@@ -1,9 +1,10 @@
 /**
- * Pure helpers for the "agent finished" bell in the cloud-terminal header.
+ * Pure helpers for the agent bell (blocked / finished) in the app header
+ * (`aos-glocke`, INT-2026-010; before that in the cloud-terminal header).
  *
  * DOM-free (unit-tested in ui/tests/unit/agent-notifications.test.ts). The list
- * itself is owned by app.ts (it owns the sessions and the active id); the
- * sidebar renders it and resolves where a click has to jump.
+ * itself is owned by app.ts (it owns the sessions and the visible session);
+ * the bell renders it and app.ts resolves where a click has to jump.
  */
 
 import { paneShowingProject } from './pane-zoom.js';
@@ -54,13 +55,13 @@ export interface RingInput {
   status: CloudTerminalAgentStatus;
   /** Status the session had before this message. */
   prevStatus: CloudTerminalAgentStatus | undefined;
-  /** The user is looking at this very session. */
+  /** The user is looking at this very session (active tab of an open sidebar). */
   isActive: boolean;
 }
 
 /**
  * Whether an agent event rings the chime. Never for the session the user is
- * looking at. The two plan-review events ring once per review even when the
+ * looking at (INT-2026-010: "looking at" = sidebar open and tab active). The two plan-review events ring once per review even when the
  * session was already blocked (review-failed only changes the reason, the
  * status stays). Otherwise: every stop, and each transition into blocked —
  * not every blocked event, because Claude re-notifies while a prompt waits.
@@ -165,7 +166,10 @@ export function soloJumpTarget(target: JumpTarget, paneSessionIds: readonly (str
  * `blocked` comes from the live agent status, `done` from a Stop notification.
  */
 export interface BellRow {
+  /** Frontend TerminalSession.id. */
   sessionId: string;
+  /** Backend CloudTerminalSessionId — what `vorhaben:state` and the WS carry (INT-2026-010, FA-06). */
+  terminalSessionId?: string;
   kind: 'blocked' | 'done';
   /** Epoch ms of the event this row is about. */
   at: number;
@@ -176,6 +180,7 @@ export interface BellRow {
 /** The session fields {@link buildBellRows} reads. */
 export interface BellSession {
   id: string;
+  terminalSessionId?: string;
   agentStatus?: CloudTerminalAgentStatus;
   agentStatusAt?: number;
   agentStatusReason?: string;
@@ -187,21 +192,26 @@ export interface BellSession {
  * `blocked` is derived from the live agent status rather than kept as its own
  * notification, so it appears and disappears exactly when the status does — no
  * second copy of the state to clear. A session that is blocked never also shows
- * a done row. The session the user is looking at is never listed (same rule the
- * Stop path has always used).
+ * a done row. The session the user is *looking at* is never listed: that is the
+ * active tab of an OPEN terminal sidebar (`sichtbareSessionId`); with the
+ * sidebar closed every session is listed, the last active one included
+ * (INT-2026-010 review E2 — the bell must not stay silent for the session
+ * Michael left open behind a closed sidebar).
  */
 export function buildBellRows(
   notifications: readonly AgentNotification[],
   sessions: readonly BellSession[],
-  activeSessionId: string | null
+  sichtbareSessionId: string | null | undefined
 ): BellRow[] {
   const blocked: BellRow[] = [];
   const blockedIds = new Set<string>();
+  const backendIdOf = new Map(sessions.map((s) => [s.id, s.terminalSessionId] as const));
   for (const s of sessions) {
-    if (s.agentStatus !== 'blocked' || s.id === activeSessionId) continue;
+    if (s.agentStatus !== 'blocked' || s.id === sichtbareSessionId) continue;
     blockedIds.add(s.id);
     blocked.push({
       sessionId: s.id,
+      ...(s.terminalSessionId ? { terminalSessionId: s.terminalSessionId } : {}),
       kind: 'blocked',
       at: s.agentStatusAt ?? 0,
       ...(s.agentStatusReason ? { preview: s.agentStatusReason } : {}),
@@ -211,9 +221,11 @@ export function buildBellRows(
   const known = new Set(sessions.map((s) => s.id));
   const done: BellRow[] = [];
   for (const n of notifications) {
-    if (!known.has(n.sessionId) || blockedIds.has(n.sessionId) || n.sessionId === activeSessionId) continue;
+    if (!known.has(n.sessionId) || blockedIds.has(n.sessionId) || n.sessionId === sichtbareSessionId) continue;
+    const terminalSessionId = n.terminalSessionId || backendIdOf.get(n.sessionId);
     done.push({
       sessionId: n.sessionId,
+      ...(terminalSessionId ? { terminalSessionId } : {}),
       kind: 'done',
       at: n.finishedAt,
       ...(n.preview ? { preview: n.preview } : {}),
