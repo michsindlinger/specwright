@@ -8,9 +8,9 @@
 
 | Klasse | Bedeutung | Beispiele hier | Regeln |
 |---|---|---|---|
-| öffentlich | darf jeder sehen — **das Repo ist öffentlich** | Befehle, Workflows, Vorlagen, Installer, `docs/`, `intent/` | nichts hinein, was Kunden, Hosts oder Zugänge verrät |
-| intern | nur auf Michaels Geräten | `~/.specwright/memory.db`, `<runtime>/workspace-*.json`, tmux-Registry, `ui/config/model-config.json` (lokal, ungestaged) | nie committen |
-| vertraulich | Zugänge | `~/.claude.json` (MCP-Server-Konfiguration), Provider-Wrapper unter `~/bin/claude-<id>`, `.env` der UI | siehe Abschnitt 3 |
+| öffentlich | darf jeder sehen — **das Repo ist öffentlich** | Befehle, Workflows, Vorlagen, Installer, `docs/`, `intent/`, `ui/config/model-config.json` (Provider- und Modellnamen der UI; Zugänge nie darin — versioniert, Hook-Ausnahme `.claude/no-secrets-allow.txt`) | nichts hinein, was Kunden, Hosts oder Zugänge verrät |
+| intern | nur auf Michaels Geräten | `~/.specwright/memory.db`, `<runtime>/workspace-*.json`, tmux-Registry | nie committen |
+| vertraulich | Zugänge | `~/.claude.json` (MCP-Server-Konfiguration), Provider-Wrapper unter `~/bin/claude-<id>`, `~/.claude-<id>/settings.json` (Proxy-URL, Modell-Mapping, ggf. Token), `~/.config/claude-code-proxy/<provider>/auth.json` (OAuth des Proxys), `~/.codex/auth.json` (Codex-CLI), `.env` der UI | siehe Abschnitt 3 |
 | personenbezogen | DSGVO | keine im Repo; die UI verarbeitet Projektinhalte der jeweiligen Projekte (deren `security.md` gilt) | — |
 
 | Datenobjekt | Klasse | Speicherort | Löschfrist |
@@ -39,6 +39,7 @@
 | Geheimnis | Wofür | Liegt in | Kommt zur Laufzeit über | Rotation |
 |---|---|---|---|---|
 | Anthropic/Provider-Zugänge | Claude-Sitzungen aus der UI | Claude-Code-Konfiguration des Nutzers, Provider-Wrapper | Umgebung des Prozesses | Nutzer |
+| OpenAI/ChatGPT-Zugang (INT-2026-011) | Provider `codex` (Claude Code über `claude-code-proxy`) und `codex-cli` (native Codex-CLI) | Proxy-OAuth unter `~/.config/claude-code-proxy/codex/`, Codex-Login unter `~/.codex/auth.json`; die UI kennt nur Provider- und Modellnamen | Proxy-Prozess `claude-code-proxy serve` auf localhost (Wrapper `~/bin/claude-codex` prüft Erreichbarkeit und Anmeldung vor dem Start, sonst Meldung und Exit 1) bzw. Codex-Prozess selbst. Ausfall: Proxy weg → Wrapper bricht sichtbar ab; Konto abgemeldet → Wrapper-Meldung im Terminal, im Prüfer-Pfad (SDK ohne Wrapper) der Fehlertext des SDK; Codex ohne Login → Codex fragt im Terminal nach. Kein stilles Ausweichen auf Anthropic (`ANTHROPIC_BASE_URL` fest auf den Proxy). Projektinhalte gehen an OpenAI — die `security.md` des jeweiligen Projekts gilt | Nutzer (Proxy: `claude-code-proxy codex auth login`; CLI: `codex login`) |
 | MCP-Server-Zugänge (Supabase, Firebase) | Projekt-MCPs | `~/.claude.json` (user-scope) | Claude Code | Nutzer |
 | GitHub-Token | Auto-Deploy, `gh` | Host-Konfiguration | Umgebung | Nutzer |
 | Sprachdienst-Zugänge (Deepgram, ElevenLabs) | **entfernt (INT-2026-010):** Anruf-Modus und Sprachdienste sind aus der UI gelöscht (`voice-call.service.ts`, `voice-config.ts`); die Datei `ui/config/voice-config.json` liest kein Code mehr, sie bleibt gitignored, der Guard `check-no-voice-config` in `verify` bleibt | — (Datei liegt lokal ungenutzt) | — | **Vorfall 2026-09-16:** Datei mit echten Schlüsseln seit März versioniert (Commit `65799ee`, Repo öffentlich); aus dem Index entfernt, beide Schlüssel rotieren (Historie bleibt öffentlich) |
@@ -97,3 +98,4 @@
 | 2026-09-16 | §3: Sprachdienst-Zugänge ergänzt, Vorfall versionierte `voice-config.json` (INT-2026-007 PR 0); Datei aus dem Index, `.gitignore`, Guard in `verify.sh` | PR 0 |
 | 2026-09-15 | §7: T-06 verweist auf ein eigenes Vorhaben statt auf den Gesamtplan Phase 5 (INT-2026-004, Stufe 3); §4 Stand unverändert offen | PR #46 |
 | 2026-09-16 | §3: Sprachdienst-Zeile auf „entfernt" — Anruf-Modus, Sprachdienste, Chat-Handler und Bild-Upload (`/api/images`) aus der UI gelöscht; Guard und `.gitignore`-Eintrag bleiben (INT-2026-010, Stufe 1); kein neuer Endpunkt | PR folgt |
+| 2026-09-16 | §1: `ui/config/model-config.json` von „intern" nach „öffentlich" (versioniert seit Monaten; Namen, keine Zugänge), „vertraulich" um `~/.claude-<id>/settings.json`, Proxy-OAuth und `~/.codex/auth.json`; §3 Zeile OpenAI/ChatGPT-Zugang mit Ausfallverhalten (INT-2026-011); Hook `no-secrets` liest `.claude/no-secrets-allow.txt` (nur Dateinamen-Regel) und die Inhaltsregel greift jetzt auch mit BSD-grep (leere Alternative behoben) | PR folgt |
