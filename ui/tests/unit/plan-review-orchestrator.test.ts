@@ -36,6 +36,8 @@ function buildMockCtm(
     sendInput,
     reportAgentEvent,
     readScreen,
+    // INT-2026-007: the inject runs under the session's machine-write lock
+    withMachineWrite: vi.fn(async (_id: string, fn: () => Promise<unknown>) => ({ ok: true as const, value: await fn() })),
     setPlanReviewEnabled,
     triggerManualReview,
     waitForIdle,

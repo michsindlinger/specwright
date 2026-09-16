@@ -188,7 +188,7 @@ export class AosGespraech extends LitElement {
       const eingabe = this.querySelector('aos-gespraech-eingabe');
       if (eingabe) eingabe.value = '';
       this.atBottom = true;
-      this.dispatchEvent(new CustomEvent('show-toast', { bubbles: true, composed: true, detail: { message: result.status === 'eingereiht' ? 'Eingereiht — kommt nach dem aktuellen Zug dran' : 'Gesendet', type: 'success' } }));
+      // no toast: the Beitrag (or its „eingereiht" tag) is the confirmation (E2E 16.09.: toasts piled up over the head)
       return;
     }
     this.sendFehler = result.message || result.grund;

@@ -387,7 +387,7 @@ export class AosVorhabenSeite extends LitElement {
         <div class="meta">
           <span class="badge">${PHASE_LABELS[r.phase]}${r.bypass ? ' · Spec entfällt' : ''}</span>
           ${r.phaseNote ? html`<span>${r.phaseNote}</span>` : nothing}
-          <span><span class="dot ${r.zustand}"></span>${ZUSTAND_LABELS[r.zustand]}${r.zustandDetail && r.zustand !== 'wartet_auf_dich' ? ` · ${r.zustandDetail}` : ''}</span>
+          <span><span class="dot ${r.zustand}"></span>${ZUSTAND_LABELS[r.zustand]}${r.zustandDetail && r.zustand !== 'wartet_auf_dich' && !ZUSTAND_LABELS[r.zustand].endsWith(r.zustandDetail) ? ` · ${r.zustandDetail}` : ''}</span>
           ${session ? html`<span>Sitzung <strong>${session.name}</strong>${session.model ? ` · ${session.model}` : ''}${session.ended ? ' · beendet' : ''}</span>` : nothing}
           ${r.arbeitskopie ? html`<span>Arbeitskopie <code>${r.arbeitskopie}</code></span>` : nothing}
           <span>geändert ${relativeTime(r.lastChangedMs)}</span>

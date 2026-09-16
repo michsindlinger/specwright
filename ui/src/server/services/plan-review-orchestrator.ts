@@ -53,7 +53,7 @@ interface InjectJob {
   total: number;
 }
 
-type InjectFailure = 'focus' | 'unreadable' | 'no-screen' | 'not-visible' | 'dialog-gone' | 'not-active';
+type InjectFailure = 'focus' | 'unreadable' | 'no-screen' | 'not-visible' | 'dialog-gone' | 'not-active' | 'busy';
 
 /** A manual re-trigger may reclaim a lock older than this — a fresh lock means
  *  a review is genuinely still running, so concurrent manual triggers still
@@ -99,6 +99,8 @@ function injectFailureMessage(kind: InjectFailure, dialog?: PlanDialogState): st
       return `Review text did not show up in option ${target} after typing. Check the tab; "Review last plan" inserts it again.`;
     case 'dialog-gone':
       return 'Plan dialog could not be read after typing the review. Check the tab; "Review last plan" inserts it again.';
+    case 'busy':
+      return 'The UI is already writing into this session (another answer or review); nothing was typed. Press "Review last plan" again in a moment.';
     case 'no-screen':
       return 'Plan dialog is open, but this session has no tmux screen to read, so the cursor cannot be checked; nothing was typed. Move the cursor to "Tell Claude what to change" and press "Review last plan" — the review is then typed without a check.';
     case 'not-active':
@@ -226,6 +228,19 @@ export class PlanReviewOrchestrator extends EventEmitter {
     state: SessionState,
     job: InjectJob,
     retry = false
+  ): Promise<void> {
+    // INT-2026-007 (plan §4 #1b, AR-08): every machine write into the PTY runs
+    // under the session's single-flight lock — read, keys and text of one
+    // inject are one logical write; a concurrent UI write is refused, never queued.
+    const result = await this.cloudTerminalManager.withMachineWrite(sessionId, () => this.injectUnlocked(sessionId, state, job, retry));
+    if (!result.ok) this.injectFailed(sessionId, state, job, result.grund === 'beschaeftigt' ? 'busy' : 'not-active');
+  }
+
+  private async injectUnlocked(
+    sessionId: CloudTerminalSessionId,
+    state: SessionState,
+    job: InjectJob,
+    retry: boolean
   ): Promise<void> {
     const ctm = this.cloudTerminalManager;
     const text = sanitizeInjectText(job.text);

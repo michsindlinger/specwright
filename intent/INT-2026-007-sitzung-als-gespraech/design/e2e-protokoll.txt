@@ -1,0 +1,24 @@
+# E2E-Protokoll INT-2026-007 Stufe 1 — 2026-09-16
+
+Umgebung: Branch-Backend auf Port 3111 (eigenes Runtime-Verzeichnis /tmp/sw-3111, eigener tmux-Socket), Scratch-Projekt /tmp/scratch-int007 mit synthetischem Vorhaben INT-2026-001, Modell Haiku, Claude Code 2.1.273, Chrome headless 1440×900 (Playwright), Steuerung über einen zweiten WebSocket-Client (vorhaben:start-step, cloud-terminal:input) und tmux capture-pane. Skript: e2e.mjs im Scratchpad der Bau-Sitzung (nicht im Repo).
+
+Zwei Läufe: Lauf 1 (09:00–09:02 UTC) vollständig; Lauf 2 (09:03–09:06 UTC) nach dem Entfernen der Sende-Toasts für saubere Screenshots — dort hat Haiku mitten im Spec-Workflow die Rückfrage nicht mehr als AskUserQuestion gestellt (Timeout beim Warten auf die Karte), die Punkte 1–4 sind identisch bestanden.
+
+## Schritte und Ergebnis (Lauf 1, Sitzung cloud-1789549232220-1)
+
+1. Klick „Spec schreiben" (Nachricht vorhaben:start-step, Haiku) → Sitzung gestartet; Run-Skript launch/run-<id>.sh: CLAUDE_CODE_CHILD_SESSION-Treffer 0, CLAUDE_CODE_FORCE_SESSION_PERSISTENCE 1 (Nachweis §5 Env, Minor 17).
+2. Vorhaben-Seite geöffnet → Gespräch sichtbar, Kopf „Gespräch mit spec INT-2026-001 · main · arbeitet · Im Terminal öffnen ↗" (FA-01). Screenshot ist-08a-start.png (Lauf 2).
+3. 20 Freitext-Eingaben über das Eingabefeld (Enter). Eingabe 1 nach 1,2 s im Terminal sichtbar (capture-pane enthält den Text) — FA-06 Richtung UI→Terminal. Nutzer-Beitrag erscheint als „Du 11:01" ohne Terminal-Marke (Quelle ui).
+4. Messung EK-02 (Zeitstempel des Beitrags → Empfang des gespraech:delta-Frames im Browser), n = 20: Median 126 ms, max 145 ms, min 1 ms (Hook-Beitrag „ergänzt sich" ≤ 1 ms nach dem Hook, Transkript-Zwilling 116–145 ms nach seinem Transkript-Zeitstempel). Lauf 2: Median 121 ms, ein Ausreißer 17,6 s = Zwischen-Zug-Text des Spec-Workflows vor einem langen Werkzeugaufruf (wird beim nächsten Werkzeug-Hook nachgelesen, Plan §3 „Zwischen-Zug-Texte"). FA-02 ≤ 3 s für abgeschlossene Züge erfüllt.
+5. Einreihen (AN-S09): während Haiku an Eingabe 5 arbeitete, stand der Knopf auf „Einreihen"; der Nachtrag wurde eingereiht (Antwort gespraech:sent status eingereiht) und von Claude Code sofort als UserPromptSubmit gemeldet — der Eintrag stand < 400 ms später auf „angenommen" und erschien als Beitrag „ergänzt sich"; Claude antwortete danach. Screenshot ist-08b-eingereiht.png (Lauf 2, Sitzung arbeitet, Knopf „Einreihen").
+6. Arbeitsblöcke (FA-04): 5 Blöcke im Verlauf, z. B. „arbeitet · 6 Werkzeugaufrufe · 0:02 min" — keine Werkzeuginhalte im Gespräch (FA-03).
+7. Rückfrage (FA-21-Form, Stufe 1): Eingabe „Nutze das Werkzeug AskUserQuestion …" → Hinweiskarte „Sitzung wartet · Rückfrage — im Terminal antworten · Welche Farbe magst du? · Im Terminal öffnen ↗", Eingabefeld gesperrt mit Grund „Sitzung wartet auf eine Antwort — die Rückfrage beantworten", Kopf „wartet · Rückfrage", Sendeleiste „Sitzung stellt eine Rückfrage — im Terminal antworten · Zum Terminal ›", Terminal zeigt den Cue „Enter to select". Screenshot ist-08-rueckfrage.png.
+8. Antwort im Terminal (Enter über cloud-terminal:input) → Karte nach 106 ms geschlossen, Beitrag „RÜCKFRAGE · Antwort: Rot (im Terminal)", Claude antwortet danach (FA-14 ≤ 3 s).
+9. Backend-Neustart (SIGTERM, Neustart, Seite neu geladen): 44 Beiträge vorher, 45 nachher (ein Beitrag kam dazwischen), Verlauf ok, kein Hinweis „nicht verfügbar" (FA-08). Beobachtung: nach dem Neustart tragen die vorher aus der UI gesendeten Beiträge die Marke „Terminal" (die Quellen-Zuordnung lebt im Speicher; Etikett, nicht Inhalt — Plan §3 Minor 8), und der Kopf zeigt kurz „arbeitet" aus dem wiederhergestellten Registry-Status.
+10. /exit im Terminal → Kopf „Sitzung beendet 11:01", Eingabe gesperrt „Sitzung beendet — nächsten Schritt starten", Knopf „Spec schreiben" (Ablauf L). Screenshot ist-08d-beendet.png.
+11. Backend-Log: 0 × „agent-event rejected".
+
+## Screenshots neben dem Mock
+
+- 08-gespraech-mac.png (Mock) ↔ ist-08a-start.png, ist-08a-gespraech.png (Sitzung wartet, Eingabe aktiv), ist-08b-eingereiht.png (arbeitet, „Einreihen"), ist-08-rueckfrage.png (Hinweiskarte Stufe 1), ist-08d-beendet.png (Ablauf L). 08c (nicht verfügbar) nur per Komponententest (aos-gespraech.test.ts, FA-07) — eine Sitzung vor der Auslieferung lässt sich am Branch-Backend nicht nachstellen.
+- Abweichungen zum Mock: Sendeleiste endet an der Gesprächsspalte (Plan §4 #16) statt durchzulaufen; kein Vorlesen-Schalter und kein Mikro (Stufe 3); Rückfrage als Hinweiskarte statt Karte mit Optionen (Stufe 2).

@@ -1,7 +1,7 @@
 # Plan: Vorhaben ohne Terminal führen — Sitzung als Gespräch in der Web-UI, Sprache in beide Richtungen
 
 > **Intent:** `intent.md` (INT-2026-007, 1.0.0) · **Spec:** `spec.md` (freigegeben 2026-09-16)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt (Stufe 1, PR 1 — Merge steht aus; Stufe 2 und 3 folgen als PR 2/PR 3)
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 — nach drei Runden externem Review (4/3/3 Reviewer, alle Findings in §12 entschieden), „plan freigegeben"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `b1ea9d1`, §2 Backend/Frontend, §3, AR-04/05/06, §5, §10), `CLAUDE.md` (Verify, Konventionen UI, Hooks, „Nie"), `docs/security.md` (§1, §3, §5, §6), `docs/design.md` (§1, §3 Terminal-Replay, §5, §6)
 
@@ -381,7 +381,7 @@ Die Stufen hängen linear voneinander ab (Karten brauchen den Verlauf und den Di
 |---|---|---|---|---|
 | **Deepgram- und ElevenLabs-Schlüssel rotieren** (beide im öffentlichen Repo seit Commit `65799ee`); neue Werte nur in die lokale `ui/config/voice-config.json` | Michael | sofort (unabhängig von jeder PR) | Anbieter-Konsolen (außerhalb des Repos); Datei lokal bearbeiten; Backend neu starten (Cache `voice-config.ts:18`) | [ ] |
 | PR 0 (Hotfix Schlüsseldatei) mergen | Michael | sofort nach Rotation | GitHub „Merge"; Guard in `scripts/verify.sh` | [x] PR #52, 2026-09-16 (CI grün) |
-| Messung AN-01/EK-02 (Schritt 0 Stufe 1) am Branch-Backend mit Scratch-Projekt, Ergebnis in §14 | Claude (Bau-Sitzung) | Stufe 1, Schritt 0 | `cd ui && PORT=3111 SPECWRIGHT_RUNTIME_DIR=/tmp/sw-3111 npm run start:backend` (`ui/package.json` `start:backend`); Node-Skript im Scratchpad (Rezept Memory „Cloud-Terminal E2E via Playwright") | [ ] |
+| Messung AN-01/EK-02 (Schritt 0 Stufe 1) am Branch-Backend mit Scratch-Projekt, Ergebnis in §14 | Claude (Bau-Sitzung) | Stufe 1, Schritt 0 | `cd ui && PORT=3111 SPECWRIGHT_RUNTIME_DIR=/tmp/sw-3111 npm run start:backend` (`ui/package.json` `start:backend`); Node-Skript im Scratchpad (Rezept Memory „Cloud-Terminal E2E via Playwright") | [[x] 16.09. (Schritt 0: 125 ms Median; E2E: 126 ms Median, `design/e2e-protokoll.txt`) |
 | PR #51 mergen (Plan-Review ohne MCP-Ballast) | Michael | vor Stufe 2 | GitHub „Merge" | [ ] |
 | Spike TUI (Schritt 0 Stufe 2), Fixtures committen | Claude (Bau-Sitzung) | Stufe 2, Schritt 0 | wie Messung; `tmux capture-pane` über `readScreen` | [ ] |
 | Merge PR 1, PR 2, PR 3 (löst Auto-Deploy der UI aus; ER-07) | Michael | je Stufe | GitHub „Merge"; Host-Timer pollt `GET /api/status/deploy-readiness` (`ui/src/server/index.ts:64-77`) | [ ] |
@@ -503,15 +503,15 @@ Self-Review nach Skill `review-implementation-plan` (Vollständigkeit, Konsisten
 
 ## 13. Definition of Done
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (je Stufe die zugeordneten).
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Screenshots neben den Mocks, Messungen EK-02/EK-03 im Protokoll.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` (+ ADR-0003, AR-08), `docs/security.md`, `docs/product-brief.md` angepasst (§3 „Ja").
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert; Schlüsselrotation vor Merge PR 1 bestätigt.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (inkl. Messwerte Schritt 0, Tastenprotokoll Spike).
-- [ ] 2x-Regel-Check: „Backend-Env ungefiltert an Kindprozesse" — erstes Vorkommen; „Secrets in `ui/config` versioniert" — erstes Vorkommen; Vorschlag `CLAUDE.md` „Nie": `ui/config/*` mit Zugängen committen.
-- [ ] Abschlussbericht je Stufe endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-007-sitzung-als-gespraech/`); Nachziehen in eigener Sitzung.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (je Stufe die zugeordneten). — Stufe 1: FA-01–FA-11, FA-21, FA-22, Zustandsmaschine, Lock, Env, Allowlist, Deploy-Gate
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert. — Stufe 1 (S1-Zeilen) im PR 1
+- [x] E2E-Pfad läuft (Abschnitt 8), Screenshots neben den Mocks, Messungen EK-02/EK-03 im Protokoll. — Stufe 1: `design/e2e-protokoll.txt`, `design/ist-08*.png`; EK-03 ist Stufe 3
+- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit). — lokal `verify: OK` (59 s) im PR 1; CI-Lauf steht aus
+- [x] `docs/architecture.md` (+ ADR-0003, AR-08), `docs/security.md`, `docs/product-brief.md` angepasst (§3 „Ja"). — Stufe 1: ADR-0003, §2/§3, security §2/§6, product-brief; AR-08 kommt mit Stufe 2
+- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert; Schlüsselrotation vor Merge PR 1 bestätigt. — **Schlüsselrotation zurückgestellt (PO-Entscheid 16.09.), im PR 1 als offen markiert**
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (inkl. Messwerte Schritt 0, Tastenprotokoll Spike). — Stufe 1; Tastenprotokoll Spike folgt in Stufe 2
+- [x] 2x-Regel-Check: „Backend-Env ungefiltert an Kindprozesse" — erstes Vorkommen; „Secrets in `ui/config` versioniert" — erstes Vorkommen; Vorschlag `CLAUDE.md` „Nie": `ui/config/*` mit Zugängen committen. — im PR 1
+- [x] Abschlussbericht je Stufe endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-007-sitzung-als-gespraech/`); Nachziehen in eigener Sitzung.
 
 ## 14. Abweichungen bei der Umsetzung
 
@@ -542,3 +542,7 @@ Self-Review nach Skill `review-implementation-plan` (Vollständigkeit, Konsisten
 | 2026-09-16 | „Absicht beginnen" (FA-22): die View merkt sich die `sessionId` (`pendingIntentSessionId`), die Projekt-Seite zeigt „Sitzung gestartet — Vorhaben entsteht …", Navigation beim ersten `vorhaben:state` mit einer Zeile dieser Sitzung; Toast statt Terminal | Plan A.10 | §4 #13/#19 |
 | 2026-09-16 | `gatewayRequest()` als freie Funktion aus `vorhaben.service.ts` exportiert (R-17), `VorhabenClientService.request` delegiert; `gespraech.service.ts` nutzt sie für `send-text`, das Abo läuft ohne `requestId` über `sessionId` (Fehler `gs-sub-<sessionId>`) | R-17 | §4 #15 |
 | 2026-09-16 | Docs (Schritt 6): `architecture.md` §2/§3 + Protokoll, **ADR-0003**, `security.md` §2 Vertrauensannahme + §6 Allowlist-Zeile + Protokoll, `product-brief.md` §5, INT-2026-004 Ablauf E Schritt 6 / AN-S14 Nachtrag. `git rm --cached voice-config.json` war schon PR 0 | §6 Schritt 6 | §3 Architektur-Auswirkung |
+| 2026-09-16 | **E2E Stufe 1 bestanden** (Branch-Backend 3111, Scratch-Projekt, Haiku; `design/e2e-protokoll.txt`, `design/ist-08*.png`): EK-02 n = 20, Median 126 ms, max 145 ms (Hook-Beitrag ≤ 1 ms, Transkript-Zwilling ~130 ms); Rückfrage-Hinweiskarte, Terminal-Antwort schließt sie in 106 ms; Neustart behält den Verlauf (44 → 45 Beiträge); Ablauf L; Run-Skript ohne `CLAUDE_CODE_CHILD_SESSION`. Beobachtungen: (a) eine eingereihte Eingabe meldet Claude Code **sofort** als `UserPromptSubmit` (Eintrag < 400 ms „angenommen", Beitrag „ergänzt sich"), der Zustand `eingereiht` ist daher meist nur einen Wimpernschlag sichtbar — die Frist `QUEUE_CONFIRM_GRACE_MS` bleibt als Netz; (b) nach Backend-Neustart tragen aus der UI gesendete Beiträge die Marke „Terminal" (Quellen-Zuordnung lebt im Speicher; Etikett, nicht Inhalt); (c) Zwischen-Zug-Text eines langen Werkzeugaufrufs erschien in Lauf 2 mit 17,6 s Verzögerung (wird beim nächsten Werkzeug-Hook nachgelesen; §3 „Zwischen-Zug-Texte") | Schritt 7 | §8 EK-02, FA-06/FA-08/FA-14, §3 A.7 |
+| 2026-09-16 | Kein Toast beim Senden aus dem Gespräch (der Beitrag bzw. sein „eingereiht"-Tag ist die Bestätigung); Seitenkopf zeigt `zustandDetail` nicht mehr doppelt („wartet · Rückfrage · Rückfrage") | E2E-Screenshots: Toasts stapelten sich über dem Kopf | §4 #14/#16 |
+| 2026-09-16 | Plan-Review-Inject (`plan-review-orchestrator.ts`) läuft jetzt komplett unter `withMachineWrite` (`inject` → `injectUnlocked`), zweiter UI-Zugriff → Fehlerart `busy` mit Hinweistext; war in Sitzung 1 bei Schritt 1b ausgelassen. Lock-Inventar (§5): `grep -rn "sendInput(" ui/src/server --include='*.ts' \| grep -v withMachineWrite \| grep -v test` → 10 Zeilen: menschlich `websocket.ts:3213` (Tastatur; Bild-Einfügen läuft über dieselbe Methode), Implementierung `cloud-terminal-manager.ts:1309`, Typdeklaration `vorhaben-service.ts:78`, der Rest (`websocket.ts:2324` DevTeam-Setup, `vorhaben-service.ts:542/546` `pasteLocked`, Orchestrator `:251/:266/:286/:329`) innerhalb von `withMachineWrite`-Blöcken | Nachweis §5 zeigte den Orchestrator ohne Lock | §4 #1b, §5 |
+| 2026-09-16 | PR 1 nicht über den Agenten `git-workflow`, sondern direkt mit `gh pr create --body-file` aus der Bausitzung (Body ist ohnehin hier formuliert; spart eine Agentenrunde auf vollem Kontext) | Kosten = Runden × Kontext | Workflow Step 6 |
