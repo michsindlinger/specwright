@@ -25,6 +25,7 @@
 - **Anmeldung:** keine im Framework. Die Web-UI hat keine eigene Nutzerverwaltung; Zugriff wird auf Netzebene begrenzt (Tailscale/tailnet-only lokal; Cloud-Host hinter eigenem Zugang, Details außerhalb des Repos).
 - **Rollen:** ein Nutzer. „Product Owner", „Tech Lead" sind Hüte in den Dokumenten, keine Rechte.
 - **Mandanten:** keine.
+- **Vertrauensannahme (INT-2026-007):** genau ein Nutzer, dessen Claude-Code-Prozesse auf dem Host vertrauenswürdig sind. Die Hook-Route der UI vertraut dem Token, nicht dem Absender; was ein Hook meldet (Transkriptpfad, Dialoge, Beiträge), gilt als Aussage dieses Nutzers über seine eigene Sitzung.
 - **Wer sieht was:**
 
 | Rolle | darf sehen | darf ändern | darf nie |
@@ -77,6 +78,7 @@
 | einen Installer ändert | `scripts/test-installers.sh` grün, Bash-3.2-Verträglichkeit |
 | ein externes System anbindet | Zugang (Abschnitt 3), Ausfallverhalten nennen |
 | Projekt-Docs oder Intents schreibt | keine Host-Details (Abschnitt 5) |
+| eine Datei liest, deren Pfad von außen gemeldet wird (z. B. Transkriptpfad aus einem Hook) | den Pfad nie vom Client nehmen; `realpath` gegen eine Allowlist prüfen (Transkripte: reguläre Datei unter `~/.claude` oder `~/.claude-<providerId>` der konfigurierten Provider, `projects/<slug>/<session_id>.jsonl` mit der `session_id` desselben Hooks, `cwd` = Arbeitsverzeichnis der Sitzung); Ablehnung sichtbar melden (`nicht_verfuegbar` mit Ursache) |
 
 ## 7. Offene Lücken
 
@@ -91,5 +93,6 @@
 | Datum | Änderung | PR |
 |---|---|---|
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
+| 2026-09-16 | §2 Vertrauensannahme (ein Nutzer, Hook-Route vertraut dem Token), §6 Zeile Transkript-Allowlist (INT-2026-007, Stufe 1) | PR 1 |
 | 2026-09-16 | §3: Sprachdienst-Zugänge ergänzt, Vorfall versionierte `voice-config.json` (INT-2026-007 PR 0); Datei aus dem Index, `.gitignore`, Guard in `verify.sh` | PR 0 |
 | 2026-09-15 | §7: T-06 verweist auf ein eigenes Vorhaben statt auf den Gesamtplan Phase 5 (INT-2026-004, Stufe 3); §4 Stand unverändert offen | PR #46 |

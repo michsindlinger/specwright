@@ -73,7 +73,7 @@ Alle Abläufe haben einen Nutzer: Michael. Am Mac und am Handy gelten dieselben 
 3. Neben dem Knopf steht die Modellwahl (wie heute auf der Story-Karte): vorbelegt mit dem zuletzt für dieses Vorhaben und diesen Schritt gewählten Modell, sonst mit dem Standard des Schritts. Michael kann ein anderes der konfigurierten Modelle wählen (Claude Opus, GLM, Grok, …); die Wahl gilt für diesen Start.
 4. Michael wählt den Schritt. Die UI startet im Projekt eine Claude-Sitzung wie heute über den Rahmen (Auswahl Arbeitskopie: Projekt oder Worktree, wie bisher) mit dem gewählten Modell und gibt den Befehl als erste Eingabe ein.
 5. Die Sitzung ist ab jetzt die Sitzung des Vorhabens (FA-21). Die Übersicht zeigt „arbeitet" und das Modell der Sitzung; sobald die Sitzung am Review-Punkt anhält, „wartet auf dich".
-6. Am Mac springt die UI ins Terminal der neuen Sitzung; am Handy bleibt Michael auf der Vorhaben-Seite und sieht den Zustand.
+6. Am Mac springt die UI ins Terminal der neuen Sitzung; am Handy bleibt Michael auf der Vorhaben-Seite und sieht den Zustand. — **Nachtrag 2026-09-16 (INT-2026-007, FA-22):** Am Mac bleibt die UI auf der Vorhaben-Seite und zeigt die neue Sitzung als Gespräch daneben; bei „Absicht beginnen" öffnet sie die neue Vorhaben-Seite, sobald der Ordner entsteht. Der Sprung ins Terminal bleibt als Knopf „Im Terminal öffnen ↗" im Kopf des Gesprächs.
 
 > Schreibweise der Befehle: `/intent`, `/spec INT-…`, `/plan INT-…`, `/build INT-…` sind in diesem Dokument Kurznamen der Schritte. Der Befehl, den die UI in die Sitzung gibt und neben dem Knopf zeigt, trägt den Namensraum von Claude Code: `/specwright:intent`, `/specwright:spec INT-…` usw. (Nachtrag 2026-09-15, INT-2026-005.)
 7. Die Standards je Schritt (Absicht, Spec, Plan, Bau) stellt Michael einmal in den Einstellungen unter „Modelle" ein, neben dem heutigen allgemeinen Standardmodell; ohne Einstellung gilt Claude Opus.
@@ -383,7 +383,7 @@ Geprüft gegen Stand 8351674.
 - **AN-S11:** Zähler und Abzeichen im Rahmen zählen künftig wartende Vorhaben (FA-37). — bestätigt am 2026-09-15 von Product Owner
 - **AN-S12:** Alles, was weder Story-Pfad (B-07) noch Rahmen (B-08) ist (Prompt-Vorlagen, SDK-Chat, Plan-Review), bleibt unverändert. — bestätigt am 2026-09-15 von Product Owner
 - **AN-S13:** Nach dem Senden verschwinden die Anmerkungen aus dem Dokument und sind nur noch im Protokoll sichtbar (Ablauf C, Schritt 8). Alternative wäre, sie als „gesendet" im Text stehen zu lassen. — bestätigt am 2026-09-15 von Product Owner
-- **AN-S14:** Am Mac wechselt „nächster Schritt" ins Terminal der neuen Sitzung, am Handy nicht (FA-35). — bestätigt am 2026-09-15 von Product Owner
+- **AN-S14:** Am Mac wechselt „nächster Schritt" ins Terminal der neuen Sitzung, am Handy nicht (FA-35). — bestätigt am 2026-09-15 von Product Owner; **Nachtrag 2026-09-16 (INT-2026-007, AN-S03/FA-22):** aufgehoben — am Mac bleibt die UI auf der Seite, das Gespräch zeigt die Sitzung; der Terminal-Sprung ist ein Knopf.
 - **AN-S16:** Projekt-Docs sind genau die fünf Dateien aus B-12; ADRs und andere Dateien unter `docs/` sind in diesem Vorhaben weder lesbar noch bearbeitbar in der UI (engste Auslegung von „die wichtigen Specwright-Dateien … etc."). — bestätigt am 2026-09-15 von Product Owner
 - **AN-S17:** Speichern schreibt ohne Commit; Stand-Konflikte werden wie bei der Freigabe erkannt (Stand beim Öffnen ≠ aktueller Stand), mit „trotzdem überschreiben" als bewusster Ausnahme. — bestätigt am 2026-09-15 von Product Owner
 - **AN-S18:** Bearbeitet wird die Kopie im registrierten Projektverzeichnis; existieren Worktrees, nennt die Projekt-Seite das, bietet aber keine Wahl der Arbeitskopie. — bestätigt am 2026-09-15 von Product Owner
@@ -399,6 +399,7 @@ Geprüft gegen Stand 8351674.
 - [x] Keine Technik, keine Architektur, keine Dateinamen in diesem Dokument (Dokumentnamen der Vorhaben sind Fachbegriffe; Pfade nur in Abschnitt 7 als Herkunft).
 - [x] Bei risikoklasse hoch: Tech Lead hat gelesen. (nicht zutreffend, mittel)
 - **Freigegeben:** Product Owner (Michael Sindlinger), 2026-09-15, Commit siehe `git log -- spec.md` (zwei Freigaben: Erstfassung, Ergänzung 1.2.0)
+- **Nachtrag 2026-09-16 (INT-2026-007, Stufe 1):** Ablauf E Schritt 6 und AN-S14: kein Terminal-Sprung am Mac beim Start eines Schritts; das Gespräch neben der Seite zeigt die Sitzung (FA-22 in INT-2026-007). Keine FA dieses Dokuments geändert.
 - **Nachtrag 2026-09-15 (nach Umsetzung):** Ablauf E Schritt 2 und AN-S19 an den Bau angepasst — „Neues Vorhaben" nur auf der Projekt-Seite (Product Owner, D2 der Board-Sitzung). Keine FA geändert, keine neue Freigabe nötig.
 
 **Zuordnung AK → FA:**
