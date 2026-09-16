@@ -1,7 +1,7 @@
 import { query as claudeQuery } from '@anthropic-ai/claude-agent-sdk';
-import { buildProviderEnv } from '../utils/provider-env.js';
+import { buildSdkCallOptions } from '../utils/sdk-call-options.js';
 
-const REVIEWER_TOOLS: string[] = ['Read', 'Grep', 'Glob'];
+export const REVIEWER_TOOLS: readonly string[] = ['Read', 'Grep', 'Glob'];
 const MIN_REVIEW_PROSE_LENGTH = 40;
 
 export function isSubstanceLessReview(text: string): boolean {
@@ -43,23 +43,17 @@ export class ExternalReviewer {
         `[ExternalReviewer] ${providerId}${modelId ? ':' + modelId : ''} prompt-head=${JSON.stringify(prompt.slice(0, 240))} totalLen=${prompt.length}`
       );
 
-      // Provider→auth mapping lives in buildProviderEnv (single source of truth,
-      // shared with the finding aggregator). Anthropic reuses the default
-      // ~/.claude OAuth login; other providers use their scoped ~/.claude-<id>.
-      const envOverride = buildProviderEnv(providerId);
-
+      // Provider auth, read-only tool set and "no MCP servers" come from
+      // buildSdkCallOptions (single source of truth, shared with the finding
+      // aggregator). Anthropic reuses the default ~/.claude OAuth login; other
+      // providers use their scoped ~/.claude-<id>.
       const session = claudeQuery({
         prompt,
         options: {
+          ...buildSdkCallOptions(providerId, REVIEWER_TOOLS),
           maxTurns: 40,
-          tools: REVIEWER_TOOLS,
-          allowedTools: REVIEWER_TOOLS,
-          permissionMode: 'bypassPermissions',
-          allowDangerouslySkipPermissions: true,
           cwd: projectPath,
           abortController: ac,
-          env: envOverride,
-          settingSources: ['user'],
           stderr: (data: string) => {
             stderrBuf.push(data);
           },
