@@ -58,11 +58,11 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 <!-- leser: mensch -->
 
 1. Michael öffnet ein Vorhaben aus der Liste oder aus der Glocke.
-2. Die Seite zeigt oben Kennung und Titel, darunter die Phasen-Chips intent · spec · plan · build (die erreichte Phase ist hervorgehoben), links das Gespräch, rechts das Dokument der gewählten Phase, unter dem Dokument einen Knopf für den nächsten Schritt („spec starten", „plan starten", „build starten").
+2. Die Seite zeigt oben Kennung und Titel, darunter die Phasen-Chips intent · spec · plan · build (die erreichte Phase ist hervorgehoben), links das Gespräch, rechts das Dokument der gewählten Phase, unter dem Dokument einen Knopf für den nächsten Schritt („spec starten", „plan starten", „build starten"; immer sichtbar, ausgegraut, solange eine Sitzung des Vorhabens arbeitet oder wartet) und, wenn das Dokument auf Freigabe wartet, daneben den Knopf „Freigeben".
 3. Das Dokument zeigt die Mensch-Abschnitte offen; Abschnitte, die als „Agent" gekennzeichnet sind, erscheinen zugeklappt mit ihrer Überschrift. Ein Schalter „Technik zeigen" oben am Dokument öffnet alle zugeklappten Abschnitte dieses Dokuments; erneutes Tippen klappt sie wieder zu.
 4. Ein Dokument ohne Kennzeichnung (alle Vorhaben vor INT-2026-009) erscheint vollständig offen, ohne Schalter.
 5. Im Gespräch fragt der Agent „OF-03, Was hängt an Chat und Anruf: Vorschlag …". Der Code OF-03 ist ein Verweis: Hover zeigt den Absatz aus dem Dokument, Klick springt dorthin; liegt der Absatz in einem zugeklappten Abschnitt, geht dieser auf.
-6. Michael antwortet im Gespräch (Review-Kanal wie heute) oder tippt den Knopf für den nächsten Schritt; der startet die Sitzung der nächsten Phase mit dem passenden Befehl.
+6. Michael antwortet im Gespräch (Review-Kanal wie heute), tippt „Freigeben" (die Freigabe geht an die wartende Sitzung, die Status, Änderungsprotokoll und Commit setzt; das Dokument zeigt danach „angenommen" bzw. „freigegeben") oder tippt den Knopf für den nächsten Schritt; der startet die Sitzung der nächsten Phase mit dem passenden Befehl.
 7. Ergebnis: Michael entscheidet aus dem Mensch-Teil heraus, ohne die Technik lesen zu müssen; er kann sie jederzeit aufklappen.
 
 ### Ablauf E: Projektdinge erledigen (AK-14)
@@ -120,7 +120,8 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 | FA-18 | Die Routen `chat`, `call` und `team` DÜRFEN NICHT erreichbar sein, auch nicht über eine eingegebene Adresse; die UI MUSS dann zur Liste führen. | AK-15, EK-03 | Test |
 | FA-19 | Die Ansichten Chat und Anruf MÜSSEN entfernt sein; der Team-Code bleibt erhalten, ohne Route und Link. | AK-16, NZ-03 | Review |
 | FA-20 | Auf dem Handy MUSS derselbe Rahmen gelten wie am Mac; Liste, Neue Absicht, Vorhaben-Seite (Dokument, Terminal-Knopf statt Gespräch) und Projekt-Seite MÜSSEN bei 400 px Breite bedienbar sein. | AK-17, NZ-07 | Playwright |
-| FA-21 | Der Knopf für den nächsten Schritt MUSS die Sitzung der nächsten Phase mit dem passenden Befehl starten und DARF NICHT erscheinen, solange eine Sitzung des Vorhabens arbeitet. | AK-10 (Auslegung, AN-S04) | Test |
+| FA-21 | Der Knopf für den nächsten Schritt MUSS immer sichtbar sein, die Sitzung der nächsten Phase mit dem passenden Befehl starten und MUSS ausgegraut sein, solange eine Sitzung des Vorhabens arbeitet oder wartet. | AK-10 (AN-S04, PO 16.09.) | Test |
+| FA-22 | Wenn das Dokument der gewählten Phase auf Freigabe wartet (intent entwurf/in_klaerung, spec oder plan entwurf), MUSS die Vorhaben-Seite einen Knopf „Freigeben" zeigen; die Freigabe MUSS über die Sitzung des Agenten laufen, die Status, Änderungsprotokoll und Commit setzt, und das Dokument MUSS danach den neuen Status zeigen. | neu (PO, Chat 16.09.: „Freigabe eines Dokuments muss auch per Knopf gemacht werden können") | Test + Playwright |
 
 ## 4. Fehler- und Randfälle
 
@@ -136,6 +137,8 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 | Code im Gespräch, dessen Absatz in einem anderen Phasen-Dokument liegt | Kein Verweis (FA-16); Michael wechselt den Phasen-Chip | AK-13 |
 | Adresse `chat`, `call` oder `team` eingegeben | Liste öffnet sich | FA-18 |
 | Handy: Vorhaben-Seite eines Vorhabens mit laufender Sitzung | Terminal-Knopf öffnet das Terminal mit genau dieser Sitzung; ohne Sitzung öffnet er das Terminal mit dem Startbefehl der nächsten Phase | AK-17, NZ-07 |
+| „Freigeben" getippt, aber keine Sitzung des Vorhabens wartet | Die UI startet die Sitzung der laufenden Phase mit der Freigabe als erster Eingabe (AN-S06); der Knopf ist ausgegraut, bis die Sitzung den Status gesetzt hat | FA-22 |
+| „Freigeben" getippt, Abgleich Mensch/Agent (R4, INT-2026-009) fehlt im Dokument | Die Sitzung holt den Abgleich nach und fragt zurück; die UI setzt nichts selbst | FA-22 |
 | Auf der Projekt-Seite wird das Projekt gewechselt | Zurück auf der Liste gilt der Chip des neuen Projekts als gewählt | AK-14 |
 
 ## 5. Daten, fachlich
@@ -163,7 +166,7 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 - Kopfzeile (jede Seite): links nichts oder der Seitentitel in Grau, rechts Glocke mit Zahl, Projekt-Symbol, auf dem Handy dazu Terminal-Symbol. Eine Akzentfarbe: die Glocke mit Einträgen.
 - Vorhaben-Liste: Titel „Vorhaben", Chip-Reihe, zwei Gruppen mit Überschrift und Zähler, Zeilen wie heute; unten mittig „Neue Absicht".
 - Neue Absicht: Titel, großes Textfeld, rechts unten daran die Modellwahl, darunter „Starten".
-- Vorhaben-Seite: Kennung groß, Titel darunter, rechts oben Phasen-Chips; darunter zwei Spalten, links Gespräch (Beiträge als Karten, Eingabe unten), rechts Dokument mit Schalter „Technik zeigen" und zugeklappten Agent-Abschnitten; rechts unten „spec starten" o. ä.
+- Vorhaben-Seite: Kennung groß, Titel darunter, rechts oben Phasen-Chips; darunter zwei Spalten, links Gespräch (Beiträge als Karten, Eingabe unten), rechts Dokument mit Schalter „Technik zeigen" und zugeklappten Agent-Abschnitten; rechts unten „spec starten" o. ä. und, wenn das Dokument auf Freigabe wartet, daneben „Freigeben".
 - Projekt-Seite: Abschnitte untereinander (Projekt, Docs, Git, Einstellungen), keine Tabs.
 - Mock: `design/skizze-01.jpg` (vier Skizzen: Liste, Neue Absicht, Vorhaben-Seite, Rahmen mit Glocke). Für die Projekt-Seite und das Handy gibt es keine Skizze; Screenshot im PR ersetzt sie (Bedenken §7).
 
@@ -177,14 +180,15 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 
 | Quelle | Bedenken | Betrifft | Geklärt? (wer, wann, wie) |
 |---|---|---|---|
-| architecture.md §4 AR-05 | Nutzerzustand lebt im Backend, nie im Browser. Gewählter Projekt-Chip, gewählte Phase und der Schalter „Technik zeigen" sind Nutzerzustand — oder flüchtig? Wenn Backend: Broadcast an alle Geräte, auch für einen Klapp-Schalter. | FA-03, FA-12, FA-13 | offen — an den Plan delegiert, nicht blockierend. Vorschlag: Chip und Phase ins Backend (gleiche Sicht, AR-05), Schalter „Technik zeigen" flüchtig je Seitenaufruf (kein Nutzerzustand, nur Ansicht). |
+| architecture.md §4 AR-05 | Nutzerzustand lebt im Backend, nie im Browser. Gewählter Projekt-Chip, gewählte Phase und der Schalter „Technik zeigen" sind Nutzerzustand — oder flüchtig? Wenn Backend: Broadcast an alle Geräte, auch für einen Klapp-Schalter. | FA-03, FA-12, FA-13 | geklärt (PO, Chat 16.09.): Chip und Phase ins Backend (gleiche Sicht, AR-05), Schalter „Technik zeigen" flüchtig je Seitenaufruf (kein Nutzerzustand, nur Ansicht). |
 | architecture.md §3 „Nutzerzustand", intent AN-01 | Die Glocke braucht die Ereignisse fertig/blockiert je Sitzung auch ohne offenes Terminal; ob das Backend sie heute an alle Clients schickt oder nur an das Terminal, ist fachlich nicht sichtbar. | FA-04, FA-05 | offen — an den Plan delegiert (Prüfweg steht in AN-01), nicht blockierend |
-| architecture.md §10 Abweichungen | Der Abbau von Chat und Anruf könnte Backend-Handler ohne Aufrufer hinterlassen (wie nach INT-2026-004 Stufe 3); NZ-01 verbietet neue Backend-Funktionen, sagt aber nichts zum Abbau toter Handler. | FA-19 | offen — an den Plan delegiert: Handler ohne Aufrufer im Plan §2 nennen, Abbau nur wenn ohne Risiko, sonst neue Zeile in §10 |
-| security.md §5, RB-04 | Screenshots je Seite gehen ins öffentliche Repo; Projekt-Chips und Vorhaben-Titel echter Kundenprojekte (Kreis Lippe, Applai) wären sichtbar. | FA-07, FA-12, Abschnitt 6 | offen — Vorschlag: Screenshots aus dem Scratch-Projekt (wie INT-2026-008), keine Kundenprojekte im Bild |
+| architecture.md §10 Abweichungen | Der Abbau von Chat und Anruf könnte Backend-Handler ohne Aufrufer hinterlassen (wie nach INT-2026-004 Stufe 3); NZ-01 verbietet neue Backend-Funktionen, sagt aber nichts zum Abbau toter Handler. | FA-19 | geklärt (PO, Chat 16.09.): Handler ohne Aufrufer im Plan §2 nennen, Abbau nur wenn ohne Risiko, sonst neue Zeile in architecture.md §10 |
+| security.md §5, RB-04 | Screenshots je Seite gehen ins öffentliche Repo; Projekt-Chips und Vorhaben-Titel echter Kundenprojekte (Kreis Lippe, Applai) wären sichtbar. | FA-07, FA-12, Abschnitt 6 | geklärt (PO, Chat 16.09.): Screenshots aus dem Scratch-Projekt (wie INT-2026-008), keine Kundenprojekte im Bild |
 | security.md §4 T-06 | Web-UI ohne Nutzerverwaltung bleibt; der Umbau ändert daran nichts, vergrößert die Fläche aber nicht (weniger Routen). | — | geklärt: keine Änderung, Lücke bleibt in §7 offen (eigenes Vorhaben) |
-| design.md §5 | Breakpoint Handy ist < 768 px, ein Pane; AK-17 verlangt 400 px. Kein Widerspruch, aber die Vorhaben-Seite braucht zwischen 768 px und etwa 1100 px eine Regel (zwei Spalten oder untereinander?). | FA-12, FA-20 | offen — Vorschlag: unter 1024 px Dokument über dem Gespräch, Phasen-Chips bleiben oben |
+| design.md §5 | Breakpoint Handy ist < 768 px, ein Pane; AK-17 verlangt 400 px. Kein Widerspruch, aber die Vorhaben-Seite braucht zwischen 768 px und etwa 1100 px eine Regel (zwei Spalten oder untereinander?). | FA-12, FA-20 | geklärt (PO, Chat 16.09.): unter 1024 px Dokument über dem Gespräch, Phasen-Chips bleiben oben |
 | design.md §6 | Mock-Pflicht bei neuer Seite und geänderter Navigation: Skizze deckt Liste, Neue Absicht, Vorhaben-Seite und Rahmen; Projekt-Seite und Handy haben keine Skizze. Ablage verlangt `.png` oder Link; hier `.jpg`. | Abschnitt 6 | offen, blockiert nicht: Skizze gilt als Mock; Projekt-Seite und Handy werden im Plan als Beschreibung festgelegt und per Screenshot geprüft; `.jpg` bleibt (Format ist Nebensache) |
 | design.md §1 Prinzip 4, RB-03 | Bestehende Bausteine zuerst: Liste, Zeile, Gespräch, Dokument-Leser, Terminal existieren; nur Rahmen, Glocke-im-Rahmen, Klappen und Code-Verweise sind neu. | alle | geklärt: Spec verlangt nichts, was einen Neubau bestehender Bausteine bräuchte |
+| architecture.md §2 Workflows, §3 Vorhaben (Besitzer: Projekt-Repo) | FA-22 Freigabe per Knopf: Status, Änderungsprotokoll und Commit setzen heute die Workflows intent Step 6, spec Step 5, plan Step 9b in der Sitzung. Schreibt die UI das Dokument selbst, gibt es zwei Schreiber; NZ-05 verbietet Workflow-Änderungen. | FA-22 | offen — an den Plan delegiert, nicht blockierend: Vorschlag Knopf = Nachricht „freigabe" an die wartende Sitzung (Review-Kanal), sonst Sitzung starten (AN-S06); die UI schreibt kein Dokument |
 | product-brief.md §5 | Kernfunktion „Web-UI" nennt Gespräch (Mac) und Projekt-Seite; Chat und Anruf stehen dort nicht — der Abbau widerspricht dem Brief nicht. Voice-Nachrichten im Gespräch (INT-2026-007) müssen bleiben (AN-02). | FA-19 | geklärt gegen Stand 238f876; AN-02 prüft der Plan |
 
 ## 8. Nicht im Umfang
@@ -208,18 +212,19 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 
 <!-- Vorläufige Auslegungen nach ER-00 der intent.md. Werden bei der Freigabe gesammelt bestätigt. -->
 
-- **AN-S01:** Die heutige dritte Gruppe „Wartet" (Sitzung wartet auf Berechtigung oder Plan-Freigabe) geht in „Wartet auf dich" auf, weil Michael dort handeln muss; „Läuft" enthält nur arbeitende Sitzungen; Vorhaben ohne Sitzung stehen unter „Läuft" mit Zustand „ruht". — offen
-- **AN-S02:** Die Linie „Statusbar" in Skizze 1 ist der heutige Verbindungs-Hinweis der UI (nur sichtbar, wenn die Verbindung fehlt), keine dauerhafte Statusleiste; AK-05 verbietet Versions- und Auslastungsanzeige dort. — offen
-- **AN-S03:** Ein teilweise gekennzeichnetes Dokument gilt für den Leser wie ein Dokument ohne Kennzeichnung (alles offen), weil AK-12 die engste Auslegung ist und der Guard aus INT-2026-009 solche Dokumente ohnehin ablehnt. — offen
-- **AN-S04:** Der Knopf für den nächsten Schritt zeigt den nächsten Phasen-Befehl (nach intent angenommen: „spec starten"; bei Bypass: „plan starten"; nach plan freigegeben: „build starten") und fehlt, solange eine Sitzung des Vorhabens arbeitet oder wartet. — offen
-- **AN-S05:** Die Glocke im Kopf des Terminals entfällt, weil die Glocke der Kopfzeile auf jeder Seite sichtbar ist (B-06); der Hinweiston bleibt wie heute schaltbar. — offen
+- **AN-S01:** Die heutige dritte Gruppe „Wartet" (Sitzung wartet auf Berechtigung oder Plan-Freigabe) geht in „Wartet auf dich" auf, weil Michael dort handeln muss; „Läuft" enthält nur arbeitende Sitzungen; Vorhaben ohne Sitzung stehen unter „Läuft" mit Zustand „ruht". — bestätigt am 2026-09-16 von PO (Chat)
+- **AN-S02:** Die Linie „Statusbar" in Skizze 1 ist der heutige Verbindungs-Hinweis der UI (nur sichtbar, wenn die Verbindung fehlt), keine dauerhafte Statusleiste; AK-05 verbietet Versions- und Auslastungsanzeige dort. — offen (PO bittet um Erklärung, 16.09.)
+- **AN-S03:** Ein teilweise gekennzeichnetes Dokument gilt für den Leser wie ein Dokument ohne Kennzeichnung (alles offen), weil AK-12 die engste Auslegung ist und der Guard aus INT-2026-009 solche Dokumente ohnehin ablehnt. — offen (PO bittet um Erklärung, 16.09.)
+- **AN-S04:** Der Knopf für den nächsten Schritt zeigt den nächsten Phasen-Befehl (nach intent angenommen: „spec starten"; bei Bypass: „plan starten"; nach plan freigegeben: „build starten"), ist immer sichtbar und ausgegraut, solange eine Sitzung des Vorhabens arbeitet oder wartet. — bestätigt am 2026-09-16 von PO (Chat: „genau, wir brauchen immer den Knopf"); Auslegung „ausgegraut statt klickbar" offen
+- **AN-S05:** Die Glocke im Kopf des Terminals entfällt, weil die Glocke der Kopfzeile auf jeder Seite sichtbar ist (B-06); der Hinweiston bleibt wie heute schaltbar. — bestätigt am 2026-09-16 von PO (Chat)
+- **AN-S06:** „Freigeben" schreibt kein Dokument: Der Knopf schickt „freigabe" an die wartende Sitzung des Vorhabens; wartet keine, startet er die Sitzung der laufenden Phase mit der Freigabe als erster Eingabe. Der Agent setzt Status, Abgleich (R4) und Commit wie in den Workflows. — offen
 
 ## 10. Freigabe
 
 <!-- leser: agent -->
 
 - [ ] Jede FA hat Herkunft und Prüfung.
-- [ ] Jedes AK der intent.md ist von mindestens einer FA abgedeckt: AK-01 → FA-01/02/03 · AK-02 → FA-04 · AK-03 → FA-05 · AK-04 → FA-06 · AK-05 → FA-07 · AK-06 → FA-08 · AK-07 → FA-09 · AK-08 → FA-10 · AK-09 → FA-11 · AK-10 → FA-12/21 · AK-11 → FA-13 · AK-12 → FA-14 · AK-13 → FA-15/16 · AK-14 → FA-17 · AK-15 → FA-18 · AK-16 → FA-19 · AK-17 → FA-20.
+- [ ] Jedes AK der intent.md ist von mindestens einer FA abgedeckt: AK-01 → FA-01/02/03 · AK-02 → FA-04 · AK-03 → FA-05 · AK-04 → FA-06 · AK-05 → FA-07 · AK-06 → FA-08 · AK-07 → FA-09 · AK-08 → FA-10 · AK-09 → FA-11 · AK-10 → FA-12/21 · neu → FA-22 · AK-11 → FA-13 · AK-12 → FA-14 · AK-13 → FA-15/16 · AK-14 → FA-17 · AK-15 → FA-18 · AK-16 → FA-19 · AK-17 → FA-20.
 - [ ] Abschnitt 7 vollständig geklärt oder begründet offen.
 - [ ] Keine Technik, keine Architektur, keine Dateinamen in diesem Dokument.
 - [ ] Bei risikoklasse hoch: Tech Lead hat gelesen. (Risikoklasse mittel — entfällt.)
