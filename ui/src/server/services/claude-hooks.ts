@@ -282,8 +282,8 @@ function rueckfrageAnswers(response: unknown): Record<string, string> | undefine
 function planResult(response: unknown): HookDialogClosed['planResult'] {
   if (response && typeof response === 'object' && typeof (response as { plan?: unknown }).plan === 'string') return { accepted: true };
   if (typeof response === 'string') {
-    const idx = response.indexOf('\n');
-    const text = idx >= 0 ? response.slice(idx + 1).trim() : '';
+    const m = /said:\n([\s\S]*)$/.exec(response);
+    const text = (m?.[1] ?? '').replace(/\n\s*Note: [\s\S]*$/, '').trim();
     return text ? { accepted: false, text: text.slice(0, HOOK_TEXT_MAX_CHARS) } : { accepted: false };
   }
   return undefined;
