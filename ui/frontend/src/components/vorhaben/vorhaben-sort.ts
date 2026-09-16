@@ -24,7 +24,7 @@ export const GROUP_LABELS: Record<VorhabenGroupKey, string> = {
 export function groupOf(row: VorhabenRow): VorhabenGroupKey {
   if (row.phase === 'umgesetzt') return 'umgesetzt';
   if (row.zustand === 'wartet_auf_dich') return 'wartet_auf_dich';
-  if (row.zustand === 'wartet' || row.zustand === 'wartet_im_terminal') return 'wartet';
+  if (row.zustand === 'wartet' || row.zustand === 'wartet_rueckfrage' || row.zustand === 'wartet_plan' || row.zustand === 'wartet_berechtigung') return 'wartet';
   return 'laeuft';
 }
 
@@ -66,7 +66,9 @@ export const PHASE_LABELS: Record<VorhabenPhase, string> = {
 export const ZUSTAND_LABELS: Record<VorhabenZustand, string> = {
   wartet_auf_dich: 'wartet auf dich',
   wartet: 'wartet',
-  wartet_im_terminal: 'wartet im Terminal',
+  wartet_rueckfrage: 'wartet · Rückfrage',
+  wartet_plan: 'wartet · Plan-Entscheidung',
+  wartet_berechtigung: 'wartet · Berechtigung',
   arbeitet: 'arbeitet',
   bau_unterbrochen: 'Bau unterbrochen',
   keine_sitzung: 'keine Sitzung',

@@ -12,6 +12,22 @@ import type { ProtokollEintrag } from '../../../../src/shared/types/vorhaben.pro
 import { VORHABEN_DOC_FILES } from '../../../../src/shared/types/vorhaben.protocol.js';
 import { formatClock } from './vorhaben-sort.js';
 
+/** Label per Art (R-6): reader sends, free text and card answers of the Gespräch (INT-2026-007). */
+export function protokollLabel(e: ProtokollEintrag): string {
+  switch (e.art) {
+    case 'freigabe':
+      return e.doc ? `Freigabe ${VORHABEN_DOC_FILES[e.doc]}` : 'Freigabe';
+    case 'aenderungen':
+      return `Änderungen (${e.anzahl})`;
+    case 'freitext':
+      return e.status === 'eingereiht' ? 'Nachricht (eingereiht)' : 'Nachricht';
+    case 'rueckfrage':
+      return 'Antwort auf Rückfrage';
+    case 'plan':
+      return 'Plan-Entscheidung';
+  }
+}
+
 @customElement('aos-vorhaben-protokoll')
 export class AosVorhabenProtokoll extends LitElement {
   /** Entries of this Vorhaben, newest first. */
@@ -116,13 +132,13 @@ export class AosVorhabenProtokoll extends LitElement {
   }
 
   private renderEintrag(e: ProtokollEintrag, withMore: boolean) {
-    const art = e.art === 'freigabe' ? `Freigabe ${VORHABEN_DOC_FILES[e.doc]}` : `Änderungen (${e.anzahl})`;
+    const art = protokollLabel(e);
     const sent = formatClock(new Date(e.sentAt).getTime());
     const rest = this.entries.length - 1;
     return html`<div class="eintrag">
         <span class="label">Protokoll</span>
         <span class="art">${art}</span>
-        <span>an ‚${e.sessionName}'${e.art === 'aenderungen' ? ` · ${VORHABEN_DOC_FILES[e.doc]}` : ''}${e.stand ? ` (${e.stand})` : ''}</span>
+        <span>an ‚${e.sessionName}'${e.art === 'aenderungen' && e.doc ? ` · ${VORHABEN_DOC_FILES[e.doc]}` : ''}${e.stand ? ` (${e.stand})` : ''}</span>
         <span class="zeit">gesendet ${sent}</span>
         ${e.status === 'angenommen' && e.acceptedAt
           ? html`<span class="angenommen">angenommen ${formatClock(new Date(e.acceptedAt).getTime())}</span>`

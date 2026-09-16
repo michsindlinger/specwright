@@ -1,0 +1,114 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Mock 08 — Gespräch Mac</title><link rel="stylesheet" href="mock.css"></head>
+<body><div class="stage col"><div>
+<div class="caption">08a · Vorhaben-Seite mit Gesprächsbereich, Sitzung „wartet", Eingabefeld aktiv · Mac 1440×900 · Ablauf A, B · FA-01–FA-06, FA-22, FA-24, FA-31</div>
+<div class="screen mac">
+  <aside class="sidebar">
+    <div class="logo"><i></i> Specwright</div>
+    <div class="sec">Projekte</div>
+    <div class="item">Specwright <span class="dot"></span></div>
+    <div class="item on">Applai <span class="dot wait"></span></div>
+    <div class="item">Kreis Lippe <span class="dot ok"></span></div>
+    <div class="item">Brodybookings <span class="dot"></span></div>
+    <div class="item">kinder-phone <span class="dot"></span></div>
+    <div class="item">RD-Recruiting <span class="dot"></span></div>
+    <div class="spacer"></div>
+    <div class="item">Team</div><div class="item">Einstellungen</div>
+  </aside>
+  <div class="main">
+    <div class="topbar"><div class="tabs"><div class="tab on">Vorhaben</div><div class="tab">Projekt</div><div class="tab">Terminal</div><div class="tab">Chat</div></div><div class="grow"></div><span class="kbd">⌘⇧E Notizblock</span></div>
+    <div class="vhead">
+      <div class="kbd">‹ Vorhaben</div>
+      <div class="id">Applai · INT-2026-003</div>
+      <h1>Digest-Mail nur bei neuen Matches</h1>
+      <div class="meta"><span class="phase">Spec</span><span class="state"><span class="dot warn"></span><b>wartet</b> · Sitzung hat eine Frage gestellt</span><span>Sitzung <b>spec INT-2026-003</b> · Im Projekt · Claude Opus</span><span>geändert vor 1 min</span></div>
+    </div>
+    <div class="doctabs"><div>intent.md</div><div class="on">spec.md</div></div>
+    <div class="docwrap">
+      <div class="doc">
+        <div class="fm"><span>Status</span><b>entwurf</b><span>Erstellt</span><b>2026-09-16</b></div>
+        <h2>2. Nutzer und Abläufe</h2>
+        <h3>Ablauf A: Digest erhalten (AK-01, AK-02)</h3>
+        <div class="para"><span class="mark">+</span><p>1. Der Kandidat hat in den Einstellungen die Digest-Mail aktiviert. 2. Über Nacht entstehen neue Matches. 3. Um 07:00 prüft das System, ob seit der letzten Mail mindestens ein Match neu ist …</p></div>
+        <div class="para"><span class="mark">+</span><p>4. Ergebnis: Der Kandidat bekommt genau dann eine Mail, wenn es etwas Neues gibt.</p></div>
+        <h2>3. Fachliche Anforderungen</h2>
+        <table><tr><th>ID</th><th>Anforderung</th><th>Herkunft</th><th>Prüfung</th></tr>
+          <tr><td>FA-01</td><td>Wenn seit der letzten Digest-Mail kein neues Match entstanden ist, DARF keine Mail verschickt werden.</td><td>AK-01</td><td>Test</td></tr>
+          <tr><td>FA-02</td><td>Wenn mindestens ein Match neu ist, MUSS die Mail nur die neuen Matches nennen.</td><td>AK-02</td><td>Test</td></tr>
+        </table>
+        <h2>4. Fehler- und Randfälle</h2>
+        <div class="para"><span class="mark">+</span><p>Kandidat hat sich zwischen zwei Digests abgemeldet …</p></div>
+      </div>
+      <div class="conv">
+        <div class="chead"><span>Gespräch mit <b>spec INT-2026-003</b></span><span>· Im Projekt</span><span class="state"><span class="dot warn"></span>wartet</span><span class="grow"></span><span class="toggle"><span class="sw"></span>Vorlesen</span><span class="btn ghost sm">Im Terminal öffnen ↗</span></div>
+        <div class="cbody end">
+          <div class="msg me"><div class="who"><b>Du</b><span>09:41 · Terminal</span></div><p><code>/specwright:spec INT-2026-003</code></p></div>
+          <div class="work">arbeitet · 12 Werkzeugaufrufe · 2:40 min</div>
+          <div class="msg ai"><div class="who"><b>Claude</b><span>09:44</span></div><p>Spec-Entwurf steht: zwei Abläufe, vier Anforderungen, drei Randfälle. Eine Sache ist mir unklar:</p><p>Wenn ein Kandidat sich <b>zwischen zwei Digests abmeldet</b> und wieder anmeldet — zählen die Matches aus der Abmeldezeit dann als „neu"? Die Absicht sagt dazu nichts (AK-02 spricht nur von „seit der letzten Mail").</p></div>
+          <div class="msg me"><div class="who"><b>Du</b><span>09:46</span></div><p>Nein, nur was nach der Wiederanmeldung entsteht. Alles davor gilt als gesehen.</p></div>
+          <div class="work">arbeitet · 3 Werkzeugaufrufe · 0:35 min</div>
+          <div class="msg ai"><div class="who"><b>Claude</b><span>09:47</span></div><p>Übernommen als Randfall und als AN-S02. Die Spec ist vollständig; Abschnitt 7 hat zwei Zeilen an den Plan delegiert.</p><p>Soll ich sie dir vorlegen, oder willst du vorher noch etwas ergänzen?</p></div>
+        </div>
+        <div class="cinput">
+          <div class="field">Leg sie vor. Und nimm in §4 noch den Fall auf, dass die Mail-Adresse<span class="cursor"></span></div>
+          <div class="irow"><span class="mic"><i></i>Mikro aus</span><span class="kbd">⏎ senden · ⇧⏎ neue Zeile</span><span class="grow"></span><span class="btn primary sm">Senden</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sendbar"><span class="cnt">0 Anmerkungen</span><span class="target">an Sitzung <b>spec INT-2026-003</b> · bereit</span><span class="grow"></span><span class="btn ghost disabled">Alle ansehen</span><span class="btn disabled">Änderungen schicken</span><span class="btn primary disabled">Freigeben</span></div>
+  </div>
+</div>
+</div>
+
+<div>
+<div class="caption">08b–d · Gesprächsbereich, weitere Zustände des Eingabefelds · Ablauf B Schritt 2, J, K, L · FA-06, FA-07, AN-S09</div>
+<div class="grid3c">
+
+  <div class="ctile"><h3>08b · Sitzung arbeitet — Eingabe reiht sich ein (AN-S09)</h3>
+    <div class="conv" style="height:520px">
+      <div class="chead"><span>Gespräch mit <b>spec INT-2026-003</b></span><span class="state"><span class="dot acc"></span>arbeitet</span><span class="grow"></span><span class="toggle"><span class="sw"></span>Vorlesen</span></div>
+      <div class="cbody">
+        <div class="msg ai"><div class="who"><b>Claude</b><span>09:47</span></div><p>Soll ich sie dir vorlegen, oder willst du vorher noch etwas ergänzen?</p></div>
+        <div class="msg me"><div class="who"><b>Du</b><span>09:48</span></div><p>Leg sie vor. Und nimm in §4 noch den Fall auf, dass die Mail-Adresse ungültig geworden ist.</p></div>
+        <div class="work">arbeitet · 4 Werkzeugaufrufe · 0:52 min …</div>
+        <div class="msg me"><div class="who"><b>Du</b><span>09:49</span><span class="tag">eingereiht — kommt nach dem aktuellen Zug dran</span></div><p>Und denk dran: die Kennzahl aus EK-01 muss in der Spec einen Messweg haben.</p></div>
+      </div>
+      <div class="cinput">
+        <div class="field"><span class="ph">Nachricht an die Sitzung …</span></div>
+        <div class="irow"><span class="mic"><i></i>Mikro aus</span><span class="grow"></span><span class="btn sm">Einreihen</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctile"><h3>08c · Gespräch nicht verfügbar (Ablauf K, FA-07)</h3>
+    <div class="conv" style="height:520px">
+      <div class="chead"><span>Gespräch mit <b>build INT-2026-001</b></span><span class="state"><span class="dot mute"></span>Zustand unbekannt</span><span class="grow"></span><span class="btn ghost sm">Im Terminal öffnen ↗</span></div>
+      <div class="cbody" style="justify-content:center">
+        <div class="err" style="align-self:stretch"><b>Gespräch nicht verfügbar:</b> Die Sitzung wurde vor der letzten Auslieferung der UI gestartet und meldet sich nicht mehr.<br><br>Nächster Schritt: <b>Im Terminal öffnen</b> oder die Sitzung beenden und <b>„Bau fortsetzen"</b> wählen — die neue Sitzung erscheint hier.</div>
+        <div class="hint" style="align-self:stretch">Anmerkungen und Freigabe im Dokument-Leser funktionieren weiterhin, sobald die Sitzung wartet.</div>
+      </div>
+      <div class="cinput">
+        <div class="field off"><span class="ph">Nachricht an die Sitzung …</span></div>
+        <div class="irow"><span class="mic" style="opacity:.5"><i></i>Mikro aus</span><span class="grow"></span><span class="reason"><span class="dot mute"></span>kein Gespräch — im Terminal öffnen</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctile"><h3>08d · Sitzung beendet (Ablauf L)</h3>
+    <div class="conv" style="height:520px">
+      <div class="chead"><span>Gespräch mit <b>spec INT-2026-003</b></span><span class="state"><span class="dot mute"></span>Sitzung beendet 10:12</span><span class="grow"></span><span class="toggle"><span class="sw"></span>Vorlesen</span></div>
+      <div class="cbody">
+        <div class="msg me"><div class="who"><b>Du</b><span>10:05 · Leser</span></div><p>Freigabe: spec.md (Stand 2026-09-16 10:04)</p></div>
+        <div class="work">arbeitet · 5 Werkzeugaufrufe · 1:10 min</div>
+        <div class="msg ai"><div class="who"><b>Claude</b><span>10:07</span></div><p>Spec freigegeben und committet (<code>a41c9e2</code>). Nächster Schritt: <code>/specwright:plan INT-2026-003</code>.</p></div>
+        <div class="kcard mute"><div class="kh"><span>Rückfrage</span><span>nicht beantwortet — Sitzung beendet</span></div><div class="q">Soll ich die Board-Karte gleich nachziehen?</div></div>
+      </div>
+      <div class="cinput">
+        <div class="field off"><span class="ph">Nachricht an die Sitzung …</span></div>
+        <div class="irow"><span class="mic" style="opacity:.5"><i></i>Mikro aus</span><span class="grow"></span><span class="reason"><span class="dot mute"></span>Sitzung beendet — nächsten Schritt starten</span><span class="btn primary sm">Plan erstellen</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div></body></html>

@@ -40,7 +40,7 @@ describe('VorhabenService.hasPendingSend (deploy gate, FA-34)', () => {
     });
   });
 
-  const entry = (id: string, status: 'gesendet' | 'angenommen' | 'nicht_bestaetigt', sentAt: Date) => ({
+  const entry = (id: string, status: 'gesendet' | 'eingereiht' | 'angenommen' | 'nicht_bestaetigt', sentAt: Date) => ({
     id, projectId: 'p', intentId: 'INT-2026-004', doc: 'spec' as const, art: 'aenderungen' as const, anzahl: 1, stand: 'x', sessionId: 's', sessionName: 'n', text: 't', anmerkungen: [], status, sentAt: sentAt.toISOString(),
   });
 
@@ -54,6 +54,10 @@ describe('VorhabenService.hasPendingSend (deploy gate, FA-34)', () => {
     expect(service.hasPendingSend()).toBe(false);
     await store.addProtocolEntry(entry('c', 'nicht_bestaetigt', now));
     expect(service.hasPendingSend()).toBe(false);
+    // INT-2026-007 (R-16): a queued free-text message does not hold the deploy
+    await store.addProtocolEntry({ ...entry('d', 'eingereiht', now), doc: undefined, art: 'freitext' as const, anzahl: 0 });
+    expect(service.hasPendingSend()).toBe(false);
+    expect(store.pendingSends().map((e) => e.id)).toContain('d');
     service.stop();
     await store.flush();
     rmSync(dir, { recursive: true, force: true });

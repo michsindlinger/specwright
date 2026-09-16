@@ -52,6 +52,8 @@ import {
   stepCommand,
 } from '../../shared/types/vorhaben.protocol.js';
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
+import { GESPRAECH_GRUND_TEXT, GESPRAECH_QUEUE_MAX, GESPRAECH_TEXT_MAX_CHARS, type BlockKind, type GespraechGrund } from '../../shared/types/gespraech.protocol.js';
+import { findDialogCue, readStableScreen } from './dialog-driver.js';
 
 export interface VorhabenWorkspaceSource {
   getState(): { openProjects: Array<{ id: string; path: string; name: string }>; sessionNames?: Record<string, string> };
@@ -64,6 +66,8 @@ export interface VorhabenSessionInfo {
   projectPath: string;
   effectiveCwd: string;
   agentStatus?: CloudTerminalAgentStatus;
+  /** INT-2026-007 (FA-09): kind of the dialog while blocked. */
+  blockKind?: BlockKind;
   modelConfig?: { model: string; provider?: string };
 }
 
@@ -72,6 +76,15 @@ export interface VorhabenSessionSource {
   on(event: string, listener: (...args: unknown[]) => void): unknown;
   getSession(sessionId: string): VorhabenSessionInfo | undefined;
   sendInput(sessionId: string, data: string, opts?: { inferUnblock?: boolean }): boolean;
+  /**
+   * INT-2026-007: machine writes run under the manager's single-flight lock
+   * (E3/AR-08) and free text checks the screen for a dialog first. Optional in
+   * the type so stage-1 test fakes keep working: without a lock the write runs
+   * directly, without a screen only a waiting session may receive text.
+   */
+  withMachineWrite?<T>(sessionId: string, fn: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; grund: 'beschaeftigt' | 'nicht_aktiv' }>;
+  readScreen?(sessionId: string, opts?: { scrollback?: number }): Promise<{ text: string; live: boolean }>;
+  waitForIdle?(sessionId: string, idleMs: number): Promise<void>;
   createSession(
     projectPath: string,
     terminalType: 'claude-code',
@@ -124,6 +137,14 @@ export const PASTE_END = '\x1b[201~';
 export const PASTE_ENTER_DELAY_MS = 150;
 /** After this the entry is "nicht bestätigt" and the deploy gate opens again (FA-31/FA-34). */
 export const SEND_CONFIRM_TIMEOUT_MS = 10_000;
+/**
+ * A queued (`eingereiht`) free text is handed to Claude right after its current
+ * turn ends (`Stop`); if no `UserPromptSubmit` confirms it within this grace
+ * after the Stop, it is "nicht bestätigt" (INT-2026-007, E15/H5).
+ */
+export const QUEUE_CONFIRM_GRACE_MS = 5_000;
+// eslint-disable-next-line no-control-regex
+const TEXT_CONTROL_CHARS = /[\x00-\x08\x0b-\x1f\x7f]/g;
 /** How long after `prompt-submitted` we still wait for the prompt text before using the fallback. */
 const PROMPT_TEXT_GRACE_MS = 100;
 
@@ -150,7 +171,7 @@ export class VorhabenError extends Error {
 
 export class SendRejectedError extends Error {
   constructor(
-    public readonly grund: SendeGrund,
+    public readonly grund: GespraechGrund,
     message: string,
     public readonly currentStand?: number
   ) {
@@ -334,7 +355,8 @@ export class VorhabenService {
   /** Deploy gate (FA-34): a sent answer whose confirmation is still outstanding. */
   public hasPendingSend(): boolean {
     const now = this.now().getTime();
-    return this.deps.store.pendingSends().some((e) => now - new Date(e.sentAt).getTime() < SEND_CONFIRM_TIMEOUT_MS);
+    // `eingereiht` waits for the session's current turn, not for a deploy (R-16).
+    return this.deps.store.pendingSends().some((e) => e.status === 'gesendet' && now - new Date(e.sentAt).getTime() < SEND_CONFIRM_TIMEOUT_MS);
   }
 
   /**
@@ -402,17 +424,139 @@ export class VorhabenService {
     // settles it as "nicht bestätigt" instead of losing it (FA-34).
     await this.deps.store.addProtocolEntry(entry);
 
-    const written = sessions.sendInput(ref.id, PASTE_START + text + PASTE_END, { inferUnblock: false });
-    if (!written) {
+    const written = await this.pasteLocked(sessions, ref.id, text);
+    if (written !== true) {
       this.deps.store.removeProtocolEntry(entry.id);
-      throw this.rejected('senden_fehlgeschlagen');
+      throw this.rejected(written);
     }
-    const enter = setTimeout(() => sessions.sendInput(ref.id, '\r', { inferUnblock: false }), PASTE_ENTER_DELAY_MS);
-    enter.unref?.();
     if (art === 'aenderungen') this.deps.store.takeDrafts(projectId, intentId, doc);
     this.armConfirmTimer(entry.id, SEND_CONFIRM_TIMEOUT_MS);
     this.broadcastState();
     return entry;
+  }
+
+  /**
+   * Free text from the Gespräch (INT-2026-007, FA-06/FA-11, AN-S09): pasted as
+   * one bracketed-paste block plus Enter, unchanged (a leading `/` or `!` is
+   * what the user typed). Allowed while the session waits (`gesendet`) or
+   * works (`eingereiht`, at most GESPRAECH_QUEUE_MAX); refused while a dialog
+   * is open (reason per block kind), after the session ended, and — fail
+   * closed — whenever the screen shows a dialog cue or cannot be read while
+   * the session works.
+   */
+  public async sendText(projectId: string, intentId: string, rawText: string): Promise<{ entry: ProtokollEintrag; status: 'gesendet' | 'eingereiht' }> {
+    const text = rawText.replace(/\r\n?/g, '\n').replace(TEXT_CONTROL_CHARS, '').replace(/[ \t]+$/gm, '').trimEnd().slice(0, GESPRAECH_TEXT_MAX_CHARS);
+    if (!text.trim()) throw this.rejected('text_leer');
+    const row = this.requireRow(projectId, intentId);
+    const sessions = this.deps.sessions;
+    const ref = row.session;
+    if (!sessions || !ref) throw this.rejected('keine_sitzung');
+    if (ref.ended) throw this.rejected('beendet');
+    const session = sessions.getSession(ref.id);
+    if (!session || session.status !== 'active') throw this.rejected('beendet');
+    let status: 'gesendet' | 'eingereiht';
+    switch (session.agentStatus) {
+      case 'working':
+        status = 'eingereiht';
+        break;
+      case 'blocked':
+        throw this.rejected(session.blockKind === 'rueckfrage' ? 'rueckfrage_offen' : session.blockKind === 'plan' ? 'plan_offen' : 'berechtigung');
+      case 'error':
+        throw this.rejected('beendet');
+      default:
+        status = 'gesendet';
+    }
+    if (status === 'eingereiht') {
+      const queued = this.deps.store.pendingSends().filter((e) => e.sessionId === ref.id && e.status === 'eingereiht').length;
+      if (queued >= GESPRAECH_QUEUE_MAX) throw this.rejected('warteschlange_voll');
+    }
+    const sentAt = this.now();
+    const entry: ProtokollEintrag = {
+      id: `pe-${sentAt.getTime()}-${++this.counter}`,
+      projectId,
+      intentId,
+      art: 'freitext',
+      anzahl: 0,
+      stand: '',
+      sessionId: ref.id,
+      sessionName: ref.name,
+      text,
+      anmerkungen: [],
+      status,
+      sentAt: sentAt.toISOString(),
+    };
+    await this.deps.store.addProtocolEntry(entry);
+    const written = await this.pasteLocked(sessions, ref.id, text, status === 'eingereiht' ? 'working' : 'waiting');
+    if (written !== true) {
+      this.deps.store.removeProtocolEntry(entry.id);
+      throw this.rejected(written);
+    }
+    if (status === 'gesendet') this.armConfirmTimer(entry.id, SEND_CONFIRM_TIMEOUT_MS);
+    this.broadcastState();
+    return { entry, status };
+  }
+
+  /** Removes a queued free text from the protocol (E15); Claude's own queue cannot be changed. Returns the session id. */
+  public discardQueued(entryId: string): string | undefined {
+    const e = this.deps.store.getProtocolEntry(entryId);
+    if (!e || e.status !== 'eingereiht') return undefined;
+    const t = this.confirmTimers.get(entryId);
+    if (t) clearTimeout(t);
+    this.confirmTimers.delete(entryId);
+    if (this.deps.store.removeProtocolEntry(entryId)) this.broadcastState();
+    return e.sessionId;
+  }
+
+  /**
+   * One logical write = bracketed paste, settle, Enter — under the manager's
+   * machine-write lock when it has one (E3/G2). Before the paste the screen is
+   * read: a dialog cue means nothing is pasted (E4). `mode`: `waiting` (the
+   * status says idle/done/unknown — without a readable screen the paste still
+   * happens, no dialog is possible after a finished turn), `working` (queueing
+   * needs a live screen without cue; otherwise `kein_bildschirm`).
+   */
+  private pasteLocked(sessions: VorhabenSessionSource, sessionId: string, text: string, mode: 'waiting' | 'working' = 'waiting'): Promise<true | GespraechGrund> {
+    let resolvePasted: (r: true | GespraechGrund) => void = () => {};
+    const pasted = new Promise<true | GespraechGrund>((resolve) => {
+      resolvePasted = resolve;
+    });
+    // Screen check + paste; resolves the caller as soon as the paste is written.
+    // Enter follows after the settle pause and only then the lock is released,
+    // so no other machine write can slip between paste and Enter.
+    const run = async (): Promise<void> => {
+      if (sessions.readScreen) {
+        const screen = await readStableScreen(
+          { readScreen: (id, o) => sessions.readScreen!(id, o), waitForIdle: (id, ms) => sessions.waitForIdle?.(id, ms) ?? Promise.resolve() },
+          sessionId
+        );
+        if (screen === 'unstable') {
+          if (mode === 'working') return resolvePasted('kein_bildschirm');
+        } else if (screen.live) {
+          if (findDialogCue(screen.text)) return resolvePasted('dialog_offen');
+        } else if (mode === 'working') {
+          return resolvePasted('kein_bildschirm');
+        }
+      } else if (mode === 'working') {
+        return resolvePasted('kein_bildschirm');
+      }
+      if (!sessions.sendInput(sessionId, PASTE_START + text + PASTE_END, { inferUnblock: false })) return resolvePasted('senden_fehlgeschlagen');
+      resolvePasted(true);
+      await new Promise<void>((done) => {
+        const t = setTimeout(() => {
+          sessions.sendInput(sessionId, '\r', { inferUnblock: false });
+          done();
+        }, PASTE_ENTER_DELAY_MS);
+        t.unref?.();
+      });
+    };
+    if (!sessions.withMachineWrite) {
+      void run();
+    } else {
+      void sessions.withMachineWrite(sessionId, run).then((result) => {
+        if (!result.ok) resolvePasted(result.grund === 'beschaeftigt' ? 'beschaeftigt' : 'beendet');
+      });
+    }
+    return pasted;
   }
 
   /**
@@ -473,8 +617,9 @@ export class VorhabenService {
 
   // ---- internals ----
 
-  private rejected(grund: SendeGrund, currentStand?: number): SendRejectedError {
-    return new SendRejectedError(grund, SEND_REASON_TEXT[grund], currentStand);
+  private rejected(grund: GespraechGrund, currentStand?: number): SendRejectedError {
+    const text = (SEND_REASON_TEXT as Record<string, string>)[grund] ?? GESPRAECH_GRUND_TEXT[grund];
+    return new SendRejectedError(grund, text, currentStand);
   }
 
   private attachSessions(sessions: VorhabenSessionSource): void {
@@ -488,6 +633,13 @@ export class VorhabenService {
   }
 
   private onAgentEvent(sessionId: string, event: string): void {
+    if (event === 'stop' || event === 'stop-failure') {
+      // Queued texts are handed over right after this turn; without a confirming
+      // UserPromptSubmit within the grace they are "nicht bestätigt" (E15/H5).
+      for (const e of this.deps.store.pendingSends()) {
+        if (e.sessionId === sessionId && e.status === 'eingereiht' && !this.confirmTimers.has(e.id)) this.armConfirmTimer(e.id, QUEUE_CONFIRM_GRACE_MS);
+      }
+    }
     if (event === 'prompt-submitted') {
       // The prompt text follows the event within the same hook request. Give it
       // a moment; only an old CLI without `prompt` falls back to "any input".
@@ -581,7 +733,7 @@ export class VorhabenService {
     if (a.ended || !live || live.status === 'closed') {
       return { id: a.sessionId, name, model: a.model, agentStatus: 'unknown', ended: true };
     }
-    return { id: a.sessionId, name, model: live.modelConfig?.model ?? a.model, agentStatus: live.agentStatus ?? 'unknown' };
+    return { id: a.sessionId, name, model: live.modelConfig?.model ?? a.model, agentStatus: live.agentStatus ?? 'unknown', ...(live.blockKind ? { blockKind: live.blockKind } : {}) };
   }
 
   /** Copy per intentId that wins the merge (FA-06): the assigned session's cwd. */

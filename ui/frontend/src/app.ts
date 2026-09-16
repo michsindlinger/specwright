@@ -493,10 +493,8 @@ export class AosApp extends LitElement {
       this.showToast('Terminal-Session nicht mehr aktiv', 'warning');
       return;
     }
-    this.activeTerminalSessionId = match.id;
-    if (!this.isTerminalSidebarOpen) {
-      this.isTerminalSidebarOpen = true;
-    }
+    // INT-2026-007 (FA-21/FA-22): the jump from the page shows the session alone (INT-2026-005 solo).
+    this._showSessionSolo(match.id);
     if (match.needsInput) {
       this.terminalSessions = this.terminalSessions.map(s =>
         s.id === match.id ? { ...s, needsInput: false } : s
@@ -1721,39 +1719,18 @@ export class AosApp extends LitElement {
     if (!this.activeTerminalSessionId && activeProject?.path === session.projectPath) {
       this.activeTerminalSessionId = tab.id;
     }
-    // A step started from the Vorhaben page (INT-2026-004, FA-35): the reply
-    // usually arrives before this broadcast, so the selection waits here.
-    if (this.pendingSelectSessionId === sessionId) {
-      this.pendingSelectSessionId = null;
-      this._showSessionSolo(tab.id);
-    }
+    // A step started from the Vorhaben page no longer jumps into the terminal
+    // (INT-2026-007, FA-22): the page shows the session as Gespräch; the jump
+    // stays behind „Im Terminal öffnen" (`open-terminal-session`).
   }
-
-  /** Backend session id to select once its tab is adopted (see above). */
-  private pendingSelectSessionId: string | null = null;
-
-  /**
-   * Vorhaben page started a step (FA-35, Mac only — the phone stops the event
-   * in the view): jump into the terminal of that session. If the tab is not
-   * adopted yet, remember the id and select on adoption.
-   */
-  private _handleVorhabenSessionStarted = (e: CustomEvent<{ sessionId: string }>): void => {
-    const { sessionId } = e.detail;
-    if (!sessionId) return;
-    const match = this.terminalSessions.find(s => s.terminalSessionId === sessionId);
-    if (match) {
-      this._showSessionSolo(match.id);
-      return;
-    }
-    this.pendingSelectSessionId = sessionId;
-  };
 
   /**
    * Put one session alone on the screen (INT-2026-005): open the sidebar, make the
    * session active, then let the sidebar go fullscreen and zoom its pane — after the
    * render, so the sidebar already lists the tab in `allSessions`. In single mode with
    * another project active the sidebar answers with `session-jump` and
-   * `_handleTerminalSessionJump` switches the project.
+   * `_handleTerminalSessionJump` switches the project. Reached only via
+   * `open-terminal-session` (Vorhaben page, Gespräch head, FA-22).
    */
   private _showSessionSolo(tabId: string): void {
     this.activeTerminalSessionId = tabId;
@@ -1999,7 +1976,6 @@ export class AosApp extends LitElement {
           @show-toast=${this._handleShowToast}
           @terminal-pill-tap=${this._handleTerminalToggle}
           @add-project=${this.handleAddProject}
-          @vorhaben-session-started=${this._handleVorhabenSessionStarted}
         ></aos-vorhaben-view>`;
       case 'getting-started':
         return html`<aos-getting-started-view

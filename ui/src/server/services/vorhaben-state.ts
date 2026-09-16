@@ -315,8 +315,9 @@ export class VorhabenStateStore {
     return true;
   }
 
+  /** Entries still waiting for Claude's confirmation: `gesendet` (10-s timer) and `eingereiht` (queued, INT-2026-007). */
   public pendingSends(): ProtokollEintrag[] {
-    return this.state.protocol.filter((e) => e.status === 'gesendet').map((e) => ({ ...e }));
+    return this.state.protocol.filter((e) => e.status === 'gesendet' || e.status === 'eingereiht').map((e) => ({ ...e }));
   }
 
   // ---- last model (FA-40) ----

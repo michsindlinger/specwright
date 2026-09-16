@@ -370,6 +370,36 @@ describe('CloudTerminalManager boot-restore', () => {
     expect(manager.getSession('ex')?.status).toBe('closed');
     expect((await registry.load()).entries).toEqual([]);
   });
+
+  it('INT-2026-007 (FA-08): transcript path, block kind and plan-review settings come back with the session', async () => {
+    tmux.enabled = true;
+    await registry.upsert(
+      persisted('s7', {
+        agentStatus: 'blocked',
+        agentStatusReason: 'Berechtigung: ExitPlanMode',
+        transcriptPath: '/home/me/.claude/projects/-tmp-project/abc.jsonl',
+        claudeSessionId: 'abc',
+        blockKind: 'plan',
+        dialogSeq: 2,
+        planReviewEnabled: true,
+        planReviewReviewers: [{ providerId: 'anthropic', modelId: 'haiku' }],
+        lastInjectedPlanPath: 'hook:toolu_1',
+      })
+    );
+    await registry.upsert(persisted('s8', { agentStatus: 'done', blockKind: 'plan' }));
+    tmux.liveSessions.add('cs-s7');
+    tmux.liveSessions.add('cs-s8');
+
+    const manager = makeManager();
+    await manager.whenReady();
+
+    const s7 = manager.getSession('s7')!;
+    expect(s7).toMatchObject({ agentStatus: 'blocked', blockKind: 'plan', transcriptPath: '/home/me/.claude/projects/-tmp-project/abc.jsonl', claudeSessionId: 'abc' });
+    expect(manager.getPlanReviewSettings('s7')).toEqual({ enabled: true, reviewers: [{ providerId: 'anthropic', modelId: 'haiku' }], lastInjectedPlanPath: 'hook:toolu_1' });
+    expect(manager.nextDialogSeq('s7')).toBe('seq:3');
+    // a stale block kind on a session that is not blocked is dropped
+    expect(manager.getSession('s8')!.blockKind).toBeUndefined();
+  });
 });
 
 describe('rehydrateOwnedSessionWorktree', () => {
@@ -401,6 +431,7 @@ describe('rehydrateOwnedSessionWorktree', () => {
       })
     ).toBeUndefined();
   });
+
 });
 
 describe('fallback regression: direct spawn without tmux', () => {

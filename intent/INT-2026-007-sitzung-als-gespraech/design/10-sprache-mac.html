@@ -1,0 +1,116 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Mock 10 — Sprache Mac</title><link rel="stylesheet" href="mock.css"></head>
+<body><div class="stage col"><div>
+<div class="caption">10a–c · Sprache im Gesprächsbereich: Mikro hört zu, Vorlesen läuft, Unterbrechen · Ablauf H, I · FA-24–FA-31</div>
+<div class="grid3c">
+
+  <div class="ctile"><h3>10a · Mikro „hört zu", Zwischenstand im Feld, Vorlesen aus</h3>
+    <div class="conv" style="height:660px">
+      <div class="chead"><span>Gespräch mit <b>spec INT-2026-003</b></span><span class="state"><span class="dot warn"></span>wartet</span><span class="grow"></span><span class="mic on"><i></i>hört zu</span><span class="toggle"><span class="sw"></span>Vorlesen</span></div>
+      <div class="cbody">
+        <div class="msg ai"><div class="who"><b>Claude</b><span>09:47</span></div><p>Soll ich sie dir vorlegen, oder willst du vorher noch etwas ergänzen?</p></div>
+        <div class="msg me"><div class="who"><b>Du</b><span>09:48 · gesprochen</span></div><p>Leg sie vor.</p></div>
+        <div class="work">arbeitet · 2 Werkzeugaufrufe · 0:20 min</div>
+        <div class="msg ai"><div class="who"><b>Claude</b><span>09:49</span></div><p>Spec liegt im Leser. Abschnitt 7 hat zwei offene Zeilen an den Plan delegiert. Freigabe oder Anmerkungen?</p></div>
+      </div>
+      <div class="cinput">
+        <div class="field"><span class="live">Anmerkung zu Abschnitt vier, der Randfall mit der ungültigen Mail-Adresse fehlt noch, bitte</span><span class="cursor"></span></div>
+        <div class="irow"><span class="mic on"><i></i>hört zu — sendet nach der Sprechpause</span><span class="grow"></span><span class="btn ghost sm">Verwerfen</span><span class="btn primary sm">Jetzt senden</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctile"><h3>10b · Vorlesen an: Beitrag wird satzweise vorgelesen, „Stopp"</h3>
+    <div class="conv" style="height:660px">
+      <div class="chead"><span>Gespräch mit <b>spec INT-2026-003</b></span><span class="state"><span class="dot acc"></span>arbeitet</span><span class="grow"></span><span class="mic on"><i></i>hört zu</span><span class="toggle on"><span class="sw"></span>Vorlesen</span></div>
+      <div class="cbody">
+        <div class="msg me"><div class="who"><b>Du</b><span>09:50 · gesprochen</span></div><p>Anmerkung zu Abschnitt vier, der Randfall mit der ungültigen Mail-Adresse fehlt noch, bitte ergänzen.</p></div>
+        <div class="work">arbeitet · 3 Werkzeugaufrufe · 0:31 min</div>
+        <div class="msg ai"><div class="who"><b>Claude</b><span>09:51</span></div><p>Ergänzt als Randfall „Mail-Adresse ungültig": Der Versand wird übersprungen, der Kandidat bekommt beim nächsten Login einen Hinweis. <span style="background:rgba(0,212,255,.15);border-radius:3px">Die Absicht deckt das über AK-03 ab, eine neue FA ist nicht nötig.</span> Soll ich das so in die Spec übernehmen und sie erneut vorlegen?</p>
+          <div class="reading">◉ wird vorgelesen · Satz 2 von 3<span class="grow"></span><span class="btn sm">Stopp</span></div></div>
+      </div>
+      <div class="cinput">
+        <div class="field"><span class="ph">Nachricht an die Sitzung … (sprechen unterbricht das Vorlesen)</span></div>
+        <div class="irow"><span class="mic on"><i></i>hört zu</span><span class="grow"></span><span class="btn sm">Einreihen</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctile"><h3>10c · Unterbrochen: Michael spricht, Vorlesen stoppt, Rest verfällt (B-05)</h3>
+    <div class="conv" style="height:660px">
+      <div class="chead"><span>Gespräch mit <b>spec INT-2026-003</b></span><span class="state"><span class="dot warn"></span>wartet</span><span class="grow"></span><span class="mic on"><i></i>hört zu</span><span class="toggle on"><span class="sw"></span>Vorlesen</span></div>
+      <div class="cbody end">
+        <div class="msg ai"><div class="who"><b>Claude</b><span>09:51</span></div><p>Ergänzt als Randfall „Mail-Adresse ungültig": Der Versand wird übersprungen, der Kandidat bekommt beim nächsten Login einen Hinweis. Die Absicht deckt das über AK-03 ab, eine neue FA ist nicht nötig. Soll ich das so in die Spec übernehmen und sie erneut vorlegen?</p>
+          <div class="reading" style="color:var(--t3)">◌ Vorlesen unterbrochen bei Satz 2 — Rest nur lesbar</div></div>
+        <div class="msg me"><div class="who"><b>Du</b><span>09:51 · gesprochen</span></div><p>Ja, übernehmen und vorlegen.</p></div>
+        <div class="work">arbeitet · 1 Werkzeugaufruf · 0:06 min …</div>
+        <div class="kcard warn">
+          <div class="kh"><span>Rückfrage</span><span>vorgelesen: Frage und Optionen 1–3</span></div>
+          <div class="q">Freigabe jetzt oder erst nach dem Mock?</div>
+          <div class="opt"><span class="rb"></span><div class="ol">1 · Jetzt freigeben</div></div>
+          <div class="opt"><span class="rb"></span><div class="ol">2 · Erst Mock, dann Freigabe</div></div>
+          <div class="field" style="min-height:36px;margin-top:4px"><span class="live">Erst der Mock, aber nur die Mac-Ansicht</span><span class="cursor"></span></div>
+          <div class="kacts"><span class="kbd">Gesprochenes geht in „Anderes"; Optionen per Klick (AN-S10)</span><span class="grow"></span><span class="btn primary sm">Antworten</span></div>
+        </div>
+      </div>
+      <div class="cinput">
+        <div class="field off"><span class="ph">Nachricht an die Sitzung …</span></div>
+        <div class="irow"><span class="mic on"><i></i>hört zu</span><span class="grow"></span><span class="reason"><span class="dot warn"></span>Rückfrage oben beantworten</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<div>
+<div class="caption">10d–f · Mikro-Zustände, Ausfälle, Hinweis beim ersten Einschalten (D1) · FA-24, FA-32, FA-33, AK-12, AK-14</div>
+<div class="grid3c">
+
+  <div class="ctile"><h3>10d · Die drei Mikro-Zustände (Text + Symbol, nie nur Farbe)</h3>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+      <div class="settings-row"><span class="lbl">aus</span><span><span class="mic"><i></i>Mikro aus</span> <span class="hint" style="display:inline-block;margin-left:8px;padding:4px 8px">Standard beim Öffnen der Seite, beim Verlassen, beim Sitzungswechsel</span></span></div>
+      <div class="settings-row"><span class="lbl">hört zu</span><span><span class="mic on"><i></i>hört zu</span> <span class="hint" style="display:inline-block;margin-left:8px;padding:4px 8px">nur nach Klick oder Taste; bleibt an, kein Stille-Limit</span></span></div>
+      <div class="settings-row"><span class="lbl">nicht verfügbar</span><span><span class="mic na"><i></i>nicht verfügbar: Zugriff verweigert</span> <span class="hint" style="display:inline-block;margin-left:8px;padding:4px 8px">mit Ursache und nächstem Schritt, siehe 10e</span></span></div>
+      <div class="hint">Mikro und Vorlesen sind getrennt schaltbar (B-07). Vorlesen ist eine Einstellung je Nutzer im Backend, gilt auf allen Geräten; das Mikro ist je Gerät und je Seite flüchtig (AN-S11, AN-S12).</div>
+      <div class="irow"><span class="toggle"><span class="sw"></span>Vorlesen</span><span class="toggle on"><span class="sw"></span>Vorlesen</span><span class="toggle err"><span class="sw"></span>Vorlesen: ausgefallen</span></div>
+    </div>
+  </div>
+
+  <div class="ctile"><h3>10e · Ausfälle: Erkennung, Vorlesen, Browser — Text läuft weiter (FA-32, FA-33)</h3>
+    <div class="conv" style="height:460px">
+      <div class="chead"><span>Gespräch mit <b>spec INT-2026-003</b></span><span class="state"><span class="dot warn"></span>wartet</span><span class="grow"></span><span class="mic na"><i></i>nicht verfügbar</span><span class="toggle err"><span class="sw"></span>Vorlesen: ausgefallen</span></div>
+      <div class="cbody">
+        <div class="hint err" style="align-self:stretch"><b>Spracherkennung ausgefallen</b> (Dienst nicht erreichbar, 09:58). Mikro ist aus; der bis dahin erkannte Text steht im Feld. <span class="btn ghost sm" style="margin-left:6px">Erneut versuchen</span></div>
+        <div class="hint err" style="align-self:stretch"><b>Vorlesen ausgefallen</b> (Dienst antwortet nicht). Der Text bleibt lesbar, das Gespräch läuft weiter; die Sitzung bemerkt nichts. <span class="btn ghost sm" style="margin-left:6px">Erneut versuchen</span></div>
+        <div class="hint warn" style="align-self:stretch"><b>Mikro nicht verfügbar:</b> Der Browser hat den Zugriff verweigert — in den Browser-Einstellungen für diese Seite erlauben. <span class="kbd">Variante: „nur über HTTPS oder localhost"</span></div>
+        <div class="msg ai"><div class="who"><b>Claude</b><span>09:57</span></div><p>Spec liegt im Leser. Freigabe oder Anmerkungen?</p></div>
+      </div>
+      <div class="cinput">
+        <div class="field">Anmerkung zu Abschnitt vier, der Randfall mit<span class="cursor"></span></div>
+        <div class="irow"><span class="mic na"><i></i>nicht verfügbar: Spracherkennung ausgefallen</span><span class="grow"></span><span class="btn primary sm">Senden</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctile"><h3>10f · Erstes Einschalten je Gerät: Hinweis auf die Sprachdienste (D1, security.md §1)</h3>
+    <div class="conv" style="height:460px">
+      <div class="chead"><span>Gespräch mit <b>spec INT-2026-003</b></span><span class="state"><span class="dot warn"></span>wartet</span><span class="grow"></span><span class="mic"><i></i>Mikro aus</span><span class="toggle"><span class="sw"></span>Vorlesen</span></div>
+      <div class="cbody" style="justify-content:center">
+        <div class="kcard" style="align-self:stretch">
+          <div class="kh"><span>Sprache einschalten</span><span>einmal je Gerät</span></div>
+          <div class="q">Text und Stimme gehen an externe Sprachdienste.</div>
+          <p style="margin:0 0 8px;font-size:12.5px;color:var(--t2)">Was du sprichst, geht zur Spracherkennung; was Claude schreibt, geht zum Vorlese-Dienst — auch Inhalte dieses Projekts (Applai). Nichts davon wird von der UI gespeichert. Beide Schalter sind standardmäßig aus.</p>
+          <div class="hint">Kopfhörer empfohlen: Vorgelesenes darf nicht als deine Eingabe erkannt werden (FA-30).</div>
+          <div class="kacts"><span class="btn ghost sm">Abbrechen</span><span class="btn primary sm">Verstanden, Mikro einschalten</span></div>
+        </div>
+      </div>
+      <div class="cinput">
+        <div class="field"><span class="ph">Nachricht an die Sitzung …</span></div>
+        <div class="irow"><span class="mic"><i></i>Mikro aus</span><span class="grow"></span><span class="btn primary sm">Senden</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div></body></html>

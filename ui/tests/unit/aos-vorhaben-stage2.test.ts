@@ -222,8 +222,8 @@ describe('aos-sende-leiste (FA-29, FA-30)', () => {
     expect(a.shadowRoot!.textContent).toContain('Sitzung arbeitet — warten');
     expect(buttons(a)).toEqual(['Alle ansehen', 'Änderungen schicken (aus)', 'Freigeben (aus)']);
     a.remove();
-    const d = await leiste(row({ zustand: 'wartet_im_terminal', zustandDetail: 'Berechtigung', session: { id: 's1', name: 'n', model: 'opus', agentStatus: 'blocked' } }));
-    expect(d.shadowRoot!.textContent).toContain('Sitzung fragt im Terminal (Berechtigung)');
+    const d = await leiste(row({ zustand: 'wartet_berechtigung', zustandDetail: 'Berechtigung', session: { id: 's1', name: 'n', model: 'opus', agentStatus: 'blocked', blockKind: 'berechtigung' } }));
+    expect(d.shadowRoot!.textContent).toContain('Sitzung wartet auf eine Berechtigung — im Terminal');
     expect(buttons(d)).toEqual(['Alle ansehen', 'Zum Terminal ›']);
     d.remove();
     const k = await leiste(row({ zustand: 'keine_sitzung', session: undefined, reviewDoc: undefined, nextStep: { step: 'plan', command: '/plan INT-2026-004', label: 'Plan erstellen' } }));

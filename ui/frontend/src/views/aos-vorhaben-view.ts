@@ -22,13 +22,15 @@ import type { ParsedRoute, ViewType } from '../types/route.types.js';
 import type { ProjectDocKey, VorhabenRow, VorhabenState } from '../../../src/shared/types/vorhaben.protocol.js';
 import { PROJECT_DOC_KEYS, VORHABEN_DOC_ORDER, draftKey } from '../../../src/shared/types/vorhaben.protocol.js';
 import { countWaitingForMe } from '../components/vorhaben/vorhaben-sort.js';
-import { defaultDoc } from '../components/vorhaben/aos-vorhaben-seite.js';
+import { defaultDoc, type AosVorhabenSeite } from '../components/vorhaben/aos-vorhaben-seite.js';
+import { GESPRAECH_BREITE } from '../components/vorhaben/aos-gespraech.js';
 import type { LeserDoc } from '../components/vorhaben/aos-dokument-leser.js';
 import type { BottomNavItem } from '../components/mobile/aos-mobile-bottom-nav.js';
 import type { DrawerNavRoute } from '../components/mobile/aos-mobile-side-drawer.js';
 import '../components/vorhaben/aos-vorhaben-uebersicht.js';
 import '../components/vorhaben/aos-vorhaben-seite.js';
 import '../components/vorhaben/aos-projekt-seite.js';
+import '../components/vorhaben/aos-gespraech.js';
 import '../components/mobile/aos-mobile-top-bar.js';
 import '../components/mobile/aos-mobile-bottom-nav.js';
 import '../components/mobile/aos-mobile-side-drawer.js';
@@ -50,6 +52,8 @@ export class AosVorhabenView extends LitElement {
   @state() private connected = true;
   @state() private filterProjectId: string | null = null;
   @state() private drawerOpen = false;
+  /** „Absicht beginnen" started this session; navigate to its Vorhaben once a row carries it (FA-22, AN-S03). */
+  @state() private pendingIntentSessionId: string | null = null;
 
   private readonly breakpoint = new MobileBreakpointController(this);
   private unsubscribeState: (() => void) | null = null;
@@ -75,6 +79,7 @@ export class AosVorhabenView extends LitElement {
     super.connectedCallback();
     this.unsubscribeState = vorhabenService.subscribe((s) => {
       this.vorhabenState = s;
+      this.followStartedIntent(s);
     });
     routerService.on('route-changed', this.onRoute);
     const current = routerService.getCurrentRoute();
@@ -144,15 +149,30 @@ export class AosVorhabenView extends LitElement {
   }
 
   /**
-   * A step was started from this view (FA-35): on the Mac the event bubbles
-   * on to app.ts, which selects the new tab and opens the terminal sidebar;
-   * on the phone Michael stays on the page (AN-S14).
+   * A step was started from this view (FA-35): Michael stays on the page —
+   * on the Mac the Gespräch follows the new session (INT-2026-007, FA-22),
+   * on the phone as before (AN-S14). „Absicht beginnen" has no Vorhaben yet:
+   * the view remembers the session and opens the Vorhaben page once a row
+   * carries it (AN-S03). The event no longer reaches app.ts.
    */
-  private onSessionStarted(e: CustomEvent<{ sessionId: string; step: string }>): void {
-    if (this.breakpoint.isMobile) {
-      e.stopPropagation();
-      this.dispatchEvent(new CustomEvent('show-toast', { bubbles: true, composed: true, detail: { message: 'Sitzung gestartet', type: 'success' } }));
-    }
+  private onSessionStarted(e: CustomEvent<{ sessionId: string; step: string; intentId?: string }>): void {
+    e.stopPropagation();
+    if (e.detail.step === 'intent' && !e.detail.intentId) this.pendingIntentSessionId = e.detail.sessionId;
+    this.dispatchEvent(new CustomEvent('show-toast', { bubbles: true, composed: true, detail: { message: e.detail.step === 'intent' ? 'Sitzung gestartet — Vorhaben entsteht' : 'Sitzung gestartet', type: 'success' } }));
+  }
+
+  /** First `vorhaben:state` whose row carries the started intent session → open that Vorhaben (FA-22). */
+  private followStartedIntent(state: VorhabenState | null): void {
+    const pending = this.pendingIntentSessionId;
+    if (!pending || !state) return;
+    const row = state.rows.find((r) => r.session?.id === pending);
+    if (!row) return;
+    this.pendingIntentSessionId = null;
+    this.openRow(row);
+  }
+
+  private onGespraechNextStep(): void {
+    (this.querySelector('aos-vorhaben-seite') as AosVorhabenSeite | null)?.scrollToNextStep();
   }
 
   private onDocSelect(e: CustomEvent<{ key: ProjectDocKey | null }>): void {
@@ -191,7 +211,10 @@ export class AosVorhabenView extends LitElement {
 
   override render() {
     const content = this.renderContent();
-    if (!this.breakpoint.isMobile) return html`<div class="vorhaben-view">${content}</div>`;
+    if (!this.breakpoint.isMobile) {
+      const split = this.route === 'vorhaben' && !!this.currentRow().row?.session;
+      return html`<div class="vorhaben-view ${split ? 'split' : ''}">${content}</div>`;
+    }
     const waiting = this.vorhabenState ? countWaitingForMe(this.vorhabenState.rows) : 0;
     const title = this.route === 'projekt' ? 'Projekt' : this.segments.length ? this.segments[1] ?? 'Vorhaben' : 'Vorhaben';
     return html`
@@ -227,17 +250,28 @@ export class AosVorhabenView extends LitElement {
       const doc = this.currentDoc(row);
       const state = this.vorhabenState;
       const drafts = doc !== 'design' && state ? state.drafts[draftKey(row.projectId, row.intentId, doc)] ?? [] : [];
-      return html`<aos-vorhaben-seite
+      const protocol = state?.protocol ?? [];
+      // Mac with an assigned session: page left, Gespräch right (mock 08, FA-01); phone: page only (NZ-01).
+      const split = !this.breakpoint.isMobile && !!row.session;
+      const seite = html`<aos-vorhaben-seite
         .row=${row}
         .doc=${doc}
         .mobile=${this.breakpoint.isMobile}
         .drafts=${drafts}
-        .protocol=${state?.protocol ?? []}
+        .protocol=${protocol}
         .lastModel=${state?.lastModel ?? {}}
+        .gespraechBreite=${split ? GESPRAECH_BREITE : ''}
         @vorhaben-back=${() => this.go('vorhaben')}
         @doc-change=${this.onDocChange}
         @vorhaben-session-started=${this.onSessionStarted}
       ></aos-vorhaben-seite>`;
+      if (!split) return seite;
+      return html`<div class="vorhaben-split" style="--gespraech-width: ${GESPRAECH_BREITE}">
+        ${seite}
+        <div class="vorhaben-split-gespraech">
+          <aos-gespraech .row=${row} .protocol=${protocol.filter((e) => e.projectId === row.projectId && e.intentId === row.intentId)} @gespraech-next-step=${this.onGespraechNextStep}></aos-gespraech>
+        </div>
+      </div>`;
     }
     if (missing) {
       return html`<div class="vorhaben-status">
@@ -269,6 +303,7 @@ export class AosVorhabenView extends LitElement {
       .docDrafts=${this.vorhabenState?.docDrafts ?? {}}
       .selectedKey=${this.currentDocKey()}
       .mobile=${this.breakpoint.isMobile}
+      .startedSessionId=${this.pendingIntentSessionId ?? ''}
       @doc-select=${this.onDocSelect}
       @vorhaben-session-started=${this.onSessionStarted}
     ></aos-projekt-seite>`;

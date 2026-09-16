@@ -1,0 +1,10 @@
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☒ Tiere  ☒ Anzahl  ✔ Submit  →
+Review your answers
+ ● Welche Tiere magst du?
+   → Hund
+ ● Wie viele?
+   → Zwei
+Ready to submit your answers?
+❯ 1. Submit answers
+  2. Cancel

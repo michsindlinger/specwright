@@ -32,7 +32,7 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | Hooks | Deterministische Leitplanken für Claude Code (`PreToolUse`) | Bash + python3 | `specwright/templates/sdlc/hooks/`, im Repo `.claude/hooks/` | Michael |
 | Installer | Fünf Skripte mit einer gemeinsamen Bibliothek, lesen das Manifest, schreiben Projekt und Global-Verzeichnisse | Bash 3.2-tauglich | `install.sh`, `setup*.sh`, `update-specwright.sh`, `specwright/scripts/install-lib.sh` | Michael |
 | Kanban-MCP-Server | MCP-Werkzeuge für `kanban.json`, Backlog, Memory-Store | TypeScript, `tsx` direkt gestartet | `specwright/scripts/mcp/` | Michael |
-| Web-UI Backend | Projekte, Sessions, Cloud-Terminal (tmux), Vorhaben-Sicht und Review-Kanal (Antworten als Bracketed Paste in die wartende PTY, Bestätigung über den `UserPromptSubmit`-Hook), WebSocket | Express, TypeScript, Claude Code SDK, node-pty | `ui/src/server/` | Michael |
+| Web-UI Backend | Projekte, Sessions, Cloud-Terminal (tmux), Vorhaben-Sicht und Review-Kanal (Antworten als Bracketed Paste in die wartende PTY, Bestätigung über den `UserPromptSubmit`-Hook), Gespräch (Sitzungsverlauf aus Hooks und Claude-Code-Transkript, Abo je Sitzung; Freitext nur nach Bildschirmprüfung auf Dialog-Cues unter dem Maschinen-Lock `withMachineWrite`, INT-2026-007), WebSocket | Express, TypeScript, Claude Code SDK, node-pty | `ui/src/server/` | Michael |
 | Web-UI Frontend | Oberfläche als Web Components | Lit, Vite, TypeScript strict | `ui/frontend/src/` (`aos-*`) | Michael |
 
 ## 3. Datenbesitz
@@ -45,8 +45,9 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | `kanban.json`, Backlog | Kanban-MCP-Server | Projekt-Dateien | MCP-Werkzeuge der Sitzungen (die UI liest nicht mehr, INT-2026-004) | — |
 | Memory-Store | Kanban-MCP-Server | `~/.specwright/memory.db` (SQLite) | MCP-Werkzeuge `memory_*` | — |
 | Workspace der UI (offene Projekte, Tabs) | UI-Backend | `<runtime>/workspace-<port>.json` | WebSocket `workspace:*` | pro Backend-Instanz |
-| Nutzerzustand der UI (Zuordnung Sitzung↔Vorhaben, Anmerkungs-Entwürfe, Protokoll, letzte Modellwahl, Doc-Entwürfe) | UI-Backend | `<runtime>/vorhaben-<port>.json` (ADR-0002) | WebSocket `vorhaben:*`, `project-docs:*` | pro Backend-Instanz |
-| Terminal-Sitzungen | UI-Backend | tmux-Server + Disk-Registry | WebSocket | pro Host |
+| Nutzerzustand der UI (Zuordnung Sitzung↔Vorhaben, Anmerkungs-Entwürfe, Protokoll inkl. Freitext-Einträgen des Gesprächs, letzte Modellwahl, Doc-Entwürfe) | UI-Backend | `<runtime>/vorhaben-<port>.json` (ADR-0002) | WebSocket `vorhaben:*`, `project-docs:*` | pro Backend-Instanz |
+| Terminal-Sitzungen (inkl. Hook-Kontext: Transkriptpfad, Claude-Session-ID, Blockart, Plan-Review-Schalter) | UI-Backend | tmux-Server + Disk-Registry | WebSocket | pro Host |
+| Sitzungsverlauf (Transkript einer Claude-Code-Sitzung) | Claude Code | `~/.claude*/projects/<slug>/<session-id>.jsonl` | UI-Backend liest nur (Tailer, Allowlist der Config-Verzeichnisse, ADR-0003), keine Kopie; Clients über WebSocket `gespraech:*` je Sitzung | pro Host |
 
 ## 4. Erlaubte Abhängigkeiten
 
@@ -116,4 +117,5 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | 2026-09-14 | Erstfassung (INT-2026-002) | PR folgt |
 | 2026-09-15 | §3 Nutzerzustand der UI, AR-05 erweitert (INT-2026-004, Stufe 1) | ADR-0002 |
 | 2026-09-15 | §2 Backend-Zeile um Vorhaben-Sicht/Review-Kanal, §5 Deploy-Gate um unbestätigte Review-Antworten (INT-2026-004, Stufe 2) | PR #45 |
+| 2026-09-16 | §2 Backend-Zeile um Gespräch (Transkript-Leser, Lock), §3 Terminal-Sitzungen um Hook-Kontext, neue Zeile Sitzungsverlauf, Nutzerzustand um Freitext-Protokoll (INT-2026-007, Stufe 1) | ADR-0003 |
 | 2026-09-15 | Story-Pfad aus der UI entfernt: §1 Diagramm und Text (UI → MCP nur noch über Sitzungen), §2 ohne Auto-Mode, §3 `kanban.json` ohne UI-Leser, AR-03 auf den MCP-Server beschränkt, §5 Gate ohne Auto-Mode, §10 Zeile „Story pro Session" erledigt, zwei neue Abweichungen (INT-2026-004, Stufe 3) | PR #46 |

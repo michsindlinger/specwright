@@ -8,6 +8,8 @@
 /**
  * Cloud Terminal session identifier - independent of execution IDs
  */
+import type { BlockKind } from './gespraech.protocol.js';
+
 export type CloudTerminalSessionId = string;
 
 /**
@@ -156,6 +158,11 @@ export interface CloudTerminalSession {
   agentStatusAt?: Date;
   /** Reason for blocked / error, when the hook delivered one. */
   agentStatusReason?: string;
+  /** blocked only: kind of dialog (INT-2026-007, FA-09). Absent for shell sessions. */
+  blockKind?: BlockKind;
+  /** Transcript file Claude Code writes for this session, once a hook reported it (INT-2026-007). */
+  transcriptPath?: string;
+  claudeSessionId?: string;
 }
 
 /**
@@ -439,6 +446,8 @@ export interface CloudTerminalAgentEventDetail {
   preview?: string;
   /** Short human-readable reason for blocked / error (e.g. "Berechtigung: Bash"). */
   reason?: string;
+  /** blocked only: what kind of dialog the session shows (INT-2026-007, FA-09). */
+  blockKind?: BlockKind;
 }
 
 /**
@@ -455,6 +464,7 @@ export interface CloudTerminalAgentEventMessage {
   statusAt: string;
   preview?: string;
   reason?: string;
+  blockKind?: BlockKind;
   timestamp: string;
 }
 

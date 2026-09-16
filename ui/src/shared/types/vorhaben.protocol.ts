@@ -9,17 +9,24 @@
  */
 
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from './cloud-terminal.protocol.js';
+import type { BlockKind } from './gespraech.protocol.js';
 
 // ---- Model ----
 
 /** Phase after the "Phasenregeln" table (spec §3.2); `hidden` rows are filtered out before broadcast. */
 export type VorhabenPhase = 'absicht' | 'spec' | 'plan' | 'bau' | 'pr' | 'umgesetzt' | 'unbekannt';
 
-/** Seven values of FA-13. */
+/**
+ * Values of FA-13 (INT-2026-004); INT-2026-007 (FA-09) splits „wartet im
+ * Terminal" by the kind of dialog: Rückfrage, Plan-Entscheidung, Berechtigung
+ * (an unknown dialog counts as Berechtigung, FA-10).
+ */
 export type VorhabenZustand =
   | 'wartet_auf_dich'
   | 'wartet'
-  | 'wartet_im_terminal'
+  | 'wartet_rueckfrage'
+  | 'wartet_plan'
+  | 'wartet_berechtigung'
   | 'arbeitet'
   | 'bau_unterbrochen'
   | 'keine_sitzung'
@@ -69,6 +76,8 @@ export interface VorhabenSessionRef {
   /** Model id as configured for the session (FA-42). */
   model: string;
   agentStatus: CloudTerminalAgentStatus;
+  /** Kind of the dialog while `blocked` (INT-2026-007, FA-09). */
+  blockKind?: BlockKind;
   /** Set once the session ended while still assigned (FA-22). */
   ended?: boolean;
 }
@@ -166,15 +175,22 @@ export interface Anmerkung {
   updatedAt: string;
 }
 
-export type ProtokollArt = 'aenderungen' | 'freigabe';
-export type ProtokollStatus = 'gesendet' | 'angenommen' | 'nicht_bestaetigt';
+/**
+ * `aenderungen` / `freigabe` come from the reader (INT-2026-004); `freitext` is
+ * a message typed into the Gespräch (INT-2026-007, FA-06). Stage 2 adds
+ * `rueckfrage` and `plan` (card answers).
+ */
+export type ProtokollArt = 'aenderungen' | 'freigabe' | 'freitext' | 'rueckfrage' | 'plan';
+/** `eingereiht` = handed to a working session, confirmed when Claude picks it up (AN-S09). */
+export type ProtokollStatus = 'gesendet' | 'eingereiht' | 'angenommen' | 'nicht_bestaetigt';
 
 /** One sent answer (FA-31/FA-32). */
 export interface ProtokollEintrag {
   id: string;
   projectId: string;
   intentId: string;
-  doc: VorhabenDocKey;
+  /** Review document — absent for `freitext` / card answers. */
+  doc?: VorhabenDocKey;
   art: ProtokollArt;
   /** Number of Anmerkungen (aenderungen) — 0 for freigabe. */
   anzahl: number;

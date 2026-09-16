@@ -1,0 +1,45 @@
+
+❯ Antworte nur mit Text, keine Werkzeuge, ein bis zwei Sätze: Nenne mir die Zahl 19 in Worten und ein passendes Tier.
+
+⏺ Neunzehn. Tier: Wal — neunzehn Meter lang, Gesang in Tiefe, Majestät der Meere.
+
+✻ Sautéed for 8s · done 9:16
+
+❯ Antworte nur mit Text, keine Werkzeuge, ein bis zwei Sätze: Nenne mir die Zahl 20 in Worten und ein passendes Tier.
+
+⏺ Zwanzig. Tier: Schildkröte — zwanzig Jahre Jugend, Geduld, Panzer und Ewigkeit.
+
+✻ Sautéed for 7s · done 9:16
+
+❯ Benutze jetzt das Werkzeug AskUserQuestion mit genau einer Frage: "Welche Farbe magst du?" mit den Optionen Rot, Blau, Grün (jede mit
+  kurzer Beschreibung). Nach meiner Antwort antworte nur mit dem Satz: Du hast <Farbe> gewählt.
+
+⏺ User answered Claude's questions:
+  ⎿  · Welche Farbe magst du? → Blau
+
+⏺ Du hast Blau gewählt.
+
+✻ Cooked for 4s · done 9:17
+
+❯ Benutze jetzt das Werkzeug AskUserQuestion mit zwei Fragen: 1) "Welche Tiere magst du?" mit multiSelect=true und den Optionen Hund,
+  Katze, Vogel, Fisch; 2) "Wie viele?" mit den Optionen Eins, Zwei. Nach meiner Antwort fasse beide Antworten in einem Satz zusammen.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☐ Tiere  ☐ Anzahl  ✔ Submit  →
+
+Welche Tiere magst du?
+
+❯ 1. [ ] Hund
+  Treu, lebhaft, freundlich und loyal.
+  2. [ ] Katze
+  Unabhängig, elegant, geheimnisvoll und würdevoll.
+  3. [ ] Vogel
+  Frei, leicht, melodisch und himmelswärts.
+  4. [ ] Fisch
+  Ruhig, flüssig, mystisch und still.
+  5. [ ] Type something
+     Next
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  6. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel
+

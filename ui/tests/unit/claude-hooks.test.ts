@@ -48,10 +48,10 @@ describe('renderHookSettings()', () => {
     expect(hooks.Notification[0].matcher).not.toContain('permission_prompt');
   });
 
-  it('scopes tool hooks to AskUserQuestion and excludes compact from SessionStart', () => {
+  it('scopes tool hooks to AskUserQuestion|ExitPlanMode and excludes compact from SessionStart', () => {
     const { hooks } = parse();
-    expect(hooks.PreToolUse[0].matcher).toBe('AskUserQuestion');
-    expect(hooks.PostToolUse[0].matcher).toBe('AskUserQuestion');
+    expect(hooks.PreToolUse[0].matcher).toBe('AskUserQuestion|ExitPlanMode');
+    expect(hooks.PostToolUse[0].matcher).toBe('AskUserQuestion|ExitPlanMode');
     expect(hooks.SessionStart[0].matcher).toBe('startup|resume|clear|fork');
     expect(hooks.UserPromptSubmit[0].matcher).toBeUndefined();
     expect(hooks.Stop[0].matcher).toBeUndefined();
@@ -163,8 +163,8 @@ describe('mapHookPayload()', () => {
 
   it('Stop (and a body without hook_event_name) → stop with sanitized preview', () => {
     expect(event({ hook_event_name: 'Stop', last_assistant_message: '\x1b[1mAll   done\x1b[0m' }))
-      .toEqual({ kind: 'event', event: 'stop', detail: { preview: 'All done' } });
-    expect(event({})).toEqual({ kind: 'event', event: 'stop', detail: { preview: undefined } });
+      .toMatchObject({ kind: 'event', event: 'stop', detail: { preview: 'All done' } });
+    expect(event({})).toMatchObject({ kind: 'event', event: 'stop', detail: { preview: undefined } });
   });
 
   it('StopFailure → stop-failure, reason from message, then error, then a static fallback', () => {
@@ -176,12 +176,12 @@ describe('mapHookPayload()', () => {
 
   it('UserPromptSubmit → prompt-submitted without forwarding the prompt text', () => {
     expect(event({ hook_event_name: 'UserPromptSubmit', user_prompt: 'secret plans' }))
-      .toEqual({ kind: 'event', event: 'prompt-submitted', detail: {} });
+      .toMatchObject({ kind: 'event', event: 'prompt-submitted', detail: {} });
   });
 
   it('PermissionRequest → blocked, tool name optional', () => {
-    expect(event({ hook_event_name: 'PermissionRequest', tool_name: 'Bash' }).detail).toEqual({ reason: 'Berechtigung: Bash' });
-    expect(event({ hook_event_name: 'PermissionRequest' }).detail).toEqual({ reason: 'Berechtigung' });
+    expect(event({ hook_event_name: 'PermissionRequest', tool_name: 'Bash' }).detail).toMatchObject({ reason: 'Berechtigung: Bash' });
+    expect(event({ hook_event_name: 'PermissionRequest' }).detail).toMatchObject({ reason: 'Berechtigung' });
   });
 
   it('PreToolUse/PostToolUse only for AskUserQuestion', () => {
@@ -190,20 +190,20 @@ describe('mapHookPayload()', () => {
       tool_name: 'AskUserQuestion',
       tool_input: { questions: [{ question: 'Which colour?' }] },
     });
-    expect(pre).toEqual({ kind: 'event', event: 'blocked', detail: { reason: 'Which colour?' } });
-    expect(event({ hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion' }).detail).toEqual({ reason: 'Frage' });
+    expect(pre).toMatchObject({ kind: 'event', event: 'blocked', detail: { reason: 'Which colour?' } });
+    expect(event({ hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion' }).detail).toMatchObject({ reason: 'Frage' });
     expect(event({ hook_event_name: 'PostToolUse', tool_name: 'AskUserQuestion' }))
-      .toEqual({ kind: 'event', event: 'unblocked', detail: {} });
+      .toMatchObject({ kind: 'event', event: 'unblocked', detail: {} });
     expect(kind({ hook_event_name: 'PreToolUse', tool_name: 'Bash' })).toBe('reject');
     expect(kind({ hook_event_name: 'PostToolUse', tool_name: 'Read' })).toBe('reject');
   });
 
   it('Notification: blocking types → blocked, idle_prompt → idle-prompt, everything else ignored', () => {
     expect(event({ hook_event_name: 'Notification', notification_type: 'elicitation_dialog', message: 'Pick one' }))
-      .toEqual({ kind: 'event', event: 'blocked', detail: { reason: 'Pick one' } });
+      .toMatchObject({ kind: 'event', event: 'blocked', detail: { reason: 'Pick one' } });
     expect(event({ hook_event_name: 'Notification', notification_type: 'agent_needs_input' }).event).toBe('blocked');
     expect(event({ hook_event_name: 'Notification', notification_type: 'idle_prompt' }))
-      .toEqual({ kind: 'event', event: 'idle-prompt', detail: {} });
+      .toMatchObject({ kind: 'event', event: 'idle-prompt', detail: {} });
     // The 6-second permission_prompt must never re-block an answered session.
     expect(kind({ hook_event_name: 'Notification', notification_type: 'permission_prompt' })).toBe('ignore');
     expect(kind({ hook_event_name: 'Notification', notification_type: 'auth_success' })).toBe('ignore');
@@ -248,5 +248,123 @@ describe('CLOUD_SESSION_ID_RE', () => {
     expect(CLOUD_SESSION_ID_RE.test('cloud-x')).toBe(false);
     expect(CLOUD_SESSION_ID_RE.test('cloud-1-2/../x')).toBe(false);
     expect(CLOUD_SESSION_ID_RE.test('restored-1-2')).toBe(false);
+  });
+});
+
+/**
+ * INT-2026-007 (FA-01, FA-09, FA-12, FA-16, FA-21): the mapping carries the
+ * hook context (transcript path, Claude session id), the full text of a turn,
+ * a structured block kind and the dialog with its options / plan.
+ * Payload shapes recorded on 2026-09-16 against Claude Code 2.1.273
+ * (Schritt 0 measurement, scratch project).
+ */
+describe('mapHookPayload() — Gespräch extensions (INT-2026-007)', () => {
+  const ctx = { session_id: '061876cd-d221-416b-9e33-6b474dde574b', transcript_path: '/home/me/.claude/projects/-tmp-scratch/061876cd-d221-416b-9e33-6b474dde574b.jsonl', cwd: '/tmp/scratch' };
+  const questions = [{ question: 'Welche Farbe magst du?', header: 'Farbe', multiSelect: false, options: [{ label: 'Rot', description: 'warm' }, { label: 'Blau', description: 'kalt' }, { label: 'Grün' }] }];
+  const ev = (body: Record<string, unknown>) => {
+    const m = mapHookPayload(body);
+    if (m.kind !== 'event') throw new Error(`expected event, got ${m.kind}`);
+    return m;
+  };
+
+  it('every event carries the hook context; non-string fields are dropped', () => {
+    expect(ev({ hook_event_name: 'Stop', ...ctx }).context).toEqual({ transcriptPath: ctx.transcript_path, claudeSessionId: ctx.session_id, cwd: ctx.cwd });
+    expect(ev({ hook_event_name: 'SessionStart', source: 'startup', ...ctx, cwd: 7 }).context).toEqual({ transcriptPath: ctx.transcript_path, claudeSessionId: ctx.session_id });
+    expect(ev({ hook_event_name: 'Stop' }).context).toEqual({});
+  });
+
+  it('Stop carries the full last_assistant_message as Beitrag, the preview stays 160 chars (FA-02)', () => {
+    const text = 'Zeile 1\n\n' + 'x'.repeat(6000);
+    const m = ev({ hook_event_name: 'Stop', last_assistant_message: text });
+    expect(m.beitrag).toEqual({ kind: 'claude', text });
+    expect(m.detail.preview!.length).toBeLessThanOrEqual(160);
+    expect(ev({ hook_event_name: 'Stop' }).beitrag).toBeUndefined();
+    // bounded: > 200 kB is cut, not rejected
+    const huge = ev({ hook_event_name: 'Stop', last_assistant_message: 'y'.repeat(250_000) });
+    expect(huge.beitrag!.text.length).toBe(200_000);
+  });
+
+  it('UserPromptSubmit carries the prompt as Nutzer-Beitrag', () => {
+    expect(ev({ hook_event_name: 'UserPromptSubmit', prompt: '/specwright:spec INT-2026-007' }).beitrag).toEqual({ kind: 'nutzer', text: '/specwright:spec INT-2026-007' });
+    expect(ev({ hook_event_name: 'UserPromptSubmit' }).beitrag).toBeUndefined();
+  });
+
+  it('PreToolUse AskUserQuestion → blocked, blockKind rueckfrage, dialog with validated questions and tool_use_id', () => {
+    const m = ev({ hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', tool_use_id: 'toolu_01JcYX3hozXAZiZ3B7ZsGX4C', tool_input: { questions } });
+    expect(m.event).toBe('blocked');
+    expect(m.detail).toMatchObject({ reason: 'Welche Farbe magst du?', blockKind: 'rueckfrage' });
+    expect(m.dialog).toEqual({
+      kind: 'rueckfrage',
+      toolUseId: 'toolu_01JcYX3hozXAZiZ3B7ZsGX4C',
+      questions: [{ question: 'Welche Farbe magst du?', header: 'Farbe', multiSelect: false, options: [{ label: 'Rot', description: 'warm' }, { label: 'Blau', description: 'kalt' }, { label: 'Grün' }] }],
+    });
+  });
+
+  it('AskUserQuestion validation: ≤ 4 questions, ≤ 4 options, strings ≤ 2000 chars, malformed entries skipped', () => {
+    const many = Array.from({ length: 6 }, (_, i) => ({ question: `Q${i}`, options: Array.from({ length: 6 }, (_, j) => ({ label: `O${j}`.padEnd(3000, '.') })) }));
+    const m = ev({ hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', tool_input: { questions: [...many, { nope: true }, 'text'] } });
+    const d = m.dialog as { kind: 'rueckfrage'; questions: Array<{ options: Array<{ label: string }>; multiSelect: boolean }> };
+    expect(d.kind).toBe('rueckfrage');
+    expect(d.questions).toHaveLength(4);
+    expect(d.questions[0].options).toHaveLength(4);
+    expect(d.questions[0].options[0].label.length).toBe(2000);
+    expect(d.questions[0].multiSelect).toBe(false);
+  });
+
+  it('PermissionRequest AskUserQuestion → blocked rueckfrage with the same dialog but no tool_use_id (recorded: fires 2 ms after PreToolUse)', () => {
+    const m = ev({ hook_event_name: 'PermissionRequest', tool_name: 'AskUserQuestion', tool_input: { questions } });
+    expect(m.event).toBe('blocked');
+    expect(m.detail).toMatchObject({ reason: 'Berechtigung: AskUserQuestion', blockKind: 'rueckfrage' });
+    expect(m.dialog).toMatchObject({ kind: 'rueckfrage', questions: [{ question: 'Welche Farbe magst du?' }] });
+    expect((m.dialog as { toolUseId?: string }).toolUseId).toBeUndefined();
+  });
+
+  it('PreToolUse/PermissionRequest ExitPlanMode → blocked plan with the plan text (FA-16)', () => {
+    const plan = '# Plan: hallo.txt\n\n1. anlegen\n2. prüfen';
+    const pre = ev({ hook_event_name: 'PreToolUse', tool_name: 'ExitPlanMode', tool_use_id: 'toolu_01L8', tool_input: { plan } });
+    expect(pre.event).toBe('blocked');
+    expect(pre.detail).toMatchObject({ reason: 'Berechtigung: ExitPlanMode', blockKind: 'plan' });
+    expect(pre.dialog).toEqual({ kind: 'plan', toolUseId: 'toolu_01L8', plan });
+    const perm = ev({ hook_event_name: 'PermissionRequest', tool_name: 'ExitPlanMode', tool_input: { plan } });
+    expect(perm.dialog).toEqual({ kind: 'plan', plan });
+    // plan text bounded at 200 kB
+    const big = ev({ hook_event_name: 'PermissionRequest', tool_name: 'ExitPlanMode', tool_input: { plan: 'p'.repeat(300_000) } });
+    expect((big.dialog as { plan: string }).plan.length).toBe(200_000);
+    // no plan text → still a plan dialog, empty text
+    expect(ev({ hook_event_name: 'PermissionRequest', tool_name: 'ExitPlanMode' }).dialog).toEqual({ kind: 'plan', plan: '' });
+  });
+
+  it('PermissionRequest for other tools → blocked berechtigung with tool and shortened detail (FA-21)', () => {
+    const m = ev({ hook_event_name: 'PermissionRequest', tool_name: 'Bash', tool_input: { command: 'rm -rf ' + 'x'.repeat(500), description: 'd' } });
+    expect(m.detail).toMatchObject({ reason: 'Berechtigung: Bash', blockKind: 'berechtigung' });
+    expect(m.dialog).toMatchObject({ kind: 'berechtigung', tool: 'Bash' });
+    expect((m.dialog as { detail: string }).detail.length).toBeLessThanOrEqual(200);
+    expect(ev({ hook_event_name: 'PermissionRequest', tool_name: 'Edit', tool_input: { file_path: '/p/a.ts' } }).dialog).toMatchObject({ kind: 'berechtigung', tool: 'Edit', detail: '/p/a.ts' });
+    expect(ev({ hook_event_name: 'PermissionRequest' }).dialog).toMatchObject({ kind: 'berechtigung', tool: 'unbekannt' });
+  });
+
+  it('PostToolUse AskUserQuestion → unblocked with dialogClosed (answers from tool_response)', () => {
+    const m = ev({ hook_event_name: 'PostToolUse', tool_name: 'AskUserQuestion', tool_use_id: 'toolu_01Jc', tool_input: { questions }, tool_response: { questions, answers: { 'Welche Farbe magst du?': 'Blau' }, annotations: {} } });
+    expect(m.event).toBe('unblocked');
+    expect(m.dialogClosed).toEqual({ toolUseId: 'toolu_01Jc', tool: 'AskUserQuestion', answers: { 'Welche Farbe magst du?': 'Blau' } });
+  });
+
+  it('PostToolUse ExitPlanMode → unblocked with dialogClosed; accepted ⇔ response is an object with plan (G9)', () => {
+    const ok = ev({ hook_event_name: 'PostToolUse', tool_name: 'ExitPlanMode', tool_use_id: 'toolu_01L8', tool_response: { plan: '# Plan', filePath: '/x.md' } });
+    expect(ok.event).toBe('unblocked');
+    expect(ok.dialogClosed).toEqual({ toolUseId: 'toolu_01L8', tool: 'ExitPlanMode', planResult: { accepted: true } });
+    const rejected = ev({ hook_event_name: 'PostToolUse', tool_name: 'ExitPlanMode', tool_use_id: 'toolu_01L9', tool_response: 'The user doesn\'t want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To stop the tool use, the user said:\nBitte kürzer fassen.' });
+    expect(rejected.dialogClosed).toEqual({ toolUseId: 'toolu_01L9', tool: 'ExitPlanMode', planResult: { accepted: false, text: 'Bitte kürzer fassen.' } });
+    const unknown = ev({ hook_event_name: 'PostToolUse', tool_name: 'ExitPlanMode', tool_use_id: 'toolu_01LA' });
+    expect(unknown.dialogClosed).toEqual({ toolUseId: 'toolu_01LA', tool: 'ExitPlanMode' });
+  });
+
+  it('PreToolUse/PostToolUse still reject other tools', () => {
+    expect(mapHookPayload({ hook_event_name: 'PreToolUse', tool_name: 'Bash' }).kind).toBe('reject');
+    expect(mapHookPayload({ hook_event_name: 'PostToolUse', tool_name: 'Edit' }).kind).toBe('reject');
+  });
+
+  it('blocking Notification → blockKind unbekannt (FA-10)', () => {
+    expect(ev({ hook_event_name: 'Notification', notification_type: 'elicitation_dialog', message: 'm' }).detail).toMatchObject({ blockKind: 'unbekannt' });
   });
 });

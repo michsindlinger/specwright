@@ -18,7 +18,7 @@ import { VORHABEN_DOC_FILES, VORHABEN_DOC_ORDER } from '../../../../src/shared/t
 import { buildAenderungenText, formatStandLabel } from '../../../../src/shared/vorhaben-text.js';
 import { vorhabenService, type SendResult } from '../../services/vorhaben.service.js';
 import { PHASE_LABELS, STEP_LABELS, ZUSTAND_LABELS, formatStand, relativeTime } from './vorhaben-sort.js';
-import { leisteGrund } from './aos-sende-leiste.js';
+import { dialogZielText, leisteGrund } from './aos-sende-leiste.js';
 import './aos-dokument-leser.js';
 import './aos-sende-leiste.js';
 import './aos-anmerkungen-sammel.js';
@@ -52,6 +52,12 @@ export class AosVorhabenSeite extends LitElement {
   @property({ attribute: false }) protocol: ProtokollEintrag[] = [];
   /** `lastModelKey(...)` → selection (from the state). */
   @property({ attribute: false }) lastModel: Record<string, ModelSelection> = {};
+  /**
+   * CSS width of the Gespräch column next to the page (INT-2026-007, Mac
+   * only); sets `--gespraech-width`, which the fixed send bar subtracts from
+   * its right edge. Empty = no Gespräch.
+   */
+  @property({ type: String }) gespraechBreite = '';
 
   @state() private sammelOpen = false;
   @state() private lost: string[] = [];
@@ -160,7 +166,9 @@ export class AosVorhabenSeite extends LitElement {
       background: var(--color-accent-primary);
     }
     .dot.wartet,
-    .dot.wartet_im_terminal {
+    .dot.wartet_rueckfrage,
+    .dot.wartet_plan,
+    .dot.wartet_berechtigung {
       background: var(--color-accent-warning);
     }
     .dot.arbeitet {
@@ -240,6 +248,7 @@ export class AosVorhabenSeite extends LitElement {
   `;
 
   protected override willUpdate(changed: PropertyValues<this>): void {
+    if (changed.has('gespraechBreite')) this.style.setProperty('--gespraech-width', this.gespraechBreite || '0px');
     if (changed.has('doc') || (changed.has('row') && (changed.get('row') as VorhabenRow | undefined)?.intentId !== this.row?.intentId)) {
       this.readStand = 0;
       this.sendError = '';
@@ -354,7 +363,8 @@ export class AosVorhabenSeite extends LitElement {
     if (id) document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId: id } }));
   }
 
-  private scrollToNextStep(): void {
+  /** Scrolls the „nächster Schritt" block into view (send bar, Gespräch input). */
+  public scrollToNextStep(): void {
     this.renderRoot.querySelector('aos-naechster-schritt')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
@@ -377,7 +387,7 @@ export class AosVorhabenSeite extends LitElement {
         <div class="meta">
           <span class="badge">${PHASE_LABELS[r.phase]}${r.bypass ? ' · Spec entfällt' : ''}</span>
           ${r.phaseNote ? html`<span>${r.phaseNote}</span>` : nothing}
-          <span><span class="dot ${r.zustand}"></span>${ZUSTAND_LABELS[r.zustand]}${r.zustandDetail && r.zustand !== 'wartet_auf_dich' ? ` · ${r.zustandDetail}` : ''}</span>
+          <span><span class="dot ${r.zustand}"></span>${ZUSTAND_LABELS[r.zustand]}${r.zustandDetail && r.zustand !== 'wartet_auf_dich' && !ZUSTAND_LABELS[r.zustand].endsWith(r.zustandDetail) ? ` · ${r.zustandDetail}` : ''}</span>
           ${session ? html`<span>Sitzung <strong>${session.name}</strong>${session.model ? ` · ${session.model}` : ''}${session.ended ? ' · beendet' : ''}</span>` : nothing}
           ${r.arbeitskopie ? html`<span>Arbeitskopie <code>${r.arbeitskopie}</code></span>` : nothing}
           <span>geändert ${relativeTime(r.lastChangedMs)}</span>
@@ -434,7 +444,7 @@ export class AosVorhabenSeite extends LitElement {
         .preview=${this.preview()}
         .sessionName=${session?.name ?? ''}
         .bereit=${grund === 'bereit'}
-        .grund=${GRUND_TEXT[grund] ?? ''}
+        .grund=${grund === 'dialog' ? dialogZielText(r) : GRUND_TEXT[grund] ?? ''}
         .sending=${this.sending}
         @sammel-close=${() => (this.sammelOpen = false)}
         @sammel-send=${() => this.send('aenderungen')}
@@ -480,8 +490,15 @@ export class AosVorhabenSeite extends LitElement {
     if (r.phase === 'absicht' && !r.session) {
       return html`<div class="hinweis"><span>Entwurf im Terminal fortsetzen.</span></div>`;
     }
-    if (r.zustand === 'wartet_im_terminal') {
-      return html`<div class="hinweis"><span>Die Sitzung zeigt einen Dialog — im Terminal antworten.</span></div>`;
+    // INT-2026-007 (FA-09): the hint names the kind of dialog. Stage 1 answers in the terminal; stage 2 brings the cards.
+    if (r.zustand === 'wartet_rueckfrage') {
+      return html`<div class="hinweis"><span>Die Sitzung stellt eine Rückfrage — im Terminal antworten.</span></div>`;
+    }
+    if (r.zustand === 'wartet_plan') {
+      return html`<div class="hinweis"><span>Die Sitzung legt einen Plan vor — Entscheidung im Terminal.</span></div>`;
+    }
+    if (r.zustand === 'wartet_berechtigung') {
+      return html`<div class="hinweis"><span>Die Sitzung zeigt einen Dialog${r.zustandDetail && r.zustandDetail !== 'Dialog' ? ` (${r.zustandDetail})` : ''} — im Terminal antworten.</span></div>`;
     }
     return nothing;
   }

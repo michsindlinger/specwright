@@ -1,0 +1,158 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Mock 09 — Karten Mac</title><link rel="stylesheet" href="mock.css"></head>
+<body><div class="stage col"><div>
+<div class="caption">09a · Plan-Karte mit externem Review (Ergebnis liegt vor), Zustand „wartet · Plan-Entscheidung" · Mac 1440×900 · Ablauf D, E · FA-09, FA-15–FA-19</div>
+<div class="screen mac">
+  <aside class="sidebar">
+    <div class="logo"><i></i> Specwright</div>
+    <div class="sec">Projekte</div>
+    <div class="item">Specwright <span class="dot"></span></div>
+    <div class="item on">Applai <span class="dot wait"></span></div>
+    <div class="item">Kreis Lippe <span class="dot ok"></span></div>
+    <div class="item">Brodybookings <span class="dot"></span></div>
+    <div class="item">kinder-phone <span class="dot"></span></div>
+    <div class="item">RD-Recruiting <span class="dot"></span></div>
+    <div class="spacer"></div>
+    <div class="item">Team</div><div class="item">Einstellungen</div>
+  </aside>
+  <div class="main">
+    <div class="topbar"><div class="tabs"><div class="tab on">Vorhaben</div><div class="tab">Projekt</div><div class="tab">Terminal</div><div class="tab">Chat</div></div><div class="grow"></div><span class="kbd">⌘⇧E Notizblock</span></div>
+    <div class="vhead">
+      <div class="kbd">‹ Vorhaben</div>
+      <div class="id">Applai · INT-2026-003</div>
+      <h1>Digest-Mail nur bei neuen Matches</h1>
+      <div class="meta"><span class="phase">Plan</span><span class="state"><span class="dot warn"></span><b>wartet · Plan-Entscheidung</b></span><span>Sitzung <b>plan INT-2026-003</b> · Worktree <span class="kbd">feat/INT-2026-003</span> · Claude Opus</span><span>geändert vor 6 min</span></div>
+    </div>
+    <div class="doctabs"><div>intent.md</div><div>spec.md</div><div class="on">plan.md</div></div>
+    <div class="docwrap">
+      <div class="doc">
+        <div class="fm"><span>Status</span><b>entwurf</b><span>Erstellt</span><b>2026-09-16</b></div>
+        <h2>3. Entwurf</h2>
+        <div class="para"><span class="mark set">1</span><p>Der Digest-Job liest je Kandidat den Zeitstempel der letzten Mail und zählt Matches mit jüngerem Erstellungsdatum; bei null Treffern endet der Job ohne Versand.</p></div>
+        <div class="note saved"><div class="ref">Bezug: §3 · Anmerkung 1 (ungesendet)</div><div class="txt">Zeitstempel der letzten Mail: bitte auch den Fall „nie eine Mail bekommen" nennen.</div></div>
+        <h2>5. Verbindungen</h2>
+        <table><tr><th>Verbindung</th><th>Von → nach</th><th>Nachweis</th></tr>
+          <tr><td>V-01</td><td>Match-Erzeugung → Zähler</td><td>Test: 0 / 1 / n neue Matches</td></tr>
+          <tr><td><span class="mark set" style="position:static;display:inline-flex;margin-right:6px">2</span>V-02</td><td>Zähler → Versand</td><td>Test mit Mail-Attrappe</td></tr>
+        </table>
+        <h2>6. Reihenfolge der Umsetzung</h2>
+        <div class="para"><span class="mark">+</span><p>Schritt 0: Test für FA-01 rot; Schritt 1: Zähler; Schritt 2: Versandbedingung; Schritt 3: Abmelde-Randfall …</p></div>
+      </div>
+      <div class="conv">
+        <div class="chead"><span>Gespräch mit <b>plan INT-2026-003</b></span><span class="state"><span class="dot warn"></span>wartet · Plan-Entscheidung</span><span class="grow"></span><span class="toggle"><span class="sw"></span>Vorlesen</span><span class="btn ghost sm">Im Terminal öffnen ↗</span></div>
+        <div class="cbody end">
+          <div class="work">arbeitet · 21 Werkzeugaufrufe · 6:10 min</div>
+          <div class="kcard">
+            <div class="kh"><span>Plan liegt vor</span><span>10:31</span></div>
+            <div class="plantext"><b>Digest-Mail nur bei neuen Matches — Plan</b>§1 Ziel · §3 Entwurf · §5 Verbindungen · §6 Reihenfolge (4 Schritte) · §8 Tests<div class="more">ganz lesen (1.840 Wörter) ▸</div></div>
+            <div class="review-box">
+              <div class="rh"><span>Extern geprüft · <b style="color:var(--t1)">2 von 3</b> Reviewern geliefert</span><span class="toggle on"><span class="sw"></span>automatisch</span></div>
+              <div class="rchips"><span class="chip on">Claude Opus ✓</span><span class="chip on">GLM 4.5 ✓</span><span class="chip" style="border-color:var(--err);color:var(--err)">Grok 4 ✗ Proxy 400</span></div>
+              <div class="rh"><span>Zusammengeführt: 4 Befunde (1 doppelt)</span><span class="kbd">im Dialog ▸ Option 3</span></div>
+              <ol><li>V-02 ohne Nachweis für „nie eine Mail" (2 Reviewer)</li><li>Schritt 0 testet FA-01, nicht FA-02</li></ol>
+              <div class="rh" style="margin-top:4px"><span class="kbd">+ 2 weitere ▸</span><span class="btn ghost sm" style="padding:1px 8px">Erneut prüfen</span></div>
+            </div>
+            <div class="dec">
+              <span class="btn">Annehmen, ohne Nachfragen</span>
+              <span class="btn">Annehmen, einzeln bestätigen</span>
+              <span class="btn primary">Ändern mit Text (Review vorbelegt)</span>
+              <span class="btn ghost">Abbrechen</span>
+            </div>
+          </div>
+        </div>
+        <div class="cinput">
+          <div class="field off"><span class="ph">Nachricht an die Sitzung …</span></div>
+          <div class="irow"><span class="mic" style="opacity:.5"><i></i>Mikro aus</span><span class="grow"></span><span class="reason"><span class="dot warn"></span>Plan-Entscheidung oben treffen</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sendbar"><span class="cnt">2 Anmerkungen</span><span class="target">an Sitzung <b>plan INT-2026-003</b></span><span class="grow"></span><span class="reason"><span class="dot warn"></span>Plan-Entscheidung offen — Karte im Gespräch; Anmerkungen dort als Änderungstext übernehmbar</span><span class="btn ghost">Alle ansehen</span><span class="btn disabled">Änderungen schicken</span><span class="btn primary disabled">Freigeben</span></div>
+  </div>
+</div>
+</div>
+
+<div>
+<div class="caption">09b–d · Karten im Gesprächsbereich · Ablauf C, D, F · FA-10, FA-12, FA-13, FA-17, FA-19–FA-21</div>
+<div class="grid3c">
+
+  <div class="ctile"><h3>09b · Rückfrage mit Auswahl, zwei Fragen, Mehrfachauswahl, „Anderes"</h3>
+    <div class="conv" style="height:790px">
+      <div class="chead"><span>Gespräch mit <b>intent</b></span><span class="state"><span class="dot warn"></span>wartet · Rückfrage</span><span class="grow"></span><span class="toggle"><span class="sw"></span>Vorlesen</span></div>
+      <div class="cbody">
+        <div class="msg ai"><div class="who"><b>Claude</b><span>11:02</span></div><p>Bevor ich die Absicht schreibe, zwei Fragen:</p></div>
+        <div class="kcard warn">
+          <div class="kh"><span>Rückfrage · 2 Fragen</span><span>11:02</span></div>
+          <div class="q">1. Wer bekommt die Digest-Mail?</div><div class="qsub">Mehrfachauswahl möglich</div>
+          <div class="opt on"><span class="rb cb"></span><div><div class="ol">Kandidaten mit aktivem Profil</div><div class="od">Standard heute; ca. 1.200 Empfänger</div></div></div>
+          <div class="opt on"><span class="rb cb"></span><div><div class="ol">Kandidaten in einer laufenden Bewerbung</div><div class="od">auch bei pausiertem Profil</div></div></div>
+          <div class="opt"><span class="rb cb"></span><div><div class="ol">Alle mit E-Mail-Adresse</div><div class="od">inkl. abgemeldete — nicht empfohlen</div></div></div>
+          <div class="field" style="min-height:36px;margin-top:4px"><span class="ph">Anderes …</span></div>
+          <hr>
+          <div class="q">2. Wann gilt ein Match als „neu"?</div>
+          <div class="opt"><span class="rb"></span><div><div class="ol">Erstellt nach der letzten Mail</div></div></div>
+          <div class="opt on"><span class="rb"></span><div><div class="ol">Erstellt nach der letzten Mail und noch nicht angesehen</div></div></div>
+          <div class="field" style="min-height:36px;margin-top:4px"><span class="ph">Anderes …</span></div>
+          <div class="kacts"><span class="kbd">jede Frage braucht eine Antwort</span><span class="grow"></span><span class="btn primary sm">Antworten</span></div>
+        </div>
+      </div>
+      <div class="cinput">
+        <div class="field off"><span class="ph">Nachricht an die Sitzung …</span></div>
+        <div class="irow"><span class="mic" style="opacity:.5"><i></i>Mikro aus</span><span class="grow"></span><span class="reason"><span class="dot warn"></span>Rückfrage oben beantworten</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctile"><h3>09c · Berechtigung und nicht einzuordnender Dialog (Rückfallebene)</h3>
+    <div class="conv" style="height:790px">
+      <div class="chead"><span>Gespräch mit <b>build INT-2026-003</b></span><span class="state"><span class="dot warn"></span>wartet · Berechtigung</span><span class="grow"></span><span class="btn ghost sm">Im Terminal öffnen ↗</span></div>
+      <div class="cbody">
+        <div class="msg ai"><div class="who"><b>Claude</b><span>14:20</span></div><p>Schritt 2 umgesetzt, Tests grün. Ich pushe den Branch.</p></div>
+        <div class="work">arbeitet · 2 Werkzeugaufrufe · 0:08 min</div>
+        <div class="kcard warn">
+          <div class="kh"><span>Sitzung wartet auf Berechtigung</span><span>14:21</span></div>
+          <div class="q">Werkzeug: <code>Bash</code> — <span class="kbd">git push -u origin feat/INT-2026-003</span></div>
+          <div class="hint">Berechtigungen beantwortest du im Terminal; die UI baut den Dialog nicht nach (NZ-02). Danach geht es hier weiter.</div>
+          <div class="kacts"><span class="btn primary sm">Im Terminal öffnen ↗</span></div>
+        </div>
+        <div class="newer">Variante: Dialog nicht einzuordnen (FA-10)</div>
+        <div class="kcard warn">
+          <div class="kh"><span>Sitzung zeigt einen Dialog</span><span>14:33</span></div>
+          <div class="q">Die UI kann den Dialog nicht sicher lesen — im Terminal antworten.</div>
+          <div class="hint warn"><b>Nicht geraten:</b> Die UI tippt keine Tasten in einen Dialog, den sie nicht kennt (fail closed).</div>
+          <div class="kacts"><span class="btn primary sm">Im Terminal öffnen ↗</span></div>
+        </div>
+      </div>
+      <div class="cinput">
+        <div class="field off"><span class="ph">Nachricht an die Sitzung …</span></div>
+        <div class="irow"><span class="mic" style="opacity:.5"><i></i>Mikro aus</span><span class="grow"></span><span class="reason"><span class="dot warn"></span>Sitzung wartet auf Berechtigung — im Terminal antworten</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctile"><h3>09d · Karten-Zustände: Review läuft (gesperrt), beantwortet, „ändern mit Text"</h3>
+    <div class="conv" style="height:790px">
+      <div class="chead"><span>Gespräch mit <b>plan INT-2026-003</b></span><span class="state"><span class="dot warn"></span>wartet · Plan-Entscheidung</span><span class="grow"></span><span class="toggle"><span class="sw"></span>Vorlesen</span></div>
+      <div class="cbody end">
+        <div class="msg me"><div class="who"><b>Du</b><span>10:20 · Terminal</span></div><div class="who"><span class="tag ok">Antwort: Kandidaten mit aktivem Profil, Kandidaten in einer laufenden Bewerbung · Erstellt nach der letzten Mail und noch nicht angesehen</span></div></div>
+        <div class="kcard mute">
+          <div class="kh"><span>Plan liegt vor</span><span>Review läuft — Entscheidung danach</span></div>
+          <div class="plantext"><b>Digest-Mail nur bei neuen Matches — Plan</b>§1–§14 · <span class="more">ganz lesen ▸</span></div>
+          <div class="prog"><span>Claude Opus</span><span class="st run">läuft · 0:48</span><span>GLM 4.5</span><span class="st ok">fertig · 2 Befunde</span><span>Grok 4</span><span class="st wait">wartet</span></div>
+          <div class="dec"><span class="btn disabled">Annehmen, ohne Nachfragen</span><span class="btn disabled">Annehmen, einzeln bestätigen</span><span class="btn disabled wide">Ändern mit Text</span></div>
+        </div>
+        <div class="kcard">
+          <div class="kh"><span>Ändern mit Text</span><span>Review vorbelegt</span></div>
+          <div class="field" style="min-height:96px;font-size:12.5px">Externer Plan-Review (2 von 3):<br>1. V-02 ohne Nachweis für „nie eine Mail" …<br>2. Schritt 0 testet FA-01, nicht FA-02 …<br><br>Änderungen zu plan.md (Stand 2026-09-16 10:31):<br>1. [§3] Zeitstempel der letzten Mail: auch „nie eine Mail bekommen" nennen.<br>2. [V-02] Nachweis mit Mail-Attrappe konkret benennen.<span class="cursor"></span></div>
+          <div class="kacts"><span class="btn ghost sm">Anmerkungen (2) übernommen ✓</span><span class="grow"></span><span class="btn ghost sm">Zurück</span><span class="btn primary sm">An die Sitzung</span></div>
+        </div>
+        <div class="msg me"><div class="who"><b>Du</b><span>10:36</span><span class="tag ok">Plan: Änderungen geschickt</span></div><p>Externer Plan-Review (2 von 3) … Änderungen zu plan.md (Stand …) …</p></div>
+      </div>
+      <div class="cinput">
+        <div class="field"><span class="ph">Nachricht an die Sitzung …</span></div>
+        <div class="irow"><span class="mic"><i></i>Mikro aus</span><span class="grow"></span><span class="btn sm">Einreihen</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div></body></html>

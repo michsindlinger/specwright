@@ -47,6 +47,8 @@ import { getWorkspaceStatePath, getVorhabenStatePath } from './utils/runtime-pat
 import { VorhabenStateStore } from './services/vorhaben-state.js';
 import { VorhabenService } from './services/vorhaben-service.js';
 import { VorhabenHandler } from './services/vorhaben-handler.js';
+import { GespraechService, defaultConfigDirs } from './services/gespraech-service.js';
+import { GespraechHandler } from './services/gespraech-handler.js';
 import { ProjectDocsService } from './services/project-docs.service.js';
 import { existsSync } from 'fs';
 import type {
@@ -100,6 +102,9 @@ export class WebSocketHandler {
   private vorhabenStore: VorhabenStateStore;
   private vorhabenService: VorhabenService;
   private vorhabenHandler: VorhabenHandler;
+  // INT-2026-007: the Gespräch of a session (transcript + hooks), subscribed per client.
+  private gespraechService: GespraechService;
+  private gespraechHandler: GespraechHandler;
   /** Sessions the user closed via cloud-terminal:close — their `closed` event carries closedBy:'user'. */
   private userClosedSessionIds = new Set<string>();
   /** Sessions created through a WS create handler (they broadcast their own `created`). */
@@ -130,6 +135,21 @@ export class WebSocketHandler {
       setSessionName: (sessionId, name) => this.workspaceHandler.setSessionName(sessionId, name),
     });
     this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage));
+    this.gespraechService = new GespraechService({
+      manager: this.cloudTerminalManager,
+      protocol: this.vorhabenStore,
+      configDirs: () => defaultConfigDirs(getAllProviders().map((p) => p.id)),
+    });
+    this.gespraechHandler = new GespraechHandler({
+      gespraech: this.gespraechService,
+      vorhaben: this.vorhabenService,
+      sendTo: (clientId, m) => {
+        const c = this.clients.get(clientId);
+        if (!c || c.readyState !== WebSocket.OPEN) return false;
+        c.send(JSON.stringify(m));
+        return true;
+      },
+    });
     this.bootWorkspace();
     this.setupConnectionHandler();
     this.startHeartbeat();
@@ -231,6 +251,7 @@ export class WebSocketHandler {
       client.on('close', () => {
         console.log(`Client disconnected: ${client.clientId}`);
         this.voiceCallService.endCallsForClient(client.clientId);
+        this.gespraechHandler.onClientClosed(client.clientId);
         this.clients.delete(client.clientId);
       });
 
@@ -391,6 +412,15 @@ export class WebSocketHandler {
         case 'project-docs:draft.clear':
           this.gateOnCloudTerminalRestore(() => {
             this.vorhabenHandler.handle(message as Record<string, unknown>, (m) => client.send(JSON.stringify(m)));
+          });
+          break;
+        case 'gespraech:subscribe':
+        case 'gespraech:unsubscribe':
+        case 'gespraech:send-text':
+        case 'gespraech:discard':
+          // INT-2026-007: gated like the Vorhaben handlers (sessions come from the restore).
+          this.gateOnCloudTerminalRestore(() => {
+            this.gespraechHandler.handle(client.clientId, message as Record<string, unknown>, (m) => client.send(JSON.stringify(m)));
           });
           break;
         case 'settings.general.update':
@@ -2289,7 +2319,10 @@ export class WebSocketHandler {
       // Send initial command to start DevTeam build
       setTimeout(() => {
         const commandPrefix = resolveCommandDir(projectPath);
-        this.cloudTerminalManager.sendInput(session.sessionId, `/${commandPrefix}:build-development-team\n`);
+        // INT-2026-007 (H1): a machine write like any other — under the session's lock.
+        void this.cloudTerminalManager.withMachineWrite(session.sessionId, async () => {
+          this.cloudTerminalManager.sendInput(session.sessionId, `/${commandPrefix}:build-development-team\n`);
+        });
       }, 1000);
 
       this.wsCreatedSessionIds.add(session.sessionId);
