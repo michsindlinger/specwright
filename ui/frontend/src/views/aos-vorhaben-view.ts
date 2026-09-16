@@ -320,11 +320,12 @@ export class AosVorhabenView extends LitElement {
         @vorhaben-session-started=${this.onSessionStarted}
       ></aos-vorhaben-seite>`;
       if (!split) return seite;
+      // Gespräch left, document right (FA-12, Skizze 3); below 1024 px the CSS puts the Gespräch under the document.
       return html`<div class="vorhaben-split" style="--gespraech-width: ${GESPRAECH_BREITE}">
-        ${seite}
         <div class="vorhaben-split-gespraech">
           <aos-gespraech .row=${row} .protocol=${protocol.filter((e) => e.projectId === row.projectId && e.intentId === row.intentId)} @gespraech-next-step=${this.onGespraechNextStep}></aos-gespraech>
         </div>
+        ${seite}
       </div>`;
     }
     if (missing) {
@@ -392,10 +393,10 @@ export class AosVorhabenView extends LitElement {
     const sessionId = pending?.sessionId ?? claimedRow?.session?.id;
     const protocol = (this.vorhabenState?.protocol ?? []).filter((e) => e.sessionId === sessionId);
     return html`<div class="vorhaben-split" style="--gespraech-width: ${GESPRAECH_BREITE}">
-      ${block}
       <div class="vorhaben-split-gespraech">
         <aos-gespraech .row=${claimedRow} .pending=${pending} .protocol=${protocol}></aos-gespraech>
       </div>
+      ${block}
     </div>`;
   }
 }

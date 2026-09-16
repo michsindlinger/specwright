@@ -5801,26 +5801,36 @@ aos-model-selector .model-option.selected .model-name {
   /* R-10: the split needs the full width, not the 1180 px reader column */
   max-width: none;
 }
+/* INT-2026-010 (FA-12, Skizze 3): Gespräch links, Dokument rechts, 50/50.
+   `--gespraech-width` = half of the view's content width (viewport minus
+   terminal sidebar, file tree and the view padding, minus the gap); set by
+   aos-vorhaben-view as GESPRAECH_BREITE. */
 .vorhaben-split {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--gespraech-width, 500px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--spacing-lg);
   align-items: start;
 }
-/* The column only reserves the width; the Gespräch itself is fixed to the
-   viewport (main-content has overflow-x:hidden → sticky never engages),
-   right of the terminal sidebar, above the send bar's row. */
+/* The first column only reserves the width; the Gespräch itself is fixed to
+   the viewport (main-content has overflow-x:hidden → sticky never engages),
+   flush with the view's left padding, above the send bar's row. */
 .vorhaben-split-gespraech {
+  grid-column: 1;
+  min-width: 0;
+}
+.vorhaben-split > aos-vorhaben-seite,
+.vorhaben-split > .neue-absicht {
+  grid-column: 2;
   min-width: 0;
 }
 .vorhaben-split aos-gespraech {
   position: fixed;
   top: var(--header-height, 56px);
   bottom: 0;
-  right: var(--terminal-open-width, 0px);
+  left: calc(var(--file-tree-open-width, 0px) + var(--spacing-xl));
   width: var(--gespraech-width, 500px);
   z-index: 40;
-  transition: right 0.3s ease;
+  transition: left 0.3s ease, width 0.3s ease;
 }
 .gespraech {
   height: 100%;
@@ -5828,7 +5838,7 @@ aos-model-selector .model-option.selected .model-name {
   flex-direction: column;
   min-height: 0;
   background: var(--color-bg-primary);
-  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
   font-family: var(--font-family);
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
@@ -6669,19 +6679,36 @@ aos-projekt-seite .abschnitt-git aos-git-status-bar {
   margin-bottom: var(--spacing-lg);
 }
 
-/* Vorhaben page below 1024 px: document above the Gespräch (FA-20, design.md §5) */
+/* Vorhaben page below 1024 px: document above the Gespräch (FA-20, design.md §5).
+   The Gespräch comes first in the DOM (left column on the Mac) → `order` puts it below. */
 @media (max-width: 1023px) {
   aos-app .vorhaben-split {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   aos-app .vorhaben-split-gespraech {
+    order: 2;
     margin-top: var(--spacing-lg);
+  }
+
+  aos-app .vorhaben-split > aos-vorhaben-seite,
+  aos-app .vorhaben-split > .neue-absicht {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   aos-app .vorhaben-split aos-gespraech {
     position: static;
+    display: block;
     width: auto;
     height: 70vh;
+  }
+
+  aos-app .vorhaben-split .gespraech {
+    border-right: none;
+    border-top: 1px solid var(--color-border);
   }
 }

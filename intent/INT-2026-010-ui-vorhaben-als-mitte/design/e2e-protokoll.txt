@@ -18,7 +18,7 @@ Umgebung: Branch-Backend auf Port 3111 (Runtime /tmp/sw-3111, eigener tmux-Socke
 
 - skizze-01.jpg (Liste, Rahmen) ↔ ist-01-liste-mac.png, ist-01-liste-handy.png: Kopfzeile links Titel, rechts Glocke/Projekt(/Terminal); Chips, zwei Gruppen, Leiste unten. Abweichung: die Leiste steht seit dem letzten Build fest am unteren Fensterrand (position: fixed), im Screenshot des Laufs noch direkt unter der Liste (sticky).
 - skizze-01.jpg (Neue Absicht) ↔ ist-03-neu-zwischenstand.png: Zwischenstand mit Start-Block statt Textfeld/Modell/Starten — Stufe 2.
-- skizze-01.jpg (Vorhaben-Seite) ↔ ist-04-vorhaben-mac.png: Gespräch rechts, Dokument links, Sende-Leiste über die ganze Breite. Phasen-Chips und Aktionsleiste — Stufe 2; Reiter intent.md/spec.md bleiben bis dahin.
+- skizze-01.jpg (Vorhaben-Seite) ↔ ist-04-vorhaben-mac.png: Gespräch rechts, Dokument links, Sende-Leiste über die ganze Breite. Phasen-Chips und Aktionsleiste — Stufe 2; Reiter intent.md/spec.md bleiben bis dahin. **Nachtrag 16.09. (Split-Fix):** die Seitenzuordnung war hier falsch als Treffer gewertet — Skizze 3 und FA-12 haben das Gespräch links und das Dokument rechts, 50/50; korrigiert mit dem Fix nach Stufe 2 (unten).
 - Projekt-Seite und Handy ohne Skizze: Beschreibung Plan §3 gilt; ist-02-projekt-mac.png, ist-02-projekt-handy.png.
 
 ## Messwerte
@@ -48,7 +48,7 @@ Umgebung: Branch-Backend `feat/INT-2026-010-s2` auf Port 3111 (Runtime /tmp/sw-3
 ## Screenshots neben dem Mock
 
 - skizze-01.jpg (Neue Absicht) ↔ ist-03-neu-mac.png: Textfeld, Modellwahl, Starten — drei Elemente wie in der Skizze; ist-03-neu-beitrag.png zeigt den Text als ersten Beitrag im Gespräch.
-- skizze-01.jpg (Vorhaben-Seite, Skizze 3) ↔ ist-04-vorhaben-mac.png: Kennung groß, Titel, Phasen-Chips rechts, Dokument links, Gespräch rechts; ist-04-aktionsleiste-mac.png: nächster Schritt und „Freigeben" unter dem Dokument. Abweichung: die Aktionsleiste steht am Ende des Dokuments (Scrollen nötig), nicht fest am unteren Rand — dort liegt die Sende-Leiste für Anmerkungen.
+- skizze-01.jpg (Vorhaben-Seite, Skizze 3) ↔ ist-04-vorhaben-mac.png: Kennung groß, Titel, Phasen-Chips rechts; ist-04-aktionsleiste-mac.png: nächster Schritt und „Freigeben" unter dem Dokument. Abweichung: die Aktionsleiste steht am Ende des Dokuments (Scrollen nötig), nicht fest am unteren Rand — dort liegt die Sende-Leiste für Anmerkungen. **Befund nach Merge (Michael, 16.09.):** Dokument links, Gespräch rechts mit fester Breite — Skizze 3 und FA-12 verlangen Gespräch links, Dokument rechts, 50/50. Behoben im Split-Fix (unten); ist-04-vorhaben-mac.png ist seitdem der Stand danach.
 - Handy ohne Skizze: Beschreibung Plan §3 gilt; ist-04-vorhaben-handy.png, ist-03-neu-handy.png.
 
 ## Messwerte
@@ -56,3 +56,13 @@ Umgebung: Branch-Backend `feat/INT-2026-010-s2` auf Port 3111 (Runtime /tmp/sw-3
 - Erste Eingabe „Neue Absicht": Start → Zustellung 10,7 s (Haiku, erste Frage); Start → Ordner-Claim 45 s (zwei Antworten).
 - Chip-Synchronisation zwischen zwei Geräten: 4 ms (Broadcast-Empfang → DOM).
 - Freigabe ohne Sitzung: Start → Zustellung 108,6 s (Lauf 1) bzw. 178 s (Lauf 2); Start → `Status: freigegeben` 139 s bzw. 153 s.
+
+# E2E-Protokoll INT-2026-010 Split-Fix (nach Stufe 2) — 2026-09-16
+
+Befund von Michael am Screenshot der Vorhaben-Seite: Dokument links (1fr), Gespräch rechts mit fester Breite `clamp(420px, 34vw, 540px)` — Bestand aus INT-2026-007, nie an Skizze 3 / FA-12 angepasst (Gespräch links, Dokument rechts, Trennlinie mittig). Fix: Grid `1fr 1fr`, Gespräch-Spalte zuerst, Gespräch fixiert am linken View-Rand mit halber Inhaltsbreite (Viewport minus Terminal-Sidebar, Dateibaum, View-Padding, Spaltenabstand), Sende-Leiste beginnt an der Dokumentspalte; unter 1024 px Dokument über Gespräch (Flex-Spalte mit `order`). Skript e2e-split.mjs im Scratchpad, Branch-Backend 3111, Scratch-Projekt INT-2026-001. 5/5 Prüfpunkte grün.
+
+## Geometrie (Bounding-Boxen, px)
+
+- 1440×900: Gespräch l 29 · w 680 — Dokument l 731 · w 680 — Sende-Leiste l 731 · r 1440 (ist-04-vorhaben-mac.png).
+- 1440×900 + Terminal-Sidebar (Cmd+D): Gespräch l 29 · w 430 — Dokument l 481 · w 430 — Leiste r 940 = linker Rand der Sidebar (ist-04-vorhaben-terminal-mac.png).
+- 900×1000: Dokument oben (w 842), Gespräch darunter statisch (w 842, 70vh), Leiste volle Breite (ist-04-vorhaben-900.png). Zwei Fehler dabei gefunden und behoben: `aos-gespraech` ist ein Inline-Element (brauchte `display: block`), `align-items: start` der Grundregel verhinderte das Strecken in der Spalte.

@@ -121,7 +121,7 @@ describe('aos-vorhaben-view — split with Gespräch (FA-01, NZ-01)', () => {
     route = { view: 'vorhaben', segments: ['p', 'INT-2026-003'] };
   });
 
-  it('Mac + assigned session: page left, Gespräch right with the same row; the page gets the Gespräch width for its send bar', async () => {
+  it('Mac + assigned session: Gespräch left, page right (FA-12, Skizze 3) with the same row; the page gets the Gespräch width (half the content width) for its send bar', async () => {
     const el = await view();
     stateListener!(state([row()]));
     await settle(el);
@@ -134,8 +134,13 @@ describe('aos-vorhaben-view — split with Gespräch (FA-01, NZ-01)', () => {
     expect(seite).not.toBeNull();
     expect(gespraech).not.toBeNull();
     expect(gespraech.row.intentId).toBe('INT-2026-003');
-    expect(seite.gespraechBreite).toContain('clamp(');
-    expect(seite.style.getPropertyValue('--gespraech-width')).toContain('clamp(');
+    // INT-2026-010: the Gespräch column comes first in the DOM (left on the Mac; CSS order puts it below the document under 1024 px)
+    expect([...split.children].map((c) => c.tagName.toLowerCase())).toEqual(['div', 'aos-vorhaben-seite']);
+    expect(split.children[0].classList.contains('vorhaben-split-gespraech')).toBe(true);
+    // 50/50: half of the content width (viewport minus terminal, file tree, view padding and gap), not a fixed clamp
+    expect(seite.gespraechBreite).toMatch(/^calc\(\(100vw - var\(--terminal-open-width, 0px\) - var\(--file-tree-open-width, 0px\) - .*\) \/ 2\)$/);
+    expect(seite.style.getPropertyValue('--gespraech-width')).toBe(seite.gespraechBreite);
+    expect(seite.style.getPropertyValue('--gespraech-versatz')).toContain('var(--spacing-xl)');
     el.remove();
   });
 
@@ -146,6 +151,7 @@ describe('aos-vorhaben-view — split with Gespräch (FA-01, NZ-01)', () => {
     expect(el.querySelector('.vorhaben-view')!.classList.contains('split')).toBe(false);
     expect(el.querySelector('aos-gespraech')).toBeNull();
     expect(el.querySelector('aos-vorhaben-seite')!.gespraechBreite).toBe('');
+    expect(el.querySelector('aos-vorhaben-seite')!.style.getPropertyValue('--gespraech-versatz')).toBe('0px');
     el.remove();
     mobile = true;
     const m = await view();
@@ -287,7 +293,9 @@ describe('aos-vorhaben-view — started step stays on the page (FA-22, AN-S03)',
     await card.updateComplete;
     (card.shadowRoot!.querySelector('button.terminal') as HTMLButtonElement).click();
     expect(seen).toEqual(['cloud-1-7']);
-    expect(card.shadowRoot!.textContent).toContain('Gespräch rechts');
+    expect(card.shadowRoot!.textContent).toContain('Gespräch links');
+    // the Gespräch column precedes the card on the route neu as well
+    expect([...el.querySelector('.vorhaben-split')!.children].map((c) => c.className)).toEqual(['vorhaben-split-gespraech', 'neue-absicht']);
     el.remove();
     mobile = true;
     const m = await view('neu');
