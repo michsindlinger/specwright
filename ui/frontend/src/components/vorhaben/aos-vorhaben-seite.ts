@@ -1,23 +1,31 @@
 /**
- * aos-vorhaben-seite — one Vorhaben (mock 03): head (id, title, phase +
- * note, state, session/model/worktree), review hint while the session waits
- * (FA-15), protocol of sent answers (FA-31), document tabs in fixed order
- * (FA-17), the reader with annotation marks (FA-23), the send bar
- * (FA-27–FA-30), the collection view (FA-25), the "Freigeben" confirmation
+ * aos-vorhaben-seite — one Vorhaben (mock 03; INT-2026-010 skizze 3): head
+ * with id, title and the Phasen-Chips intent · spec · plan · build
+ * (+ design/ when sketches exist; FA-12), state line, review hint while the
+ * session waits (FA-15), protocol of sent answers (FA-31), the reader with
+ * annotation marks (FA-23) or „Kein Dokument in dieser Phase", below it the
+ * action bar: the next step — always shown, greyed out while a session of
+ * the Vorhaben works or waits (FA-21) — and „Freigeben" when the shown
+ * document awaits approval (FA-22): sent to the waiting session like every
+ * review answer, or, without a session, the step's session is started with
+ * the Freigabe as first input (AN-S06). Then the send bar for Anmerkungen
+ * (FA-27–FA-30), the collection view (FA-25) and the „Freigeben" confirmation
  * (FA-28/FA-29 — an own small dialog: aos-confirm-dialog is light DOM styled
- * by theme.css and stays unstyled inside a shadow root) and the next step
- * with model choice when no session works or waits (FA-12/FA-35/FA-40).
- * Drafts and protocol come from `vorhaben:state`; this component only sends
- * messages.
+ * by theme.css and stays unstyled inside a shadow root). Which document is
+ * shown comes from the shared view state (`state.ansicht.phase`, AR-05); this
+ * component only sends `doc-change`. Drafts and protocol come from
+ * `vorhaben:state`; this component only sends messages.
  */
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { Anmerkung, ModelSelection, ProtokollEintrag, VorhabenDocInfo, VorhabenRow } from '../../../../src/shared/types/vorhaben.protocol.js';
-import { VORHABEN_DOC_FILES, VORHABEN_DOC_ORDER } from '../../../../src/shared/types/vorhaben.protocol.js';
-import { buildAenderungenText, formatStandLabel } from '../../../../src/shared/vorhaben-text.js';
-import { vorhabenService, type SendResult } from '../../services/vorhaben.service.js';
-import { PHASE_LABELS, STEP_LABELS, ZUSTAND_LABELS, formatStand, relativeTime } from './vorhaben-sort.js';
+import type { Anmerkung, ModelSelection, ProtokollEintrag, VorhabenDocInfo, VorhabenPhase, VorhabenRow, VorhabenStep, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
+import { VORHABEN_DOC_FILES, lastModelKey, stepCommand } from '../../../../src/shared/types/vorhaben.protocol.js';
+import type { CloudTerminalSessionTarget } from '../../../../src/shared/types/cloud-terminal.protocol.js';
+import { buildAenderungenText, buildFreigabeText, formatStandLabel } from '../../../../src/shared/vorhaben-text.js';
+import { vorhabenService, type ModelListInfo, type SendResult } from '../../services/vorhaben.service.js';
+import { ladeModelle, vorauswahl } from './model-wahl.js';
+import { STEP_LABELS, ZUSTAND_LABELS, formatStand } from './vorhaben-sort.js';
 import { dialogZielText, leisteGrund } from './aos-sende-leiste.js';
 import './aos-dokument-leser.js';
 import './aos-sende-leiste.js';
@@ -26,11 +34,63 @@ import './aos-vorhaben-protokoll.js';
 import './aos-naechster-schritt.js';
 import type { LeserDoc } from './aos-dokument-leser.js';
 
-/** FA-20: review doc when present, else the newest document. */
+/** The four phase chips of the Vorhaben page (FA-12) and the document each one shows. */
+export type PhasenChip = 'intent' | 'spec' | 'plan' | 'build';
+export const PHASEN_CHIPS: ReadonlyArray<{ chip: PhasenChip; doc: Exclude<LeserDoc, 'design'>; label: string }> = [
+  { chip: 'intent', doc: 'intent', label: 'intent' },
+  { chip: 'spec', doc: 'spec', label: 'spec' },
+  { chip: 'plan', doc: 'plan', label: 'plan' },
+  { chip: 'build', doc: 'build-stand', label: 'build' },
+];
+
+/** Reached phase → chip (absicht→intent, spec, plan, bau|pr|umgesetzt→build); null when unknown. */
+export function erreichterChip(phase: VorhabenPhase): PhasenChip | null {
+  switch (phase) {
+    case 'absicht':
+      return 'intent';
+    case 'spec':
+      return 'spec';
+    case 'plan':
+      return 'plan';
+    case 'bau':
+    case 'pr':
+    case 'umgesetzt':
+      return 'build';
+    default:
+      return null;
+  }
+}
+
+/** Step whose session writes the document (`build-stand` → build). */
+export function stepOfDoc(doc: LeserDoc): VorhabenStep | undefined {
+  switch (doc) {
+    case 'intent':
+      return 'intent';
+    case 'spec':
+      return 'spec';
+    case 'plan':
+      return 'plan';
+    case 'build-stand':
+      return 'build';
+    default:
+      return undefined;
+  }
+}
+
+/** Default document (INT-2026-010 §3): review doc → document of the reached phase → newest. */
 export function defaultDoc(row: VorhabenRow): LeserDoc {
-  if (row.reviewDoc && row.docs.some((d) => d.key === row.reviewDoc)) return row.reviewDoc;
+  const has = (key: string): boolean => row.docs.some((d) => d.key === key);
+  if (row.reviewDoc && has(row.reviewDoc)) return row.reviewDoc;
+  const chip = erreichterChip(row.phase);
+  const phaseDoc = chip ? PHASEN_CHIPS.find((c) => c.chip === chip)!.doc : undefined;
+  if (phaseDoc && has(phaseDoc)) return phaseDoc;
   const newest = [...row.docs].sort((a, b) => b.mtimeMs - a.mtimeMs)[0];
   return newest?.key ?? (row.designFiles.length ? 'design' : 'intent');
+}
+
+/** A live session that works or sits in a dialog — the Freigabe cannot go anywhere right now. */
+export function freigabeGesperrtDurchSitzung(zustand: VorhabenZustand): boolean {
+  return zustand === 'arbeitet' || zustand === 'wartet_rueckfrage' || zustand === 'wartet_plan' || zustand === 'wartet_berechtigung';
 }
 
 const GRUND_TEXT: Record<string, string> = {
@@ -64,6 +124,8 @@ export class AosVorhabenSeite extends LitElement {
   @state() private sending = false;
   @state() private sendError = '';
   @state() private freigabeOpen = false;
+  /** Models for the dialog's preview when „Freigeben" has to start a session (FA-22, review E11). */
+  @state() private models: ModelListInfo | null = null;
   /** mtimeMs of the document as the reader loaded it (the "Stand" Michael read). */
   @state() private readStand = 0;
 
@@ -81,15 +143,67 @@ export class AosVorhabenSeite extends LitElement {
       padding: 0;
       margin-bottom: var(--spacing-xs);
     }
-    .brot {
+    .kopf {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--spacing-md);
+      flex-wrap: wrap;
+      margin-bottom: var(--spacing-sm);
+    }
+    .kopf-text {
+      min-width: 0;
+      flex: 1 1 320px;
+    }
+    .kennung {
       font-family: var(--font-family-mono);
-      font-size: var(--font-size-sm);
-      color: var(--color-text-secondary);
+      font-size: var(--font-size-lg);
+      color: var(--color-accent-primary);
+      letter-spacing: 0.02em;
     }
     h1 {
-      margin: var(--spacing-xs) 0;
+      margin: 2px 0 0;
       font-size: var(--font-size-xl);
       font-weight: var(--font-weight-semibold);
+      line-height: 1.3;
+    }
+    .chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .chip {
+      font: inherit;
+      font-family: var(--font-family-mono);
+      font-size: var(--font-size-sm);
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--color-border);
+      background: transparent;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .chip.erreicht {
+      color: var(--color-text-primary);
+      border-color: var(--color-accent-primary);
+    }
+    .chip.hinter {
+      color: var(--color-text-secondary);
+    }
+    .chip.gewaehlt {
+      background: var(--color-accent-primary);
+      border-color: var(--color-accent-primary);
+      color: var(--color-bg-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+    .chip.leer:not(.gewaehlt) {
+      border-style: dashed;
+    }
+    .chip:focus-visible {
+      outline: 2px solid var(--color-accent-primary);
+      outline-offset: 2px;
     }
     .meta {
       display: flex;
@@ -99,11 +213,6 @@ export class AosVorhabenSeite extends LitElement {
       color: var(--color-text-secondary);
       font-size: var(--font-size-sm);
       margin-bottom: var(--spacing-md);
-    }
-    .badge {
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: var(--color-bg-tertiary);
     }
     .hinweis {
       display: flex;
@@ -129,31 +238,6 @@ export class AosVorhabenSeite extends LitElement {
       font-family: var(--font-family-mono);
       white-space: nowrap;
     }
-    aos-naechster-schritt {
-      margin-bottom: var(--spacing-md);
-    }
-    .reiter {
-      display: flex;
-      gap: var(--spacing-xs);
-      border-bottom: 1px solid var(--color-border);
-      margin-bottom: var(--spacing-md);
-      overflow-x: auto;
-    }
-    .reiter button {
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      padding: var(--spacing-xs) var(--spacing-sm);
-      font-family: var(--font-family-mono);
-      font-size: var(--font-size-sm);
-      color: var(--color-text-secondary);
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .reiter button.aktiv {
-      color: var(--color-text-primary);
-      border-bottom-color: var(--color-accent-primary);
-    }
     .dot {
       display: inline-block;
       width: 8px;
@@ -178,6 +262,50 @@ export class AosVorhabenSeite extends LitElement {
       /* room for the fixed send bar */
       padding-bottom: 72px;
     }
+    .kein-dokument {
+      padding: var(--spacing-xl) var(--spacing-md);
+      border: 1px dashed var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text-muted);
+      text-align: center;
+      font-size: var(--font-size-sm);
+    }
+    /* action bar under the document (FA-12, FA-21, FA-22) */
+    .aktionen {
+      display: flex;
+      align-items: stretch;
+      gap: var(--spacing-sm);
+      flex-wrap: wrap;
+      margin-top: var(--spacing-lg);
+      padding-top: var(--spacing-md);
+      border-top: 1px solid var(--color-border);
+    }
+    .aktionen aos-naechster-schritt {
+      flex: 1 1 360px;
+      min-width: 0;
+    }
+    .aktionen .seite-knopf {
+      font: inherit;
+      font-size: var(--font-size-sm);
+      padding: 7px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      background: transparent;
+      color: var(--color-text-primary);
+      cursor: pointer;
+      white-space: nowrap;
+      align-self: center;
+    }
+    .aktionen .seite-knopf.primary {
+      background: var(--color-accent-primary);
+      border-color: var(--color-accent-primary);
+      color: var(--color-bg-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+    .aktionen .seite-knopf:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
     .send-fehler {
       color: var(--color-accent-error);
       font-size: var(--font-size-sm);
@@ -195,7 +323,7 @@ export class AosVorhabenSeite extends LitElement {
       padding: var(--spacing-md);
     }
     .dialog {
-      width: min(440px, 100%);
+      width: min(460px, 100%);
       background: var(--color-bg-primary);
       border: 1px solid var(--color-accent-primary);
       border-radius: var(--radius-lg);
@@ -214,6 +342,10 @@ export class AosVorhabenSeite extends LitElement {
       color: var(--color-text-secondary);
       margin-bottom: var(--spacing-sm);
     }
+    .dialog .ziel code {
+      font-family: var(--font-family-mono);
+      color: var(--color-accent-primary);
+    }
     .dialog .warnung {
       border: 1px solid var(--color-accent-warning);
       border-radius: var(--radius-md);
@@ -224,7 +356,7 @@ export class AosVorhabenSeite extends LitElement {
     .dialog .warnung strong {
       color: var(--color-accent-warning);
     }
-    .dialog .aktionen {
+    .dialog .aktionen-dialog {
       display: flex;
       justify-content: flex-end;
       gap: var(--spacing-sm);
@@ -245,10 +377,21 @@ export class AosVorhabenSeite extends LitElement {
       color: var(--color-bg-primary);
       font-weight: var(--font-weight-semibold);
     }
+    :host([mobile]) .kopf {
+      align-items: flex-start;
+    }
+    :host([mobile]) .aktionen aos-naechster-schritt {
+      flex-basis: 100%;
+    }
+    :host([mobile]) .aktionen .seite-knopf {
+      flex: 1 1 auto;
+      padding: 10px;
+    }
   `;
 
   protected override willUpdate(changed: PropertyValues<this>): void {
     if (changed.has('gespraechBreite')) this.style.setProperty('--gespraech-width', this.gespraechBreite || '0px');
+    if (changed.has('mobile')) this.toggleAttribute('mobile', this.mobile);
     if (changed.has('doc') || (changed.has('row') && (changed.get('row') as VorhabenRow | undefined)?.intentId !== this.row?.intentId)) {
       this.readStand = 0;
       this.sendError = '';
@@ -260,6 +403,7 @@ export class AosVorhabenSeite extends LitElement {
     this.dispatchEvent(new CustomEvent('vorhaben-back', { bubbles: true, composed: true }));
   }
 
+  /** Chip click: shown at once, and the view persists it for every device (`vorhaben:ansicht.set`). */
   private selectDoc(doc: LeserDoc): void {
     this.doc = doc;
     this.sendError = '';
@@ -272,6 +416,18 @@ export class AosVorhabenSeite extends LitElement {
 
   private get docKey(): Exclude<LeserDoc, 'design'> | null {
     return this.doc === 'design' ? null : this.doc;
+  }
+
+  /** The shown document exists on disk (design/ counts when files exist). */
+  private docVorhanden(): boolean {
+    return this.doc === 'design' ? this.row.designFiles.length > 0 : !!this.docInfo();
+  }
+
+  /** A session that is still alive (not ended, not `keine_sitzung`). */
+  private liveSession(): VorhabenRow['session'] | undefined {
+    const s = this.row.session;
+    if (!s || s.ended || this.row.zustand === 'keine_sitzung' || this.row.zustand === 'sitzung_beendet') return undefined;
+    return s;
   }
 
   /** Stand the reader loaded (falls back to the state's mtime before the first load). */
@@ -339,19 +495,87 @@ export class AosVorhabenSeite extends LitElement {
     if (result.grund === 'stand_veraltet') this.sendError = 'Dokument geändert — neu laden, dann erneut freigeben.';
   }
 
+  // ---- Freigeben (FA-22) ----
+
+  /** The shown document awaits approval by its status (session-independent, FA-22). */
+  private freigabeMoeglich(): boolean {
+    return !!this.docKey && this.row.freigabeDoc === this.docKey;
+  }
+
+  /**
+   * Why „Freigeben" is disabled right now — '' when it can go. A working
+   * session or an open dialog cannot take it; an intent draft without a
+   * session cannot be resumed by a new `/specwright:intent` (the workflow has
+   * no argument, NZ-05) and continues in the terminal.
+   */
+  private freigabeSperre(): string {
+    const r = this.row;
+    if (this.sending) return 'Wird gesendet …';
+    if (this.docChanged()) return 'Dokument geändert — neu laden, dann erneut freigeben';
+    if (this.liveSession()) return freigabeGesperrtDurchSitzung(r.zustand) ? 'Sitzung arbeitet oder wartet im Dialog — die Freigabe geht, sobald sie auf dich wartet' : '';
+    if (this.docKey === 'intent') return 'Absicht-Sitzung beendet — Entwurf im Terminal fortsetzen';
+    return '';
+  }
+
+  private freigabeStep(): VorhabenStep | undefined {
+    const doc = this.docKey;
+    return doc ? stepOfDoc(doc) : undefined;
+  }
+
+  /** Where the step's session would run: the copy the row was read from (project or worktree). */
+  private freigabeTarget(): CloudTerminalSessionTarget {
+    const r = this.row;
+    return r.cwd === r.projectPath ? { kind: 'main' } : { kind: 'existing-worktree', path: r.cwd };
+  }
+
+  /** Model the backend will pick without one from the client: last model of (Vorhaben, step) → step default (mirrors `startStep`). */
+  private freigabeModell(): ModelSelection | null {
+    const step = this.freigabeStep();
+    if (!step || !this.models) return null;
+    return vorauswahl(this.models, step, this.lastModel[lastModelKey(this.row.projectId, this.row.intentId, step)]);
+  }
+
   private openFreigabe(): void {
-    if (this.docChanged()) {
-      this.sendError = 'Dokument geändert — neu laden, dann erneut freigeben.';
+    if (this.freigabeSperre()) {
+      if (this.docChanged()) this.sendError = 'Dokument geändert — neu laden, dann erneut freigeben.';
       return;
     }
     this.freigabeOpen = true;
+    if (!this.liveSession() && !this.models) {
+      void ladeModelle()
+        .then((m) => (this.models = m))
+        .catch(() => undefined);
+    }
   }
 
   private freigabeTitle(): string {
     const doc = this.docKey;
     if (!doc) return '';
-    const label = this.standLabel();
-    return doc === 'intent' && !label.startsWith('Stand ') ? `Freigabe: ${VORHABEN_DOC_FILES[doc]} ${label}` : `Freigabe: ${VORHABEN_DOC_FILES[doc]} (${label})`;
+    return buildFreigabeText(doc, this.standLabel());
+  }
+
+  /** AN-S06: no session waits → start the step's session with the Freigabe as its first input. */
+  private async startFreigabe(): Promise<void> {
+    const doc = this.docKey;
+    const step = this.freigabeStep();
+    if (!doc || !step || step === 'intent' || this.sending) return;
+    const r = this.row;
+    this.sending = true;
+    this.sendError = '';
+    try {
+      const { sessionId } = await vorhabenService.startStep(r.projectId, r.intentId, step, undefined, this.freigabeTarget(), { firstInput: buildFreigabeText(doc, this.standLabel()) });
+      this.dispatchEvent(
+        new CustomEvent<{ sessionId: string; step: VorhabenStep; intentId: string; firstInput: true }>('vorhaben-session-started', {
+          bubbles: true,
+          composed: true,
+          detail: { sessionId, step, intentId: r.intentId, firstInput: true },
+        })
+      );
+    } catch (err) {
+      this.sendError = (err as Error).message || 'Sitzung konnte nicht gestartet werden';
+    } finally {
+      this.sending = false;
+    }
   }
 
   /** Mac and phone alike (INT-2026-010, FA-20): app.ts owns the phone branch (active session + open sidebar). */
@@ -369,51 +593,47 @@ export class AosVorhabenSeite extends LitElement {
 
   override render() {
     const r = this.row;
-    const docs = VORHABEN_DOC_ORDER.filter((k) => r.docs.some((d) => d.key === k));
     const info = this.docInfo();
     const session = r.session;
-    const annotierbar = this.doc !== 'design';
-    const freigabeMoeglich = !!r.reviewDoc && r.reviewDoc === this.doc && r.phase !== 'pr';
+    const vorhanden = this.docVorhanden();
+    const annotierbar = this.doc !== 'design' && vorhanden;
     const grund = leisteGrund(r);
     const entries = this.protocol.filter((e) => e.projectId === r.projectId && e.intentId === r.intentId);
     return html`
       <div class="inhalt">
         <button type="button" class="zurueck" @click=${this.back}>‹ Vorhaben</button>
-        <div class="brot">${r.projectName} · ${r.intentId}</div>
-        <h1>${r.titel}</h1>
+        <div class="kopf">
+          <div class="kopf-text">
+            <div class="kennung">${r.intentId}</div>
+            <h1>${r.titel}</h1>
+          </div>
+          ${this.renderChips()}
+        </div>
         <div class="meta">
-          <span class="badge">${PHASE_LABELS[r.phase]}${r.bypass ? ' · Spec entfällt' : ''}</span>
-          ${r.phaseNote ? html`<span>${r.phaseNote}</span>` : nothing}
           <span><span class="dot ${r.zustand}"></span>${ZUSTAND_LABELS[r.zustand]}${r.zustandDetail && r.zustand !== 'wartet_auf_dich' && !ZUSTAND_LABELS[r.zustand].endsWith(r.zustandDetail) ? ` · ${r.zustandDetail}` : ''}</span>
           ${session ? html`<span>Sitzung <strong>${session.name}</strong>${session.model ? ` · ${session.model}` : ''}${session.ended ? ' · beendet' : ''}</span>` : nothing}
           ${r.arbeitskopie ? html`<span>Arbeitskopie <code>${r.arbeitskopie}</code></span>` : nothing}
-          <span>geändert ${relativeTime(r.lastChangedMs)}</span>
+          ${r.phaseNote ? html`<span>${r.phaseNote}</span>` : nothing}
         </div>
         ${this.renderHinweis()}
         <aos-vorhaben-protokoll .entries=${entries} .mobile=${this.mobile} @protokoll-terminal=${(e: CustomEvent<{ sessionId: string }>) => this.toTerminal(e.detail.sessionId)}></aos-vorhaben-protokoll>
-        ${this.renderNextStep()}
-        <div class="reiter" role="tablist">
-          ${docs.map(
-            (k) => html`<button type="button" role="tab" class=${this.doc === k ? 'aktiv' : ''} aria-selected=${this.doc === k} @click=${() => this.selectDoc(k)}>${VORHABEN_DOC_FILES[k]}</button>`
-          )}
-          ${r.designFiles.length
-            ? html`<button type="button" role="tab" class=${this.doc === 'design' ? 'aktiv' : ''} aria-selected=${this.doc === 'design'} @click=${() => this.selectDoc('design')}>design/</button>`
-            : nothing}
-        </div>
-        <aos-dokument-leser
-          .projectId=${r.projectId}
-          .intentId=${r.intentId}
-          .doc=${this.doc}
-          .mtimeMs=${info?.mtimeMs ?? 0}
-          .designFiles=${r.designFiles}
-          .annotierbar=${annotierbar}
-          .mobile=${this.mobile}
-          .anmerkungen=${this.drafts}
-          @anmerkung-save=${this.onAnmerkungSave}
-          @anmerkung-delete=${this.onAnmerkungDelete}
-          @anmerkungen-located=${this.onLocated}
-          @leser-loaded=${(e: CustomEvent<{ mtimeMs: number }>) => (this.readStand = e.detail.mtimeMs)}
-        ></aos-dokument-leser>
+        ${vorhanden
+          ? html`<aos-dokument-leser
+              .projectId=${r.projectId}
+              .intentId=${r.intentId}
+              .doc=${this.doc}
+              .mtimeMs=${info?.mtimeMs ?? 0}
+              .designFiles=${r.designFiles}
+              .annotierbar=${annotierbar}
+              .mobile=${this.mobile}
+              .anmerkungen=${this.drafts}
+              @anmerkung-save=${this.onAnmerkungSave}
+              @anmerkung-delete=${this.onAnmerkungDelete}
+              @anmerkungen-located=${this.onLocated}
+              @leser-loaded=${(e: CustomEvent<{ mtimeMs: number }>) => (this.readStand = e.detail.mtimeMs)}
+            ></aos-dokument-leser>`
+          : html`<div class="kein-dokument">Kein Dokument in dieser Phase</div>`}
+        ${this.renderAktionen()}
       </div>
       ${this.sendError ? html`<div class="send-fehler" role="alert">${this.sendError}</div>` : nothing}
       ${annotierbar
@@ -422,11 +642,9 @@ export class AosVorhabenSeite extends LitElement {
             .count=${this.drafts.length}
             .mobile=${this.mobile}
             .sending=${this.sending}
-            .freigabeMoeglich=${freigabeMoeglich}
             .docChanged=${this.docChanged()}
             @leiste-sammel=${() => (this.sammelOpen = true)}
             @leiste-send=${() => this.send('aenderungen')}
-            @leiste-freigabe=${this.openFreigabe}
             @leiste-terminal=${() => this.toTerminal()}
             @leiste-next-step=${this.scrollToNextStep}
           ></aos-sende-leiste>`
@@ -452,24 +670,66 @@ export class AosVorhabenSeite extends LitElement {
     `;
   }
 
-  /** Mock 06 "Freigeben · Bestätigung": document + stand, target session, hint on unsent Anmerkungen (FA-29). */
+  /** FA-12: intent · spec · plan · build (+ design/); `erreicht` = phase of the row, `gewaehlt` = shown document, `leer` = no file yet. */
+  private renderChips() {
+    const r = this.row;
+    const erreicht = erreichterChip(r.phase);
+    const reihe = PHASEN_CHIPS.map((c) => c.chip);
+    const erreichtIdx = erreicht ? reihe.indexOf(erreicht) : -1;
+    return html`<div class="chips" role="tablist" aria-label="Phasen">
+      ${PHASEN_CHIPS.map((c, i) => {
+        const has = r.docs.some((d) => d.key === c.doc);
+        const cls = ['chip', c.chip === erreicht ? 'erreicht' : '', i < erreichtIdx ? 'hinter' : '', this.doc === c.doc ? 'gewaehlt' : '', has ? '' : 'leer'].filter(Boolean).join(' ');
+        return html`<button type="button" role="tab" class=${cls} data-chip=${c.chip} aria-pressed=${this.doc === c.doc} aria-selected=${this.doc === c.doc} title=${has ? VORHABEN_DOC_FILES[c.doc] : 'Kein Dokument in dieser Phase'} @click=${() => this.selectDoc(c.doc)}>${c.label}</button>`;
+      })}
+      ${r.designFiles.length
+        ? html`<button type="button" role="tab" class="chip design ${this.doc === 'design' ? 'gewaehlt' : ''}" data-chip="design" aria-pressed=${this.doc === 'design'} aria-selected=${this.doc === 'design'} @click=${() => this.selectDoc('design')}>design/</button>`
+        : nothing}
+    </div>`;
+  }
+
+  /** FA-12/FA-21/FA-22: next step (always, greyed out while busy), „Freigeben" for the document awaiting approval, phone: the terminal. */
+  private renderAktionen() {
+    const r = this.row;
+    const live = this.liveSession();
+    const freigabe = this.freigabeMoeglich();
+    const sperre = freigabe ? this.freigabeSperre() : '';
+    if (!r.nextStep && !freigabe && !(this.mobile && live)) return nothing;
+    return html`<div class="aktionen">
+      ${this.renderNextStep()}
+      ${freigabe
+        ? html`<button type="button" class="seite-knopf primary freigeben" ?disabled=${!!sperre} title=${sperre} @click=${this.openFreigabe}>Freigeben</button>`
+        : nothing}
+      ${this.mobile && live ? html`<button type="button" class="seite-knopf terminal" @click=${() => this.toTerminal(live.id)}>Im Terminal öffnen ↗</button>` : nothing}
+    </div>`;
+  }
+
+  /** Mock 06 "Freigeben · Bestätigung": document + stand, target (session, or the session to start), hint on unsent Anmerkungen (FA-29). */
   private renderFreigabeDialog() {
-    const s = this.row.session;
+    const r = this.row;
+    const live = this.liveSession();
     const n = this.drafts.length;
+    const step = this.freigabeStep();
+    const modell = this.freigabeModell();
     const confirm = (): void => {
       this.freigabeOpen = false;
-      void this.send('freigabe');
+      if (live) void this.send('freigabe');
+      else void this.startFreigabe();
     };
     return html`<div class="schleier" @click=${() => (this.freigabeOpen = false)}>
       <div class="dialog" role="dialog" aria-modal="true" aria-label="Freigabe bestätigen" @click=${(e: Event) => e.stopPropagation()}>
         <h2>${this.freigabeTitle()}</h2>
-        <div class="ziel">an Sitzung <strong>${s?.name ?? '?'}</strong> · ${this.row.projectName}</div>
+        ${live
+          ? html`<div class="ziel">an Sitzung <strong>${live.name}</strong> · ${r.projectName}</div>`
+          : html`<div class="ziel">
+              startet <code>${step ? stepCommand(step, r.intentId) : ''}</code> mit Modell <strong>${modell ? modell.modelId : '…'}</strong>${r.arbeitskopie ? html` in <code>${r.arbeitskopie}</code>` : nothing} und übergibt die Freigabe als erste Eingabe — die Sitzung setzt Status, Änderungsprotokoll und Commit.
+            </div>`}
         ${n > 0
           ? html`<div class="warnung"><strong>${n} ${n === 1 ? 'Anmerkung' : 'Anmerkungen'} ungesendet</strong> — bleibt erhalten, wird nicht mitgeschickt.</div>`
           : nothing}
-        <div class="aktionen">
+        <div class="aktionen-dialog">
           <button type="button" @click=${() => (this.freigabeOpen = false)}>Abbrechen</button>
-          <button type="button" class="primary" @click=${confirm}>Freigeben</button>
+          <button type="button" class="primary" @click=${confirm}>${live ? 'Freigeben' : 'Sitzung starten und freigeben'}</button>
         </div>
       </div>
     </div>`;
@@ -484,7 +744,7 @@ export class AosVorhabenSeite extends LitElement {
         ${info ? html`<span class="stand">Stand ${formatStand(info.mtimeMs)}</span>` : nothing}
       </div>`;
     }
-    if (r.phase === 'absicht' && !r.session) {
+    if (r.phase === 'absicht' && !this.liveSession()) {
       return html`<div class="hinweis"><span>Entwurf im Terminal fortsetzen.</span></div>`;
     }
     // INT-2026-007 (FA-09): the hint names the kind of dialog. Stage 1 answers in the terminal; stage 2 brings the cards.
@@ -503,8 +763,9 @@ export class AosVorhabenSeite extends LitElement {
   private renderNextStep() {
     const r = this.row;
     if (!r.nextStep) return nothing;
-    const key = `${r.projectId}::${r.intentId}::${r.nextStep.step}`;
+    const key = lastModelKey(r.projectId, r.intentId, r.nextStep.step);
     return html`<aos-naechster-schritt
+      compact
       .projectId=${r.projectId}
       .projectPath=${r.projectPath}
       .intentId=${r.intentId}
@@ -513,6 +774,7 @@ export class AosVorhabenSeite extends LitElement {
       .command=${r.nextStep.command}
       .lastModel=${this.lastModel[key]}
       .mobile=${this.mobile}
+      .gesperrt=${r.sessionBusy}
     ></aos-naechster-schritt>`;
   }
 }
