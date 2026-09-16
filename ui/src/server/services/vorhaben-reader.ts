@@ -180,6 +180,11 @@ export interface ZustandResult {
  * session. `done`/`idle` both mean "waits" (decay does not change meaning);
  * `blocked` = dialog in the terminal; `error` counts as ended.
  */
+/** The three „wartet im Terminal"-states of INT-2026-007 (FA-09). */
+export function isWartetImDialog(z: VorhabenZustand): boolean {
+  return z === 'wartet_rueckfrage' || z === 'wartet_plan' || z === 'wartet_berechtigung';
+}
+
 export function deriveZustand(
   phase: VorhabenPhase,
   hasBuildStand: boolean,
@@ -197,7 +202,17 @@ export function deriveZustand(
     case 'working':
       return { zustand: 'arbeitet', detail: session.model };
     case 'blocked':
-      return { zustand: 'wartet_im_terminal', detail: 'Dialog' };
+      // INT-2026-007 (FA-09/FA-10): the kind of dialog decides the state.
+      switch (session.blockKind) {
+        case 'rueckfrage':
+          return { zustand: 'wartet_rueckfrage', detail: 'Rückfrage' };
+        case 'plan':
+          return { zustand: 'wartet_plan', detail: 'Plan-Entscheidung' };
+        case 'berechtigung':
+          return { zustand: 'wartet_berechtigung', detail: 'Berechtigung' };
+        default:
+          return { zustand: 'wartet_berechtigung', detail: 'Dialog' };
+      }
     case 'error':
       return { zustand: 'sitzung_beendet', detail: 'Fehler' };
     case 'done':
@@ -401,7 +416,7 @@ export function toRow(project: ScanProject, c: VorhabenCandidate, session: Vorha
   const intent = c.heads.intent;
   const reviewDocCandidate = deriveReviewDoc(phase, c.heads);
   const z = deriveZustand(phase, c.hasBuildStand, session, reviewDocCandidate);
-  const sessionBusy = !!session && !session.ended && (z.zustand === 'arbeitet' || z.zustand === 'wartet' || z.zustand === 'wartet_auf_dich' || z.zustand === 'wartet_im_terminal');
+  const sessionBusy = !!session && !session.ended && (z.zustand === 'arbeitet' || z.zustand === 'wartet' || z.zustand === 'wartet_auf_dich' || isWartetImDialog(z.zustand));
   const nextStep = sessionBusy ? undefined : deriveNextStep(phase, c.intentId, c.hasBuildStand);
   const planNote = c.heads.plan?.note ?? '';
   const phaseNote = phase === 'pr' ? planNote : intent?.bypass ? 'Spec entfällt' : '';

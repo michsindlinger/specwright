@@ -123,8 +123,13 @@ describe('deriveZustand (FA-13, one case per value; FA-14 decay)', () => {
   it('wartet: session waits without review doc', () => {
     expect(deriveZustand('bau', false, s('done'), undefined)).toMatchObject({ zustand: 'wartet', detail: 'Rückfrage im Bau' });
   });
-  it('wartet im Terminal: blocked', () => {
-    expect(deriveZustand('spec', false, s('blocked'), 'spec').zustand).toBe('wartet_im_terminal');
+  it('wartet im Terminal: blocked, split by block kind (INT-2026-007 FA-09/FA-10)', () => {
+    const blocked = (blockKind?: 'rueckfrage' | 'plan' | 'berechtigung' | 'unbekannt'): VorhabenSessionRef => ({ ...s('blocked'), ...(blockKind ? { blockKind } : {}) });
+    expect(deriveZustand('spec', false, blocked('rueckfrage'), 'spec')).toMatchObject({ zustand: 'wartet_rueckfrage', detail: 'Rückfrage' });
+    expect(deriveZustand('spec', false, blocked('plan'), 'spec')).toMatchObject({ zustand: 'wartet_plan', detail: 'Plan-Entscheidung' });
+    expect(deriveZustand('spec', false, blocked('berechtigung'), 'spec')).toMatchObject({ zustand: 'wartet_berechtigung', detail: 'Berechtigung' });
+    expect(deriveZustand('spec', false, blocked('unbekannt'), 'spec')).toMatchObject({ zustand: 'wartet_berechtigung', detail: 'Dialog' });
+    expect(deriveZustand('spec', false, blocked(), 'spec').zustand).toBe('wartet_berechtigung');
   });
   it('arbeitet: working, detail = model', () => {
     expect(deriveZustand('spec', false, s('working'), 'spec')).toMatchObject({ zustand: 'arbeitet', detail: 'opus' });

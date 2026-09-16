@@ -160,7 +160,9 @@ export class AosVorhabenSeite extends LitElement {
       background: var(--color-accent-primary);
     }
     .dot.wartet,
-    .dot.wartet_im_terminal {
+    .dot.wartet_rueckfrage,
+    .dot.wartet_plan,
+    .dot.wartet_berechtigung {
       background: var(--color-accent-warning);
     }
     .dot.arbeitet {
@@ -480,8 +482,15 @@ export class AosVorhabenSeite extends LitElement {
     if (r.phase === 'absicht' && !r.session) {
       return html`<div class="hinweis"><span>Entwurf im Terminal fortsetzen.</span></div>`;
     }
-    if (r.zustand === 'wartet_im_terminal') {
-      return html`<div class="hinweis"><span>Die Sitzung zeigt einen Dialog — im Terminal antworten.</span></div>`;
+    // INT-2026-007 (FA-09): the hint names the kind of dialog. Stage 1 answers in the terminal; stage 2 brings the cards.
+    if (r.zustand === 'wartet_rueckfrage') {
+      return html`<div class="hinweis"><span>Die Sitzung stellt eine Rückfrage — im Terminal antworten.</span></div>`;
+    }
+    if (r.zustand === 'wartet_plan') {
+      return html`<div class="hinweis"><span>Die Sitzung legt einen Plan vor — Entscheidung im Terminal.</span></div>`;
+    }
+    if (r.zustand === 'wartet_berechtigung') {
+      return html`<div class="hinweis"><span>Die Sitzung zeigt einen Dialog${r.zustandDetail && r.zustandDetail !== 'Dialog' ? ` (${r.zustandDetail})` : ''} — im Terminal antworten.</span></div>`;
     }
     return nothing;
   }

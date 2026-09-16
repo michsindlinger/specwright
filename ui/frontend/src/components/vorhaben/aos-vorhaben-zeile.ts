@@ -103,7 +103,9 @@ export class AosVorhabenZeile extends LitElement {
       background: var(--color-accent-primary);
     }
     .dot.wartet,
-    .dot.wartet_im_terminal {
+    .dot.wartet_rueckfrage,
+    .dot.wartet_plan,
+    .dot.wartet_berechtigung {
       background: var(--color-accent-warning);
     }
     .dot.arbeitet {

@@ -16,11 +16,17 @@ import type { BlockKind } from './gespraech.protocol.js';
 /** Phase after the "Phasenregeln" table (spec §3.2); `hidden` rows are filtered out before broadcast. */
 export type VorhabenPhase = 'absicht' | 'spec' | 'plan' | 'bau' | 'pr' | 'umgesetzt' | 'unbekannt';
 
-/** Seven values of FA-13. */
+/**
+ * Values of FA-13 (INT-2026-004); INT-2026-007 (FA-09) splits „wartet im
+ * Terminal" by the kind of dialog: Rückfrage, Plan-Entscheidung, Berechtigung
+ * (an unknown dialog counts as Berechtigung, FA-10).
+ */
 export type VorhabenZustand =
   | 'wartet_auf_dich'
   | 'wartet'
-  | 'wartet_im_terminal'
+  | 'wartet_rueckfrage'
+  | 'wartet_plan'
+  | 'wartet_berechtigung'
   | 'arbeitet'
   | 'bau_unterbrochen'
   | 'keine_sitzung'

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortRows, groupRows, groupOf, countWaitingForMe, relativeTime, formatStand } from '../../frontend/src/components/vorhaben/vorhaben-sort.js';
+import { ZUSTAND_LABELS, sortRows, groupRows, groupOf, countWaitingForMe, relativeTime, formatStand } from '../../frontend/src/components/vorhaben/vorhaben-sort.js';
 import type { VorhabenRow } from '../../src/shared/types/vorhaben.protocol.js';
 
 const row = (o: Partial<VorhabenRow> & { intentId: string }): VorhabenRow => ({
@@ -15,8 +15,15 @@ describe('vorhaben-sort (FA-02, FA-03, FA-05)', () => {
     row({ intentId: 'INT-2026-003', phase: 'umgesetzt', lastChangedMs: 900 }),
     row({ intentId: 'INT-2026-004', zustand: 'wartet_auf_dich', reviewDoc: 'plan', lastChangedMs: 10 }),
     row({ intentId: 'INT-2026-005', zustand: 'arbeitet', lastChangedMs: 300 }),
-    row({ intentId: 'INT-2026-006', zustand: 'wartet_im_terminal', lastChangedMs: 60, projectId: 'q' }),
+    row({ intentId: 'INT-2026-006', zustand: 'wartet_rueckfrage', lastChangedMs: 60, projectId: 'q' }),
   ];
+
+  it('INT-2026-007 (FA-09, AN-S16): the three dialog states group as „wartet" and carry their labels', () => {
+    for (const z of ['wartet_rueckfrage', 'wartet_plan', 'wartet_berechtigung'] as const) expect(groupOf(row({ zustand: z }))).toBe('wartet');
+    expect(ZUSTAND_LABELS.wartet_rueckfrage).toBe('wartet · Rückfrage');
+    expect(ZUSTAND_LABELS.wartet_plan).toBe('wartet · Plan-Entscheidung');
+    expect(ZUSTAND_LABELS.wartet_berechtigung).toBe('wartet · Berechtigung');
+  });
 
   it('orders: wartet auf dich → wartet (incl. Terminal) → laufend by change desc → umgesetzt', () => {
     expect(sortRows(rows).map((r) => r.intentId)).toEqual(['INT-2026-004', 'INT-2026-006', 'INT-2026-002', 'INT-2026-005', 'INT-2026-001', 'INT-2026-003']);

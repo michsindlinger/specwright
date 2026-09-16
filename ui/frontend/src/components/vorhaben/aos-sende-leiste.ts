@@ -31,6 +31,20 @@ export function leisteGrund(row: VorhabenRow): LeisteGrund {
   }
 }
 
+/** INT-2026-007 (FA-09/FA-15): what the session waits for, by dialog kind. */
+export function dialogZielText(row: VorhabenRow): string {
+  switch (row.zustand) {
+    case 'wartet_rueckfrage':
+      return 'Sitzung stellt eine Rückfrage — im Terminal antworten';
+    case 'wartet_plan':
+      return 'Sitzung wartet auf die Plan-Entscheidung — im Terminal';
+    case 'wartet_berechtigung':
+      return `Sitzung wartet auf eine Berechtigung${row.zustandDetail && row.zustandDetail !== 'Berechtigung' ? ` (${row.zustandDetail})` : ''} — im Terminal`;
+    default:
+      return `Sitzung fragt im Terminal${row.zustandDetail ? ` (${row.zustandDetail})` : ''}`;
+  }
+}
+
 @customElement('aos-sende-leiste')
 export class AosSendeLeiste extends LitElement {
   @property({ attribute: false }) row!: VorhabenRow;
@@ -185,7 +199,7 @@ export class AosSendeLeiste extends LitElement {
       case 'arbeitet':
         return html`<span class="ziel"><span class="dot arbeitet"></span>Sitzung arbeitet — warten</span>`;
       case 'dialog':
-        return html`<span class="ziel"><span class="dot dialog"></span>Sitzung fragt im Terminal${this.row.zustandDetail ? ` (${this.row.zustandDetail})` : ''}</span>`;
+        return html`<span class="ziel"><span class="dot dialog"></span>${dialogZielText(this.row)}</span>`;
       case 'beendet':
         return html`<span class="ziel"><span class="dot beendet"></span>Sitzung ‚${name}' beendet${this.endedAt()}</span>`;
       default:
