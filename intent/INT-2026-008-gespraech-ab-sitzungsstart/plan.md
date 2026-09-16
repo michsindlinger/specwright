@@ -1,7 +1,7 @@
 # Plan INT-2026-008: Gespräch ab Sitzungsstart — das Absicht-Interview auf der Projekt-Seite
 
 > **Intent:** `intent/INT-2026-008-gespraech-ab-sitzungsstart/intent.md` (neu, Bypass: Größe S, Verhalten durch INT-2026-007 spec.md FA-22/AN-S03 festgelegt, nur der Zuschnitt fehlt) · **Spec:** entfällt
-> **Status:** in_umsetzung — Fassung 2 nach externem Review (3 Reviewer, 23 Findings, §12), freigegeben 16.09. · **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger) mit „eigene PR" (16.09.) und Annahme dieses Plans
+> **Status:** umgesetzt — PR offen (Merge = Michael), `verify: OK` lokal (65 s); Fassung 2 nach externem Review (3 Reviewer, 23 Findings, §12), freigegeben 16.09. · **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger) mit „eigene PR" (16.09.) und Annahme dieses Plans
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `957da79`, §2 Backend/Frontend, §3 Nutzerzustand, AR-04, AR-05), `CLAUDE.md`, `docs/security.md` §6, `docs/design.md` §6, INT-2026-007 `spec.md` (FA-22, AN-S03, §10) und `plan.md` (§3 A.9/A.10, §6, §14)
 > **Branch:** `feat/INT-2026-008-gespraech-ab-sitzungsstart` von `origin/main` `957da79`, Worktree `../specwright-worktrees/session-sdlc-ui`
 
@@ -238,18 +238,25 @@ Externer Konsens 16.09. (3 Reviewer: Opus, Grok, MiniMax). Jede Zeile: Entscheid
 
 ### 13. Definition of Done
 
-- [ ] Jedes AK aus §8 hat einen grünen Test.
-- [ ] Alle Nachweise aus §5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft, Screenshots + Protokoll unter `design/`.
-- [ ] `verify: OK` lokal und PR-Checks grün.
-- [ ] `docs/architecture.md` §3 angepasst; INT-2026-007 spec.md Nachtrag.
-- [ ] Manuelle Schritte (§10) im PR als offen markiert.
-- [ ] Abweichungen in §14.
-- [ ] 2x-Regel-Check: Spec-Lücke „Zustand vor dem Ordner" ist neu; kein CLAUDE.md-Vorschlag.
-- [ ] Abschlussbericht endet mit dem Block „Für das Board" (Karte neu: „Gespräch ab Sitzungsstart (INT-2026-008)", Spalte, PR, Verweis `intent/INT-2026-008-gespraech-ab-sitzungsstart/`; Nachziehen in eigener Sitzung).
+- [x] Jedes AK aus §8 hat einen grünen Test (Store 12, Handler 6, Service Stufe 3 16, Komponente 18, View 7, Client 4 — alle grün; Gesamtlauf 95 grün, 5 bekannt rot, keine neue rote Datei).
+- [x] Alle Nachweise aus §5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft: `design/e2e-protokoll.txt`, `design/ist-01-projekt-gespraech.png`, `design/ist-02-vorhaben-seite.png`.
+- [x] `verify: OK` lokal (65 s) — PR-Checks: siehe §14 nach dem CI-Lauf.
+- [x] `docs/architecture.md` §3 angepasst; INT-2026-007 spec.md Nachtrag an FA-22 und AN-S03.
+- [x] Manuelle Schritte (§10) im PR als offen markiert.
+- [x] Abweichungen in §14.
+- [x] 2x-Regel-Check: Spec-Lücke „Zustand vor dem Ordner" ist neu; kein CLAUDE.md-Vorschlag. Zweimal in dieser Sitzung: Commit-Nachricht mit ASCII-Anführungszeichen in `-m "…"` bricht den String (einmal hier, einmal in Stufe 1 als Hook-Falle mit `deploy`+`prod`) → Commit-Nachrichten per `-F Datei`.
+- [x] Abschlussbericht endet mit dem Block „Für das Board" (Karte neu: „Gespräch ab Sitzungsstart (INT-2026-008)"; Nachziehen in eigener Sitzung).
 
 ### 14. Abweichungen bei der Umsetzung
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-16 | Service-Tests zu Zustand, Broadcast, Claim und Abbruch liegen in `vorhaben-service-stage3.test.ts` (eigener `describe`-Block) statt in `stage2` | Stufe-3-Fixture hat den Lock, den Bildschirm und die Watcher-Referenz; ein Fixture für alle AK-02/03/05/07-Fälle | §8 |
+| 2026-09-16 | Navigations-Gedächtnis bleibt bis zum Routenwechsel (`onRoute`) gesetzt statt bis zur Navigation | Beim Löschen vor dem Routenwechsel verschwand der Split für einen Frame (genau Review 15); jetzt hält die Projekt-Route die geclaimte Zeile bis `#/vorhaben/…` steht (Test: gleiches Element, `pending` → `row`) | §3.7 |
+| 2026-09-16 | Beim Routenwechsel Projekt → Vorhaben wird `aos-gespraech` einmal neu gemountet (E2E: 1 Entfernung seit dem Reload) | Die Vorhaben-Route ist ein anderes Template (Seite + Split); das Abo läuft über den Service weiter, Snapshot kommt sofort — kein sichtbarer Bruch, aber ein Remount. Der pending → claimed-Übergang selbst bleibt ohne Remount (Test) | §3.7, §8 E2E |
+| 2026-09-16 | E2E startet die Sitzung per WebSocket `vorhaben:start-step` (Haiku) statt per Klick auf den Knopf | Knopf-Default ist Opus (Kosten, Dauer); der Klick-Pfad (`vorhaben-session-started` → Gedächtnis) ist per Komponententest belegt, der WS-Pfad deckt AK-07 (Hand-Sitzung ohne Ereignis) mit ab | §8 |
+| 2026-09-16 | Vorhaben-Seite öffnet sich, sobald der Ordner da ist — `intent.md` schreibt Claude erst danach; Screenshot ist-02 zeigt deshalb kurz „(Kopf nicht lesbar)" und „intent.md fehlt" | Verhalten des Readers aus INT-2026-004 (Ordner = Zeile), nicht neu; Michael sieht das nur für Sekunden | §8 |
+| 2026-09-16 | Scratch-Projekt bekam Kopien von `specwright/workflows/core/intent.md`, der Intent-Vorlage, `docs/product-brief.md` und einer `CLAUDE.md` („höchstens zwei Rückfragen") | Der globale Befehl verweist auf den Projekt-Workflow; ohne ihn improvisiert Haiku. Kein Repo-Inhalt | §8 |
+| 2026-09-16 | `aos-projekt-seite` wird beim Erscheinen des Pending im Split-Wrapper neu erzeugt (Docs werden einmal neu geladen) | Gleiches Muster wie die Vorhaben-Seite (`if (!split) return seite`); Test fragt das Element nach dem Wechsel neu ab | §3.7 |
+| 2026-09-16 | E2E-Messwerte: Gespräch auf der Projekt-Seite 33 ms nach `step-started`; UI-Antwort im Terminal nach 230 ms bzw. 226 ms; Reload während „entsteht": Gespräch nach 75 ms wieder da (4 Beiträge); Ordner nach der zweiten Antwort, Navigation innerhalb des Wartefensters; Backend danach `pendingIntents: []`, beide Protokoll-Einträge der Sitzung tragen `INT-2026-002`; 0 × „agent-event rejected" | — | §8 |
