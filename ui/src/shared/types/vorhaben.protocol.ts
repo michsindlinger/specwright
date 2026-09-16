@@ -9,6 +9,7 @@
  */
 
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from './cloud-terminal.protocol.js';
+import type { BlockKind } from './gespraech.protocol.js';
 
 // ---- Model ----
 
@@ -69,6 +70,8 @@ export interface VorhabenSessionRef {
   /** Model id as configured for the session (FA-42). */
   model: string;
   agentStatus: CloudTerminalAgentStatus;
+  /** Kind of the dialog while `blocked` (INT-2026-007, FA-09). */
+  blockKind?: BlockKind;
   /** Set once the session ended while still assigned (FA-22). */
   ended?: boolean;
 }
@@ -166,15 +169,22 @@ export interface Anmerkung {
   updatedAt: string;
 }
 
-export type ProtokollArt = 'aenderungen' | 'freigabe';
-export type ProtokollStatus = 'gesendet' | 'angenommen' | 'nicht_bestaetigt';
+/**
+ * `aenderungen` / `freigabe` come from the reader (INT-2026-004); `freitext` is
+ * a message typed into the Gespräch (INT-2026-007, FA-06). Stage 2 adds
+ * `rueckfrage` and `plan` (card answers).
+ */
+export type ProtokollArt = 'aenderungen' | 'freigabe' | 'freitext' | 'rueckfrage' | 'plan';
+/** `eingereiht` = handed to a working session, confirmed when Claude picks it up (AN-S09). */
+export type ProtokollStatus = 'gesendet' | 'eingereiht' | 'angenommen' | 'nicht_bestaetigt';
 
 /** One sent answer (FA-31/FA-32). */
 export interface ProtokollEintrag {
   id: string;
   projectId: string;
   intentId: string;
-  doc: VorhabenDocKey;
+  /** Review document — absent for `freitext` / card answers. */
+  doc?: VorhabenDocKey;
   art: ProtokollArt;
   /** Number of Anmerkungen (aenderungen) — 0 for freigabe. */
   anzahl: number;

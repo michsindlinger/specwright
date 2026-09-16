@@ -24,12 +24,18 @@ import { parseRueckfrageQuestions } from './claude-hooks.js';
 
 // ---- normalized entries ----
 
+/** Fields every entry may carry: `version` and `cwd` of the record (allowlist check, version check). */
+interface EntryMeta {
+  version?: string;
+  cwd?: string;
+}
+
 export type TranscriptEntry =
-  | { kind: 'nutzer'; uuid: string; at: string; text: string; version?: string }
-  | { kind: 'claude'; uuid: string; at: string; messageId?: string; text: string; version?: string }
-  | { kind: 'tool_use'; uuid: string; at: string; toolUseId: string; name: string; input: unknown; version?: string }
-  | { kind: 'tool_result'; uuid: string; at: string; toolUseId: string; isError: boolean; content: string; toolUseResult: unknown; version?: string }
-  | { kind: 'ignoriert'; type: string; version?: string };
+  | (EntryMeta & { kind: 'nutzer'; uuid: string; at: string; text: string })
+  | (EntryMeta & { kind: 'claude'; uuid: string; at: string; messageId?: string; text: string })
+  | (EntryMeta & { kind: 'tool_use'; uuid: string; at: string; toolUseId: string; name: string; input: unknown })
+  | (EntryMeta & { kind: 'tool_result'; uuid: string; at: string; toolUseId: string; isError: boolean; content: string; toolUseResult: unknown })
+  | (EntryMeta & { kind: 'ignoriert'; type: string });
 
 /** Bounds a transcript text before it travels to the client. */
 export const TRANSCRIPT_TEXT_MAX_CHARS = 200_000;
@@ -73,7 +79,9 @@ export function parseTranscriptLine(line: string): TranscriptEntry[] | null {
   const e = raw as Record<string, unknown>;
   const type = str(e.type) ?? '(ohne type)';
   const version = str(e.version);
-  const ignored: TranscriptEntry[] = [{ kind: 'ignoriert', type, ...(version ? { version } : {}) }];
+  const cwd = str(e.cwd);
+  const meta: EntryMeta = { ...(version ? { version } : {}), ...(cwd ? { cwd } : {}) };
+  const ignored: TranscriptEntry[] = [{ kind: 'ignoriert', type, ...meta }];
   if (type !== 'user' && type !== 'assistant') return ignored;
   if (e.isSidechain === true) return ignored;
   const uuid = str(e.uuid);
@@ -88,7 +96,7 @@ export function parseTranscriptLine(line: string): TranscriptEntry[] | null {
       if (/<local-command-stdout>|<local-command-caveat>/.test(content) && !/<command-name>/.test(content)) return ignored;
       const text = commandWrapperToText(content) ?? content;
       if (!text.trim()) return ignored;
-      return [{ kind: 'nutzer', uuid, at, text: cut(text), ...(version ? { version } : {}) }];
+      return [{ kind: 'nutzer', uuid, at, text: cut(text), ...meta }];
     }
     if (!Array.isArray(content)) return ignored;
     const out: TranscriptEntry[] = [];
@@ -99,13 +107,13 @@ export function parseTranscriptLine(line: string): TranscriptEntry[] | null {
       if (block.type === 'tool_result') {
         const toolUseId = str(block.tool_use_id);
         if (!toolUseId) continue;
-        out.push({ kind: 'tool_result', uuid, at, toolUseId, isError: block.is_error === true, content: cut(resultContentText(block.content)), toolUseResult: e.toolUseResult, ...(version ? { version } : {}) });
+        out.push({ kind: 'tool_result', uuid, at, toolUseId, isError: block.is_error === true, content: cut(resultContentText(block.content)), toolUseResult: e.toolUseResult, ...meta });
       } else if (block.type === 'text' && e.isMeta !== true) {
         const t = str(block.text);
         if (t) texts.push(t);
       }
     }
-    if (texts.length) out.push({ kind: 'nutzer', uuid, at, text: cut(texts.join('\n')), ...(version ? { version } : {}) });
+    if (texts.length) out.push({ kind: 'nutzer', uuid, at, text: cut(texts.join('\n')), ...meta });
     return out.length ? out : ignored;
   }
 
@@ -118,11 +126,11 @@ export function parseTranscriptLine(line: string): TranscriptEntry[] | null {
     const block = b as Record<string, unknown>;
     if (block.type === 'text') {
       const t = str(block.text);
-      if (t) out.push({ kind: 'claude', uuid, at, ...(messageId ? { messageId } : {}), text: cut(t), ...(version ? { version } : {}) });
+      if (t) out.push({ kind: 'claude', uuid, at, ...(messageId ? { messageId } : {}), text: cut(t), ...meta });
     } else if (block.type === 'tool_use') {
       const toolUseId = str(block.id);
       const name = str(block.name);
-      if (toolUseId && name) out.push({ kind: 'tool_use', uuid, at, toolUseId, name, input: block.input, ...(version ? { version } : {}) });
+      if (toolUseId && name) out.push({ kind: 'tool_use', uuid, at, toolUseId, name, input: block.input, ...meta });
     }
     // thinking and unknown blocks: ignored
   }
