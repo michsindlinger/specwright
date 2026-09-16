@@ -168,11 +168,16 @@ describe('aos-vorhaben-seite — action bar (FA-21, FA-22)', () => {
     el.remove();
   });
 
-  it('with a working session or an open dialog the button is disabled with the reason', async () => {
+  it('with a working session, an open dialog or a pending first input the button is disabled with the reason', async () => {
     const a = await seite(row({ zustand: 'arbeitet', sessionBusy: true, session: { id: 's1', name: 'n', model: 'opus', agentStatus: 'working' } }));
     expect(freigeben(a)!.disabled).toBe(true);
     expect(freigeben(a)!.title).toContain('Sitzung arbeitet oder wartet im Dialog');
     a.remove();
+    // just started via „Freigeben" without a session: status still unknown, the Freigabe is on its way (E2E S2 finding)
+    const f = await seite(row({ zustand: 'wartet_auf_dich', reviewDoc: 'spec', sessionBusy: true, session: { id: 's1', name: 'n', model: 'opus', agentStatus: 'unknown', firstInputPending: true } }));
+    expect(freigeben(f)!.disabled).toBe(true);
+    expect(freigeben(f)!.title).toContain('erste Eingabe wird nach der ersten Frage übergeben');
+    f.remove();
     const d = await seite(row({ zustand: 'wartet_rueckfrage', sessionBusy: true, session: { id: 's1', name: 'n', model: 'opus', agentStatus: 'blocked', blockKind: 'rueckfrage' } }));
     expect(freigeben(d)!.disabled).toBe(true);
     d.remove();

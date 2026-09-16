@@ -512,7 +512,12 @@ export class AosVorhabenSeite extends LitElement {
     const r = this.row;
     if (this.sending) return 'Wird gesendet …';
     if (this.docChanged()) return 'Dokument geändert — neu laden, dann erneut freigeben';
-    if (this.liveSession()) return freigabeGesperrtDurchSitzung(r.zustand) ? 'Sitzung arbeitet oder wartet im Dialog — die Freigabe geht, sobald sie auf dich wartet' : '';
+    const live = this.liveSession();
+    if (live) {
+      // Just started: its first input (this Freigabe, or the intent text) is still on its way — nothing else goes in before.
+      if (live.firstInputPending) return 'Sitzung startet — die erste Eingabe wird nach der ersten Frage übergeben';
+      return freigabeGesperrtDurchSitzung(r.zustand) ? 'Sitzung arbeitet oder wartet im Dialog — die Freigabe geht, sobald sie auf dich wartet' : '';
+    }
     if (this.docKey === 'intent') return 'Absicht-Sitzung beendet — Entwurf im Terminal fortsetzen';
     return '';
   }
