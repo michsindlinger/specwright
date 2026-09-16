@@ -33,6 +33,7 @@ describe('GespraechHandler', () => {
   let sent: Array<[string, { type: string }]>;
   let handler: GespraechHandler;
   let sendText: ReturnType<typeof vi.fn>;
+  let sendTextToSession: ReturnType<typeof vi.fn>;
   let discardQueued: ReturnType<typeof vi.fn>;
   const gone = new Set<string>();
 
@@ -43,10 +44,11 @@ describe('GespraechHandler', () => {
     sent = [];
     gone.clear();
     sendText = vi.fn(async () => ({ entry: { id: 'pe1', sessionId: 'cloud-1-1', text: 'x', status: 'gesendet' }, status: 'gesendet' }));
+    sendTextToSession = vi.fn(async () => ({ entry: { id: 'pe2', sessionId: 'cloud-1-2', text: 'x', status: 'gesendet' }, status: 'gesendet' }));
     discardQueued = vi.fn(() => 'cloud-1-1');
     handler = new GespraechHandler({
       gespraech: gespraech as unknown as GespraechService,
-      vorhaben: { sendText, discardQueued, findProject: (id: string) => (id === 'p' ? { id: 'p', path: '/p', name: 'P' } : undefined) } as never,
+      vorhaben: { sendText, sendTextToSession, discardQueued, findProject: (id: string) => (id === 'p' ? { id: 'p', path: '/p', name: 'P' } : undefined) } as never,
       sendTo: (clientId, m) => {
         if (gone.has(clientId)) return false;
         sent.push([clientId, m]);
@@ -128,6 +130,29 @@ describe('GespraechHandler', () => {
     handler.handle('c1', { type: 'gespraech:send-text', projectId: 'p', intentId: 'INT-2026-007', text: 'x' }, r.fn);
     await new Promise((res) => setTimeout(res, 5));
     expect(r.out[5]).toMatchObject({ type: 'gespraech:error', code: 'UNKNOWN_VORHABEN' });
+  });
+
+  it('send-text by sessionId (INT-2026-008): routes to sendTextToSession; both or no address, bad id → INVALID_MESSAGE; UNKNOWN_SESSION passed through', async () => {
+    const r = reply();
+    handler.handle('c1', { type: 'gespraech:send-text', requestId: 'r1', projectId: 'p', sessionId: 'cloud-1-2', text: 'Hallo' }, r.fn);
+    await new Promise((res) => setTimeout(res, 5));
+    expect(sendTextToSession).toHaveBeenCalledWith('p', 'cloud-1-2', 'Hallo');
+    expect(sendText).not.toHaveBeenCalled();
+    expect(r.out[0]).toMatchObject({ type: 'gespraech:sent', requestId: 'r1', status: 'gesendet' });
+    expect(gespraech.touched).toEqual(['cloud-1-2']);
+    handler.handle('c1', { type: 'gespraech:send-text', projectId: 'p', sessionId: 'cloud-1-2', intentId: 'INT-2026-007', text: 'x' }, r.fn);
+    expect(r.out[1]).toMatchObject({ type: 'gespraech:error', code: 'INVALID_MESSAGE' });
+    handler.handle('c1', { type: 'gespraech:send-text', projectId: 'p', text: 'x' }, r.fn);
+    expect(r.out[2]).toMatchObject({ type: 'gespraech:error', code: 'INVALID_MESSAGE' });
+    handler.handle('c1', { type: 'gespraech:send-text', projectId: 'p', sessionId: '../etc', text: 'x' }, r.fn);
+    expect(r.out[3]).toMatchObject({ type: 'gespraech:error', code: 'INVALID_MESSAGE' });
+    handler.handle('c1', { type: 'gespraech:send-text', projectId: 'q', sessionId: 'cloud-1-2', text: 'x' }, r.fn);
+    expect(r.out[4]).toMatchObject({ type: 'gespraech:error', code: 'UNKNOWN_PROJECT' });
+    sendTextToSession.mockRejectedValueOnce(new VorhabenError('UNKNOWN_SESSION', 'keine anhängige Absicht'));
+    handler.handle('c1', { type: 'gespraech:send-text', requestId: 'r3', projectId: 'p', sessionId: 'cloud-1-2', text: 'x' }, r.fn);
+    await new Promise((res) => setTimeout(res, 5));
+    expect(r.out[5]).toMatchObject({ type: 'gespraech:error', code: 'UNKNOWN_SESSION', requestId: 'r3' });
+    expect(sendTextToSession).toHaveBeenCalledTimes(2);
   });
 
   it('discard: removes a queued entry and re-evaluates the session; unknown entry → error', () => {

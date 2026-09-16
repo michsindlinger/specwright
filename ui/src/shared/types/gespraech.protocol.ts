@@ -159,11 +159,17 @@ export interface GespraechUnsubscribeMessage {
   sessionId: string;
 }
 
+/**
+ * Free text into a session: addressed by Vorhaben (`intentId`, the Vorhaben
+ * page) or — INT-2026-008 — by session (`sessionId`, a pending `/intent`
+ * session without a folder). Exactly one of the two.
+ */
 export interface GespraechSendTextMessage {
   type: 'gespraech:send-text';
   requestId?: string;
   projectId: string;
-  intentId: string;
+  intentId?: string;
+  sessionId?: string;
   text: string;
 }
 

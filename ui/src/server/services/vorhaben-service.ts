@@ -43,6 +43,7 @@ import {
   type ProtokollEintrag,
   type SendeGrund,
   type VorhabenDocKey,
+  type VorhabenPendingIntent,
   type VorhabenProjectInfo,
   type VorhabenRow,
   type VorhabenSessionRef,
@@ -145,6 +146,10 @@ export const SEND_CONFIRM_TIMEOUT_MS = 10_000;
 export const QUEUE_CONFIRM_GRACE_MS = 5_000;
 // eslint-disable-next-line no-control-regex
 const TEXT_CONTROL_CHARS = /[\x00-\x08\x0b-\x1f\x7f]/g;
+/** Normalises a free text for the PTY (line ends, control chars, trailing blanks, length). */
+function cleanText(rawText: string): string {
+  return rawText.replace(/\r\n?/g, '\n').replace(TEXT_CONTROL_CHARS, '').replace(/[ \t]+$/gm, '').trimEnd().slice(0, GESPRAECH_TEXT_MAX_CHARS);
+}
 /** How long after `prompt-submitted` we still wait for the prompt text before using the fallback. */
 const PROMPT_TEXT_GRACE_MS = 100;
 
@@ -162,7 +167,7 @@ export { buildAenderungenText, buildFreigabeText, formatStandLabel, normalizeAnm
 
 export class VorhabenError extends Error {
   constructor(
-    public readonly code: 'UNKNOWN_PROJECT' | 'UNKNOWN_VORHABEN' | 'NOT_FOUND' | 'TOO_LARGE' | 'IO_ERROR' | 'INVALID_MESSAGE' | 'START_FAILED',
+    public readonly code: 'UNKNOWN_PROJECT' | 'UNKNOWN_VORHABEN' | 'UNKNOWN_SESSION' | 'NOT_FOUND' | 'TOO_LARGE' | 'IO_ERROR' | 'INVALID_MESSAGE' | 'START_FAILED',
     message: string
   ) {
     super(message);
@@ -254,6 +259,7 @@ export class VorhabenService {
     return {
       rows: [...this.rows],
       projects: [...this.projects],
+      pendingIntents: this.pendingIntentInfos(),
       docDrafts: this.deps.store.getDocDrafts(),
       drafts: this.deps.store.getAllDrafts(),
       protocol: this.deps.store.getProtocol(),
@@ -445,11 +451,38 @@ export class VorhabenService {
    * the session works.
    */
   public async sendText(projectId: string, intentId: string, rawText: string): Promise<{ entry: ProtokollEintrag; status: 'gesendet' | 'eingereiht' }> {
-    const text = rawText.replace(/\r\n?/g, '\n').replace(TEXT_CONTROL_CHARS, '').replace(/[ \t]+$/gm, '').trimEnd().slice(0, GESPRAECH_TEXT_MAX_CHARS);
+    const text = cleanText(rawText);
     if (!text.trim()) throw this.rejected('text_leer');
     const row = this.requireRow(projectId, intentId);
+    return this.sendToSession(projectId, intentId, row.session, text);
+  }
+
+  /**
+   * INT-2026-008 (AK-02): free text into a session addressed by id — a pending
+   * `/intent` session without a folder. The id is only a key into the store:
+   * the session must be assigned to a Vorhaben of this project (folder just
+   * appeared — then the row's id is used) or be a pending intent of this
+   * project; anything else is UNKNOWN_SESSION. No `await` between the lookup
+   * and the protocol entry, so a claim in between is impossible (plan §3.3).
+   */
+  public async sendTextToSession(projectId: string, sessionId: string, rawText: string): Promise<{ entry: ProtokollEintrag; status: 'gesendet' | 'eingereiht' }> {
+    const text = cleanText(rawText);
+    if (!text.trim()) throw this.rejected('text_leer');
+    if (!this.findProject(projectId)) throw new VorhabenError('UNKNOWN_PROJECT', 'Projekt ist nicht geöffnet');
+    const assigned = this.deps.store.allAssignments().find(([key, a]) => a.sessionId === sessionId && key.startsWith(`${projectId}::`));
+    if (assigned) {
+      const intentId = assigned[0].slice(projectId.length + 2);
+      const row = this.findRow(projectId, intentId);
+      return this.sendToSession(projectId, intentId, row?.session ?? this.sessionFor(projectId, intentId), text);
+    }
+    const pending = this.deps.store.getPendingIntents().find(([id, p]) => id === sessionId && p.projectId === projectId);
+    if (!pending) throw new VorhabenError('UNKNOWN_SESSION', 'Sitzung ist keine anhängige Absicht dieses Projekts');
+    return this.sendToSession(projectId, undefined, this.sessionRefOf(sessionId, this.pendingName(sessionId), pending[1].model), text);
+  }
+
+  /** Shared core of sendText/sendTextToSession: status rules, queue limit, protocol entry, locked paste. */
+  private async sendToSession(projectId: string, intentId: string | undefined, ref: VorhabenSessionRef | undefined, text: string): Promise<{ entry: ProtokollEintrag; status: 'gesendet' | 'eingereiht' }> {
     const sessions = this.deps.sessions;
-    const ref = row.session;
     if (!sessions || !ref) throw this.rejected('keine_sitzung');
     if (ref.ended) throw this.rejected('beendet');
     const session = sessions.getSession(ref.id);
@@ -474,7 +507,7 @@ export class VorhabenService {
     const entry: ProtokollEintrag = {
       id: `pe-${sentAt.getTime()}-${++this.counter}`,
       projectId,
-      intentId,
+      ...(intentId ? { intentId } : {}),
       art: 'freitext',
       anzahl: 0,
       stand: '',
@@ -632,6 +665,31 @@ export class VorhabenService {
     return this.deps.store.allAssignments().some(([, a]) => a.sessionId === sessionId);
   }
 
+  /** INT-2026-008: a `/intent` session still waiting for its folder. */
+  private isPending(sessionId: string): boolean {
+    return this.deps.store.getPendingIntents().some(([id]) => id === sessionId);
+  }
+
+  /** Tab name of a session as the workspace knows it; `intent` for a pending `/intent` session. */
+  private pendingName(sessionId: string): string {
+    return (this.deps.workspace.getState().sessionNames ?? {})[sessionId] ?? 'intent';
+  }
+
+  /**
+   * INT-2026-008 (AK-05): pending `/intent` sessions for the state, oldest
+   * first (the order `onDirAdded` claims in). Copy label from the last scan's
+   * project info or the directory name — no scan needed.
+   */
+  private pendingIntentInfos(): VorhabenPendingIntent[] {
+    const out: VorhabenPendingIntent[] = [];
+    for (const [sessionId, p] of this.deps.store.getPendingIntents()) {
+      const info = this.projects.find((x) => x.id === p.projectId);
+      const arbeitskopie = info && safeKey(info.path) === safeKey(p.cwd) ? info.arbeitskopie : basename(p.cwd);
+      out.push({ sessionId, projectId: p.projectId, cwd: p.cwd, arbeitskopie, since: p.since, session: this.sessionRefOf(sessionId, this.pendingName(sessionId), p.model) });
+    }
+    return out.sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0));
+  }
+
   private onAgentEvent(sessionId: string, event: string): void {
     if (event === 'stop' || event === 'stop-failure') {
       // Queued texts are handed over right after this turn; without a confirming
@@ -654,14 +712,20 @@ export class VorhabenService {
       }, PROMPT_TEXT_GRACE_MS);
       t.unref?.();
     }
+    // Assigned sessions may have written documents → rescan; a pending
+    // `/intent` session has no folder yet → only the state (INT-2026-008).
     if (this.isAssigned(sessionId)) this.scheduleRescan(0);
+    else if (this.isPending(sessionId)) this.broadcastState();
   }
 
   private onSessionClosed(sessionId: string): void {
     const changed = this.deps.store.markSessionEnded(sessionId);
-    this.deps.store.clearPendingIntent(sessionId);
+    const pendingCleared = this.deps.store.clearPendingIntent(sessionId);
+    // Ended without a folder: its unclaimed free texts would stay invisible forever (INT-2026-008, R-2).
+    if (pendingCleared) this.deps.store.dropUnclaimedProtocol(sessionId);
     this.promptTextSeq.delete(sessionId);
     if (changed > 0) this.scheduleRescan(0);
+    else if (pendingCleared) this.broadcastState();
   }
 
   private onPromptText(sessionId: string, prompt: string): void {
@@ -688,6 +752,7 @@ export class VorhabenService {
       this.scheduleRescan(0);
     } else if (cmd.step === 'intent') {
       this.deps.store.setPendingIntent(sessionId, { projectId: project.id, cwd: session.effectiveCwd, step: 'intent', model, since: this.now().toISOString() });
+      this.broadcastState();
     }
   }
 
@@ -698,6 +763,8 @@ export class VorhabenService {
       if (safeKey(p.cwd) !== key) continue;
       this.deps.store.clearPendingIntent(sessionId);
       this.deps.store.setAssignment(p.projectId, intentId, { sessionId, step: 'intent', model: p.model, cwd, at: this.now().toISOString() });
+      // The interview sent from the project page moves into the Vorhaben's protocol (INT-2026-008, AK-03).
+      this.deps.store.claimPendingProtocol(sessionId, intentId);
       break;
     }
   }
@@ -728,12 +795,16 @@ export class VorhabenService {
     const a = this.deps.store.getAssignment(projectId, intentId);
     if (!a) return undefined;
     const names = this.deps.workspace.getState().sessionNames ?? {};
-    const name = names[a.sessionId] ?? `${a.step} ${intentId}`;
-    const live = this.deps.sessions?.getSession(a.sessionId);
-    if (a.ended || !live || live.status === 'closed') {
-      return { id: a.sessionId, name, model: a.model, agentStatus: 'unknown', ended: true };
+    return this.sessionRefOf(a.sessionId, names[a.sessionId] ?? `${a.step} ${intentId}`, a.model, a.ended);
+  }
+
+  /** Session reference from the live manager state; without a live session: ended (input locked). */
+  private sessionRefOf(sessionId: string, name: string, model: string, ended?: boolean): VorhabenSessionRef {
+    const live = this.deps.sessions?.getSession(sessionId);
+    if (ended || !live || live.status === 'closed') {
+      return { id: sessionId, name, model, agentStatus: 'unknown', ended: true };
     }
-    return { id: a.sessionId, name, model: live.modelConfig?.model ?? a.model, agentStatus: live.agentStatus ?? 'unknown', ...(live.blockKind ? { blockKind: live.blockKind } : {}) };
+    return { id: sessionId, name, model: live.modelConfig?.model ?? model, agentStatus: live.agentStatus ?? 'unknown', ...(live.blockKind ? { blockKind: live.blockKind } : {}) };
   }
 
   /** Copy per intentId that wins the merge (FA-06): the assigned session's cwd. */

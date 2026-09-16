@@ -188,7 +188,11 @@ export type ProtokollStatus = 'gesendet' | 'eingereiht' | 'angenommen' | 'nicht_
 export interface ProtokollEintrag {
   id: string;
   projectId: string;
-  intentId: string;
+  /**
+   * Absent while the entry belongs to a pending `/intent` session that has
+   * no folder yet (INT-2026-008); set by the claim of the first new folder.
+   */
+  intentId?: string;
   /** Review document — absent for `freitext` / card answers. */
   doc?: VorhabenDocKey;
   art: ProtokollArt;
@@ -222,9 +226,28 @@ export const draftKey = (projectId: string, intentId: string, doc: VorhabenDocKe
 export const lastModelKey = (projectId: string, intentId: string, step: VorhabenStep): string => `${projectId}::${intentId}::${step}`;
 export const assignmentKey = (projectId: string, intentId: string): string => `${projectId}::${intentId}`;
 
+/**
+ * A `/intent` session whose Vorhaben folder does not exist yet (INT-2026-008,
+ * AK-01/AK-05): the project page shows its Gespräch until the first new
+ * `intent/INT-…/` folder claims the session and a row carries it.
+ */
+export interface VorhabenPendingIntent {
+  sessionId: string;
+  projectId: string;
+  /** Directory the session runs in (project or worktree). */
+  cwd: string;
+  /** Branch/label of that copy; '' when unknown or not a git repo. */
+  arbeitskopie: string;
+  /** ISO timestamp of the start; the oldest pending session claims the next folder. */
+  since: string;
+  session: VorhabenSessionRef;
+}
+
 export interface VorhabenState {
   rows: VorhabenRow[];
   projects: VorhabenProjectInfo[];
+  /** Pending `/intent` sessions without a folder (INT-2026-008), oldest first. */
+  pendingIntents: VorhabenPendingIntent[];
   docDrafts: Record<string, ProjectDocDraft>;
   /** `draftKey(...)` → Anmerkungen in document order (FA-26). */
   drafts: Record<string, Anmerkung[]>;
@@ -443,6 +466,8 @@ export type VorhabenErrorCode =
   | 'INVALID_MESSAGE'
   | 'UNKNOWN_PROJECT'
   | 'UNKNOWN_VORHABEN'
+  /** INT-2026-008: session id is neither assigned nor a pending `/intent` of this project. */
+  | 'UNKNOWN_SESSION'
   | 'NOT_FOUND'
   | 'TOO_LARGE'
   | 'IO_ERROR'

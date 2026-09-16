@@ -30,7 +30,7 @@ const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : und
 
 export interface GespraechHandlerDeps {
   gespraech: GespraechService;
-  vorhaben: Pick<VorhabenService, 'sendText' | 'discardQueued' | 'findProject'>;
+  vorhaben: Pick<VorhabenService, 'sendText' | 'sendTextToSession' | 'discardQueued' | 'findProject'>;
   /** Sends a message to one client; false when the client is gone. */
   sendTo: (clientId: string, message: OutboundMessage) => boolean;
   now?: () => Date;
@@ -84,9 +84,13 @@ export class GespraechHandler {
       case 'gespraech:send-text': {
         const projectId = str(message.projectId);
         const intentId = str(message.intentId);
+        const sessionId = str(message.sessionId);
         const text = str(message.text);
-        if (!projectId || !intentId || !INTENT_ID_RE.test(intentId) || text === undefined) {
-          reply(this.error('INVALID_MESSAGE', 'projectId, intentId (INT-JJJJ-NNN) und text sind erforderlich', requestId));
+        // Exactly one address: the Vorhaben (intentId) or — INT-2026-008 — a pending `/intent` session (sessionId).
+        const byIntent = intentId !== undefined && sessionId === undefined;
+        const bySession = sessionId !== undefined && intentId === undefined;
+        if (!projectId || text === undefined || !(byIntent || bySession) || (byIntent && !INTENT_ID_RE.test(intentId)) || (bySession && !CLOUD_SESSION_ID_RE.test(sessionId))) {
+          reply(this.error('INVALID_MESSAGE', 'projectId, text und genau eine Adresse sind erforderlich: intentId (INT-JJJJ-NNN) oder sessionId (cloud-…)', requestId));
           return true;
         }
         if (text.length > GESPRAECH_TEXT_MAX_CHARS) {
@@ -97,8 +101,9 @@ export class GespraechHandler {
           reply(this.error('UNKNOWN_PROJECT', 'Projekt ist nicht geöffnet', requestId));
           return true;
         }
-        void this.deps.vorhaben
-          .sendText(projectId, intentId, text)
+        const send =
+          sessionId !== undefined ? this.deps.vorhaben.sendTextToSession(projectId, sessionId, text) : this.deps.vorhaben.sendText(projectId, intentId ?? '', text);
+        void send
           .then(({ entry, status }) => {
             reply({ type: 'gespraech:sent', ...(requestId ? { requestId } : {}), entry, status } as GespraechSentMessage);
             this.deps.gespraech.touch(entry.sessionId);
@@ -152,7 +157,7 @@ export class GespraechHandler {
       return { type: 'gespraech:rejected', ...(requestId ? { requestId } : {}), grund, message: GESPRAECH_GRUND_TEXT[grund] ?? err.message } as GespraechRejectedMessage;
     }
     if (err instanceof VorhabenError) {
-      const code = err.code === 'UNKNOWN_PROJECT' || err.code === 'UNKNOWN_VORHABEN' ? err.code : 'IO_ERROR';
+      const code = err.code === 'UNKNOWN_PROJECT' || err.code === 'UNKNOWN_VORHABEN' || err.code === 'UNKNOWN_SESSION' ? err.code : 'IO_ERROR';
       return this.error(code, err.message, requestId);
     }
     return this.error('IO_ERROR', (err as Error)?.message ?? String(err), requestId);
