@@ -1,15 +1,17 @@
 /**
  * aos-naechster-schritt — "Nächster Schritt: Plan erstellen — startet eine
  * Sitzung mit /specwright:plan INT-…" with the model choice (pre-set to the last model
- * of this Vorhaben and step, else the step default, FA-40) and the target
- * (project or an existing worktree, new worktree — the picker's data,
- * V-14) and the start button (FA-35, mock 03b). Also used on the project page
- * for a new Vorhaben (`/specwright:intent`).
+ * of this Vorhaben and step, else the step default, FA-40 — helper
+ * `model-wahl.ts`) and the target (project or an existing worktree, new
+ * worktree — the picker's data, V-14) and the start button (FA-35, mock 03b).
+ * INT-2026-010 (FA-21): always shown on the Vorhaben page; `gesperrt` greys
+ * the button out while a session of the Vorhaben works or waits.
  */
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { vorhabenService, type ModelListInfo } from '../../services/vorhaben.service.js';
+import { istSchrittStandard, ladeModelle, vorauswahl } from './model-wahl.js';
 import { stepCommand, type ModelSelection, type VorhabenStep } from '../../../../src/shared/types/vorhaben.protocol.js';
 import type { CloudTerminalSessionTarget, CloudTerminalWorktreeEntry } from '../../../../src/shared/types/cloud-terminal.protocol.js';
 import '../model-selector.js';
@@ -36,6 +38,8 @@ export class AosNaechsterSchritt extends LitElement {
   @property({ type: Boolean, reflect: true }) mobile = false;
   /** Compact = no explanatory sentence (project page). */
   @property({ type: Boolean }) compact = false;
+  /** INT-2026-010 (FA-21): a session of the Vorhaben works or waits — the button is disabled with a hint. */
+  @property({ type: Boolean, reflect: true }) gesperrt = false;
 
   @state() private models: ModelListInfo | null = null;
   @state() private selected: ModelSelection | null = null;
@@ -108,6 +112,14 @@ export class AosNaechsterSchritt extends LitElement {
       color: var(--color-accent-error);
       font-size: var(--font-size-xs);
     }
+    .sperre {
+      width: 100%;
+      color: var(--color-text-muted);
+      font-size: var(--font-size-xs);
+    }
+    :host([gesperrt]) .kasten {
+      opacity: 0.8;
+    }
     :host([mobile]) .wahl {
       margin-left: 0;
       width: 100%;
@@ -133,7 +145,7 @@ export class AosNaechsterSchritt extends LitElement {
 
   private async loadModels(): Promise<void> {
     try {
-      this.models = await vorhabenService.modelList();
+      this.models = await ladeModelle();
       this.preselect();
     } catch (err) {
       this.error = (err as Error).message;
@@ -152,13 +164,10 @@ export class AosNaechsterSchritt extends LitElement {
     }
   }
 
-  /** FA-40: last model of (Vorhaben, step) → step default → general default. */
+  /** FA-40: last model of (Vorhaben, step) → step default → general default (`model-wahl.ts`). */
   private preselect(): void {
     if (!this.models) return;
-    const has = (sel: ModelSelection | undefined): sel is ModelSelection =>
-      !!sel && this.models!.providers.some((p) => p.id === sel.providerId && p.models.some((m) => m.id === sel.modelId));
-    const stepDefault = this.models.stepDefaults?.[this.step];
-    this.selected = has(this.lastModel) ? this.lastModel : has(stepDefault) ? stepDefault : this.models.defaultSelection;
+    this.selected = vorauswahl(this.models, this.step, this.lastModel);
   }
 
   private onModel(e: CustomEvent<{ providerId: string; modelId: string }>): void {
@@ -173,7 +182,7 @@ export class AosNaechsterSchritt extends LitElement {
   }
 
   private async start(): Promise<void> {
-    if (!this.selected || this.starting) return;
+    if (!this.selected || this.starting || this.gesperrt) return;
     this.starting = true;
     this.error = '';
     try {
@@ -193,11 +202,8 @@ export class AosNaechsterSchritt extends LitElement {
   }
 
   private modelLabel(): string {
-    const sel = this.selected;
-    if (!sel || !this.models) return '';
-    const stepDefault = this.models.stepDefaults?.[this.step];
-    const isStepDefault = !!stepDefault && stepDefault.providerId === sel.providerId && stepDefault.modelId === sel.modelId && !this.lastModel;
-    return isStepDefault ? ` (Standard ${STEP_TEXT[this.step].split(' ')[0]})` : '';
+    if (!this.models) return '';
+    return istSchrittStandard(this.models, this.step, this.selected, this.lastModel) ? ` (Standard ${STEP_TEXT[this.step].split(' ')[0]})` : '';
   }
 
   override render() {
@@ -221,8 +227,9 @@ export class AosNaechsterSchritt extends LitElement {
           ${this.worktrees.filter((w) => !w.isProjectRoot).map((w) => html`<option value=${w.path} ?selected=${this.target === w.path}>Worktree ${w.branch ?? w.name}</option>`)}
           ${this.isGitRepo && this.worktreeCreationEnabled ? html`<option value="new" ?selected=${this.target === 'new'}>Neuer Worktree</option>` : nothing}
         </select>
-        <button type="button" class="start" ?disabled=${!this.selected || this.starting} @click=${this.start}>${this.starting ? 'Startet …' : label}</button>
+        <button type="button" class="start" ?disabled=${!this.selected || this.starting || this.gesperrt} title=${this.gesperrt ? 'Sitzung arbeitet oder wartet' : ''} @click=${this.start}>${this.starting ? 'Startet …' : label}</button>
       </div>
+      ${this.gesperrt ? html`<div class="sperre">Sitzung arbeitet oder wartet — erst danach kann der nächste Schritt starten.</div>` : nothing}
       ${this.error ? html`<div class="fehler">${this.error}</div>` : nothing}
     </div>`;
   }

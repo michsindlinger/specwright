@@ -9,15 +9,13 @@
  * `#/neu[/<projectId>]` · `#/projekt[/<projectId>[/<docKey>]]`
  * (projectId URL-encoded).
  *
- * Stage 1 of INT-2026-010 renders `neu` as the block that used to be the
- * „Neues Vorhaben" section of the project page — moved, not new: start box
- * (`aos-naechster-schritt step="intent"`), hint while a `/intent` session is
- * pending, on the Mac its Gespräch next to it, and the follow logic that opens
- * the Vorhaben page once a folder claims the session (AK-09). Stage 2 replaces
- * the block with `aos-neue-absicht`.
+ * Route `neu` (INT-2026-010 stage 2, AK-08/AK-09): `aos-neue-absicht` — text,
+ * model, „Starten"; while a `/intent` session of the project is pending the
+ * card shows that session, on the Mac with its Gespräch next to it, and the
+ * follow logic opens the Vorhaben page once a folder claims the session.
  */
 
-import { LitElement, html, nothing } from 'lit';
+import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { projectContext, type ProjectContextValue, defaultProjectContext } from '../context/project-context.js';
@@ -27,7 +25,7 @@ import { vorhabenService } from '../services/vorhaben.service.js';
 import { MobileBreakpointController } from '../controllers/mobile-breakpoint-controller.js';
 import type { ParsedRoute, ViewType } from '../types/route.types.js';
 import type { ProjectDocKey, VorhabenPendingIntent, VorhabenRow, VorhabenState } from '../../../src/shared/types/vorhaben.protocol.js';
-import { PROJECT_DOC_KEYS, VORHABEN_DOC_ORDER, draftKey, stepCommand } from '../../../src/shared/types/vorhaben.protocol.js';
+import { PROJECT_DOC_KEYS, VORHABEN_DOC_ORDER, draftKey } from '../../../src/shared/types/vorhaben.protocol.js';
 import { defaultDoc, type AosVorhabenSeite } from '../components/vorhaben/aos-vorhaben-seite.js';
 import { GESPRAECH_BREITE } from '../components/vorhaben/aos-gespraech.js';
 import type { LeserDoc } from '../components/vorhaben/aos-dokument-leser.js';
@@ -35,7 +33,7 @@ import '../components/vorhaben/aos-vorhaben-uebersicht.js';
 import '../components/vorhaben/aos-vorhaben-seite.js';
 import '../components/vorhaben/aos-projekt-seite.js';
 import '../components/vorhaben/aos-gespraech.js';
-import '../components/vorhaben/aos-naechster-schritt.js';
+import '../components/vorhaben/aos-neue-absicht.js';
 
 export type VorhabenRoute = 'vorhaben' | 'neu' | 'projekt';
 
@@ -260,11 +258,6 @@ export class AosVorhabenView extends LitElement {
     this.go('projekt', [encodeURIComponent(pid), ...(e.detail.key ? [e.detail.key] : [])]);
   }
 
-  /** Same document-level event the Gespräch head uses (FA-21/FA-22); app.ts opens the session (Mac solo, phone active tab). */
-  private toTerminal(sessionId: string): void {
-    document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId } }));
-  }
-
   // ---- render ----
 
   override render() {
@@ -345,11 +338,7 @@ export class AosVorhabenView extends LitElement {
     ></aos-projekt-seite>`;
   }
 
-  /**
-   * Route `neu`, stage-1 interim (plan §6 S1 step 5): the former „Neues
-   * Vorhaben" block of the project page. Stage 2 replaces it with
-   * `aos-neue-absicht` (text field, model, „Starten").
-   */
+  /** Route `neu` (FA-10/FA-11): title, project, then `aos-neue-absicht` (form, or the pending session's card). */
   private renderNeu() {
     const pid = this.currentProjectId();
     const project = pid ? this.vorhabenState?.projects.find((p) => p.id === pid) ?? null : null;
@@ -364,24 +353,16 @@ export class AosVorhabenView extends LitElement {
     const block = html`<div class="neue-absicht">
       <h1>Neue Absicht</h1>
       <div class="sub">${project ? project.name : ''}</div>
-      ${pending
-        ? html`<div class="neu gestartet">
-            <span><span class="dot"></span>Absicht-Sitzung „${pending.session.name}" läuft — Vorhaben entsteht …</span>
-            <span class="status">${mobile ? 'im Terminal antworten' : 'Gespräch rechts'} — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span>
-            <button type="button" class="terminal" @click=${() => this.toTerminal(pending.sessionId)}>Im Terminal öffnen ↗</button>
-          </div>`
-        : project
-          ? html`<aos-naechster-schritt
-              .projectId=${project.id}
-              .projectPath=${project.path}
-              step="intent"
-              label="Absicht beginnen"
-              command=${stepCommand('intent')}
-              .mobile=${mobile}
-              @vorhaben-session-started=${this.onSessionStarted}
-            ></aos-naechster-schritt>`
-          : html`<div class="vorhaben-status">Vorhaben werden gelesen …</div>`}
-      ${nothing}
+      ${project
+        ? html`<aos-neue-absicht
+            .projectId=${project.id}
+            .projectPath=${project.path}
+            .projectName=${project.name}
+            .pending=${pending ?? null}
+            .mobile=${mobile}
+            @vorhaben-session-started=${this.onSessionStarted}
+          ></aos-neue-absicht>`
+        : html`<div class="vorhaben-status">Vorhaben werden gelesen …</div>`}
     </div>`;
     // Mac with a pending `/intent` session: block left, its Gespräch right (INT-2026-008, AK-01); phone: hint only (AK-06).
     if (mobile || !(pending || claimedRow)) return block;
