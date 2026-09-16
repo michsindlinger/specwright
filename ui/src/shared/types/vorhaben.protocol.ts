@@ -80,6 +80,12 @@ export interface VorhabenSessionRef {
   blockKind?: BlockKind;
   /** Set once the session ended while still assigned (FA-22). */
   ended?: boolean;
+  /**
+   * INT-2026-010 (AK-09/FA-22): a first input (text of „Neue Absicht" or a
+   * Freigabe) is stored for this session and handed over at its first Stop.
+   * Only the flag is broadcast, never the text.
+   */
+  firstInputPending?: boolean;
 }
 
 export interface VorhabenNextStep {
@@ -113,10 +119,26 @@ export interface VorhabenRow {
   zustandDetail: string;
   /** Review document while the session waits (FA-20); undefined when none. */
   reviewDoc?: VorhabenDocKey;
+  /**
+   * INT-2026-010 (FA-22): the document whose head status awaits approval
+   * (intent entwurf/in_klaerung, spec or plan entwurf) — independent of a
+   * session, so „Freigeben" is offered even when no session waits (AN-S06).
+   * Undefined in phase `pr`, `bau`, `umgesetzt`.
+   */
+  freigabeDoc?: VorhabenDocKey;
   /** Step the row is in (FA-15). */
   step?: VorhabenStep;
-  /** Offered only when no session works or waits (FA-12). */
+  /**
+   * Next step of the phase (FA-12). INT-2026-010 (FA-21): always present when
+   * the phase has one — the page greys the button out while `sessionBusy`.
+   */
   nextStep?: VorhabenNextStep;
+  /**
+   * INT-2026-010 (FA-21): a live session of this Vorhaben works or waits
+   * (any state but `keine_sitzung` / `sitzung_beendet`) — the next step must
+   * not start a second session then.
+   */
+  sessionBusy: boolean;
   docs: VorhabenDocInfo[];
   /** File names under design/ (images are rendered on demand). */
   designFiles: string[];
@@ -243,11 +265,31 @@ export interface VorhabenPendingIntent {
   session: VorhabenSessionRef;
 }
 
+/** Document (or the design folder) a Phasen-Chip of the Vorhaben page shows (INT-2026-010, FA-12). */
+export type VorhabenPhaseDoc = VorhabenDocKey | 'design';
+
+export const VORHABEN_PHASE_DOCS: readonly VorhabenPhaseDoc[] = [...VORHABEN_DOC_ORDER, 'design'];
+
+/**
+ * INT-2026-010 (FA-03, FA-12; AR-05, spec §7): the view state every device
+ * shares — the project chip of the overview and the chosen phase document per
+ * Vorhaben. Lives in the backend's user-state file, set via
+ * `vorhaben:ansicht.set`, broadcast in `vorhaben:state`.
+ */
+export interface VorhabenAnsicht {
+  /** Project chip of the overview; null = „Alle". */
+  filterProjectId: string | null;
+  /** `assignmentKey(projectId, intentId)` → chosen document. Absent = default of the row. */
+  phase: Record<string, VorhabenPhaseDoc>;
+}
+
 export interface VorhabenState {
   rows: VorhabenRow[];
   projects: VorhabenProjectInfo[];
   /** Pending `/intent` sessions without a folder (INT-2026-008), oldest first. */
   pendingIntents: VorhabenPendingIntent[];
+  /** Shared view state (INT-2026-010). */
+  ansicht: VorhabenAnsicht;
   docDrafts: Record<string, ProjectDocDraft>;
   /** `draftKey(...)` → Anmerkungen in document order (FA-26). */
   drafts: Record<string, Anmerkung[]>;
@@ -370,9 +412,29 @@ export interface VorhabenStartStepMessage {
   /** Absent for `intent` (new Vorhaben). */
   intentId?: string;
   step: VorhabenStep;
-  model: ModelSelection;
+  /**
+   * INT-2026-010 (FA-22): optional — without it the backend resolves the last
+   * model of (Vorhaben, step), then the step default of the settings.
+   */
+  model?: ModelSelection;
   /** Where the session runs; absent = main project. */
   sessionTarget?: CloudTerminalSessionTarget;
+  /**
+   * INT-2026-010 (AK-09, FA-11, FA-22): text handed to the session as its
+   * first input at the first Stop (trimmed, 1…GESPRAECH_TEXT_MAX_CHARS).
+   */
+  firstInput?: string;
+}
+
+/**
+ * INT-2026-010 (FA-03, FA-12): sets the shared view state. `filterProjectId`
+ * must be an open project or null; `phase.doc` one of VORHABEN_PHASE_DOCS.
+ * Answer is the next `vorhaben:state` broadcast.
+ */
+export interface VorhabenAnsichtSetMessage {
+  type: 'vorhaben:ansicht.set';
+  filterProjectId?: string | null;
+  phase?: { projectId: string; intentId: string; doc: VorhabenPhaseDoc };
 }
 
 // ---- Server → Client ----

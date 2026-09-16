@@ -7,8 +7,11 @@
  * Stage 1 (INT-2026-004) used `docDrafts` (FA-47). Stage 2 fills the rest:
  * session assignments (FA-21/22), review drafts (FA-26), the protocol of
  * sent answers (FA-31/32), the last model per step (FA-40) and pending
- * `/intent` sessions waiting for their folder. The file format stayed the
- * same (`version: 1`); every map is optional on load.
+ * `/intent` sessions waiting for their folder. INT-2026-010 adds the shared
+ * view state (`ansicht`: project chip, phase document per Vorhaben — AR-05)
+ * and the first input per started session (`firstInputs`, handed over at the
+ * session's first Stop). The file format stayed the same (`version: 1`);
+ * every map is optional on load.
  */
 
 import * as fs from 'fs';
@@ -22,7 +25,9 @@ import {
   type ProjectDocDraft,
   type ProjectDocKey,
   type ProtokollEintrag,
+  type VorhabenAnsicht,
   type VorhabenDocKey,
+  type VorhabenPhaseDoc,
   type VorhabenStep,
 } from '../../shared/types/vorhaben.protocol.js';
 
@@ -59,7 +64,19 @@ export interface VorhabenStateData {
   docDrafts: Record<string, ProjectDocDraft>;
   /** sessionId → pending `/intent` claim. */
   pendingIntents: Record<string, PendingIntent>;
+  /** INT-2026-010: shared view state (FA-03, FA-12). */
+  ansicht: VorhabenAnsicht;
+  /** INT-2026-010: sessionId → first input waiting for the session's first Stop (AK-09, FA-22). */
+  firstInputs: Record<string, FirstInput>;
 }
+
+/** Text handed to a started session at its first Stop; `versuche` counts refused deliveries (max 3, plan §3). */
+export interface FirstInput {
+  text: string;
+  versuche: number;
+}
+
+export const FIRST_INPUT_MAX_VERSUCHE = 3;
 
 interface VorhabenStateFileV1 {
   version: 1;
@@ -86,10 +103,34 @@ export function docDraftKey(projectId: string, key: ProjectDocKey): string {
 export const PROTOCOL_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 function emptyState(): VorhabenStateData {
-  return { assignments: {}, drafts: {}, protocol: [], lastModel: {}, docDrafts: {}, pendingIntents: {} };
+  return { assignments: {}, drafts: {}, protocol: [], lastModel: {}, docDrafts: {}, pendingIntents: {}, ansicht: emptyAnsicht(), firstInputs: {} };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+function emptyAnsicht(): VorhabenAnsicht {
+  return { filterProjectId: null, phase: {} };
+}
+
+/** Tolerant read of a stored `ansicht` (older files have none; a broken value falls back to the default). */
+function readAnsicht(v: unknown): VorhabenAnsicht {
+  if (!isRecord(v)) return emptyAnsicht();
+  const filterProjectId = typeof v.filterProjectId === 'string' ? v.filterProjectId : null;
+  const phase: Record<string, VorhabenPhaseDoc> = {};
+  if (isRecord(v.phase)) {
+    for (const [k, d] of Object.entries(v.phase)) if (typeof d === 'string') phase[k] = d as VorhabenPhaseDoc;
+  }
+  return { filterProjectId, phase };
+}
+
+function readFirstInputs(v: unknown): Record<string, FirstInput> {
+  const out: Record<string, FirstInput> = {};
+  if (!isRecord(v)) return out;
+  for (const [k, e] of Object.entries(v)) {
+    if (isRecord(e) && typeof e.text === 'string') out[k] = { text: e.text, versuche: typeof e.versuche === 'number' ? e.versuche : 0 };
+  }
+  return out;
+}
 
 const byOrdinal = (a: Anmerkung, b: Anmerkung): number => a.ordinal - b.ordinal || a.updatedAt.localeCompare(b.updatedAt);
 
@@ -126,6 +167,8 @@ export class VorhabenStateStore {
         lastModel: isRecord(s.lastModel) ? (s.lastModel as VorhabenStateData['lastModel']) : {},
         docDrafts: isRecord(s.docDrafts) ? (s.docDrafts as VorhabenStateData['docDrafts']) : {},
         pendingIntents: isRecord(s.pendingIntents) ? (s.pendingIntents as VorhabenStateData['pendingIntents']) : {},
+        ansicht: readAnsicht(s.ansicht),
+        firstInputs: readFirstInputs(s.firstInputs),
       };
       this.updatedAt = parsed.updatedAt ?? this.updatedAt;
       return { existed: true, healthy: true };
@@ -366,12 +409,68 @@ export class VorhabenStateStore {
     return true;
   }
 
+  // ---- view state (INT-2026-010, FA-03/FA-12, AR-05) ----
+
+  /** Snapshot for the broadcast (callers must not mutate). */
+  public getAnsicht(): VorhabenAnsicht {
+    return { filterProjectId: this.state.ansicht.filterProjectId, phase: { ...this.state.ansicht.phase } };
+  }
+
+  /** Returns true when something changed. `filterProjectId: undefined` = leave as is. */
+  public setAnsicht(patch: { filterProjectId?: string | null; phase?: { key: string; doc: VorhabenPhaseDoc } }): boolean {
+    let changed = false;
+    if (patch.filterProjectId !== undefined && patch.filterProjectId !== this.state.ansicht.filterProjectId) {
+      this.state.ansicht.filterProjectId = patch.filterProjectId;
+      changed = true;
+    }
+    if (patch.phase && this.state.ansicht.phase[patch.phase.key] !== patch.phase.doc) {
+      this.state.ansicht.phase[patch.phase.key] = patch.phase.doc;
+      changed = true;
+    }
+    if (changed) this.commit();
+    return changed;
+  }
+
+  // ---- first input (INT-2026-010, AK-09/FA-22) ----
+
+  public getFirstInput(sessionId: string): FirstInput | undefined {
+    const e = this.state.firstInputs[sessionId];
+    return e ? { ...e } : undefined;
+  }
+
+  public hasFirstInput(sessionId: string): boolean {
+    return sessionId in this.state.firstInputs;
+  }
+
+  public setFirstInput(sessionId: string, input: FirstInput): void {
+    this.state.firstInputs[sessionId] = { ...input };
+    this.commit();
+  }
+
+  /** Counts one refused delivery; returns the new count. */
+  public bumpFirstInputVersuche(sessionId: string): number {
+    const e = this.state.firstInputs[sessionId];
+    if (!e) return 0;
+    e.versuche += 1;
+    this.commit();
+    return e.versuche;
+  }
+
+  public clearFirstInput(sessionId: string): boolean {
+    if (!(sessionId in this.state.firstInputs)) return false;
+    delete this.state.firstInputs[sessionId];
+    this.commit();
+    return true;
+  }
+
   // ---- prune ----
 
   /**
    * FA-32: protocol entries are dropped only when they are older than 30 days
    * AND their Vorhaben is no longer in the list (`liveKeys` = `projectId::intentId`).
-   * Returns the number of removed entries.
+   * INT-2026-010 (review E14): chosen phase documents of Vorhaben that are no
+   * longer in the list go at once. Returns the number of removed entries
+   * (protocol plus phase entries).
    */
   public prune(liveKeys: Set<string>): number {
     const cutoff = this.now().getTime() - PROTOCOL_RETENTION_MS;
@@ -381,7 +480,13 @@ export class VorhabenStateStore {
       if (e.intentId && liveKeys.has(assignmentKey(e.projectId, e.intentId))) return true;
       return new Date(e.sentAt).getTime() >= cutoff;
     });
-    const removed = before - this.state.protocol.length;
+    let removed = before - this.state.protocol.length;
+    for (const key of Object.keys(this.state.ansicht.phase)) {
+      if (!liveKeys.has(key)) {
+        delete this.state.ansicht.phase[key];
+        removed++;
+      }
+    }
     if (removed > 0) this.commit();
     return removed;
   }

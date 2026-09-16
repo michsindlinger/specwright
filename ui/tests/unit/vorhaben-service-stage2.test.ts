@@ -168,7 +168,9 @@ describe('VorhabenService stage 2', () => {
     expect(setSessionName).toHaveBeenCalledWith(sessionId, 'spec INT-2026-004');
     await service.rescan();
     expect(row().session).toEqual({ id: sessionId, name: 'spec INT-2026-004', model: 'glm-5.2', agentStatus: 'unknown' });
-    expect(row().nextStep).toBeUndefined();
+    // INT-2026-010 (FA-21): the step stays on the row, the page greys it out via sessionBusy
+    expect(row().nextStep?.step).toBe('spec');
+    expect(row().sessionBusy).toBe(true);
     expect(lastState().lastModel['pa::INT-2026-004::spec']).toEqual({ providerId: 'glm', modelId: 'glm-5.2' });
     // explicit worktree target is passed through
     await service.startStep('pa', 'INT-2026-004', 'spec', { providerId: 'anthropic', modelId: 'opus' }, { kind: 'new-worktree', name: 'spec-4' });

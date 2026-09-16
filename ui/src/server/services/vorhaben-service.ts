@@ -32,7 +32,7 @@ import {
   type VorhabenCandidate,
 } from './vorhaben-reader.js';
 import { VorhabenWatcher } from './vorhaben-watcher.js';
-import type { VorhabenStateStore } from './vorhaben-state.js';
+import { FIRST_INPUT_MAX_VERSUCHE, type VorhabenStateStore } from './vorhaben-state.js';
 import {
   VORHABEN_DOC_FILES,
   VORHABEN_MAX_DOC_BYTES,
@@ -44,6 +44,7 @@ import {
   type SendeGrund,
   type VorhabenDocKey,
   type VorhabenPendingIntent,
+  type VorhabenPhaseDoc,
   type VorhabenProjectInfo,
   type VorhabenRow,
   type VorhabenSessionRef,
@@ -112,6 +113,12 @@ export interface VorhabenServiceDeps {
   setSessionName?: (sessionId: string, name: string) => void;
   /** Stage 2: validates a model selection against the settings; default = model-config. */
   resolveModel?: (sel: ModelSelection) => boolean;
+  /**
+   * INT-2026-010 (FA-22): model of a step when `start-step` names none and the
+   * Vorhaben has no last model for that step — the step default of the
+   * settings (`getStepDefault`). Without the dep such a start is refused.
+   */
+  defaultModel?: (step: VorhabenStep) => ModelSelection;
   now?: () => Date;
   /** Worktree list cache TTL. */
   worktreeTtlMs?: number;
@@ -218,6 +225,8 @@ export class VorhabenService {
   private readonly confirmTimers = new Map<string, NodeJS.Timeout>();
   /** Session id → sequence number of its last prompt text (fallback confirmation, see onAgentEvent). */
   private readonly promptTextSeq = new Map<string, number>();
+  /** Sessions whose first input is being delivered right now (two Stops in a row must not paste twice). */
+  private readonly deliveringFirstInput = new Set<string>();
   private seq = 0;
   private counter = 0;
 
@@ -260,6 +269,7 @@ export class VorhabenService {
       rows: [...this.rows],
       projects: [...this.projects],
       pendingIntents: this.pendingIntentInfos(),
+      ansicht: this.deps.store.getAnsicht(),
       docDrafts: this.deps.store.getDocDrafts(),
       drafts: this.deps.store.getAllDrafts(),
       protocol: this.deps.store.getProtocol(),
@@ -596,13 +606,19 @@ export class VorhabenService {
    * Starts the next step as a server-side session (FA-35): the command is the
    * initial prompt, the tab is named `<step> INT-…`, the session is assigned.
    * `/intent` has no id yet — the first new folder under cwd/intent/ claims it.
+   *
+   * INT-2026-010: `model` may be absent (FA-22 „Freigeben" without a session)
+   * — then the last model of (Vorhaben, step), else the step default of the
+   * settings (`deps.defaultModel`). `firstInput` is stored and handed to the
+   * session at its first Stop (AK-09/FA-11, FA-22; `onAgentEvent`).
    */
   public async startStep(
     projectId: string,
     intentId: string | undefined,
     step: VorhabenStep,
-    model: ModelSelection,
-    sessionTargetRaw: CloudTerminalSessionTarget | undefined
+    modelRaw: ModelSelection | undefined,
+    sessionTargetRaw: CloudTerminalSessionTarget | undefined,
+    firstInput?: string
   ): Promise<{ sessionId: string }> {
     const sessions = this.deps.sessions;
     if (!sessions) throw new VorhabenError('START_FAILED', 'Terminal-Manager nicht verfügbar');
@@ -612,7 +628,15 @@ export class VorhabenService {
       if (!intentId) throw new VorhabenError('INVALID_MESSAGE', 'intentId ist erforderlich');
       this.requireRow(projectId, intentId);
     }
-    if (!this.resolveModel(model)) throw new VorhabenError('INVALID_MESSAGE', `Modell nicht konfiguriert: ${model.providerId}/${model.modelId}`);
+    let model = modelRaw;
+    if (!model) {
+      model = (intentId ? this.deps.store.getLastModel(projectId, intentId, step) : undefined) ?? this.deps.defaultModel?.(step);
+      if (!model || !this.resolveModel(model)) {
+        throw new VorhabenError('INVALID_MESSAGE', `Kein Modell für ${step} konfiguriert — Projekt › Einstellungen › Modelle`);
+      }
+    } else if (!this.resolveModel(model)) {
+      throw new VorhabenError('INVALID_MESSAGE', `Modell nicht konfiguriert: ${model.providerId}/${model.modelId}`);
+    }
     let target: ParsedTarget;
     try {
       target = parseSessionTarget(sessionTargetRaw ?? { kind: 'main' });
@@ -644,8 +668,28 @@ export class VorhabenService {
     } else {
       this.deps.store.setPendingIntent(created.sessionId, { projectId, cwd: created.effectiveCwd, step: 'intent', model: model.modelId, since: at });
     }
+    // The text waits for the first Stop (a paste right after the start would hit the startup screen, plan §3 Alternativen).
+    if (firstInput !== undefined) this.deps.store.setFirstInput(created.sessionId, { text: firstInput, versuche: 0 });
     this.scheduleRescan(0);
     return { sessionId: created.sessionId };
+  }
+
+  /**
+   * INT-2026-010 (FA-03, FA-12; AR-05): shared view state. `filterProjectId`
+   * must be an open project or null; the phase entry names an open project,
+   * an `INT-…` id (checked by the handler) and one of the phase documents.
+   * One atomic write per click, answer = the broadcast (like drafts).
+   */
+  public setAnsicht(patch: { filterProjectId?: string | null; phase?: { projectId: string; intentId: string; doc: VorhabenPhaseDoc } }): void {
+    if (patch.filterProjectId !== undefined && patch.filterProjectId !== null && !this.findProject(patch.filterProjectId)) {
+      throw new VorhabenError('UNKNOWN_PROJECT', 'Projekt ist nicht geöffnet');
+    }
+    if (patch.phase && !this.findProject(patch.phase.projectId)) throw new VorhabenError('UNKNOWN_PROJECT', 'Projekt ist nicht geöffnet');
+    const changed = this.deps.store.setAnsicht({
+      ...(patch.filterProjectId !== undefined ? { filterProjectId: patch.filterProjectId } : {}),
+      ...(patch.phase ? { phase: { key: assignmentKey(patch.phase.projectId, patch.phase.intentId), doc: patch.phase.doc } } : {}),
+    });
+    if (changed) this.broadcastState();
   }
 
   // ---- internals ----
@@ -697,6 +741,8 @@ export class VorhabenService {
       for (const e of this.deps.store.pendingSends()) {
         if (e.sessionId === sessionId && e.status === 'eingereiht' && !this.confirmTimers.has(e.id)) this.armConfirmTimer(e.id, QUEUE_CONFIRM_GRACE_MS);
       }
+      // INT-2026-010: the first Stop is the first safe moment for the stored first input (AK-09, FA-22).
+      if (this.deps.store.hasFirstInput(sessionId)) void this.deliverFirstInput(sessionId);
     }
     if (event === 'prompt-submitted') {
       // The prompt text follows the event within the same hook request. Give it
@@ -721,6 +767,8 @@ export class VorhabenService {
   private onSessionClosed(sessionId: string): void {
     const changed = this.deps.store.markSessionEnded(sessionId);
     const pendingCleared = this.deps.store.clearPendingIntent(sessionId);
+    // A session that ended before its first Stop never gets the first input (INT-2026-010, review E18).
+    this.deps.store.clearFirstInput(sessionId);
     // Ended without a folder: its unclaimed free texts would stay invisible forever (INT-2026-008, R-2).
     if (pendingCleared) this.deps.store.dropUnclaimedProtocol(sessionId);
     this.promptTextSeq.delete(sessionId);
@@ -769,6 +817,81 @@ export class VorhabenService {
     }
   }
 
+  /**
+   * INT-2026-010 (plan §3 „Erste Eingabe", reviews E1/E7/E18): hands the
+   * stored first input to the session through the normal send path (protocol
+   * entry, locked paste, confirmation). `gesendet` and `eingereiht` both count
+   * as delivered → cleared, never sent twice. A refusal because the session is
+   * gone clears too; any other refusal keeps the text for the next Stop, up to
+   * FIRST_INPUT_MAX_VERSUCHE — then the text lands in the protocol as
+   * `nicht_bestaetigt`, visible in the Gespräch, resendable from there.
+   */
+  private async deliverFirstInput(sessionId: string): Promise<void> {
+    if (this.deliveringFirstInput.has(sessionId)) return;
+    const input = this.deps.store.getFirstInput(sessionId);
+    if (!input) return;
+    this.deliveringFirstInput.add(sessionId);
+    try {
+      const ref = this.firstInputTarget(sessionId);
+      if (!ref) {
+        // Neither assigned nor pending: the session is not ours any more.
+        if (this.deps.store.clearFirstInput(sessionId)) this.broadcastState();
+        return;
+      }
+      const versuche = this.deps.store.bumpFirstInputVersuche(sessionId);
+      try {
+        await this.sendToSession(ref.projectId, ref.intentId, ref.session, input.text);
+        this.deps.store.clearFirstInput(sessionId);
+        this.broadcastState();
+      } catch (err) {
+        const grund = err instanceof SendRejectedError ? err.grund : 'senden_fehlgeschlagen';
+        if (grund === 'beendet' || grund === 'keine_sitzung') {
+          this.deps.store.clearFirstInput(sessionId);
+          this.broadcastState();
+          return;
+        }
+        if (versuche < FIRST_INPUT_MAX_VERSUCHE) {
+          // The refused entry was removed again; clients that saw the interim snapshot get the clean one.
+          this.broadcastState();
+          return;
+        }
+        this.deps.store.clearFirstInput(sessionId);
+        const sentAt = this.now();
+        await this.deps.store.addProtocolEntry({
+          id: `pe-${sentAt.getTime()}-${++this.counter}`,
+          projectId: ref.projectId,
+          ...(ref.intentId ? { intentId: ref.intentId } : {}),
+          art: 'freitext',
+          anzahl: 0,
+          stand: '',
+          sessionId,
+          sessionName: ref.session.name,
+          text: input.text,
+          anmerkungen: [],
+          status: 'nicht_bestaetigt',
+          sentAt: sentAt.toISOString(),
+        });
+        this.broadcastState();
+      }
+    } finally {
+      this.deliveringFirstInput.delete(sessionId);
+    }
+  }
+
+  /** Vorhaben (assignment) or pending `/intent` the session belongs to, with its live reference. */
+  private firstInputTarget(sessionId: string): { projectId: string; intentId?: string; session: VorhabenSessionRef } | undefined {
+    const assigned = this.deps.store.allAssignments().find(([, a]) => a.sessionId === sessionId && !a.ended);
+    if (assigned) {
+      const [projectId, intentId] = assigned[0].split('::');
+      const row = this.findRow(projectId, intentId);
+      const session = row?.session ?? this.sessionFor(projectId, intentId);
+      return session ? { projectId, intentId, session } : undefined;
+    }
+    const pending = this.deps.store.getPendingIntents().find(([id]) => id === sessionId);
+    if (!pending) return undefined;
+    return { projectId: pending[1].projectId, session: this.sessionRefOf(sessionId, this.pendingName(sessionId), pending[1].model) };
+  }
+
   private confirm(entryId: string): void {
     const t = this.confirmTimers.get(entryId);
     if (t) clearTimeout(t);
@@ -804,7 +927,15 @@ export class VorhabenService {
     if (ended || !live || live.status === 'closed') {
       return { id: sessionId, name, model, agentStatus: 'unknown', ended: true };
     }
-    return { id: sessionId, name, model: live.modelConfig?.model ?? model, agentStatus: live.agentStatus ?? 'unknown', ...(live.blockKind ? { blockKind: live.blockKind } : {}) };
+    return {
+      id: sessionId,
+      name,
+      model: live.modelConfig?.model ?? model,
+      agentStatus: live.agentStatus ?? 'unknown',
+      ...(live.blockKind ? { blockKind: live.blockKind } : {}),
+      // INT-2026-010: only the flag travels, never the text.
+      ...(this.deps.store.hasFirstInput(sessionId) ? { firstInputPending: true } : {}),
+    };
   }
 
   /** Copy per intentId that wins the merge (FA-06): the assigned session's cwd. */
