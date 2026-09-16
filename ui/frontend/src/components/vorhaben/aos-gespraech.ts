@@ -23,7 +23,14 @@ import './aos-gespraech-beitrag.js';
 import './aos-gespraech-eingabe.js';
 
 /** Width of the Gespräch column on the Mac (plan §3 A.9: 420–540 px). */
-export const GESPRAECH_BREITE = 'clamp(420px, 34vw, 540px)';
+/**
+ * Width of the Gespräch column on the Mac (INT-2026-010, FA-12, Skizze 3):
+ * half of the view's content width — viewport minus terminal sidebar and file
+ * tree (both set on <html>), minus the view padding on both sides, minus the
+ * grid gap. The view sets it as `--gespraech-width`; the page's fixed send
+ * bar and the fixed Gespräch read it.
+ */
+export const GESPRAECH_BREITE = 'calc((100vw - var(--terminal-open-width, 0px) - var(--file-tree-open-width, 0px) - 2 * var(--spacing-xl) - var(--spacing-lg)) / 2)';
 
 /**
  * What the Gespräch needs from its owner — a Vorhaben row or (INT-2026-008)
