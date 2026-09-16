@@ -283,7 +283,7 @@ Externer Review (3 Reviewer: anthropic:opus, glm:glm-5.3, minimax:MiniMax-M3), 2
 - [x] Jedes AK aus §8 hat einen grünen Nachweis (AK-01/03/07 Guard + T7, AK-02 Guard + Screenshot, AK-04–06 grep + E2E-Protokoll).
 - [x] Alle Nachweise aus §5 ausgeführt und im PR zitiert.
 - [x] E2E-Sitzung gelaufen, Protokoll unter `design/`, Spec-Entwurf 010 committet.
-- [ ] `verify: OK` lokal (2026-09-16, voll und `--fast`), PR-Checks grün: offen bis CI.
+- [x] `verify: OK` lokal (2026-09-16, voll und `--fast`), PR-Checks grün (PR #55, Run 35102037217, verify 1m39s).
 - [x] `docs/architecture.md` unverändert (§3 Nein).
 - [x] Manuelle Schritte §10 erledigt oder im PR offen markiert (Sichtprüfung, Merge, Update-Läufe offen).
 - [x] Abweichungen in §14.
