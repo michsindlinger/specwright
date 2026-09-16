@@ -149,11 +149,6 @@ dir=${LESER_TEMPLATE_DIR:-specwright/templates/sdlc/vorhaben}
 checked=0
 check_template "$dir/intent-template.md" "$SOLL_INTENT"
 check_template "$dir/spec-template.md" "$SOLL_SPEC"
-# Schalter bis Commit B (INT-2026-009 §6 Schritt 4): plan-Tabelle greift erst mit der neuen Struktur.
-if grep -q '^## Details$' "$dir/plan-template.md" 2>/dev/null; then
-    check_template "$dir/plan-template.md" "$SOLL_PLAN"
-else
-    echo "   plan-template.md: alte Struktur, nicht geprüft"
-fi
+check_template "$dir/plan-template.md" "$SOLL_PLAN"
 [[ $fail -eq 0 ]] && echo "✅ Leser-Marker: 3 Vorlagen, $checked Überschriften geprüft."
 exit $fail
