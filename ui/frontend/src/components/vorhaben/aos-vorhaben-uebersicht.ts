@@ -124,19 +124,22 @@ export class AosVorhabenUebersicht extends LitElement {
       font-size: var(--font-size-sm);
       cursor: pointer;
     }
-    /* Fixed bar with „Neue Absicht" (AN-S02): sticks to the bottom of the
-       scrolling page, keeps clear of the phone's home indicator. */
+    /* Fixed bar with „Neue Absicht" (AN-S02): always at the bottom of the
+       viewport (also when the list is short), right of the terminal sidebar,
+       keeps clear of the phone's home indicator. */
     .leiste {
-      position: sticky;
+      position: fixed;
       bottom: 0;
+      left: 0;
+      right: var(--terminal-open-width, 0px);
       display: flex;
       justify-content: flex-end;
       gap: var(--spacing-sm);
-      margin: var(--spacing-lg) calc(-1 * var(--spacing-xl)) calc(-1 * var(--spacing-xl));
       padding: var(--spacing-sm) var(--spacing-xl) calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
       background: var(--color-bg-primary);
       border-top: 1px solid var(--color-border);
-      z-index: 5;
+      z-index: 50;
+      transition: right 0.3s ease;
     }
     .leiste .btn.primaer {
       background: var(--color-accent-primary);
@@ -144,8 +147,9 @@ export class AosVorhabenUebersicht extends LitElement {
       color: var(--color-text-inverse, #fff);
       font-weight: var(--font-weight-semibold, 600);
     }
+    /* Room for the fixed bar at the end of the list. */
     .platz {
-      height: var(--spacing-xl);
+      height: calc(var(--spacing-xl) * 2 + env(safe-area-inset-bottom, 0px));
     }
   `;
 

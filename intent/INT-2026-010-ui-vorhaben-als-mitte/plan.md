@@ -1,7 +1,7 @@
 # Plan: UI: Vorhaben als Mitte — Rahmen ohne Seitenleiste, Glocke immer sichtbar, Dokumente klappbar
 
 > **Intent:** `intent.md` (INT-2026-010) · **Spec:** `spec.md`
-> **Status:** in_umsetzung
+> **Status:** umgesetzt (Stufe 1; Merge steht aus, Stufen 2–3 folgen)
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („plan freigegeben", Chat; Fassung 2 nach externem Review, 4 Reviewer, 23 Findings, §12)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand b2a8fb0), `CLAUDE.md`, `docs/security.md`, `docs/design.md`, `specwright/workflows/meta/leser-und-rueckfragen.md`
 
@@ -527,3 +527,6 @@ Meilensteine = die drei PRs (§6). Größter Unsicherheitsfaktor: E2E-Läufe mit
 | 2026-09-16 | Frontend-Löschliste (#40–45) schon in Schritt 3 gelöscht, Backend (#46–47) in Schritt 6 | `voice-call-view.ts` und `aos-mobile-side-drawer.ts` referenzieren die gelöschten Routen und brechen `tsc` ab Schritt 1 | §6 S1 Schritte 3/6 |
 | 2026-09-16 | Guard-Test #24 duldet `settings.voice.update` in `src/shared/types/voice.protocol.ts` | Die Datei bleibt laut §4 #47 (Typimport `team-view.ts`) und enthält die Nachrichten-Union | §4 #24 |
 | 2026-09-16 | `theme.css`: zusätzlich zu den geplanten Blöcken die toten Chat-Regeln (`.chat-*`, `.message-*`, `.tool-call-*`, `.image-*`, ~560 Zeilen) entfernt | Der Guard-Test #24 scannt `.css` unter `frontend/src` auf die gelöschten Tag-Namen; die Chat-Regeln standen nur unter gelöschten Komponenten (vor jedem Block `grep` über `frontend/src/**/*.ts` = 0) | §4 #20 |
+| 2026-09-16 | E2E Stufe 1: die /intent-Sitzung lief mit Opus 5 (Vorauswahl lastModel → stepDefault → Standard), nicht mit Haiku; zweite Interview-Antwort von Hand über tmux; Trust-Dialog des frischen Scratch-Ordners über tmux bestätigt | Das Skript klickt den echten Start-Knopf (kein Modell-Override); Enter im selben Input-Chunk wie der Text verschluckt das TUI (Text und Enter getrennt senden, wie `pasteLocked`); der zweite Stop lag vor dem Neustart des Skripts | §8 E2E |
+| 2026-09-16 | E2E Handy: der Terminal-Sprung von der Vorhaben-Seite wurde über das Dokument-Ereignis `open-terminal-session` ausgelöst, nicht über einen Knopf | Der Handy-Knopf „Im Terminal öffnen" kommt mit der Aktionsleiste der Stufe 2 (§3 Vorhaben-Seite S2); in Stufe 1 sendet die Sende-Leiste das Ereignis nur im Dialog-Zustand | §8 E2E |
+| 2026-09-16 | Leiste „Neue Absicht" ist `position: fixed` am unteren Fensterrand (statt `sticky; bottom: 0` im Shadow-Root) | Bei kurzer Liste stand die sticky-Leiste mitten im Bild (Screenshot Handy); fest = immer unten, rechts vom Terminal (`--terminal-open-width`) | §3 Liste |
