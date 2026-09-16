@@ -1,5 +1,6 @@
-import { LitElement, html } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, type PropertyValues } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { gateway } from '../gateway.js';
 
 interface ActionCard {
   command: string;
@@ -8,19 +9,102 @@ interface ActionCard {
   icon: ReturnType<typeof html>;
 }
 
+/**
+ * Since INT-2026-010 (FA-17) a section of the project page: the view fetches
+ * the project validation (`POST /api/project/validate`) and the framework
+ * version (`GET /api/version`) itself — on `projectPath` change and on every
+ * (re)connect — instead of receiving eleven props from `app.ts`. The update
+ * hint lives here now (the header badge is gone).
+ */
 @customElement('aos-getting-started-view')
 export class AosGettingStartedView extends LitElement {
-  @property({ type: Boolean }) hasProductBrief = false;
-  @property({ type: Boolean }) hasSpecwright = true;
-  @property({ type: Boolean }) needsMigration = false;
-  @property({ type: Boolean }) hasIncompleteInstallation = false;
-  @property({ type: Boolean }) hasClaudeCli = true;
-  @property({ type: Boolean }) hasMcpKanban = true;
-  @property({ type: Boolean }) loading = false;
-  @property({ type: Boolean }) updateAvailable = false;
-  @property({ type: String }) latestVersion = '';
-  @property({ type: String }) installedVersion = '';
-  @property({ type: String }) updateChangelog = '';
+  /** Path of the project to validate; empty = nothing to show. */
+  @property({ type: String }) projectPath = '';
+
+  @state() private hasProductBrief = false;
+  @state() private hasSpecwright = true;
+  @state() private needsMigration = false;
+  @state() private hasIncompleteInstallation = false;
+  @state() private hasClaudeCli = true;
+  @state() private hasMcpKanban = true;
+  @state() private loading = false;
+  @state() private updateAvailable = false;
+  @state() private latestVersion = '';
+  @state() private installedVersion = '';
+  @state() private updateChangelog = '';
+
+  private readonly onConnected = (): void => {
+    void this.load();
+  };
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    gateway.on('gateway.connected', this.onConnected);
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    gateway.off('gateway.connected', this.onConnected);
+  }
+
+  protected override willUpdate(changed: PropertyValues<this>): void {
+    if (changed.has('projectPath')) void this.load();
+  }
+
+  /** Validation and version for `projectPath` (both were `app.ts` helpers before). */
+  public async load(): Promise<void> {
+    const path = this.projectPath;
+    if (!path) return;
+    this.loading = true;
+    try {
+      const validateResponse = await fetch('/api/project/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      if (validateResponse.ok && this.projectPath === path) {
+        const data = await validateResponse.json() as {
+          valid: boolean;
+          hasSpecwright?: boolean;
+          hasProductBrief?: boolean;
+          needsMigration?: boolean;
+          hasIncompleteInstallation?: boolean;
+          hasClaudeCli?: boolean;
+          hasMcpKanban?: boolean;
+        };
+        this.hasSpecwright = data.hasSpecwright ?? false;
+        this.hasProductBrief = data.hasProductBrief ?? false;
+        this.needsMigration = data.needsMigration ?? false;
+        this.hasIncompleteInstallation = data.hasIncompleteInstallation ?? false;
+        this.hasClaudeCli = data.hasClaudeCli ?? true;
+        this.hasMcpKanban = data.hasMcpKanban ?? true;
+      }
+    } catch {
+      // Validation failed, keep defaults
+    } finally {
+      if (this.projectPath === path) this.loading = false;
+    }
+    void this.checkFrameworkVersion(path);
+  }
+
+  private async checkFrameworkVersion(projectPath: string): Promise<void> {
+    try {
+      const response = await fetch(`/api/version?projectPath=${encodeURIComponent(projectPath)}`);
+      if (!response.ok || this.projectPath !== projectPath) return;
+      const data = await response.json() as {
+        installedVersion: string | null;
+        latestVersion: string | null;
+        updateAvailable: boolean;
+        changelog: string | null;
+      };
+      this.updateAvailable = data.updateAvailable;
+      this.latestVersion = data.latestVersion ?? '';
+      this.installedVersion = data.installedVersion ?? '';
+      this.updateChangelog = data.changelog ?? '';
+    } catch {
+      // Non-critical, silently ignore
+    }
+  }
 
   private get standardCards(): ActionCard[] {
     return [

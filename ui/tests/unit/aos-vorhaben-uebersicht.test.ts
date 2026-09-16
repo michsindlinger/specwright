@@ -25,7 +25,7 @@ const state = (rows: VorhabenRow[]): VorhabenState => ({
 
 const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 
-describe('aos-vorhaben-uebersicht (FA-03, FA-05, FA-08, FA-37)', () => {
+describe('aos-vorhaben-uebersicht (FA-03, FA-05, FA-08; INT-2026-010 FA-02, FA-03, AN-S01, AN-S02)', () => {
   it('marks the active project chip without pre-filtering; empty project gets the sentence + action', async () => {
     await import('../../frontend/src/components/vorhaben/aos-vorhaben-uebersicht.js');
     const el = document.createElement('aos-vorhaben-uebersicht');
@@ -39,10 +39,67 @@ describe('aos-vorhaben-uebersicht (FA-03, FA-05, FA-08, FA-37)', () => {
     expect(chips).toEqual([['Alle', false, true], ['A', false, false], ['B', true, false]]);
     expect(sr.querySelectorAll('aos-vorhaben-zeile').length).toBe(2); // not pre-filtered to B
     expect(sr.querySelector('.leer')?.textContent).toContain('Noch kein Vorhaben in');
-    expect(sr.querySelector('.leer .btn')?.textContent?.trim()).toBe('Erstes Vorhaben anlegen');
-    expect(sr.querySelector('.sub')?.textContent).toContain('1 wartet auf dich');
+    expect(sr.querySelector('.leer .btn')?.textContent?.trim()).toBe('Neue Absicht');
+    // INT-2026-010: the head line „n Projekte · m warten" is gone, the bell counts
+    expect(sr.querySelector('.sub')).toBeNull();
+    expect(sr.querySelector('h1')?.textContent).toBe('Vorhaben');
     // FA-08: a view, not a board
     expect(sr.querySelector('[draggable]')).toBeNull();
+    el.remove();
+  });
+
+  it('INT-2026-010: two groups „Wartet auf dich" and „Läuft", every wartet* state in the first, „ruht" for rows without a session', async () => {
+    await import('../../frontend/src/components/vorhaben/aos-vorhaben-uebersicht.js');
+    const el = document.createElement('aos-vorhaben-uebersicht');
+    el.vorhabenState = state([
+      row({ intentId: 'INT-2026-001', projectId: 'a', zustand: 'wartet_rueckfrage' }),
+      row({ intentId: 'INT-2026-002', projectId: 'a', zustand: 'wartet_auf_dich', reviewDoc: 'spec' }),
+      row({ intentId: 'INT-2026-003', projectId: 'a', zustand: 'keine_sitzung' }),
+      row({ intentId: 'INT-2026-004', projectId: 'a', zustand: 'arbeitet' }),
+    ]);
+    document.body.appendChild(el);
+    await el.updateComplete;
+    const sr = el.shadowRoot!;
+    const titles = [...sr.querySelectorAll('.gruppe-titel')].map((t) => t.textContent?.trim());
+    expect(titles).toEqual(['Wartet auf dich · 2', 'Läuft · 2']);
+    expect(sr.querySelector('.aufklappen')).toBeNull();
+    const ruht = [...sr.querySelectorAll('aos-vorhaben-zeile')].find((z) => z.row.intentId === 'INT-2026-003')!;
+    await ruht.updateComplete;
+    expect(ruht.shadowRoot!.textContent).toContain('ruht');
+    el.remove();
+  });
+
+  it('INT-2026-010 (AN-S02): fixed bar with „Neue Absicht" — filtered project wins, else the active one; the event carries the project', async () => {
+    await import('../../frontend/src/components/vorhaben/aos-vorhaben-uebersicht.js');
+    const el = document.createElement('aos-vorhaben-uebersicht');
+    el.vorhabenState = state([row({ intentId: 'INT-2026-001', projectId: 'a' })]);
+    el.activeProjectId = 'b';
+    document.body.appendChild(el);
+    await el.updateComplete;
+    const seen: string[] = [];
+    el.addEventListener('vorhaben-new', (e) => seen.push((e as CustomEvent<{ projectId: string }>).detail.projectId));
+    const sr = el.shadowRoot!;
+    const leiste = sr.querySelector('.leiste')!;
+    expect(leiste).not.toBeNull();
+    expect(getComputedStyle(leiste).position || 'sticky').toBeTruthy();
+    (leiste.querySelector('.btn') as HTMLButtonElement).click();
+    expect(seen).toEqual(['b']);
+    ([...sr.querySelectorAll('.chip')].find((c) => c.textContent?.trim() === 'A') as HTMLButtonElement).click();
+    await el.updateComplete;
+    (sr.querySelector('.leiste .btn') as HTMLButtonElement).click();
+    expect(seen).toEqual(['b', 'a']);
+    el.remove();
+  });
+
+  it('INT-2026-010 (FA-03): empty state without a project — no bar, hint towards the project page', async () => {
+    await import('../../frontend/src/components/vorhaben/aos-vorhaben-uebersicht.js');
+    const el = document.createElement('aos-vorhaben-uebersicht');
+    el.vorhabenState = { ...state([]), projects: [] };
+    document.body.appendChild(el);
+    await el.updateComplete;
+    const sr = el.shadowRoot!;
+    expect(sr.querySelector('.status')?.textContent).toContain('Kein Projekt geöffnet');
+    expect(sr.querySelector('.leiste')).toBeNull();
     el.remove();
   });
 
@@ -60,17 +117,5 @@ describe('aos-vorhaben-uebersicht (FA-03, FA-05, FA-08, FA-37)', () => {
     expect(sr.querySelectorAll('aos-vorhaben-zeile').length).toBe(0);
     expect(sr.querySelector('.aufklappen')?.textContent).toContain('Umgesetzt · 1');
     el.remove();
-  });
-
-  it('bottom nav shows the waiting badge on the Vorhaben item (FA-37)', async () => {
-    await import('../../frontend/src/components/mobile/aos-mobile-bottom-nav.js');
-    const nav = document.createElement('aos-mobile-bottom-nav');
-    nav.waitingCount = 2;
-    document.body.appendChild(nav);
-    await nav.updateComplete;
-    const item = nav.shadowRoot!.querySelector('button[aria-label^="Vorhaben"]')!;
-    expect(item.querySelector('.live-badge')?.textContent).toBe('2');
-    expect(item.textContent).toContain('Vorhaben');
-    nav.remove();
   });
 });

@@ -18,20 +18,28 @@ describe('vorhaben-sort (FA-02, FA-03, FA-05)', () => {
     row({ intentId: 'INT-2026-006', zustand: 'wartet_rueckfrage', lastChangedMs: 60, projectId: 'q' }),
   ];
 
-  it('INT-2026-007 (FA-09, AN-S16): the three dialog states group as „wartet" and carry their labels', () => {
-    for (const z of ['wartet_rueckfrage', 'wartet_plan', 'wartet_berechtigung'] as const) expect(groupOf(row({ zustand: z }))).toBe('wartet');
+  it('INT-2026-010 (AN-S01): every waiting state — review, dialog, plan, permission — is „Wartet auf dich"; the dialog labels stay', () => {
+    for (const z of ['wartet_auf_dich', 'wartet', 'wartet_rueckfrage', 'wartet_plan', 'wartet_berechtigung'] as const) expect(groupOf(row({ zustand: z }))).toBe('wartet_auf_dich');
     expect(ZUSTAND_LABELS.wartet_rueckfrage).toBe('wartet · Rückfrage');
     expect(ZUSTAND_LABELS.wartet_plan).toBe('wartet · Plan-Entscheidung');
     expect(ZUSTAND_LABELS.wartet_berechtigung).toBe('wartet · Berechtigung');
   });
 
-  it('orders: wartet auf dich → wartet (incl. Terminal) → laufend by change desc → umgesetzt', () => {
-    expect(sortRows(rows).map((r) => r.intentId)).toEqual(['INT-2026-004', 'INT-2026-006', 'INT-2026-002', 'INT-2026-005', 'INT-2026-001', 'INT-2026-003']);
+  it('INT-2026-010 (FA-02): a Vorhaben without a session „ruht"', () => {
+    expect(ZUSTAND_LABELS.keine_sitzung).toBe('ruht');
+    expect(ZUSTAND_LABELS.sitzung_beendet).toBe('ruht · Sitzung beendet');
+    expect(groupOf(row({ zustand: 'keine_sitzung' }))).toBe('laeuft');
+    expect(groupOf(row({ zustand: 'arbeitet' }))).toBe('laeuft');
   });
 
-  it('groups in fixed order and drops empty groups', () => {
+  it('orders: wartet auf dich (newest change first) → läuft by change desc → umgesetzt', () => {
+    expect(sortRows(rows).map((r) => r.intentId)).toEqual(['INT-2026-006', 'INT-2026-002', 'INT-2026-004', 'INT-2026-005', 'INT-2026-001', 'INT-2026-003']);
+  });
+
+  it('two groups plus umgesetzt, in fixed order; empty groups are dropped', () => {
     const g = groupRows(rows, null);
-    expect(g.map((x) => [x.key, x.rows.length])).toEqual([['wartet_auf_dich', 1], ['wartet', 2], ['laeuft', 2], ['umgesetzt', 1]]);
+    expect(g.map((x) => [x.key, x.rows.length])).toEqual([['wartet_auf_dich', 3], ['laeuft', 2], ['umgesetzt', 1]]);
+    expect(g.map((x) => x.label)).toEqual(['Wartet auf dich', 'Läuft', 'Umgesetzt']);
     expect(groupOf(rows[2])).toBe('umgesetzt');
   });
 
@@ -40,8 +48,8 @@ describe('vorhaben-sort (FA-02, FA-03, FA-05)', () => {
     expect(groupRows(rows, 'p').flatMap((x) => x.rows).length).toBe(5);
   });
 
-  it('counts only wartet_auf_dich (FA-37)', () => {
-    expect(countWaitingForMe(rows)).toBe(1);
+  it('counts everything that waits for Michael (the bell and the phone badge)', () => {
+    expect(countWaitingForMe(rows)).toBe(3);
   });
 
   it('formats relative time and Stand', () => {

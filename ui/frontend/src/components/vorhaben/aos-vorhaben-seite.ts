@@ -354,12 +354,9 @@ export class AosVorhabenSeite extends LitElement {
     return doc === 'intent' && !label.startsWith('Stand ') ? `Freigabe: ${VORHABEN_DOC_FILES[doc]} ${label}` : `Freigabe: ${VORHABEN_DOC_FILES[doc]} (${label})`;
   }
 
+  /** Mac and phone alike (INT-2026-010, FA-20): app.ts owns the phone branch (active session + open sidebar). */
   private toTerminal(sessionId?: string): void {
     const id = sessionId ?? this.row.session?.id;
-    if (this.mobile) {
-      this.dispatchEvent(new CustomEvent('terminal-pill-tap', { bubbles: true, composed: true, detail: { route: 'cloud-terminal' } }));
-      return;
-    }
     if (id) document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId: id } }));
   }
 

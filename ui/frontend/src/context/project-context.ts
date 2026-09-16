@@ -1,4 +1,5 @@
 import { createContext } from '@lit/context';
+import type { RecentlyOpenedEntry } from '../services/recently-opened.service.js';
 
 /**
  * Project interface for multi-project support.
@@ -25,6 +26,8 @@ export interface ProjectContextValue {
   addProject: (project: Project) => void;
   /** Close/remove a project by ID */
   closeProject: (projectId: string) => void;
+  /** Recently opened projects from the shared workspace (INT-2026-010: shown on the project page). */
+  recentProjects: RecentlyOpenedEntry[];
 }
 
 /**
@@ -42,6 +45,7 @@ export const defaultProjectContext: ProjectContextValue = {
   closeProject: () => {
     // No-op by default, will be implemented by provider
   },
+  recentProjects: [],
 };
 
 /**

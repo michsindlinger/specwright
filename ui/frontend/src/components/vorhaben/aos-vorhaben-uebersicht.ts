@@ -1,15 +1,17 @@
 /**
  * aos-vorhaben-uebersicht — the list of Vorhaben across all open projects
- * (mock 01/02): project chips as filter (active project marked, not
- * pre-filtered — FA-03), groups "Wartet auf dich / Wartet / Läuft /
- * Umgesetzt (collapsed)", empty state per project (FA-05), loading and error
- * states. Pure sorting/grouping lives in vorhaben-sort.ts (FA-02).
+ * (mock 01/02; INT-2026-010 skizze-01): title, project chips as filter
+ * (active project marked, not pre-filtered — FA-03), groups "Wartet auf dich /
+ * Läuft / Umgesetzt (collapsed)", empty state per project (FA-05), loading and
+ * error states, and a fixed bar at the bottom with „Neue Absicht" (AN-S02).
+ * The head line „n Projekte · m warten" is gone — the bell counts. Pure
+ * sorting/grouping lives in vorhaben-sort.ts (FA-02).
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { VorhabenProjectInfo, VorhabenRow, VorhabenState } from '../../../../src/shared/types/vorhaben.protocol.js';
-import { countWaitingForMe, groupRows } from './vorhaben-sort.js';
+import { groupRows } from './vorhaben-sort.js';
 import './aos-vorhaben-zeile.js';
 
 @customElement('aos-vorhaben-uebersicht')
@@ -122,6 +124,29 @@ export class AosVorhabenUebersicht extends LitElement {
       font-size: var(--font-size-sm);
       cursor: pointer;
     }
+    /* Fixed bar with „Neue Absicht" (AN-S02): sticks to the bottom of the
+       scrolling page, keeps clear of the phone's home indicator. */
+    .leiste {
+      position: sticky;
+      bottom: 0;
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--spacing-sm);
+      margin: var(--spacing-lg) calc(-1 * var(--spacing-xl)) calc(-1 * var(--spacing-xl));
+      padding: var(--spacing-sm) var(--spacing-xl) calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
+      background: var(--color-bg-primary);
+      border-top: 1px solid var(--color-border);
+      z-index: 5;
+    }
+    .leiste .btn.primaer {
+      background: var(--color-accent-primary);
+      border-color: var(--color-accent-primary);
+      color: var(--color-text-inverse, #fff);
+      font-weight: var(--font-weight-semibold, 600);
+    }
+    .platz {
+      height: var(--spacing-xl);
+    }
   `;
 
   private setFilter(id: string | null): void {
@@ -129,8 +154,12 @@ export class AosVorhabenUebersicht extends LitElement {
     this.dispatchEvent(new CustomEvent<{ projectId: string | null }>('filter-change', { detail: { projectId: id } }));
   }
 
-  private newVorhaben(project: VorhabenProjectInfo): void {
-    this.dispatchEvent(new CustomEvent<{ projectId: string }>('vorhaben-new', { bubbles: true, composed: true, detail: { projectId: project.id } }));
+  /** „Neue Absicht" for a project — the bar uses the filtered project, else the active one, else the first (FA-02). */
+  private newVorhaben(project: VorhabenProjectInfo | null): void {
+    const st = this.vorhabenState;
+    const target = project ?? st?.projects.find((p) => p.id === this.filterProjectId) ?? st?.projects.find((p) => p.id === this.activeProjectId) ?? st?.projects[0] ?? null;
+    if (!target) return;
+    this.dispatchEvent(new CustomEvent<{ projectId: string }>('vorhaben-new', { bubbles: true, composed: true, detail: { projectId: target.id } }));
   }
 
   override render() {
@@ -143,7 +172,6 @@ export class AosVorhabenUebersicht extends LitElement {
     }
     const projects = st.projects;
     const rows: VorhabenRow[] = st.rows;
-    const waiting = countWaitingForMe(rows);
     const groups = groupRows(rows, this.filterProjectId);
     const visibleProjects = this.filterProjectId ? projects.filter((p) => p.id === this.filterProjectId) : projects;
     const emptyProjects = visibleProjects.filter((p) => !p.error && !rows.some((r) => r.projectId === p.id));
@@ -152,7 +180,6 @@ export class AosVorhabenUebersicht extends LitElement {
     return html`
       <div class="kopf">
         <h1>Vorhaben</h1>
-        <span class="sub">${projects.length} ${projects.length === 1 ? 'Projekt' : 'Projekte'} · ${waiting} ${waiting === 1 ? 'wartet' : 'warten'} auf dich</span>
       </div>
       <div class="chips" role="group" aria-label="Projektfilter">
         <button type="button" class="chip ${this.filterProjectId === null ? 'gewaehlt' : ''}" @click=${() => this.setFilter(null)}>Alle</button>
@@ -165,7 +192,7 @@ export class AosVorhabenUebersicht extends LitElement {
           >${p.name}</button>`
         )}
       </div>
-      ${projects.length === 0 ? html`<div class="status">Kein Projekt geöffnet — Projekt über die Projekt-Reiter hinzufügen.</div>` : nothing}
+      ${projects.length === 0 ? html`<div class="status">Kein Projekt geöffnet — auf der Projekt-Seite hinzufügen.</div>` : nothing}
       ${errorProjects.map((p) => html`<div class="status fehler"><span><strong>${p.name}</strong> nicht lesbar: ${p.error} — Pfad prüfen oder Projekt schließen und neu öffnen.</span></div>`)}
       ${groups.map((g) =>
         g.key === 'umgesetzt'
@@ -183,9 +210,15 @@ export class AosVorhabenUebersicht extends LitElement {
       ${emptyProjects.map(
         (p) => html`<div class="leer">
           <span>Noch kein Vorhaben in <strong>${p.name}</strong>.</span>
-          <button type="button" class="btn" @click=${() => this.newVorhaben(p)}>Erstes Vorhaben anlegen</button>
+          <button type="button" class="btn" @click=${() => this.newVorhaben(p)}>Neue Absicht</button>
         </div>`
       )}
+      <div class="platz"></div>
+      ${projects.length > 0
+        ? html`<div class="leiste" role="toolbar" aria-label="Aktionen">
+            <button type="button" class="btn primaer" @click=${() => this.newVorhaben(null)}>Neue Absicht</button>
+          </div>`
+        : nothing}
     `;
   }
 }

@@ -58,12 +58,13 @@ export class AosSendeLeiste extends LitElement {
 
   static override styles = css`
     /* Mac: fixed above the page (main-content has overflow-x:hidden, so sticky
-       would never engage); left of the app sidebar, right of the terminal. */
+       would never engage); full width since the app sidebar is gone
+       (INT-2026-010), right of the terminal. */
     :host {
       display: block;
       position: fixed;
       bottom: 0;
-      left: var(--sidebar-width, 0px);
+      left: 0;
       /* INT-2026-007: ends at the Gespräch column (FA-01, plan §4 #16) */
       right: calc(var(--terminal-open-width, 0px) + var(--gespraech-width, 0px));
       z-index: 50;

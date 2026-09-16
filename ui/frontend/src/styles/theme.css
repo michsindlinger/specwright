@@ -2174,6 +2174,7 @@ aos-mcp-server-card {
 /* App Layout Styles (Light DOM - moved from app.ts static styles) */
 aos-app {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background-color: var(--color-bg-primary);
 }
@@ -2292,8 +2293,8 @@ aos-app .queue-count {
 
 aos-app .main-content {
   flex: 1;
-  margin-left: var(--sidebar-width);
-  padding-left: max(0px, calc(var(--file-tree-open-width, 0px) - var(--sidebar-width)));
+  /* INT-2026-010: no app sidebar any more — the view starts at the left edge. */
+  padding-left: var(--file-tree-open-width, 0px);
   padding-right: var(--terminal-open-width, 0px);
   min-height: 100vh;
   overflow-x: hidden;
@@ -7119,4 +7120,575 @@ aos-model-selector .model-option.selected .model-name {
 .gespraech-fehler {
   color: var(--color-accent-error);
   font-size: var(--font-size-xs);
+}
+
+/* ============================================================
+   INT-2026-010: Kopfzeile (the whole frame) and Glocke
+   ============================================================ */
+
+aos-kopfzeile {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+}
+
+aos-app .kopfzeile {
+  height: var(--header-height);
+  padding: 0 var(--spacing-xl);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg-secondary);
+}
+
+aos-app .kopfzeile-titel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+aos-app .kopfzeile-rechts {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-left: auto;
+}
+
+aos-app .kopfzeile-verbindung {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent-warning);
+  white-space: nowrap;
+}
+
+aos-app .kopfzeile-btn,
+aos-app .glocke-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+aos-app .kopfzeile-btn:hover,
+aos-app .glocke-btn:hover,
+aos-app .glocke-btn.open {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+aos-app .kopfzeile-btn.aktiv {
+  color: var(--color-accent-primary);
+}
+
+aos-app .kopfzeile-btn svg,
+aos-app .glocke-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Glocke (blocked / finished) ─────────────────────────────── */
+aos-app .glocke-wrap {
+  position: relative;
+  display: flex;
+}
+
+aos-app .glocke-btn {
+  opacity: 0.7;
+}
+
+aos-app .glocke-btn.has-items,
+aos-app .glocke-btn:hover,
+aos-app .glocke-btn.open {
+  opacity: 1;
+}
+
+aos-app .glocke-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--color-accent-error, #ef4444);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* AGENT_STATUS_COLOR.blocked — the bell speaks the same colour as the tab dot. */
+aos-app .glocke-btn.has-waiting .glocke-badge {
+  background: #ff9800;
+  color: #1a1a1a;
+}
+
+aos-app .glocke-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--color-bg-elevated, #2a2a2a);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  padding: 4px 0;
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+aos-app .glocke-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px 4px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 4px;
+}
+
+aos-app .glocke-sound-btn {
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  transition: color 0.1s, background 0.1s;
+}
+
+aos-app .glocke-sound-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+aos-app .glocke-sound-btn.muted {
+  color: var(--color-text-muted);
+}
+
+aos-app .glocke-sound-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+aos-app .glocke-empty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+aos-app .glocke-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.1s;
+}
+
+aos-app .glocke-row:last-child {
+  border-bottom: none;
+}
+
+aos-app .glocke-row:hover {
+  background: var(--color-bg-hover);
+}
+
+aos-app .glocke-row.waiting {
+  border-left: 2px solid #ff9800;
+  padding-left: 10px;
+}
+
+aos-app .glocke-kind {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+aos-app .glocke-kind.done {
+  background: #2f3b2f;
+  color: #8bc98b;
+}
+
+aos-app .glocke-kind.waiting {
+  background: #4a3208;
+  color: #ffb74d;
+}
+
+aos-app .glocke-row-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+aos-app .glocke-project {
+  flex: 0 1 auto;
+  max-width: 120px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+aos-app .glocke-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+aos-app .glocke-time {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+aos-app .glocke-preview {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Projekt-Seite (Light DOM since INT-2026-010, FA-17) ──────────── */
+aos-projekt-seite {
+  display: block;
+}
+
+aos-projekt-seite h1 {
+  margin: 0 0 var(--spacing-xs);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+aos-projekt-seite .sub {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+aos-projekt-seite .sub code {
+  font-family: var(--font-family-mono);
+}
+
+aos-projekt-seite .abschnitt {
+  margin-bottom: var(--spacing-xl);
+}
+
+aos-projekt-seite .abschnitt-titel {
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--spacing-sm);
+}
+
+aos-projekt-seite .unter-titel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: var(--spacing-md) 0 var(--spacing-xs);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+aos-projekt-seite .layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+aos-projekt-seite .layout.mobil,
+aos-projekt-seite .layout.ohne-editor {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+aos-projekt-seite .liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+aos-projekt-seite .eintrag {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  align-items: center;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+aos-projekt-seite .eintrag.aktiv {
+  border-color: var(--color-accent-primary);
+}
+
+aos-projekt-seite .eintrag.fehlt {
+  color: var(--color-text-muted);
+}
+
+aos-projekt-seite .eintrag .stand {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+aos-projekt-seite .eintrag .stand.dirty {
+  color: var(--color-accent-warning);
+}
+
+aos-projekt-seite .projekt-eintrag {
+  padding: 0;
+  cursor: default;
+}
+
+aos-projekt-seite .projekt-eintrag .wahl {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+aos-projekt-seite .projekt-eintrag .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+aos-projekt-seite .projekt-eintrag .marke {
+  font-size: var(--font-size-xs);
+  color: var(--color-accent-primary);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+aos-projekt-seite .projekt-eintrag .schliessen {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+}
+
+aos-projekt-seite .projekt-eintrag .schliessen:hover {
+  color: var(--color-accent-error);
+}
+
+aos-projekt-seite .eintrag.recent .stand {
+  max-width: 60%;
+}
+
+aos-projekt-seite .btn {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+aos-projekt-seite .btn.hinzufuegen {
+  margin-top: var(--spacing-md);
+}
+
+aos-projekt-seite .zeile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+aos-projekt-seite .auslastung {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-bottom: var(--spacing-sm);
+}
+
+aos-projekt-seite .auslastung.voll {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+aos-projekt-seite .status {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+aos-projekt-seite .status.fehler {
+  color: var(--color-accent-error);
+}
+
+aos-projekt-seite .zurueck {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+aos-projekt-seite details.klappe > summary {
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-sm) 0;
+}
+
+aos-projekt-seite details.klappe[open] > summary {
+  margin-bottom: var(--spacing-sm);
+}
+
+aos-projekt-seite .abschnitt-git aos-git-status-bar {
+  display: block;
+}
+
+/* ── Neue Absicht, stage-1 interim block (route `neu`) ────────────── */
+.neue-absicht h1 {
+  margin: 0 0 var(--spacing-xs);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+.neue-absicht .sub {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.neue-absicht .neu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.neue-absicht .neu.gestartet {
+  border-color: var(--color-accent-primary);
+  margin-bottom: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.neue-absicht .neu.gestartet .status {
+  flex: 1 1 200px;
+  color: var(--color-text-secondary);
+}
+
+.neue-absicht .neu .terminal {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  padding: 2px var(--spacing-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.neue-absicht .neu .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent-success);
+  margin-right: 6px;
+}
+
+/* Vorhaben page below 1024 px: document above the Gespräch (FA-20, design.md §5) */
+@media (max-width: 1023px) {
+  aos-app .vorhaben-split {
+    display: block;
+  }
+
+  aos-app .vorhaben-split-gespraech {
+    width: auto;
+    max-width: none;
+    margin-top: var(--spacing-lg);
+    position: static;
+    height: auto;
+  }
 }
