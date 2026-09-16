@@ -11,6 +11,7 @@ import {
   ANMERKUNG_MAX_CHARS,
   PROJECT_DOC_KEYS,
   VORHABEN_DOC_ORDER,
+  VORHABEN_PHASE_DOCS,
   type Anmerkung,
   type ModelSelection,
   type ProjectDocKey,
@@ -23,12 +24,14 @@ import {
   type VorhabenDocMessage,
   type VorhabenErrorCode,
   type VorhabenErrorMessage,
+  type VorhabenPhaseDoc,
   type VorhabenSendRejectedMessage,
   type VorhabenSentMessage,
   type VorhabenStep,
   type VorhabenStepStartedMessage,
 } from '../../shared/types/vorhaben.protocol.js';
 import type { CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
+import { GESPRAECH_TEXT_MAX_CHARS } from '../../shared/types/gespraech.protocol.js';
 import { INTENT_ID_RE } from './vorhaben-reader.js';
 import { SendRejectedError, VorhabenError, type VorhabenService } from './vorhaben-service.js';
 import { ProjectDocNotFoundError, ProjectDocTooLargeError, type ProjectDocsService } from './project-docs.service.js';
@@ -45,6 +48,7 @@ export const VORHABEN_MESSAGE_TYPES = new Set([
   'vorhaben:draft.delete',
   'vorhaben:send',
   'vorhaben:start-step',
+  'vorhaben:ansicht.set',
   'project-docs:list',
   'project-docs:read',
   'project-docs:write',
@@ -54,6 +58,7 @@ export const VORHABEN_MESSAGE_TYPES = new Set([
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 const isDocKey = (v: unknown): v is VorhabenDocKey => typeof v === 'string' && (VORHABEN_DOC_ORDER as readonly string[]).includes(v);
+const isPhaseDoc = (v: unknown): v is VorhabenPhaseDoc => typeof v === 'string' && (VORHABEN_PHASE_DOCS as readonly string[]).includes(v);
 const isProjectDocKey = (v: unknown): v is ProjectDocKey => typeof v === 'string' && (PROJECT_DOC_KEYS as readonly string[]).includes(v);
 const STEPS: readonly string[] = ['intent', 'spec', 'plan', 'build'];
 const isStep = (v: unknown): v is VorhabenStep => typeof v === 'string' && STEPS.includes(v);
@@ -194,18 +199,60 @@ export class VorhabenHandler {
         if (!project) return true;
         const step = message.step;
         const intentId = str(message.intentId);
-        const model = parseModel(message.model);
-        if (!isStep(step) || !model || (intentId !== undefined && !INTENT_ID_RE.test(intentId)) || (step !== 'intent' && !intentId)) {
-          reply(this.error('INVALID_MESSAGE', 'step, model {providerId, modelId} und (außer bei intent) intentId sind erforderlich', requestId));
+        // INT-2026-010 (FA-22): model optional — the service resolves lastModel → step default.
+        const model = message.model === undefined ? undefined : parseModel(message.model);
+        if (!isStep(step) || model === null || (intentId !== undefined && !INTENT_ID_RE.test(intentId)) || (step !== 'intent' && !intentId)) {
+          reply(this.error('INVALID_MESSAGE', 'step, model {providerId, modelId} (optional) und (außer bei intent) intentId sind erforderlich', requestId));
           return true;
+        }
+        // INT-2026-010 (AK-09, FA-11, FA-22): first input — trimmed, 1…GESPRAECH_TEXT_MAX_CHARS characters.
+        let firstInput: string | undefined;
+        if (message.firstInput !== undefined) {
+          const raw = str(message.firstInput);
+          firstInput = raw === undefined ? undefined : cleanText(raw, GESPRAECH_TEXT_MAX_CHARS + 1).trim();
+          if (firstInput === undefined || firstInput.length === 0 || firstInput.length > GESPRAECH_TEXT_MAX_CHARS) {
+            reply(this.error('INVALID_MESSAGE', `firstInput muss ein Text mit 1 bis ${GESPRAECH_TEXT_MAX_CHARS} Zeichen sein`, requestId));
+            return true;
+          }
         }
         const sessionTarget = message.sessionTarget as CloudTerminalSessionTarget | undefined;
         void this.service
-          .startStep(project.id, intentId, step, model, sessionTarget)
+          .startStep(project.id, intentId, step, model, sessionTarget, firstInput)
           .then(({ sessionId }) =>
             reply({ type: 'vorhaben:step-started', ...(requestId ? { requestId } : {}), sessionId, projectId: project.id, ...(intentId ? { intentId } : {}), step } as VorhabenStepStartedMessage)
           )
           .catch((err) => reply(this.fromError(err, requestId)));
+        return true;
+      }
+
+      case 'vorhaben:ansicht.set': {
+        // INT-2026-010 (FA-03, FA-12; AR-05): shared view state; the answer is the broadcast.
+        const hasFilter = 'filterProjectId' in message;
+        const filterProjectId = message.filterProjectId;
+        if (hasFilter && filterProjectId !== null && typeof filterProjectId !== 'string') {
+          reply(this.error('INVALID_MESSAGE', 'filterProjectId muss eine Projekt-Id oder null sein', requestId));
+          return true;
+        }
+        let phase: { projectId: string; intentId: string; doc: VorhabenPhaseDoc } | undefined;
+        if (message.phase !== undefined) {
+          const p = message.phase as Record<string, unknown> | null;
+          const projectId = p ? str(p.projectId) : undefined;
+          const intentId = p ? str(p.intentId) : undefined;
+          if (!p || !projectId || !intentId || !INTENT_ID_RE.test(intentId) || !isPhaseDoc(p.doc)) {
+            reply(this.error('INVALID_MESSAGE', 'phase {projectId, intentId (INT-JJJJ-NNN), doc (intent|spec|plan|build-stand|design)} ist erforderlich', requestId));
+            return true;
+          }
+          phase = { projectId, intentId, doc: p.doc };
+        }
+        if (!hasFilter && !phase) {
+          reply(this.error('INVALID_MESSAGE', 'filterProjectId oder phase ist erforderlich', requestId));
+          return true;
+        }
+        try {
+          this.service.setAnsicht({ ...(hasFilter ? { filterProjectId: filterProjectId as string | null } : {}), ...(phase ? { phase } : {}) });
+        } catch (err) {
+          reply(this.fromError(err, requestId));
+        }
         return true;
       }
 

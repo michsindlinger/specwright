@@ -38,6 +38,8 @@ export interface GespraechZiel {
   arbeitskopie: string;
   zustand: VorhabenZustand;
   nextStep?: VorhabenNextStep;
+  /** INT-2026-010 (FA-21): a live session works or waits — the next step cannot start now. */
+  sessionBusy?: boolean;
   lastChangedMs: number;
   /** True for a pending `/intent` session: the Vorhaben page opens once the folder exists. */
   entsteht?: boolean;
@@ -312,7 +314,7 @@ export class AosGespraech extends LitElement {
     if (this.aboFehler) {
       return html`<div class="gespraech-karte fehler" role="alert">
         <p><strong>Gespräch nicht verfügbar:</strong> ${this.aboFehler}.</p>
-        <p>Nächster Schritt: <button type="button" class="gespraech-link" @click=${this.toTerminal}>Im Terminal öffnen</button>${r.nextStep ? html` oder die Sitzung beenden und „${r.nextStep.label}" wählen — die neue Sitzung erscheint hier.` : '.'}</p>
+        <p>Nächster Schritt: <button type="button" class="gespraech-link" @click=${this.toTerminal}>Im Terminal öffnen</button>${r.nextStep && !r.sessionBusy ? html` oder „${r.nextStep.label}" wählen — die neue Sitzung erscheint hier.` : '.'}</p>
       </div>
       <div class="gespraech-notiz rahmen">Anmerkungen und Freigabe im Dokument-Leser funktionieren weiterhin, sobald die Sitzung wartet.</div>`;
     }
@@ -320,7 +322,7 @@ export class AosGespraech extends LitElement {
     if (snap.verlauf.status === 'nicht_verfuegbar') {
       return html`<div class="gespraech-karte fehler" role="alert">
         <p><strong>Gespräch nicht verfügbar:</strong> ${snap.verlauf.ursache ?? 'Verlauf nicht lesbar'}.</p>
-        <p>Nächster Schritt: <button type="button" class="gespraech-link" @click=${this.toTerminal}>Im Terminal öffnen</button>${r.nextStep ? html` oder die Sitzung beenden und „${r.nextStep.label}" wählen — die neue Sitzung erscheint hier.` : '.'}</p>
+        <p>Nächster Schritt: <button type="button" class="gespraech-link" @click=${this.toTerminal}>Im Terminal öffnen</button>${r.nextStep && !r.sessionBusy ? html` oder „${r.nextStep.label}" wählen — die neue Sitzung erscheint hier.` : '.'}</p>
       </div>
       <div class="gespraech-notiz rahmen">Anmerkungen und Freigabe im Dokument-Leser funktionieren weiterhin, sobald die Sitzung wartet.</div>`;
     }

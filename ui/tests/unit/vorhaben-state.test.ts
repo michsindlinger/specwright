@@ -200,5 +200,53 @@ describe('VorhabenStateStore stage 2 (FA-21/22/26/32/40)', () => {
     expect(store.getDocDraft('p', 'claude')?.text).toBe('t');
     expect(store.getProtocol()).toEqual([]);
     expect(store.getPendingIntents()).toEqual([]);
+    // INT-2026-010: the new maps default when absent
+    expect(store.getAnsicht()).toEqual({ filterProjectId: null, phase: {} });
+    expect(store.hasFirstInput('s1')).toBe(false);
+  });
+
+  it('INT-2026-010 (FA-03, FA-12): ansicht round-trip — filter and phase per Vorhaben, unchanged writes report false, prune drops phase entries of vanished rows at once (review E14)', async () => {
+    const store = new VorhabenStateStore(file, { port: 3111 });
+    await store.load();
+    expect(store.setAnsicht({ filterProjectId: 'p1' })).toBe(true);
+    expect(store.setAnsicht({ filterProjectId: 'p1' })).toBe(false);
+    expect(store.setAnsicht({ phase: { key: 'p1::INT-2026-004', doc: 'plan' } })).toBe(true);
+    expect(store.setAnsicht({ phase: { key: 'p1::INT-2026-004', doc: 'plan' } })).toBe(false);
+    expect(store.setAnsicht({ phase: { key: 'p1::INT-2026-005', doc: 'design' } })).toBe(true);
+    expect(store.setAnsicht({})).toBe(false);
+    expect(store.getAnsicht()).toEqual({ filterProjectId: 'p1', phase: { 'p1::INT-2026-004': 'plan', 'p1::INT-2026-005': 'design' } });
+    // the snapshot is a copy
+    store.getAnsicht().phase['x'] = 'spec';
+    expect(store.getAnsicht().phase['x']).toBeUndefined();
+    await store.flush();
+    const again = new VorhabenStateStore(file, { port: 3111 });
+    await again.load();
+    expect(again.getAnsicht()).toEqual({ filterProjectId: 'p1', phase: { 'p1::INT-2026-004': 'plan', 'p1::INT-2026-005': 'design' } });
+    // „Alle" = null; prune removes the phase entry whose row is gone, keeps the live one
+    expect(again.setAnsicht({ filterProjectId: null })).toBe(true);
+    expect(again.prune(new Set(['p1::INT-2026-004']))).toBe(1);
+    expect(again.getAnsicht()).toEqual({ filterProjectId: null, phase: { 'p1::INT-2026-004': 'plan' } });
+    await again.flush();
+  });
+
+  it('INT-2026-010 (AK-09, FA-22): first inputs per session — set, bump, clear, survive load(), never in the ansicht/protocol snapshots', async () => {
+    const store = new VorhabenStateStore(file, { port: 3111 });
+    await store.load();
+    store.setFirstInput('cs-1', { text: 'Was stört: die Liste sortiert falsch.', versuche: 0 });
+    expect(store.hasFirstInput('cs-1')).toBe(true);
+    expect(store.getFirstInput('cs-1')).toEqual({ text: 'Was stört: die Liste sortiert falsch.', versuche: 0 });
+    expect(store.bumpFirstInputVersuche('cs-1')).toBe(1);
+    expect(store.bumpFirstInputVersuche('cs-1')).toBe(2);
+    expect(store.bumpFirstInputVersuche('nope')).toBe(0);
+    await store.flush();
+    const again = new VorhabenStateStore(file, { port: 3111 });
+    await again.load();
+    expect(again.getFirstInput('cs-1')).toEqual({ text: 'Was stört: die Liste sortiert falsch.', versuche: 2 });
+    expect(again.clearFirstInput('cs-1')).toBe(true);
+    expect(again.clearFirstInput('cs-1')).toBe(false);
+    expect(again.hasFirstInput('cs-1')).toBe(false);
+    await again.flush();
+    const raw = JSON.parse(readFileSync(file, 'utf-8')) as { state: { firstInputs: Record<string, unknown> } };
+    expect(raw.state.firstInputs).toEqual({});
   });
 });

@@ -12,12 +12,13 @@ vi.mock('../../frontend/src/gateway.js', () => ({
   gateway: { send: vi.fn(), on: vi.fn(), off: vi.fn(), getConnectionStatus: () => false, isConnecting: () => false, getProjectPath: vi.fn(), requestGitStatus: vi.fn(), requestGitBranches: vi.fn(), requestGitPrInfo: vi.fn() },
 }));
 vi.mock('../../frontend/src/services/vorhaben.service.js', () => ({
-  vorhabenService: { listProjectDocs: vi.fn(async () => [{ key: 'product-brief', label: 'Product Brief', file: 'docs/product-brief.md', exists: true, dirty: false, mtimeMs: 1000 }]), subscribe: vi.fn(() => () => undefined) },
+  vorhabenService: { listProjectDocs: vi.fn(async () => [{ key: 'product-brief', label: 'Product Brief', file: 'docs/product-brief.md', exists: true, dirty: false, mtimeMs: 1000 }]), subscribe: vi.fn(() => () => undefined), setAnsicht: (...a: unknown[]) => setAnsicht(...(a as [])) },
   VorhabenRequestError: class extends Error {},
 }));
 vi.mock('../../frontend/src/utils/mermaid-render.js', () => ({ renderMermaidDiagrams: vi.fn(async () => undefined) }));
 
 const switchProject = vi.fn();
+const setAnsicht = vi.fn();
 const closeProject = vi.fn();
 const addProject = vi.fn();
 
@@ -86,6 +87,7 @@ describe('aos-projekt-seite (INT-2026-010, FA-17)', () => {
     expect(entries[0].querySelector('.marke')?.textContent).toBe('aktiv');
     (entries[1].querySelector('.wahl') as HTMLButtonElement).click();
     expect(switchProject).toHaveBeenCalledWith('b');
+    expect(setAnsicht).toHaveBeenCalledWith({ filterProjectId: 'b' }); // INT-2026-010 S2: the overview chip follows (spec §4)
     (entries[1].querySelector('.schliessen') as HTMLButtonElement).click();
     expect(closeProject).toHaveBeenCalledWith('b');
     const recents = [...seite.querySelectorAll('.eintrag.recent')].map((e) => e.querySelector('.name')?.textContent);

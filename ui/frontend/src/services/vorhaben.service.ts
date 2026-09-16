@@ -15,6 +15,7 @@ import type {
   SendeGrund,
   VorhabenDocKey,
   VorhabenErrorMessage,
+  VorhabenPhaseDoc,
   VorhabenState,
   VorhabenStep,
 } from '../../../src/shared/types/vorhaben.protocol.js';
@@ -146,15 +147,41 @@ export class VorhabenClientService {
     );
   }
 
-  /** Starts the next step as a session in the project (FA-35). */
-  startStep(projectId: string, intentId: string | undefined, step: VorhabenStep, model: ModelSelection, sessionTarget?: CloudTerminalSessionTarget): Promise<{ sessionId: string }> {
+  /**
+   * Starts the next step as a session in the project (FA-35). INT-2026-010:
+   * `model` may be undefined (the backend resolves last model → step default,
+   * FA-22) and `firstInput` is handed to the session at its first Stop
+   * (AK-09/FA-11, FA-22).
+   */
+  startStep(
+    projectId: string,
+    intentId: string | undefined,
+    step: VorhabenStep,
+    model: ModelSelection | undefined,
+    sessionTarget?: CloudTerminalSessionTarget,
+    opts: { firstInput?: string } = {}
+  ): Promise<{ sessionId: string }> {
     return this.request<{ sessionId: string }>('vorhaben:step-started', {
       type: 'vorhaben:start-step',
       projectId,
       ...(intentId ? { intentId } : {}),
       step,
-      model,
+      ...(model ? { model } : {}),
       ...(sessionTarget ? { sessionTarget } : {}),
+      ...(opts.firstInput !== undefined ? { firstInput: opts.firstInput } : {}),
+    });
+  }
+
+  /**
+   * INT-2026-010 (FA-03, FA-12; AR-05): shared view state — project chip of
+   * the overview and the chosen phase document of a Vorhaben. The answer is
+   * the next `vorhaben:state` broadcast (every device follows).
+   */
+  setAnsicht(patch: { filterProjectId?: string | null; phase?: { projectId: string; intentId: string; doc: VorhabenPhaseDoc } }): void {
+    gateway.send({
+      type: 'vorhaben:ansicht.set',
+      ...(patch.filterProjectId !== undefined ? { filterProjectId: patch.filterProjectId } : {}),
+      ...(patch.phase ? { phase: patch.phase } : {}),
     });
   }
 

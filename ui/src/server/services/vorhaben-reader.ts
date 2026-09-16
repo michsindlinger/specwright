@@ -138,7 +138,7 @@ export function stepOfPhase(phase: VorhabenPhase): VorhabenStep | undefined {
   }
 }
 
-/** Next step per phase (FA-12); the caller hides it while a session works or waits. */
+/** Next step per phase (FA-12). INT-2026-010 (FA-21): always on the row; the page greys it out while `sessionBusy`. */
 export function deriveNextStep(phase: VorhabenPhase, intentId: string, hasBuildStand: boolean): VorhabenNextStep | undefined {
   switch (phase) {
     case 'bau':
@@ -416,8 +416,11 @@ export function toRow(project: ScanProject, c: VorhabenCandidate, session: Vorha
   const intent = c.heads.intent;
   const reviewDocCandidate = deriveReviewDoc(phase, c.heads);
   const z = deriveZustand(phase, c.hasBuildStand, session, reviewDocCandidate);
+  // INT-2026-010 (FA-21): a live session in any state blocks the next step; the step itself stays on the row.
   const sessionBusy = !!session && !session.ended && (z.zustand === 'arbeitet' || z.zustand === 'wartet' || z.zustand === 'wartet_auf_dich' || isWartetImDialog(z.zustand));
-  const nextStep = sessionBusy ? undefined : deriveNextStep(phase, c.intentId, c.hasBuildStand);
+  const nextStep = deriveNextStep(phase, c.intentId, c.hasBuildStand);
+  // INT-2026-010 (FA-22): the document awaiting approval by its head status — independent of a session; none in phase pr.
+  const freigabeDoc = phase !== 'pr' && reviewDocCandidate && c.docs.some((d) => d.key === reviewDocCandidate) ? reviewDocCandidate : undefined;
   const planNote = c.heads.plan?.note ?? '';
   const phaseNote = phase === 'pr' ? planNote : intent?.bypass ? 'Spec entfällt' : '';
   return {
@@ -435,8 +438,10 @@ export function toRow(project: ScanProject, c: VorhabenCandidate, session: Vorha
     zustand: z.zustand,
     zustandDetail: z.detail,
     ...(z.reviewDoc ? { reviewDoc: z.reviewDoc } : {}),
+    ...(freigabeDoc ? { freigabeDoc } : {}),
     ...(stepOfPhase(phase) ? { step: stepOfPhase(phase) } : {}),
     ...(nextStep ? { nextStep } : {}),
+    sessionBusy,
     docs: c.docs,
     designFiles: c.designFiles,
     hasBuildStand: c.hasBuildStand,

@@ -1,6 +1,6 @@
 # Architektur: Specwright — Soll
 
-> **Stand:** 2026-09-15, Branch `feat/INT-2026-004-ui-s3` · **Verantwortlich:** Tech Lead (Michael Sindlinger)
+> **Stand:** 2026-09-16, Branch `feat/INT-2026-010-s2` · **Verantwortlich:** Tech Lead (Michael Sindlinger)
 > **Rolle dieses Dokuments:** das SOLL. Pflichtinput im Plan Mode. Verschiebt ein Plan eine Grenze, ändert dieselbe PR dieses Dokument.
 > **Prinzipien der Firma:** Firmen-Repo SBS (entsteht in Phase 3) — dieses Dokument darf sie konkretisieren, nicht verletzen.
 
@@ -45,7 +45,7 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | `kanban.json`, Backlog | Kanban-MCP-Server | Projekt-Dateien | MCP-Werkzeuge der Sitzungen (die UI liest nicht mehr, INT-2026-004) | — |
 | Memory-Store | Kanban-MCP-Server | `~/.specwright/memory.db` (SQLite) | MCP-Werkzeuge `memory_*` | — |
 | Workspace der UI (offene Projekte, Tabs) | UI-Backend | `<runtime>/workspace-<port>.json` | WebSocket `workspace:*` | pro Backend-Instanz |
-| Nutzerzustand der UI (Zuordnung Sitzung↔Vorhaben, auch anhängige Absicht-Sitzungen ohne Ordner und ihre Freitext-Einträge bis zum Claim des Ordners — INT-2026-008; Anmerkungs-Entwürfe, Protokoll inkl. Freitext-Einträgen des Gesprächs, letzte Modellwahl, Doc-Entwürfe) | UI-Backend | `<runtime>/vorhaben-<port>.json` (ADR-0002) | WebSocket `vorhaben:*` (inkl. `pendingIntents`), `project-docs:*` | pro Backend-Instanz |
+| Nutzerzustand der UI (Zuordnung Sitzung↔Vorhaben, auch anhängige Absicht-Sitzungen ohne Ordner und ihre Freitext-Einträge bis zum Claim des Ordners — INT-2026-008; Anmerkungs-Entwürfe, Protokoll inkl. Freitext-Einträgen des Gesprächs, letzte Modellwahl, Doc-Entwürfe; **Ansicht** — gewählter Projekt-Chip der Liste und gewähltes Phasen-Dokument je Vorhaben, gesetzt über `vorhaben:ansicht.set`, im Snapshot als `ansicht`; **erste Eingabe** je gestarteter Sitzung — Text von „Neue Absicht" oder eine Freigabe — bis zur Zustellung beim ersten Stop der Sitzung, im Snapshot nur als Flag `firstInputPending`, nie als Text — INT-2026-010) | UI-Backend | `<runtime>/vorhaben-<port>.json` (ADR-0002) | WebSocket `vorhaben:*` (inkl. `pendingIntents`, `ansicht`), `project-docs:*` | pro Backend-Instanz |
 | Terminal-Sitzungen (inkl. Hook-Kontext: Transkriptpfad, Claude-Session-ID, Blockart, Plan-Review-Schalter) | UI-Backend | tmux-Server + Disk-Registry | WebSocket | pro Host |
 | Sitzungsverlauf (Transkript einer Claude-Code-Sitzung) | Claude Code | `~/.claude*/projects/<slug>/<session-id>.jsonl` | UI-Backend liest nur (Tailer, Allowlist der Config-Verzeichnisse, ADR-0003), keine Kopie; Clients über WebSocket `gespraech:*` je Sitzung | pro Host |
 
@@ -122,4 +122,5 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | 2026-09-16 | §2 Backend-Zeile um Gespräch (Transkript-Leser, Lock), §3 Terminal-Sitzungen um Hook-Kontext, neue Zeile Sitzungsverlauf, Nutzerzustand um Freitext-Protokoll (INT-2026-007, Stufe 1) | ADR-0003 |
 | 2026-09-16 | §3 Nutzerzustand: anhängige Absicht-Sitzungen ohne Ordner werden mit `vorhaben:state` ausgeliefert, ihre Freitext-Einträge tragen die Kennung erst ab dem Claim (INT-2026-008); keine AR-Änderung | PR folgt |
 | 2026-09-15 | Story-Pfad aus der UI entfernt: §1 Diagramm und Text (UI → MCP nur noch über Sitzungen), §2 ohne Auto-Mode, §3 `kanban.json` ohne UI-Leser, AR-03 auf den MCP-Server beschränkt, §5 Gate ohne Auto-Mode, §10 Zeile „Story pro Session" erledigt, zwei neue Abweichungen (INT-2026-004, Stufe 3) | PR #46 |
-| 2026-09-16 | §1 Rahmen (Kopfzeile mit Glocke, kein Chat/Anruf/Team), §2 Frontend-Zeile (Routen `vorhaben`, `neu`, `projekt`; Git-Dienst; Projekt-Seite als Wirt), §10 zwei Bestandszeilen (`terminal.*`-Handler, Team-View ohne Route); Chat-, Voice- und Bild-Upload-Backend entfernt — keine AR-Änderung (INT-2026-010, Stufe 1) | PR folgt |
+| 2026-09-16 | §1 Rahmen (Kopfzeile mit Glocke, kein Chat/Anruf/Team), §2 Frontend-Zeile (Routen `vorhaben`, `neu`, `projekt`; Git-Dienst; Projekt-Seite als Wirt), §10 zwei Bestandszeilen (`terminal.*`-Handler, Team-View ohne Route); Chat-, Voice- und Bild-Upload-Backend entfernt — keine AR-Änderung (INT-2026-010, Stufe 1) | PR #57 |
+| 2026-09-16 | §3 Nutzerzustand um die Ansicht (Projekt-Chip, Phasen-Dokument je Vorhaben; `vorhaben:ansicht.set`) und die erste Eingabe je gestarteter Sitzung (Zustellung beim ersten Stop, nur Flag im Snapshot) erweitert; `start-step` ohne Modell löst lastModel → Schritt-Standard der Einstellungen — keine AR-Änderung, AR-05 eingehalten (INT-2026-010, Stufe 2) | PR #58 |

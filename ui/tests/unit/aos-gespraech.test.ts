@@ -36,7 +36,7 @@ const settle = async (el: HTMLElement & { updateComplete: Promise<boolean> }): P
 
 const row = (o: Partial<VorhabenRow> = {}): VorhabenRow => ({
   projectId: 'p', projectPath: '/p', projectName: 'P', intentId: 'INT-2026-003', dirName: 'INT-2026-003-x', cwd: '/p', arbeitskopie: 'main', titel: 'T',
-  phase: 'spec', phaseNote: '', bypass: false, zustand: 'wartet', zustandDetail: '', reviewDoc: 'spec', step: 'spec',
+  phase: 'spec', phaseNote: '', bypass: false, zustand: 'wartet', zustandDetail: '', reviewDoc: 'spec', step: 'spec', sessionBusy: true,
   docs: [{ key: 'spec', file: 'spec.md', mtimeMs: 1000 }], designFiles: [], hasBuildStand: false, lastChangedAt: '', lastChangedMs: 0,
   session: { id: 'cloud-1-1', name: 'spec INT-2026-003', model: 'opus', agentStatus: 'done' },
   ...o,
@@ -267,11 +267,18 @@ describe('aos-gespraech — dialogs, availability, queued entries', () => {
     await push(el, snap([], { verlauf: { status: 'nicht_verfuegbar', ursache: 'Sitzung vor der Auslieferung gestartet — kein Transkriptpfad bekannt' } }));
     const karte = el.querySelector('.gespraech-karte.fehler')!;
     expect(text(karte)).toContain('Gespräch nicht verfügbar: Sitzung vor der Auslieferung gestartet — kein Transkriptpfad bekannt.');
-    expect(text(karte)).toContain('Nächster Schritt: Im Terminal öffnen oder die Sitzung beenden und „Plan erstellen" wählen');
+    // INT-2026-010 (FA-21, review E9): the row's session works or waits (sessionBusy) → no advice to pick the next step
+    expect(text(karte)).toContain('Nächster Schritt: Im Terminal öffnen.');
+    expect(text(karte)).not.toContain('Plan erstellen');
     expect(text(el.querySelector('.gespraech-notiz.rahmen'))).toContain('Anmerkungen und Freigabe im Dokument-Leser funktionieren weiterhin');
     expect(el.querySelector('textarea')!.disabled).toBe(true);
     expect(text(el.querySelector('.gespraech-grund'))).toBe('kein Gespräch — im Terminal öffnen');
     el.remove();
+    // session ended (sessionBusy false): the next step is offered
+    const ended = await gespraech(row({ sessionBusy: false, zustand: 'sitzung_beendet', session: { id: 'cloud-1-1', name: 'spec INT-2026-003', model: 'opus', agentStatus: 'unknown', ended: true }, nextStep: { step: 'plan', command: '/specwright:plan INT-2026-003', label: 'Plan erstellen' } }));
+    await push(ended, snap([], { verlauf: { status: 'nicht_verfuegbar', ursache: 'kein Transkriptpfad' } }));
+    expect(text(ended.querySelector('.gespraech-karte.fehler'))).toContain('Nächster Schritt: Im Terminal öffnen oder „Plan erstellen" wählen — die neue Sitzung erscheint hier.');
+    ended.remove();
   });
 
   it('nur_echtzeit shows the history note but keeps sending; unknown session (backend error) shows the cause', async () => {

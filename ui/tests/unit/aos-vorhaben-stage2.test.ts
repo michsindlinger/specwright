@@ -45,7 +45,7 @@ const settle = async (el: HTMLElement & { updateComplete: Promise<boolean> }): P
 const row = (o: Partial<VorhabenRow> = {}): VorhabenRow => ({
   projectId: 'p', projectPath: '/p', projectName: 'P', intentId: 'INT-2026-004', dirName: 'INT-2026-004-x', cwd: '/p', arbeitskopie: 'main', titel: 'T',
   phase: 'spec', phaseNote: '', bypass: false, zustand: 'wartet_auf_dich', zustandDetail: 'spec.md', reviewDoc: 'spec', step: 'spec',
-  docs: [{ key: 'spec', file: 'spec.md', mtimeMs: 1000 }], designFiles: [], hasBuildStand: false, lastChangedAt: '', lastChangedMs: 0,
+  docs: [{ key: 'spec', file: 'spec.md', mtimeMs: 1000 }], designFiles: [], hasBuildStand: false, lastChangedAt: '', lastChangedMs: 0, sessionBusy: true,
   session: { id: 's1', name: 'spec INT-2026-004', model: 'opus', agentStatus: 'done' },
   ...o,
 });
@@ -195,24 +195,23 @@ describe('aos-anmerkungen-sammel (FA-25)', () => {
 });
 
 describe('aos-sende-leiste (FA-29, FA-30)', () => {
-  async function leiste(r: VorhabenRow, count = 2, freigabe = true) {
+  async function leiste(r: VorhabenRow, count = 2) {
     await import('../../frontend/src/components/vorhaben/aos-sende-leiste.js');
     const el = document.createElement('aos-sende-leiste');
     el.row = r;
     el.count = count;
-    el.freigabeMoeglich = freigabe;
     document.body.appendChild(el);
     await el.updateComplete;
     return el;
   }
   const buttons = (el: HTMLElement) => [...el.shadowRoot!.querySelectorAll('button')].map((b) => `${b.textContent?.trim()}${b.disabled ? ' (aus)' : ''}`);
 
-  it('ready: session named, Änderungen schicken and Freigeben active; Freigeben absent without review document / in phase PR', async () => {
+  it('ready: session named, Änderungen schicken active; „Freigeben" is no longer here (INT-2026-010 FA-22: action bar of the page)', async () => {
     const el = await leiste(row());
     expect(el.shadowRoot!.querySelector('.ziel')?.textContent).toContain('an Sitzung spec INT-2026-004 · bereit');
-    expect(buttons(el)).toEqual(['Alle ansehen', 'Änderungen schicken', 'Freigeben']);
+    expect(buttons(el)).toEqual(['Alle ansehen', 'Änderungen schicken']);
     el.remove();
-    const pr = await leiste(row({ phase: 'pr', reviewDoc: 'plan' }), 2, false);
+    const pr = await leiste(row({ phase: 'pr', reviewDoc: 'plan' }), 2);
     expect(buttons(pr)).toEqual(['Alle ansehen', 'Änderungen schicken']);
     pr.remove();
   });
@@ -220,7 +219,7 @@ describe('aos-sende-leiste (FA-29, FA-30)', () => {
   it('names the four reasons with the next step and never enables sending (FA-30)', async () => {
     const a = await leiste(row({ zustand: 'arbeitet', session: { id: 's1', name: 'n', model: 'opus', agentStatus: 'working' } }));
     expect(a.shadowRoot!.textContent).toContain('Sitzung arbeitet — warten');
-    expect(buttons(a)).toEqual(['Alle ansehen', 'Änderungen schicken (aus)', 'Freigeben (aus)']);
+    expect(buttons(a)).toEqual(['Alle ansehen', 'Änderungen schicken (aus)']);
     a.remove();
     const d = await leiste(row({ zustand: 'wartet_berechtigung', zustandDetail: 'Berechtigung', session: { id: 's1', name: 'n', model: 'opus', agentStatus: 'blocked', blockKind: 'berechtigung' } }));
     expect(d.shadowRoot!.textContent).toContain('Sitzung wartet auf eine Berechtigung — im Terminal');

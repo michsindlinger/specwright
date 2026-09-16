@@ -1,10 +1,10 @@
 /**
  * aos-sende-leiste — the bar at the bottom of the Vorhaben page (mock 03a,
- * 04a, 06): count of Anmerkungen, target session and readiness, "Alle
- * ansehen", "Änderungen schicken", "Freigeben". When the session is not
- * ready the bar names the reason and the next step instead (FA-30); it never
- * sends by itself. "Freigeben" only with a review document and outside phase
- * PR (FA-29).
+ * 04a): count of Anmerkungen, target session and readiness, "Alle ansehen",
+ * "Änderungen schicken". When the session is not ready the bar names the
+ * reason and the next step instead (FA-30); it never sends by itself.
+ * INT-2026-010 (FA-22, review F6): „Freigeben" lives in the action bar under
+ * the document (aos-vorhaben-seite), not here — one purpose per element.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -51,9 +51,7 @@ export class AosSendeLeiste extends LitElement {
   @property({ type: Number }) count = 0;
   @property({ type: Boolean, reflect: true }) mobile = false;
   @property({ type: Boolean }) sending = false;
-  /** The read document is the review document (Freigeben possible, FA-29). */
-  @property({ type: Boolean }) freigabeMoeglich = false;
-  /** The document changed since it was read (FA-27 warning / FA-28 refusal). */
+  /** The document changed since it was read (FA-27 warning). */
   @property({ type: Boolean }) docChanged = false;
 
   static override styles = css`
@@ -76,7 +74,7 @@ export class AosSendeLeiste extends LitElement {
       box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.25);
       transition: right 0.3s ease;
     }
-    /* Phone: the page scrolls inside .mobile-content → sticky above the bottom nav. */
+    /* Phone: sticky at the bottom of the page. */
     :host([mobile]) {
       position: sticky;
       left: auto;
@@ -189,7 +187,7 @@ export class AosSendeLeiste extends LitElement {
         ${this.renderAktionen(grund, bereit)}
       </div>
       ${this.docChanged && bereit
-        ? html`<div class="warnung">Dokument geändert seit dem Lesen — Freigeben erst nach Neuladen; Änderungen schicken nennt den gelesenen Stand.</div>`
+        ? html`<div class="warnung">Dokument geändert seit dem Lesen — Änderungen schicken nennt den gelesenen Stand.</div>`
         : nothing}
     </div>`;
   }
@@ -225,10 +223,7 @@ export class AosSendeLeiste extends LitElement {
         <button type="button" @click=${() => this.emit('leiste-next-step')}>${this.row.nextStep.label} ›</button>`;
     }
     return html`${this.mobile ? html`<button type="button" class="leise" ?disabled=${n === 0} @click=${() => this.emit('leiste-sammel')}>Alle</button>` : nothing}
-      <button type="button" ?disabled=${!bereit || n === 0 || this.sending} @click=${() => this.emit('leiste-send')}>${this.mobile ? 'Schicken' : 'Änderungen schicken'}</button>
-      ${this.freigabeMoeglich
-        ? html`<button type="button" class="primary" ?disabled=${!bereit || this.sending || this.docChanged} @click=${() => this.emit('leiste-freigabe')}>Freigeben</button>`
-        : nothing}`;
+      <button type="button" ?disabled=${!bereit || n === 0 || this.sending} @click=${() => this.emit('leiste-send')}>${this.mobile ? 'Schicken' : 'Änderungen schicken'}</button>`;
   }
 }
 

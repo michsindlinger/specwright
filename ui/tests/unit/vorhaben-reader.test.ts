@@ -220,6 +220,41 @@ describe('scanCopy / toRow on a temp dir', () => {
     expect(row?.docs.find((d) => d.key === 'intent')?.version).toBe('1.2.0');
   });
 
+  it('INT-2026-010 (FA-21, FA-22): next step stays on the row while a session works or waits — sessionBusy says so; freigabeDoc names the document awaiting approval without a session', () => {
+    mk(root, 'INT-2026-004-ui', { 'intent.md': intentText('angenommen'), 'spec.md': statusDoc('freigegeben'), 'plan.md': statusDoc('entwurf') });
+    const [c] = scanCopy({ cwd: root, arbeitskopie: 'main' }, nodeReaderFs, cache);
+    const none = toRow(project, c, undefined)!;
+    expect(none.sessionBusy).toBe(false);
+    expect(none.nextStep?.step).toBe('plan');
+    expect(none.freigabeDoc).toBe('plan'); // plan.md entwurf awaits approval although nobody waits
+    expect(none.reviewDoc).toBeUndefined();
+    const working = toRow(project, c, { id: 's1', name: 'plan INT-2026-004', model: 'opus', agentStatus: 'working' })!;
+    expect(working.zustand).toBe('arbeitet');
+    expect(working.sessionBusy).toBe(true);
+    expect(working.nextStep?.step).toBe('plan');
+    expect(working.freigabeDoc).toBe('plan');
+    const waiting = toRow(project, c, { id: 's1', name: 'plan INT-2026-004', model: 'opus', agentStatus: 'done' })!;
+    expect(waiting.zustand).toBe('wartet_auf_dich');
+    expect(waiting.sessionBusy).toBe(true);
+    expect(waiting.reviewDoc).toBe('plan');
+    expect(waiting.freigabeDoc).toBe('plan');
+    const blocked = toRow(project, c, { id: 's1', name: 'plan INT-2026-004', model: 'opus', agentStatus: 'blocked', blockKind: 'rueckfrage' })!;
+    expect(blocked.sessionBusy).toBe(true);
+    const ended = toRow(project, c, { id: 's1', name: 'plan INT-2026-004', model: 'opus', agentStatus: 'unknown', ended: true })!;
+    expect(ended.zustand).toBe('sitzung_beendet');
+    expect(ended.sessionBusy).toBe(false);
+    expect(ended.nextStep?.step).toBe('plan');
+    // phase pr: plan umgesetzt → no approval pending
+    mk(root, 'INT-2026-005-pr', { 'intent.md': intentText('angenommen'), 'spec.md': statusDoc('freigegeben'), 'plan.md': statusDoc('umgesetzt PR #12') });
+    const pr = toRow(project, scanCopy({ cwd: root, arbeitskopie: 'main' }, nodeReaderFs, cache).find((x) => x.intentId === 'INT-2026-005')!, undefined)!;
+    expect(pr.phase).toBe('pr');
+    expect(pr.freigabeDoc).toBeUndefined();
+    // absicht: intent entwurf awaits approval
+    mk(root, 'INT-2026-006-neu', { 'intent.md': intentText('entwurf') });
+    const absicht = toRow(project, scanCopy({ cwd: root, arbeitskopie: 'main' }, nodeReaderFs, cache).find((x) => x.intentId === 'INT-2026-006')!, undefined)!;
+    expect(absicht.freigabeDoc).toBe('intent');
+  });
+
   it('unreadable head → row with folder id, "(Kopf nicht lesbar)", phase unbekannt, no next step (FA-09)', () => {
     mk(root, 'INT-2026-007-kaputt', { 'intent.md': '# ohne Kopf' });
     const [c] = scanCopy({ cwd: root, arbeitskopie: '' }, nodeReaderFs, cache);

@@ -131,6 +131,12 @@ export class AosProjektSeite extends LitElement {
     this.projectCtx.addProject({ id: path, name, path });
   }
 
+  /** INT-2026-010 (spec §4 Randfall): back on the overview, the chip of the new project counts as chosen (AR-05: via the backend). */
+  private wechsle(ctx: ProjectContextValue, id: string): void {
+    ctx.switchProject(id);
+    vorhabenService.setAnsicht({ filterProjectId: id });
+  }
+
   override render() {
     const p = this.project;
     const selected = this.selectedKey ? this.docs.find((d) => d.key === this.selectedKey) : undefined;
@@ -207,7 +213,7 @@ export class AosProjektSeite extends LitElement {
         ${ctx.openProjects.length === 0 ? html`<div class="status">Kein Projekt geöffnet.</div>` : nothing}
         ${ctx.openProjects.map(
           (x) => html`<div class="eintrag projekt-eintrag ${x.id === active ? 'aktiv' : ''}" role="listitem">
-            <button type="button" class="wahl" @click=${() => ctx.switchProject(x.id)} title=${x.path}>
+            <button type="button" class="wahl" @click=${() => this.wechsle(ctx, x.id)} title=${x.path}>
               <span class="name">${x.name}</span>
               ${x.id === active ? html`<span class="marke">aktiv</span>` : nothing}
             </button>

@@ -21,6 +21,7 @@ import {
   updateModel,
   setDefaults,
   setStepDefault,
+  getStepDefault,
   getStepDefaults,
   type StepKey,
   type ModelConfig,
@@ -123,6 +124,8 @@ export class WebSocketHandler {
       // Stage 2: review channel + next step run through the terminal manager.
       sessions: this.cloudTerminalManager,
       setSessionName: (sessionId, name) => this.workspaceHandler.setSessionName(sessionId, name),
+      // INT-2026-010 (FA-22): „Freigeben" without a session starts the step with the settings' step default.
+      defaultModel: (step) => getStepDefault(step),
     });
     this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage));
     this.gespraechService = new GespraechService({
@@ -375,6 +378,7 @@ export class WebSocketHandler {
         case 'vorhaben:draft.delete':
         case 'vorhaben:send':
         case 'vorhaben:start-step':
+        case 'vorhaben:ansicht.set':
         case 'project-docs:list':
         case 'project-docs:read':
         case 'project-docs:write':
