@@ -331,6 +331,7 @@ workflow	project	specwright/workflows/core/spec.md	specwright/workflows/core/spe
 workflow	project	specwright/workflows/core/start-brainstorming.md	specwright/workflows/core/start-brainstorming.md
 workflow	project	specwright/workflows/core/update-changelog.md	specwright/workflows/core/update-changelog.md
 workflow	project	specwright/workflows/meta/pre-flight.md	specwright/workflows/meta/pre-flight.md
+workflow	project	specwright/workflows/meta/leser-und-rueckfragen.md	specwright/workflows/meta/leser-und-rueckfragen.md
 workflow	project	specwright/workflows/skill/add-skill.md	specwright/workflows/skill/add-skill.md
 workflow	project	specwright/workflows/skill/analysis/discover-api-patterns.md	specwright/workflows/skill/analysis/discover-api-patterns.md
 workflow	project	specwright/workflows/skill/analysis/discover-component-patterns.md	specwright/workflows/skill/analysis/discover-component-patterns.md

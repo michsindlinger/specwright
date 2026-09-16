@@ -2,7 +2,7 @@
 description: Technischer Plan im Plan Mode — Einheit der Ausführung, mit Zerlegung und Verbindungsnachweisen
 globs:
 alwaysApply: false
-version: 1.1
+version: 1.2
 encoding: UTF-8
 ---
 
@@ -21,6 +21,7 @@ Dritter Schritt des AI-native SDLC (Specwright v4). Erarbeitet lesend den techni
 
 <pre_flight_check>
   EXECUTE: specwright/workflows/meta/pre-flight.md
+  EXECUTE: specwright/workflows/meta/leser-und-rueckfragen.md
 </pre_flight_check>
 
 <process_flow>
@@ -100,6 +101,7 @@ WRITE §11 Schätzung mit Spanne und Grund der Unsicherheit.
 SELF-REVIEW nach Skill `review-implementation-plan` (Kollegen-Methode, Minimalinvasiv-Analyse).
 OPTIONAL externe Reviewer (Multi-LLM): jedes Finding in §12 entscheiden — angenommen mit Änderung oder abgelehnt mit Grund. Kein Finding unbeantwortet.
 WRITE „Minimalinvasiv geprüft": was wiederverwendet, was gestrichen.
+RULE: Jede Review-Entscheidung in §12 und jede Rückfrage dazu nach R2 (`specwright/workflows/meta/leser-und-rueckfragen.md`): „Finding n, Gegenstand in einem Satz: angenommen/abgelehnt, weil …". Kein nacktes „Finding 7 abgelehnt".
 
 </step>
 
@@ -116,15 +118,16 @@ RULE: Vor dem Verlassen keine Zusage über den Speicherort machen. `~/.claude/pl
 
 ### Step 9a: plan.md als Entwurf schreiben
 
-WRITE `intent/INT-JJJJ-NNN-*/plan.md` mit `Status: entwurf`:
-  - oben `## In einfachen Worten` (globale Plan-Regel: Worum geht es, was ändert sich, wie, was kann schiefgehen, was entscheiden)
-  - danach die Vorlagen-Abschnitte 1–14
+WRITE `intent/INT-JJJJ-NNN-*/plan.md` mit `Status: entwurf`, Struktur aus der Vorlage:
+  - `## In einfachen Worten` (Worum geht es, was ändert sich, wie, was kann schiefgehen, was entscheiden), dann `## Details` mit `### 1.` bis `### 14.`
+  - Leser-Marker der Vorlage unter jeder Überschrift übernehmen (R1)
   - Inhalt 1:1 aus Schritt 2–7; nichts nachträglich umformulieren, was im Plan Mode entschieden wurde.
 NO COMMIT. Kein weiterer Edit außer dieser Datei.
-PRESENT Teil „In einfachen Worten" im Chat, Details als Kurzliste mit Verweis auf die Datei (`intent/INT-JJJJ-NNN-*/plan.md`). Unsicherheiten benennen.
+PRESENT nach R3 (`specwright/workflows/meta/leser-und-rueckfragen.md`): „In einfachen Worten", §9 Risiken, §10 manuelle Schritte, §12 Review-Entscheidungen im Chat; §2–§8 und §13 nur als Verweis auf die Datei (`intent/INT-JJJJ-NNN-*/plan.md`). Unsicherheiten benennen.
 
 ### Step 9b: Freigabe
 
+RULE: Vor dem WAIT Abgleich nach R4 (`specwright/workflows/meta/leser-und-rueckfragen.md`): „In einfachen Worten", §9, §10, §12 gegen §2–§8 lesen; Abweichung als Rückfrage; Ergebnis in §12 als Zeile „**Abgleich Mensch/Agent:** … gelesen am (Datum): ohne Befund | Befund: …" eintragen.
 WAIT for Freigabe. Die Person liest `plan.md` im Intent-Ordner; externe Reviewer bekommen denselben Pfad.
 ON Änderungswunsch: `plan.md` anpassen, erneut vorlegen. Bleibt `Status: entwurf`.
 ON Freigabe: `Status: freigegeben`, Freigabe Rolle + Datum, `intent.md` `bezuege.plan: "plan.md"`, COMMIT `plan(INT-JJJJ-NNN): Plan freigegeben`.

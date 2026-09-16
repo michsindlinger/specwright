@@ -28,6 +28,8 @@ schlagworte: []
 
 ## Felder im Kopf
 
+<!-- leser: agent -->
+
 | Feld | Bedeutung | Werte |
 |---|---|---|
 | `intent_id` | stabile Kennung, nie wiederverwenden | `INT-JJJJ-NNN` |
@@ -45,9 +47,12 @@ schlagworte: []
      Kern (Pflicht, für Menschen, etwa 3 Minuten, höchstens ~450 Wörter bis einschließlich Nicht-Ziele): drei Sätze bis Abnahmekriterien.
      Vertragsschicht (Pflicht ab risikoklasse mittel): Abschnitte 6 bis 11.
      IDs: Z, NZ, AK, RB, OF, B, EK, ER, AN — zweistellig, nie wiederverwenden.
-     Normsprache: MUSS, DARF NICHT, SOLLTE, DARF nur in Großbuchstaben verbindlich (BSI/DIN 820-2, entspricht RFC 2119). -->
+     Normsprache: MUSS, DARF NICHT, SOLLTE, DARF nur in Großbuchstaben verbindlich (BSI/DIN 820-2, entspricht RFC 2119).
+     Leser-Marker (R1, specwright/workflows/meta/leser-und-rueckfragen.md): Die erste Zeile unter jeder Überschrift sagt, für wen der Abschnitt ist — `mensch` entscheidet, `agent` baut. Beim Ausfüllen die Marker übernehmen, keinen entfernen; eine neue Überschrift bekommt einen. -->
 
 ## Absicht in drei Sätzen
+
+<!-- leser: mensch -->
 
 - **Zweck:** [Warum gibt es das Vorhaben, für wen, welcher Nutzen?]
 - **Kernaufgaben:** [2 bis 4 Dinge, ohne die das Vorhaben scheitert]
@@ -55,11 +60,15 @@ schlagworte: []
 
 ## 1. Problem und Anlass
 
+<!-- leser: mensch -->
+
 <!-- Fakten mit Beleg [Q: Quelle]. Kein Lösungsvorschlag. Anlass = warum jetzt. -->
 
 [3 bis 6 Sätze.]
 
 ## 2. Betroffene
+
+<!-- leser: mensch -->
 
 | Wer oder was | Was ändert sich |
 |---|---|
@@ -68,17 +77,23 @@ schlagworte: []
 
 ## 3. Ziele
 
+<!-- leser: mensch -->
+
 <!-- 1 bis 5, ergebnisorientiert, lösungsfrei. Jedes Ziel wird von mindestens einem AK abgedeckt. -->
 
 - **Z-01:** […]
 
 ## 4. Nicht-Ziele
 
+<!-- leser: mensch -->
+
 <!-- Mindestens eins. Naheliegende Erweiterungen ausdrücklich ausschließen. -->
 
 - **NZ-01:** […]
 
 ## 5. Abnahmekriterien
+
+<!-- leser: mensch -->
 
 <!-- Eine Zeile = ein beobachtbares Verhalten, genau ein Modalverb, kein Mechanismus.
      Schablonen (EARS): „Das System MUSS …" · „Wenn [Auslöser], MUSS das System …" · „Solange [Zustand], MUSS …" · „Falls [Fehler], dann MUSS …"
@@ -90,6 +105,8 @@ schlagworte: []
 
 ## 6. Randbedingungen
 
+<!-- leser: mensch -->
+
 <!-- Jede mit Herkunft (Norm, Pfad zur Richtlinie, security.md, Vertrag). Technik nur, wenn von außen vorgegeben, mit „Grund:". Sonst „Keine." -->
 
 | ID | Art | Randbedingung | Herkunft |
@@ -97,6 +114,8 @@ schlagworte: []
 | RB-01 | rechtlich / Sicherheit / Datenschutz / Betrieb / Technik | […] | […] |
 
 ## 7. Offene Fragen
+
+<!-- leser: mensch -->
 
 <!-- Bei status "angenommen" keine blockierende Frage. Nicht blockierende nennen die Übergangsregel. Entschiedene wandern mit Datum nach „Begriffe" oder ins Kriterium. Sonst „Keine." -->
 
@@ -110,11 +129,15 @@ schlagworte: []
 
 ## 8. Begriffe
 
+<!-- leser: mensch -->
+
 <!-- Jeden Begriff aus AK oder RB definieren, der mehr als eine Lesart hat. Entscheidungen zu offenen Fragen hier festhalten, mit Datum und Rolle. -->
 
 - **B-01 [Begriff]:** [Definition]
 
 ## 9. Erfolgskennzahlen
+
+<!-- leser: mensch -->
 
 <!-- Zielwert mit Zahl und Einheit. Messung vor Produktion (Gate) oder „kein Gate". Zielwert 0 nur mit Kontrollfall. -->
 
@@ -124,6 +147,8 @@ schlagworte: []
 
 ## 10. Auslieferung, Betrieb, Zeitbudget
 
+<!-- leser: mensch -->
+
 - **Freigabe Produktion:** [Rolle(n) — nur Menschen]
 - **Stufen:** [Teil der Nutzer, dann alle / auf einmal]
 - **Rückzug:** [Bedingung; wer abschalten, wer wieder einschalten darf]
@@ -131,6 +156,8 @@ schlagworte: []
 - **Zeitbudget:** [Umfang ab Startpunkt; Abbruchkriterium — keine stillschweigende Verlängerung]
 
 ## 11. Entscheidungsrechte
+
+<!-- leser: agent -->
 
 <!-- allein = entscheiden und dokumentieren · fragen = dieser Punkt ruht, Rest läuft · stopp = alles ruht. ER-00 als Auffangregel. -->
 
@@ -148,16 +175,21 @@ schlagworte: []
 
 ## 12. Annahmen
 
+<!-- leser: mensch -->
+
 - **AN-01:** […] Prüfung: [wer bestätigt, womit, bis wann]
 
 ---
 
 ## Änderungsprotokoll
 
+<!-- leser: agent -->
+
 <!-- Oberste Zeile = Frontmatter-Version und -Datum.
      MAJOR: Ziel, Nicht-Ziel, Begriff oder Bedeutung eines Kriteriums geändert → Spec und Tests der IDs erneut prüfen, erneute Freigabe.
      MINOR: Kriterium ergänzt. PATCH: nur Formulierung.
-     Ab status "umgesetzt" nicht mehr ändern; neue intent.md mit bezuege.ersetzt. -->
+     Ab status "umgesetzt" nicht mehr ändern; neue intent.md mit bezuege.ersetzt.
+     Die Zeile der Freigabe-Version (1.0.0) nennt das Ergebnis des Abgleichs (R4): „Abgleich Mensch/Agent: ohne Befund" oder „… Befund: …". -->
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
