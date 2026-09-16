@@ -66,3 +66,13 @@ Befund von Michael am Screenshot der Vorhaben-Seite: Dokument links (1fr), Gespr
 - 1440×900: Gespräch l 29 · w 680 — Dokument l 731 · w 680 — Sende-Leiste l 731 · r 1440 (ist-04-vorhaben-mac.png).
 - 1440×900 + Terminal-Sidebar (Cmd+D): Gespräch l 29 · w 430 — Dokument l 481 · w 430 — Leiste r 940 = linker Rand der Sidebar (ist-04-vorhaben-terminal-mac.png).
 - 900×1000: Dokument oben (w 842), Gespräch darunter statisch (w 842, 70vh), Leiste volle Breite (ist-04-vorhaben-900.png). Zwei Fehler dabei gefunden und behoben: `aos-gespraech` ist ein Inline-Element (brauchte `display: block`), `align-items: start` der Grundregel verhinderte das Strecken in der Spalte.
+
+# E2E-Protokoll INT-2026-010 Fix Gespräch rechts (nach Split-Fix) — 2026-09-16
+
+PO-Entscheidung von Michael nach Sicht des Split-Fix-Stands: Dokument links, Gespräch rechts (Abweichung von FA-12, plan §14). Weiterhin 50/50 (`GESPRAECH_BREITE` unverändert); Gespräch als Panel fixiert am rechten Rand, bündig mit der Terminal-Sidebar (Breite Spalte + View-Padding, linke Kante = Spaltenkante), Sende-Leiste von links bis zur Gesprächskante; unter 1024 px Dokument über Gespräch ohne `order` (DOM-Reihenfolge Seite → Gespräch). Skript e2e-rechts.mjs im Scratchpad, Branch-Backend 3111 (Runtime /tmp/sw-3111, tmux off), Scratch-Projekt INT-2026-001 mit beendeter Sitzung (Split rendert, keine Claude-Sitzung gestartet). 6/6 Prüfpunkte grün; Unit-Tests view-split und neue-absicht angepasst.
+
+## Geometrie (Bounding-Boxen, px)
+
+- 1440×900: Dokument l 29 · w 680 — Gespräch l 731 · r 1440 · w 709 (680 + 29 Padding) — Sende-Leiste l 0 · r 731 (ist-04-vorhaben-mac.png).
+- 1440×900 + Terminal-Sidebar (Cmd+D): Dokument l 29 · w 430 — Gespräch l 481 · r 940 = linker Rand der Sidebar — Leiste r 481 (ist-04-vorhaben-terminal-mac.png).
+- 900×1000: Dokument oben (w 842), Gespräch darunter statisch (w 842, 70vh), Leiste volle Breite (ist-04-vorhaben-900.png).

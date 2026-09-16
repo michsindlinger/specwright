@@ -229,7 +229,7 @@ export class AosNeueAbsicht extends LitElement {
   private renderPending(p: VorhabenPendingIntent) {
     return html`<div class="karte gestartet">
       <span><span class="dot"></span>Absicht-Sitzung „${p.session.name}" läuft — Vorhaben entsteht …</span>
-      <span class="status">${this.mobile ? 'im Terminal antworten' : 'Gespräch links'} — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span>
+      <span class="status">${this.mobile ? 'im Terminal antworten' : 'Gespräch rechts'} — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span>
       ${p.session.firstInputPending ? html`<span class="uebergabe">Dein Text wird nach der ersten Frage übergeben.</span>` : nothing}
       <button type="button" class="terminal" @click=${this.toTerminal}>Im Terminal öffnen ↗</button>
     </div>`;

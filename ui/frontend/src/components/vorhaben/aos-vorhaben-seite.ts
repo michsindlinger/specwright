@@ -113,10 +113,10 @@ export class AosVorhabenSeite extends LitElement {
   /** `lastModelKey(...)` → selection (from the state). */
   @property({ attribute: false }) lastModel: Record<string, ModelSelection> = {};
   /**
-   * CSS width of the Gespräch column left of the page (INT-2026-007, Mac
-   * only; INT-2026-010: left, 50/50); sets `--gespraech-width` and
-   * `--gespraech-versatz`, from which the fixed send bar takes its left edge.
-   * Empty = no Gespräch.
+   * CSS width of the Gespräch column right of the page (INT-2026-007, Mac
+   * only; INT-2026-010: 50/50); sets `--gespraech-width` and
+   * `--gespraech-versatz`, which the fixed send bar subtracts from its right
+   * edge. Empty = no Gespräch.
    */
   @property({ type: String }) gespraechBreite = '';
 
@@ -393,8 +393,8 @@ export class AosVorhabenSeite extends LitElement {
   protected override willUpdate(changed: PropertyValues<this>): void {
     if (changed.has('gespraechBreite')) {
       this.style.setProperty('--gespraech-width', this.gespraechBreite || '0px');
-      // Left edge of the document column (Gespräch left, FA-12): file tree + view padding + grid gap; 0 without a Gespräch.
-      this.style.setProperty('--gespraech-versatz', this.gespraechBreite ? 'calc(var(--file-tree-open-width, 0px) + var(--spacing-xl) + var(--spacing-lg))' : '0px');
+      // The fixed Gespräch panel also covers the view's right padding (theme.css .vorhaben-split aos-gespraech); 0 without a Gespräch.
+      this.style.setProperty('--gespraech-versatz', this.gespraechBreite ? 'var(--spacing-xl)' : '0px');
     }
     if (changed.has('mobile')) this.toggleAttribute('mobile', this.mobile);
     if (changed.has('doc') || (changed.has('row') && (changed.get('row') as VorhabenRow | undefined)?.intentId !== this.row?.intentId)) {

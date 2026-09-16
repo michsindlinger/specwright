@@ -5801,7 +5801,7 @@ aos-model-selector .model-option.selected .model-name {
   /* R-10: the split needs the full width, not the 1180 px reader column */
   max-width: none;
 }
-/* INT-2026-010 (FA-12, Skizze 3): Gespräch links, Dokument rechts, 50/50.
+/* INT-2026-010 (FA-12): Dokument links, Gespräch rechts, 50/50.
    `--gespraech-width` = half of the view's content width (viewport minus
    terminal sidebar, file tree and the view padding, minus the gap); set by
    aos-vorhaben-view as GESPRAECH_BREITE. */
@@ -5811,15 +5811,17 @@ aos-model-selector .model-option.selected .model-name {
   gap: var(--spacing-lg);
   align-items: start;
 }
-/* The first column only reserves the width; the Gespräch itself is fixed to
-   the viewport (main-content has overflow-x:hidden → sticky never engages),
-   flush with the view's left padding, above the send bar's row. */
-.vorhaben-split-gespraech {
+/* The second column only reserves the width; the Gespräch itself is fixed to
+   the viewport (main-content has overflow-x:hidden → sticky never engages) as
+   a panel flush with the terminal sidebar: column width plus the view's right
+   padding, so its left edge is the column's left edge. Above the send bar's
+   row. */
+.vorhaben-split > aos-vorhaben-seite,
+.vorhaben-split > .neue-absicht {
   grid-column: 1;
   min-width: 0;
 }
-.vorhaben-split > aos-vorhaben-seite,
-.vorhaben-split > .neue-absicht {
+.vorhaben-split-gespraech {
   grid-column: 2;
   min-width: 0;
 }
@@ -5827,10 +5829,10 @@ aos-model-selector .model-option.selected .model-name {
   position: fixed;
   top: var(--header-height, 56px);
   bottom: 0;
-  left: calc(var(--file-tree-open-width, 0px) + var(--spacing-xl));
-  width: var(--gespraech-width, 500px);
+  right: var(--terminal-open-width, 0px);
+  width: calc(var(--gespraech-width, 500px) + var(--spacing-xl));
   z-index: 40;
-  transition: left 0.3s ease, width 0.3s ease;
+  transition: right 0.3s ease, width 0.3s ease;
 }
 .gespraech {
   height: 100%;
@@ -5838,7 +5840,7 @@ aos-model-selector .model-option.selected .model-name {
   flex-direction: column;
   min-height: 0;
   background: var(--color-bg-primary);
-  border-right: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
   font-family: var(--font-family);
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
@@ -6680,7 +6682,7 @@ aos-projekt-seite .abschnitt-git aos-git-status-bar {
 }
 
 /* Vorhaben page below 1024 px: document above the Gespräch (FA-20, design.md §5).
-   The Gespräch comes first in the DOM (left column on the Mac) → `order` puts it below. */
+   DOM order is already document → Gespräch; the flex column only stretches both. */
 @media (max-width: 1023px) {
   aos-app .vorhaben-split {
     display: flex;
@@ -6689,7 +6691,6 @@ aos-projekt-seite .abschnitt-git aos-git-status-bar {
   }
 
   aos-app .vorhaben-split-gespraech {
-    order: 2;
     margin-top: var(--spacing-lg);
   }
 
@@ -6708,7 +6709,7 @@ aos-projekt-seite .abschnitt-git aos-git-status-bar {
   }
 
   aos-app .vorhaben-split .gespraech {
-    border-right: none;
+    border-left: none;
     border-top: 1px solid var(--color-border);
   }
 }
