@@ -506,7 +506,7 @@ Self-Review nach Skill `review-implementation-plan` (Vollständigkeit, Konsisten
 - [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (je Stufe die zugeordneten). — Stufe 1: FA-01–FA-11, FA-21, FA-22, Zustandsmaschine, Lock, Env, Allowlist, Deploy-Gate
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert. — Stufe 1 (S1-Zeilen) im PR 1
 - [x] E2E-Pfad läuft (Abschnitt 8), Screenshots neben den Mocks, Messungen EK-02/EK-03 im Protokoll. — Stufe 1: `design/e2e-protokoll.txt`, `design/ist-08*.png`; EK-03 ist Stufe 3
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit). — lokal `verify: OK` (59 s) im PR 1; CI-Lauf steht aus
+- [x] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit). — lokal `verify: OK` (59 s); CI `verify` grün auf PR #53 (1 min 57 s)
 - [x] `docs/architecture.md` (+ ADR-0003, AR-08), `docs/security.md`, `docs/product-brief.md` angepasst (§3 „Ja"). — Stufe 1: ADR-0003, §2/§3, security §2/§6, product-brief; AR-08 kommt mit Stufe 2
 - [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert; Schlüsselrotation vor Merge PR 1 bestätigt. — **Schlüsselrotation zurückgestellt (PO-Entscheid 16.09.), im PR 1 als offen markiert**
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (inkl. Messwerte Schritt 0, Tastenprotokoll Spike). — Stufe 1; Tastenprotokoll Spike folgt in Stufe 2
