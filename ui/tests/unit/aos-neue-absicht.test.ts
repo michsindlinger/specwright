@@ -198,4 +198,19 @@ describe('aos-naechster-schritt gesperrt (FA-21) and model-wahl', () => {
     expect(istSchrittStandard(models, 'intent', { providerId: 'anthropic', modelId: 'haiku' }, undefined)).toBe(true);
     expect(istSchrittStandard(models, 'intent', { providerId: 'anthropic', modelId: 'haiku' }, { providerId: 'anthropic', modelId: 'haiku' })).toBe(false);
   });
+
+  it('INT-2026-011 D1: nurClaudeSitzungen drops foreign providers, keeps claude and unmarked ones (fail-open, E6)', async () => {
+    const { nurClaudeSitzungen } = await import('../../frontend/src/components/vorhaben/model-wahl.js');
+    const gpt = (providerId: string) => [{ id: 'gpt-6-astra', name: 'GPT-6 Astra', providerId }];
+    const out = nurClaudeSitzungen({
+      ...models,
+      providers: [
+        ...models.providers,
+        { id: 'codex', name: 'OpenAI', cliKind: 'claude', models: gpt('codex') },
+        { id: 'codex-cli', name: 'Codex (nativ)', cliKind: 'foreign', models: gpt('codex-cli') },
+      ],
+    });
+    expect(out.providers.map((p) => p.id)).toEqual([...models.providers.map((p) => p.id), 'codex']);
+    expect(out.defaultSelection).toEqual(models.defaultSelection);
+  });
 });

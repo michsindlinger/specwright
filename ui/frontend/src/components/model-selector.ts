@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { gateway, WebSocketMessage } from '../gateway.js';
+import type { ProviderCliKind } from '../../../src/shared/provider-cli.js';
 
 export interface ModelSelectorModel {
   id: string;
@@ -11,6 +12,8 @@ export interface ModelSelectorModel {
 export interface ModelSelectorProvider {
   id: string;
   name: string;
+  /** INT-2026-011: `claude` = Claude Code session, `foreign` = other agent CLI (Codex nativ). Absent on older backends. */
+  cliKind?: ProviderCliKind;
   models: ModelSelectorModel[];
 }
 

@@ -6,6 +6,7 @@ import { themeService, type ThemeMode } from '../services/theme.service.js';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
 import '../components/setup/aos-setup-wizard.js';
 import '../components/settings/aos-review-prompt-editor.js';
+import { isClaudeCli } from '../../../src/shared/provider-cli.js';
 
 interface Model {
   id: string;
@@ -831,7 +832,7 @@ export class AosSettingsView extends LitElement {
     return html`
       <div class="provider-card step-defaults" data-testid="step-defaults">
         <h4 style="margin: 0 0 var(--spacing-xs) 0">Standard je Schritt</h4>
-        <p class="section-description">Modell, mit dem die Vorhaben-Seite einen Schritt startet. Ohne Einstellung gilt ${fallback}. Gilt für alle Projekte.</p>
+        <p class="section-description">Modell, mit dem die Vorhaben-Seite einen Schritt startet. Ohne Einstellung gilt ${fallback}. Gilt für alle Projekte. Nur Anbieter, die Claude Code starten.</p>
         ${STEP_LABELS.map(([step, label]) => html`
           <div class="form-field step-default-row">
             <label for="step-default-${step}">${label}</label>
@@ -842,7 +843,7 @@ export class AosSettingsView extends LitElement {
                 @change=${(e: Event) => this.setStepDefault(step, (e.target as HTMLSelectElement).value)}
               >
                 <option value="" ?selected=${this.stepDefaultValue(step) === ''}>wie Standard (${fallback})</option>
-                ${this.config!.providers.flatMap(provider => provider.models.map(model => html`
+                ${this.config!.providers.filter(provider => isClaudeCli(provider.cliCommand)).flatMap(provider => provider.models.map(model => html`
                   <option value="${provider.id}::${model.id}" ?selected=${this.stepDefaultValue(step) === `${provider.id}::${model.id}`}>
                     ${provider.name} · ${model.name}
                   </option>
