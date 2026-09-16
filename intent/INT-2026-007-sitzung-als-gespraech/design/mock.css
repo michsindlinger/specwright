@@ -1,4 +1,4 @@
-/* Mock-Stylesheet INT-2026-006 — Kopie aus INT-2026-004 (Tokens aus ui/frontend/src/styles/theme.css, dark) plus Gesprächsbereich */
+/* Mock-Stylesheet INT-2026-007 — Kopie aus INT-2026-004 (Tokens aus ui/frontend/src/styles/theme.css, dark) plus Gesprächsbereich */
 :root{
   --bg-sidebar:#0B1929;--bg:#0F1F33;--bg2:#162A45;--bg3:#1C3254;--bg-el:#2D4A6F;--bg-hover:#1E3A5F;
   --t1:#E8EDF2;--t2:#94A3B8;--t3:#64748B;
@@ -164,7 +164,7 @@ h1{font-size:20px;font-weight:600;margin:0 0 4px}
 .sendbar .cnt{white-space:nowrap}
 .tile .sendbar .reason{white-space:normal}
 
-/* ===== INT-2026-006: Gesprächsbereich, Karten, Sprache ===== */
+/* ===== INT-2026-007: Gesprächsbereich, Karten, Sprache ===== */
 .docwrap .doc{max-width:none}
 .conv{width:540px;border-left:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg);flex:none;min-height:0}
 .conv.solo{border-left:0}

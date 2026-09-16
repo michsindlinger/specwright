@@ -1,5 +1,5 @@
 ---
-intent_id: "INT-2026-006"  
+intent_id: "INT-2026-007"  
 titel: "Vorhaben ohne Terminal führen: Sitzung als Gespräch in der Web-UI, Sprache in beide Richtungen"  
 status: "angenommen"  
 version: "1.0.0"  
@@ -27,7 +27,7 @@ freigabe:
 
 # Absicht: Vorhaben ohne Terminal führen — Sitzung als Gespräch in der Web-UI, Sprache in beide Richtungen
 
-<!-- Ablage: intent/INT-2026-006-sitzung-als-gespraech/intent.md -->
+<!-- Ablage: intent/INT-2026-007-sitzung-als-gespraech/intent.md -->
 
 ## Absicht in drei Sätzen
 

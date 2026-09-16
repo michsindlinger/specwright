@@ -1,7 +1,7 @@
 # Plan: Vorhaben ohne Terminal führen — Sitzung als Gespräch in der Web-UI, Sprache in beide Richtungen
 
-> **Intent:** `intent.md` (INT-2026-006, 1.0.0) · **Spec:** `spec.md` (freigegeben 2026-09-16)
-> **Status:** freigegeben
+> **Intent:** `intent.md` (INT-2026-007, 1.0.0) · **Spec:** `spec.md` (freigegeben 2026-09-16)
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 — nach drei Runden externem Review (4/3/3 Reviewer, alle Findings in §12 entschieden), „plan freigegeben"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `b1ea9d1`, §2 Backend/Frontend, §3, AR-04/05/06, §5, §10), `CLAUDE.md` (Verify, Konventionen UI, Hooks, „Nie"), `docs/security.md` (§1, §3, §5, §6), `docs/design.md` (§1, §3 Terminal-Replay, §5, §6)
 
@@ -404,7 +404,7 @@ Maßstab: eine Sitzung ≈ ein Arbeitstag (d), wie in der Absicht („10 Arbeits
 
 ## 12. Review des Plans
 
-Self-Review nach Skill `review-implementation-plan` (Vollständigkeit, Konsistenz, Risiken, Alternativen; Minimalinvasiv). Externe Reviewer: optional vor Freigabe (Pfad `intent/INT-2026-006-sitzung-als-gespraech/plan.md`).
+Self-Review nach Skill `review-implementation-plan` (Vollständigkeit, Konsistenz, Risiken, Alternativen; Minimalinvasiv). Externe Reviewer: optional vor Freigabe (Pfad `intent/INT-2026-007-sitzung-als-gespraech/plan.md`).
 
 | Finding | Quelle | Entscheidung | Änderung am Plan |
 |---|---|---|---|
@@ -511,10 +511,11 @@ Self-Review nach Skill `review-implementation-plan` (Vollständigkeit, Konsisten
 - [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert; Schlüsselrotation vor Merge PR 1 bestätigt.
 - [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (inkl. Messwerte Schritt 0, Tastenprotokoll Spike).
 - [ ] 2x-Regel-Check: „Backend-Env ungefiltert an Kindprozesse" — erstes Vorkommen; „Secrets in `ui/config` versioniert" — erstes Vorkommen; Vorschlag `CLAUDE.md` „Nie": `ui/config/*` mit Zugängen committen.
-- [ ] Abschlussbericht je Stufe endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-006-sitzung-als-gespraech/`); Nachziehen in eigener Sitzung.
+- [ ] Abschlussbericht je Stufe endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-007-sitzung-als-gespraech/`); Nachziehen in eigener Sitzung.
 
 ## 14. Abweichungen bei der Umsetzung
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-16 | Vorhaben von `INT-2026-006` auf **`INT-2026-007`** umnummeriert (Ordner, Frontmatter, Branch `feat/INT-2026-007-sitzung-als-gespraech`) | `INT-2026-006` ist auf `origin/main` bereits durch `intent/INT-2026-006-plan-review-mcp-ballast` (PR #51, gemergt 16.09.) belegt; die UI schlüsselt Vorhaben je Projekt über die ID | Kopf, §12, §13; Board-Karte verweist künftig auf `INT-2026-007` |
+| 2026-09-16 | Bau-Branch von `session/sdlc-ui` abgezweigt und `origin/main` (8 Commits, u. a. PR #51) hineingemergt | PR #51 ist gemergt → Vorbedingung Stufe 2 erfüllt; Branch war 8 hinter main | §6 Stufe 2 Vorbedingung, §10 Zeile PR #51 |

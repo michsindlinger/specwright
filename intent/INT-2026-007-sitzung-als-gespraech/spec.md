@@ -1,6 +1,6 @@
 # Spec: Vorhaben ohne Terminal führen — Sitzung als Gespräch in der Web-UI, Sprache in beide Richtungen
 
-> **Intent:** `intent.md` (INT-2026-006, Version 1.0.0)
+> **Intent:** `intent.md` (INT-2026-007, Version 1.0.0)
 > **Status:** freigegeben
 > **Erstellt:** 2026-09-15 · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 (alle Vorschläge D1–D5, Annahmen AN-S01–S16 bestätigt, R1: Einreihen erlaubt)
 > **Gelesene Projekt-Docs:** `docs/product-brief.md`, `docs/architecture.md`, `docs/security.md`, `docs/design.md` (Stand: Commit 52dbeff)
