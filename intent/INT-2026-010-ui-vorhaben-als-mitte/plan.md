@@ -1,7 +1,7 @@
 # Plan: UI: Vorhaben als Mitte — Rahmen ohne Seitenleiste, Glocke immer sichtbar, Dokumente klappbar
 
 > **Intent:** `intent.md` (INT-2026-010) · **Spec:** `spec.md`
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („plan freigegeben", Chat; Fassung 2 nach externem Review, 4 Reviewer, 23 Findings, §12)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand b2a8fb0), `CLAUDE.md`, `docs/security.md`, `docs/design.md`, `specwright/workflows/meta/leser-und-rueckfragen.md`
 
@@ -518,4 +518,12 @@ Meilensteine = die drei PRs (§6). Größter Unsicherheitsfaktor: E2E-Läufe mit
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-16 | `aos-projekt-seite` ist jetzt Light DOM (war Shadow DOM, §2 „Projekt-Seite" `:45`), Styles in `theme.css` unter `aos-projekt-seite` | Die gehosteten Views (`aos-settings-view`, `aos-prompt-templates-view`, `aos-getting-started-view`, `aos-git-status-bar`) sind Light DOM und auf `theme.css` angewiesen; ein Shadow-Root hätte sie ungestylt gelassen. Test #31 fragt die Seite ohne `shadowRoot` ab, `design.md` §3 hält die Regel fest. | §2, §3 Projekt-Seite, §4 #10/#34 |
+| 2026-09-16 | `aos-settings-view` hat keine Router-Kopplung mehr (statt „nur bei `embedded` aus"); die Methoden `restoreRouteState`/`onRouteChanged` sind gelöscht, das Prop `embedded` bleibt als Marker | Die Route `settings` existiert nicht mehr (`ViewType`), `tsc` lehnt `navigate('settings')` ab; einen zweiten Rendermodus gibt es nicht | §3 Projekt-Seite, §4 #13 |
+| 2026-09-16 | Einstellungen und Prompt-Vorlagen stehen auf der Projekt-Seite in zugeklappten `<details>`-Abschnitten; Projekt, Docs, Git, Dateien, Erste Schritte offen | Sieben Abschnitte übereinander wären ohne Klappen mehrere Bildschirme lang (Einstellungen allein ~5 Reiter); Verhalten der Views unverändert | §3 Projekt-Seite |
+| 2026-09-16 | Getting Started zeigt die installierte Version nur im Update-Hinweis (wie bisher dort), kein eigenes Versions-Label | Das Kopfzeilen-Label `v…` ist mit dem Header weg (FA-07); der Hinweis nennt installierte und neue Version, wenn ein Update da ist — ein zweites Label ohne Anlass wäre ein Element ohne Aufgabe (design.md §1) | §3 Projekt-Seite, §4 #14 |
+| 2026-09-16 | `app.ts` ruft `gitState.loadStatus(hasProject)` beim Projektwechsel selbst auf (statt Nachladen im Dienst über `projectStateService`) | `projectStateService` hat kein Abo-Modell; der Aufruf ersetzt 1:1 das frühere `_loadGitStatus()` an denselben drei Stellen. Abos liegen vollständig im Dienst (Nachweis §5: 11 im Dienst, 0 in `app.ts`) | §3 Projekt-Seite, §4 #11 |
+| 2026-09-16 | Commits: Schritte 3–5 in einem Commit (`cde5ac9`) statt je Schritt | `app.ts`, `theme.css` und `aos-vorhaben-view.ts` sind in allen drei Schritten betroffen; ein kompilierender Zwischenstand je Schritt hätte Wegwerf-Code gebraucht. Build nach jedem Schritt (Review F22) wurde eingehalten | §6 S1 Schritt 4 |
+| 2026-09-16 | Frontend-Löschliste (#40–45) schon in Schritt 3 gelöscht, Backend (#46–47) in Schritt 6 | `voice-call-view.ts` und `aos-mobile-side-drawer.ts` referenzieren die gelöschten Routen und brechen `tsc` ab Schritt 1 | §6 S1 Schritte 3/6 |
+| 2026-09-16 | Guard-Test #24 duldet `settings.voice.update` in `src/shared/types/voice.protocol.ts` | Die Datei bleibt laut §4 #47 (Typimport `team-view.ts`) und enthält die Nachrichten-Union | §4 #24 |
+| 2026-09-16 | `theme.css`: zusätzlich zu den geplanten Blöcken die toten Chat-Regeln (`.chat-*`, `.message-*`, `.tool-call-*`, `.image-*`, ~560 Zeilen) entfernt | Der Guard-Test #24 scannt `.css` unter `frontend/src` auf die gelöschten Tag-Namen; die Chat-Regeln standen nur unter gelöschten Komponenten (vor jedem Block `grep` über `frontend/src/**/*.ts` = 0) | §4 #20 |

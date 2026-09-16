@@ -3,20 +3,6 @@ export interface WebSocketMessage {
   [key: string]: unknown;
 }
 
-/**
- * Image payload for chat messages
- */
-export interface ImagePayload {
-  /** Base64 encoded image data or path reference */
-  data: string;
-  /** MIME type (image/png, image/jpeg, etc.) */
-  mimeType: string;
-  /** Original filename */
-  filename: string;
-  /** True if data is base64, false if path reference */
-  isBase64: boolean;
-}
-
 export type MessageHandler = (message: WebSocketMessage) => void;
 
 export class Gateway {
@@ -293,28 +279,6 @@ export class Gateway {
   }
 
   /**
-   * Chat Settings Methods
-   * Model selection and chat configuration
-   *
-   * Incoming Messages (received via on() handlers):
-   * - chat.settings.response: Backend confirmation of settings update
-   */
-
-  /**
-   * Send model settings update to backend
-   * @param providerId - The provider ID (e.g., 'anthropic', 'glm')
-   * @param modelId - The model ID (e.g., 'opus-4.5', 'sonnet-4.5')
-   */
-  public sendModelSettings(providerId: string, modelId: string): void {
-    this.send({
-      type: 'chat.settings.update',
-      providerId,
-      modelId,
-      timestamp: new Date().toISOString()
-    });
-  }
-
-  /**
    * Terminal I/O Methods
    * Bidirectional communication for terminal sessions
    *
@@ -372,31 +336,7 @@ export class Gateway {
    * Send chat messages with attached images
    *
    * Incoming Messages (received via on() handlers):
-   * - chat.send.with-images.ack: Backend acknowledgment of image message
-   * - chat.send.with-images.error: Error processing image message
    */
-
-  /**
-   * Send a chat message with attached images.
-   * Images are sent as part of the WebSocket message.
-   *
-   * @param content - The text content of the message
-   * @param images - Array of image payloads to attach
-   * @param model - Selected model configuration
-   */
-  public sendChatWithImages(
-    content: string,
-    images: ImagePayload[],
-    model?: { providerId: string; modelId: string }
-  ): void {
-    this.send({
-      type: 'chat.send.with-images',
-      content,
-      images,
-      model,
-      timestamp: new Date().toISOString()
-    });
-  }
 
   /**
    * Request git status for the current project
@@ -538,54 +478,6 @@ export class Gateway {
       timestamp: new Date().toISOString()
     });
   }
-
-  /**
-   * Start a voice call session
-   * @param callId - Unique call identifier
-   */
-  public sendVoiceCallStart(callId: string): void {
-    this.send({
-      type: 'voice:call:start',
-      callId,
-      timestamp: new Date().toISOString()
-    });
-  }
-
-  /**
-   * End a voice call session
-   * @param callId - Call identifier to end
-   */
-  public sendVoiceCallEnd(callId: string): void {
-    this.send({
-      type: 'voice:call:end',
-      callId,
-      timestamp: new Date().toISOString()
-    });
-  }
-
-  /**
-   * Send an audio chunk for STT processing
-   * @param callId - Call identifier
-   * @param audio - Base64-encoded PCM audio data
-   * @param sampleRate - Audio sample rate (default 16000)
-   * @param encoding - Audio encoding (default 'pcm16')
-   */
-  public sendVoiceAudioChunk(
-    callId: string,
-    audio: string,
-    sampleRate = 16000,
-    encoding = 'pcm16'
-  ): void {
-    this.send({
-      type: 'voice:audio:chunk',
-      callId,
-      audio,
-      sampleRate,
-      encoding,
-      timestamp: new Date().toISOString()
-    });
-  }
-
 }
 
 export const gateway = new Gateway();

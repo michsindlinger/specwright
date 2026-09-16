@@ -12,6 +12,7 @@ Specwright hat zwei Oberflächen: das Terminal (Befehle, Installer-Ausgaben) und
 2. **Terminal-Ausgaben sind Protokoll:** jede Zeile nennt Datei und Ergebnis (`+` neu, `~` ersetzt, `-` gelöscht, `!` behalten, `✗` fehlgeschlagen); am Ende Zähler. Keine Farben als Informationsträger allein.
 3. **Gleiche Sicht auf jedem Gerät:** Workspace-Zustand im Backend (AR-05); Handy und Mac zeigen dasselbe.
 4. **Bestehende Komponenten zuerst:** nie neu bauen, was unter `ui/frontend/src/` als `aos-*` existiert.
+5. **Der Rahmen ist eine Kopfzeile** (INT-2026-010): Seitentitel, Verbindungs-Hinweis, Glocke, Projekt-Symbol, am Handy das Terminal-Symbol — sonst nichts. Alles andere lebt auf den drei Seiten (Vorhaben-Liste, Neue Absicht, Projekt); kein Handy-Rahmen mit eigenen Knöpfen.
 
 ## 2. Tokens
 
@@ -27,14 +28,15 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 
 | Komponente | Woher | Datei | Regel |
 |---|---|---|---|
-| Alle UI-Bausteine (`aos-kanban-board`, `aos-chat-view`, `aos-terminal`, …) | eigene Lit Web Components | `ui/frontend/src/` | Präfix `aos-`, TypeScript strict, keine `any` |
+| Alle UI-Bausteine (`aos-vorhaben-view`, `aos-kopfzeile`, `aos-terminal`, …) | eigene Lit Web Components | `ui/frontend/src/` | Präfix `aos-`, TypeScript strict, keine `any`; Light DOM, wenn `theme.css` die Kinder stylen muss (Projekt-Seite mit Einstellungen, Git-Leiste) |
 | Terminal | xterm.js in `aos-terminal` | `ui/frontend/src/` | Buffer-Replay über `stripTerminalQueries` (zweimal regressiert — nicht anfassen ohne Test) |
 
 ## 4. Muster
 
 | Situation | Muster | Beispiel im Code |
 |---|---|---|
-| Liste mit vielen Einträgen (Projekte, Sessions) | Sortierung, Suche, Recents zuerst | Workspace-Sidebar |
+| Liste mit vielen Einträgen (Projekte, Sessions) | Sortierung, Suche, Recents zuerst | Projekt-Seite (offene Projekte, zuletzt geöffnet) |
+| Meldung, die nicht verloren gehen darf (Agent fertig, Agent wartet) | ein Zähler an einem Symbol, das auf jeder Seite da ist; Tipp führt zum Ort der Antwort | `aos-glocke` in der Kopfzeile |
 | Langlaufender Vorgang (Auto-Mode, Installer) | Fortschritt je Schritt, nie nur Spinner; Abschluss mit Zählern | `install.sh` `step`/`substep`, Auto-Mode-Log |
 | Fehler nach Aktion | Inline mit Ursache und nächstem Schritt („nicht gelöscht: lokal geändert — behalten per keep.txt oder von Hand löschen") | `install-lib.sh` |
 | Leerzustand | ein Satz + eine Aktion | Projektliste ohne Projekte |
@@ -42,8 +44,8 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 
 ## 5. Responsiv und Barrierefreiheit
 
-- **Breakpoints:** Handy (< 768 px, ein Pane) / Desktop (Split-Panes).
-- **Mobil zuerst für:** Cloud-Terminal, Projektwechsel.
+- **Breakpoints:** Handy (< 768 px, ein Pane) / Desktop (Split-Panes). Vorhaben-Seite unter 1024 px: Dokument über dem Gespräch (INT-2026-010).
+- **Mobil zuerst für:** Cloud-Terminal, Projektwechsel. Am Handy öffnet das Terminal-Symbol der Kopfzeile die Sitzungen; ein Sprung aus Glocke oder Vorhaben-Seite setzt die aktive Sitzung (kein Solo-Modus).
 - **Mindeststandard:** Tastatur-Bedienbarkeit, Kontrast ≥ 4.5:1, Fokus sichtbar, Labels an jedem Feld.
 
 ## 6. Mocks je Vorhaben
@@ -65,3 +67,4 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 |---|---|---|
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
 | 2026-09-15 | §7: Abweichung „Story-Kanban-Sicht" erledigt — die Web-UI zeigt Vorhaben (INT-2026-004, Stufe 1–3) | PR #46 |
+| 2026-09-16 | §1 Prinzip 5 (Rahmen = Kopfzeile), §3 Beispiele und Light-DOM-Regel, §4 Muster Glocke und Projekt-Seite, §5 Dokument über Gespräch unter 1024 px, Handy-Terminal (INT-2026-010, Stufe 1) | PR folgt |

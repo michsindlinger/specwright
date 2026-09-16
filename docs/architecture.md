@@ -20,7 +20,7 @@ flowchart LR
     MCP --> KJ[(kanban.json, memory.db)]
 ```
 
-Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen, Workflows, Vorlagen, Standards und Hooks, das Installer in Projekte kopieren, und eine optionale **Web-UI** (Express-Backend, Lit-Frontend), die die Vorhaben der offenen Projekte zeigt, ihre Dokumente lesbar macht, Antworten an wartende Claude-Sitzungen schickt und Sitzungen startet. Den Kanban-MCP-Server benutzen nur noch die Sitzungen als Werkzeug; die UI liest und schreibt keine Story-Daten mehr (INT-2026-004, Stufe 3). Daten liegen in den Projekten (Dateien) und für die UI in Laufzeitdateien auf dem Host; es gibt keine zentrale Datenbank.
+Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen, Workflows, Vorlagen, Standards und Hooks, das Installer in Projekte kopieren, und eine optionale **Web-UI** (Express-Backend, Lit-Frontend), die die Vorhaben der offenen Projekte zeigt, ihre Dokumente lesbar macht, Antworten an wartende Claude-Sitzungen schickt und Sitzungen startet. Ihr Rahmen ist seit INT-2026-010 eine einzige Kopfzeile mit der Glocke (Agent fertig oder wartet), dem Projekt-Symbol und am Handy dem Terminal-Symbol; Chat, Anruf und Team-Seite gibt es nicht mehr. Den Kanban-MCP-Server benutzen nur noch die Sitzungen als Werkzeug; die UI liest und schreibt keine Story-Daten mehr (INT-2026-004, Stufe 3). Daten liegen in den Projekten (Dateien) und für die UI in Laufzeitdateien auf dem Host; es gibt keine zentrale Datenbank.
 
 ## 2. Services und Komponenten
 
@@ -33,7 +33,7 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | Installer | Fünf Skripte mit einer gemeinsamen Bibliothek, lesen das Manifest, schreiben Projekt und Global-Verzeichnisse | Bash 3.2-tauglich | `install.sh`, `setup*.sh`, `update-specwright.sh`, `specwright/scripts/install-lib.sh` | Michael |
 | Kanban-MCP-Server | MCP-Werkzeuge für `kanban.json`, Backlog, Memory-Store | TypeScript, `tsx` direkt gestartet | `specwright/scripts/mcp/` | Michael |
 | Web-UI Backend | Projekte, Sessions, Cloud-Terminal (tmux), Vorhaben-Sicht und Review-Kanal (Antworten als Bracketed Paste in die wartende PTY, Bestätigung über den `UserPromptSubmit`-Hook), Gespräch (Sitzungsverlauf aus Hooks und Claude-Code-Transkript, Abo je Sitzung; Freitext nur nach Bildschirmprüfung auf Dialog-Cues unter dem Maschinen-Lock `withMachineWrite`, INT-2026-007), WebSocket | Express, TypeScript, Claude Code SDK, node-pty | `ui/src/server/` | Michael |
-| Web-UI Frontend | Oberfläche als Web Components | Lit, Vite, TypeScript strict | `ui/frontend/src/` (`aos-*`) | Michael |
+| Web-UI Frontend | Oberfläche als Web Components: Rahmen `aos-kopfzeile` mit `aos-glocke` (INT-2026-010), drei Routen `vorhaben`, `neu`, `projekt` (Aliase der alten Adressen in `route.types.ts`); Git-Zustand prozesslang in `services/git-state.service.ts`, Git-Leiste und Einstellungen als Abschnitte der Projekt-Seite | Lit, Vite, TypeScript strict | `ui/frontend/src/` (`aos-*`) | Michael |
 
 ## 3. Datenbesitz
 
@@ -107,6 +107,8 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 |---|---|---|---|---|
 | `specwright/mcp-profiles/` (Profile `execute-tasks`, `create-spec`, `validate-market`) hat seit INT-2026-004 Stufe 3 keinen Leser mehr in der UI (`mcp-profile.ts` entfernt); Profil-Dateien und README bleiben liegen | — | 2026-09-15 | Aufräum-Karte | separates Vorhaben (Kanban-MCP-Abbau, NZ-02) |
 | `workflow.*`-Handler in `ui/src/server/websocket.ts` und der PTY-Pfad in `workflow-executor.ts` haben nach Stufe 3 keinen Frontend-Aufrufer mehr (Team/Getting Started laufen über `cloud-terminal:create-workflow`) | — | 2026-09-15 | Aufräum-Karte | separates Vorhaben |
+| `terminal.*`-Handler (`terminal.input`, `terminal.resize`, `terminal.buffer.request`) in `websocket.ts` und ihre Sender in `gateway.ts` gehören zum Nicht-Cloud-Modus von `aos-terminal.ts` (`cloudMode = false`), den kein Aufrufer mehr setzt | — | 2026-09-16 | Aufräum-Karte | separates Vorhaben (INT-2026-010 Plan §2) |
+| `views/team-view.ts` und `components/team/*` bleiben ohne Route kompilierbar (NZ-03, INT-2026-010); der Link `#/call/…` dort ist tot (Alias → Liste), `settings.voice.get` wird vom Backend nur noch mit `ack` beantwortet | — | 2026-09-16 | Aufräum-Karte | separates Vorhaben |
 | `specwright/templates/agents/` (8 Vorlagen) und einige Agenten/Skills werden von keinem Workflow referenziert | — | 2026-09-14 | Aufräum-Karte | separates Vorhaben |
 | Specwright trägt eigene v3-Artefakte (`specwright/{specs,product,brainstorming,knowledge}`) | AR-07 | 2026-02 | Aufräum-Karte | archivieren wie bei Applai |
 
@@ -120,3 +122,4 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | 2026-09-16 | §2 Backend-Zeile um Gespräch (Transkript-Leser, Lock), §3 Terminal-Sitzungen um Hook-Kontext, neue Zeile Sitzungsverlauf, Nutzerzustand um Freitext-Protokoll (INT-2026-007, Stufe 1) | ADR-0003 |
 | 2026-09-16 | §3 Nutzerzustand: anhängige Absicht-Sitzungen ohne Ordner werden mit `vorhaben:state` ausgeliefert, ihre Freitext-Einträge tragen die Kennung erst ab dem Claim (INT-2026-008); keine AR-Änderung | PR folgt |
 | 2026-09-15 | Story-Pfad aus der UI entfernt: §1 Diagramm und Text (UI → MCP nur noch über Sitzungen), §2 ohne Auto-Mode, §3 `kanban.json` ohne UI-Leser, AR-03 auf den MCP-Server beschränkt, §5 Gate ohne Auto-Mode, §10 Zeile „Story pro Session" erledigt, zwei neue Abweichungen (INT-2026-004, Stufe 3) | PR #46 |
+| 2026-09-16 | §1 Rahmen (Kopfzeile mit Glocke, kein Chat/Anruf/Team), §2 Frontend-Zeile (Routen `vorhaben`, `neu`, `projekt`; Git-Dienst; Projekt-Seite als Wirt), §10 zwei Bestandszeilen (`terminal.*`-Handler, Team-View ohne Route); Chat-, Voice- und Bild-Upload-Backend entfernt — keine AR-Änderung (INT-2026-010, Stufe 1) | PR folgt |

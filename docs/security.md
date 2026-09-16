@@ -41,7 +41,7 @@
 | Anthropic/Provider-Zugänge | Claude-Sitzungen aus der UI | Claude-Code-Konfiguration des Nutzers, Provider-Wrapper | Umgebung des Prozesses | Nutzer |
 | MCP-Server-Zugänge (Supabase, Firebase) | Projekt-MCPs | `~/.claude.json` (user-scope) | Claude Code | Nutzer |
 | GitHub-Token | Auto-Deploy, `gh` | Host-Konfiguration | Umgebung | Nutzer |
-| Sprachdienst-Zugänge (Deepgram, ElevenLabs) | Anruf-Modus, Gespräch (INT-2026-007) | `ui/config/voice-config.json` (lokal, gitignored; Guard `check-no-voice-config` in `verify`) | Datei zur Laufzeit | Nutzer · **Vorfall 2026-09-16:** Datei mit echten Schlüsseln seit März versioniert (Commit `65799ee`, Repo öffentlich); aus dem Index entfernt, beide Schlüssel rotieren (Historie bleibt öffentlich) |
+| Sprachdienst-Zugänge (Deepgram, ElevenLabs) | **entfernt (INT-2026-010):** Anruf-Modus und Sprachdienste sind aus der UI gelöscht (`voice-call.service.ts`, `voice-config.ts`); die Datei `ui/config/voice-config.json` liest kein Code mehr, sie bleibt gitignored, der Guard `check-no-voice-config` in `verify` bleibt | — (Datei liegt lokal ungenutzt) | — | **Vorfall 2026-09-16:** Datei mit echten Schlüsseln seit März versioniert (Commit `65799ee`, Repo öffentlich); aus dem Index entfernt, beide Schlüssel rotieren (Historie bleibt öffentlich) |
 
 **Nie im Repo, nie im Image, nie im Diff:** `.env*`, Service-Account-JSON, Tokens, private Schlüssel, `~/.claude.json`, Hostnamen und Pfade des Cloud-Hosts. Hook `no-secrets` blockiert Commits mit solchen Mustern.
 
@@ -96,3 +96,4 @@
 | 2026-09-16 | §2 Vertrauensannahme (ein Nutzer, Hook-Route vertraut dem Token), §6 Zeile Transkript-Allowlist (INT-2026-007, Stufe 1) | PR 1 |
 | 2026-09-16 | §3: Sprachdienst-Zugänge ergänzt, Vorfall versionierte `voice-config.json` (INT-2026-007 PR 0); Datei aus dem Index, `.gitignore`, Guard in `verify.sh` | PR 0 |
 | 2026-09-15 | §7: T-06 verweist auf ein eigenes Vorhaben statt auf den Gesamtplan Phase 5 (INT-2026-004, Stufe 3); §4 Stand unverändert offen | PR #46 |
+| 2026-09-16 | §3: Sprachdienst-Zeile auf „entfernt" — Anruf-Modus, Sprachdienste, Chat-Handler und Bild-Upload (`/api/images`) aus der UI gelöscht; Guard und `.gitignore`-Eintrag bleiben (INT-2026-010, Stufe 1); kein neuer Endpunkt | PR folgt |
