@@ -88,3 +88,20 @@ export function renderDocument(text: string): string {
   const { frontmatter, body } = splitFrontmatter(text);
   return renderFrontmatterTable(frontmatter) + renderDocumentBody(body);
 }
+
+/**
+ * Gesprächsbeiträge (INT-2026-007, FA-05): Claude's text rendered like the
+ * documents in the reader — own instance so heading ids and the reader's
+ * settings stay untouched; errors fall back to escaped text.
+ */
+const beitrag = new Marked({ gfm: true, breaks: false });
+beitrag.use({ renderer: codeRenderer });
+
+export function renderBeitrag(markdown: string): string {
+  try {
+    return beitrag.parse(markdown, { async: false }) as string;
+  } catch (err) {
+    console.error('[vorhaben-markdown] beitrag parse failed:', err);
+    return `<pre>${escapeHtml(markdown)}</pre>`;
+  }
+}

@@ -186,34 +186,43 @@ export class VorhabenClientService {
 
   /** Sends a request with a fresh requestId; resolves on the matching reply, rejects on vorhaben:error. */
   private request<T>(replyType: string | string[], message: WebSocketMessage, errorType = 'vorhaben:error'): Promise<T & { type: string }> {
-    const requestId = `vh-${Date.now()}-${++this.requestCounter}`;
-    const types = Array.isArray(replyType) ? replyType : [replyType];
-    return new Promise((resolve, reject) => {
-      const cleanup = (): void => {
-        for (const t of types) gateway.off(t, onReply);
-        gateway.off(errorType, onError);
-        clearTimeout(timer);
-      };
-      const onReply = (msg: WebSocketMessage): void => {
-        if (msg.requestId !== requestId) return;
-        cleanup();
-        resolve(msg as T & { type: string });
-      };
-      const onError = (msg: WebSocketMessage): void => {
-        if (msg.requestId !== requestId) return;
-        cleanup();
-        const err = msg as unknown as VorhabenErrorMessage;
-        reject(new VorhabenRequestError(err.code, err.message));
-      };
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(new VorhabenRequestError('TIMEOUT', 'Keine Antwort vom Backend'));
-      }, REQUEST_TIMEOUT_MS);
-      for (const t of types) gateway.on(t, onReply);
-      gateway.on(errorType, onError);
-      gateway.send({ ...message, requestId });
-    });
+    return gatewayRequest<T>(replyType, message, errorType, `vh-${Date.now()}-${++this.requestCounter}`);
   }
+}
+
+/**
+ * Request/reply over the gateway (R-17, INT-2026-007): sends `message` with
+ * `requestId`, resolves on the first reply type whose `requestId` matches,
+ * rejects on `errorType` with the same `requestId` or after 15 s. Shared by
+ * the Vorhaben and the Gespräch client services.
+ */
+export function gatewayRequest<T>(replyType: string | string[], message: WebSocketMessage, errorType: string, requestId: string): Promise<T & { type: string }> {
+  const types = Array.isArray(replyType) ? replyType : [replyType];
+  return new Promise((resolve, reject) => {
+    const cleanup = (): void => {
+      for (const t of types) gateway.off(t, onReply);
+      gateway.off(errorType, onError);
+      clearTimeout(timer);
+    };
+    const onReply = (msg: WebSocketMessage): void => {
+      if (msg.requestId !== requestId) return;
+      cleanup();
+      resolve(msg as T & { type: string });
+    };
+    const onError = (msg: WebSocketMessage): void => {
+      if (msg.requestId !== requestId) return;
+      cleanup();
+      const err = msg as unknown as VorhabenErrorMessage;
+      reject(new VorhabenRequestError(err.code, err.message));
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new VorhabenRequestError('TIMEOUT', 'Keine Antwort vom Backend'));
+    }, REQUEST_TIMEOUT_MS);
+    for (const t of types) gateway.on(t, onReply);
+    gateway.on(errorType, onError);
+    gateway.send({ ...message, requestId });
+  });
 }
 
 export const vorhabenService = new VorhabenClientService();

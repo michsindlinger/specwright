@@ -64,7 +64,8 @@ export class AosSendeLeiste extends LitElement {
       position: fixed;
       bottom: 0;
       left: var(--sidebar-width, 0px);
-      right: var(--terminal-open-width, 0px);
+      /* INT-2026-007: ends at the Gespräch column (FA-01, plan §4 #16) */
+      right: calc(var(--terminal-open-width, 0px) + var(--gespraech-width, 0px));
       z-index: 50;
       background: var(--color-bg-primary);
       border-top: 1px solid var(--color-border);

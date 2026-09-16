@@ -30,6 +30,8 @@ export class AosProjektSeite extends LitElement {
   @property({ attribute: false }) docDrafts: Record<string, ProjectDocDraft> = {};
   @property({ type: String }) selectedKey: ProjectDocKey | null = null;
   @property({ type: Boolean }) mobile = false;
+  /** „Absicht beginnen" started this session; the view navigates once the Vorhaben row appears (FA-22, AN-S03). */
+  @property({ type: String }) startedSessionId = '';
 
   @state() private docs: ProjectDocEntry[] = [];
   @state() private loading = false;
@@ -121,6 +123,18 @@ export class AosProjektSeite extends LitElement {
     .neu code {
       font-family: var(--font-family-mono);
       color: var(--color-accent-primary);
+    }
+    .neu.gestartet {
+      border-color: var(--color-accent-primary);
+      margin-bottom: var(--spacing-sm);
+    }
+    .neu .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-accent-success);
+      margin-right: 6px;
     }
     .status {
       color: var(--color-text-secondary);
@@ -233,6 +247,7 @@ export class AosProjektSeite extends LitElement {
     const p = this.project;
     return html`<section class="abschnitt" aria-label=${section.label}>
       <h2 class="abschnitt-titel">${section.label}</h2>
+      ${this.startedSessionId ? html`<div class="neu gestartet"><span><span class="dot"></span>Sitzung gestartet — Vorhaben entsteht …</span><span class="status">die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span></div>` : nothing}
       ${p
         ? html`<aos-naechster-schritt
             .projectId=${p.id}

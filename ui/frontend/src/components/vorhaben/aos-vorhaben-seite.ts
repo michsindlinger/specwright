@@ -18,7 +18,7 @@ import { VORHABEN_DOC_FILES, VORHABEN_DOC_ORDER } from '../../../../src/shared/t
 import { buildAenderungenText, formatStandLabel } from '../../../../src/shared/vorhaben-text.js';
 import { vorhabenService, type SendResult } from '../../services/vorhaben.service.js';
 import { PHASE_LABELS, STEP_LABELS, ZUSTAND_LABELS, formatStand, relativeTime } from './vorhaben-sort.js';
-import { leisteGrund } from './aos-sende-leiste.js';
+import { dialogZielText, leisteGrund } from './aos-sende-leiste.js';
 import './aos-dokument-leser.js';
 import './aos-sende-leiste.js';
 import './aos-anmerkungen-sammel.js';
@@ -52,6 +52,12 @@ export class AosVorhabenSeite extends LitElement {
   @property({ attribute: false }) protocol: ProtokollEintrag[] = [];
   /** `lastModelKey(...)` → selection (from the state). */
   @property({ attribute: false }) lastModel: Record<string, ModelSelection> = {};
+  /**
+   * CSS width of the Gespräch column next to the page (INT-2026-007, Mac
+   * only); sets `--gespraech-width`, which the fixed send bar subtracts from
+   * its right edge. Empty = no Gespräch.
+   */
+  @property({ type: String }) gespraechBreite = '';
 
   @state() private sammelOpen = false;
   @state() private lost: string[] = [];
@@ -242,6 +248,7 @@ export class AosVorhabenSeite extends LitElement {
   `;
 
   protected override willUpdate(changed: PropertyValues<this>): void {
+    if (changed.has('gespraechBreite')) this.style.setProperty('--gespraech-width', this.gespraechBreite || '0px');
     if (changed.has('doc') || (changed.has('row') && (changed.get('row') as VorhabenRow | undefined)?.intentId !== this.row?.intentId)) {
       this.readStand = 0;
       this.sendError = '';
@@ -356,7 +363,8 @@ export class AosVorhabenSeite extends LitElement {
     if (id) document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId: id } }));
   }
 
-  private scrollToNextStep(): void {
+  /** Scrolls the „nächster Schritt" block into view (send bar, Gespräch input). */
+  public scrollToNextStep(): void {
     this.renderRoot.querySelector('aos-naechster-schritt')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
@@ -436,7 +444,7 @@ export class AosVorhabenSeite extends LitElement {
         .preview=${this.preview()}
         .sessionName=${session?.name ?? ''}
         .bereit=${grund === 'bereit'}
-        .grund=${GRUND_TEXT[grund] ?? ''}
+        .grund=${grund === 'dialog' ? dialogZielText(r) : GRUND_TEXT[grund] ?? ''}
         .sending=${this.sending}
         @sammel-close=${() => (this.sammelOpen = false)}
         @sammel-send=${() => this.send('aenderungen')}
