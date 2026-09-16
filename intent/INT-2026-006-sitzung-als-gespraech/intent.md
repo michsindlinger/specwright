@@ -6,7 +6,7 @@ version: "1.0.0"
 autor: "Michael Sindlinger (Gespräch mit Claude, 15.09.2026)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-15"  
-geaendert: "2026-09-15"  
+geaendert: "2026-09-16"  
 risikoklasse: "mittel"  
 groesse: "L"  
 bypass: "nein"  
@@ -14,7 +14,7 @@ bypass_grund: ""
 bezuege:  
   product: "docs/product-brief.md"  
   spec: "spec.md"  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: ""  
@@ -167,6 +167,7 @@ Anlass: Michael hat den Vorhaben-Flow am 15.09. zum ersten Mal aus der UI gestar
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-16 | `bezuege.plan` gesetzt: `plan.md` freigegeben (drei Runden externer Review) | — | Product Owner, 16.09. |
 | 1.0.0 | 2026-09-15 | Angenommen ohne inhaltliche Änderung; Kern bewusst über 450 Wörter (Belege in Abschnitt 1, PO-Entscheidung „F6 lassen") | alle | Product Owner, 15.09. |
 | 0.1.0 | 2026-09-15 | Entwurf aus dem Gespräch: Sitzung als Chat, Sprache beide Richtungen, Mac zuerst, Dialoge Freitext/Rückfragen/Plan-Dialog/Plan-Review | alle | — |
 
