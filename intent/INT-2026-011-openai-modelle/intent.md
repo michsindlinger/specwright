@@ -2,7 +2,7 @@
 intent_id: "INT-2026-011"  
 titel: "OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI"  
 status: "angenommen"  
-version: "1.0.0"  
+version: "1.0.1"  
 autor: "Michael Sindlinger (Gespräch mit Claude, 16.09.2026)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-16"  
@@ -14,7 +14,7 @@ bypass_grund: "Größe S: zwei Provider-Einträge, eine Sperre in der Prüfer-Au
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: ""  
@@ -141,5 +141,6 @@ Der Terminal-Start der UI verträgt eine fremde CLI schon: Claude-Hooks bekommen
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-16 | `bezuege.plan` gesetzt; Plan freigegeben (D1–D4 wie vorgeschlagen, externer Review E1–E17 eingearbeitet) | — | PO, 16.09. |
 | 1.0.0 | 2026-09-16 | Angenommen; OF-01 bis OF-04 entschieden; AK-04 auf ein Modalverb gekürzt, Rückmeldung als AK-10 ausgegliedert, AK-08 auf ein Modalverb; Abgleich Mensch/Agent: ohne Befund | AK-04, AK-08, AK-10, OF-01…04 | PO, 16.09. |
 | 0.1.0 | 2026-09-16 | Entwurf nach Gespräch: Weg A (Proxy) + B Stufe 1 (native Codex-CLI), drei Modelle, nur Mac, Prüfer wählbar | alle | — |
