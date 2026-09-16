@@ -49,7 +49,7 @@ export class AosNotFoundView extends LitElement {
       <div class="not-found">
         <h3>404</h3>
         <p>The page you're looking for doesn't exist.</p>
-        <a href="#/dashboard" class="back-link">Back to Dashboard</a>
+        <a href="#/vorhaben" class="back-link">Zu den Vorhaben</a>
       </div>
     `;
   }

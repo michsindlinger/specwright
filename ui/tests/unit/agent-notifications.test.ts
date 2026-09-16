@@ -181,9 +181,23 @@ describe('buildBellRows()', () => {
     expect(rows.map((r) => r.sessionId)).toEqual(['b-new', 'b-old', 'd-new', 'd-old']);
   });
 
-  it('never lists the session the user is looking at', () => {
+  it('never lists the session the user is looking at (sidebar open, tab active)', () => {
     expect(buildBellRows([n('a', 1)], [s('a', 'blocked', 1)], 'a')).toEqual([]);
     expect(buildBellRows([n('a', 1)], [s('a', 'done', 1)], 'a')).toEqual([]);
+  });
+
+  it('INT-2026-010 (FA-04, review E2): with the sidebar closed nothing is visible — the last active session is listed too', () => {
+    expect(buildBellRows([n('a', 1)], [s('a', 'done', 1)], undefined).map((r) => r.sessionId)).toEqual(['a']);
+    expect(buildBellRows([], [s('a', 'blocked', 1)], null).map((r) => r.kind)).toEqual(['blocked']);
+  });
+
+  it('INT-2026-010 (FA-06): rows carry the backend id — from the notification, else from the session', () => {
+    const rows = buildBellRows([n('d', 3)], [{ ...s('b', 'blocked', 5), terminalSessionId: 'cloud-b' }, s('d', 'done')], null);
+    expect(rows.map((r) => [r.sessionId, r.terminalSessionId])).toEqual([
+      ['b', 'cloud-b'],
+      ['d', 'cloud-d'],
+    ]);
+    expect(buildBellRows([], [s('x', 'blocked')], null)[0].terminalSessionId).toBeUndefined();
   });
 
   it('drops notifications whose session is gone', () => {

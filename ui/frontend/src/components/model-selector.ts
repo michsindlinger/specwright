@@ -33,9 +33,6 @@ export class AosModelSelector extends LitElement {
   /** Disable the selector */
   @property({ type: Boolean }) disabled = false;
 
-  /** When true, selecting a model also updates the global backend setting */
-  @property({ type: Boolean }) syncGlobal = false;
-
   @state()
   private providers: ModelSelectorProvider[] = [];
 
@@ -316,11 +313,8 @@ export class AosModelSelector extends LitElement {
         composed: true,
       })
     );
-
-    // Only sync to backend when explicitly requested (header) or in standalone mode
-    if (this.syncGlobal || !this.isEmbedded) {
-      gateway.sendModelSettings(model.providerId, model.id);
-    }
+    // INT-2026-010: no global chat model any more — the selector is only ever
+    // embedded (next step, new intent); the parent reads `model-changed`.
   }
 
   /** Public getter so parent components can read the selected model ID */

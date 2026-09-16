@@ -11,16 +11,7 @@ import { hiddenRowPane, clampRowRatio } from './pane-visibility.js';
 import { effectiveZoomedPane, nextZoomedPane, paneShowingProject, ZOOM_GEOM } from './pane-zoom.js';
 import { syncSelectValue } from './pane-select-sync.js';
 import { isPaneZoomShortcut, isEditableTarget } from '../../utils/keyboard-shortcuts.js';
-import {
-  resolveJumpTarget,
-  formatRelativeTime,
-  buildBellRows,
-  type AgentNotification,
-  type BellRow,
-  type JumpTarget,
-  soloJumpTarget,
-} from './agent-notifications.js';
-import { isBellSoundEnabled, setBellSoundEnabled, playAgentDoneChime } from './notification-sound.js';
+import { resolveJumpTarget, type JumpTarget, soloJumpTarget } from './agent-notifications.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 import { MobileBreakpointController } from '../../controllers/mobile-breakpoint-controller.js';
 import '../mobile/aos-mobile-terminal-header.js';
@@ -105,13 +96,6 @@ export class AosCloudTerminalSidebar extends LitElement {
   /** Map projectPath -> display name, for the pane dropdown's <optgroup> labels. */
   @property({ attribute: false }) projectNames: Record<string, string> = {};
 
-  /** "Agent finished" entries for the header bell (owned by app.ts, see agent-notifications.ts). */
-  @property({ attribute: false }) agentNotifications: AgentNotification[] = [];
-
-  @state() private _bellOpen = false;
-  @state() private _bellSound = isBellSoundEnabled();
-  /** Re-renders the relative times while the bell list is open. */
-  private _bellTicker: ReturnType<typeof setInterval> | null = null;
   @state() private sidebarWidth = 500;
   @state() private isResizing = false;
   @state() private isFullscreen = false;
@@ -281,201 +265,6 @@ export class AosCloudTerminalSidebar extends LitElement {
       .action-btn svg {
         width: 16px;
         height: 16px;
-      }
-
-      /* ── Agent bell (blocked / finished) ──────────────────────────── */
-      .bell-wrap {
-        position: relative;
-        display: flex;
-      }
-
-      .bell-btn {
-        position: relative;
-        opacity: 0.55;
-      }
-
-      .bell-btn.has-items,
-      .bell-btn:hover,
-      .bell-btn.open {
-        opacity: 1;
-      }
-
-      .bell-badge {
-        position: absolute;
-        top: -2px;
-        right: -2px;
-        min-width: 14px;
-        height: 14px;
-        padding: 0 3px;
-        background: var(--color-accent-error, #ef4444);
-        border-radius: 7px;
-        color: #fff;
-        font-size: 9px;
-        font-weight: 700;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        pointer-events: none;
-      }
-
-      /* AGENT_STATUS_COLOR.blocked — the bell speaks the same colour as the tab dot. */
-      .bell-btn.has-waiting .bell-badge {
-        background: #ff9800;
-        color: #1a1a1a;
-      }
-
-      .bell-dropdown {
-        position: absolute;
-        top: calc(100% + 4px);
-        right: 0;
-        width: 340px;
-        max-width: calc(100vw - 24px);
-        max-height: 60vh;
-        overflow-y: auto;
-        background: #2a2a2a;
-        border: 1px solid #555;
-        border-radius: 4px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-        z-index: 200;
-        padding: 4px 0;
-        color: #e0e0e0;
-        text-align: left;
-      }
-
-      .bell-dropdown-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 6px 8px 4px 12px;
-        font-size: 10px;
-        font-weight: 700;
-        color: #c0c0c0;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border-bottom: 1px solid #444;
-        margin-bottom: 4px;
-      }
-
-      .bell-sound-btn {
-        background: transparent;
-        border: none;
-        padding: 2px 4px;
-        border-radius: 3px;
-        cursor: pointer;
-        color: #a0a0a0;
-        display: flex;
-        align-items: center;
-        transition: color 0.1s, background 0.1s;
-      }
-
-      .bell-sound-btn:hover {
-        background: #3a3a3a;
-        color: #e0e0e0;
-      }
-
-      .bell-sound-btn.muted {
-        color: #6a6a6a;
-      }
-
-      .bell-sound-btn svg {
-        width: 14px;
-        height: 14px;
-      }
-
-      .bell-empty {
-        padding: 10px 12px;
-        font-size: 12px;
-        color: #a0a0a0;
-      }
-
-      .bell-row {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        padding: 6px 12px;
-        cursor: pointer;
-        border-bottom: 1px solid #383838;
-        transition: background 0.1s;
-      }
-
-      .bell-row:last-child {
-        border-bottom: none;
-      }
-
-      .bell-row:hover {
-        background: #3a3a3a;
-      }
-
-      .bell-row.waiting {
-        border-left: 2px solid #ff9800;
-        padding-left: 10px;
-      }
-
-      .bell-kind {
-        flex: 0 0 auto;
-        padding: 1px 5px;
-        border-radius: 3px;
-        font-size: 9px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-      }
-
-      .bell-kind.done {
-        background: #2f3b2f;
-        color: #8bc98b;
-      }
-
-      .bell-kind.waiting {
-        background: #4a3208;
-        color: #ffb74d;
-      }
-
-      .bell-row-top {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        min-width: 0;
-      }
-
-      .bell-project {
-        flex: 0 1 auto;
-        max-width: 120px;
-        padding: 1px 6px;
-        border-radius: 3px;
-        font-size: 10px;
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .bell-name {
-        flex: 1 1 auto;
-        min-width: 0;
-        font-size: 12px;
-        font-weight: 600;
-        color: #e0e0e0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .bell-time {
-        flex: 0 0 auto;
-        font-size: 10px;
-        color: #a0a0a0;
-        white-space: nowrap;
-      }
-
-      .bell-preview {
-        font-size: 11px;
-        color: #b0b0b0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
 
       .new-session-btn {
@@ -1216,7 +1005,6 @@ export class AosCloudTerminalSidebar extends LitElement {
               </svg>
               Neue Session
             </button>
-            ${this._renderBell()}
             ${this._renderLayoutSwitcher()}
             <button
               class="action-btn"
@@ -1485,163 +1273,6 @@ export class AosCloudTerminalSidebar extends LitElement {
   }
 
   // ── Agent-finished bell ──────────────────────────────────────────────────
-
-  /**
-   * What the bell lists: sessions blocked on the user (live agent status) plus agents that
-   * finished (Stop notifications). Dead sessions drop out because the rows are built from
-   * `allSessions` (app.ts prunes the notification list too; this is belt-and-braces).
-   */
-  private _visibleNotifications(): BellRow[] {
-    return buildBellRows(this.agentNotifications, this.allSessions, this.activeSessionId);
-  }
-
-  /** "2 warten auf Eingabe, 1 fertig" — blocked first, because that is what needs a human. */
-  private _bellTitle(blocked: number, done: number): string {
-    const parts: string[] = [];
-    if (blocked > 0) parts.push(`${blocked} ${blocked === 1 ? 'wartet' : 'warten'} auf Eingabe`);
-    if (done > 0) parts.push(`${done} fertig`);
-    return parts.length ? parts.join(', ') : 'Keine Agent-Meldungen';
-  }
-
-  private _renderBell() {
-    const items = this._visibleNotifications();
-    const count = items.length;
-    const blocked = items.filter((r) => r.kind === 'blocked').length;
-    const title = this._bellTitle(blocked, count - blocked);
-    return html`
-      <div class="bell-wrap">
-        <button
-          class="action-btn bell-btn ${count > 0 ? 'has-items' : ''} ${blocked > 0 ? 'has-waiting' : ''} ${this._bellOpen ? 'open' : ''}"
-          @click=${this._toggleBell}
-          title=${title}
-          aria-label=${title}
-          aria-haspopup="true"
-          aria-expanded=${this._bellOpen ? 'true' : 'false'}
-        >
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M10 2a1 1 0 0 1 1 1v.26A6 6 0 0 1 16 9v3l1.707 1.707A1 1 0 0 1 17 15.5H3a1 1 0 0 1-.707-1.793L4 12V9a6 6 0 0 1 5-5.74V3a1 1 0 0 1 1-1zm0 16a2 2 0 0 0 2-2H8a2 2 0 0 0 2 2z" fill="currentColor"></path>
-          </svg>
-          ${count > 0
-            ? html`<span class="bell-badge" aria-hidden="true">${count > 9 ? '9+' : count}</span>`
-            : nothing}
-        </button>
-        ${this._bellOpen
-          ? html`
-              <div class="bell-dropdown" role="menu">
-                <div class="bell-dropdown-header">
-                  <span>Agenten</span>
-                  ${this._renderSoundToggle()}
-                </div>
-                ${count === 0
-                  ? html`<div class="bell-empty">Keine Meldungen</div>`
-                  : repeat(items, (r) => r.sessionId, (r) => this._renderBellRow(r))}
-              </div>
-            `
-          : nothing}
-      </div>
-    `;
-  }
-
-  private _renderBellRow(row: BellRow) {
-    const session = this.allSessions.find((s) => s.id === row.sessionId);
-    if (!session) return nothing;
-    const hue = this._projectHue(session.projectPath);
-    const badgeStyle = { background: `hsl(${hue} 55% 22%)`, color: `hsl(${hue} 70% 80%)` };
-    const blocked = row.kind === 'blocked';
-    return html`
-      <div
-        class="bell-row ${blocked ? 'waiting' : ''}"
-        role="menuitem"
-        @click=${() => this._jumpToNotification(row.sessionId)}
-      >
-        <div class="bell-row-top">
-          <span class="bell-kind ${blocked ? 'waiting' : 'done'}">${blocked ? 'wartet' : 'fertig'}</span>
-          <span class="bell-project" style=${styleMap(badgeStyle)} title=${session.projectPath}>
-            ${this._projectLabel(session.projectPath)}
-          </span>
-          <span class="bell-name" title=${session.name}>${session.name}</span>
-          <span class="bell-time">${row.at > 0 ? formatRelativeTime(row.at) : ''}</span>
-        </div>
-        ${row.preview ? html`<div class="bell-preview" title=${row.preview}>${row.preview}</div>` : nothing}
-      </div>
-    `;
-  }
-
-  /** Speaker toggle in the dropdown header; unmuting previews the chime. */
-  private _renderSoundToggle() {
-    const on = this._bellSound;
-    return html`
-      <button
-        class="bell-sound-btn ${on ? '' : 'muted'}"
-        @click=${this._toggleBellSound}
-        title=${on ? 'Ton aus' : 'Ton an'}
-        aria-label=${on ? 'Ton ausschalten' : 'Ton einschalten'}
-        aria-pressed=${on ? 'true' : 'false'}
-      >
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-          <path d="M4 7.5h3L11 4v12L7 12.5H4z" fill="currentColor" stroke-linejoin="round"></path>
-          ${on
-            ? svg`<path d="M13.5 7a4 4 0 0 1 0 6M15.8 5a7 7 0 0 1 0 10" stroke-linecap="round"></path>`
-            : svg`<path d="M14 8l4 4M18 8l-4 4" stroke-linecap="round"></path>`}
-        </svg>
-      </button>
-    `;
-  }
-
-  private _toggleBellSound = (e: Event): void => {
-    e.stopPropagation();
-    this._bellSound = !this._bellSound;
-    setBellSoundEnabled(this._bellSound);
-    // Preview on unmute so the user hears what they just enabled.
-    if (this._bellSound) playAgentDoneChime(true);
-  };
-
-  private _toggleBell = (e: Event): void => {
-    e.stopPropagation();
-    if (this._bellOpen) this._closeBell();
-    else this._openBell();
-  };
-
-  private _openBell(): void {
-    this._bellOpen = true;
-    document.addEventListener('click', this.boundBellOutsideClick);
-    document.addEventListener('keydown', this.boundBellKeydown);
-    this._bellTicker = setInterval(() => this.requestUpdate(), 30_000);
-  }
-
-  private _closeBell(): void {
-    if (!this._bellOpen) return;
-    this._bellOpen = false;
-    document.removeEventListener('click', this.boundBellOutsideClick);
-    document.removeEventListener('keydown', this.boundBellKeydown);
-    if (this._bellTicker) {
-      clearInterval(this._bellTicker);
-      this._bellTicker = null;
-    }
-  }
-
-  private boundBellOutsideClick = (e: MouseEvent): void => {
-    const wrap = this.querySelector('.bell-wrap');
-    if (wrap && e.composedPath().includes(wrap)) return;
-    this._closeBell();
-  };
-
-  private boundBellKeydown = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape') this._closeBell();
-  };
-
-  /**
-   * Bell row clicked: bring that session into view. Every branch ends in a
-   * `session-select` reaching app.ts, whose willUpdate() drops the entry.
-   * The row for the already-active session is never rendered (buildBellRows
-   * filters it), so there is no "jump to where I already am" case here.
-   */
-  private _jumpToNotification(sessionId: string): void {
-    this._closeBell();
-    const session = this.allSessions.find((s) => s.id === sessionId);
-    if (!session) return;
-    this._jumpTo(session, this._jumpTargetFor(session));
-  }
 
   /**
    * Bring a session to the front ALONE (INT-2026-005, FA-35): fullscreen, the session in its
@@ -3110,7 +2741,6 @@ export class AosCloudTerminalSidebar extends LitElement {
     gateway.off('plan-review:config.snapshot', this.boundHandleConfigSnapshot);
     gateway.off('gateway.connected', this.boundHandleGatewayConnected);
     document.removeEventListener('keydown', this.boundHandleFullscreenKeydown);
-    this._closeBell();
   }
 }
 

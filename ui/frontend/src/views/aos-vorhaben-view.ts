@@ -1,16 +1,23 @@
 /**
- * aos-vorhaben-view — the new work surface (INT-2026-004): routes
- * `vorhaben` (overview, Vorhaben page) and `projekt` (project page) inside the
- * unchanged app frame. Light DOM like the other views. On phones it composes
- * the mobile shell (top bar, bottom nav with the "wartet auf dich" counter,
- * drawer) from the existing mobile components — the old dashboard did the
- * same by template composition, so the shell survives its removal (plan §2).
+ * aos-vorhaben-view — the work surface (INT-2026-004; INT-2026-010): routes
+ * `vorhaben` (overview, Vorhaben page), `neu` (new intent) and `projekt`
+ * (project page) inside the frame of app.ts (header line only). Light DOM
+ * like the other views; the phone has no shell of its own any more (FA-20) —
+ * the header carries bell, project and terminal symbol on every device.
  *
  * Routes: `#/vorhaben` · `#/vorhaben/<projectId>/<INT-…>[/<doc>]` ·
- * `#/projekt[/<projectId>[/<docKey>]]` (projectId URL-encoded).
+ * `#/neu[/<projectId>]` · `#/projekt[/<projectId>[/<docKey>]]`
+ * (projectId URL-encoded).
+ *
+ * Stage 1 of INT-2026-010 renders `neu` as the block that used to be the
+ * „Neues Vorhaben" section of the project page — moved, not new: start box
+ * (`aos-naechster-schritt step="intent"`), hint while a `/intent` session is
+ * pending, on the Mac its Gespräch next to it, and the follow logic that opens
+ * the Vorhaben page once a folder claims the session (AK-09). Stage 2 replaces
+ * the block with `aos-neue-absicht`.
  */
 
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import { projectContext, type ProjectContextValue, defaultProjectContext } from '../context/project-context.js';
@@ -20,25 +27,20 @@ import { vorhabenService } from '../services/vorhaben.service.js';
 import { MobileBreakpointController } from '../controllers/mobile-breakpoint-controller.js';
 import type { ParsedRoute, ViewType } from '../types/route.types.js';
 import type { ProjectDocKey, VorhabenPendingIntent, VorhabenRow, VorhabenState } from '../../../src/shared/types/vorhaben.protocol.js';
-import { PROJECT_DOC_KEYS, VORHABEN_DOC_ORDER, draftKey } from '../../../src/shared/types/vorhaben.protocol.js';
-import { countWaitingForMe } from '../components/vorhaben/vorhaben-sort.js';
+import { PROJECT_DOC_KEYS, VORHABEN_DOC_ORDER, draftKey, stepCommand } from '../../../src/shared/types/vorhaben.protocol.js';
 import { defaultDoc, type AosVorhabenSeite } from '../components/vorhaben/aos-vorhaben-seite.js';
 import { GESPRAECH_BREITE } from '../components/vorhaben/aos-gespraech.js';
 import type { LeserDoc } from '../components/vorhaben/aos-dokument-leser.js';
-import type { BottomNavItem } from '../components/mobile/aos-mobile-bottom-nav.js';
-import type { DrawerNavRoute } from '../components/mobile/aos-mobile-side-drawer.js';
 import '../components/vorhaben/aos-vorhaben-uebersicht.js';
 import '../components/vorhaben/aos-vorhaben-seite.js';
 import '../components/vorhaben/aos-projekt-seite.js';
 import '../components/vorhaben/aos-gespraech.js';
-import '../components/mobile/aos-mobile-top-bar.js';
-import '../components/mobile/aos-mobile-bottom-nav.js';
-import '../components/mobile/aos-mobile-side-drawer.js';
-import '../components/mobile/aos-mobile-terminal-pill.js';
+import '../components/vorhaben/aos-naechster-schritt.js';
 
-export type VorhabenRoute = 'vorhaben' | 'projekt';
+export type VorhabenRoute = 'vorhaben' | 'neu' | 'projekt';
 
 const INTENT_ID_RE = /^INT-\d{4}-\d{3}$/;
+const VIEW_ROUTES: readonly string[] = ['vorhaben', 'neu', 'projekt'];
 
 @customElement('aos-vorhaben-view')
 export class AosVorhabenView extends LitElement {
@@ -50,12 +52,12 @@ export class AosVorhabenView extends LitElement {
   @state() private vorhabenState: VorhabenState | null = null;
   @state() private segments: string[] = [];
   @state() private connected = true;
+  /** Project chip of the overview; stage 1: device-local, stage 2 moves it to `state.ansicht`. */
   @state() private filterProjectId: string | null = null;
-  @state() private drawerOpen = false;
   /**
    * Navigation memory, not state (INT-2026-008 plan §3.7): the `/intent`
    * session to follow to its new Vorhaben page once a row carries it (FA-22,
-   * AN-S03). Set by „Absicht beginnen" or when the project page first shows a
+   * AN-S03). Set by „Absicht beginnen" or when the `neu` page first shows a
    * pending session from `state.pendingIntents`; cleared after the navigation
    * or when the session vanished without a folder (aborted). What is shown
    * always comes from the state.
@@ -75,10 +77,10 @@ export class AosVorhabenView extends LitElement {
   private readonly breakpoint = new MobileBreakpointController(this);
   private unsubscribeState: (() => void) | null = null;
   private readonly onRoute = (route: ParsedRoute): void => {
-    if (route.view === 'vorhaben' || route.view === 'projekt') {
-      // The Vorhaben page of the claimed row is up → the project page no longer needs the memory.
+    if (VIEW_ROUTES.includes(route.view)) {
+      // The Vorhaben page of the claimed row is up → the `neu` page no longer needs the memory.
       if (route.view === 'vorhaben' && this.pendingNavigated) this.forgetPending();
-      this.route = route.view;
+      this.route = route.view as VorhabenRoute;
       this.segments = route.segments;
     }
   };
@@ -143,8 +145,9 @@ export class AosVorhabenView extends LitElement {
     return defaultDoc(row);
   }
 
+  /** Project of the `projekt` and `neu` pages: segment 1, else the active project. */
   private currentProjectId(): string | null {
-    if (this.route === 'projekt' && this.segments[0]) return safeDecode(this.segments[0]);
+    if ((this.route === 'projekt' || this.route === 'neu') && this.segments[0]) return safeDecode(this.segments[0]);
     return this.projectCtx.activeProject?.id ?? null;
   }
 
@@ -164,8 +167,9 @@ export class AosVorhabenView extends LitElement {
     if (row) this.openRow(row, e.detail.doc);
   }
 
+  /** „Neue Absicht" (FA-02): the page `neu` of that project. */
   private onVorhabenNew(e: CustomEvent<{ projectId: string }>): void {
-    this.go('projekt', [encodeURIComponent(e.detail.projectId)]);
+    this.go('neu', [encodeURIComponent(e.detail.projectId)]);
   }
 
   /**
@@ -191,7 +195,7 @@ export class AosVorhabenView extends LitElement {
   }
 
   /**
-   * On the project page a pending session from the state (typed by hand, or
+   * On the `neu` page a pending session from the state (typed by hand, or
    * after a reload) is followed like one started here (AK-07); a memory whose
    * session shows up as pending is marked as seen.
    */
@@ -202,7 +206,7 @@ export class AosVorhabenView extends LitElement {
       if (state.pendingIntents.some((p) => p.sessionId === memory)) this.pendingSeen = true;
       return;
     }
-    if (this.route !== 'projekt') return;
+    if (this.route !== 'neu') return;
     const pending = this.pendingOf(state, this.currentProjectId());
     if (pending) {
       this.pendingIntentSessionId = pending.sessionId;
@@ -221,7 +225,7 @@ export class AosVorhabenView extends LitElement {
     if (!pending || !state) return;
     const row = state.rows.find((r) => r.session?.id === pending);
     if (row) {
-      // Memory stays until the route changed (onRoute): the project page keeps the claimed row's Gespräch mounted meanwhile.
+      // Memory stays until the route changed (onRoute): the `neu` page keeps the claimed row's Gespräch mounted meanwhile.
       if (this.pendingNavigated) return;
       this.pendingNavigated = true;
       this.openRow(row);
@@ -231,12 +235,12 @@ export class AosVorhabenView extends LitElement {
   }
 
   /**
-   * Gespräch of the project page (INT-2026-008, AK-01): the oldest pending
+   * Gespräch of the `neu` page (INT-2026-008, AK-01): the oldest pending
    * `/intent` session; right after the claim — pending gone, row there, route
    * not yet switched — the claimed row keeps the same `aos-gespraech` mounted
    * (review 15: no flash, same session id → no re-subscribe).
    */
-  private projektGespraech(): { pending?: VorhabenPendingIntent; claimedRow?: VorhabenRow } {
+  private neuGespraech(): { pending?: VorhabenPendingIntent; claimedRow?: VorhabenRow } {
     const pid = this.currentProjectId();
     const state = this.vorhabenState;
     const pending = this.pendingOf(state, pid);
@@ -256,71 +260,29 @@ export class AosVorhabenView extends LitElement {
     this.go('projekt', [encodeURIComponent(pid), ...(e.detail.key ? [e.detail.key] : [])]);
   }
 
-  private onNavTap(e: CustomEvent<{ item: BottomNavItem }>): void {
-    switch (e.detail.item) {
-      case 'home':
-        // Stage 3: the old dashboard is gone; „Home" on the phone is the project page (AN-S19).
-        this.go('projekt');
-        break;
-      case 'specs':
-        this.go('vorhaben');
-        break;
-      case 'terminal':
-        this.dispatchEvent(new CustomEvent('terminal-pill-tap', { bubbles: true, composed: true, detail: { route: 'cloud-terminal' } }));
-        break;
-      case 'me':
-        this.go('settings');
-        break;
-    }
-  }
-
-  private onDrawerNav(e: CustomEvent<{ route: DrawerNavRoute }>): void {
-    if (e.detail.route === 'cloud-terminal') {
-      this.dispatchEvent(new CustomEvent('terminal-pill-tap', { bubbles: true, composed: true, detail: { route: 'cloud-terminal' } }));
-    } else if (e.detail.route === 'vorhaben' || e.detail.route === 'projekt') {
-      this.go(e.detail.route);
-    }
+  /** Same document-level event the Gespräch head uses (FA-21/FA-22); app.ts opens the session (Mac solo, phone active tab). */
+  private toTerminal(sessionId: string): void {
+    document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId } }));
   }
 
   // ---- render ----
 
   override render() {
     const content = this.renderContent();
+    let split = false;
     if (!this.breakpoint.isMobile) {
-      const g = this.route === 'projekt' ? this.projektGespraech() : {};
-      const split = this.route === 'vorhaben' ? !!this.currentRow().row?.session : !!(g.pending || g.claimedRow);
-      return html`<div class="vorhaben-view ${split ? 'split' : ''}">${content}</div>`;
+      if (this.route === 'vorhaben') split = !!this.currentRow().row?.session;
+      else if (this.route === 'neu') {
+        const g = this.neuGespraech();
+        split = !!(g.pending || g.claimedRow);
+      }
     }
-    const waiting = this.vorhabenState ? countWaitingForMe(this.vorhabenState.rows) : 0;
-    const title = this.route === 'projekt' ? 'Projekt' : this.segments.length ? this.segments[1] ?? 'Vorhaben' : 'Vorhaben';
-    return html`
-      <div class="mobile-dashboard vorhaben-mobile">
-        <aos-mobile-top-bar
-          .workspaceName=${this.projectCtx.activeProject?.name ?? ''}
-          .breadcrumb=${title}
-          @menu-open=${() => (this.drawerOpen = true)}
-        ></aos-mobile-top-bar>
-        <div class="mobile-content vorhaben-mobile-content">${content}</div>
-        <aos-mobile-terminal-pill></aos-mobile-terminal-pill>
-        <aos-mobile-bottom-nav
-          .activeItem=${'specs'}
-          .waitingCount=${waiting}
-          @nav-tap=${this.onNavTap}
-          @fab-tap=${() => this.go('projekt')}
-        ></aos-mobile-bottom-nav>
-        <aos-mobile-side-drawer
-          .open=${this.drawerOpen}
-          .workspaceName=${this.projectCtx.activeProject?.name ?? ''}
-          .activeRoute=${this.route}
-          @drawer-close=${() => (this.drawerOpen = false)}
-          @drawer-nav=${this.onDrawerNav}
-        ></aos-mobile-side-drawer>
-      </div>
-    `;
+    return html`<div class="vorhaben-view ${split ? 'split' : ''} ${this.breakpoint.isMobile ? 'mobil' : ''}">${content}</div>`;
   }
 
   private renderContent() {
     if (this.route === 'projekt') return this.renderProjekt();
+    if (this.route === 'neu') return this.renderNeu();
     const { row, missing } = this.currentRow();
     if (row) {
       const doc = this.currentDoc(row);
@@ -374,22 +336,59 @@ export class AosVorhabenView extends LitElement {
       const open = this.projectCtx.openProjects.find((p) => p.id === pid);
       if (!open) return html`<div class="vorhaben-status">Projekt nicht geöffnet.</div>`;
     }
-    const { pending, claimedRow } = this.projektGespraech();
-    const seite = html`<aos-projekt-seite
+    return html`<aos-projekt-seite
       .project=${project}
       .docDrafts=${this.vorhabenState?.docDrafts ?? {}}
       .selectedKey=${this.currentDocKey()}
       .mobile=${this.breakpoint.isMobile}
-      .pending=${pending ?? null}
       @doc-select=${this.onDocSelect}
-      @vorhaben-session-started=${this.onSessionStarted}
     ></aos-projekt-seite>`;
-    // Mac with a pending `/intent` session: page left, its Gespräch right (INT-2026-008, AK-01); phone: hint only (AK-06).
-    if (this.breakpoint.isMobile || !(pending || claimedRow)) return seite;
+  }
+
+  /**
+   * Route `neu`, stage-1 interim (plan §6 S1 step 5): the former „Neues
+   * Vorhaben" block of the project page. Stage 2 replaces it with
+   * `aos-neue-absicht` (text field, model, „Starten").
+   */
+  private renderNeu() {
+    const pid = this.currentProjectId();
+    const project = pid ? this.vorhabenState?.projects.find((p) => p.id === pid) ?? null : null;
+    if (!pid || (!project && this.vorhabenState && !this.vorhabenState.loading)) {
+      return html`<div class="vorhaben-status neue-absicht">
+        <p>Kein Projekt geöffnet.</p>
+        <button type="button" class="vorhaben-btn" @click=${() => this.go('projekt')}>Zur Projekt-Seite</button>
+      </div>`;
+    }
+    const { pending, claimedRow } = this.neuGespraech();
+    const mobile = this.breakpoint.isMobile;
+    const block = html`<div class="neue-absicht">
+      <h1>Neue Absicht</h1>
+      <div class="sub">${project ? project.name : ''}</div>
+      ${pending
+        ? html`<div class="neu gestartet">
+            <span><span class="dot"></span>Absicht-Sitzung „${pending.session.name}" läuft — Vorhaben entsteht …</span>
+            <span class="status">${mobile ? 'im Terminal antworten' : 'Gespräch rechts'} — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span>
+            <button type="button" class="terminal" @click=${() => this.toTerminal(pending.sessionId)}>Im Terminal öffnen ↗</button>
+          </div>`
+        : project
+          ? html`<aos-naechster-schritt
+              .projectId=${project.id}
+              .projectPath=${project.path}
+              step="intent"
+              label="Absicht beginnen"
+              command=${stepCommand('intent')}
+              .mobile=${mobile}
+              @vorhaben-session-started=${this.onSessionStarted}
+            ></aos-naechster-schritt>`
+          : html`<div class="vorhaben-status">Vorhaben werden gelesen …</div>`}
+      ${nothing}
+    </div>`;
+    // Mac with a pending `/intent` session: block left, its Gespräch right (INT-2026-008, AK-01); phone: hint only (AK-06).
+    if (mobile || !(pending || claimedRow)) return block;
     const sessionId = pending?.sessionId ?? claimedRow?.session?.id;
     const protocol = (this.vorhabenState?.protocol ?? []).filter((e) => e.sessionId === sessionId);
     return html`<div class="vorhaben-split" style="--gespraech-width: ${GESPRAECH_BREITE}">
-      ${seite}
+      ${block}
       <div class="vorhaben-split-gespraech">
         <aos-gespraech .row=${claimedRow} .pending=${pending} .protocol=${protocol}></aos-gespraech>
       </div>

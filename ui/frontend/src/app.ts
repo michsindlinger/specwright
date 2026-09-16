@@ -3,26 +3,13 @@ import { customElement, state } from 'lit/decorators.js';
 import { ContextProvider } from '@lit/context';
 
 import './views/aos-vorhaben-view.js';
-import './views/chat-view.js';
-import './views/settings-view.js';
-import './views/prompt-templates-view.js';
 import './views/not-found-view.js';
-import './views/aos-getting-started-view.js';
-import './views/team-view.js';
-import './views/voice-call-view.js';
-import './components/model-selector.js';
+import './components/rahmen/aos-kopfzeile.js';
 import './components/toast-notification.js';
 import './components/loading-spinner.js';
-import './components/aos-project-tabs.js';
 import './components/aos-project-add-modal.js';
 import './components/aos-notepad-panel.js';
 import './components/terminal/aos-cloud-terminal-sidebar.js';
-import './components/mobile/aos-mobile-sheet.js';
-import './components/mobile/aos-mobile-top-bar.js';
-import './components/mobile/aos-mobile-project-scroller.js';
-import './components/mobile/aos-mobile-bottom-nav.js';
-import './components/mobile/aos-mobile-terminal-pill.js';
-import './components/mobile/aos-mobile-side-drawer.js';
 import './components/mobile/aos-mobile-terminal-header.js';
 import './components/mobile/aos-mobile-session-tabs.js';
 import './components/mobile/aos-mobile-connection-bar.js';
@@ -31,7 +18,6 @@ import './components/file-editor/aos-file-tree-sidebar.js';
 import './components/file-editor/aos-file-editor-panel.js';
 import './components/document-preview/aos-document-preview-panel.js';
 import type { AosFileEditorPanel } from './components/file-editor/aos-file-editor-panel.js';
-import './components/git/aos-git-status-bar.js';
 import './components/git/aos-git-commit-dialog.js';
 import './components/git/aos-git-diff-viewer.js';
 import './components/git/aos-git-pull-strategy-dialog.js';
@@ -41,16 +27,23 @@ import {
   removeNotification,
   pruneNotifications,
   ringsForAgentEvent,
+  buildBellRows,
   type AgentNotification,
+  type BellRow,
 } from './components/terminal/agent-notifications.js';
 import type { CloudTerminalAgentStatus } from '../../src/shared/types/cloud-terminal.protocol.js';
 import { playAgentDoneChime } from './components/terminal/notification-sound.js';
 import type { ProjectSelectedDetail } from './components/aos-project-add-modal.js';
 import type { RecentlyOpenedEntry } from './services/recently-opened.service.js';
 import type { WorkspaceState } from '../../src/shared/types/workspace.protocol.js';
+import type { VorhabenState } from '../../src/shared/types/vorhaben.protocol.js';
 import { assignAutoNames, isOwnCreateRequest, toRestoredTab, type BackendSessionLike, type WorkflowMetadataLike } from './components/terminal/session-naming.js';
-import type { GitStatusData, GitBranchEntry, GitPrInfo } from '../../src/shared/types/git.protocol.js';
-import type { GlobalGateState } from '../../src/shared/types/concurrency.protocol.js';
+import { glockeZiel } from './components/rahmen/glocke-ziel.js';
+import type { GlockeOpenDetail, GlockeSession } from './components/rahmen/aos-glocke.js';
+import { gitState, type GitState, type PullStrategy } from './services/git-state.service.js';
+import { vorhabenService } from './services/vorhaben.service.js';
+import { MobileBreakpointController } from './controllers/mobile-breakpoint-controller.js';
+import type { AosGettingStartedView } from './views/aos-getting-started-view.js';
 
 const AGENT_STATUS_VALUES: ReadonlySet<string> = new Set(['unknown', 'idle', 'working', 'blocked', 'error', 'done']);
 
@@ -81,12 +74,6 @@ import {
 import type { ViewType } from './types/route.types.js';
 
 type Route = ViewType;
-
-interface NavItem {
-  route: Route;
-  label: string;
-  icon: string;
-}
 
 @customElement('aos-app')
 export class AosApp extends LitElement {
@@ -154,108 +141,37 @@ export class AosApp extends LitElement {
   /** Remember last active terminal session per project */
   private lastActiveSessionByProject = new Map<string, string>();
 
-  @state()
-  private gitStatus: GitStatusData | null = null;
-
-  @state()
-  private gitLoading = false;
-
-  @state()
-  private gitBranches: GitBranchEntry[] = [];
-
-  @state()
-  private showCommitDialog = false;
-
-  @state()
-  private commitError = '';
-
-  @state()
-  private committing = false;
-
-  @state()
-  private isGitOperationRunning = false;
-
-  @state()
-  private gitPrInfo: GitPrInfo[] = [];
-
-  @state()
-  private pendingAutoPush = false;
-
-  @state()
-  private commitAndPushPhase: 'idle' | 'committing' | 'pushing' = 'idle';
-
-  @state()
-  private showPullStrategyDialog = false;
-
-  @state()
-  private pullStrategyRetryPush = false;
-
   /** Floating notepad (Cmd/Ctrl+Shift+E); the panel owns the shortcut and reports via events. */
   @state()
   private showNotepad = false;
 
-  // Project validation state (WSM-003: renamed from wizard* to project*)
-  @state()
-  private projectHasSpecwright = false;
-
-  @state()
-  private projectHasProductBrief = false;
-
-  @state()
-  private projectNeedsMigration = false;
-
-  @state()
-  private projectHasIncompleteInstallation = false;
-
-  @state()
-  private projectHasClaudeCli = true;
-
-  @state()
-  private projectHasMcpKanban = true;
-
-  /** True while project validation is pending (prevents flash of wrong state) */
-  @state()
-  private projectValidationPending = true;
-
-  // Framework update state
-  @state()
-  private frameworkUpdateAvailable = false;
-
-  @state()
-  private frameworkLatestVersion = '';
-
-  @state()
-  private frameworkInstalledVersion = '';
-
-  @state()
-  private frameworkUpdateChangelog = '';
-
-  @state()
-  private claudeConcurrency: GlobalGateState | null = null;
-
   private toastRef: AosToastNotification | null = null;
+
+  /**
+   * INT-2026-010: the frame is a header line (`aos-kopfzeile`) with the bell.
+   * `vorhabenState` is the lookup table for the bell jump (`glockeZiel`),
+   * `git` feeds the two git dialogs that stay overlays here (the bar itself
+   * lives on the project page, state in `gitState`), the breakpoint drives the
+   * phone-only terminal symbol and the phone branch of the terminal jump.
+   */
+  @state()
+  private vorhabenState: VorhabenState | null = null;
+
+  @state()
+  private git: GitState = gitState.state;
+
+  private readonly breakpoint = new MobileBreakpointController(this);
+  private unsubscribeVorhaben: (() => void) | null = null;
+  private unsubscribeGit: (() => void) | null = null;
+  private unsubscribeGeneratedMessage: (() => void) | null = null;
 
   private projectContextProvider = new ContextProvider(this, {
     context: projectContext,
     initialValue: this.getContextValue(),
   });
 
-  private navItems: NavItem[] = [
-    { route: 'vorhaben', label: 'Vorhaben', icon: 'vorhaben' },
-    { route: 'projekt', label: 'Projekt', icon: 'projekt' },
-    { route: 'team', label: 'Team', icon: 'team' },
-    { route: 'getting-started', label: 'Getting Started', icon: 'getting-started' },
-    { route: 'chat', label: 'Chat', icon: 'chat' },
-    { route: 'prompt-templates', label: 'Prompt Templates', icon: 'prompt-templates' },
-    { route: 'settings', label: 'Settings', icon: 'settings' },
-  ];
-
   private boundRouteChangeHandler = (route: import('./types/route.types.js').ParsedRoute) => {
     this.currentRoute = route.view;
-    // DPP-004: Close document preview panel when navigating away from chat/workflow
-    if (route.view !== 'chat' && this.isDocumentPreviewOpen) {
-      this._handleDocumentPreviewClose();
-    }
   };
   private boundReconnectingHandler: MessageHandler = (msg) => {
     this.isReconnecting = true;
@@ -279,174 +195,6 @@ export class AosApp extends LitElement {
   };
   private boundCloudTerminalListHandler: MessageHandler = (msg) => {
     this.handleCloudTerminalListResponse(msg);
-  };
-  private boundGitStatusHandler: MessageHandler = (msg) => {
-    this.gitStatus = msg.data as GitStatusData;
-    this.gitLoading = false;
-  };
-  private boundGitErrorHandler: MessageHandler = (msg) => {
-    this.gitLoading = false;
-    const operation = msg.operation as string | undefined;
-    const code = msg.code as string | undefined;
-    const rawMessage = msg.message as string;
-
-    if (operation === 'commit') {
-      this.committing = false;
-      this.commitError = rawMessage || 'Commit fehlgeschlagen';
-      return;
-    }
-
-    if (operation === 'generate-commit-message') {
-      this.generatingCommitMessage = false;
-      this.showToast(rawMessage || 'Commit Message konnte nicht generiert werden', 'error');
-      return;
-    }
-
-    // Push rejected: open pull strategy dialog with auto-retry push
-    if (code === 'PUSH_REJECTED') {
-      this.isGitOperationRunning = false;
-      if (this.pendingAutoPush) {
-        this.pendingAutoPush = false;
-        this.commitAndPushPhase = 'idle';
-        this.showCommitDialog = false;
-        this.commitError = '';
-      }
-      this.pullStrategyRetryPush = true;
-      this.showPullStrategyDialog = true;
-      return;
-    }
-
-    // Divergent branches: open pull strategy dialog without auto-retry push
-    if (code === 'DIVERGENT_BRANCHES') {
-      this.isGitOperationRunning = false;
-      this.pullStrategyRetryPush = false;
-      this.showPullStrategyDialog = true;
-      return;
-    }
-
-    if (operation === 'push' && this.pendingAutoPush) {
-      this.pendingAutoPush = false;
-      this.commitAndPushPhase = 'idle';
-      this.isGitOperationRunning = false;
-      this.showCommitDialog = false;
-      this.commitError = '';
-      this.showToast('Commit erfolgreich, Push fehlgeschlagen', 'warning');
-      this._handleRefreshGit();
-      return;
-    }
-
-    if (operation === 'pull' || operation === 'push') {
-      this.isGitOperationRunning = false;
-    }
-
-    const friendlyMessage = this._mapGitErrorMessage(code, rawMessage, operation);
-    this.showToast(friendlyMessage, 'error');
-  };
-  private boundGitBranchesHandler: MessageHandler = (msg) => {
-    this.gitBranches = (msg.branches as GitBranchEntry[]) || [];
-  };
-  private boundGitCheckoutHandler: MessageHandler = (msg) => {
-    const data = msg.data as { success: boolean; branch: string } | undefined;
-    if (data?.success) {
-      this.showToast(`Branch gewechselt zu ${data.branch}`, 'success');
-      this._loadGitStatus();
-      gateway.requestGitBranches();
-    }
-  };
-  private boundGitCommitHandler: MessageHandler = (msg) => {
-    const data = msg.data as { hash: string; filesChanged: number } | undefined;
-    this.committing = false;
-    if (data) {
-      if (this.pendingAutoPush) {
-        this.commitAndPushPhase = 'pushing';
-        this.isGitOperationRunning = true;
-        gateway.requestGitPush();
-        return;
-      }
-      this.showCommitDialog = false;
-      this.commitError = '';
-      this.showToast(`Commit erfolgreich (${data.filesChanged} Datei(en))`, 'success');
-      this._handleRefreshGit();
-    }
-  };
-  private boundGitPullHandler: MessageHandler = (msg) => {
-    this.isGitOperationRunning = false;
-    const data = msg.data as { success: boolean; summary: string; commitsReceived: number; hasConflicts: boolean } | undefined;
-    if (data) {
-      // Auto-push after successful pull when pull was triggered from push rejection
-      if (this.pullStrategyRetryPush) {
-        this.pullStrategyRetryPush = false;
-        this.showToast('Pull erfolgreich, starte Push...', 'info');
-        this.isGitOperationRunning = true;
-        gateway.requestGitPush();
-        return;
-      }
-
-      if (data.commitsReceived === 0) {
-        this.showToast('Bereits aktuell', 'info');
-      } else {
-        this.showToast(`Pull erfolgreich: ${data.commitsReceived} Datei(en) aktualisiert`, 'success');
-      }
-      this._handleRefreshGit();
-    }
-  };
-  private boundGitPushHandler: MessageHandler = (msg) => {
-    this.isGitOperationRunning = false;
-    const data = msg.data as { success: boolean; summary: string; commitsPushed: number } | undefined;
-    if (data) {
-      if (this.pendingAutoPush) {
-        this.pendingAutoPush = false;
-        this.commitAndPushPhase = 'idle';
-        this.showCommitDialog = false;
-        this.commitError = '';
-        this.showToast('Commit & Push erfolgreich', 'success');
-        this._handleRefreshGit();
-        return;
-      }
-      if (data.commitsPushed === 0) {
-        this.showToast('Nichts zum Pushen - alles aktuell', 'info');
-      } else {
-        this.showToast(`Push erfolgreich: ${data.commitsPushed} Commits`, 'success');
-      }
-      this._handleRefreshGit();
-    }
-  };
-  private boundGitRevertHandler: MessageHandler = (msg) => {
-    const data = msg.data as { revertedFiles: string[]; failedFiles: string[] } | undefined;
-    if (data) {
-      const count = data.revertedFiles.length;
-      if (data.failedFiles.length > 0) {
-        this.showToast(`${count} Datei(en) revertiert, ${data.failedFiles.length} fehlgeschlagen`, 'warning');
-      } else {
-        this.showToast(`${count} Datei(en) revertiert`, 'success');
-      }
-      this._handleRefreshGit();
-    }
-  };
-  private boundGitDeleteUntrackedHandler: MessageHandler = (msg) => {
-    const data = msg.data as { file: string; success: boolean } | undefined;
-    if (data) {
-      if (data.success) {
-        this.showToast(`Datei geloescht: ${data.file}`, 'success');
-      } else {
-        this.showToast(`Loeschen fehlgeschlagen: ${data.file}`, 'error');
-      }
-      this._handleRefreshGit();
-    }
-  };
-  private boundGitPrInfoHandler: MessageHandler = (msg) => {
-    this.gitPrInfo = (msg.data as GitPrInfo[]) ?? [];
-  };
-  private boundGitGenerateCommitMessageHandler: MessageHandler = (msg) => {
-    this.generatingCommitMessage = false;
-    const data = msg.data as { message: string } | undefined;
-    if (data?.message) {
-      const dialog = this.querySelector('aos-git-commit-dialog') as import('./components/git/aos-git-commit-dialog.js').AosGitCommitDialog | null;
-      dialog?.setCommitMessage(data.message);
-    }
-  };
-  private boundClaudeConcurrencyHandler: MessageHandler = (msg) => {
-    this.claudeConcurrency = msg.state as GlobalGateState;
   };
   // DPP-004: Document Preview handlers
   private boundDocumentPreviewOpenHandler: MessageHandler = (msg) => {
@@ -488,19 +236,83 @@ export class AosApp extends LitElement {
   private _handleOpenTerminalSession = (e: CustomEvent<{ sessionId: string }>): void => {
     const { sessionId } = e.detail;
     if (!sessionId) return;
-    const match = this.projectTerminalSessions.find(s => s.terminalSessionId === sessionId);
+    this._openSessionInTerminal(sessionId);
+  };
+
+  /**
+   * Bring a backend session into the terminal. Mac: alone on the screen
+   * (INT-2026-005 solo, INT-2026-007 FA-21/FA-22). Phone (INT-2026-010, FA-20,
+   * review F11): no panes — make it the active session (switching the project
+   * first when it belongs to another one) and open the sidebar, whose phone
+   * layout renders the session tabs with the active one.
+   */
+  private _openSessionInTerminal(terminalSessionId: string): void {
+    const match = this.terminalSessions.find(s => s.terminalSessionId === terminalSessionId);
     if (!match) {
       this.showToast('Terminal-Session nicht mehr aktiv', 'warning');
       return;
     }
-    // INT-2026-007 (FA-21/FA-22): the jump from the page shows the session alone (INT-2026-005 solo).
-    this._showSessionSolo(match.id);
+    if (this.breakpoint.isMobile) {
+      const project = this.openProjects.find(p => p.path === match.projectPath);
+      if (project && project.id !== this.activeProjectId) {
+        this.lastActiveSessionByProject.set(project.id, match.id);
+        this.switchToProject(project.id);
+      } else {
+        this.activeTerminalSessionId = match.id;
+      }
+      this.isTerminalSidebarOpen = true;
+    } else {
+      this._showSessionSolo(match.id);
+    }
     if (match.needsInput) {
       this.terminalSessions = this.terminalSessions.map(s =>
         s.id === match.id ? { ...s, needsInput: false } : s
       );
     }
-  };
+  }
+
+  /**
+   * Bell entry tapped (INT-2026-010, FA-06): the session's Vorhaben, the
+   * „Neue Absicht" page of a pending `/intent` session, else the terminal.
+   * The entry is dropped here — the page is where Michael reads the answer.
+   */
+  private _handleGlockeOpen(e: CustomEvent<GlockeOpenDetail>): void {
+    const { sessionId, terminalSessionId } = e.detail;
+    const ziel = terminalSessionId ? glockeZiel(terminalSessionId, this.vorhabenState) : { route: 'terminal' as const };
+    if (ziel.route === 'vorhaben') {
+      this.agentNotifications = removeNotification(this.agentNotifications, sessionId);
+      routerService.navigate('vorhaben', [encodeURIComponent(ziel.segments[0]), ziel.segments[1]]);
+      return;
+    }
+    if (ziel.route === 'neu') {
+      this.agentNotifications = removeNotification(this.agentNotifications, sessionId);
+      routerService.navigate('neu', [encodeURIComponent(ziel.segments[0])]);
+      return;
+    }
+    if (terminalSessionId) this._openSessionInTerminal(terminalSessionId);
+    else {
+      this.activeTerminalSessionId = sessionId;
+      this.isTerminalSidebarOpen = true;
+    }
+  }
+
+  /**
+   * The session the user is looking at: the active tab of an OPEN sidebar.
+   * With the sidebar closed nothing is visible, so every session may ring and
+   * be listed — including the one left active behind the closed sidebar
+   * (INT-2026-010 review E2; before, that session stayed silent).
+   */
+  private get sichtbareSessionId(): string | null {
+    return this.isTerminalSidebarOpen ? this.activeTerminalSessionId : null;
+  }
+
+  private get glockeRows(): BellRow[] {
+    return buildBellRows(this.agentNotifications, this.terminalSessions, this.sichtbareSessionId);
+  }
+
+  private get glockeSessions(): GlockeSession[] {
+    return this.terminalSessions.map(s => ({ id: s.id, name: s.name, projectPath: s.projectPath }));
+  }
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -522,20 +334,18 @@ export class AosApp extends LitElement {
     gateway.on('workspace:state', this.boundWorkspaceStateHandler);
     gateway.on('workspace:ack', this.boundWorkspaceAckHandler);
     gateway.on('workspace:error', this.boundWorkspaceErrorHandler);
-    gateway.on('git:status:response', this.boundGitStatusHandler);
-    gateway.on('git:branches:response', this.boundGitBranchesHandler);
-    gateway.on('git:checkout:response', this.boundGitCheckoutHandler);
-    gateway.on('git:commit:response', this.boundGitCommitHandler);
-    gateway.on('git:pull:response', this.boundGitPullHandler);
-    gateway.on('git:push:response', this.boundGitPushHandler);
-    gateway.on('git:revert:response', this.boundGitRevertHandler);
-    gateway.on('git:delete-untracked:response', this.boundGitDeleteUntrackedHandler);
-    gateway.on('git:pr-info:response', this.boundGitPrInfoHandler);
-    gateway.on('git:generate-commit-message:response', this.boundGitGenerateCommitMessageHandler);
-    gateway.on('git:error', this.boundGitErrorHandler);
-    // CCB: Global Claude concurrency state
-    gateway.on('claude.concurrency.state', this.boundClaudeConcurrencyHandler);
     document.addEventListener('keydown', this.boundKeydownHandler);
+    // INT-2026-010: bell jump table, git dialogs (state lives in the services).
+    this.unsubscribeVorhaben = vorhabenService.subscribe((st) => {
+      this.vorhabenState = st;
+    });
+    this.unsubscribeGit = gitState.subscribe((g) => {
+      this.git = g;
+    });
+    this.unsubscribeGeneratedMessage = gitState.onGeneratedMessage((message) => {
+      const dialog = this.querySelector('aos-git-commit-dialog') as import('./components/git/aos-git-commit-dialog.js').AosGitCommitDialog | null;
+      dialog?.setCommitMessage(message);
+    });
 
     // Listen for open-terminal-session events (Vorhaben page)
     document.addEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
@@ -570,20 +380,11 @@ export class AosApp extends LitElement {
     gateway.off('workspace:state', this.boundWorkspaceStateHandler);
     gateway.off('workspace:ack', this.boundWorkspaceAckHandler);
     gateway.off('workspace:error', this.boundWorkspaceErrorHandler);
-    gateway.off('git:status:response', this.boundGitStatusHandler);
-    gateway.off('git:branches:response', this.boundGitBranchesHandler);
-    gateway.off('git:checkout:response', this.boundGitCheckoutHandler);
-    gateway.off('git:commit:response', this.boundGitCommitHandler);
-    gateway.off('git:pull:response', this.boundGitPullHandler);
-    gateway.off('git:push:response', this.boundGitPushHandler);
-    gateway.off('git:revert:response', this.boundGitRevertHandler);
-    gateway.off('git:delete-untracked:response', this.boundGitDeleteUntrackedHandler);
-    gateway.off('git:pr-info:response', this.boundGitPrInfoHandler);
-    gateway.off('git:generate-commit-message:response', this.boundGitGenerateCommitMessageHandler);
-    gateway.off('git:error', this.boundGitErrorHandler);
-    // CCB: Global Claude concurrency state
-    gateway.off('claude.concurrency.state', this.boundClaudeConcurrencyHandler);
     document.removeEventListener('keydown', this.boundKeydownHandler);
+    this.unsubscribeVorhaben?.();
+    this.unsubscribeGit?.();
+    this.unsubscribeGeneratedMessage?.();
+    this.unsubscribeVorhaben = this.unsubscribeGit = this.unsubscribeGeneratedMessage = null;
     document.removeEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
   }
 
@@ -607,34 +408,12 @@ export class AosApp extends LitElement {
     this.toastRef?.show(message, type);
   }
 
-  private renderNavIcon(icon: string) {
-    const icons: Record<string, unknown> = {
-      vorhaben: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>`,
-      projekt: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`,
-      chat: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
-      'getting-started': html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>`,
-      team: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-      settings: html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
-      'prompt-templates': html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>`,
-    };
-    return icons[icon] || icon;
-  }
-
-  private navigateTo(route: Route): void {
-    routerService.navigate(route);
-  }
-
   private getPageTitle(): string {
     const titles: Record<Route, string> = {
       vorhaben: 'Vorhaben',
+      neu: 'Neue Absicht',
       projekt: 'Projekt',
-      team: 'Team',
-      'getting-started': 'Getting Started',
-      chat: 'Chat',
-      settings: 'Settings',
-      call: 'Voice Call',
-      'prompt-templates': 'Prompt Templates',
-      'not-found': 'Page Not Found',
+      'not-found': 'Seite nicht gefunden',
     };
     return titles[this.currentRoute];
   }
@@ -672,8 +451,8 @@ export class AosApp extends LitElement {
     // DPP-004: Reset document preview panel on project switch
     this._handleDocumentPreviewClose();
 
-    // Load git status for new project
-    this._loadGitStatus();
+    // Load git status for new project (state lives in gitState, INT-2026-010)
+    gitState.loadStatus(true);
 
     // Reset file tree to show new project's files
     const sidebar = this.querySelector('aos-file-tree-sidebar') as { reset(): void } | null;
@@ -716,6 +495,7 @@ export class AosApp extends LitElement {
       } else {
         this.activeProjectId = null;
       }
+      gitState.loadStatus(this.activeProjectId !== null);
     }
 
     this.updateContextProvider();
@@ -830,7 +610,8 @@ export class AosApp extends LitElement {
    * 2. the bell: a `stop` becomes a notification entry, and a session going
    *    `blocked` rings the chime — the row itself is derived from the status by
    *    buildBellRows(), so it needs no entry of its own. Neither happens while
-   *    the user is looking at that very session (same rule as needsInput).
+   *    the user is looking at that very session — active tab of an OPEN
+   *    sidebar (INT-2026-010); with the sidebar closed every session reports.
    * 3. The chime decision lives in ringsForAgentEvent() (one ring per message
    *    at most; plan-review events ring even on an already blocked session).
    * Sessions of projects that are not open are unknown here and ignored.
@@ -842,7 +623,8 @@ export class AosApp extends LitElement {
     if (!match) return;
 
     const event = typeof msg.event === 'string' ? msg.event : '';
-    const isActive = match.id === this.activeTerminalSessionId;
+    // "looking at" = active tab of an open sidebar (INT-2026-010, review E2).
+    const isActive = match.id === this.sichtbareSessionId;
     let ring = false;
 
     const status = msg.status;
@@ -899,7 +681,9 @@ export class AosApp extends LitElement {
 
   override willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
-    if (changed.has('activeTerminalSessionId')) {
+    // An entry is cleared when its session becomes VISIBLE: active tab while the
+    // sidebar is open, or the sidebar opening on the active tab (INT-2026-010).
+    if ((changed.has('activeTerminalSessionId') || changed.has('isTerminalSidebarOpen')) && this.isTerminalSidebarOpen) {
       this.agentNotifications = removeNotification(this.agentNotifications, this.activeTerminalSessionId);
     }
     if (changed.has('terminalSessions')) {
@@ -1062,53 +846,33 @@ export class AosApp extends LitElement {
   }
 
   /**
-   * WSM-003: Validate project and navigate to getting-started for newly added projects.
+   * WSM-003: newly added project → project page when Specwright is missing,
+   * incomplete, needs migration, or CLI/MCP/product brief are absent. The
+   * Getting-Started section there fetches the details itself (INT-2026-010).
    */
   private async _validateAndNavigate(path: string): Promise<void> {
-    this.projectValidationPending = true;
     try {
       const validateResponse = await fetch('/api/project/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path }),
       });
-      if (validateResponse.ok) {
-        const data = await validateResponse.json() as {
-          valid: boolean;
-          hasSpecwright?: boolean;
-          hasProductBrief?: boolean;
-          needsMigration?: boolean;
-          hasIncompleteInstallation?: boolean;
-          hasClaudeCli?: boolean;
-          hasMcpKanban?: boolean;
-        };
-        const hasSpecwright = data.hasSpecwright ?? false;
-        const hasProductBrief = data.hasProductBrief ?? false;
-        const needsMigration = data.needsMigration ?? false;
-        const hasIncompleteInstallation = data.hasIncompleteInstallation ?? false;
-        const hasClaudeCli = data.hasClaudeCli ?? true;
-        const hasMcpKanban = data.hasMcpKanban ?? true;
-
-        this.projectHasSpecwright = hasSpecwright;
-        this.projectHasProductBrief = hasProductBrief;
-        this.projectNeedsMigration = needsMigration;
-        this.projectHasIncompleteInstallation = hasIncompleteInstallation;
-        this.projectHasClaudeCli = hasClaudeCli;
-        this.projectHasMcpKanban = hasMcpKanban;
-
-        // Navigate to getting-started if specwright is not installed, incomplete, needs migration, CLI missing, MCP kanban missing, OR product brief is missing
-        if (!hasSpecwright || hasIncompleteInstallation || !hasProductBrief || needsMigration || !hasClaudeCli || !hasMcpKanban) {
-          routerService.navigate('getting-started');
-        }
-      }
+      if (!validateResponse.ok) return;
+      const data = await validateResponse.json() as {
+        valid: boolean;
+        hasSpecwright?: boolean;
+        hasProductBrief?: boolean;
+        needsMigration?: boolean;
+        hasIncompleteInstallation?: boolean;
+        hasClaudeCli?: boolean;
+        hasMcpKanban?: boolean;
+      };
+      const ok = (data.hasSpecwright ?? false) && !(data.hasIncompleteInstallation ?? false) && (data.hasProductBrief ?? false)
+        && !(data.needsMigration ?? false) && (data.hasClaudeCli ?? true) && (data.hasMcpKanban ?? true);
+      if (!ok) routerService.navigate('projekt');
     } catch {
       // Validation failed, skip navigation
-    } finally {
-      this.projectValidationPending = false;
     }
-
-    // Check for framework updates (non-blocking)
-    this.checkFrameworkVersion(path);
   }
 
   // WSM-002: Handle start-setup-terminal event from Getting Started view
@@ -1242,9 +1006,11 @@ export class AosApp extends LitElement {
         : s
     );
 
-    // Re-validate project only on success (exit code 0)
+    // Re-validate project only on success (exit code 0): the Getting-Started
+    // section reloads itself when mounted (INT-2026-010).
     if (exitCode === 0) {
-      this._validateProjectState(setupSession.projectPath);
+      const view = this.querySelector('aos-getting-started-view') as AosGettingStartedView | null;
+      void view?.load();
     }
   }
 
@@ -1264,6 +1030,7 @@ export class AosApp extends LitElement {
       switchProject: (projectId: string) => this.switchToProject(projectId),
       addProject: (project: Project) => this.addNewProject(project),
       closeProject: (projectId: string) => this.closeProjectById(projectId),
+      recentProjects: this.recentProjects,
     };
   }
 
@@ -1395,6 +1162,7 @@ export class AosApp extends LitElement {
       name: r.name,
       lastOpened: Date.parse(r.lastOpened) || Date.now(),
     }));
+    if (!activeChanged) this.updateContextProvider();
 
     const names = state.sessionNames && typeof state.sessionNames === 'object' ? state.sessionNames : {};
     this.sessionNames = names;
@@ -1425,12 +1193,7 @@ export class AosApp extends LitElement {
       this._handleDocumentPreviewClose();
     }
 
-    if (firstState) {
-      this.migrateLocalWorkspaceOnce(state);
-      // Validate the active project on first load (WSM-003), as the old restore did.
-      const active = projects.find(p => p.id === this.activeProjectId);
-      if (active) this._validateProjectState(active.path);
-    }
+    if (firstState) this.migrateLocalWorkspaceOnce(state);
   }
 
   /**
@@ -1451,7 +1214,7 @@ export class AosApp extends LitElement {
     this.updateContextProvider();
     this.persistActiveProject();
     this._handleDocumentPreviewClose();
-    this._loadGitStatus();
+    gitState.loadStatus(true);
     const sidebar = this.querySelector('aos-file-tree-sidebar') as { reset(): void } | null;
     if (sidebar) sidebar.reset();
     const projectSessions = this.terminalSessions.filter(s => s.projectPath === project.path);
@@ -1565,78 +1328,8 @@ export class AosApp extends LitElement {
     this.restoreTerminalSessions();
 
     // Load git status for active project
-    this._loadGitStatus();
-
-    // WSM-003: Validate active project state after restore
-    const activeProject = this.openProjects.find(
-      (p) => p.id === this.activeProjectId
-    );
-    if (activeProject) {
-      this._validateProjectState(activeProject.path);
-    }
+    gitState.loadStatus(this.activeProjectId !== null);
     // Project restoration complete
-  }
-
-  /**
-   * WSM-003: Validate a project and update project state properties.
-   * Used both during initial project selection and after restore.
-   */
-  private async _validateProjectState(path: string): Promise<void> {
-    this.projectValidationPending = true;
-    try {
-      const validateResponse = await fetch('/api/project/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path }),
-      });
-      if (validateResponse.ok) {
-        const data = await validateResponse.json() as {
-          valid: boolean;
-          hasSpecwright?: boolean;
-          hasProductBrief?: boolean;
-          needsMigration?: boolean;
-          hasIncompleteInstallation?: boolean;
-          hasClaudeCli?: boolean;
-          hasMcpKanban?: boolean;
-        };
-        this.projectHasSpecwright = data.hasSpecwright ?? false;
-        this.projectHasProductBrief = data.hasProductBrief ?? false;
-        this.projectNeedsMigration = data.needsMigration ?? false;
-        this.projectHasIncompleteInstallation = data.hasIncompleteInstallation ?? false;
-        this.projectHasClaudeCli = data.hasClaudeCli ?? true;
-        this.projectHasMcpKanban = data.hasMcpKanban ?? true;
-      }
-    } catch {
-      // Validation failed, keep defaults
-    } finally {
-      this.projectValidationPending = false;
-    }
-
-    // Check for framework updates (non-blocking)
-    this.checkFrameworkVersion(path);
-  }
-
-  /**
-   * Check if a framework update is available.
-   * Called after project validation to show update banner.
-   */
-  private async checkFrameworkVersion(projectPath: string): Promise<void> {
-    try {
-      const response = await fetch(`/api/version?projectPath=${encodeURIComponent(projectPath)}`);
-      if (!response.ok) return;
-      const data = await response.json() as {
-        installedVersion: string | null;
-        latestVersion: string | null;
-        updateAvailable: boolean;
-        changelog: string | null;
-      };
-      this.frameworkUpdateAvailable = data.updateAvailable;
-      this.frameworkLatestVersion = data.latestVersion ?? '';
-      this.frameworkInstalledVersion = data.installedVersion ?? '';
-      this.frameworkUpdateChangelog = data.changelog ?? '';
-    } catch {
-      // Non-critical, silently ignore
-    }
   }
 
   /**
@@ -1741,93 +1434,6 @@ export class AosApp extends LitElement {
     });
   }
 
-  // --- Git Event Handlers ---
-
-  private _handleRefreshGit(): void {
-    this.gitLoading = true;
-    gateway.requestGitStatus();
-    gateway.requestGitPrInfo();
-  }
-
-  private _handlePullGit(e?: CustomEvent<{ rebase?: boolean; strategy?: 'merge' | 'rebase' | 'ff-only' }>): void {
-    const strategy = e?.detail?.strategy;
-    this.isGitOperationRunning = true;
-    gateway.requestGitPull(strategy);
-  }
-
-  private _handlePushGit(): void {
-    this.isGitOperationRunning = true;
-    gateway.requestGitPush();
-  }
-
-  private _handleCheckoutBranch(e: CustomEvent<{ branch: string }>): void {
-    const { branch } = e.detail;
-    this.gitLoading = true;
-    gateway.sendGitCheckout(branch);
-  }
-
-  private _handleOpenCommitDialog(e?: CustomEvent<{ autoPush?: boolean }>): void {
-    this.commitError = '';
-    this.pendingAutoPush = e?.detail?.autoPush === true;
-    this.commitAndPushPhase = this.pendingAutoPush ? 'committing' : 'idle';
-    this.showCommitDialog = true;
-    gateway.requestGitStatus();
-  }
-
-  private _handleCommitDialogClose(): void {
-    if (this.commitAndPushPhase === 'pushing') return;
-    this.showCommitDialog = false;
-    this.commitError = '';
-    this.pendingAutoPush = false;
-    this.commitAndPushPhase = 'idle';
-  }
-
-  private _handleGitCommit(e: CustomEvent<{ files: string[]; message: string }>): void {
-    const { files, message } = e.detail;
-    this.committing = true;
-    this.commitError = '';
-    if (this.pendingAutoPush) {
-      this.commitAndPushPhase = 'committing';
-    }
-    gateway.sendGitCommit(files, message);
-  }
-
-  @state() private generatingCommitMessage = false;
-
-  private _handleGenerateCommitMessage(e: CustomEvent<{ files: string[] }>): void {
-    this.generatingCommitMessage = true;
-    gateway.requestGenerateCommitMessage(e.detail.files);
-  }
-
-  private _handleRevertFile(e: CustomEvent<{ file: string }>): void {
-    gateway.sendGitRevert([e.detail.file]);
-  }
-
-  private _handleRevertAll(): void {
-    const revertableFiles = (this.gitStatus?.files ?? [])
-      .filter(f => f.status !== '?')
-      .map(f => f.path);
-    if (revertableFiles.length > 0) {
-      gateway.sendGitRevert(revertableFiles);
-    }
-  }
-
-  private _handleDeleteUntracked(e: CustomEvent<{ file: string }>): void {
-    gateway.sendGitDeleteUntracked(e.detail.file);
-  }
-
-  private _handlePullStrategySelect(e: CustomEvent<{ strategy: 'merge' | 'rebase' | 'ff-only' }>): void {
-    const { strategy } = e.detail;
-    this.showPullStrategyDialog = false;
-    this.isGitOperationRunning = true;
-    gateway.requestGitPull(strategy);
-  }
-
-  private _handlePullStrategyCancel(): void {
-    this.showPullStrategyDialog = false;
-    this.pullStrategyRetryPush = false;
-  }
-
   private _handleShowToast(e: CustomEvent<{ message: string; type: 'success' | 'error' | 'info' | 'warning' }>): void {
     this.showToast(e.detail.message, e.detail.type);
   }
@@ -1927,192 +1533,46 @@ export class AosApp extends LitElement {
     return { providerId, modelId: model };
   }
 
-  private _mapGitErrorMessage(code: string | undefined, rawMessage: string, operation: string | undefined): string {
-    switch (code) {
-      case 'MERGE_CONFLICT':
-        return 'Merge-Konflikte erkannt. Bitte Konflikte ausserhalb der Anwendung loesen.';
-      case 'NETWORK_ERROR':
-        return 'Remote nicht erreichbar. Bitte Netzwerkverbindung pruefen.';
-      case 'NOT_A_REPO':
-        return 'Kein Git-Repository in diesem Verzeichnis.';
-      case 'NO_PROJECT':
-        return 'Kein Projekt ausgewaehlt.';
-      case 'TIMEOUT':
-        return 'Git-Operation abgelaufen. Bitte erneut versuchen.';
-      case 'DIVERGENT_BRANCHES':
-        return 'Branches sind divergiert. Bitte Pull-Strategie waehlen.';
-      case 'PUSH_REJECTED':
-        return 'Push abgelehnt. Remote enthaelt neue Commits.';
-      default:
-        return `Git ${operation || 'Fehler'}: ${rawMessage}`;
-    }
-  }
-
-  /**
-   * Load git status for the current active project.
-   * Called on project switch and initial load.
-   */
-  private _loadGitStatus(): void {
-    if (!this.activeProjectId) {
-      this.gitStatus = null;
-      this.gitBranches = [];
-      this.gitPrInfo = [];
-      return;
-    }
-    this.gitLoading = true;
-    gateway.requestGitStatus();
-    gateway.requestGitBranches();
-    gateway.requestGitPrInfo();
-  }
-
   // --- Rendering ---
 
   private renderView() {
     switch (this.currentRoute) {
       case 'vorhaben':
+      case 'neu':
       case 'projekt':
         return html`<aos-vorhaben-view
           .route=${this.currentRoute}
           @show-toast=${this._handleShowToast}
-          @terminal-pill-tap=${this._handleTerminalToggle}
           @add-project=${this.handleAddProject}
-        ></aos-vorhaben-view>`;
-      case 'getting-started':
-        return html`<aos-getting-started-view
-          .hasProductBrief=${this.projectHasProductBrief}
-          .hasSpecwright=${this.projectHasSpecwright}
-          .needsMigration=${this.projectNeedsMigration}
-          .hasIncompleteInstallation=${this.projectHasIncompleteInstallation}
-          .hasClaudeCli=${this.projectHasClaudeCli}
-          .hasMcpKanban=${this.projectHasMcpKanban}
-          .loading=${this.projectValidationPending}
-          .updateAvailable=${this.frameworkUpdateAvailable}
-          .latestVersion=${this.frameworkLatestVersion}
-          .installedVersion=${this.frameworkInstalledVersion}
-          .updateChangelog=${this.frameworkUpdateChangelog}
+          @file-tree-toggle=${this._handleFileTreeToggle}
           @workflow-start-interactive=${this.handleWorkflowStart}
           @start-setup-terminal=${this._handleStartSetupTerminal}
-        ></aos-getting-started-view>`;
-      case 'team':
-        return html`<aos-team-view
-          @workflow-start-interactive=${this.handleWorkflowStart}
-        ></aos-team-view>`;
-      case 'chat':
-        return html`<aos-chat-view></aos-chat-view>`;
-      case 'settings':
-        return html`<aos-settings-view></aos-settings-view>`;
-      case 'prompt-templates':
-        return html`<aos-prompt-templates-view></aos-prompt-templates-view>`;
-      case 'call':
-        return html`<aos-voice-call-view></aos-voice-call-view>`;
+        ></aos-vorhaben-view>`;
       default:
         return html`<aos-not-found-view></aos-not-found-view>`;
     }
   }
 
+  /**
+   * The frame (INT-2026-010, FA-07): one header line, the view, the overlays.
+   * No sidebar, no project tabs, no git bar — their content lives on the
+   * project page; the bell is the only thing that is always there.
+   */
   override render() {
+    const g = this.git;
     return html`
-      <aside class="sidebar">
-        <div class="logo">
-          <img src="/assets/specwright-logo-web.png" alt="Specwright" class="logo-img" />
-        </div>
-        <nav>
-          <ul class="nav-list">
-            ${this.navItems.map(
-              (item) => html`
-                <li class="nav-item">
-                  <a
-                    class="nav-link ${this.currentRoute === item.route
-                      ? 'active'
-                      : ''}"
-                    @click=${() => this.navigateTo(item.route)}
-                  >
-                    <span class="nav-icon">${this.renderNavIcon(item.icon)}</span>
-                    <span class="nav-label">${item.label}</span>
-                  </a>
-                </li>
-              `
-            )}
-          </ul>
-          <div class="nav-divider"></div>
-          <ul class="nav-list">
-            <li class="nav-item">
-              <a
-                class="nav-link ${this.isFileTreeOpen ? 'active' : ''}"
-                @click=${this._handleFileTreeToggle}
-              >
-                <span class="nav-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="vertical-align: middle;">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                  </svg>
-                </span>
-                Files
-              </a>
-            </li>
-          </ul>
-        </nav>
-      </aside>
+      <aos-kopfzeile
+        .titel=${this.getPageTitle()}
+        .mobile=${this.breakpoint.isMobile}
+        .reconnecting=${this.isReconnecting}
+        .terminalOffen=${this.isTerminalSidebarOpen}
+        .glockeRows=${this.glockeRows}
+        .glockeSessions=${this.glockeSessions}
+        .projectNames=${this.terminalProjectNames}
+        @glocke-open=${this._handleGlockeOpen}
+        @terminal-toggle=${this._handleTerminalToggle}
+      ></aos-kopfzeile>
       <main class="main-content">
-        <header class="header">
-          <h2 class="header-title">${this.getPageTitle()}</h2>
-          <div class="header-actions">
-            ${this.frameworkUpdateAvailable ? html`
-              <a class="update-badge" href="#" @click=${(e: Event) => { e.preventDefault(); routerService.navigate('getting-started'); }}>
-                Update ${this.frameworkLatestVersion}
-              </a>
-            ` : ''}
-            ${this.isReconnecting
-              ? html`<span class="reconnecting-indicator">
-                  <aos-loading-spinner size="small"></aos-loading-spinner>
-                  <span>Verbinde...</span>
-                </span>`
-              : ''}
-            ${this.frameworkInstalledVersion ? html`
-              <span class="version-label">v${this.frameworkInstalledVersion}</span>
-            ` : ''}
-            ${this.claudeConcurrency && (this.claudeConcurrency.running > 0 || this.claudeConcurrency.waiting > 0) ? html`
-              <span
-                class="claude-concurrency-badge ${this.claudeConcurrency.running >= this.claudeConcurrency.max ? 'is-full' : ''}"
-                title="${this.claudeConcurrency.running}/${this.claudeConcurrency.max} aktive Claude-Sessions${this.claudeConcurrency.waiting > 0 ? ` · ${this.claudeConcurrency.waiting} in Warteschlange` : ''}"
-              >⚡ ${this.claudeConcurrency.running}/${this.claudeConcurrency.max}${this.claudeConcurrency.waiting > 0 ? html`<span class="queue-count">+${this.claudeConcurrency.waiting}</span>` : ''}</span>
-            ` : ''}
-            <button
-              class="terminal-btn ${this.terminalSessions.length > 0 ? 'has-sessions' : ''}"
-              @click=${this._handleTerminalToggle}
-              title="Cloud Terminal"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
-              </svg>
-              ${this.projectTerminalSessions.length > 0
-                ? html`<span class="terminal-badge">${this.projectTerminalSessions.length}</span>`
-                : ''}
-            </button>
-            <aos-model-selector></aos-model-selector>
-          </div>
-        </header>
-        <aos-project-tabs
-          .projects=${this.openProjects}
-          .activeProjectId=${this.activeProjectId}
-          @tab-select=${this.handleProjectTabSelect}
-          @tab-close=${this.handleProjectTabClose}
-          @add-project=${this.handleAddProject}
-        ></aos-project-tabs>
-        <aos-git-status-bar
-          .gitStatus=${this.gitStatus}
-          .loading=${this.gitLoading}
-          .hasProject=${this.activeProjectId !== null}
-          .branches=${this.gitBranches}
-          .isOperationRunning=${this.isGitOperationRunning}
-          .prInfo=${this.gitPrInfo}
-          @refresh-git=${this._handleRefreshGit}
-          @pull-git=${this._handlePullGit}
-          @push-git=${this._handlePushGit}
-          @open-commit-dialog=${this._handleOpenCommitDialog}
-          @checkout-branch=${this._handleCheckoutBranch}
-        ></aos-git-status-bar>
         <div class="view-container">${this.renderView()}</div>
         <aos-file-editor-panel .sidebarOpen=${this.isFileTreeOpen}></aos-file-editor-panel>
       </main>
@@ -2148,7 +1608,6 @@ export class AosApp extends LitElement {
         .allSessions=${this.terminalSessions}
         .projectNames=${this.terminalProjectNames}
         .activeSessionId=${this.activeTerminalSessionId}
-        .agentNotifications=${this.agentNotifications}
         @sidebar-close=${this._handleTerminalClose}
         @session-jump=${this._handleTerminalSessionJump}
         @new-session=${this._handleNewTerminalSession}
@@ -2159,25 +1618,25 @@ export class AosApp extends LitElement {
         @input-needed=${this._handleTerminalInputNeeded}
       ></aos-cloud-terminal-sidebar>
       <aos-git-commit-dialog
-        .open=${this.showCommitDialog}
-        .files=${this.gitStatus?.files ?? []}
-        .error=${this.commitError}
-        .committing=${this.committing}
-        .autoPush=${this.pendingAutoPush}
-        .progressPhase=${this.commitAndPushPhase}
-        .generatingMessage=${this.generatingCommitMessage}
-        @git-commit=${this._handleGitCommit}
-        @revert-file=${this._handleRevertFile}
-        @revert-all=${this._handleRevertAll}
-        @delete-untracked=${this._handleDeleteUntracked}
-        @generate-commit-message=${this._handleGenerateCommitMessage}
-        @dialog-close=${this._handleCommitDialogClose}
+        .open=${g.showCommitDialog}
+        .files=${g.gitStatus?.files ?? []}
+        .error=${g.commitError}
+        .committing=${g.committing}
+        .autoPush=${g.pendingAutoPush}
+        .progressPhase=${g.commitAndPushPhase}
+        .generatingMessage=${g.generatingCommitMessage}
+        @git-commit=${(e: CustomEvent<{ files: string[]; message: string }>) => gitState.commit(e.detail.files, e.detail.message)}
+        @revert-file=${(e: CustomEvent<{ file: string }>) => gitState.revertFile(e.detail.file)}
+        @revert-all=${() => gitState.revertAll()}
+        @delete-untracked=${(e: CustomEvent<{ file: string }>) => gitState.deleteUntracked(e.detail.file)}
+        @generate-commit-message=${(e: CustomEvent<{ files: string[] }>) => gitState.generateCommitMessage(e.detail.files)}
+        @dialog-close=${() => gitState.closeCommitDialog()}
       ></aos-git-commit-dialog>
       <aos-git-pull-strategy-dialog
-        .open=${this.showPullStrategyDialog}
-        .retryPush=${this.pullStrategyRetryPush}
-        @pull-strategy-select=${this._handlePullStrategySelect}
-        @pull-strategy-cancel=${this._handlePullStrategyCancel}
+        .open=${g.showPullStrategyDialog}
+        .retryPush=${g.pullStrategyRetryPush}
+        @pull-strategy-select=${(e: CustomEvent<{ strategy: PullStrategy }>) => gitState.pullStrategySelect(e.detail.strategy)}
+        @pull-strategy-cancel=${() => gitState.pullStrategyCancel()}
       ></aos-git-pull-strategy-dialog>
     `;
   }

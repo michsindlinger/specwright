@@ -1,7 +1,9 @@
 /**
  * Pure ordering/grouping of Vorhaben rows for the overview (FA-02, FA-03).
- * Groups: "wartet auf dich" → "wartet" (incl. im Terminal) → laufend (by last
- * change, newest first) → umgesetzt (collapsed).
+ * Groups since INT-2026-010 (AN-S01): "Wartet auf dich" (every `wartet*`
+ * state — a session that waits for an answer waits for Michael) → "Läuft"
+ * (everything else, by last change, newest first) → umgesetzt (collapsed).
+ * The key `wartet` stays in the type for the tests of older stages.
  */
 
 import type { VorhabenPhase, VorhabenRow, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
@@ -23,12 +25,11 @@ export const GROUP_LABELS: Record<VorhabenGroupKey, string> = {
 
 export function groupOf(row: VorhabenRow): VorhabenGroupKey {
   if (row.phase === 'umgesetzt') return 'umgesetzt';
-  if (row.zustand === 'wartet_auf_dich') return 'wartet_auf_dich';
-  if (row.zustand === 'wartet' || row.zustand === 'wartet_rueckfrage' || row.zustand === 'wartet_plan' || row.zustand === 'wartet_berechtigung') return 'wartet';
+  if (row.zustand === 'wartet_auf_dich' || row.zustand === 'wartet' || row.zustand === 'wartet_rueckfrage' || row.zustand === 'wartet_plan' || row.zustand === 'wartet_berechtigung') return 'wartet_auf_dich';
   return 'laeuft';
 }
 
-const GROUP_ORDER: VorhabenGroupKey[] = ['wartet_auf_dich', 'wartet', 'laeuft', 'umgesetzt'];
+const GROUP_ORDER: VorhabenGroupKey[] = ['wartet_auf_dich', 'laeuft', 'umgesetzt'];
 
 /** Sorted copy: group order, then newest change first (FA-02). */
 export function sortRows(rows: VorhabenRow[]): VorhabenRow[] {
@@ -50,7 +51,7 @@ export function groupRows(rows: VorhabenRow[], projectId: string | null): Vorhab
 }
 
 export function countWaitingForMe(rows: VorhabenRow[]): number {
-  return rows.filter((r) => r.zustand === 'wartet_auf_dich').length;
+  return rows.filter((r) => groupOf(r) === 'wartet_auf_dich').length;
 }
 
 export const PHASE_LABELS: Record<VorhabenPhase, string> = {
@@ -71,8 +72,8 @@ export const ZUSTAND_LABELS: Record<VorhabenZustand, string> = {
   wartet_berechtigung: 'wartet · Berechtigung',
   arbeitet: 'arbeitet',
   bau_unterbrochen: 'Bau unterbrochen',
-  keine_sitzung: 'keine Sitzung',
-  sitzung_beendet: 'Sitzung beendet',
+  keine_sitzung: 'ruht',
+  sitzung_beendet: 'ruht · Sitzung beendet',
 };
 
 export const STEP_LABELS: Record<'intent' | 'spec' | 'plan' | 'build', string> = {

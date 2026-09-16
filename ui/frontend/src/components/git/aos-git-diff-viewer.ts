@@ -11,7 +11,7 @@ import type { GitFileDiffResult } from '../../../../src/shared/types/git.protoco
  * name is clicked). The component requests the diff via the gateway and renders
  * a unified, read-only diff (no editable elements).
  *
- * Mirrors the patterns of `aos-image-lightbox` (Shadow DOM, document event,
+ * Mirrors the patterns of the former image lightbox (Shadow DOM, document event,
  * Escape/overlay close, fade-in) and manages its own state — app.ts only needs
  * to render the tag once.
  */

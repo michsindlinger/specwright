@@ -5,7 +5,6 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { WebSocketHandler } from './websocket.js';
 import projectRouter from './routes/project.routes.js';
-import imageUploadRouter from './routes/image-upload.routes.js';
 import versionRouter from './routes/version.routes.js';
 import teamRouter from './routes/team.routes.js';
 import { createCloudTerminalRouter } from './routes/cloud-terminal.routes.js';
@@ -34,7 +33,6 @@ app.use(express.json({ limit: '30mb' }));
 
 // API Routes
 app.use('/api/project', projectRouter);
-app.use('/api/images', imageUploadRouter);
 app.use('/api/version', versionRouter);
 app.use('/api/team', teamRouter);
 // Stop-hook callback (agent-finished bell). Resolves wsHandler lazily — it does

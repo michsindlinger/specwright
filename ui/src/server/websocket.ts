@@ -3,10 +3,8 @@ import { Server } from 'http';
 import { randomUUID } from 'crypto';
 import { resolveCommandDir } from './utils/project-dirs.js';
 import { ProjectManager } from './projects.js';
-import { ClaudeHandler } from './claude-handler.js';
 import { WorkflowExecutor } from './workflow-executor.js';
 import { webSocketManager } from './websocket-manager.service.js';
-import { ImageStorageService, type ImageInfo } from './image-storage.js';
 import { gitHandler } from './handlers/git.handler.js';
 import { fileHandler } from './handlers/file.handler.js';
 import { documentPreviewHandler } from './handlers/document-preview.handler.js';
@@ -33,12 +31,10 @@ import { loadGeneralConfig, updateGeneralConfig, getReviewPrompt, getCloudSessio
 import { resolveMainWorktreePath } from './utils/worktree-detect.js';
 import { loadPromptTemplates, savePromptTemplate, deletePromptTemplate } from './prompt-templates.js';
 import { extractPromptFromImage } from './services/prompt-template-extractor.js';
-import { loadVoiceConfigStatus, updateVoiceConfig } from './voice-config.js';
 import { loadGithubConfigStatus, updateGithubPat, clearGithubPat } from './github-config.js';
 import { CloudTerminalManager } from './services/cloud-terminal-manager.js';
 import { PlanReviewOrchestrator } from './services/plan-review-orchestrator.js';
 import type { TabReviewConfig } from './services/plan-review-orchestrator.js';
-import { VoiceCallService } from './services/voice-call.service.js';
 import { setupService, type StepOutput, type StepComplete } from './services/setup.service.js';
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 import { WorkspaceStateStore } from './services/workspace-state.js';
@@ -87,13 +83,10 @@ export class WebSocketHandler {
   private clients: Map<string, WebSocketClient> = new Map();
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private projectManager: ProjectManager;
-  private claudeHandler: ClaudeHandler;
   private workflowExecutor: WorkflowExecutor;
-  private imageStorageService: ImageStorageService;
   private fileHandler;
   private cloudTerminalManager: CloudTerminalManager;
   private planReviewOrchestrator: PlanReviewOrchestrator;
-  private voiceCallService: VoiceCallService;
   private previewWatcher: PreviewWatcher;
   private unsubscribeConcurrency: (() => void) | null = null;
   /** Shared workspace (open projects, recents, tab names) — one per backend. */
@@ -113,13 +106,10 @@ export class WebSocketHandler {
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server });
     this.projectManager = new ProjectManager();
-    this.claudeHandler = new ClaudeHandler();
     this.workflowExecutor = new WorkflowExecutor();
-    this.imageStorageService = new ImageStorageService();
     this.fileHandler = fileHandler;
     this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager());
     this.planReviewOrchestrator = new PlanReviewOrchestrator(this.cloudTerminalManager);
-    this.voiceCallService = new VoiceCallService();
     this.previewWatcher = new PreviewWatcher();
     this.previewWatcher.init();
     this.workspaceStore = new WorkspaceStateStore(getWorkspaceStatePath(), { pathKey, pathExists: (p: string): boolean => existsSync(p) });
@@ -155,7 +145,6 @@ export class WebSocketHandler {
     this.startHeartbeat();
     this.setupCloudTerminalListeners();
     this.setupPlanReviewListeners();
-    this.setupVoiceCallListeners();
     this.setupSetupListeners();
     this.setupConcurrencyBroadcast();
   }
@@ -250,7 +239,6 @@ export class WebSocketHandler {
       // Handle client disconnect
       client.on('close', () => {
         console.log(`Client disconnected: ${client.clientId}`);
-        this.voiceCallService.endCallsForClient(client.clientId);
         this.gespraechHandler.onClientClosed(client.clientId);
         this.clients.delete(client.clientId);
       });
@@ -298,24 +286,6 @@ export class WebSocketHandler {
         case 'project.switch':
           // MPRO-005: Handle project context switch via WebSocketManager
           this.handleProjectSwitch(client, message);
-          break;
-        case 'chat.send':
-          this.handleChatSend(client, message);
-          break;
-        case 'chat.send.with-images':
-          this.handleChatSendWithImages(client, message);
-          break;
-        case 'chat.history':
-          this.handleChatHistory(client);
-          break;
-        case 'chat.clear':
-          this.handleChatClear(client);
-          break;
-        case 'chat.settings.update':
-          this.handleChatSettingsUpdate(client, message);
-          break;
-        case 'chat.settings.get':
-          this.handleChatSettingsGet(client);
           break;
         case 'model.list':
           this.handleModelList(client);
@@ -437,12 +407,6 @@ export class WebSocketHandler {
           break;
         case 'prompt-templates:extract-from-image':
           void this.handlePromptTemplatesExtractFromImage(client, message);
-          break;
-        case 'settings.voice.get':
-          this.handleSettingsVoiceGet(client);
-          break;
-        case 'settings.voice.update':
-          this.handleSettingsVoiceUpdate(client, message);
           break;
         case 'settings.github.get':
           this.handleSettingsGithubGet(client);
@@ -574,25 +538,6 @@ export class WebSocketHandler {
         case 'plan-review:trigger.manual':
           this.handlePlanReviewTriggerManual(client, message);
           break;
-        // Voice Call Messages (VCF-003)
-        case 'voice:call:start':
-          this.handleVoiceCallStart(client, message);
-          break;
-        case 'voice:call:end':
-          this.handleVoiceCallEnd(client, message);
-          break;
-        case 'voice:audio:chunk':
-          this.handleVoiceAudioChunk(client, message);
-          break;
-        case 'voice:text:send':
-          this.handleVoiceTextSend(client, message);
-          break;
-        case 'voice:tts:stop':
-          this.handleVoiceTtsStop(client, message);
-          break;
-        case 'voice:agent:response':
-          this.handleVoiceAgentResponse(client, message);
-          break;
         // Document Preview Messages (DPP-002)
         case 'document-preview.save':
           this.handleDocumentPreviewSave(client, message);
@@ -713,227 +658,6 @@ export class WebSocketHandler {
     client.send(JSON.stringify(response));
 
     console.log(`[WebSocket] Client ${client.clientId} switched to project: ${projectPath}`);
-  }
-
-  private handleChatSend(client: WebSocketClient, message: WebSocketMessage): void {
-    const content = message.content as string;
-
-    if (!content) {
-      const errorResponse: WebSocketMessage = {
-        type: 'chat.error',
-        error: 'Message content is required',
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(errorResponse));
-      return;
-    }
-
-    const projectPath = this.getClientProjectPath(client);
-    if (!projectPath) {
-      const errorResponse: WebSocketMessage = {
-        type: 'chat.error',
-        error: 'No project selected',
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(errorResponse));
-      return;
-    }
-
-    this.claudeHandler.handleChatSend(client, content, projectPath)
-      .catch((error: Error) => {
-        console.error('[Chat] Error in handleChatSend:', error);
-        const errorResponse: WebSocketMessage = {
-          type: 'chat.error',
-          error: error.message,
-          timestamp: new Date().toISOString()
-        };
-        client.send(JSON.stringify(errorResponse));
-      });
-  }
-
-  /**
-   * CIMG-004: Handle chat messages with image attachments.
-   * Processes images (stores base64 images via ImageStorageService) and forwards to ClaudeHandler.
-   */
-  private async handleChatSendWithImages(client: WebSocketClient, message: WebSocketMessage): Promise<void> {
-    const content = message.content as string || '';
-    const images = message.images as Array<{
-      data: string;
-      mimeType: string;
-      filename: string;
-      isBase64: boolean;
-    }> | undefined;
-
-    // Require at least content or images
-    if (!content && (!images || images.length === 0)) {
-      const errorResponse: WebSocketMessage = {
-        type: 'chat.send.with-images.error',
-        error: 'Message content or images are required',
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(errorResponse));
-      return;
-    }
-
-    const projectPath = this.getClientProjectPath(client);
-    if (!projectPath) {
-      const errorResponse: WebSocketMessage = {
-        type: 'chat.send.with-images.error',
-        error: 'No project selected',
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(errorResponse));
-      return;
-    }
-
-    try {
-      // Process and store images
-      const savedImages: ImageInfo[] = [];
-
-      if (images && images.length > 0) {
-        for (const image of images) {
-          if (image.isBase64) {
-            // Save base64 image to storage
-            const result = await this.imageStorageService.saveImage(
-              projectPath,
-              image.data,
-              image.filename,
-              image.mimeType
-            );
-
-            if (result.success && result.imageInfo) {
-              savedImages.push(result.imageInfo);
-            } else {
-              console.error(`[Chat] Failed to save image ${image.filename}:`, result.error);
-              // Continue with other images even if one fails
-            }
-          } else {
-            // Image is already a path reference - validate it exists
-            const imageInfo = await this.imageStorageService.getImageInfo(projectPath, image.data);
-            if (imageInfo) {
-              savedImages.push(imageInfo);
-            } else {
-              console.warn(`[Chat] Image not found: ${image.data}`);
-            }
-          }
-        }
-      }
-
-      // Forward to ClaudeHandler with images
-      await this.claudeHandler.handleChatSendWithImages(
-        client,
-        content,
-        projectPath,
-        savedImages
-      );
-
-    } catch (error) {
-      console.error('[Chat] Error in handleChatSendWithImages:', error);
-      const errorResponse: WebSocketMessage = {
-        type: 'chat.send.with-images.error',
-        error: error instanceof Error ? error.message : 'Failed to process message with images',
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(errorResponse));
-    }
-  }
-
-  private handleChatHistory(client: WebSocketClient): void {
-    const projectPath = this.getClientProjectPath(client);
-    if (!projectPath) {
-      const response: WebSocketMessage = {
-        type: 'chat.history',
-        messages: [],
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(response));
-      return;
-    }
-
-    const messages = this.claudeHandler.getHistory(client.clientId, projectPath);
-    const response: WebSocketMessage = {
-      type: 'chat.history',
-      messages,
-      timestamp: new Date().toISOString()
-    };
-    client.send(JSON.stringify(response));
-  }
-
-  private handleChatClear(client: WebSocketClient): void {
-    const projectPath = this.getClientProjectPath(client);
-    if (projectPath) {
-      this.claudeHandler.clearHistory(client.clientId, projectPath);
-    }
-    const response: WebSocketMessage = {
-      type: 'chat.cleared',
-      timestamp: new Date().toISOString()
-    };
-    client.send(JSON.stringify(response));
-  }
-
-  private handleChatSettingsUpdate(client: WebSocketClient, message: WebSocketMessage): void {
-    const providerId = message.providerId as string;
-    const modelId = message.modelId as string;
-
-    if (!providerId || !modelId) {
-      const errorResponse: WebSocketMessage = {
-        type: 'chat.error',
-        error: 'Provider ID and Model ID are required',
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(errorResponse));
-      return;
-    }
-
-    const projectPath = this.getClientProjectPath(client);
-    if (!projectPath) {
-      const errorResponse: WebSocketMessage = {
-        type: 'chat.error',
-        error: 'No project selected',
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(errorResponse));
-      return;
-    }
-
-    const selectedModel = this.claudeHandler.updateModelSettings(
-      client.clientId,
-      projectPath,
-      providerId,
-      modelId
-    );
-
-    const response: WebSocketMessage = {
-      type: 'chat.settings.response',
-      selectedModel,
-      timestamp: new Date().toISOString()
-    };
-    client.send(JSON.stringify(response));
-  }
-
-  private handleChatSettingsGet(client: WebSocketClient): void {
-    const projectPath = this.getClientProjectPath(client);
-    if (!projectPath) {
-      const errorResponse: WebSocketMessage = {
-        type: 'chat.error',
-        error: 'No project selected',
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(errorResponse));
-      return;
-    }
-
-    const selectedModel = this.claudeHandler.getModelSettings(
-      client.clientId,
-      projectPath
-    );
-
-    const response: WebSocketMessage = {
-      type: 'chat.settings.response',
-      selectedModel,
-      timestamp: new Date().toISOString()
-    };
-    client.send(JSON.stringify(response));
   }
 
   private handleModelList(client: WebSocketClient): void {
@@ -1826,39 +1550,6 @@ export class WebSocketHandler {
     }
   }
 
-  private handleSettingsVoiceGet(client: WebSocketClient): void {
-    const config = loadVoiceConfigStatus();
-    const response: WebSocketMessage = {
-      type: 'settings.voice',
-      config,
-      timestamp: new Date().toISOString()
-    };
-    client.send(JSON.stringify(response));
-  }
-
-  private handleSettingsVoiceUpdate(client: WebSocketClient, message: WebSocketMessage): void {
-    const deepgramApiKey = message.deepgramApiKey as string | undefined;
-    const elevenLabsApiKey = message.elevenLabsApiKey as string | undefined;
-    const defaultInputMode = message.defaultInputMode as string | undefined;
-
-    try {
-      const config = updateVoiceConfig({ deepgramApiKey, elevenLabsApiKey, defaultInputMode });
-      const response: WebSocketMessage = {
-        type: 'settings.voice',
-        config,
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(response));
-    } catch (error) {
-      const errorResponse: WebSocketMessage = {
-        type: 'settings.error',
-        error: error instanceof Error ? error.message : 'Failed to update voice settings',
-        timestamp: new Date().toISOString()
-      };
-      client.send(JSON.stringify(errorResponse));
-    }
-  }
-
   private handleSettingsGithubGet(client: WebSocketClient): void {
     const config = loadGithubConfigStatus();
     const response: WebSocketMessage = {
@@ -2357,212 +2048,6 @@ export class WebSocketHandler {
   // ============================================================================
   // Cloud Terminal Handlers (CCT-001)
   // ============================================================================
-
-  // ============================================================================
-  // Voice Call Handlers (VCF-003)
-  // ============================================================================
-
-  /**
-   * Set up VoiceCallService event listeners
-   * Forwards transcript and call lifecycle events to connected clients
-   */
-  private setupVoiceCallListeners(): void {
-    this.voiceCallService.on('transcript', (callId: string, event: { text: string; isFinal: boolean; confidence: number }) => {
-      const messageType = event.isFinal ? 'voice:transcript:final' : 'voice:transcript:interim';
-      const message: WebSocketMessage = {
-        type: messageType,
-        callId,
-        text: event.text,
-        isFinal: event.isFinal,
-        confidence: event.confidence,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-
-    this.voiceCallService.on('call.started', (callId: string) => {
-      const message: WebSocketMessage = {
-        type: 'voice:call:started',
-        callId,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-
-    this.voiceCallService.on('call.ended', (callId: string) => {
-      const message: WebSocketMessage = {
-        type: 'voice:call:ended',
-        callId,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-
-    this.voiceCallService.on('error', (callId: string, error: Error) => {
-      const message: WebSocketMessage = {
-        type: 'voice:error',
-        callId,
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-
-    // TTS events (VCF-004)
-    this.voiceCallService.on('tts.start', (callId: string) => {
-      const message: WebSocketMessage = {
-        type: 'voice:tts:start',
-        callId,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-
-    this.voiceCallService.on('tts.chunk', (callId: string, audioBase64: string) => {
-      const message: WebSocketMessage = {
-        type: 'voice:tts:chunk',
-        callId,
-        audio: audioBase64,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-
-    this.voiceCallService.on('tts.end', (callId: string) => {
-      const message: WebSocketMessage = {
-        type: 'voice:tts:end',
-        callId,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-
-    this.voiceCallService.on('tts.stopped', (callId: string) => {
-      const message: WebSocketMessage = {
-        type: 'voice:tts:stopped',
-        callId,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-
-    this.voiceCallService.on('agent.response', (callId: string, text: string) => {
-      const message: WebSocketMessage = {
-        type: 'voice:agent:response',
-        callId,
-        text,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-
-    // Action events (VCF-005: Agent Conversation Engine)
-    this.voiceCallService.on('action.start', (callId: string, action: { toolId: string; toolName: string; input: Record<string, unknown> }) => {
-      const message: WebSocketMessage = {
-        type: 'voice:action:start',
-        callId,
-        toolId: action.toolId,
-        toolName: action.toolName,
-        input: action.input,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-
-    this.voiceCallService.on('action.complete', (callId: string, action: { toolId: string; output: string }) => {
-      const message: WebSocketMessage = {
-        type: 'voice:action:complete',
-        callId,
-        toolId: action.toolId,
-        output: action.output,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(message);
-    });
-  }
-
-  /**
-   * Handle voice:call:start
-   * Creates a new voice call session with STT pipeline
-   */
-  private handleVoiceCallStart(client: WebSocketClient, message: WebSocketMessage): void {
-    const callId = (message.callId as string) || `call-${Date.now()}`;
-    const projectPath = this.getClientProjectPath(client) || undefined;
-    const systemPrompt = message.systemPrompt as string | undefined;
-    const agentId = message.agentId as string | undefined;
-    const agentName = message.agentName as string | undefined;
-
-    console.log(`[WebSocket] Voice call start: ${callId} from client ${client.clientId} (agent: ${agentName || 'default'})`);
-    this.voiceCallService.startCall(callId, client.clientId, {
-      projectPath,
-      systemPrompt,
-      agentId,
-      agentName,
-    });
-  }
-
-  /**
-   * Handle voice:call:end
-   * Ends a voice call session
-   */
-  private handleVoiceCallEnd(_client: WebSocketClient, message: WebSocketMessage): void {
-    const callId = message.callId as string;
-    if (!callId) return;
-
-    console.log(`[WebSocket] Voice call end: ${callId}`);
-    this.voiceCallService.endCall(callId);
-  }
-
-  /**
-   * Handle voice:audio:chunk
-   * Routes audio data to VoiceCallService for STT processing
-   */
-  private handleVoiceAudioChunk(_client: WebSocketClient, message: WebSocketMessage): void {
-    const callId = message.callId as string;
-    const audio = message.audio as string;
-    if (!callId || !audio) return;
-
-    this.voiceCallService.handleAudioChunk(callId, audio);
-  }
-
-  /**
-   * Handle voice:text:send (VCF-010)
-   * Routes user-typed text to VoiceCallService conversation engine
-   */
-  private handleVoiceTextSend(_client: WebSocketClient, message: WebSocketMessage): void {
-    const callId = message.callId as string;
-    const text = message.text as string;
-    if (!callId || !text) return;
-
-    console.log(`[WebSocket] Voice text input for call ${callId}: ${text.substring(0, 50)}...`);
-    this.voiceCallService.handleTextInput(callId, text);
-  }
-
-  /**
-   * Handle voice:tts:stop (VCF-004)
-   * Frontend requests TTS stop (barge-in)
-   */
-  private handleVoiceTtsStop(_client: WebSocketClient, message: WebSocketMessage): void {
-    const callId = message.callId as string;
-    if (!callId) return;
-
-    console.log(`[WebSocket] Voice TTS stop (barge-in): ${callId}`);
-    this.voiceCallService.stopTts(callId);
-  }
-
-  /**
-   * Handle voice:agent:response (VCF-004)
-   * Triggers TTS for an agent text response
-   */
-  private handleVoiceAgentResponse(_client: WebSocketClient, message: WebSocketMessage): void {
-    const callId = message.callId as string;
-    const text = message.text as string;
-    if (!callId || !text) return;
-
-    const voiceId = message.voiceId as string | undefined;
-    console.log(`[WebSocket] Voice agent response for call ${callId}: ${text.substring(0, 50)}...`);
-    this.voiceCallService.handleAgentResponse(callId, text, voiceId);
-  }
 
   /**
    * Set up CloudTerminalManager event listeners
