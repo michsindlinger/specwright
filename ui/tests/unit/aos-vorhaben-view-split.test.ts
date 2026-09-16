@@ -7,7 +7,7 @@
  * carries the session (FA-22, AN-S03).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { VorhabenRow, VorhabenState } from '../../src/shared/types/vorhaben.protocol.js';
+import type { VorhabenPendingIntent, VorhabenRow, VorhabenState } from '../../src/shared/types/vorhaben.protocol.js';
 
 vi.mock('../../frontend/src/gateway.js', () => ({
   gateway: { send: vi.fn(), on: vi.fn(), off: vi.fn(), getConnectionStatus: () => false, isConnecting: () => false, getProjectPath: vi.fn() },
@@ -70,12 +70,19 @@ const row = (o: Partial<VorhabenRow> = {}): VorhabenRow => ({
   ...o,
 });
 
-const state = (rows: VorhabenRow[]): VorhabenState => ({
+const pendingOf = (o: Partial<VorhabenPendingIntent> = {}): VorhabenPendingIntent => ({
+  sessionId: 'cloud-1-7', projectId: 'p', cwd: '/p', arbeitskopie: 'main', since: '2026-09-16T09:00:00.000Z',
+  session: { id: 'cloud-1-7', name: 'intent', model: 'opus', agentStatus: 'done' },
+  ...o,
+});
+
+const state = (rows: VorhabenRow[], pendingIntents: VorhabenPendingIntent[] = [], protocol: VorhabenState['protocol'] = []): VorhabenState => ({
   rows,
   projects: [{ id: 'p', path: '/p', name: 'P', arbeitskopie: 'main', worktrees: [], hasIntentDir: true }],
+  pendingIntents,
   docDrafts: {},
   drafts: {},
-  protocol: [],
+  protocol,
   lastModel: {},
   loading: false,
   updatedAt: '',
@@ -166,27 +173,105 @@ describe('aos-vorhaben-view — started step stays on the page (FA-22, AN-S03)',
     el.remove();
   });
 
-  it('„Absicht beginnen": hint on the project page, navigation to the new Vorhaben once a row carries the session', async () => {
+  it('„Absicht beginnen": the pending session from the state shows the Gespräch on the project page; navigation to the new Vorhaben once a row carries the session — same broadcast that drops the pending entry (AK-01, AK-03)', async () => {
     route = { view: 'projekt', segments: ['p'] };
     const el = await view('projekt');
     stateListener!(state([]));
     await settle(el);
     const projekt = el.querySelector('aos-projekt-seite')!;
-    expect(projekt.startedSessionId).toBe('');
+    expect(projekt.pending).toBeNull();
+    expect(el.querySelector('aos-gespraech')).toBeNull();
     projekt.dispatchEvent(new CustomEvent('vorhaben-session-started', { bubbles: true, composed: true, detail: { sessionId: 'cloud-1-7', step: 'intent' } }));
     await settle(el);
-    expect(projekt.startedSessionId).toBe('cloud-1-7');
-    expect(projekt.shadowRoot!.textContent).toContain('Sitzung gestartet — Vorhaben entsteht');
     expect(navigate).not.toHaveBeenCalled();
-    // a state whose row carries another session changes nothing
+    // an unrelated broadcast before the pending entry arrives does not forget the memory
     stateListener!(state([row({ intentId: 'INT-2026-008', session: { id: 'cloud-1-1', name: 'x', model: 'opus', agentStatus: 'working' } })]));
     await settle(el);
     expect(navigate).not.toHaveBeenCalled();
-    // the new Vorhaben's row with the started session → open its page
-    stateListener!(state([row({ intentId: 'INT-2026-009', session: { id: 'cloud-1-7', name: 'intent', model: 'opus', agentStatus: 'working' } })]));
+    // the backend lists the pending session → card + split with the Gespräch of that session, its protocol filtered by session
+    const entry = { id: 'pe1', projectId: 'p', art: 'freitext' as const, anzahl: 0, stand: '', sessionId: 'cloud-1-7', sessionName: 'intent', text: 'Sortierung', anmerkungen: [], status: 'eingereiht' as const, sentAt: '2026-09-16T09:01:00.000Z' };
+    const other = { ...entry, id: 'pe2', sessionId: 'cloud-1-1', intentId: 'INT-2026-008' };
+    stateListener!(state([], [pendingOf()], [other, entry]));
+    await settle(el);
+    expect(el.querySelector('.vorhaben-view')!.classList.contains('split')).toBe(true);
+    const gespraech = el.querySelector('.vorhaben-split aos-gespraech')!;
+    expect(gespraech).not.toBeNull();
+    expect(gespraech.pending?.sessionId).toBe('cloud-1-7');
+    expect(gespraech.row).toBeUndefined();
+    expect(gespraech.protocol.map((e) => e.id)).toEqual(['pe1']);
+    // the page is re-rendered inside the split wrapper (same pattern as the Vorhaben page) → re-query
+    const projektSplit = el.querySelector('.vorhaben-split aos-projekt-seite')!;
+    expect(projektSplit.pending?.sessionId).toBe('cloud-1-7');
+    expect(projektSplit.shadowRoot!.textContent).toContain('Absicht-Sitzung „intent" läuft — Vorhaben entsteht');
+    expect(projektSplit.shadowRoot!.querySelector('aos-naechster-schritt')).toBeNull(); // AK-04
+    expect(navigate).not.toHaveBeenCalled();
+    // ONE broadcast: pending gone, the new row carries the session → navigate; the same element stays mounted with the row (review 14/15)
+    stateListener!(state([row({ intentId: 'INT-2026-009', session: { id: 'cloud-1-7', name: 'intent', model: 'opus', agentStatus: 'working' } })], [], [{ ...entry, intentId: 'INT-2026-009' }]));
     await settle(el);
     expect(navigate).toHaveBeenCalledWith('vorhaben', ['p', 'INT-2026-009']);
-    expect(projekt.startedSessionId).toBe('');
+    const after = el.querySelector('.vorhaben-split aos-gespraech')!;
+    expect(after).toBe(gespraech);
+    expect(after.pending).toBeUndefined();
+    expect(after.row?.intentId).toBe('INT-2026-009');
     el.remove();
+  });
+
+  it('a pending session typed by hand or seen after a reload is followed too; an aborted one is forgotten and the split disappears (AK-07, AK-03)', async () => {
+    route = { view: 'projekt', segments: ['p'] };
+    const el = await view('projekt');
+    stateListener!(state([], [pendingOf({ sessionId: 'cloud-2-2', session: { id: 'cloud-2-2', name: 'intent', model: 'opus', agentStatus: 'working' } })]));
+    await settle(el);
+    expect(el.querySelector('.vorhaben-split aos-gespraech')?.pending?.sessionId).toBe('cloud-2-2');
+    // aborted: neither pending nor a row → no navigation, no split
+    stateListener!(state([]));
+    await settle(el);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(el.querySelector('aos-gespraech')).toBeNull();
+    expect(el.querySelector('.vorhaben-view')!.classList.contains('split')).toBe(false);
+    // seen again later → followed
+    stateListener!(state([], [pendingOf({ sessionId: 'cloud-2-3', session: { id: 'cloud-2-3', name: 'intent', model: 'opus', agentStatus: 'done' } })]));
+    await settle(el);
+    stateListener!(state([row({ intentId: 'INT-2026-010', session: { id: 'cloud-2-3', name: 'intent', model: 'opus', agentStatus: 'working' } })]));
+    await settle(el);
+    expect(navigate).toHaveBeenCalledWith('vorhaben', ['p', 'INT-2026-010']);
+    el.remove();
+  });
+
+  it('two pending sessions: the oldest is shown (the one the next folder claims, R-3)', async () => {
+    route = { view: 'projekt', segments: ['p'] };
+    const el = await view('projekt');
+    stateListener!(state([], [pendingOf({ sessionId: 'cloud-3-2', since: '2026-09-16T10:00:00.000Z' }), pendingOf({ sessionId: 'cloud-3-1', since: '2026-09-16T09:00:00.000Z' })]));
+    await settle(el);
+    expect(el.querySelector('.vorhaben-split aos-gespraech')?.pending?.sessionId).toBe('cloud-3-1');
+    el.remove();
+  });
+
+  it('project page card: „Im Terminal öffnen" dispatches open-terminal-session with the session id; on the phone the card shows without a Gespräch (AK-04, AK-06)', async () => {
+    route = { view: 'projekt', segments: ['p'] };
+    const seen: string[] = [];
+    const onOpen = (e: Event): void => {
+      seen.push((e as CustomEvent<{ sessionId: string }>).detail.sessionId);
+    };
+    document.addEventListener('open-terminal-session', onOpen);
+    const el = await view('projekt');
+    stateListener!(state([], [pendingOf()]));
+    await settle(el);
+    const projekt = el.querySelector('aos-projekt-seite')!;
+    (projekt.shadowRoot!.querySelector('button.terminal') as HTMLButtonElement).click();
+    expect(seen).toEqual(['cloud-1-7']);
+    expect(projekt.shadowRoot!.textContent).toContain('Gespräch rechts');
+    el.remove();
+    mobile = true;
+    const m = await view('projekt');
+    stateListener!(state([], [pendingOf()]));
+    await settle(m);
+    expect(m.querySelector('aos-gespraech')).toBeNull();
+    const mp = m.querySelector('aos-projekt-seite')!;
+    expect(mp.shadowRoot!.querySelector('aos-naechster-schritt')).toBeNull();
+    expect(mp.shadowRoot!.textContent).toContain('im Terminal antworten');
+    (mp.shadowRoot!.querySelector('button.terminal') as HTMLButtonElement).click();
+    expect(seen).toEqual(['cloud-1-7', 'cloud-1-7']);
+    document.removeEventListener('open-terminal-session', onOpen);
+    m.remove();
   });
 });

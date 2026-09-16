@@ -14,7 +14,7 @@ import { LitElement, html, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Beitrag, GespraechSnapshot } from '../../../../src/shared/types/gespraech.protocol.js';
 import { GESPRAECH_GRUND_TEXT } from '../../../../src/shared/types/gespraech.protocol.js';
-import type { ProtokollEintrag, VorhabenRow } from '../../../../src/shared/types/vorhaben.protocol.js';
+import type { ProtokollEintrag, VorhabenNextStep, VorhabenPendingIntent, VorhabenRow, VorhabenSessionRef, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
 import { gespraechService } from '../../services/gespraech.service.js';
 import { DIALOG_KIND_LABELS, clockOf } from './aos-gespraech-beitrag.js';
 import type { EingabeModus } from './aos-gespraech-eingabe.js';
@@ -24,6 +24,51 @@ import './aos-gespraech-eingabe.js';
 
 /** Width of the Gespräch column on the Mac (plan §3 A.9: 420–540 px). */
 export const GESPRAECH_BREITE = 'clamp(420px, 34vw, 540px)';
+
+/**
+ * What the Gespräch needs from its owner — a Vorhaben row or (INT-2026-008)
+ * a pending `/intent` session without a folder. A `VorhabenRow` satisfies it
+ * structurally; `gespraechZiel` builds it from either source.
+ */
+export interface GespraechZiel {
+  projectId: string;
+  /** Absent for a pending `/intent` session — sends are addressed by session then. */
+  intentId?: string;
+  session?: VorhabenSessionRef;
+  arbeitskopie: string;
+  zustand: VorhabenZustand;
+  nextStep?: VorhabenNextStep;
+  lastChangedMs: number;
+  /** True for a pending `/intent` session: the Vorhaben page opens once the folder exists. */
+  entsteht?: boolean;
+}
+
+/** Zustand of a pending session from its live status (plan §3.6). */
+function zustandOf(s: VorhabenSessionRef): VorhabenZustand {
+  if (s.ended) return 'sitzung_beendet';
+  switch (s.agentStatus) {
+    case 'blocked':
+      return s.blockKind === 'rueckfrage' ? 'wartet_rueckfrage' : s.blockKind === 'plan' ? 'wartet_plan' : 'wartet_berechtigung';
+    case 'working':
+      return 'arbeitet';
+    default:
+      return 'wartet';
+  }
+}
+
+/** The row wins when both are given; null without either. */
+export function gespraechZiel(row: VorhabenRow | undefined, pending: VorhabenPendingIntent | undefined): GespraechZiel | null {
+  if (row) return row;
+  if (!pending) return null;
+  return {
+    projectId: pending.projectId,
+    session: pending.session,
+    arbeitskopie: pending.arbeitskopie,
+    zustand: zustandOf(pending.session),
+    lastChangedMs: Date.parse(pending.since) || 0,
+    entsteht: true,
+  };
+}
 
 export interface EingabeZustand {
   modus: EingabeModus;
@@ -39,7 +84,7 @@ export interface EingabeZustand {
  * Client-side mirror of the backend send rules (FA-06, FA-15; plan §3 A.7):
  * waits → senden; works → einreihen; dialog open, ended, none, or no Gespräch → locked with reason.
  */
-export function eingabeZustand(row: VorhabenRow, snapshot: GespraechSnapshot | null): EingabeZustand {
+export function eingabeZustand(row: GespraechZiel, snapshot: GespraechSnapshot | null): EingabeZustand {
   const s = row.session;
   if (!s || row.zustand === 'keine_sitzung') return { modus: 'gesperrt', grund: GESPRAECH_GRUND_TEXT.keine_sitzung, nextStep: !!row.nextStep, terminal: false };
   if (s.ended || row.zustand === 'sitzung_beendet' || snapshot?.sitzung === 'beendet' || s.agentStatus === 'error') {
@@ -62,7 +107,7 @@ export interface KopfZustand {
 }
 
 /** State line of the head (FA-01/FA-09): what the session does right now. */
-export function kopfZustand(row: VorhabenRow, snapshot: GespraechSnapshot | null): KopfZustand {
+export function kopfZustand(row: GespraechZiel, snapshot: GespraechSnapshot | null): KopfZustand {
   const s = row.session;
   if (!s) return { label: 'keine Sitzung', ton: 'mute' };
   if (s.ended || snapshot?.sitzung === 'beendet' || row.zustand === 'sitzung_beendet') {
@@ -93,8 +138,10 @@ export function pendingAsBeitraege(protocol: ProtokollEintrag[], sessionId: stri
 
 @customElement('aos-gespraech')
 export class AosGespraech extends LitElement {
-  @property({ attribute: false }) row!: VorhabenRow;
-  /** Protocol entries of this Vorhaben (queued texts are shown at the end). */
+  @property({ attribute: false }) row: VorhabenRow | undefined = undefined;
+  /** INT-2026-008: a pending `/intent` session shown on the project page before its folder exists. */
+  @property({ attribute: false }) pending: VorhabenPendingIntent | undefined = undefined;
+  /** Protocol entries of this Vorhaben / session (queued texts are shown at the end). */
   @property({ attribute: false }) protocol: ProtokollEintrag[] = [];
 
   @state() private snapshot: GespraechSnapshot | null = null;
@@ -112,9 +159,13 @@ export class AosGespraech extends LitElement {
     return this;
   }
 
+  private ziel(): GespraechZiel | null {
+    return gespraechZiel(this.row, this.pending);
+  }
+
   override connectedCallback(): void {
     super.connectedCallback();
-    this.follow(this.row?.session?.id ?? null);
+    this.follow(this.ziel()?.session?.id ?? null);
   }
 
   override disconnectedCallback(): void {
@@ -123,7 +174,7 @@ export class AosGespraech extends LitElement {
   }
 
   protected override willUpdate(changed: PropertyValues<this>): void {
-    if (changed.has('row')) this.follow(this.row?.session?.id ?? null);
+    if (changed.has('row') || changed.has('pending')) this.follow(this.ziel()?.session?.id ?? null);
   }
 
   /** Subscribes to the assigned session; switching sessions starts a fresh Verlauf (AN-S04). */
@@ -174,15 +225,19 @@ export class AosGespraech extends LitElement {
   }
 
   private toTerminal(): void {
-    const id = this.row?.session?.id;
+    const id = this.ziel()?.session?.id;
     if (id) document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId: id } }));
   }
 
   private async onSend(e: CustomEvent<{ text: string }>): Promise<void> {
     if (this.sending) return;
+    const z = this.ziel();
+    const sessionId = z?.session?.id;
+    if (!z || !sessionId) return;
     this.sending = true;
     this.sendFehler = '';
-    const result = await gespraechService.send(this.row.projectId, this.row.intentId, e.detail.text);
+    // Vorhaben page: by intentId; project page (pending `/intent`): by session (INT-2026-008).
+    const result = await gespraechService.send(z.projectId, z.intentId ? { intentId: z.intentId } : { sessionId }, e.detail.text);
     this.sending = false;
     if (result.ok) {
       const eingabe = this.querySelector('aos-gespraech-eingabe');
@@ -201,14 +256,14 @@ export class AosGespraech extends LitElement {
   // ---- render ----
 
   override render() {
-    const r = this.row;
+    const r = this.ziel();
     if (!r) return nothing;
     const s = r.session;
     const snap = this.snapshot;
     const kopf = kopfZustand(r, snap);
     const eingabe = eingabeZustand(r, snap);
     return html`<div class="gespraech">
-      <div class="gespraech-kopf">
+      <div class="gespraech-kopf" data-session-id=${s?.id ?? ''}>
         <span>Gespräch mit <b>${s?.name ?? '—'}</b></span>
         <span class="gespraech-ort">· ${r.arbeitskopie ? html`<code>${r.arbeitskopie}</code>` : 'Im Projekt'}</span>
         <span class="gespraech-zustand"><span class="gespraech-dot ${kopf.ton}"></span>${kopf.label}</span>
@@ -230,12 +285,14 @@ export class AosGespraech extends LitElement {
   }
 
   private renderVerlauf() {
-    const r = this.row;
+    const r = this.ziel();
+    if (!r) return nothing;
     const snap = this.snapshot;
     const sessionId = r.session?.id ?? '';
     const pending = sessionId ? pendingAsBeitraege(this.protocol, sessionId) : [];
     return html`<div class="gespraech-verlauf" @scroll=${this.onScroll} @gespraech-terminal=${this.toTerminal} @gespraech-discard=${this.onDiscard}>
-      ${this.renderHinweis()}
+      ${this.renderHinweis(r)}
+      ${r.entsteht ? html`<div class="gespraech-notiz entsteht">Vorhaben entsteht — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist.</div>` : nothing}
       ${snap?.verlauf.status === 'nur_echtzeit'
         ? html`<div class="gespraech-notiz">Historie${snap.verlauf.mitgelesenAb ? ` vor ${clockOf(snap.verlauf.mitgelesenAb)}` : ''} nicht verfügbar${snap.verlauf.ursache ? ` — ${snap.verlauf.ursache}` : ''}</div>`
         : nothing}
@@ -249,8 +306,7 @@ export class AosGespraech extends LitElement {
   }
 
   /** FA-07: cause and next step when the Verlauf cannot be read; the reader keeps working. */
-  private renderHinweis() {
-    const r = this.row;
+  private renderHinweis(r: GespraechZiel) {
     const snap = this.snapshot;
     if (!r.session) return html`<div class="gespraech-notiz">Keine Sitzung zu diesem Vorhaben — nächsten Schritt starten.</div>`;
     if (this.aboFehler) {

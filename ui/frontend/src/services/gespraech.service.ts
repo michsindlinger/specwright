@@ -16,6 +16,9 @@ export type GespraechListener = (snapshot: GespraechSnapshot | null, fehler: str
 
 export type SendTextResult = { ok: true; entry: ProtokollEintrag; status: 'gesendet' | 'eingereiht' } | { ok: false; grund: GespraechGrund | 'fehler'; message: string };
 
+/** Address of a send: the Vorhaben (Vorhaben page) or — INT-2026-008 — a pending `/intent` session without a folder. */
+export type GespraechAdresse = { intentId: string; sessionId?: undefined } | { sessionId: string; intentId?: undefined };
+
 interface SessionSub {
   snapshot: GespraechSnapshot | null;
   /** Backend refused the subscription (unknown session) — shown as cause. */
@@ -99,10 +102,11 @@ export class GespraechClientService {
   }
 
   /** Free text into the session (FA-06/FA-11); refusal comes back as `ok:false` with the reason. */
-  send(projectId: string, intentId: string, text: string): Promise<SendTextResult> {
+  send(projectId: string, adresse: GespraechAdresse, text: string): Promise<SendTextResult> {
+    const address = adresse.intentId !== undefined ? { intentId: adresse.intentId } : { sessionId: adresse.sessionId };
     return gatewayRequest<{ type: string; entry?: ProtokollEintrag; status?: 'gesendet' | 'eingereiht'; grund?: GespraechGrund; message?: string }>(
       ['gespraech:sent', 'gespraech:rejected'],
-      { type: 'gespraech:send-text', projectId, intentId, text },
+      { type: 'gespraech:send-text', projectId, ...address, text },
       'gespraech:error',
       this.nextRequestId()
     )

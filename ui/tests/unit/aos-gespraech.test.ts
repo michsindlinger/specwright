@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Beitrag, GespraechSnapshot } from '../../src/shared/types/gespraech.protocol.js';
-import type { ProtokollEintrag, VorhabenRow } from '../../src/shared/types/vorhaben.protocol.js';
+import type { ProtokollEintrag, VorhabenPendingIntent, VorhabenRow } from '../../src/shared/types/vorhaben.protocol.js';
 
 vi.mock('../../frontend/src/gateway.js', () => ({
   gateway: { send: vi.fn(), on: vi.fn(), off: vi.fn(), getConnectionStatus: () => false, isConnecting: () => false, getProjectPath: vi.fn() },
@@ -149,7 +149,7 @@ describe('aos-gespraech — input states (FA-06, FA-15, Ablauf L) and sending', 
     expect(send).not.toHaveBeenCalled();
     ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await settle(el);
-    expect(send).toHaveBeenCalledWith('p', 'INT-2026-003', 'Leg sie vor.');
+    expect(send).toHaveBeenCalledWith('p', { intentId: 'INT-2026-003' }, 'Leg sie vor.');
     expect(el.querySelector('aos-gespraech-eingabe')!.value).toBe('');
     el.remove();
   });
@@ -303,6 +303,98 @@ describe('aos-gespraech — dialogs, availability, queued entries', () => {
     (msgs[1].querySelector('button') as HTMLButtonElement).click();
     expect(discard).toHaveBeenCalledWith('q2');
     expect(msgs[2].querySelector('button')).toBeNull();
+    el.remove();
+  });
+});
+
+/** INT-2026-008 (AK-01/AK-02): the Gespräch of a pending `/intent` session on the project page — no row, sends by session. */
+describe('aos-gespraech — pending /intent session without a folder (INT-2026-008)', () => {
+  const pendingOf = (o: Partial<VorhabenPendingIntent> = {}, s: Partial<VorhabenPendingIntent['session']> = {}): VorhabenPendingIntent => ({
+    sessionId: 'cloud-1-7', projectId: 'p', cwd: '/p', arbeitskopie: '', since: '2026-09-16T09:00:00.000Z',
+    session: { id: 'cloud-1-7', name: 'intent', model: 'opus', agentStatus: 'done', ...s },
+    ...o,
+  });
+
+  async function pendingGespraech(p: VorhabenPendingIntent, protocol: ProtokollEintrag[] = []) {
+    await import('../../frontend/src/components/vorhaben/aos-gespraech.js');
+    const el = document.createElement('aos-gespraech');
+    el.pending = p;
+    el.protocol = protocol;
+    document.body.appendChild(el);
+    await settle(el);
+    return el;
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    listeners.clear();
+    subscribe.mockClear();
+    send.mockClear();
+  });
+
+  it('gespraechZiel maps every live status of a pending session; a row wins over a pending (plan §3.6)', async () => {
+    const { gespraechZiel } = await import('../../frontend/src/components/vorhaben/aos-gespraech.js');
+    expect(gespraechZiel(undefined, undefined)).toBeNull();
+    const base = gespraechZiel(undefined, pendingOf({ arbeitskopie: 'feat-x' }))!;
+    expect(base).toEqual({ projectId: 'p', session: pendingOf().session, arbeitskopie: 'feat-x', zustand: 'wartet', lastChangedMs: Date.parse('2026-09-16T09:00:00.000Z'), entsteht: true });
+    expect(base.intentId).toBeUndefined();
+    expect(base.nextStep).toBeUndefined();
+    expect(gespraechZiel(undefined, pendingOf({}, { agentStatus: 'working' }))!.zustand).toBe('arbeitet');
+    expect(gespraechZiel(undefined, pendingOf({}, { agentStatus: 'blocked', blockKind: 'rueckfrage' }))!.zustand).toBe('wartet_rueckfrage');
+    expect(gespraechZiel(undefined, pendingOf({}, { agentStatus: 'blocked', blockKind: 'plan' }))!.zustand).toBe('wartet_plan');
+    expect(gespraechZiel(undefined, pendingOf({}, { agentStatus: 'blocked' }))!.zustand).toBe('wartet_berechtigung');
+    expect(gespraechZiel(undefined, pendingOf({}, { agentStatus: 'unknown', ended: true }))!.zustand).toBe('sitzung_beendet');
+    expect(gespraechZiel(undefined, pendingOf({}, { agentStatus: 'idle' }))!.zustand).toBe('wartet');
+    expect(gespraechZiel(row(), pendingOf())).toMatchObject({ intentId: 'INT-2026-003', session: { id: 'cloud-1-1' } });
+  });
+
+  it('subscribes to the pending session; head shows name, „Im Projekt", state and the session id; the Verlauf notes that the Vorhaben is being created', async () => {
+    const el = await pendingGespraech(pendingOf());
+    expect(subscribe).toHaveBeenCalledWith('cloud-1-7', expect.any(Function));
+    const kopf = el.querySelector('.gespraech-kopf')!;
+    expect(text(kopf)).toContain('Gespräch mit intent');
+    expect(text(kopf)).toContain('Im Projekt');
+    expect(text(kopf)).toContain('wartet');
+    expect(kopf.getAttribute('data-session-id')).toBe('cloud-1-7');
+    await push(el, snap([]), null, 'cloud-1-7');
+    expect(text(el.querySelector('.gespraech-notiz.entsteht'))).toBe('Vorhaben entsteht — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist.');
+    expect(text(el)).toContain('Noch keine Beiträge');
+    el.remove();
+  });
+
+  it('sends by session id (no intentId); working → einreihen; open Rückfrage → locked with the terminal offer; ended → locked without a next step', async () => {
+    const el = await pendingGespraech(pendingOf());
+    await push(el, snap([]), null, 'cloud-1-7');
+    const eingabe = el.querySelector('aos-gespraech-eingabe')!;
+    eingabe.dispatchEvent(new CustomEvent('gespraech-send', { bubbles: true, detail: { text: 'Es geht um die Sortierung.' } }));
+    await settle(el);
+    expect(send).toHaveBeenCalledWith('p', { sessionId: 'cloud-1-7' }, 'Es geht um die Sortierung.');
+    el.pending = pendingOf({}, { agentStatus: 'working' });
+    await settle(el);
+    expect(eingabe.modus).toBe('einreihen');
+    el.pending = pendingOf({}, { agentStatus: 'blocked', blockKind: 'rueckfrage' });
+    await settle(el);
+    expect(eingabe.modus).toBe('gesperrt');
+    expect(eingabe.terminalKnopf).toBe(true);
+    expect(eingabe.grund).toMatch(/Rückfrage/);
+    el.pending = pendingOf({}, { agentStatus: 'unknown', ended: true });
+    await settle(el);
+    expect(eingabe.modus).toBe('gesperrt');
+    expect(eingabe.nextStepLabel).toBe('');
+    expect(text(el.querySelector('.gespraech-kopf'))).toContain('Sitzung beendet');
+    // the same session id stays subscribed across these changes
+    expect(subscribe).toHaveBeenCalledTimes(1);
+    el.remove();
+  });
+
+  it('switching from the pending session to the claimed row with the same session keeps the subscription (review 15)', async () => {
+    const el = await pendingGespraech(pendingOf());
+    el.pending = undefined;
+    el.row = row({ intentId: 'INT-2026-009', session: { id: 'cloud-1-7', name: 'intent', model: 'opus', agentStatus: 'working' } });
+    await settle(el);
+    expect(subscribe).toHaveBeenCalledTimes(1);
+    expect(el.querySelector('.gespraech-notiz.entsteht')).toBeNull();
+    expect(text(el.querySelector('.gespraech-kopf'))).toContain('arbeitet');
     el.remove();
   });
 });

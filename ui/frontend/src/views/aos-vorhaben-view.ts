@@ -19,7 +19,7 @@ import { gateway } from '../gateway.js';
 import { vorhabenService } from '../services/vorhaben.service.js';
 import { MobileBreakpointController } from '../controllers/mobile-breakpoint-controller.js';
 import type { ParsedRoute, ViewType } from '../types/route.types.js';
-import type { ProjectDocKey, VorhabenRow, VorhabenState } from '../../../src/shared/types/vorhaben.protocol.js';
+import type { ProjectDocKey, VorhabenPendingIntent, VorhabenRow, VorhabenState } from '../../../src/shared/types/vorhaben.protocol.js';
 import { PROJECT_DOC_KEYS, VORHABEN_DOC_ORDER, draftKey } from '../../../src/shared/types/vorhaben.protocol.js';
 import { countWaitingForMe } from '../components/vorhaben/vorhaben-sort.js';
 import { defaultDoc, type AosVorhabenSeite } from '../components/vorhaben/aos-vorhaben-seite.js';
@@ -52,13 +52,32 @@ export class AosVorhabenView extends LitElement {
   @state() private connected = true;
   @state() private filterProjectId: string | null = null;
   @state() private drawerOpen = false;
-  /** „Absicht beginnen" started this session; navigate to its Vorhaben once a row carries it (FA-22, AN-S03). */
+  /**
+   * Navigation memory, not state (INT-2026-008 plan §3.7): the `/intent`
+   * session to follow to its new Vorhaben page once a row carries it (FA-22,
+   * AN-S03). Set by „Absicht beginnen" or when the project page first shows a
+   * pending session from `state.pendingIntents`; cleared after the navigation
+   * or when the session vanished without a folder (aborted). What is shown
+   * always comes from the state.
+   */
   @state() private pendingIntentSessionId: string | null = null;
+  /** The memory's session was seen in `state.pendingIntents` at least once — only then a missing session means "aborted". */
+  private pendingSeen = false;
+  /** Navigation to the claimed row was requested; the memory is kept until the route changed (no flash, review 15). */
+  private pendingNavigated = false;
+
+  private forgetPending(): void {
+    this.pendingIntentSessionId = null;
+    this.pendingSeen = false;
+    this.pendingNavigated = false;
+  }
 
   private readonly breakpoint = new MobileBreakpointController(this);
   private unsubscribeState: (() => void) | null = null;
   private readonly onRoute = (route: ParsedRoute): void => {
     if (route.view === 'vorhaben' || route.view === 'projekt') {
+      // The Vorhaben page of the claimed row is up → the project page no longer needs the memory.
+      if (route.view === 'vorhaben' && this.pendingNavigated) this.forgetPending();
       this.route = route.view;
       this.segments = route.segments;
     }
@@ -79,6 +98,7 @@ export class AosVorhabenView extends LitElement {
     super.connectedCallback();
     this.unsubscribeState = vorhabenService.subscribe((s) => {
       this.vorhabenState = s;
+      this.notePendingIntent(s);
       this.followStartedIntent(s);
     });
     routerService.on('route-changed', this.onRoute);
@@ -157,18 +177,73 @@ export class AosVorhabenView extends LitElement {
    */
   private onSessionStarted(e: CustomEvent<{ sessionId: string; step: string; intentId?: string }>): void {
     e.stopPropagation();
-    if (e.detail.step === 'intent' && !e.detail.intentId) this.pendingIntentSessionId = e.detail.sessionId;
+    if (e.detail.step === 'intent' && !e.detail.intentId) {
+      this.forgetPending();
+      this.pendingIntentSessionId = e.detail.sessionId;
+    }
     this.dispatchEvent(new CustomEvent('show-toast', { bubbles: true, composed: true, detail: { message: e.detail.step === 'intent' ? 'Sitzung gestartet — Vorhaben entsteht' : 'Sitzung gestartet', type: 'success' } }));
   }
 
-  /** First `vorhaben:state` whose row carries the started intent session → open that Vorhaben (FA-22). */
+  /** Oldest pending `/intent` session of a project — the one `onDirAdded` claims next (INT-2026-008, R-3). */
+  private pendingOf(state: VorhabenState | null, projectId: string | null): VorhabenPendingIntent | undefined {
+    if (!state || !projectId) return undefined;
+    return state.pendingIntents.filter((p) => p.projectId === projectId).sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0))[0];
+  }
+
+  /**
+   * On the project page a pending session from the state (typed by hand, or
+   * after a reload) is followed like one started here (AK-07); a memory whose
+   * session shows up as pending is marked as seen.
+   */
+  private notePendingIntent(state: VorhabenState | null): void {
+    if (!state) return;
+    const memory = this.pendingIntentSessionId;
+    if (memory) {
+      if (state.pendingIntents.some((p) => p.sessionId === memory)) this.pendingSeen = true;
+      return;
+    }
+    if (this.route !== 'projekt') return;
+    const pending = this.pendingOf(state, this.currentProjectId());
+    if (pending) {
+      this.pendingIntentSessionId = pending.sessionId;
+      this.pendingSeen = true;
+    }
+  }
+
+  /**
+   * First `vorhaben:state` whose row carries the remembered intent session →
+   * open that Vorhaben (FA-22). The same broadcast drops the session from
+   * `pendingIntents` (review 14). A session that is neither pending nor on a
+   * row any more was aborted: forget it.
+   */
   private followStartedIntent(state: VorhabenState | null): void {
     const pending = this.pendingIntentSessionId;
     if (!pending || !state) return;
     const row = state.rows.find((r) => r.session?.id === pending);
-    if (!row) return;
-    this.pendingIntentSessionId = null;
-    this.openRow(row);
+    if (row) {
+      // Memory stays until the route changed (onRoute): the project page keeps the claimed row's Gespräch mounted meanwhile.
+      if (this.pendingNavigated) return;
+      this.pendingNavigated = true;
+      this.openRow(row);
+      return;
+    }
+    if (this.pendingSeen && !state.pendingIntents.some((p) => p.sessionId === pending)) this.forgetPending();
+  }
+
+  /**
+   * Gespräch of the project page (INT-2026-008, AK-01): the oldest pending
+   * `/intent` session; right after the claim — pending gone, row there, route
+   * not yet switched — the claimed row keeps the same `aos-gespraech` mounted
+   * (review 15: no flash, same session id → no re-subscribe).
+   */
+  private projektGespraech(): { pending?: VorhabenPendingIntent; claimedRow?: VorhabenRow } {
+    const pid = this.currentProjectId();
+    const state = this.vorhabenState;
+    const pending = this.pendingOf(state, pid);
+    if (pending) return { pending };
+    const memory = this.pendingIntentSessionId;
+    const claimedRow = memory && state && pid ? state.rows.find((r) => r.projectId === pid && r.session?.id === memory) : undefined;
+    return claimedRow ? { claimedRow } : {};
   }
 
   private onGespraechNextStep(): void {
@@ -212,7 +287,8 @@ export class AosVorhabenView extends LitElement {
   override render() {
     const content = this.renderContent();
     if (!this.breakpoint.isMobile) {
-      const split = this.route === 'vorhaben' && !!this.currentRow().row?.session;
+      const g = this.route === 'projekt' ? this.projektGespraech() : {};
+      const split = this.route === 'vorhaben' ? !!this.currentRow().row?.session : !!(g.pending || g.claimedRow);
       return html`<div class="vorhaben-view ${split ? 'split' : ''}">${content}</div>`;
     }
     const waiting = this.vorhabenState ? countWaitingForMe(this.vorhabenState.rows) : 0;
@@ -298,15 +374,26 @@ export class AosVorhabenView extends LitElement {
       const open = this.projectCtx.openProjects.find((p) => p.id === pid);
       if (!open) return html`<div class="vorhaben-status">Projekt nicht geöffnet.</div>`;
     }
-    return html`<aos-projekt-seite
+    const { pending, claimedRow } = this.projektGespraech();
+    const seite = html`<aos-projekt-seite
       .project=${project}
       .docDrafts=${this.vorhabenState?.docDrafts ?? {}}
       .selectedKey=${this.currentDocKey()}
       .mobile=${this.breakpoint.isMobile}
-      .startedSessionId=${this.pendingIntentSessionId ?? ''}
+      .pending=${pending ?? null}
       @doc-select=${this.onDocSelect}
       @vorhaben-session-started=${this.onSessionStarted}
     ></aos-projekt-seite>`;
+    // Mac with a pending `/intent` session: page left, its Gespräch right (INT-2026-008, AK-01); phone: hint only (AK-06).
+    if (this.breakpoint.isMobile || !(pending || claimedRow)) return seite;
+    const sessionId = pending?.sessionId ?? claimedRow?.session?.id;
+    const protocol = (this.vorhabenState?.protocol ?? []).filter((e) => e.sessionId === sessionId);
+    return html`<div class="vorhaben-split" style="--gespraech-width: ${GESPRAECH_BREITE}">
+      ${seite}
+      <div class="vorhaben-split-gespraech">
+        <aos-gespraech .row=${claimedRow} .pending=${pending} .protocol=${protocol}></aos-gespraech>
+      </div>
+    </div>`;
   }
 }
 
