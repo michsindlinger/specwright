@@ -27,7 +27,7 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 <!-- leser: mensch -->
 
 1. Michael öffnet die UI am Mac.
-2. Die UI zeigt die Vorhaben-Liste: oben Projekt-Chips („Alle", dann je offenes Projekt) als Filter, darunter die Gruppe „Wartet auf dich" und die Gruppe „Läuft", je Zeile Projekt, Kennung, Titel, Phase und Agent-Zustand; unten der Knopf „Neue Absicht".
+2. Die UI zeigt die Vorhaben-Liste: oben Projekt-Chips („Alle", dann je offenes Projekt) als Filter, darunter die Gruppe „Wartet auf dich" und die Gruppe „Läuft", je Zeile Projekt, Kennung, Titel, Phase und Agent-Zustand; unten in einer festen Leiste der Knopf „Neue Absicht", der auch bei langer Liste sichtbar bleibt.
 3. Über der Liste steht nur die Kopfzeile: Glocke mit Zahl, Projekt-Symbol. Keine Seitenleiste, keine Projekt-Tabs, keine Git-Leiste, keine Versions- oder Auslastungsanzeige.
 4. Michael tippt einen Projekt-Chip: Die Liste zeigt nur Vorhaben dieses Projekts; die Gruppen bleiben.
 5. Ergebnis: Michael weiß nach einem Blick, welches Vorhaben auf ihn wartet, und tippt die Zeile → Ablauf D.
@@ -101,7 +101,7 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 | ID | Anforderung | Herkunft | Prüfung |
 |---|---|---|---|
 | FA-01 | Nach dem Öffnen der UI MUSS die Vorhaben-Liste die erste Seite sein. | AK-01 | Test |
-| FA-02 | Die Liste MUSS Projekt-Chips als Filter, die Gruppen „Wartet auf dich" und „Läuft" und je Zeile Projekt, Kennung, Titel, Phase und Agent-Zustand zeigen; unten den Knopf „Neue Absicht". | AK-01 | Test + Playwright |
+| FA-02 | Die Liste MUSS Projekt-Chips als Filter, die Gruppen „Wartet auf dich" und „Läuft" und je Zeile Projekt, Kennung, Titel, Phase und Agent-Zustand zeigen; unten den Knopf „Neue Absicht" in einer festen Leiste, die beim Scrollen sichtbar bleibt (AN-S02). | AK-01 | Test + Playwright |
 | FA-03 | Wenn ein Projekt-Chip gewählt ist, DARF die Liste nur Vorhaben dieses Projekts zeigen; „Alle" hebt den Filter auf. | AK-01 | Test |
 | FA-04 | Auf jeder Seite MUSS die Kopfzeile die Glocke mit der Zahl der Sitzungen zeigen, die auf Michael warten oder fertig sind; bei null bleibt das Symbol ohne Zahl. | AK-02 | Test + Playwright |
 | FA-05 | Wenn ein Agent fertig wird oder blockiert, MUSS die Glocke das binnen 2 s ab Ereignis anzeigen, auch bei geschlossenem Terminal. | AK-03 | Messung |
@@ -129,6 +129,7 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 
 | Fall | Erwartetes Verhalten | Herkunft |
 |---|---|---|
+| Liste länger als der Bildschirm | Die Liste scrollt, Kopfzeile und die Leiste mit „Neue Absicht" bleiben stehen | FA-02, AN-S02 |
 | Keine Vorhaben in den offenen Projekten | Liste zeigt einen Satz („Noch kein Vorhaben") und den Knopf „Neue Absicht" | AK-01, design.md §4 Leerzustand |
 | Glocke ohne Einträge | Symbol ohne Zahl; Tippen zeigt „Nichts wartet" | FA-04 |
 | Verbindung zum Backend weg | Der heutige Verbindungs-Hinweis erscheint; Glocke friert auf dem letzten Stand ein und wird nach Wiederverbindung nachgeladen | AK-03, intent §10 Betrieb |
@@ -164,7 +165,7 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 <!-- Nur bei UI-Änderung. Beschreibung in Worten; Mock unter `design/` (Pfad nennen), sonst „kein Mock nötig, weil …". -->
 
 - Kopfzeile (jede Seite): links nichts oder der Seitentitel in Grau, rechts Glocke mit Zahl, Projekt-Symbol, auf dem Handy dazu Terminal-Symbol. Eine Akzentfarbe: die Glocke mit Einträgen.
-- Vorhaben-Liste: Titel „Vorhaben", Chip-Reihe, zwei Gruppen mit Überschrift und Zähler, Zeilen wie heute; unten mittig „Neue Absicht".
+- Vorhaben-Liste: Titel „Vorhaben", Chip-Reihe, zwei Gruppen mit Überschrift und Zähler, Zeilen wie heute; unten eine feste Leiste mit „Neue Absicht" mittig (Skizze 1 „Static bar").
 - Neue Absicht: Titel, großes Textfeld, rechts unten daran die Modellwahl, darunter „Starten".
 - Vorhaben-Seite: Kennung groß, Titel darunter, rechts oben Phasen-Chips; darunter zwei Spalten, links Gespräch (Beiträge als Karten, Eingabe unten), rechts Dokument mit Schalter „Technik zeigen" und zugeklappten Agent-Abschnitten; rechts unten „spec starten" o. ä. und, wenn das Dokument auf Freigabe wartet, daneben „Freigeben".
 - Projekt-Seite: Abschnitte untereinander (Projekt, Docs, Git, Einstellungen), keine Tabs.
@@ -213,9 +214,9 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 <!-- Vorläufige Auslegungen nach ER-00 der intent.md. Werden bei der Freigabe gesammelt bestätigt. -->
 
 - **AN-S01:** Die heutige dritte Gruppe „Wartet" (Sitzung wartet auf Berechtigung oder Plan-Freigabe) geht in „Wartet auf dich" auf, weil Michael dort handeln muss; „Läuft" enthält nur arbeitende Sitzungen; Vorhaben ohne Sitzung stehen unter „Läuft" mit Zustand „ruht". — bestätigt am 2026-09-16 von PO (Chat)
-- **AN-S02:** Die Linie „Statusbar" in Skizze 1 ist der heutige Verbindungs-Hinweis der UI (nur sichtbar, wenn die Verbindung fehlt), keine dauerhafte Statusleiste; AK-05 verbietet Versions- und Auslastungsanzeige dort. — offen (PO bittet um Erklärung, 16.09.)
-- **AN-S03:** Ein teilweise gekennzeichnetes Dokument gilt für den Leser wie ein Dokument ohne Kennzeichnung (alles offen), weil AK-12 die engste Auslegung ist und der Guard aus INT-2026-009 solche Dokumente ohnehin ablehnt. — offen (PO bittet um Erklärung, 16.09.)
-- **AN-S04:** Der Knopf für den nächsten Schritt zeigt den nächsten Phasen-Befehl (nach intent angenommen: „spec starten"; bei Bypass: „plan starten"; nach plan freigegeben: „build starten"), ist immer sichtbar und ausgegraut, solange eine Sitzung des Vorhabens arbeitet oder wartet. — bestätigt am 2026-09-16 von PO (Chat: „genau, wir brauchen immer den Knopf"); Auslegung „ausgegraut statt klickbar" offen
+- **AN-S02:** Die Linie in Skizze 1 heißt „Static bar": Der Knopf „Neue Absicht" sitzt in einer festen Leiste am unteren Rand und bleibt beim Scrollen einer langen Liste sichtbar. Keine Statusanzeige; AK-05 verbietet Versions- und Auslastungsanzeige dort. — bestätigt am 2026-09-16 von PO (Chat: „Static bar, der Button ist immer im Sichtbereich")
+- **AN-S03:** Ein teilweise gekennzeichnetes Dokument gilt für den Leser wie ein Dokument ohne Kennzeichnung (alles offen), weil AK-12 die engste Auslegung ist und der Guard aus INT-2026-009 solche Dokumente ohnehin ablehnt. — bestätigt am 2026-09-16 von PO (Chat)
+- **AN-S04:** Der Knopf für den nächsten Schritt zeigt den nächsten Phasen-Befehl (nach intent angenommen: „spec starten"; bei Bypass: „plan starten"; nach plan freigegeben: „build starten"), ist immer sichtbar und ausgegraut, solange eine Sitzung des Vorhabens arbeitet oder wartet. — bestätigt am 2026-09-16 von PO (Chat: „genau, wir brauchen immer den Knopf"; ausgegraut bestätigt)
 - **AN-S05:** Die Glocke im Kopf des Terminals entfällt, weil die Glocke der Kopfzeile auf jeder Seite sichtbar ist (B-06); der Hinweiston bleibt wie heute schaltbar. — bestätigt am 2026-09-16 von PO (Chat)
 - **AN-S06:** „Freigeben" schreibt kein Dokument: Der Knopf schickt „freigabe" an die wartende Sitzung des Vorhabens; wartet keine, startet er die Sitzung der laufenden Phase mit der Freigabe als erster Eingabe. Der Agent setzt Status, Abgleich (R4) und Commit wie in den Workflows. — offen
 
