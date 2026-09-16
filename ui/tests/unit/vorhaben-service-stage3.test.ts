@@ -77,6 +77,7 @@ describe('VorhabenService.sendText (INT-2026-007)', () => {
   let broadcast: ReturnType<typeof vi.fn<(m: OutboundMessage) => void>>;
   let service: VorhabenService;
   let manager: FakeManager;
+  let watcher: VorhabenWatcher;
   const openProjects: Array<{ id: string; path: string; name: string }> = [];
 
   const lastState = (): VorhabenStateMessage['state'] => {
@@ -105,11 +106,12 @@ describe('VorhabenService.sendText (INT-2026-007)', () => {
     await store.load();
     broadcast = vi.fn();
     manager = new FakeManager();
+    watcher = new VorhabenWatcher({ debounceMs: 30 });
     service = new VorhabenService({
-      workspace: { getState: () => ({ openProjects, sessionNames: { s1: 'spec INT-2026-007' } }) },
+      workspace: { getState: () => ({ openProjects, sessionNames: { s1: 'spec INT-2026-007', s9: 'intent' } }) },
       store,
       broadcast,
-      watcher: new VorhabenWatcher({ debounceMs: 30 }),
+      watcher,
       sessions: manager,
       timeZone: 'UTC',
       listWorktrees: async () => ({ isGitRepo: false, mainWorktreePath: null, entries: [] }),
@@ -265,5 +267,186 @@ describe('VorhabenService.sendText (INT-2026-007)', () => {
     assign('blocked', 'plan');
     await service.rescan();
     expect(lastState().rows[0].session).toMatchObject({ agentStatus: 'blocked', blockKind: 'plan' });
+  });
+});
+
+/**
+ * INT-2026-008 (AK-02/AK-03/AK-05/AK-07): free text into a pending `/intent`
+ * session that has no folder yet, the pending list in the state, the claim
+ * that moves the interview into the Vorhaben's protocol, and the cleanup.
+ */
+describe('VorhabenService.sendTextToSession + pendingIntents (INT-2026-008)', () => {
+  let root: string;
+  let projA: string;
+  let store: VorhabenStateStore;
+  let broadcast: ReturnType<typeof vi.fn<(m: OutboundMessage) => void>>;
+  let service: VorhabenService;
+  let manager: FakeManager;
+  let watcher: VorhabenWatcher;
+  const openProjects: Array<{ id: string; path: string; name: string }> = [];
+  const names: Record<string, string> = { s9: 'intent' };
+
+  const states = (): VorhabenStateMessage['state'][] => broadcast.mock.calls.map((c) => c[0]).filter((m) => m.type === 'vorhaben:state').map((m) => (m as VorhabenStateMessage).state);
+  const lastState = (): VorhabenStateMessage['state'] => states()[states().length - 1];
+  const failed = async (p: Promise<unknown>): Promise<string> => {
+    try {
+      await p;
+      return 'ok';
+    } catch (err) {
+      if (err instanceof SendRejectedError) return err.grund;
+      return `code:${(err as { code?: string }).code ?? (err as Error).message}`;
+    }
+  };
+  const pend = (id = 's9', agentStatus: VorhabenSessionInfo['agentStatus'] = 'done', blockKind?: VorhabenSessionInfo['blockKind'], since = '2026-09-16T09:00:00.000Z'): void => {
+    manager.add(id, projA, agentStatus, blockKind);
+    store.setPendingIntent(id, { projectId: 'pa', cwd: projA, step: 'intent', model: 'opus', since });
+  };
+
+  beforeEach(async () => {
+    vi.useFakeTimers();
+    root = mkdtempSync(join(tmpdir(), 'vorhaben-s8-'));
+    projA = join(root, 'a');
+    mkdirSync(join(projA, 'intent'), { recursive: true });
+    openProjects.splice(0, openProjects.length, { id: 'pa', path: projA, name: 'A' }, { id: 'pb', path: join(root, 'b'), name: 'B' });
+    mkdirSync(join(root, 'b'), { recursive: true });
+    store = new VorhabenStateStore(join(root, 'state.json'), { port: 3111 });
+    await store.load();
+    broadcast = vi.fn();
+    manager = new FakeManager();
+    watcher = new VorhabenWatcher({ debounceMs: 30 });
+    service = new VorhabenService({
+      workspace: { getState: () => ({ openProjects, sessionNames: names }) },
+      store,
+      broadcast,
+      watcher,
+      sessions: manager,
+      timeZone: 'UTC',
+      listWorktrees: async () => ({ isGitRepo: true, mainWorktreePath: projA, entries: [{ path: projA, branch: 'main', head: 'x', bare: false, detached: false, locked: false, prunable: false }] }),
+    });
+    await service.start();
+  });
+
+  afterEach(async () => {
+    service.stop();
+    await store.flush();
+    vi.useRealTimers();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('state carries the pending session with live status, tab name and copy label, oldest first; without a live session it is ended (AK-05)', async () => {
+    pend('s9', 'working', undefined, '2026-09-16T09:01:00.000Z');
+    store.setPendingIntent('s8', { projectId: 'pa', cwd: join(projA, '.wt', 'feat-x'), step: 'intent', model: 'sonnet', since: '2026-09-16T09:00:00.000Z' });
+    service.broadcastState();
+    const pending = lastState().pendingIntents;
+    expect(pending.map((p) => p.sessionId)).toEqual(['s8', 's9']);
+    expect(pending[1]).toEqual({
+      sessionId: 's9', projectId: 'pa', cwd: projA, arbeitskopie: 'main', since: '2026-09-16T09:01:00.000Z',
+      session: { id: 's9', name: 'intent', model: 'opus', agentStatus: 'working' },
+    });
+    // no live session (restart, closed) → ended; unknown name → 'intent'; worktree cwd → its directory name
+    expect(pending[0]).toMatchObject({ arbeitskopie: 'feat-x', session: { id: 's8', name: 'intent', model: 'sonnet', agentStatus: 'unknown', ended: true } });
+    manager.add('s9', projA, 'blocked', 'rueckfrage');
+    service.broadcastState();
+    expect(lastState().pendingIntents[1].session).toMatchObject({ agentStatus: 'blocked', blockKind: 'rueckfrage' });
+  });
+
+  it('status changes of a pending session broadcast the state without a rescan; a typed /intent registers and broadcasts (AK-05, AK-07)', async () => {
+    const rescan = vi.spyOn(service, 'scheduleRescan');
+    pend('s9', 'working');
+    const before = states().length;
+    manager.emit('session.agent-event', 's9', 'stop', { status: 'done' });
+    expect(states().length).toBe(before + 1);
+    expect(rescan).not.toHaveBeenCalled();
+    // unknown session: nothing
+    manager.emit('session.agent-event', 'zz', 'stop', { status: 'done' });
+    expect(states().length).toBe(before + 1);
+    // typed by hand in a terminal of project A
+    manager.add('s7', projA, 'working');
+    manager.emit('session.prompt-text', 's7', '/specwright:intent');
+    expect(lastState().pendingIntents.map((p) => p.sessionId)).toEqual(['s9', 's7']);
+    expect(rescan).not.toHaveBeenCalled();
+  });
+
+  it('waiting pending session: paste + Enter under the lock, entry without intentId, confirmed by the prompt; working → eingereiht (AK-02)', async () => {
+    pend('s9', 'done');
+    const { entry, status } = await service.sendTextToSession('pa', 's9', 'Es geht um die Sortierung.\n');
+    expect(status).toBe('gesendet');
+    expect(entry).toMatchObject({ projectId: 'pa', art: 'freitext', status: 'gesendet', sessionId: 's9', sessionName: 'intent', text: 'Es geht um die Sortierung.' });
+    expect(entry.intentId).toBeUndefined();
+    expect(manager.writes).toEqual([['s9', PASTE_START + 'Es geht um die Sortierung.' + PASTE_END]]);
+    expect(manager.lockLog).toEqual(['lock']);
+    await vi.advanceTimersByTimeAsync(150);
+    expect(manager.writes[1]).toEqual(['s9', '\r']);
+    expect(manager.lockLog).toEqual(['lock', 'unlock']);
+    expect(lastState().protocol[0]).toMatchObject({ id: entry.id, status: 'gesendet' });
+    manager.emit('session.prompt-text', 's9', 'Es geht um die Sortierung.');
+    expect(lastState().protocol[0].status).toBe('angenommen');
+    manager.add('s9', projA, 'working');
+    const r2 = await service.sendTextToSession('pa', 's9', 'noch was');
+    expect(r2.status).toBe('eingereiht');
+    await vi.advanceTimersByTimeAsync(150);
+  });
+
+  it('refusals: dialog cue on the screen rolls the entry back, lock busy → beschaeftigt, open dialog → per kind, empty text (AK-02)', async () => {
+    pend('s9', 'done');
+    manager.screen = { text: FRAGE_SCREEN, live: true };
+    expect(await failed(service.sendTextToSession('pa', 's9', 'x'))).toBe('dialog_offen');
+    expect(manager.writes).toEqual([]);
+    expect(lastState().protocol).toEqual([]);
+    manager.screen = { text: PROMPT_SCREEN, live: true };
+    const first = service.sendTextToSession('pa', 's9', 'eins');
+    await Promise.resolve();
+    expect(await failed(service.sendTextToSession('pa', 's9', 'zwei'))).toBe('beschaeftigt');
+    await first;
+    await vi.advanceTimersByTimeAsync(150);
+    manager.add('s9', projA, 'blocked', 'rueckfrage');
+    expect(await failed(service.sendTextToSession('pa', 's9', 'x'))).toBe('rueckfrage_offen');
+    expect(await failed(service.sendTextToSession('pa', 's9', '  '))).toBe('text_leer');
+  });
+
+  it('the session id is only a key: not pending for this project, other project, closed project → UNKNOWN_SESSION / UNKNOWN_PROJECT (AK-02, RB-02)', async () => {
+    pend('s9', 'done');
+    expect(await failed(service.sendTextToSession('pa', 's1', 'x'))).toBe('code:UNKNOWN_SESSION');
+    expect(await failed(service.sendTextToSession('pb', 's9', 'x'))).toBe('code:UNKNOWN_SESSION');
+    expect(await failed(service.sendTextToSession('zz', 's9', 'x'))).toBe('code:UNKNOWN_PROJECT');
+    manager.sessions.delete('s9');
+    expect(await failed(service.sendTextToSession('pa', 's9', 'x'))).toBe('beendet');
+    expect(manager.writes).toEqual([]);
+  });
+
+  it('claim: the new folder moves the interview into the Vorhaben protocol; a second pending session of the same cwd keeps its entries; sends after the claim carry the id (AK-03, R-4)', async () => {
+    pend('s9', 'done', undefined, '2026-09-16T09:00:00.000Z');
+    pend('s8', 'done', undefined, '2026-09-16T09:05:00.000Z');
+    const a = await service.sendTextToSession('pa', 's9', 'eins');
+    await vi.advanceTimersByTimeAsync(150);
+    const b = await service.sendTextToSession('pa', 's8', 'andere');
+    await vi.advanceTimersByTimeAsync(150);
+    const dir = join(projA, 'intent', 'INT-2026-008-neu');
+    mkdirSync(dir);
+    writeFileSync(join(dir, 'intent.md'), intentText('INT-2026-008', 'entwurf'));
+    watcher.emit('dir-added', projA, 'INT-2026-008');
+    watcher.emit('changed', projA);
+    await service.rescan();
+    const st = lastState();
+    expect(st.pendingIntents.map((p) => p.sessionId)).toEqual(['s8']);
+    expect(st.rows.find((r) => r.intentId === 'INT-2026-008')?.session?.id).toBe('s9');
+    expect(st.protocol.find((e) => e.id === a.entry.id)).toMatchObject({ intentId: 'INT-2026-008', sessionId: 's9' });
+    expect(st.protocol.find((e) => e.id === b.entry.id)?.intentId).toBeUndefined();
+    // after the claim the session address resolves to the row's intentId
+    const c = await service.sendTextToSession('pa', 's9', 'zwei');
+    expect(c.entry.intentId).toBe('INT-2026-008');
+    await vi.advanceTimersByTimeAsync(150);
+  });
+
+  it('a pending session that ends without a folder: pending and its unclaimed entries are gone, state broadcast (AK-03, R-2)', async () => {
+    pend('s9', 'done');
+    const a = await service.sendTextToSession('pa', 's9', 'eins');
+    await vi.advanceTimersByTimeAsync(150);
+    manager.sessions.delete('s9');
+    const before = states().length;
+    manager.emit('session.closed', 's9');
+    expect(states().length).toBe(before + 1);
+    expect(lastState().pendingIntents).toEqual([]);
+    expect(lastState().protocol.some((e) => e.id === a.entry.id)).toBe(false);
   });
 });

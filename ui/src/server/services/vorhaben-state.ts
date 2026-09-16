@@ -315,6 +315,32 @@ export class VorhabenStateStore {
     return true;
   }
 
+  /**
+   * INT-2026-008: the first new folder claimed this pending `/intent` session —
+   * its entries without a Vorhaben get the id (one-time transition; other
+   * sessions' entries are untouched). Returns the number of entries changed.
+   */
+  public claimPendingProtocol(sessionId: string, intentId: string): number {
+    let n = 0;
+    for (const e of this.state.protocol) {
+      if (e.sessionId === sessionId && !e.intentId) {
+        e.intentId = intentId;
+        n++;
+      }
+    }
+    if (n > 0) this.commit();
+    return n;
+  }
+
+  /** INT-2026-008: a pending `/intent` session ended without a folder — its unclaimed entries would stay invisible forever. */
+  public dropUnclaimedProtocol(sessionId: string): number {
+    const before = this.state.protocol.length;
+    this.state.protocol = this.state.protocol.filter((e) => !(e.sessionId === sessionId && !e.intentId));
+    const removed = before - this.state.protocol.length;
+    if (removed > 0) this.commit();
+    return removed;
+  }
+
   /** Entries still waiting for Claude's confirmation: `gesendet` (10-s timer) and `eingereiht` (queued, INT-2026-007). */
   public pendingSends(): ProtokollEintrag[] {
     return this.state.protocol.filter((e) => e.status === 'gesendet' || e.status === 'eingereiht').map((e) => ({ ...e }));
@@ -351,7 +377,8 @@ export class VorhabenStateStore {
     const cutoff = this.now().getTime() - PROTOCOL_RETENTION_MS;
     const before = this.state.protocol.length;
     this.state.protocol = this.state.protocol.filter((e) => {
-      if (liveKeys.has(assignmentKey(e.projectId, e.intentId))) return true;
+      // Entries of a pending `/intent` session (no intentId yet) never match a live key → 30-day net.
+      if (e.intentId && liveKeys.has(assignmentKey(e.projectId, e.intentId))) return true;
       return new Date(e.sentAt).getTime() >= cutoff;
     });
     const removed = before - this.state.protocol.length;

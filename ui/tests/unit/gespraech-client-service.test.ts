@@ -93,18 +93,30 @@ describe('GespraechClientService', () => {
     expect(seen[seen.length - 1][1]).toBeNull();
   });
 
+  it('send by session (INT-2026-008): the request carries sessionId and no intentId', async () => {
+    const { GespraechClientService } = await import('../../frontend/src/services/gespraech.service.js');
+    const svc = new GespraechClientService();
+    const p = svc.send('p', { sessionId: 'cloud-1-7' }, 'Sortierung');
+    const req = sent[sent.length - 1];
+    expect(req).toMatchObject({ type: 'gespraech:send-text', projectId: 'p', sessionId: 'cloud-1-7', text: 'Sortierung' });
+    expect(req.intentId).toBeUndefined();
+    emit({ type: 'gespraech:sent', requestId: req.requestId, entry: { id: 'pe7' }, status: 'gesendet' });
+    expect(await p).toMatchObject({ ok: true, status: 'gesendet' });
+  });
+
   it('send resolves with the entry and status, a refusal with the reason, an error message as ok:false', async () => {
     const { GespraechClientService } = await import('../../frontend/src/services/gespraech.service.js');
     const svc = new GespraechClientService();
-    const p1 = svc.send('p', 'INT-2026-003', 'hallo');
+    const p1 = svc.send('p', { intentId: 'INT-2026-003' }, 'hallo');
     const req = sent[sent.length - 1];
     expect(req).toMatchObject({ type: 'gespraech:send-text', projectId: 'p', intentId: 'INT-2026-003', text: 'hallo' });
+    expect(req.sessionId).toBeUndefined();
     emit({ type: 'gespraech:sent', requestId: req.requestId, entry: { id: 'pe1' }, status: 'eingereiht' });
     expect(await p1).toEqual({ ok: true, entry: { id: 'pe1' }, status: 'eingereiht' });
-    const p2 = svc.send('p', 'INT-2026-003', 'x');
+    const p2 = svc.send('p', { intentId: 'INT-2026-003' }, 'x');
     emit({ type: 'gespraech:rejected', requestId: sent[sent.length - 1].requestId, grund: 'plan_offen', message: 'Sitzung wartet auf die Plan-Entscheidung' });
     expect(await p2).toEqual({ ok: false, grund: 'plan_offen', message: 'Sitzung wartet auf die Plan-Entscheidung' });
-    const p3 = svc.send('p', 'INT-2026-003', 'x');
+    const p3 = svc.send('p', { intentId: 'INT-2026-003' }, 'x');
     emit({ type: 'gespraech:error', requestId: sent[sent.length - 1].requestId, code: 'UNKNOWN_PROJECT', message: 'Projekt ist nicht geöffnet' });
     expect(await p3).toEqual({ ok: false, grund: 'fehler', message: 'Projekt ist nicht geöffnet' });
   });

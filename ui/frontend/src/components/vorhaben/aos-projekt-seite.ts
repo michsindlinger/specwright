@@ -9,7 +9,7 @@
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { stepCommand, type ProjectDocDraft, type ProjectDocEntry, type ProjectDocKey, type VorhabenProjectInfo } from '../../../../src/shared/types/vorhaben.protocol.js';
+import { stepCommand, type ProjectDocDraft, type ProjectDocEntry, type ProjectDocKey, type VorhabenPendingIntent, type VorhabenProjectInfo } from '../../../../src/shared/types/vorhaben.protocol.js';
 import { vorhabenService } from '../../services/vorhaben.service.js';
 import './aos-projekt-doc-editor.js';
 import './aos-naechster-schritt.js';
@@ -30,8 +30,13 @@ export class AosProjektSeite extends LitElement {
   @property({ attribute: false }) docDrafts: Record<string, ProjectDocDraft> = {};
   @property({ type: String }) selectedKey: ProjectDocKey | null = null;
   @property({ type: Boolean }) mobile = false;
-  /** „Absicht beginnen" started this session; the view navigates once the Vorhaben row appears (FA-22, AN-S03). */
-  @property({ type: String }) startedSessionId = '';
+  /**
+   * A pending `/intent` session of this project without a folder (INT-2026-008,
+   * AK-04): hint with „Im Terminal öffnen" instead of the start box; on the Mac
+   * the view shows its Gespräch next to the page, the view navigates once the
+   * Vorhaben row appears (FA-22, AN-S03).
+   */
+  @property({ attribute: false }) pending: VorhabenPendingIntent | null = null;
 
   @state() private docs: ProjectDocEntry[] = [];
   @state() private loading = false;
@@ -127,6 +132,21 @@ export class AosProjektSeite extends LitElement {
     .neu.gestartet {
       border-color: var(--color-accent-primary);
       margin-bottom: var(--spacing-sm);
+      flex-wrap: wrap;
+    }
+    .neu.gestartet .status {
+      flex: 1 1 200px;
+    }
+    .neu .terminal {
+      background: none;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      color: var(--color-text-primary);
+      font: inherit;
+      font-size: var(--font-size-sm);
+      padding: 2px var(--spacing-sm);
+      cursor: pointer;
+      white-space: nowrap;
     }
     .neu .dot {
       display: inline-block;
@@ -181,6 +201,11 @@ export class AosProjektSeite extends LitElement {
   private select(key: ProjectDocKey | null): void {
     this.selectedKey = key;
     this.dispatchEvent(new CustomEvent<{ key: ProjectDocKey | null }>('doc-select', { bubbles: true, composed: true, detail: { key } }));
+  }
+
+  /** Same document-level event the Gespräch head uses (FA-21/FA-22); app.ts shows the session solo. */
+  private toTerminal(sessionId: string): void {
+    document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId } }));
   }
 
   private standOf(d: ProjectDocEntry): string {
@@ -245,9 +270,20 @@ export class AosProjektSeite extends LitElement {
       </section>`;
     }
     const p = this.project;
+    const pending = this.pending;
+    if (pending) {
+      // No second start while the interview runs (AK-04); the Gespräch is next to the page on the Mac, in the terminal on the phone (AK-06).
+      return html`<section class="abschnitt" aria-label=${section.label}>
+        <h2 class="abschnitt-titel">${section.label}</h2>
+        <div class="neu gestartet">
+          <span><span class="dot"></span>Absicht-Sitzung „${pending.session.name}" läuft — Vorhaben entsteht …</span>
+          <span class="status">${this.mobile ? 'im Terminal antworten' : 'Gespräch rechts'} — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span>
+          <button type="button" class="terminal" @click=${() => this.toTerminal(pending.sessionId)}>Im Terminal öffnen ↗</button>
+        </div>
+      </section>`;
+    }
     return html`<section class="abschnitt" aria-label=${section.label}>
       <h2 class="abschnitt-titel">${section.label}</h2>
-      ${this.startedSessionId ? html`<div class="neu gestartet"><span><span class="dot"></span>Sitzung gestartet — Vorhaben entsteht …</span><span class="status">die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span></div>` : nothing}
       ${p
         ? html`<aos-naechster-schritt
             .projectId=${p.id}

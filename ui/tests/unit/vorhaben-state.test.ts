@@ -156,6 +156,43 @@ describe('VorhabenStateStore stage 2 (FA-21/22/26/32/40)', () => {
     expect(again.getLastModel('p1', 'INT-2026-004', 'plan')).toEqual({ providerId: 'glm', modelId: 'glm-5.2' });
   });
 
+  it('INT-2026-008: claim gives the pending session\'s unclaimed entries the intentId, drop removes them, prune treats them as not live', async () => {
+    const now = new Date('2026-10-20T12:00:00Z');
+    const store = new VorhabenStateStore(file, { port: 3111, now: () => now });
+    const pendingEntry = (id: string, sessionId: string, sentAt = '2026-10-19T10:00:00Z'): ProtokollEintrag => {
+      const { intentId: _drop, ...rest } = entry(id, sentAt);
+      void _drop;
+      return { ...rest, sessionId, art: 'freitext', doc: undefined, anzahl: 0, stand: '', text: 'x', anmerkungen: [] };
+    };
+    await store.addProtocolEntry(pendingEntry('a1', 'sA'));
+    await store.addProtocolEntry(pendingEntry('a2', 'sA'));
+    await store.addProtocolEntry(pendingEntry('b1', 'sB'));
+    await store.addProtocolEntry(entry('a3', '2026-10-19T10:00:00Z', 'INT-2026-004'));
+    store.setPendingIntent('sA', { projectId: 'p1', cwd: '/a', step: 'intent', model: 'opus', since: '2026-10-19T09:00:00Z' });
+    await store.flush();
+    const again = new VorhabenStateStore(file, { port: 3111, now: () => now });
+    await again.load();
+    expect(again.getPendingIntents()).toEqual([['sA', { projectId: 'p1', cwd: '/a', step: 'intent', model: 'opus', since: '2026-10-19T09:00:00Z' }]]);
+    expect(again.getProtocol().filter((e) => !e.intentId).map((e) => e.id).sort()).toEqual(['a1', 'a2', 'b1']);
+    // claim: only sA's unclaimed entries; sB and the already-assigned a3 untouched
+    expect(again.claimPendingProtocol('sA', 'INT-2026-009')).toBe(2);
+    expect(again.claimPendingProtocol('sA', 'INT-2026-009')).toBe(0);
+    expect(again.getProtocolEntry('a1')?.intentId).toBe('INT-2026-009');
+    expect(again.getProtocolEntry('a2')?.intentId).toBe('INT-2026-009');
+    expect(again.getProtocolEntry('b1')?.intentId).toBeUndefined();
+    expect(again.getProtocolEntry('a3')?.intentId).toBe('INT-2026-004');
+    // drop: only unclaimed entries of that session
+    expect(again.dropUnclaimedProtocol('sA')).toBe(0);
+    expect(again.dropUnclaimedProtocol('sB')).toBe(1);
+    expect(again.getProtocol().map((e) => e.id).sort()).toEqual(['a1', 'a2', 'a3']);
+    // prune: an unclaimed entry never matches a live key → only the 30-day net keeps it
+    await again.addProtocolEntry(pendingEntry('c-old', 'sC', '2026-09-01T10:00:00Z'));
+    await again.addProtocolEntry(pendingEntry('c-young', 'sC', '2026-10-19T10:00:00Z'));
+    expect(again.prune(new Set(['p1::INT-2026-004', 'p1::INT-2026-009']))).toBe(1);
+    expect(again.getProtocol().map((e) => e.id).sort()).toEqual(['a1', 'a2', 'a3', 'c-young']);
+    await again.flush();
+  });
+
   it('stage-1 files without the new maps load healthy', async () => {
     writeFileSync(file, JSON.stringify({ version: 1, port: 3111, updatedAt: 'x', state: { docDrafts: { 'p::claude': { text: 't', openedMtime: 1, updatedAt: 'x' } } } }));
     const store = new VorhabenStateStore(file, { port: 3111 });

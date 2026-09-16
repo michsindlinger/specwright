@@ -45,7 +45,7 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | `kanban.json`, Backlog | Kanban-MCP-Server | Projekt-Dateien | MCP-Werkzeuge der Sitzungen (die UI liest nicht mehr, INT-2026-004) | — |
 | Memory-Store | Kanban-MCP-Server | `~/.specwright/memory.db` (SQLite) | MCP-Werkzeuge `memory_*` | — |
 | Workspace der UI (offene Projekte, Tabs) | UI-Backend | `<runtime>/workspace-<port>.json` | WebSocket `workspace:*` | pro Backend-Instanz |
-| Nutzerzustand der UI (Zuordnung Sitzung↔Vorhaben, Anmerkungs-Entwürfe, Protokoll inkl. Freitext-Einträgen des Gesprächs, letzte Modellwahl, Doc-Entwürfe) | UI-Backend | `<runtime>/vorhaben-<port>.json` (ADR-0002) | WebSocket `vorhaben:*`, `project-docs:*` | pro Backend-Instanz |
+| Nutzerzustand der UI (Zuordnung Sitzung↔Vorhaben, auch anhängige Absicht-Sitzungen ohne Ordner und ihre Freitext-Einträge bis zum Claim des Ordners — INT-2026-008; Anmerkungs-Entwürfe, Protokoll inkl. Freitext-Einträgen des Gesprächs, letzte Modellwahl, Doc-Entwürfe) | UI-Backend | `<runtime>/vorhaben-<port>.json` (ADR-0002) | WebSocket `vorhaben:*` (inkl. `pendingIntents`), `project-docs:*` | pro Backend-Instanz |
 | Terminal-Sitzungen (inkl. Hook-Kontext: Transkriptpfad, Claude-Session-ID, Blockart, Plan-Review-Schalter) | UI-Backend | tmux-Server + Disk-Registry | WebSocket | pro Host |
 | Sitzungsverlauf (Transkript einer Claude-Code-Sitzung) | Claude Code | `~/.claude*/projects/<slug>/<session-id>.jsonl` | UI-Backend liest nur (Tailer, Allowlist der Config-Verzeichnisse, ADR-0003), keine Kopie; Clients über WebSocket `gespraech:*` je Sitzung | pro Host |
 
@@ -118,4 +118,5 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 | 2026-09-15 | §3 Nutzerzustand der UI, AR-05 erweitert (INT-2026-004, Stufe 1) | ADR-0002 |
 | 2026-09-15 | §2 Backend-Zeile um Vorhaben-Sicht/Review-Kanal, §5 Deploy-Gate um unbestätigte Review-Antworten (INT-2026-004, Stufe 2) | PR #45 |
 | 2026-09-16 | §2 Backend-Zeile um Gespräch (Transkript-Leser, Lock), §3 Terminal-Sitzungen um Hook-Kontext, neue Zeile Sitzungsverlauf, Nutzerzustand um Freitext-Protokoll (INT-2026-007, Stufe 1) | ADR-0003 |
+| 2026-09-16 | §3 Nutzerzustand: anhängige Absicht-Sitzungen ohne Ordner werden mit `vorhaben:state` ausgeliefert, ihre Freitext-Einträge tragen die Kennung erst ab dem Claim (INT-2026-008); keine AR-Änderung | PR folgt |
 | 2026-09-15 | Story-Pfad aus der UI entfernt: §1 Diagramm und Text (UI → MCP nur noch über Sitzungen), §2 ohne Auto-Mode, §3 `kanban.json` ohne UI-Leser, AR-03 auf den MCP-Server beschränkt, §5 Gate ohne Auto-Mode, §10 Zeile „Story pro Session" erledigt, zwei neue Abweichungen (INT-2026-004, Stufe 3) | PR #46 |

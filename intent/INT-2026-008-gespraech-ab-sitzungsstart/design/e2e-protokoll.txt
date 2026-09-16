@@ -1,0 +1,32 @@
+# E2E-Protokoll INT-2026-008 — 2026-09-16, Branch-Backend 3111, Scratch-Projekt /tmp/scratch-int007, Haiku, Claude Code 2.1.273 (Claude Code)
+
+2026-09-16T10:18:46.705Z Backend 3111 starten; intent/ vorher: INT-2026-001-gespraech-e2e
+2026-09-16T10:18:51.773Z Projekt /private/tmp/scratch-int007 · pendingIntents vorher: []
+2026-09-16T10:18:57.819Z Projekt-Seite offen; Start-Box vorher: true · Gespräch vorher: false
+2026-09-16T10:18:57.837Z Absicht-Sitzung gestartet cloud-1789553937820-1
+2026-09-16T10:18:57.872Z Gespräch auf der Projekt-Seite nach 33 ms · Kopf: Gespräch mit intent · main Zustand unbekannt Im Terminal öffnen ↗
+2026-09-16T10:18:57.877Z Karte: Absicht-Sitzung „intent" läuft — Vorhaben entsteht … Gespräch rechts — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist
+2026-09-16T10:18:57.884Z Start-Box während der Sitzung: false · Terminal-Knopf: true
+2026-09-16T10:18:57.886Z Notiz im Verlauf: Vorhaben entsteht — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist.
+2026-09-16T10:18:59.387Z tmux cs-cloud-1789553937820-1
+2026-09-16T10:19:12.606Z Erste Frage der Sitzung im Gespräch ( 1 Beiträge): Claude12:19 Vorhaben erfassen — kurz skizzieren. Zwei bis drei Sätze: Was stört, wen, seit wann?
+2026-09-16T10:19:12.606Z Zustand: wartet
+2026-09-16T10:19:12.644Z Antwort 1 aus der UI: Beim Öffnen der Vorhaben-Übersicht springt der Filter auf „alle Projek…
+2026-09-16T10:19:12.874Z Antwort 1 im Terminal nach 230 ms: ja
+2026-09-16T10:19:14.452Z Nach Reload: Gespräch wieder da nach 75 ms · 4 Beiträge · Kopf: Gespräch mit intent · main arbeitet Im Terminal öffnen ↗ · Start-Box: false
+2026-09-16T10:19:18.984Z Claude nach Antwort 1: Claude12:19 Zwei Fragen: 1. Was hat sich gestern geändert? Commit, Deploy, oder kam neue Funktion dazu? 2. Merken nur Sie das, oder auch andere Nutzer beim Proj
+2026-09-16T10:19:18.987Z Antwort 2 aus der UI: Betroffen bin nur ich am Mac. Ziel: der gewählte Filter bleibt stehen,…
+2026-09-16T10:19:19.213Z Antwort 2 im Terminal nach 226 ms: ja
+2026-09-16T10:19:41.309Z Neue Ordner: INT-2026-002-filter-bleibt · URL: http://127.0.0.1:3111/#/vorhaben/%2Fprivate%2Ftmp%2Fscratch-int007/INT-2026-002
+2026-09-16T10:19:41.315Z Vorhaben-Seite offen; Gespräch-Kopf: Gespräch mit intent · main arbeitet Im Terminal öffnen ↗ · aos-gespraech-Entfernungen seit Reload: 1
+2026-09-16T10:19:41.316Z Beiträge auf der Vorhaben-Seite: 7 · Nutzer-Beiträge: ["Du 12:19 · Terminal /specwright:intent","Du 12:19 Beim Öffnen der Vorhaben-Übersicht springt der Filt","Du 12:19 Betroffen bin nur ich am Mac. Ziel: der gewählte Fi"]
+2026-09-16T10:19:41.317Z Protokoll-Einträge des Vorhabens: 1 ["Protokoll Nachricht an ‚intent' gesendet 12:19 angenommen 12:19 ▸ Text ▸ 1 weiterer Eintra"]
+2026-09-16T10:19:41.318Z Backend: pendingIntents: [] · Zeile mit der Sitzung: INT-2026-002 · Protokoll-Einträge der Sitzung: 2 · davon mit Kennung: 2 ["INT-2026-002"]
+2026-09-16T10:19:42.362Z Backend-Log agent-event rejected: 0
+2026-09-16T10:19:45.064Z fertig
+
+## Screenshots neben dem Mock
+
+- ist-01-projekt-gespraech.png ↔ INT-2026-007 design/08-gespraech-mac.png (Gesprächsspalte) und INT-2026-004 Mock 07 (Projekt-Seite links): Karte „Absicht-Sitzung „intent" läuft — Vorhaben entsteht …" mit „Im Terminal öffnen ↗", keine Start-Box, rechts Kopf „Gespräch mit intent · main · wartet", Notiz „Vorhaben entsteht — …", erste Frage der Sitzung, Eingabefeld aktiv.
+- ist-02-vorhaben-seite.png: nach dem Claim auf #/vorhaben/…/INT-2026-002 — Gespräch mit beiden UI-Antworten und Claudes zwei Fragen, Protokoll „Nachricht an ‚intent' gesendet · angenommen · 1 weiterer Eintrag"; „(Kopf nicht lesbar)" und „intent.md fehlt", weil Claude die Datei in diesem Moment noch schreibt (Ordner = Zeile, INT-2026-004).
+- Abweichungen zum Mock 08: keine an der Spalte; links Projekt-Seite statt Dokument-Leser (Plan §8).
