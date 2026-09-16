@@ -23,6 +23,7 @@ done
 
 echo "[2/6] Guards"
 run "check-mcp-launcher" bash scripts/check-mcp-launcher.sh
+run "check-no-voice-config" bash -c '[[ -z "$(git ls-files ui/config/voice-config.json)" ]]' # Sprachdienst-Zugänge nie im Index (security.md §3)
 [[ -f scripts/check-manifest.sh ]] && run "check-manifest" bash scripts/check-manifest.sh
 [[ -f scripts/check-sdlc-installers.sh ]] && run "check-sdlc-installers" bash scripts/check-sdlc-installers.sh
 LINES=$(wc -l < CLAUDE.md | tr -d ' '); if [[ $LINES -le 90 ]]; then ok "CLAUDE.md $LINES Zeilen (≤ 90)"; else rot "CLAUDE.md $LINES Zeilen (> 90)"; fi

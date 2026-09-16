@@ -47,3 +47,6 @@ specwright/backlog/backlog-index.json
 # Specwright als eigenes Projekt (INT-2026-002): Sicherungen des Updaters, Vitest-Report
 specwright/backups/
 vitest-results.json
+
+# Sprachdienst-Zugänge (Deepgram, ElevenLabs): lokal, nie versioniert (security.md §3, INT-2026-007 PR 0)
+ui/config/voice-config.json
