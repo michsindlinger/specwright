@@ -1,8 +1,8 @@
 # Spec: UI: Vorhaben als Mitte — Rahmen ohne Seitenleiste, Glocke immer sichtbar, Dokumente klappbar
 
 > **Intent:** `intent.md` (INT-2026-010, Version 1.0.0)
-> **Status:** entwurf
-> **Erstellt:** 2026-09-16 · **Freigabe:** — (Entwurf aus der E2E-Sitzung INT-2026-009; Rückfragen offen)
+> **Status:** freigegeben
+> **Erstellt:** 2026-09-16 (E2E-Sitzung INT-2026-009) · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („Freigegeben", Chat)
 > **Gelesene Projekt-Docs:** `docs/product-brief.md`, `docs/architecture.md`, `docs/security.md`, `docs/design.md` (Stand: Commit 238f876)
 
 <!-- Die Spec ist FACHLICH. Sie beschreibt, was Nutzer erleben und was fachlich gelten muss.
@@ -218,16 +218,16 @@ Nach dem Umbau öffnet die Web-UI mit der Liste der Vorhaben und sagt auf einen 
 - **AN-S03:** Ein teilweise gekennzeichnetes Dokument gilt für den Leser wie ein Dokument ohne Kennzeichnung (alles offen), weil AK-12 die engste Auslegung ist und der Guard aus INT-2026-009 solche Dokumente ohnehin ablehnt. — bestätigt am 2026-09-16 von PO (Chat)
 - **AN-S04:** Der Knopf für den nächsten Schritt zeigt den nächsten Phasen-Befehl (nach intent angenommen: „spec starten"; bei Bypass: „plan starten"; nach plan freigegeben: „build starten"), ist immer sichtbar und ausgegraut, solange eine Sitzung des Vorhabens arbeitet oder wartet. — bestätigt am 2026-09-16 von PO (Chat: „genau, wir brauchen immer den Knopf"; ausgegraut bestätigt)
 - **AN-S05:** Die Glocke im Kopf des Terminals entfällt, weil die Glocke der Kopfzeile auf jeder Seite sichtbar ist (B-06); der Hinweiston bleibt wie heute schaltbar. — bestätigt am 2026-09-16 von PO (Chat)
-- **AN-S06:** „Freigeben" schreibt kein Dokument: Der Knopf schickt „freigabe" an die wartende Sitzung des Vorhabens; wartet keine, startet er die Sitzung der laufenden Phase mit der Freigabe als erster Eingabe. Der Agent setzt Status, Abgleich (R4) und Commit wie in den Workflows. — offen
+- **AN-S06:** „Freigeben" schreibt kein Dokument: Der Knopf schickt „freigabe" an die wartende Sitzung des Vorhabens; wartet keine, startet er die Sitzung der laufenden Phase mit der Freigabe als erster Eingabe. Der Agent setzt Status, Abgleich (R4) und Commit wie in den Workflows. — bestätigt am 2026-09-16 von PO (Chat)
 
 ## 10. Freigabe
 
 <!-- leser: agent -->
 
-- [ ] Jede FA hat Herkunft und Prüfung.
-- [ ] Jedes AK der intent.md ist von mindestens einer FA abgedeckt: AK-01 → FA-01/02/03 · AK-02 → FA-04 · AK-03 → FA-05 · AK-04 → FA-06 · AK-05 → FA-07 · AK-06 → FA-08 · AK-07 → FA-09 · AK-08 → FA-10 · AK-09 → FA-11 · AK-10 → FA-12/21 · neu → FA-22 · AK-11 → FA-13 · AK-12 → FA-14 · AK-13 → FA-15/16 · AK-14 → FA-17 · AK-15 → FA-18 · AK-16 → FA-19 · AK-17 → FA-20.
-- [ ] Abschnitt 7 vollständig geklärt oder begründet offen.
-- [ ] Keine Technik, keine Architektur, keine Dateinamen in diesem Dokument.
-- [ ] Bei risikoklasse hoch: Tech Lead hat gelesen. (Risikoklasse mittel — entfällt.)
+- [x] Jede FA hat Herkunft und Prüfung.
+- [x] Jedes AK der intent.md ist von mindestens einer FA abgedeckt: AK-01 → FA-01/02/03 · AK-02 → FA-04 · AK-03 → FA-05 · AK-04 → FA-06 · AK-05 → FA-07 · AK-06 → FA-08 · AK-07 → FA-09 · AK-08 → FA-10 · AK-09 → FA-11 · AK-10 → FA-12/21 · neu → FA-22 · AK-11 → FA-13 · AK-12 → FA-14 · AK-13 → FA-15/16 · AK-14 → FA-17 · AK-15 → FA-18 · AK-16 → FA-19 · AK-17 → FA-20.
+- [x] Abschnitt 7 vollständig geklärt oder begründet offen (zwei Zeilen „an den Plan delegiert, nicht blockierend": Glocke-Ereignisse AN-01, Freigabe-Knopf AN-S06).
+- [x] Keine Technik, keine Architektur, keine Dateinamen in diesem Dokument (Pfade nur als Herkunft in Abschnitt 7).
+- [x] Bei risikoklasse hoch: Tech Lead hat gelesen. (Risikoklasse mittel — entfällt.)
 - [x] Abgleich Mensch/Agent: Mensch-Teil gegen Agenten-Teil geprüft (2026-09-16), Befund: keiner — §5 und §7 versprechen nichts, was §1–§4 nicht nennen; die vier offenen Bedenken aus §7 stehen als Vorschläge in der Vorlage und werden mit den Annahmen zusammen gestellt.
-- **Freigegeben:** — (Entwurf)
+- **Freigegeben:** Product Owner (Michael Sindlinger), 2026-09-16, Commit folgt (`spec(INT-2026-010): fachliche Spec freigegeben`)

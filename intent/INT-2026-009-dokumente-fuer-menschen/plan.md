@@ -224,7 +224,7 @@ Entfällt.
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
 | MacDown-Screenshot: `open -a MacDown specwright/templates/sdlc/vorhaben/plan-template.md` im Branch-Arbeitsbaum, Bildschirmfoto nach `design/marker-macdown.png` (Datei liegt lokal, vor dem Merge) | Agent am Mac (Michael bestätigt Sichtprüfung) | §6 Schritt 11, vor PR | [x] Agent 2026-09-16 (`ce3087e`); Sichtprüfung Michael offen |
-| E2E-Sitzung `/spec INT-2026-010` bis Vorlegen; Michael liest das Vorlegen und beantwortet die R2-Rückfragen nicht (Entwurf bleibt) | Agent + Michael | §6 Schritt 10 | [x] Agent 2026-09-16 (`efcb14a`, Protokoll `design/e2e-protokoll.txt`); Michael liest das Vorlegen im Abschlussbericht |
+| E2E-Sitzung `/spec INT-2026-010` bis Vorlegen; Michael liest das Vorlegen und beantwortet die R2-Rückfragen nicht (Entwurf bleibt) | Agent + Michael | §6 Schritt 10 | [x] Agent 2026-09-16 (`efcb14a`, Protokoll `design/e2e-protokoll.txt`); Michael hat im Chat geantwortet und freigegeben (§14) |
 | PR mergen (löst Auto-Deploy der UI aus; UI unverändert) | Michael | nach CI grün | [ ] |
 | Installierte Projekte nachziehen: `bash update-specwright.sh` je Projekt; Weg: `check-update.sh` zeigt 4.1.0 | Michael | nach Merge, je Projekt | [ ] |
 | `~/.specwright` global nachziehen: `bash setup-devteam-global.sh` (Vorlagen `both`) | Michael | nach Merge | [ ] |
@@ -303,4 +303,5 @@ Externer Review (3 Reviewer: anthropic:opus, glm:glm-5.3, minimax:MiniMax-M3), 2
 | 2026-09-16 | Guard `--doc` nach der E2E-Sitzung: 21 Dokumente, 19 ohne Marker, 2 vollständig markiert (dieser Plan, Spec-Entwurf 010) | Spec-Entwurf 010 ist das 21. Dokument | §5 Zeile 8 (Zahl) |
 | 2026-09-16 | Screenshot als Vollbild aufgenommen und auf das MacDown-Fenster zugeschnitten statt Fenster-Capture | `screencapture -R` und `-l <window>` scheitern auf diesem Mac („could not create image"); Vollbild plus `sips`-Zuschnitt liefert dasselbe Bild ohne Dock und fremde Fenster | §10 Zeile 1 (Weg) |
 | 2026-09-16 | PR direkt mit `gh` aus der Bausitzung statt über den Agenten `git-workflow` | PR-Text zitiert Nachweise und Protokoll aus dem Kontext dieser Sitzung; ein Utility-Agent hätte ihn nur weitergereicht | Workflow Step 6 (kein Plan-Abschnitt) |
+| 2026-09-16 | E2E-Sitzung ging über das Vorlegen hinaus: Michael beantwortete die neun Rückfragen im Chat, FA-22 (Freigabe per Knopf) kam dazu, die Spec 010 wurde freigegeben (`spec(INT-2026-010): fachliche Spec freigegeben`) | Michael entschied im Abschlussbericht statt in einer eigenen `/spec`-Sitzung; die Rückfragen in R2-Form ließen sich aus dem Chat beantworten (Zweck von R2) | §8 E2E, §10 Zeile 2 |
 | 2026-09-16 | Schritt 0: Treffer `.claude/commands/specwright/plan.md:10` („oben zusätzlich `## In einfachen Worten`") nicht angepasst | Commands sind „Nicht betroffen"; die Zeile wertet keine Ebene aus und bleibt inhaltlich richtig | §4 Nicht betroffen, §6 Schritt 0 |
