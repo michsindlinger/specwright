@@ -1,7 +1,7 @@
 # Plan INT-2026-009: Dokumente für Menschen — Leser-Kennzeichnung und Rückfragen mit Kontext
 
 > **Intent:** `intent/INT-2026-009-dokumente-fuer-menschen/intent.md` (angenommen 16.09., Bypass: Größe S) · **Spec:** entfällt
-> **Status:** in_umsetzung (Fassung 2 nach externem Review, 3 Reviewer, 24 Findings, §12) · **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („freigabe", Chat)
+> **Status:** umgesetzt (Merge steht aus; Fassung 2 nach externem Review, 3 Reviewer, 24 Findings, §12) · **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („freigabe", Chat)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `4c97b63`, §2 Vorlagen/Workflows, AR-01, AR-06, AP-02), `CLAUDE.md` (Konventionen Lieferumfang, Manifest, Bash 3.2), `docs/security.md` §5/§6 (Lieferumfang → Manifest-Zeile, Guard grün)
 > **Branch:** `feat/INT-2026-009-dokumente-fuer-menschen` ab `4c97b63` (die beiden Intent-Commits wandern mit), Worktree `../specwright-worktrees/session-sdlc-ui`
 
@@ -223,8 +223,8 @@ Entfällt.
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| MacDown-Screenshot: `open -a MacDown specwright/templates/sdlc/vorhaben/plan-template.md` im Branch-Arbeitsbaum, Bildschirmfoto nach `design/marker-macdown.png` (Datei liegt lokal, vor dem Merge) | Agent am Mac (Michael bestätigt Sichtprüfung) | §6 Schritt 11, vor PR | [ ] |
-| E2E-Sitzung `/spec INT-2026-010` bis Vorlegen; Michael liest das Vorlegen und beantwortet die R2-Rückfragen nicht (Entwurf bleibt) | Agent + Michael | §6 Schritt 10 | [ ] |
+| MacDown-Screenshot: `open -a MacDown specwright/templates/sdlc/vorhaben/plan-template.md` im Branch-Arbeitsbaum, Bildschirmfoto nach `design/marker-macdown.png` (Datei liegt lokal, vor dem Merge) | Agent am Mac (Michael bestätigt Sichtprüfung) | §6 Schritt 11, vor PR | [x] Agent 2026-09-16 (`ce3087e`); Sichtprüfung Michael offen |
+| E2E-Sitzung `/spec INT-2026-010` bis Vorlegen; Michael liest das Vorlegen und beantwortet die R2-Rückfragen nicht (Entwurf bleibt) | Agent + Michael | §6 Schritt 10 | [x] Agent 2026-09-16 (`efcb14a`, Protokoll `design/e2e-protokoll.txt`); Michael liest das Vorlegen im Abschlussbericht |
 | PR mergen (löst Auto-Deploy der UI aus; UI unverändert) | Michael | nach CI grün | [ ] |
 | Installierte Projekte nachziehen: `bash update-specwright.sh` je Projekt; Weg: `check-update.sh` zeigt 4.1.0 | Michael | nach Merge, je Projekt | [ ] |
 | `~/.specwright` global nachziehen: `bash setup-devteam-global.sh` (Vorlagen `both`) | Michael | nach Merge | [ ] |
@@ -280,15 +280,15 @@ Externer Review (3 Reviewer: anthropic:opus, glm:glm-5.3, minimax:MiniMax-M3), 2
 
 <!-- leser: agent -->
 
-- [ ] Jedes AK aus §8 hat einen grünen Nachweis (AK-01/03/07 Guard + T7, AK-02 Guard + Screenshot, AK-04–06 grep + E2E-Protokoll).
-- [ ] Alle Nachweise aus §5 ausgeführt und im PR zitiert.
-- [ ] E2E-Sitzung gelaufen, Protokoll unter `design/`, Spec-Entwurf 010 committet.
-- [ ] `verify: OK` lokal, PR-Checks grün.
-- [ ] `docs/architecture.md` unverändert (§3 Nein).
-- [ ] Manuelle Schritte §10 erledigt oder im PR offen markiert.
-- [ ] Abweichungen in §14.
-- [ ] 2x-Regel-Check.
-- [ ] Abschlussbericht nach R3, endet mit „Für das Board".
+- [x] Jedes AK aus §8 hat einen grünen Nachweis (AK-01/03/07 Guard + T7, AK-02 Guard + Screenshot, AK-04–06 grep + E2E-Protokoll).
+- [x] Alle Nachweise aus §5 ausgeführt und im PR zitiert.
+- [x] E2E-Sitzung gelaufen, Protokoll unter `design/`, Spec-Entwurf 010 committet.
+- [ ] `verify: OK` lokal (2026-09-16, voll und `--fast`), PR-Checks grün: offen bis CI.
+- [x] `docs/architecture.md` unverändert (§3 Nein).
+- [x] Manuelle Schritte §10 erledigt oder im PR offen markiert (Sichtprüfung, Merge, Update-Läufe offen).
+- [x] Abweichungen in §14.
+- [x] 2x-Regel-Check: kein Fehler, der schon einmal vorkam (node-pty-`chmod` vorbeugend gesetzt, kein Ausfall).
+- [x] Abschlussbericht nach R3, endet mit „Für das Board".
 
 ### 14. Abweichungen bei der Umsetzung
 
@@ -300,4 +300,7 @@ Externer Review (3 Reviewer: anthropic:opus, glm:glm-5.3, minimax:MiniMax-M3), 2
 | 2026-09-16 | Struktur-Satz für `plan.md`-Workflow Step 9a schon in Commit A statt B | Step 9a wurde in einem Edit mit der R3-RULE umgebaut; Workflow ist Text, Commit A blieb grün | §4 #7 |
 | 2026-09-16 | T7(c) nimmt eine Kopie der intent-Vorlage als „teilweise markiertes Dokument", nicht ein Repo-Dokument | Bei Commit A gab es noch kein markiertes Dokument im Repo (dieser Plan wird erst in Schritt 8 markiert); die Vorlage ist für `--doc` ein gültiges Dokument | §3.7 |
 | 2026-09-16 | Guard überspringt Zeilen in ```-Zäunen | zwei bestehende Pläne (005, 008) enthalten Codeblöcke; eine `## `-Zeile darin wäre sonst eine Überschrift | §3.6 (Ergänzung, kein Bruch) |
+| 2026-09-16 | Guard `--doc` nach der E2E-Sitzung: 21 Dokumente, 19 ohne Marker, 2 vollständig markiert (dieser Plan, Spec-Entwurf 010) | Spec-Entwurf 010 ist das 21. Dokument | §5 Zeile 8 (Zahl) |
+| 2026-09-16 | Screenshot als Vollbild aufgenommen und auf das MacDown-Fenster zugeschnitten statt Fenster-Capture | `screencapture -R` und `-l <window>` scheitern auf diesem Mac („could not create image"); Vollbild plus `sips`-Zuschnitt liefert dasselbe Bild ohne Dock und fremde Fenster | §10 Zeile 1 (Weg) |
+| 2026-09-16 | PR direkt mit `gh` aus der Bausitzung statt über den Agenten `git-workflow` | PR-Text zitiert Nachweise und Protokoll aus dem Kontext dieser Sitzung; ein Utility-Agent hätte ihn nur weitergereicht | Workflow Step 6 (kein Plan-Abschnitt) |
 | 2026-09-16 | Schritt 0: Treffer `.claude/commands/specwright/plan.md:10` („oben zusätzlich `## In einfachen Worten`") nicht angepasst | Commands sind „Nicht betroffen"; die Zeile wertet keine Ebene aus und bleibt inhaltlich richtig | §4 Nicht betroffen, §6 Schritt 0 |
