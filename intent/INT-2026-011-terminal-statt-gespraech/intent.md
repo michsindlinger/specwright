@@ -14,7 +14,7 @@ bypass_grund: ""
 bezuege:  
   product: "docs/product-brief.md"  
   spec: "spec.md"  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: ["docs/adr/0003-sitzungsverlauf-aus-dem-claude-code-transkript.md"]  
   ersetzt: "intent/INT-2026-007-sitzung-als-gespraech/intent.md (Stufe 2 und 3 nie gebaut, siehe OF-03)"  
