@@ -10,6 +10,8 @@
 #                                                            nichts außerhalb der Listen angefasst
 #   T5  check-manifest.sh                                  → rot, wenn eine Manifest-Zeile fehlt; danach wieder grün
 #   T6  removed-hashes.sh (INT-2026-003)                   → Guard rot, wenn eine Prüfsumme aus der Historie fehlt; Skript idempotent
+#   T7  check-leser-marker.sh (INT-2026-009)               → Guard rot bei fehlendem Marker (nennt Datei:Zeile), bei falschem Wert
+#                                                            einer Pflicht-Mensch-Überschrift und bei teilweise markiertem Dokument; grün auf Kopie
 #
 # Braucht: bash, curl (nicht nötig bei file://), git (T4 stellt alte Dateien aus eecb1cd6 und der ältesten Fassung her).
 set -uo pipefail
@@ -109,6 +111,23 @@ cp "$tmp_root/removed.bak" specwright/removed.tsv
 bash scripts/removed-hashes.sh >/dev/null 2>&1 && bash scripts/removed-hashes.sh >/dev/null 2>&1 || err "T6: removed-hashes.sh Exit ≠ 0"
 cmp -s "$tmp_root/removed.bak" specwright/removed.tsv && ok "T6: removed-hashes.sh idempotent (kein Diff nach zwei Läufen)" || { err "T6: removed-hashes.sh ändert removed.tsv — Liste im Repo veraltet?"; cp "$tmp_root/removed.bak" specwright/removed.tsv; }
 
-[[ $fail -eq 0 ]] && echo "✅ Installer-Test: T1–T6 grün" || echo "❌ Installer-Test: Fehler (Logs unter $tmp_root — wird gelöscht; erneut mit KEEP_TMP=1)"
+# --- T7 (INT-2026-009) -----------------------------------------------------------------------
+t7="$tmp_root/t7"; mkdir -p "$t7"; cp specwright/templates/sdlc/vorhaben/*-template.md "$t7/"
+# (a) einen Marker entfernen → rot, nennt Datei:Zeile
+awk '!done && /^<!-- leser: mensch -->$/ {done=1; next} {print}' "$t7/intent-template.md" > "$t7/cut.md" && mv "$t7/cut.md" "$t7/intent-template.md"
+t7a=$(LESER_TEMPLATE_DIR="$t7" bash scripts/check-leser-marker.sh 2>&1); t7rc=$?
+[[ $t7rc -ne 0 ]] && echo "$t7a" | grep -qE 'intent-template\.md:[0-9]+ ' && ok "T7: Guard rot bei fehlendem Marker, nennt Datei:Zeile" || err "T7: Guard bleibt grün oder nennt Datei:Zeile nicht (Exit $t7rc)"
+cp specwright/templates/sdlc/vorhaben/intent-template.md "$t7/"
+# (b) Pflicht-Mensch-Überschrift auf agent → rot
+awk '/^## 7\. Offene Fragen/ {sw=1} sw && /^<!-- leser: mensch -->$/ {print "<!-- leser: agent -->"; sw=0; next} {print}' specwright/templates/sdlc/vorhaben/intent-template.md > "$t7/intent-template.md"
+LESER_TEMPLATE_DIR="$t7" bash scripts/check-leser-marker.sh >/dev/null 2>&1 && err "T7: Guard bleibt grün, obwohl §7 Offene Fragen auf agent steht" || ok "T7: Guard rot bei Pflicht-Mensch-Abschnitt als agent"
+cp specwright/templates/sdlc/vorhaben/intent-template.md "$t7/"
+# (c) teilweise markiertes Dokument → --doc rot
+awk '!done && /^<!-- leser: agent -->$/ {done=1; next} {print}' "$t7/intent-template.md" > "$t7/teilweise.md"
+bash scripts/check-leser-marker.sh --doc "$t7/teilweise.md" >/dev/null 2>&1 && err "T7: --doc bleibt grün bei teilweise markiertem Dokument" || ok "T7: --doc rot bei teilweise markiertem Dokument"
+# (d) unveränderte Kopien → grün (Standard und --doc)
+LESER_TEMPLATE_DIR="$t7" bash scripts/check-leser-marker.sh >/dev/null 2>&1 && bash scripts/check-leser-marker.sh --doc "$t7/intent-template.md" "$t7/spec-template.md" >/dev/null 2>&1 && ok "T7: Guard grün auf unveränderten Kopien" || err "T7: Guard rot auf unveränderten Kopien"
+
+[[ $fail -eq 0 ]] && echo "✅ Installer-Test: T1–T7 grün" || echo "❌ Installer-Test: Fehler (Logs unter $tmp_root — wird gelöscht; erneut mit KEEP_TMP=1)"
 [[ "${KEEP_TMP:-}" == 1 ]] && trap - EXIT && echo "Logs: $tmp_root"
 exit $fail

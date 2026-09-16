@@ -2,7 +2,7 @@
 description: Freigegebenen Plan in einer Sitzung umsetzen — Verify, Nachweise, DoD, PR
 globs:
 alwaysApply: false
-version: 1.1
+version: 1.2
 encoding: UTF-8
 ---
 
@@ -21,6 +21,7 @@ Vierter Schritt des AI-native SDLC (Specwright v4). Setzt `plan.md` in **einer S
 
 <pre_flight_check>
   EXECUTE: specwright/workflows/meta/pre-flight.md
+  EXECUTE: specwright/workflows/meta/leser-und-rueckfragen.md
 </pre_flight_check>
 
 <process_flow>
@@ -62,6 +63,7 @@ FOR EACH Schritt in §6:
   - umsetzen, prüfbaren Zustand herstellen (Test grün, grep-Treffer, Ausgabe)
   - Imports automatisiert einfügen: bei mehrzeiligen Import-Blöcken ans Blockende, nie in den Block (Pilot-Lehre)
   - Abweichung → §14 mit Datum, Grund, betroffenem Abschnitt
+RULE: Rückfragen und Abweichungen nach R2 (`specwright/workflows/meta/leser-und-rueckfragen.md`): „AK-nn / Schritt n, Gegenstand in einem Satz: Vorschlag. Ok?" — die Person antwortet aus dem Chat, ohne den Plan aufzuschlagen.
 RULE: Nichts anfassen, was in §4 „Nicht betroffen" steht. Neue Dateien nur in den Ablageorten laut `CLAUDE.md`.
 RULE: `security.md` §5 Verbotsliste gilt; Produktionsdaten nur nach §10-Freigabe.
 RULE Kontextdeckel: Zeigt die Statuszeile mehr als ~200k Kontext oder kündigt Claude Code eine Komprimierung an → laufenden Schritt zum prüfbaren Zustand bringen, §14 nachziehen, `intent/INT-JJJJ-NNN-*/build-stand.md` schreiben (erledigte und offene Schritte aus §6, letzter prüfbarer Zustand, offene Nachweise, offene Abweichungen, Befehl zum Fortsetzen), WIP-Commit `wip(INT-JJJJ-NNN): Stand nach Schritt n`, dann STOP mit der Zeile „Fortsetzen in neuer Sitzung: `/build INT-JJJJ-NNN`". Nicht komprimieren lassen, nicht weiterarbeiten: Ein Build mit 640k Kontext hat am 15.09.2026 das Sitzungslimit gerissen.
@@ -101,6 +103,7 @@ COMMIT(s) mit Conventional Commits, Bezug `INT-JJJJ-NNN`.
 PR über Agent `git-workflow`: Titel mit Intent-ID; Body: Kurzfassung aus `plan.md` §1, Verify-Ausgabe, Nachweise §5, E2E-Protokoll/Screenshots, §14 Abweichungen, offene manuelle Schritte §10, `CLAUDE.md`-Vorschlag aus der 2x-Regel.
 SET `plan.md` `Status: umgesetzt` (Merge steht aus), `intent.md` bleibt `angenommen` bis Merge; nach Merge `umgesetzt`.
 REMOVE `build-stand.md`, falls vorhanden (der PR ist jetzt der Stand).
+RULE: Abschlussbericht nach R3 (`specwright/workflows/meta/leser-und-rueckfragen.md`): plan §1 Kurzfassung, offene §10, §14 Abweichungen, Nachweise als Verweis auf PR und Dateien; Verify-Ausgabe und Nachweis-Befehle stehen im PR, nicht im Chat.
 BOARD und FAHRPLAN: **nicht in dieser Sitzung.** Der Abschlussbericht endet mit dem Block „Für das Board": Projekt, Karte (Titel oder „neu"), Zielspalte, Beleg (PR-Link), Stand-Zeile, Verweis auf `intent/INT-JJJJ-NNN-*/`, bei Kreis Lippe die Fahrplan-Station. Das Nachziehen läuft danach in einer eigenen kurzen Sitzung nach `/clear` (Skill `obsidian-po-board`; bei Kreis Lippe danach `fahrplan-sync`) mit diesem Block als Input.
 
 NEXT: Review und Merge durch den Menschen; manuelle Schritte §10 mit Freigaben; danach Betrieb (Befunde werden neue `intent.md`).

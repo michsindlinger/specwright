@@ -23,12 +23,21 @@ Vier Slash-Commands, ein Vorhaben: `/intent` → `/spec` → `/plan` → `/build
 1. **`intent.md`** — was und warum, in den Worten der Person mit der Idee. Fachlich. Committen.
 2. **`spec.md`** — was genau, fachlich. Keine Technik, keine Architektur. Die Projekt-Docs werden gelesen und markieren **Bedenken**; entschieden wird nichts. Freigabe durch die verantwortliche Rolle.
 3. **`design/`** (optional) — nur bei UI-Änderung: Mock, committet. Ohne Mock kein „entspricht dem Mock" in der Definition of Done.
-4. **`plan.md`** — wie, technisch. Entsteht im Plan Mode (der nur `~/.claude/plans/` beschreiben darf) und wird nach dessen Verlassen als Entwurf in den Intent-Ordner geschrieben; liest `architecture.md` als Pflichtinput. Enthält den Abschnitt **Zerlegung**. Freigabe, dann Umsetzung in derselben Sitzung.
+4. **`plan.md`** — wie, technisch. Beginnt mit „In einfachen Worten" (für die Person, die freigibt), dann „Details" mit den Abschnitten 1–14. Entsteht im Plan Mode (der nur `~/.claude/plans/` beschreiben darf) und wird nach dessen Verlassen als Entwurf in den Intent-Ordner geschrieben; liest `architecture.md` als Pflichtinput. Enthält den Abschnitt **Zerlegung**. Freigabe, dann Umsetzung in derselben Sitzung.
 5. **Bauen und prüfen** — ein Verify-Befehl, Exit ≠ 0 bei Fehler. Definition of Done steht in `CLAUDE.md`.
 6. **PR** — Review gegen `spec.md`, `plan.md`, `architecture.md`. Verschiebt der Plan eine Architekturgrenze, ändert dieselbe PR `architecture.md`.
 7. **Betrieb** — Befunde (Alarme, Drift-Skript, geplante Agenten) werden zu neuen `intent.md`.
 
 **Bypass-Regel:** Bugfix oder Aufwand unter einem Tag darf von `intent.md` direkt zu `plan.md`. Die `intent.md` bleibt Pflicht (dann nur Kern-Schicht), die `spec.md` entfällt. Wer den Bypass nimmt, schreibt `bypass: ja` mit Grund ins Frontmatter der `intent.md`.
+
+## Zwei Leser je Dokument
+
+Jedes Vorhaben-Dokument hat zwei Leser: den Menschen, der entscheidet, und den Agenten, der baut. Damit die Web-UI Agenten-Abschnitte zuklappen kann und der Mensch beim Lesen nicht über Dateipfade und Verbindungstabellen stolpert, trägt jeder Abschnitt ein unsichtbares Etikett (INT-2026-009):
+
+- **Syntax:** `<!-- leser: mensch -->` oder `<!-- leser: agent -->` als erste Zeile unter der Überschrift. Ein HTML-Kommentar, in MacDown, GitHub und der UI unsichtbar.
+- **Vorlagen** tragen unter jeder Überschrift einen Marker. Welche Überschrift welchen Wert hat, steht als Soll-Tabelle allein in `scripts/check-leser-marker.sh`; dieser Guard läuft in `verify` und ist die Wahrheit der Zuordnung. Faustregel: Mensch = alles, worüber entschieden wird (Ziele, Kriterien, offene Fragen, Annahmen, Risiken, Review, manuelle Schritte, Abweichungen); Agent = Dateien, Verbindungen, Reihenfolge, Tests, Checklisten und die Erklärtabellen der Vorlagen.
+- **Ohne Marker** gilt ein Dokument ganz als `mensch` (alle Dokumente vor 4.1.0 bleiben gültig). Teilweise markierte Dokumente lehnt der Guard ab.
+- **Rückfragen** nennen die Kennung und in einem Satz den Gegenstand, mit Vorschlag: „OF-03, Sprache je Projekt sperrbar: Vorschlag Ja, Standard aus. Ok?" Vorgelegt wird im Chat nur der Mensch-Teil; vor der Freigabe wird der Mensch-Teil gegen den Agenten-Teil gelesen und das Ergebnis im Dokument eingetragen. Regeln R1–R4: `specwright/workflows/meta/leser-und-rueckfragen.md`.
 
 ## Wahrheiten
 

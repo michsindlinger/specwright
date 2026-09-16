@@ -2,7 +2,7 @@
 description: Vorhaben als intent.md festhalten — fachlich, belegt, freigegeben
 globs:
 alwaysApply: false
-version: 1.1
+version: 1.2
 encoding: UTF-8
 ---
 
@@ -20,6 +20,7 @@ Erster Schritt des AI-native SDLC (Specwright v4). Erzeugt `intent/INT-JJJJ-NNN-
 
 <pre_flight_check>
   EXECUTE: specwright/workflows/meta/pre-flight.md
+  EXECUTE: specwright/workflows/meta/leser-und-rueckfragen.md
 </pre_flight_check>
 
 <process_flow>
@@ -53,6 +54,7 @@ ASK nur, was die Vorlage braucht und die Person nicht gesagt hat, in dieser Prio
   5. Risiko: Produktionsdaten, personenbezogene Daten, mehrere Mandanten, externe Systeme?
 
 RULE: Vorschläge der Person hinterfragen, nicht reflexartig übernehmen (Projekt-CLAUDE.md). Wenn die Antwort den Zuschnitt ändert, das sagen und Version hochzählen.
+RULE: Interviewfragen haben noch keine Kennung (Ausnahme in R2): Gegenstand nennen und, wo möglich, einen Vorschlag mitliefern, damit die Person mit „ja" antworten kann.
 
 </step>
 
@@ -82,6 +84,8 @@ WRITE `intent/INT-JJJJ-NNN-kurzname/intent.md` nach Vorlage:
   - Ab Risikoklasse mittel: Begriffe, Erfolgskennzahlen, Auslieferung/Betrieb/Zeitbudget, Entscheidungsrechte (ER-00…ER-08), Annahmen mit Prüfweg
   - Änderungsprotokoll: Zeile 0.1.0
 
+RULE: Leser-Marker nach R1 (`specwright/workflows/meta/leser-und-rueckfragen.md`): die Marker der Vorlage unter jeder Überschrift übernehmen, keinen entfernen; jede neue `##`-Überschrift bekommt einen.
+
 CHECK Definition of Ready (Kommentar am Ende der Vorlage). Fehlt etwas → zurück zu Step 2.
 
 </step>
@@ -96,6 +100,8 @@ PRESENT in Alltagssprache:
   - Offene Fragen mit Übergangsregel — die Person antwortet per ID
   - Nebenwirkungen (Pilot: „Wer vorher einen aktiven Filter hatte, setzt ihn danach selbst wieder")
 
+RULE: Vorlegen nach R3 und Rückfragen nach R2 (`specwright/workflows/meta/leser-und-rueckfragen.md`): im Chat nur die Mensch-Abschnitte (drei Sätze, §1, §3, §4, §7, §12), Kopf-Tabelle und Entscheidungsrechte nur als Verweis auf die Datei; jede offene Frage als „OF-nn, Gegenstand: Vorschlag. Ok?".
+
 WAIT for Freigabe oder Änderungen. Änderungen → Version hochzählen (MINOR bei neuem Kriterium, MAJOR bei geändertem Ziel), Änderungsprotokoll pflegen, erneut vorlegen.
 
 </step>
@@ -108,6 +114,7 @@ ON Freigabe:
   - `status: angenommen`, `version: 1.0.0`, `freigabe.von`, `freigabe.am`, `geaendert`
   - Entschiedene OF-Zeilen als „*entschieden Datum (Rolle)*: …" mit Verweis auf AK/NZ
   - Änderungsprotokoll: Zeile 1.0.0 mit Freigabe
+RULE: Vor der Freigabe Abgleich nach R4 (`specwright/workflows/meta/leser-und-rueckfragen.md`): Kern (drei Sätze bis §7) gegen Vertragsschicht und Kopf lesen; Abweichung als Rückfrage; Ergebnis in die Änderungsprotokoll-Zeile 1.0.0 eintragen („Abgleich Mensch/Agent: ohne Befund" oder „… Befund: …").
   - COMMIT: `intent(INT-JJJJ-NNN): <Titel> — angenommen` mit Kurzfassung der Entscheidungen
   - Board: `bezuege.board_karte` eintragen, falls eine Karte existiert. Karte anlegen oder nachziehen **nicht hier**: Der Abschlussbericht endet mit dem Block „Für das Board" (Projekt, Karte, Spalte, Beleg, Stand, Verweis auf den Intent-Ordner); das Nachziehen läuft in einer eigenen kurzen Sitzung nach `/clear` (Skill `obsidian-po-board`).
 

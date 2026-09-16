@@ -1,0 +1,60 @@
+E2E-Protokoll INT-2026-009 — erste echte Verwendung: /spec INT-2026-010 bis Vorlegen (spec Step 5 PRESENT), ohne Freigabe
+=====================================================================================================================
+
+Datum:   2026-09-16, 15:20–15:30 Uhr
+Modell:  Claude Fable 5.1 (claude-fable-5-1), Claude Code, Bausitzung INT-2026-009 auf Branch feat/INT-2026-009-dokumente-fuer-menschen (Commit 238f876 + Arbeitsbaum)
+Ablauf:  Workflow specwright/workflows/core/spec.md (Version 1.1, Hybrid-Lookup: Projektdatei), Vorlage specwright/templates/sdlc/vorhaben/spec-template.md (mit Markern),
+         Meta-Datei specwright/workflows/meta/leser-und-rueckfragen.md geladen. Step 1 (intent angenommen, bypass nein, vier Projekt-Docs, Stand 238f876),
+         Step 2 (lesend: Gruppen der Liste, Zustände der Zeile, Glocke, Skizze), Step 3 (spec.md geschrieben), Step 4 (Bedenken, 9 Zeilen), Step 5 (Vorlegen).
+Ergebnis: intent/INT-2026-010-ui-vorhaben-als-mitte/spec.md, Status entwurf. Keine Freigabe, keine Antwort auf die Rückfragen (Plan §10 Zeile 2).
+Charakter: Sitzungsprotokoll, kein reproduzierbarer Lauf (Plan §8, Review 23).
+
+Punkt (1) — R1 übernommen: spec.md besteht check-leser-marker.sh --doc als „vollständig markiert"
+-------------------------------------------------------------------------------------------------
+$ bash scripts/check-leser-marker.sh --doc intent/INT-2026-010-ui-vorhaben-als-mitte/spec.md
+✅ Leser-Marker: 1 Dokumente, 0 ohne Marker, 1 vollständig markiert.
+17 Überschriften (##/###), 17 Marker; die sieben Abläufe (### Ablauf A–G) tragen je <!-- leser: mensch --> (spec Step 3 RULE).
+
+Punkt (2) — R2-Form jeder Rückfrage und Annahme mit Kennung (Zitate aus dem Vorlegen, siehe Punkt 3)
+-----------------------------------------------------------------------------------------------------
+„AN-S01, dritte Gruppe „Wartet" (Berechtigung, Plan-Freigabe): Vorschlag geht in „Wartet auf dich" auf, „Läuft" nur arbeitende Sitzungen, Vorhaben ohne Sitzung dort mit „ruht". Ok?"
+„AN-S02, Linie „Statusbar" in Skizze 1: Vorschlag das ist nur der Verbindungs-Hinweis, keine dauerhafte Leiste. Ok?"
+„AN-S03, teilweise gekennzeichnetes Dokument: Vorschlag wie ohne Kennzeichnung behandeln, alles offen. Ok?"
+„AN-S04, Knopf für den nächsten Schritt: Vorschlag zeigt „spec/plan/build starten" je nach Stand und fehlt, solange eine Sitzung arbeitet oder wartet. Ok?"
+„AN-S05, Glocke im Terminal-Kopf: Vorschlag entfällt, die Glocke der Kopfzeile ersetzt sie, Ton bleibt schaltbar. Ok?"
+„FA-03, Chip und Phase als Nutzerzustand: Vorschlag Chip und gewählte Phase ins Backend (gleiche Sicht auf jedem Gerät), Schalter „Technik zeigen" nur flüchtig je Seitenaufruf. Ok?"
+„FA-12, Vorhaben-Seite zwischen Handy und Desktop: Vorschlag unter 1024 px Dokument über dem Gespräch. Ok?"
+„FA-07, Screenshots im öffentlichen Repo: Vorschlag nur aus dem Scratch-Projekt, keine Kundenprojekte im Bild. Ok?"
+„FA-19, Backend-Handler ohne Aufrufer nach dem Abbau: Vorschlag im Plan nennen, abbauen nur ohne Risiko, sonst als bekannte Abweichung eintragen. Ok?"
+Alle neun nennen Kennung, Gegenstand in einem Satz, Vorschlag, Frage. Keine Rückfrage ohne Kennung.
+
+Punkt (3) — R3: Vorlegen im Chat ohne Zeile aus §5 oder §7, Verweis auf die Datei (Zitat des Vorlege-Textes)
+-------------------------------------------------------------------------------------------------------------
+Zitat (wörtlich, Abschlussbericht der Bausitzung, Abschnitt „E2E: Vorlegen /spec INT-2026-010"):
+
+  „Spec-Entwurf liegt in intent/INT-2026-010-ui-vorhaben-als-mitte/spec.md.
+  Aufbau: Nach dem Umbau öffnet die UI mit der Vorhaben-Liste; der Rahmen jeder Seite ist nur noch Kopfzeile mit Glocke und Projekt-Symbol, am Handy dazu Terminal-Symbol.
+  Sieben Abläufe: A UI öffnen und sehen, wo ich gebraucht werde · B Agent wird fertig, während eine andere Seite offen ist (Glocke, zwei Berührungen bis zur Antwort) ·
+  C Neue Absicht (Textfeld, Modellwahl, Starten) · D Vorhaben lesen, entscheiden, weitergehen (Mensch-Teil offen, Technik zugeklappt, Codes im Gespräch springen zum Absatz) ·
+  E Projektdinge hinter dem Projekt-Symbol · F dasselbe am Handy (Terminal-Knopf statt Gespräch) · G Terminal per Cmd/Ctrl+D.
+  21 fachliche Anforderungen, jede mit Herkunft AK/NZ. Nicht im Umfang: NZ-01 bis NZ-07 plus keine Suche/Sortierung, keine Mehrfachauswahl der Chips, kein Bearbeiten
+  von Dokumenten auf der Vorhaben-Seite, keine Tastenkürzel außer Cmd/Ctrl+D.
+  Zwei Randfälle zum Prüfen: Dokument der gewählten Phase fehlt (Bypass) → „Kein Dokument in dieser Phase" plus Knopf für den nächsten Schritt; Projektwechsel auf der
+  Projekt-Seite → zurück auf der Liste gilt der Chip des neuen Projekts.
+  Daten (§5), Bedenken aus den Projekt-Docs (§7) und Freigabe-Checkliste (§10) stehen in der Datei; die vier offenen Bedenken kommen hier als Rückfragen.
+  Annahmen und Rückfragen (bitte per Kennung antworten): [die neun Zeilen aus Punkt 2]
+  Abgleich Mensch/Agent gelesen am 2026-09-16: ohne Befund; §10 der Spec trägt den Punkt. Keine Freigabe in dieser Sitzung: der Entwurf bleibt, die nächste /spec-Sitzung setzt auf."
+
+Prüfung: Der Text enthält keine Tabellenzeile aus §5 (Daten) und keine Zeile aus §7 (Bedenken); die offenen Bedenken erscheinen nur als R2-Rückfragen (Meta-Datei R3, letzter Absatz).
+
+Punkt (4) — R4: Abgleich gemeldet, §10 trägt den Punkt
+-------------------------------------------------------
+Zitat: „Abgleich Mensch/Agent gelesen am 2026-09-16: ohne Befund; §10 der Spec trägt den Punkt."
+spec.md §10: „- [x] Abgleich Mensch/Agent: Mensch-Teil gegen Agenten-Teil geprüft (2026-09-16), Befund: keiner — §5 und §7 versprechen nichts, was §1–§4 nicht nennen; …"
+$ grep -c "Abgleich Mensch/Agent" intent/INT-2026-010-ui-vorhaben-als-mitte/spec.md
+1
+
+Befund zur Regelbefolgung (für Plan §9 Risiko 1)
+-------------------------------------------------
+Ohne Befund. Beobachtung: R3 verlangt Disziplin beim Vorlegen — die neun Bedenken-/Annahmen-Rückfragen sind länger als der Rest des Vorlegens; das ist gewollt (Michael antwortet per Kennung).
+Die Meta-Datei wurde im pre_flight_check sichtbar geladen (zweite EXECUTE-Zeile, spec.md Workflow :22-23).

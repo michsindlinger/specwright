@@ -2,7 +2,7 @@
 description: Fachliche Spec aus intent.md — Abläufe, Anforderungen, Bedenken aus den Projekt-Docs
 globs:
 alwaysApply: false
-version: 1.0
+version: 1.1
 encoding: UTF-8
 ---
 
@@ -20,6 +20,7 @@ Zweiter Schritt des AI-native SDLC (Specwright v4). Übersetzt eine angenommene 
 
 <pre_flight_check>
   EXECUTE: specwright/workflows/meta/pre-flight.md
+  EXECUTE: specwright/workflows/meta/leser-und-rueckfragen.md
 </pre_flight_check>
 
 <process_flow>
@@ -63,6 +64,7 @@ WRITE `intent/INT-JJJJ-NNN-*/spec.md` nach Vorlage:
   10. Freigabe-Checkliste mit AK→FA-Zuordnung
 
 RULE: Pfade nur als Herkunftsangabe in Abschnitt 7, nirgends sonst.
+RULE: Leser-Marker nach R1 (`specwright/workflows/meta/leser-und-rueckfragen.md`): die Marker der Vorlage unter jeder Überschrift übernehmen, keinen entfernen; jeder neue Ablauf (`###`) bekommt `<!-- leser: mensch -->`.
 
 </step>
 
@@ -88,6 +90,10 @@ IF nichts reibt: „Keine — geprüft gegen Stand <sha>."
 ### Step 5: Vorlegen und Freigabe
 
 PRESENT: Aufbau in einem Absatz, die Bedenken, die offen bleiben, die Annahmen zum Bestätigen, ein bis zwei Randfälle, die die Person prüfen sollte.
+RULE: Vorlegen nach R3, Rückfragen nach R2, Abgleich nach R4 (`specwright/workflows/meta/leser-und-rueckfragen.md`):
+  - im Chat nur die Mensch-Abschnitte (§1, §2, §6, §8, §9); §5 Daten, §7 Bedenken und §10 Checkliste nur als Verweis auf die Datei
+  - jede offene Bedenken-Zeile und jede Annahme als „AN-Snn, Gegenstand: Vorschlag. Ok?"
+  - vor dem WAIT: Mensch-Teil gegen §5/§7 gelesen, Abweichung als Rückfrage, Ergebnis als §10-Punkt „Abgleich Mensch/Agent … (Datum), Befund: …" eingetragen
 WAIT for Freigabe.
 ON Freigabe:
   - Kopf: `Status: freigegeben`, Freigabe Rolle + Datum
