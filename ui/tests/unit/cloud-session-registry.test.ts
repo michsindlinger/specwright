@@ -116,4 +116,35 @@ describe('CloudSessionRegistry', () => {
       seededClaudeConfig: ['.claude/settings.json'],
     });
   });
+  it('INT-2026-007 (FA-08): hook context, block kind and plan-review settings round-trip; old files without them still load', async () => {
+    await registry.upsert(
+      entry('cloud-1-7', {
+        transcriptPath: '/home/me/.claude/projects/-p/abc.jsonl',
+        claudeSessionId: 'abc',
+        blockKind: 'plan',
+        dialogSeq: 3,
+        planReviewEnabled: true,
+        planReviewReviewers: [{ providerId: 'anthropic', modelId: 'haiku' }],
+        lastDetectedPlanPath: 'hook:toolu_1',
+        lastInjectedPlanPath: 'hook:toolu_1',
+      })
+    );
+    await registry.upsert(entry('cloud-1-8'));
+    const { entries, healthy } = await registry.load();
+    expect(healthy).toBe(true);
+    const seven = entries.find((e) => e.sessionId === 'cloud-1-7')!;
+    expect(seven).toMatchObject({
+      transcriptPath: '/home/me/.claude/projects/-p/abc.jsonl',
+      claudeSessionId: 'abc',
+      blockKind: 'plan',
+      dialogSeq: 3,
+      planReviewEnabled: true,
+      planReviewReviewers: [{ providerId: 'anthropic', modelId: 'haiku' }],
+      lastDetectedPlanPath: 'hook:toolu_1',
+      lastInjectedPlanPath: 'hook:toolu_1',
+    });
+    const eight = entries.find((e) => e.sessionId === 'cloud-1-8')!;
+    expect(eight.transcriptPath).toBeUndefined();
+    expect(eight.planReviewEnabled).toBeUndefined();
+  });
 });

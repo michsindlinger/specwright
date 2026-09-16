@@ -1,0 +1,45 @@
+  Gartenstrukturen und Infrastruktur fordern Aufmerksamkeit, bevor der Frost kommt. Ein Hochbeet, das aus Holz ist, kann verrotten, wenn
+  Schnee und Eis draufliegen. Eine Behandlung mit Öl oder Lasur jetzt schützt. Ein Spalier, das unter Last bricht, wenn Schnee fällt, sollte
+  überprüft und verstärkt werden. Ein Zaun, der morsch aussieht, kann noch im Herbst repariert werden, nicht unter Schnee. Eine Pergola
+  oder ein Rankgerüst wird kontrolliert, ob es standhaft ist. Dies ist nicht glamouröse Arbeit, aber es ist die Arbeit, die im Frühling
+  Ärger erspart.
+
+  Am Ende des Herbstes, wenn der Garten in Ruhe versunken ist, sitzt der erfahrene Gärtner nicht untätig. Er weiß, dass die wertvollste
+  Arbeit unter der Erde geschieht, dass Mikroorganismen den Boden aufbauen, dass Wurzeln wachsen, dass die Natur im Verborgenen arbeitet.
+  Der Winter wird kommen und alles erstarren lassen. Doch was der Gärtner im Herbst gelegt hat — Zwiebeln, Humus, starke Wurzeln, gut
+  strukturierte Beete — wird im Frühling auferstehen und zu Blüte und Ertrag führen. Der Herbst ist nicht das Ende der Gartensaison, sondern
+  ihr Anfang.
+
+✻ Brewed for 33s · done 9:15
+
+❯ Antworte nur mit Text, keine Werkzeuge, ein bis zwei Sätze: Nenne mir die Zahl 19 in Worten und ein passendes Tier.
+
+⏺ Neunzehn. Tier: Wal — neunzehn Meter lang, Gesang in Tiefe, Majestät der Meere.
+
+✻ Sautéed for 8s · done 9:16
+
+❯ Antworte nur mit Text, keine Werkzeuge, ein bis zwei Sätze: Nenne mir die Zahl 20 in Worten und ein passendes Tier.
+
+⏺ Zwanzig. Tier: Schildkröte — zwanzig Jahre Jugend, Geduld, Panzer und Ewigkeit.
+
+✻ Sautéed for 7s · done 9:16
+
+❯ Benutze jetzt das Werkzeug AskUserQuestion mit genau einer Frage: "Welche Farbe magst du?" mit den Optionen Rot, Blau, Grün (jede mit
+  kurzer Beschreibung). Nach meiner Antwort antworte nur mit dem Satz: Du hast <Farbe> gewählt.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Farbe
+
+Welche Farbe magst du?
+
+❯ 1. Rot
+     Energie, Leidenschaft, Wärme und Kraft.
+  2. Blau
+     Ruhe, Himmel, Tiefe und Vertrauen.
+  3. Grün
+     Natur, Wachstum, Frische und Balance.
+  4. Type something.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel
+

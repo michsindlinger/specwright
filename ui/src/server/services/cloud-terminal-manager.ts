@@ -67,6 +67,8 @@ import {
   type PersistedWorktreeV1,
 } from './cloud-session-registry.js';
 import { getPasteImageRoot, getSessionRegistryPath } from '../utils/runtime-paths.js';
+import { sanitizeSessionEnv } from '../utils/session-env.js';
+import type { BlockKind, HookBeitrag, HookContext, HookDialog, HookDialogClosed } from '../../shared/types/gespraech.protocol.js';
 
 /** MIME type → filename extension for pasted-image persistence */
 const PASTE_MIME_TO_EXT: ReadonlyMap<string, string> = new Map([
@@ -169,7 +171,31 @@ interface ManagedCloudSession extends CloudTerminalSession {
 
   /** Pending done → idle decay timer (see applyAgentEvent). */
   agentIdleTimer?: NodeJS.Timeout;
+
+  // ---- INT-2026-007: hook context, dialog state, machine-write lock ----
+
+  /** Transcript file of the claude session, from the last hook payload (FA-01). */
+  transcriptPath?: string;
+  claudeSessionId?: string;
+  /** Kind of the dialog while `blocked` (FA-09); cleared when the block ends. */
+  blockKind?: BlockKind;
+  /** Monotonic counter for `seq:<n>` dialog ids (permissions without a tool call). */
+  dialogSeq: number;
+  /** Dialog ids already closed — a late `blocked` hook for one of them is ignored (monotony, E1). */
+  closedDialogIds: Set<string>;
+  /** Reviewer selection of the plan-review toggle, persisted with the session (FA-08). */
+  planReviewReviewers?: Array<{ providerId: string; modelId: string }>;
+  /** Path of the plan whose review was last injected (dedup across restarts, E6/E23). */
+  lastInjectedPlanPath?: string;
+  /** Single-flight lock: a machine write (paste, keys) is in progress (E3/G2). */
+  machineWriteBusy?: boolean;
 }
+
+/** Most recent closed dialog ids kept per session (bounded memory). */
+const CLOSED_DIALOG_IDS_MAX = 50;
+
+/** Result of {@link CloudTerminalManager.withMachineWrite}. */
+export type MachineWriteResult<T> = { ok: true; value: T } | { ok: false; grund: 'beschaeftigt' | 'nicht_aktiv' };
 
 /**
  * Detects the closing bar of a Claude Code TUI plan box (╰──...──╯).
@@ -220,7 +246,10 @@ function bufferTail(chunks: readonly string[], max: number): string {
  * - 'session.error' (CloudTerminalSessionId, Error) - Session error
  * - 'session.plan-detected' (CloudTerminalSessionId, planText, source: 'auto'|'manual') - Plan box detected; planText is extracted buffer content (plan-review only)
  * - 'session.notice' (CloudTerminalSessionId, level: 'warn'|'info', message) - User-facing notice (e.g. worktree kept due to uncommitted changes, or started without worktree)
- * - 'session.agent-event' (CloudTerminalSessionId, event, { preview?, reason?, status, statusAt }) - Agent status changed (Claude Code hooks, keystrokes on a blocked session, idle decay). `stop` still drives the bell.
+ * - 'session.agent-event' (CloudTerminalSessionId, event, { preview?, reason?, blockKind?, status, statusAt }) - Agent status changed (Claude Code hooks, keystrokes on a blocked session, idle decay). `stop` still drives the bell.
+ * - 'session.hook-context' (CloudTerminalSessionId, { transcriptPath?, claudeSessionId?, cwd? }) - INT-2026-007: a hook reported (a new) transcript path / Claude session id
+ * - 'session.dialog' (CloudTerminalSessionId, { open: HookDialog } | { closed: HookDialogClosed }) - INT-2026-007: a dialog opened / closed as reported by hooks
+ * - 'session.beitrag' (CloudTerminalSessionId, { kind: 'claude'|'nutzer', text, at: Date }) - INT-2026-007: full text of a turn from a hook (server-internal, never broadcast)
  */
 /**
  * Where the hook settings file and its shared secret live. Tests inject
@@ -391,6 +420,8 @@ export class CloudTerminalManager extends EventEmitter {
     session.agentStatus = next;
     session.agentStatusAt = new Date();
     session.agentStatusReason = detail.reason;
+    // INT-2026-007 (FA-09): the structured block kind lives and dies with the block.
+    session.blockKind = next === 'blocked' ? (detail.blockKind ?? (event === 'blocked' ? 'unbekannt' : session.blockKind ?? 'unbekannt')) : undefined;
     this.clearAgentIdleTimer(session);
 
     if (next === 'done') {
@@ -413,9 +444,126 @@ export class CloudTerminalManager extends EventEmitter {
 
     this.emit('session.agent-event', session.sessionId, event, {
       ...detail,
+      ...(session.blockKind ? { blockKind: session.blockKind } : {}),
       status: next,
       statusAt: session.agentStatusAt,
     });
+  }
+
+  // ---- INT-2026-007: hook context, dialogs, Beiträge, machine-write lock ----
+
+  /**
+   * Transcript path / Claude session id from a hook payload (FA-01). Emits
+   * `session.hook-context` only when something changed (a `clear`/`fork`
+   * brings a new path, E10) and persists it with the session (FA-08).
+   */
+  public reportHookContext(sessionId: CloudTerminalSessionId, ctx: HookContext): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.closing || session.status === 'closed') return false;
+    const changed =
+      (ctx.transcriptPath !== undefined && ctx.transcriptPath !== session.transcriptPath) ||
+      (ctx.claudeSessionId !== undefined && ctx.claudeSessionId !== session.claudeSessionId);
+    if (!changed) return true;
+    if (ctx.transcriptPath !== undefined) session.transcriptPath = ctx.transcriptPath;
+    if (ctx.claudeSessionId !== undefined) session.claudeSessionId = ctx.claudeSessionId;
+    if (session.tmuxSessionName) void this.registry.upsert(this.toPersistedEntry(session));
+    this.emit('session.hook-context', sessionId, {
+      transcriptPath: session.transcriptPath,
+      claudeSessionId: session.claudeSessionId,
+      ...(ctx.cwd ? { cwd: ctx.cwd } : {}),
+    } satisfies HookContext);
+    return true;
+  }
+
+  /**
+   * A dialog opened (`PreToolUse` / `PermissionRequest`) or closed
+   * (`PostToolUse`) as the hooks report it. Returns false for an `open` whose
+   * id is already closed — the caller then skips the `blocked` status too
+   * (monotony: a closed dialog never reopens, review E1).
+   */
+  public reportDialog(sessionId: CloudTerminalSessionId, change: { open: HookDialog } | { closed: HookDialogClosed }): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.closing || session.status === 'closed') return false;
+    if ('open' in change) {
+      const id = change.open.toolUseId;
+      if (id && session.closedDialogIds.has(id)) return false;
+    } else if (change.closed.toolUseId) {
+      session.closedDialogIds.add(change.closed.toolUseId);
+      if (session.closedDialogIds.size > CLOSED_DIALOG_IDS_MAX) {
+        const oldest = session.closedDialogIds.values().next().value;
+        if (oldest !== undefined) session.closedDialogIds.delete(oldest);
+      }
+    }
+    this.emit('session.dialog', sessionId, change);
+    return true;
+  }
+
+  /** Whether the hooks already reported this dialog id as closed. */
+  public isDialogClosed(sessionId: CloudTerminalSessionId, dialogId: string): boolean {
+    return this.sessions.get(sessionId)?.closedDialogIds.has(dialogId) ?? false;
+  }
+
+  /** Next `seq:<n>` id for a dialog without a tool_use_id (permission of another tool). */
+  public nextDialogSeq(sessionId: CloudTerminalSessionId): string {
+    const session = this.sessions.get(sessionId);
+    if (!session) return 'seq:0';
+    session.dialogSeq += 1;
+    if (session.tmuxSessionName) void this.registry.upsert(this.toPersistedEntry(session));
+    return `seq:${session.dialogSeq}`;
+  }
+
+  /**
+   * Full text of a turn from a hook (`Stop.last_assistant_message`,
+   * `UserPromptSubmit.prompt`). Server-internal: emitted as `session.beitrag`
+   * for the Gespräch, never broadcast or persisted here.
+   */
+  public reportBeitrag(sessionId: CloudTerminalSessionId, beitrag: HookBeitrag): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.closing || session.status === 'closed') return false;
+    this.emit('session.beitrag', sessionId, { ...beitrag, at: new Date() });
+    return true;
+  }
+
+  /**
+   * Single-flight lock for machine writes into a session's PTY (E3/G2, AR-08):
+   * pastes from the Vorhaben page, card answers, the plan-review inject. A
+   * second machine write while one runs is refused with `beschaeftigt` — no
+   * waiting, so two UI actions can never interleave their key sequences. Human
+   * typing (`cloud-terminal:input`) stays outside the lock; the drivers read
+   * the screen before every key to detect it.
+   */
+  public async withMachineWrite<T>(sessionId: CloudTerminalSessionId, fn: () => Promise<T>): Promise<MachineWriteResult<T>> {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.status !== 'active') return { ok: false, grund: 'nicht_aktiv' };
+    if (session.machineWriteBusy) return { ok: false, grund: 'beschaeftigt' };
+    session.machineWriteBusy = true;
+    try {
+      return { ok: true, value: await fn() };
+    } finally {
+      session.machineWriteBusy = false;
+    }
+  }
+
+  /** Reviewer selection of the plan-review toggle, persisted with the session (FA-08). */
+  public setPlanReviewReviewers(sessionId: CloudTerminalSessionId, reviewers: Array<{ providerId: string; modelId: string }>): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    session.planReviewReviewers = reviewers.map((r) => ({ providerId: r.providerId, modelId: r.modelId }));
+    if (session.tmuxSessionName) void this.registry.upsert(this.toPersistedEntry(session));
+  }
+
+  /** Persisted plan-review settings of a session (restore seed for the orchestrator, FA-08). */
+  public getPlanReviewSettings(sessionId: CloudTerminalSessionId): { enabled: boolean; reviewers?: Array<{ providerId: string; modelId: string }>; lastInjectedPlanPath?: string } | undefined {
+    const session = this.sessions.get(sessionId);
+    if (!session) return undefined;
+    return { enabled: !!session.planReviewEnabled, reviewers: session.planReviewReviewers, lastInjectedPlanPath: session.lastInjectedPlanPath };
+  }
+
+  public setLastInjectedPlanPath(sessionId: CloudTerminalSessionId, planPath: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    session.lastInjectedPlanPath = planPath;
+    if (session.tmuxSessionName) void this.registry.upsert(this.toPersistedEntry(session));
   }
 
   private clearAgentIdleTimer(session: ManagedCloudSession): void {
@@ -518,6 +666,8 @@ export class CloudTerminalManager extends EventEmitter {
       lastActivity: new Date(),
       executionId,
       agentStatus: 'unknown',
+      dialogSeq: 0,
+      closedDialogIds: new Set(),
     };
 
     // Store session
@@ -528,8 +678,11 @@ export class CloudTerminalManager extends EventEmitter {
       let shellArgs: string[];
       let shellEnv: Record<string, string>;
 
-      // Ensure UTF-8 locale for correct rendering of umlauts and special characters
-      const baseEnv = { ...(process.env as Record<string, string>) };
+      // Ensure UTF-8 locale for correct rendering of umlauts and special characters.
+      // INT-2026-007 (FA-01): drop the Claude Code markers this backend inherited
+      // from the session it was started in and force transcript persistence —
+      // both spawn paths (run script, direct) build on this env.
+      const baseEnv = sanitizeSessionEnv(process.env);
       if (!baseEnv.LANG) {
         baseEnv.LANG = 'en_US.UTF-8';
       }
@@ -1512,6 +1665,8 @@ export class CloudTerminalManager extends EventEmitter {
       session.lastPlanDetectedAt = undefined;
       session.lastDataAt = undefined;
     }
+    // INT-2026-007 (FA-08): the toggle survives a backend restart.
+    if (session.tmuxSessionName) void this.registry.upsert(this.toPersistedEntry(session));
   }
 
   /**
@@ -1628,6 +1783,14 @@ export class CloudTerminalManager extends EventEmitter {
       agentStatus: session.agentStatus,
       agentStatusAt: session.agentStatusAt?.toISOString(),
       agentStatusReason: session.agentStatusReason,
+      transcriptPath: session.transcriptPath,
+      claudeSessionId: session.claudeSessionId,
+      blockKind: session.blockKind,
+      dialogSeq: session.dialogSeq,
+      planReviewEnabled: session.planReviewEnabled,
+      planReviewReviewers: session.planReviewReviewers,
+      lastDetectedPlanPath: session.lastDetectedPlanPath,
+      lastInjectedPlanPath: session.lastInjectedPlanPath,
     };
   }
 
@@ -1747,6 +1910,15 @@ export class CloudTerminalManager extends EventEmitter {
       agentStatus: entry.agentStatus ?? 'unknown',
       agentStatusAt: entry.agentStatusAt ? new Date(entry.agentStatusAt) : undefined,
       agentStatusReason: entry.agentStatusReason,
+      transcriptPath: entry.transcriptPath,
+      claudeSessionId: entry.claudeSessionId,
+      blockKind: entry.agentStatus === 'blocked' ? entry.blockKind ?? 'unbekannt' : undefined,
+      dialogSeq: entry.dialogSeq ?? 0,
+      closedDialogIds: new Set(),
+      planReviewEnabled: entry.planReviewEnabled,
+      planReviewReviewers: entry.planReviewReviewers,
+      lastDetectedPlanPath: entry.lastDetectedPlanPath,
+      lastInjectedPlanPath: entry.lastInjectedPlanPath,
       worktreeCleanup: entry.worktree
         ? rehydrateOwnedSessionWorktree(entry.worktree)
         : undefined,
@@ -1951,6 +2123,9 @@ export class CloudTerminalManager extends EventEmitter {
             agentStatus: session.agentStatus,
             agentStatusAt: session.agentStatusAt,
             agentStatusReason: session.agentStatusReason,
+            ...(session.blockKind ? { blockKind: session.blockKind } : {}),
+            ...(session.transcriptPath ? { transcriptPath: session.transcriptPath } : {}),
+            ...(session.claudeSessionId ? { claudeSessionId: session.claudeSessionId } : {}),
           }
         : {}),
     };

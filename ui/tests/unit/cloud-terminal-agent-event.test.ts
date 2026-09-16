@@ -126,6 +126,44 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
     expect(spec.env[CLOUD_SESSION_ID_ENV]).toBe(session.sessionId);
   });
 
+  it('INT-2026-007 FA-01: inherited Claude Code markers are stripped from the session env, persistence forced (both spawn paths)', async () => {
+    // The backend on the Mac is started from a Claude session and inherits its markers;
+    // a child claude with CLAUDE_CODE_CHILD_SESSION writes no transcript.
+    const saved = { ...process.env };
+    process.env.CLAUDE_CODE_CHILD_SESSION = '1';
+    process.env.CLAUDE_CODE_SESSION_ATTENDED = '1';
+    process.env.CLAUDECODE = '1';
+    process.env.CLAUDE_PID = '4711';
+    process.env.CLAUDE_CODE_SOMETHING_NEW = 'x';
+    try {
+      const direct = await mgr.createSession(project, 'claude-code', { model: 'x' }, 80, 24);
+      const env = terminal.last.env!;
+      expect(Object.keys(env).filter((k) => k.startsWith('CLAUDE_CODE_'))).toEqual(['CLAUDE_CODE_FORCE_SESSION_PERSISTENCE']);
+      expect(env.CLAUDE_CODE_FORCE_SESSION_PERSISTENCE).toBe('1');
+      expect(env).not.toHaveProperty('CLAUDECODE');
+      expect(env).not.toHaveProperty('CLAUDE_PID');
+      expect(env[CLOUD_SESSION_ID_ENV]).toBe(direct.sessionId);
+      expect(env.CLAUDE_MODEL).toBe('x');
+
+      tmux.enabled = true;
+      const viaTmux = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      const { spec } = tmux.runScripts[tmux.runScripts.length - 1];
+      expect(Object.keys(spec.env).filter((k) => k.startsWith('CLAUDE_CODE_'))).toEqual(['CLAUDE_CODE_FORCE_SESSION_PERSISTENCE']);
+      expect(spec.env).not.toHaveProperty('CLAUDECODE');
+      expect(spec.env[CLOUD_SESSION_ID_ENV]).toBe(viaTmux.sessionId);
+
+      // shell sessions: stripped as well, and no session id inherited from the parent session
+      tmux.enabled = false;
+      process.env[CLOUD_SESSION_ID_ENV] = 'cloud-9-9';
+      await mgr.createSession(project, 'shell');
+      expect(terminal.last.env).not.toHaveProperty('CLAUDECODE');
+      expect(terminal.last.env?.[CLOUD_SESSION_ID_ENV]).toBeUndefined();
+    } finally {
+      for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
+      Object.assign(process.env, saved);
+    }
+  });
+
   it('shell sessions get neither flag nor env', async () => {
     // baseEnv is a copy of process.env, so a test run from inside a cloud terminal would
     // inherit the session id and see it "set" without the manager ever adding it.
@@ -365,6 +403,99 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
         vi.advanceTimersByTime(CLOUD_TERMINAL_CONFIG.AGENT_IDLE_AFTER_MS / 2);
         expect(emitted).toEqual([{ event: 'idle-timeout', status: 'idle' }]);
       });
+    });
+  });
+  describe('INT-2026-007: hook context, dialogs, Beiträge, machine-write lock', () => {
+    it('reportHookContext stores and emits the transcript path once, persists it for tmux sessions, ignores unknown sessions', async () => {
+      tmux.enabled = true;
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      const emitted: unknown[] = [];
+      mgr.on('session.hook-context', (...a: unknown[]) => emitted.push(a));
+      expect(mgr.reportHookContext(id, { transcriptPath: '/t/a.jsonl', claudeSessionId: 'abc', cwd: '/p' })).toBe(true);
+      expect(mgr.reportHookContext(id, { transcriptPath: '/t/a.jsonl', claudeSessionId: 'abc' })).toBe(true);
+      expect(emitted).toHaveLength(1);
+      expect(emitted[0]).toEqual([id, { transcriptPath: '/t/a.jsonl', claudeSessionId: 'abc', cwd: '/p' }]);
+      expect(mgr.getSession(id)).toMatchObject({ transcriptPath: '/t/a.jsonl', claudeSessionId: 'abc' });
+      // a `clear` brings a new path (E10)
+      expect(mgr.reportHookContext(id, { transcriptPath: '/t/b.jsonl', claudeSessionId: 'def' })).toBe(true);
+      expect(emitted).toHaveLength(2);
+      expect(mgr.reportHookContext('cloud-1-999' as never, { transcriptPath: '/t/x.jsonl' })).toBe(false);
+      await new Promise((r) => setTimeout(r, 30)); // registry.upsert is fire-and-forget
+      const { entries } = await new CloudSessionRegistry(join(dir, 'sessions.json')).load();
+      expect(entries.find((e) => e.sessionId === id)).toMatchObject({ transcriptPath: '/t/b.jsonl', claudeSessionId: 'def' });
+    });
+
+    it('blocked carries the structured block kind; it is cleared when the block ends', async () => {
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      const events: Array<Record<string, unknown>> = [];
+      mgr.on('session.agent-event', (_id: string, _ev: string, d: Record<string, unknown>) => events.push(d));
+      mgr.reportAgentEvent(id, 'blocked', { reason: 'Frage', blockKind: 'rueckfrage' });
+      expect(mgr.getSession(id)!.blockKind).toBe('rueckfrage');
+      expect(events[0]).toMatchObject({ status: 'blocked', blockKind: 'rueckfrage' });
+      mgr.reportAgentEvent(id, 'unblocked');
+      expect(mgr.getSession(id)!.blockKind).toBeUndefined();
+      expect(events[1]).not.toHaveProperty('blockKind');
+      // blocked without a kind (older payloads, notifications) → unbekannt (FA-10)
+      mgr.reportAgentEvent(id, 'blocked', { reason: 'Dialog' });
+      expect(mgr.getSession(id)!.blockKind).toBe('unbekannt');
+      // the orchestrator's review-injected keeps the block and its kind
+      mgr.reportAgentEvent(id, 'blocked', { reason: 'Berechtigung: ExitPlanMode', blockKind: 'plan' });
+      mgr.reportAgentEvent(id, 'review-injected');
+      expect(mgr.getSession(id)!.blockKind).toBe('plan');
+    });
+
+    it('reportDialog emits open/closed and refuses to reopen a closed id (monotony, E1)', async () => {
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      const changes: unknown[] = [];
+      mgr.on('session.dialog', (_id: string, c: unknown) => changes.push(c));
+      const open = { kind: 'rueckfrage' as const, toolUseId: 'toolu_1', questions: [] };
+      expect(mgr.reportDialog(id, { open })).toBe(true);
+      expect(mgr.reportDialog(id, { closed: { toolUseId: 'toolu_1', tool: 'AskUserQuestion', answers: { q: 'a' } } })).toBe(true);
+      expect(mgr.isDialogClosed(id, 'toolu_1')).toBe(true);
+      expect(mgr.reportDialog(id, { open })).toBe(false);
+      expect(changes).toHaveLength(2);
+      // dialogs without an id (permissions) always pass
+      expect(mgr.reportDialog(id, { open: { kind: 'berechtigung', tool: 'Bash' } })).toBe(true);
+      expect(mgr.nextDialogSeq(id)).toBe('seq:1');
+      expect(mgr.nextDialogSeq(id)).toBe('seq:2');
+    });
+
+    it('reportBeitrag emits the full text with a timestamp, server-internally', async () => {
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      const got: unknown[] = [];
+      mgr.on('session.beitrag', (...a: unknown[]) => got.push(a));
+      expect(mgr.reportBeitrag(id, { kind: 'claude', text: 'Hallo' })).toBe(true);
+      expect(got[0]).toEqual([id, { kind: 'claude', text: 'Hallo', at: expect.any(Date) }]);
+      mgr.closeSession(id);
+      expect(mgr.reportBeitrag(id, { kind: 'claude', text: 'spät' })).toBe(false);
+    });
+
+    it('withMachineWrite: one machine writer at a time, the second is refused as beschaeftigt (E3)', async () => {
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      let release: () => void = () => {};
+      const first = mgr.withMachineWrite(id, () => new Promise<string>((r) => { release = () => r('done'); }));
+      const second = await mgr.withMachineWrite(id, async () => 'nope');
+      expect(second).toEqual({ ok: false, grund: 'beschaeftigt' });
+      release();
+      expect(await first).toEqual({ ok: true, value: 'done' });
+      // free again after the first finished
+      expect(await mgr.withMachineWrite(id, async () => 2)).toEqual({ ok: true, value: 2 });
+      // a throwing writer releases the lock
+      await expect(mgr.withMachineWrite(id, async () => { throw new Error('x'); })).rejects.toThrow('x');
+      expect(await mgr.withMachineWrite(id, async () => 3)).toEqual({ ok: true, value: 3 });
+      expect(await mgr.withMachineWrite('cloud-1-999' as never, async () => 1)).toEqual({ ok: false, grund: 'nicht_aktiv' });
+    });
+
+    it('plan-review toggle and reviewers are persisted with a tmux session (FA-08)', async () => {
+      tmux.enabled = true;
+      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+      mgr.setPlanReviewEnabled(id, true);
+      mgr.setPlanReviewReviewers(id, [{ providerId: 'anthropic', modelId: 'haiku' }]);
+      mgr.setLastInjectedPlanPath(id, 'hook:toolu_9');
+      await new Promise((r) => setTimeout(r, 30)); // registry.upsert is fire-and-forget
+      const { entries } = await new CloudSessionRegistry(join(dir, 'sessions.json')).load();
+      expect(entries.find((e) => e.sessionId === id)).toMatchObject({ planReviewEnabled: true, planReviewReviewers: [{ providerId: 'anthropic', modelId: 'haiku' }], lastInjectedPlanPath: 'hook:toolu_9' });
+      expect(mgr.getPlanReviewSettings(id)).toEqual({ enabled: true, reviewers: [{ providerId: 'anthropic', modelId: 'haiku' }], lastInjectedPlanPath: 'hook:toolu_9' });
     });
   });
 });

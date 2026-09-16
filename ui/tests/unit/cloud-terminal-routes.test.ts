@@ -44,15 +44,29 @@ describe('tokenMatches()', () => {
 });
 
 describe('POST /api/cloud-terminal/:sessionId/agent-event', () => {
-  const report = vi.fn<(id: string, ev: string, d: { preview?: string; reason?: string }) => boolean>();
+  const report = vi.fn<(id: string, ev: string, d: { preview?: string; reason?: string; blockKind?: string }) => boolean>();
   const reportPrompt = vi.fn<(id: string, prompt: string) => boolean>();
-  const manager = { getHookSecret: () => SECRET, reportAgentEvent: report, reportPromptText: reportPrompt } as unknown as CloudTerminalManager;
+  // INT-2026-007: context, dialogs and Beiträge travel next to the status.
+  const reportContext = vi.fn<(id: string, ctx: Record<string, unknown>) => boolean>();
+  const reportDialog = vi.fn<(id: string, change: Record<string, unknown>) => boolean>();
+  const reportBeitrag = vi.fn<(id: string, b: Record<string, unknown>) => boolean>();
+  const manager = {
+    getHookSecret: () => SECRET,
+    reportAgentEvent: report,
+    reportPromptText: reportPrompt,
+    reportHookContext: reportContext,
+    reportDialog,
+    reportBeitrag,
+  } as unknown as CloudTerminalManager;
   const auth = { [HOOK_TOKEN_HEADER]: SECRET };
   let warn: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     report.mockReset().mockReturnValue(true);
     reportPrompt.mockReset().mockReturnValue(true);
+    reportContext.mockReset().mockReturnValue(true);
+    reportDialog.mockReset().mockReturnValue(true);
+    reportBeitrag.mockReset().mockReturnValue(true);
     warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
   afterEach(() => warn.mockRestore());
@@ -113,8 +127,8 @@ describe('POST /api/cloud-terminal/:sessionId/agent-event', () => {
   });
 
   it('maps status events to the manager with their reason', () => {
-    const cases: Array<[Record<string, unknown>, string, { preview?: string; reason?: string }]> = [
-      [{ hook_event_name: 'PermissionRequest', tool_name: 'Bash' }, 'blocked', { reason: 'Berechtigung: Bash' }],
+    const cases: Array<[Record<string, unknown>, string, { preview?: string; reason?: string; blockKind?: string }]> = [
+      [{ hook_event_name: 'PermissionRequest', tool_name: 'Bash' }, 'blocked', { reason: 'Berechtigung: Bash', blockKind: 'berechtigung' }],
       [{ hook_event_name: 'UserPromptSubmit', user_prompt: 'x' }, 'prompt-submitted', {}],
       [{ hook_event_name: 'StopFailure', error: 'rate_limit' }, 'stop-failure', { reason: 'rate_limit' }],
       [{ hook_event_name: 'SessionStart', source: 'startup' }, 'session-start', {}],
@@ -173,5 +187,53 @@ describe('POST /api/cloud-terminal/:sessionId/agent-event', () => {
     handlerOf(() => manager)(fakeReq('cloud-1-1', auth, { hook_event_name: 'Stop' }), b.res);
     expect(b.out.status).toBe(204);
     expect(report).toHaveBeenLastCalledWith('cloud-1-1', 'stop', { preview: undefined });
+  });
+  // ---- INT-2026-007: Gespräch ----
+
+  it('reports the hook context (transcript path, Claude session id) before the status', () => {
+    const { res, out } = fakeRes();
+    handlerOf(() => manager)(fakeReq('cloud-1-1', auth, { hook_event_name: 'SessionStart', source: 'startup', transcript_path: '/t/x.jsonl', session_id: 'abc', cwd: '/p' }), res);
+    expect(out.status).toBe(204);
+    expect(reportContext).toHaveBeenCalledWith('cloud-1-1', { transcriptPath: '/t/x.jsonl', claudeSessionId: 'abc', cwd: '/p' });
+    expect(reportContext.mock.invocationCallOrder[0]).toBeLessThan(report.mock.invocationCallOrder[0]);
+  });
+
+  it('forwards the full Stop text as Beitrag, never in the agent-event detail', () => {
+    const { res } = fakeRes();
+    const text = 'Antwort\n\n' + 'x'.repeat(1000);
+    handlerOf(() => manager)(fakeReq('cloud-1-1', auth, { hook_event_name: 'Stop', last_assistant_message: text }), res);
+    expect(reportBeitrag).toHaveBeenCalledWith('cloud-1-1', { kind: 'claude', text });
+    expect(report.mock.calls[0][2].preview!.length).toBeLessThanOrEqual(160);
+  });
+
+  it('opens the dialog with the blocked status; a dialog the manager already closed drops both (monotony)', () => {
+    const body = { hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', tool_use_id: 'toolu_1', tool_input: { questions: [{ question: 'Q?', options: [{ label: 'A' }] }] } };
+    const first = fakeRes();
+    handlerOf(() => manager)(fakeReq('cloud-1-1', auth, body), first.res);
+    expect(reportDialog).toHaveBeenCalledWith('cloud-1-1', { open: expect.objectContaining({ kind: 'rueckfrage', toolUseId: 'toolu_1' }) });
+    expect(report).toHaveBeenCalledWith('cloud-1-1', 'blocked', expect.objectContaining({ blockKind: 'rueckfrage' }));
+
+    report.mockClear();
+    reportDialog.mockReturnValueOnce(false);
+    const late = fakeRes();
+    handlerOf(() => manager)(fakeReq('cloud-1-1', auth, body), late.res);
+    expect(late.out.status).toBe(204);
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it('PostToolUse closes the dialog before the unblocked status', () => {
+    const { res } = fakeRes();
+    handlerOf(() => manager)(fakeReq('cloud-1-1', auth, { hook_event_name: 'PostToolUse', tool_name: 'AskUserQuestion', tool_use_id: 'toolu_1', tool_response: { answers: { 'Q?': 'A' } } }), res);
+    expect(reportDialog).toHaveBeenCalledWith('cloud-1-1', { closed: { toolUseId: 'toolu_1', tool: 'AskUserQuestion', answers: { 'Q?': 'A' } } });
+    expect(reportDialog.mock.invocationCallOrder[0]).toBeLessThan(report.mock.invocationCallOrder[0]);
+    expect(report).toHaveBeenCalledWith('cloud-1-1', 'unblocked', expect.anything());
+  });
+
+  it('404 when the session is gone before the context is stored', () => {
+    reportContext.mockReturnValue(false);
+    const { res, out } = fakeRes();
+    handlerOf(() => manager)(fakeReq('cloud-1-1', auth, { hook_event_name: 'Stop' }), res);
+    expect(out.status).toBe(404);
+    expect(report).not.toHaveBeenCalled();
   });
 });
