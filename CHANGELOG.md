@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.1.1 - 2026-09-16
+
+### Neu
+- **`no-secrets` liest eine optionale Ausnahmeliste** (`templates/sdlc/hooks/no-secrets.sh`, README; INT-2026-011). Liegt im Projekt `.claude/no-secrets-allow.txt` (eine erweiterte Regex je Zeile, `#`-Kommentare), nimmt der Hook passende Pfade aus der Dateinamen-Regel (`configs?/*.json`, `.env`, …) heraus — gedacht für versionierte Configs ohne Zugänge wie `ui/config/model-config.json`. Die Inhaltsregel prüft weiter jede hinzugefügte Zeile jeder Datei. Ohne die Datei verhält sich der Hook unverändert streng. Specwright selbst nimmt `ui/config/{model-config,general-config,prompt-templates}.json` aus.
+
+### Behoben
+- **`no-secrets`: Inhaltsregel griff auf macOS nie.** Das Muster `-----BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY-----` enthielt eine leere Alternative; BSD-`grep -E` bricht damit ab („empty (sub)expression"), der Hook wertete das als „kein Treffer" und ließ jeden Commit mit Schlüsseln, `sk-ant-…`, `ghp_…` usw. durch. Jetzt `(RSA |EC |OPENSSH )?`; GNU-grep-Verhalten unverändert.
+
 ## 4.0.2 - 2026-09-15
 
 ### Geändert

@@ -1,7 +1,7 @@
 # Plan: OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI
 
 > **Intent:** `intent.md` (INT-2026-011) · **Spec:** entfällt (bypass: Größe S — zwei Provider-Einträge, eine Sperre in der Prüfer-Auswahl mit Test, eine Doc-Zeile; Rest ist Einrichtung außerhalb des Repos)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 — „Alle vier ok, Freigabe" (D1–D4 wie vorgeschlagen)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `d0d8b8c`), `CLAUDE.md`, `docs/security.md`
 
@@ -394,4 +394,6 @@ Code, Tests, Docs: 4–6 h (S; nach E1–E17 eine Stunde mehr für `providersFor
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-16 | Branch von `origin/main` (20 Commits INT-2026-010 seit Planfreigabe) statt von `session/codex-gpt`; Intent- und Plan-Commits per Cherry-Pick. Zeilenangaben in §2/§4 (z. B. `websocket.ts:938-985` → `:667-712`) sind gegen den neuen Stand verschoben, Inhalte unverändert | Plan entstand vor Merge #57–#60 | §2, §4 (nur Zeilennummern) |
+| 2026-09-16 | `no-secrets.sh`: Inhaltsregel war auf macOS tot — leere Alternative `(RSA \|EC \|OPENSSH \|)` lässt BSD-`grep -E` abbrechen, Hook wertete den Fehler als „kein Treffer". Probe (c) aus §8 D2 lieferte deshalb exit 0. Behoben mit `(RSA \|EC \|OPENSSH )?` in beiden Kopien; CHANGELOG „Behoben" | Beim Ausführen der Hook-Probe gefunden | §4 Nr. 12, §8 D2, CHANGELOG |
+| 2026-09-16 | CHANGELOG hatte keinen Eintrag für 4.1.0 (INT-2026-009 hob nur `VERSION`); 4.1.1-Eintrag steht direkt über 4.0.2 | Vorgefunden | §4 Nr. 14 |

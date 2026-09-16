@@ -15,7 +15,7 @@
 set -e
 
 INSTALLER_VERSION="2.0"
-FRAMEWORK_VERSION="4.1.0"
+FRAMEWORK_VERSION="4.1.1"
 REPO_URL="${SPECWRIGHT_REPO_URL:-https://raw.githubusercontent.com/michsindlinger/specwright/main}"
 
 # --- shared installer library (file lists live in specwright/manifest.tsv) --------------------
