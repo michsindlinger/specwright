@@ -14,7 +14,7 @@ bypass_grund: "Größe S: drei Vorlagen, vier Workflows, ein Prüfskript; kein U
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: ""  
