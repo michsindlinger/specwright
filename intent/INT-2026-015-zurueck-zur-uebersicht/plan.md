@@ -1,7 +1,7 @@
 # Plan: UI: Terminal schließt beim Verlassen der Vorhaben-Seite, Cmd+← führt zur Übersicht
 
 > **Intent:** `intent.md` (INT-2026-015) · **Spec:** entfällt (bypass: Größe S, zwei Verhaltensänderungen im Frontend ohne Daten und ohne Backend)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** PO (Michael Sindlinger), 2026-09-17 14:55
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand a0adbd1), `CLAUDE.md`, `docs/security.md`
 
