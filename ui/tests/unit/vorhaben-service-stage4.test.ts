@@ -19,8 +19,7 @@ import { FIRST_INPUT_MAX_VERSUCHE, VorhabenStateStore } from '../../src/server/s
 import { VorhabenWatcher } from '../../src/server/services/vorhaben-watcher.js';
 import { VorhabenHandler, type OutboundMessage } from '../../src/server/services/vorhaben-handler.js';
 import { ProjectDocsService } from '../../src/server/services/project-docs.service.js';
-import type { ModelSelection, VorhabenStateMessage, VorhabenStep } from '../../src/shared/types/vorhaben.protocol.js';
-import { GESPRAECH_TEXT_MAX_CHARS } from '../../src/shared/types/gespraech.protocol.js';
+import { FREITEXT_MAX_CHARS, type ModelSelection, type VorhabenStateMessage, type VorhabenStep } from '../../src/shared/types/vorhaben.protocol.js';
 
 const intentText = (id: string, status: string, version = '1.0.0'): string =>
   `---\nintent_id: "${id}"  \ntitel: "Titel ${id}"  \nstatus: "${status}"  \nversion: "${version}"  \nbypass: "nein"  \n---\n`;
@@ -238,7 +237,7 @@ describe('VorhabenService stage 4 (INT-2026-010)', () => {
       handler.handle({ type: 'vorhaben:start-step', requestId: 'r2', projectId: 'pa', step: 'intent', model: { providerId: 'anthropic', modelId: 'haiku' }, firstInput: '   ' }, reply);
       expect(reply.mock.calls[0][0]).toMatchObject({ type: 'vorhaben:error', code: 'INVALID_MESSAGE', requestId: 'r2' });
       reply.mockClear();
-      handler.handle({ type: 'vorhaben:start-step', requestId: 'r3', projectId: 'pa', step: 'intent', model: { providerId: 'anthropic', modelId: 'haiku' }, firstInput: 'x'.repeat(GESPRAECH_TEXT_MAX_CHARS + 1) }, reply);
+      handler.handle({ type: 'vorhaben:start-step', requestId: 'r3', projectId: 'pa', step: 'intent', model: { providerId: 'anthropic', modelId: 'haiku' }, firstInput: 'x'.repeat(FREITEXT_MAX_CHARS + 1) }, reply);
       expect(reply.mock.calls[0][0]).toMatchObject({ type: 'vorhaben:error', code: 'INVALID_MESSAGE', requestId: 'r3' });
       reply.mockClear();
       handler.handle({ type: 'vorhaben:start-step', requestId: 'r4', projectId: 'pa', step: 'intent', model: { providerId: 'anthropic', modelId: 'haiku' }, firstInput: 42 }, reply);

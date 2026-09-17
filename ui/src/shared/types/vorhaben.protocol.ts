@@ -9,7 +9,7 @@
  */
 
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from './cloud-terminal.protocol.js';
-import type { BlockKind } from './gespraech.protocol.js';
+import type { BlockKind } from './hook-events.protocol.js';
 
 // ---- Model ----
 
@@ -244,6 +244,39 @@ export type SendeGrund =
   | 'keine_anmerkungen'
   | 'senden_fehlgeschlagen';
 
+// ---- Free text into a session (INT-2026-007, kept after INT-2026-011) ----
+
+/**
+ * Why a free text (Freigabe, Anmerkungen, first input) was not handed to the
+ * session: the send reasons plus what the screen check and the queue report
+ * (`vorhaben-service.ts` `sendToSession`). Values unchanged since INT-2026-007.
+ */
+export type FreitextGrund = SendeGrund | 'rueckfrage_offen' | 'plan_offen' | 'berechtigung' | 'warteschlange_voll' | 'beschaeftigt' | 'dialog_offen' | 'kein_bildschirm' | 'text_leer';
+
+/** Upper bound of one free text handed to a session (`firstInput`, pasted text). */
+export const FREITEXT_MAX_CHARS = 8000;
+/** How many free texts may wait as `eingereiht` while the session works (H10). */
+export const FREITEXT_QUEUE_MAX = 3;
+
+export const FREITEXT_GRUND_TEXT: Record<FreitextGrund, string> = {
+  keine_sitzung: 'keine Sitzung zu diesem Vorhaben — nächsten Schritt starten',
+  arbeitet: 'Sitzung arbeitet — warten',
+  dialog: 'Sitzung wartet im Terminal (Dialog) — im Terminal antworten',
+  beendet: 'Sitzung beendet — nächsten Schritt starten',
+  stand_veraltet: 'Dokument geändert — neu laden',
+  kein_review_dokument: 'kein Review-Dokument — Freigabe nicht möglich',
+  keine_anmerkungen: 'keine Anmerkungen zu diesem Dokument',
+  senden_fehlgeschlagen: 'Eingabe konnte nicht in die Sitzung geschrieben werden',
+  rueckfrage_offen: 'Sitzung wartet auf eine Antwort — die Rückfrage beantworten',
+  plan_offen: 'Sitzung wartet auf die Plan-Entscheidung',
+  berechtigung: 'Sitzung wartet auf eine Berechtigung — im Terminal antworten',
+  warteschlange_voll: 'schon drei Eingaben eingereiht — warten, bis die Sitzung sie abgearbeitet hat',
+  beschaeftigt: 'die UI schreibt gerade in die Sitzung — gleich noch einmal',
+  dialog_offen: 'die Sitzung zeigt einen Dialog — im Terminal antworten',
+  kein_bildschirm: 'Bildschirm der Sitzung nicht lesbar — nur bei wartender Sitzung senden',
+  text_leer: 'kein Text',
+};
+
 export const draftKey = (projectId: string, intentId: string, doc: VorhabenDocKey): string => `${projectId}::${intentId}::${doc}`;
 export const lastModelKey = (projectId: string, intentId: string, step: VorhabenStep): string => `${projectId}::${intentId}::${step}`;
 export const assignmentKey = (projectId: string, intentId: string): string => `${projectId}::${intentId}`;
@@ -421,7 +454,7 @@ export interface VorhabenStartStepMessage {
   sessionTarget?: CloudTerminalSessionTarget;
   /**
    * INT-2026-010 (AK-09, FA-11, FA-22): text handed to the session as its
-   * first input at the first Stop (trimmed, 1…GESPRAECH_TEXT_MAX_CHARS).
+   * first input at the first Stop (trimmed, 1…FREITEXT_MAX_CHARS).
    */
   firstInput?: string;
 }

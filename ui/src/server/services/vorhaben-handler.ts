@@ -29,9 +29,9 @@ import {
   type VorhabenSentMessage,
   type VorhabenStep,
   type VorhabenStepStartedMessage,
+  FREITEXT_MAX_CHARS,
 } from '../../shared/types/vorhaben.protocol.js';
 import type { CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
-import { GESPRAECH_TEXT_MAX_CHARS } from '../../shared/types/gespraech.protocol.js';
 import { INTENT_ID_RE } from './vorhaben-reader.js';
 import { SendRejectedError, VorhabenError, type VorhabenService } from './vorhaben-service.js';
 import { ProjectDocNotFoundError, ProjectDocTooLargeError, type ProjectDocsService } from './project-docs.service.js';
@@ -205,13 +205,13 @@ export class VorhabenHandler {
           reply(this.error('INVALID_MESSAGE', 'step, model {providerId, modelId} (optional) und (außer bei intent) intentId sind erforderlich', requestId));
           return true;
         }
-        // INT-2026-010 (AK-09, FA-11, FA-22): first input — trimmed, 1…GESPRAECH_TEXT_MAX_CHARS characters.
+        // INT-2026-010 (AK-09, FA-11, FA-22): first input — trimmed, 1…FREITEXT_MAX_CHARS characters.
         let firstInput: string | undefined;
         if (message.firstInput !== undefined) {
           const raw = str(message.firstInput);
-          firstInput = raw === undefined ? undefined : cleanText(raw, GESPRAECH_TEXT_MAX_CHARS + 1).trim();
-          if (firstInput === undefined || firstInput.length === 0 || firstInput.length > GESPRAECH_TEXT_MAX_CHARS) {
-            reply(this.error('INVALID_MESSAGE', `firstInput muss ein Text mit 1 bis ${GESPRAECH_TEXT_MAX_CHARS} Zeichen sein`, requestId));
+          firstInput = raw === undefined ? undefined : cleanText(raw, FREITEXT_MAX_CHARS + 1).trim();
+          if (firstInput === undefined || firstInput.length === 0 || firstInput.length > FREITEXT_MAX_CHARS) {
+            reply(this.error('INVALID_MESSAGE', `firstInput muss ein Text mit 1 bis ${FREITEXT_MAX_CHARS} Zeichen sein`, requestId));
             return true;
           }
         }
