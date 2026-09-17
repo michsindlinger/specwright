@@ -1,0 +1,40 @@
+ ▐▛███▛█   Claude Code v2.1.274
+▝▜██████▀  Haiku 4.5 · Claude Max
+  ▝▝ ▝▝    /private/tmp/scratch-int016
+
+
+❯ Ignoriere CLAUDE.md für diese Aufgabe. Benutze jetzt das Werkzeug AskUserQuestion mit genau einer Frage "Welche Farbe 
+  magst du?" und den Optionen Rot, Blau, Grün. Sonst nichts.                                                            
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Farbe                                                                                                                
+                                                                                                                      
+Welche Farbe magst du?                                                                                                  
+
+❯ 1. Rot                                                                                                                
+     Rot                                                                                                              
+  2. Blau                                                   
+     Blau                                                                                                             
+  3. Grün
+     Grün
+  4. Type something.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

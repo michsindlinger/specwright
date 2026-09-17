@@ -462,6 +462,194 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
       });
     });
 
+    describe('INT-2026-016 (AK-10/AK-11): the dialog probe — a screen read after 1.5 s of silence', () => {
+      const PLAN = '  Claude has written up a plan and is ready to execute. Would you like to proceed?\n  ❯ 1. Yes, and use auto mode\n    2. Yes, manually approve edits\n    3. Tell Claude what to change\n';
+      const PERMISSION = '  Do you want to proceed?\n  ❯ 1. Yes\n    2. No\n';
+      const QUIET = CLOUD_TERMINAL_CONFIG.DIALOG_PROBE_QUIET_MS;
+      const flush = async (): Promise<void> => {
+        for (let i = 0; i < 6; i++) await Promise.resolve();
+      };
+      beforeEach(() => {
+        vi.useFakeTimers();
+        tmux.enabled = true;
+      });
+      afterEach(() => vi.useRealTimers());
+
+      async function working(): Promise<{ id: string; exec: string }> {
+        const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+        mgr.reportAgentEvent(id, 'prompt-submitted');
+        return { id, exec: terminal.last.executionId };
+      }
+
+      it('working + silence + plan cue → blocked/plan with the cue line as reason, probe-blocked; no second read without new output', async () => {
+        const { id, exec } = await working();
+        tmux.screen = PLAN;
+        terminal.emit('terminal.data', exec, 'x');
+        vi.advanceTimersByTime(QUIET - 1);
+        await flush();
+        expect(status(id)).toBe('working');
+        expect(tmux.captures).toHaveLength(0);
+        vi.advanceTimersByTime(2);
+        await flush();
+        expect(status(id)).toBe('blocked');
+        expect(mgr.getSession(id as never)).toMatchObject({ blockKind: 'plan', blockedBy: 'probe', agentStatusReason: expect.stringContaining('Would you like to proceed') });
+        expect(emitted[emitted.length - 1]).toMatchObject({ event: 'blocked', status: 'blocked' });
+        vi.advanceTimersByTime(QUIET * 3);
+        await flush();
+        expect(tmux.captures).toHaveLength(1);
+      });
+
+      it('a session that becomes working without further output is probed after the window (a hook that arrived after the dialog was drawn)', async () => {
+        const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+        tmux.screen = PLAN;
+        mgr.reportAgentEvent(id, 'prompt-submitted');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(status(id)).toBe('blocked');
+        expect(mgr.getSession(id as never)?.blockedBy).toBe('probe');
+      });
+
+      it('permission cue → berechtigung; a question cue → rueckfrage; trust → unbekannt', async () => {
+        const { id, exec } = await working();
+        tmux.screen = PERMISSION;
+        terminal.emit('terminal.data', exec, 'x');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(mgr.getSession(id as never)?.blockKind).toBe('berechtigung');
+        const q = await working();
+        tmux.screen = '  Ready to submit your answers?\n';
+        terminal.emit('terminal.data', q.exec, 'x');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(mgr.getSession(q.id as never)?.blockKind).toBe('rueckfrage');
+        const t = await working();
+        tmux.screen = '  Yes, I trust this folder\n';
+        terminal.emit('terminal.data', t.exec, 'x');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(mgr.getSession(t.id as never)?.blockKind).toBe('unbekannt');
+      });
+
+      it('no cue → stays working; output within the window re-arms; a Stop before the window cancels; done/idle/unknown sessions are never probed', async () => {
+        const { id, exec } = await working();
+        tmux.screen = '  ❯ \n';
+        terminal.emit('terminal.data', exec, 'x');
+        vi.advanceTimersByTime(QUIET / 2);
+        terminal.emit('terminal.data', exec, 'y');
+        vi.advanceTimersByTime(QUIET / 2 + 1);
+        await flush();
+        expect(tmux.captures).toHaveLength(0);
+        vi.advanceTimersByTime(QUIET / 2 + 1);
+        await flush();
+        expect(tmux.captures).toHaveLength(1);
+        expect(status(id)).toBe('working');
+        // Stop before the window → no probe
+        tmux.captures = [];
+        terminal.emit('terminal.data', exec, 'z');
+        mgr.reportAgentEvent(id, 'stop');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(tmux.captures).toHaveLength(0);
+        // idle output never probes
+        terminal.emit('terminal.data', exec, 'w');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(tmux.captures).toHaveLength(0);
+        // shell sessions never
+        const sh = await mgr.createSession(project, 'shell');
+        terminal.emit('terminal.data', terminal.last.executionId, 'x');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(tmux.captures).toHaveLength(0);
+        expect(mgr.getSession(sh.sessionId)?.agentStatus).toBeUndefined();
+      });
+
+      it('a probe block ends with Enter (user-input → working) and heals itself when the dialog left the screen; a hook block is never touched', async () => {
+        const { id, exec } = await working();
+        tmux.screen = PLAN;
+        terminal.emit('terminal.data', exec, 'x');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(status(id)).toBe('blocked');
+        mgr.sendInput(id, '\r');
+        expect(status(id)).toBe('working');
+        expect(mgr.getSession(id as never)?.blockedBy).toBeUndefined();
+        // false positive: the cue is gone on the next quiet read → unblocked
+        tmux.screen = PLAN;
+        terminal.emit('terminal.data', exec, 'x');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(status(id)).toBe('blocked');
+        tmux.screen = '  ❯ \n';
+        terminal.emit('terminal.data', exec, 'redraw');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(status(id)).toBe('working');
+        expect(emitted[emitted.length - 1]).toMatchObject({ event: 'unblocked', status: 'working' });
+        // a hook block stays although the screen shows no cue
+        mgr.reportAgentEvent(id, 'blocked', { blockKind: 'rueckfrage', reason: 'Frage' });
+        expect(mgr.getSession(id as never)?.blockedBy).toBe('hook');
+        terminal.emit('terminal.data', exec, 'x');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(status(id)).toBe('blocked');
+        // a hook event on a probe block takes over the origin
+        mgr.reportAgentEvent(id, 'unblocked');
+        tmux.screen = PLAN;
+        terminal.emit('terminal.data', exec, 'x');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(mgr.getSession(id as never)?.blockedBy).toBe('probe');
+        mgr.reportAgentEvent(id, 'blocked', { blockKind: 'plan' });
+        expect(mgr.getSession(id as never)?.blockedBy).toBe('hook');
+      });
+
+      it('probes run one after another; closeSession clears the timer; a failing read changes nothing; blockedBy is persisted', async () => {
+        const a = await working();
+        const b = await working();
+        let concurrent = 0;
+        let maxConcurrent = 0;
+        tmux.captureScreen = async () => {
+          concurrent++;
+          maxConcurrent = Math.max(maxConcurrent, concurrent);
+          await new Promise((r) => setTimeout(r, 10));
+          concurrent--;
+          return PLAN;
+        };
+        terminal.emit('terminal.data', a.exec, 'x');
+        terminal.emit('terminal.data', b.exec, 'x');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        for (let k = 0; k < 4; k++) {
+          vi.advanceTimersByTime(11);
+          await flush();
+        }
+        expect(maxConcurrent).toBe(1);
+        expect(status(a.id)).toBe('blocked');
+        expect(status(b.id)).toBe('blocked');
+        vi.useRealTimers();
+        await new Promise((r) => setTimeout(r, 40));
+        const stored = (await new CloudSessionRegistry(join(dir, 'sessions.json')).load()).entries.find((e) => e.sessionId === a.id);
+        expect(stored).toMatchObject({ agentStatus: 'blocked', blockKind: 'plan', blockedBy: 'probe' });
+        vi.useFakeTimers();
+        // failing read: no change
+        const c = await working();
+        tmux.captureScreen = async () => { throw new Error('tmux weg'); };
+        terminal.emit('terminal.data', c.exec, 'x');
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(status(c.id)).toBe('working');
+        // close clears the timer
+        const d = await working();
+        tmux.captureScreen = async () => PLAN;
+        terminal.emit('terminal.data', d.exec, 'x');
+        mgr.closeSession(d.id as never);
+        vi.advanceTimersByTime(QUIET + 1);
+        await flush();
+        expect(mgr.getSession(d.id as never)?.agentStatus ?? 'closed').not.toBe('blocked');
+      });
+    });
+
     describe('done → idle decay', () => {
       beforeEach(() => vi.useFakeTimers());
       afterEach(() => vi.useRealTimers());

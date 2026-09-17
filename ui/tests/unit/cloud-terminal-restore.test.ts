@@ -15,6 +15,7 @@ vi.mock('../../src/server/utils/cloud-session-worktree.js', async (importOrigina
 });
 
 import { CloudTerminalManager } from '../../src/server/services/cloud-terminal-manager.js';
+import { CLOUD_TERMINAL_CONFIG } from '../../src/shared/types/cloud-terminal.protocol.js';
 import {
   CloudSessionRegistry,
   type PersistedCloudSessionV1,
@@ -59,6 +60,8 @@ class FakeTmux {
   public killedOrphansWith: Set<string> | null = null;
   public cleanedArtifacts: string[] = [];
   public captureResult: string | null = null;
+  /** INT-2026-016: what captureScreen returns (the dialog probe reads it). */
+  public screen: string | null = null;
   public hasSessionResult = true;
   public exitCodeResult: number | undefined = undefined;
 
@@ -78,6 +81,7 @@ class FakeTmux {
   async hasSession(name: string) { return this.hasSessionResult && this.liveSessions.has(name); }
   async killSession(name: string) { this.killedSessions.push(name); this.liveSessions.delete(name); }
   async capturePaneHistory() { return this.captureResult; }
+  async captureScreen() { return this.screen; }
   async readExitCode() { return this.exitCodeResult; }
   async cleanupSessionArtifacts(id: string) { this.cleanedArtifacts.push(id); }
   async killOrphans(known: Set<string>) {
@@ -183,6 +187,26 @@ describe('CloudTerminalManager boot-restore', () => {
     await manager.whenReady();
     expect(manager.getSession('s-fresh')?.agentDoneAt).toBeInstanceOf(Date);
     expect(manager.getSession('s-old')?.agentDoneAt).toBeUndefined();
+  });
+
+  it('INT-2026-016 (AK-10): a probe block survives the restart with its origin; a restored working session is probed once', async () => {
+    vi.useFakeTimers();
+    try {
+      await registry.upsert(persisted('s-probe', { agentStatus: 'blocked', blockKind: 'plan', blockedBy: 'probe' }));
+      await registry.upsert(persisted('s-work', { agentStatus: 'working' }));
+      tmux.liveSessions.add('cs-s-probe');
+      tmux.liveSessions.add('cs-s-work');
+      tmux.screen = '  Claude has written up a plan and is ready to execute. Would you like to proceed?\n  ❯ 1. Yes\n';
+      const manager = makeManager();
+      await manager.whenReady();
+      expect(manager.getSession('s-probe')).toMatchObject({ agentStatus: 'blocked', blockKind: 'plan', blockedBy: 'probe' });
+      expect(manager.getSession('s-work')?.agentStatus).toBe('working');
+      vi.advanceTimersByTime(CLOUD_TERMINAL_CONFIG.DIALOG_PROBE_QUIET_MS + 1);
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+      expect(manager.getSession('s-work')).toMatchObject({ agentStatus: 'blocked', blockKind: 'plan', blockedBy: 'probe' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('entries without agent status fields (older files) restore as unknown', async () => {

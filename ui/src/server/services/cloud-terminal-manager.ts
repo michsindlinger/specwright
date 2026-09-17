@@ -69,6 +69,7 @@ import {
 import { getPasteImageRoot, getSessionRegistryPath } from '../utils/runtime-paths.js';
 import { sanitizeSessionEnv } from '../utils/session-env.js';
 import type { BlockKind, HookContext } from '../../shared/types/hook-events.protocol.js';
+import { cueToBlockKind, findDialogCue } from './dialog-driver.js';
 import { isClaudeCli } from '../../shared/provider-cli.js';
 
 /** MIME type → filename extension for pasted-image persistence */
@@ -182,6 +183,10 @@ interface ManagedCloudSession extends CloudTerminalSession {
   claudeSessionId?: string;
   /** Kind of the dialog while `blocked` (FA-09); cleared when the block ends. */
   blockKind?: BlockKind;
+  /** INT-2026-016 (AK-10): who set the block — a hook, or the screen probe (which may take it back). */
+  blockedBy?: 'hook' | 'probe';
+  /** INT-2026-016 (AK-10): pending screen read after DIALOG_PROBE_QUIET_MS of silence. */
+  dialogProbeTimer?: NodeJS.Timeout;
   /** Reviewer selection of the plan-review toggle, persisted with the session (FA-08). */
   planReviewReviewers?: Array<{ providerId: string; modelId: string }>;
   /** Path of the plan whose review was last injected (dedup across restarts, E6/E23). */
@@ -414,13 +419,20 @@ export class CloudTerminalManager extends EventEmitter {
   private applyAgentEvent(
     session: ManagedCloudSession,
     event: CloudTerminalAgentEvent,
-    detail: CloudTerminalAgentEventDetail = {}
+    detail: CloudTerminalAgentEventDetail = {},
+    origin: 'hook' | 'probe' = 'hook'
   ): void {
     if (session.closing || session.status === 'closed') return;
 
     const next = reduceAgentStatus(session.agentStatus, event);
     const reasonChanged = detail.reason !== session.agentStatusReason;
-    if (next === session.agentStatus && !reasonChanged && event !== 'stop') return;
+    if (next === session.agentStatus && !reasonChanged && event !== 'stop') {
+      // A hook that confirms a probe block takes the block over (the probe then leaves it alone).
+      if (next === 'blocked' && origin === 'hook' && session.blockedBy === 'probe') session.blockedBy = 'hook';
+      return;
+    }
+    // INT-2026-016 (AK-10): every status change cancels a pending screen read; the data handler re-arms.
+    this.clearDialogProbe(session);
 
     session.agentStatus = next;
     session.agentStatusAt = new Date();
@@ -432,6 +444,8 @@ export class CloudTerminalManager extends EventEmitter {
     else if (event !== 'idle-timeout' && event !== 'idle-prompt') session.agentDoneAt = undefined;
     // INT-2026-007 (FA-09): the structured block kind lives and dies with the block.
     session.blockKind = next === 'blocked' ? (detail.blockKind ?? (event === 'blocked' ? 'unbekannt' : session.blockKind ?? 'unbekannt')) : undefined;
+    // INT-2026-016 (AK-10): a hook always wins over the probe — it sets the origin whenever it blocks.
+    session.blockedBy = next === 'blocked' ? (origin === 'hook' || session.blockedBy !== 'hook' ? origin : 'hook') : undefined;
     this.clearAgentIdleTimer(session);
 
     if (next === 'done') {
@@ -459,6 +473,9 @@ export class CloudTerminalManager extends EventEmitter {
       status: next,
       statusAt: session.agentStatusAt,
     });
+    // INT-2026-016 (AK-10): a session that just became `working` starts its silence window now —
+    // a dialog that was drawn before the hook arrived (or whose hook never comes) is read after it.
+    if (next === 'working') this.armDialogProbe(session);
   }
 
   // ---- INT-2026-007: hook context, machine-write lock ----
@@ -532,6 +549,69 @@ export class CloudTerminalManager extends EventEmitter {
     if (session.agentIdleTimer) {
       clearTimeout(session.agentIdleTimer);
       session.agentIdleTimer = undefined;
+    }
+  }
+
+  // ---- INT-2026-016 (AK-10, AK-11): the dialog probe ----
+
+  /** One probe at a time across all sessions — fifty quiet sessions are fifty reads in a row, never in parallel. */
+  private probeQueue: Promise<void> = Promise.resolve();
+  /** INT-2026-016 (AK-11): number of screen reads the probe made — E2E and log evidence for „one per quiet period". */
+  public dialogProbeCount = 0;
+
+  /**
+   * Arms (re-arms) the screen read for a claude-code session that is
+   * `working` or holds a probe block: after DIALOG_PROBE_QUIET_MS without
+   * output the pane is read once. Nothing is read again until new output
+   * arrives — a silent session costs one capture per quiet period.
+   */
+  private armDialogProbe(session: ManagedCloudSession): void {
+    this.clearDialogProbe(session);
+    if (session.terminalType !== 'claude-code' || session.closing || session.status === 'closed') return;
+    if (session.agentStatus !== 'working' && !(session.agentStatus === 'blocked' && session.blockedBy === 'probe')) return;
+    const timer = setTimeout(() => {
+      if (session.dialogProbeTimer !== timer) return;
+      session.dialogProbeTimer = undefined;
+      this.probeQueue = this.probeQueue.then(() => this.probeDialog(session)).catch(() => undefined);
+    }, CLOUD_TERMINAL_CONFIG.DIALOG_PROBE_QUIET_MS);
+    timer.unref?.();
+    session.dialogProbeTimer = timer;
+  }
+
+  private clearDialogProbe(session: ManagedCloudSession): void {
+    if (session.dialogProbeTimer) {
+      clearTimeout(session.dialogProbeTimer);
+      session.dialogProbeTimer = undefined;
+    }
+  }
+
+  /**
+   * The read itself: a live tmux pane only (a raw buffer holds stale Ink
+   * frames). A cue on a `working` session → blocked with the cue's kind and
+   * line, origin `probe`; no cue on a probe block → the dialog is gone,
+   * `unblocked`. A hook block is never touched; a failing read changes nothing.
+   */
+  private async probeDialog(session: ManagedCloudSession): Promise<void> {
+    if (session.closing || session.status === 'closed') return;
+    const probeBlocked = session.agentStatus === 'blocked' && session.blockedBy === 'probe';
+    if (session.agentStatus !== 'working' && !probeBlocked) return;
+    let screen: { text: string; live: boolean };
+    try {
+      this.dialogProbeCount++;
+      screen = await this.readScreen(session.sessionId);
+    } catch {
+      return;
+    }
+    if (!screen.live) return;
+    // The read awaited: the session may have gone meanwhile (the map is the truth).
+    if (session.closing || !this.sessions.has(session.sessionId) || (session.status as string) === 'closed') return;
+    const cue = findDialogCue(screen.text);
+    if (cue && session.agentStatus === 'working') {
+      console.log(`[CloudTerminalManager] dialog probe: ${session.sessionId} shows a ${cue.kind} dialog without a hook`);
+      this.applyAgentEvent(session, 'blocked', { blockKind: cueToBlockKind(cue.kind), reason: cue.line.trim() }, 'probe');
+    } else if (!cue && session.agentStatus === 'blocked' && session.blockedBy === 'probe') {
+      console.log(`[CloudTerminalManager] dialog probe: ${session.sessionId} dialog gone, unblocking`);
+      this.applyAgentEvent(session, 'unblocked', {}, 'probe');
     }
   }
 
@@ -1156,6 +1236,7 @@ export class CloudTerminalManager extends EventEmitter {
     // teardown path, never the re-attach path (see ManagedCloudSession.closing).
     session.closing = true;
     this.clearAgentIdleTimer(session);
+    this.clearDialogProbe(session);
 
     // Kill PTY process via TerminalManager
     const killed = this.terminalManager.kill(session.executionId);
@@ -1491,6 +1572,8 @@ export class CloudTerminalManager extends EventEmitter {
 
       // Track latest activity on output too — the stall watchdog reads this.
       session.lastActivity = new Date();
+      // INT-2026-016 (AK-10): output resets the silence window of the dialog probe.
+      this.armDialogProbe(session);
 
       if (session.planReviewEnabled) {
         session.lastDataAt = new Date();
@@ -1570,6 +1653,7 @@ export class CloudTerminalManager extends EventEmitter {
     session.exitCode = exitCode;
     session.status = 'closed';
     this.clearAgentIdleTimer(session);
+    this.clearDialogProbe(session);
 
     console.log(`[CloudTerminalManager] Session ${session.sessionId} exited with code ${exitCode}`);
 
@@ -1760,6 +1844,7 @@ export class CloudTerminalManager extends EventEmitter {
       transcriptPath: session.transcriptPath,
       claudeSessionId: session.claudeSessionId,
       blockKind: session.blockKind,
+      blockedBy: session.blockedBy,
       planReviewEnabled: session.planReviewEnabled,
       planReviewReviewers: session.planReviewReviewers,
       lastDetectedPlanPath: session.lastDetectedPlanPath,
@@ -1857,6 +1942,9 @@ export class CloudTerminalManager extends EventEmitter {
     console.log(
       `[CloudTerminalManager] boot-restore complete: ${survivors.length}/${entries.length} sessions reattached`
     );
+    // INT-2026-016 (AK-10): a restored `working` session may sit in a dialog whose hook we
+    // missed during the restart — one probe after the quiet window reads the current screen.
+    for (const session of this.sessions.values()) this.armDialogProbe(session);
   }
 
   /** Rebuilds one session from its registry record and reattaches. */
@@ -1887,6 +1975,7 @@ export class CloudTerminalManager extends EventEmitter {
       transcriptPath: entry.transcriptPath,
       claudeSessionId: entry.claudeSessionId,
       blockKind: entry.agentStatus === 'blocked' ? entry.blockKind ?? 'unbekannt' : undefined,
+      blockedBy: entry.agentStatus === 'blocked' ? entry.blockedBy ?? 'hook' : undefined,
       planReviewEnabled: entry.planReviewEnabled,
       planReviewReviewers: entry.planReviewReviewers,
       lastDetectedPlanPath: entry.lastDetectedPlanPath,
@@ -2097,6 +2186,7 @@ export class CloudTerminalManager extends EventEmitter {
             agentStatusReason: session.agentStatusReason,
             ...(session.agentDoneAt ? { agentDoneAt: session.agentDoneAt } : {}),
             ...(session.blockKind ? { blockKind: session.blockKind } : {}),
+            ...(session.blockedBy ? { blockedBy: session.blockedBy } : {}),
             ...(session.transcriptPath ? { transcriptPath: session.transcriptPath } : {}),
             ...(session.claudeSessionId ? { claudeSessionId: session.claudeSessionId } : {}),
           }
@@ -2118,6 +2208,7 @@ export class CloudTerminalManager extends EventEmitter {
 
     for (const session of this.sessions.values()) {
       this.clearAgentIdleTimer(session);
+      this.clearDialogProbe(session);
       this.terminalManager.kill(session.executionId);
     }
 

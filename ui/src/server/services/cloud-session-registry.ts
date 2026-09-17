@@ -70,6 +70,8 @@ export interface PersistedCloudSessionV1 {
   transcriptPath?: string;
   claudeSessionId?: string;
   blockKind?: BlockKind;
+  /** INT-2026-016 (AK-10): who set the block — a hook or the screen probe (a probe block may heal itself). */
+  blockedBy?: 'hook' | 'probe';
   planReviewEnabled?: boolean;
   planReviewReviewers?: Array<{ providerId: string; modelId: string }>;
   lastDetectedPlanPath?: string;
