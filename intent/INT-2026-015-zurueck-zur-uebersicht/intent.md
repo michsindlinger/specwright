@@ -14,7 +14,7 @@ bypass_grund: "Größe S, zwei Verhaltensänderungen im Frontend ohne Daten und 
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: ""  
