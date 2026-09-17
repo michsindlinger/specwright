@@ -661,6 +661,27 @@ describe('app.ts — leaving a docked page closes the terminal, Cmd+← (INT-202
     el.remove();
   });
 
+  it('INT-2026-016 (AK-02/AK-03): a finished session (backend mark) is listed once the window is closed, named after its Vorhaben; without the mark a `done` is silent', async () => {
+    const el = await dockedPage();
+    el.terminalSessions = el.terminalSessions.map((s) => (s.id === 'a2' ? { ...s, agentStatus: 'idle' as const, agentStatusAt: 5, agentDoneAt: 7 } : s));
+    (el as unknown as { vorhabenState: unknown }).vorhabenState = {
+      rows: [{ projectId: '/a', intentId: 'INT-2026-004', titel: 'Bewerbungen', zustand: 'wartet_auf_dich', zustandDetail: 'spec.md', step: 'spec', lastChangedMs: 1, session: { id: 'cloud-a2' } }],
+      projects: [], pendingIntents: [], docDrafts: {}, loading: false, updatedAt: '',
+    };
+    await settle(el);
+    // a2 is looked at (docked, active) → not listed
+    expect(el.glockeRows.some((r) => r.sessionId === 'a2')).toBe(false);
+    route('vorhaben', []);
+    await settle(el);
+    const row = el.glockeRows.find((r) => r.sessionId === 'a2');
+    expect(row).toMatchObject({ kind: 'done', at: 7, title: 'INT-2026-004 · Bewerbungen', label: 'wartet auf dich · Spec · spec.md', projectPath: '/a' });
+    // the mark is the listing, not the status: a `done` without it (after a restart) stays out
+    el.terminalSessions = el.terminalSessions.map((s) => (s.id === 'a2' ? { ...s, agentStatus: 'done' as const, agentDoneAt: undefined } : s));
+    await settle(el);
+    expect(el.glockeRows.some((r) => r.sessionId === 'a2')).toBe(false);
+    el.remove();
+  });
+
   it('AK-04: Cmd+D after leaving reopens floating on the same tab, nothing armed', async () => {
     const el = await dockedPage();
     route('vorhaben', []);

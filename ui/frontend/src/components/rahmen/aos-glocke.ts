@@ -97,8 +97,11 @@ export class AosGlocke extends LitElement {
 
   private renderRow(row: BellRow) {
     const session = this.sessions.find((s) => s.id === row.sessionId);
-    const name = session?.name ?? row.sessionId;
-    const projectPath = session?.projectPath ?? '';
+    // INT-2026-016 (AK-03): a Vorhaben session is named after its Vorhaben and
+    // shows the row's state where a free session shows its preview.
+    const name = row.title ?? session?.name ?? row.sessionId;
+    const projectPath = row.projectPath ?? session?.projectPath ?? '';
+    const preview = row.label ?? row.preview;
     const hue = projectHue(projectPath);
     const badgeStyle = { background: `hsl(${hue} 55% 22%)`, color: `hsl(${hue} 70% 80%)` };
     const blocked = row.kind === 'blocked';
@@ -112,7 +115,7 @@ export class AosGlocke extends LitElement {
           <span class="glocke-name" title=${name}>${name}</span>
           <span class="glocke-time">${row.at > 0 ? formatRelativeTime(row.at) : ''}</span>
         </div>
-        ${row.preview ? html`<div class="glocke-preview" title=${row.preview}>${row.preview}</div>` : nothing}
+        ${preview ? html`<div class="glocke-preview" title=${preview}>${preview}</div>` : nothing}
       </div>
     `;
   }

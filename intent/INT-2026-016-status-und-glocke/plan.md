@@ -19,6 +19,8 @@
 
 ### Worum geht es?
 
+<!-- leser: mensch -->
+
 Die Web-UI zeigt auf der Startseite alle Vorhaben (die Arbeitspakete, die als Ordner `intent/INT-…/` in den Projekten liegen). Jede Zeile hat zwei Angaben, die aus zwei verschiedenen Quellen kommen — und genau das ist der Kern des Problems:
 
 1. **Die Phase** (der Chip „Absicht", „Spec", „Plan", „Bau", „PR", „Umgesetzt"): Sie kommt aus dem Dokument. In `intent.md` steht `status: umgesetzt`, in `plan.md` steht `Status: freigegeben` — daraus liest die UI, wo das Vorhaben im Ablauf steht. Das ist der Zustand der **Akte**.
@@ -29,6 +31,8 @@ Die Übersicht sortiert die Zeilen in drei Gruppen: „Wartet auf dich", „Läu
 Deine Frage „was ist der korrekte Status?" beantwortet dieser Plan so: **Beides stimmt gleichzeitig, und beides bleibt.** Die Akte ist umgesetzt (Phase „Umgesetzt" bleibt als Chip stehen). Der Mitarbeiter wartet (Sitzungszustand „wartet"). Nur die Frage, **in welcher Gruppe die Zeile steht**, darf nicht die Akte entscheiden, sondern der Mitarbeiter: Wer arbeitet, steht unter „Läuft". Wer wartet, steht unter „Wartet auf dich". Nur wer keinen Mitarbeiter hat (keine Sitzung, oder die Sitzung ist beendet), wird nach der Akte einsortiert — und dann eben unter „Umgesetzt". Startest du in der Sitzung neu (tippst etwas), springt die Zeile nach „Läuft"; stoppt die Sitzung mit einer Antwort, nach „Wartet auf dich"; schließt du die Sitzung, fällt sie zurück in „Umgesetzt". Du hast diese Regel im Chat bestätigt.
 
 ### Was ändert sich für dich?
+
+<!-- leser: mensch -->
 
 **Fehler 1 — Umgesetzt versteckt Wartende:** Ein umgesetztes Vorhaben, an dem eine Sitzung arbeitet oder wartet, steht oben bei „Läuft" oder „Wartet auf dich", mit dem Chip „Umgesetzt" daneben. Sobald die Sitzung geschlossen ist, wandert es in den eingeklappten Kasten. Nebenwirkung, die du kennen musst: Umgesetzte Vorhaben, deren Bau-Sitzung noch offen ist und nach dem Merge einfach stehen geblieben ist, tauchen ab jetzt ebenfalls unter „Wartet auf dich · wartet" auf (im Live-Stand betrifft das heute vermutlich zwei bis drei Zeilen). Das ist ehrlich — die Sitzung ist offen und wartet —, aber es heißt: Sitzungen schließen, wenn sie fertig sind, sonst bleibt die Zeile oben.
 
@@ -66,6 +70,8 @@ Neu kommt ein **Sicherheitsgurt, unabhängig von den Rückrufen**: Wenn eine Sit
 
 ### Wie wird das gemacht?
 
+<!-- leser: mensch -->
+
 Sieben Bausteine, alle in der Web-UI (`ui/`), kein Framework-Anteil, keine neue Datenhaltung:
 
 1. **Gruppenregel drehen** — eine Funktion (`groupOf`) prüft erst den Sitzungszustand, dann die Phase. Rund 5 Zeilen plus Tests.
@@ -80,6 +86,8 @@ Ausgeliefert in drei PRs aus einer Bau-Sitzung (Worktree `../specwright-worktree
 
 ### Was kann schiefgehen?
 
+<!-- leser: mensch -->
+
 - **Zu viele Zeilen unter „Wartet auf dich"** — alte, nie geschlossene Sitzungen umgesetzter Vorhaben stehen plötzlich oben. Du merkst es sofort nach dem Deploy; Abhilfe: Sitzung schließen (Tab ×). Rückgängig: eine Zeile in `groupOf`.
 - **Glocke zeigt „fertig" länger als gewohnt** — bis du antwortest oder den Tab schließt, nicht bis du hinschaust; auch nach einem Deploy (Marken jünger als 24 h). Gewollt (Spec INT-2026-010 §5), aber anders als heute.
 - **Fehlklick im Dock ordnet einen Tab zu** — nur freie Claude-Tabs, nur auf Seiten ohne Sitzung, immer mit Bestätigung unten. Rückweg: in der richtigen Sitzung `/build INT-…` tippen oder den Tab schließen. Tabs, die schon einem laufenden Vorhaben gehören, werden per Klick nie verschoben.
@@ -89,7 +97,9 @@ Ausgeliefert in drei PRs aus einer Bau-Sitzung (Worktree `../specwright-worktree
 
 ### Was musst du entscheiden?
 
-Nichts mehr — die drei Fragen (Gruppenregel, Auto-Zuordnung, Arbeitskopie) hast du im Chat beantwortet, die Rückfrage zu Fehler 3 ist eingearbeitet, das externe Review ist in §11 entschieden. Freigabe reicht.
+<!-- leser: mensch -->
+
+Nichts mehr — die drei Fragen (Gruppenregel, Auto-Zuordnung, Arbeitskopie) hast du im Chat beantwortet, die Rückfrage zu Fehler 3 ist eingearbeitet, das externe Review ist in §12 entschieden. Freigabe reicht.
 
 ## Details
 

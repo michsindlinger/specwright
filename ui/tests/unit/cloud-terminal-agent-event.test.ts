@@ -402,6 +402,66 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
       expect(mgr.getSession(id)!.lastActivity.getTime()).toBeGreaterThan(t0);
     });
 
+    describe('INT-2026-016 (AK-02/AK-04): the „fertig, unbeantwortet" mark', () => {
+      const doneAt = (id: string) => mgr.getSession(id as never)?.agentDoneAt;
+
+      it('stop sets it; an answer, a dialog, a session start or a failure clears it; the idle decay keeps it', async () => {
+        vi.useFakeTimers();
+        try {
+          const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+          expect(doneAt(id)).toBeUndefined();
+          mgr.reportAgentEvent(id, 'stop');
+          const first = doneAt(id);
+          expect(first).toBeInstanceOf(Date);
+          // the tab dot decays, the mark stays (the bell must not forget an unanswered finish)
+          vi.advanceTimersByTime(CLOUD_TERMINAL_CONFIG.AGENT_IDLE_AFTER_MS + 10);
+          expect(status(id)).toBe('idle');
+          expect(doneAt(id)).toBe(first);
+          mgr.reportAgentEvent(id, 'idle-prompt');
+          expect(doneAt(id)).toBe(first);
+          // typing answers → cleared
+          mgr.reportAgentEvent(id, 'prompt-submitted');
+          expect(doneAt(id)).toBeUndefined();
+          // a dialog is a different kind of waiting → cleared
+          mgr.reportAgentEvent(id, 'stop');
+          mgr.reportAgentEvent(id, 'blocked', { blockKind: 'plan' });
+          expect(doneAt(id)).toBeUndefined();
+          // keystroke through the dialog → cleared as well
+          mgr.reportAgentEvent(id, 'stop');
+          mgr.reportAgentEvent(id, 'blocked', { blockKind: 'plan' });
+          mgr.sendInput(id, '\r');
+          expect(doneAt(id)).toBeUndefined();
+          mgr.reportAgentEvent(id, 'stop');
+          mgr.reportAgentEvent(id, 'session-start');
+          expect(doneAt(id)).toBeUndefined();
+          mgr.reportAgentEvent(id, 'stop');
+          mgr.reportAgentEvent(id, 'stop-failure', { reason: 'rate_limit' });
+          expect(doneAt(id)).toBeUndefined();
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('travels with the agent event, the metadata and the registry', async () => {
+        tmux.enabled = true;
+        const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
+        const detail: Array<{ doneAt?: Date }> = [];
+        mgr.on('session.agent-event', (_id: string, _e: string, d: { doneAt?: Date }) => detail.push(d));
+        mgr.reportAgentEvent(id, 'stop');
+        expect(detail[0].doneAt).toBeInstanceOf(Date);
+        const meta = mgr.getSessionsForProject(project).find((s) => s.sessionId === id);
+        expect(meta?.agentDoneAt).toBeInstanceOf(Date);
+        await new Promise((r) => setTimeout(r, 30));
+        const stored = (await new CloudSessionRegistry(join(dir, 'sessions.json')).load()).entries.find((e) => e.sessionId === id);
+        expect(typeof stored?.agentDoneAt).toBe('string');
+        mgr.reportAgentEvent(id, 'prompt-submitted');
+        expect(detail[1].doneAt).toBeUndefined();
+        expect(mgr.getSessionsForProject(project).find((s) => s.sessionId === id)?.agentDoneAt).toBeUndefined();
+        const shell = await mgr.createSession(project, 'shell');
+        expect(mgr.getSessionsForProject(project).find((s) => s.sessionId === shell.sessionId)?.agentDoneAt).toBeUndefined();
+      });
+    });
+
     describe('done → idle decay', () => {
       beforeEach(() => vi.useFakeTimers());
       afterEach(() => vi.useRealTimers());

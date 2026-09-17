@@ -66,6 +66,10 @@ export interface TerminalSession {
   agentStatusAt?: number;
   /** Reason for blocked / error, when the hook delivered one. */
   agentStatusReason?: string;
+  /** INT-2026-016 (AK-02): epoch ms of the backend's „fertig, unbeantwortet"-mark (the bell lists the session while set). */
+  agentDoneAt?: number;
+  /** Excerpt of the last assistant message that came with the Stop — only while this browser saw the event. */
+  agentDonePreview?: string;
 }
 
 export interface LoadingState {

@@ -172,6 +172,8 @@ interface ManagedCloudSession extends CloudTerminalSession {
 
   /** Pending done → idle decay timer (see applyAgentEvent). */
   agentIdleTimer?: NodeJS.Timeout;
+  /** INT-2026-016 (AK-02): „fertig, unbeantwortet" — set by `stop`, cleared by an answer or a dialog, kept by the decay. */
+  agentDoneAt?: Date;
 
   // ---- INT-2026-007: hook context, block kind, machine-write lock ----
 
@@ -261,6 +263,17 @@ export interface HookOptions {
  * - 'resize_failed' – session is alive but the PTY resize threw
  */
 export type CloudTerminalResizeResult = 'ok' | 'not_found' | 'resize_failed';
+
+/**
+ * INT-2026-016 (AK-04): a persisted mark „fertig, unbeantwortet" comes back
+ * after a restart only while it is younger than AGENT_DONE_MAX_AGE_MS.
+ */
+function restoredDoneAt(iso: string | undefined, now = Date.now()): Date | undefined {
+  if (!iso) return undefined;
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t) || now - t > CLOUD_TERMINAL_CONFIG.AGENT_DONE_MAX_AGE_MS) return undefined;
+  return new Date(t);
+}
 
 export class CloudTerminalManager extends EventEmitter {
   /**
@@ -412,6 +425,11 @@ export class CloudTerminalManager extends EventEmitter {
     session.agentStatus = next;
     session.agentStatusAt = new Date();
     session.agentStatusReason = detail.reason;
+    // INT-2026-016 (AK-02): the mark the bell reads. A Stop sets it; anything
+    // that means "somebody acted" (input, dialog, start, failure) clears it;
+    // the idle decay and the idle prompt are not an answer and keep it.
+    if (event === 'stop') session.agentDoneAt = session.agentStatusAt;
+    else if (event !== 'idle-timeout' && event !== 'idle-prompt') session.agentDoneAt = undefined;
     // INT-2026-007 (FA-09): the structured block kind lives and dies with the block.
     session.blockKind = next === 'blocked' ? (detail.blockKind ?? (event === 'blocked' ? 'unbekannt' : session.blockKind ?? 'unbekannt')) : undefined;
     this.clearAgentIdleTimer(session);
@@ -437,6 +455,7 @@ export class CloudTerminalManager extends EventEmitter {
     this.emit('session.agent-event', session.sessionId, event, {
       ...detail,
       ...(session.blockKind ? { blockKind: session.blockKind } : {}),
+      ...(session.agentDoneAt ? { doneAt: session.agentDoneAt } : {}),
       status: next,
       statusAt: session.agentStatusAt,
     });
@@ -1737,6 +1756,7 @@ export class CloudTerminalManager extends EventEmitter {
       agentStatus: session.agentStatus,
       agentStatusAt: session.agentStatusAt?.toISOString(),
       agentStatusReason: session.agentStatusReason,
+      agentDoneAt: session.agentDoneAt?.toISOString(),
       transcriptPath: session.transcriptPath,
       claudeSessionId: session.claudeSessionId,
       blockKind: session.blockKind,
@@ -1863,6 +1883,7 @@ export class CloudTerminalManager extends EventEmitter {
       agentStatus: entry.agentStatus ?? 'unknown',
       agentStatusAt: entry.agentStatusAt ? new Date(entry.agentStatusAt) : undefined,
       agentStatusReason: entry.agentStatusReason,
+      agentDoneAt: restoredDoneAt(entry.agentDoneAt),
       transcriptPath: entry.transcriptPath,
       claudeSessionId: entry.claudeSessionId,
       blockKind: entry.agentStatus === 'blocked' ? entry.blockKind ?? 'unbekannt' : undefined,
@@ -2074,6 +2095,7 @@ export class CloudTerminalManager extends EventEmitter {
             agentStatus: session.agentStatus,
             agentStatusAt: session.agentStatusAt,
             agentStatusReason: session.agentStatusReason,
+            ...(session.agentDoneAt ? { agentDoneAt: session.agentDoneAt } : {}),
             ...(session.blockKind ? { blockKind: session.blockKind } : {}),
             ...(session.transcriptPath ? { transcriptPath: session.transcriptPath } : {}),
             ...(session.claudeSessionId ? { claudeSessionId: session.claudeSessionId } : {}),
