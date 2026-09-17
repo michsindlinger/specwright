@@ -8,7 +8,7 @@
 /**
  * Cloud Terminal session identifier - independent of execution IDs
  */
-import type { BlockKind } from './gespraech.protocol.js';
+import type { BlockKind } from './hook-events.protocol.js';
 
 export type CloudTerminalSessionId = string;
 

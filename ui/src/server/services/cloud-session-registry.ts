@@ -21,7 +21,7 @@ import type {
   CloudTerminalModelConfig,
   CloudTerminalAgentStatus,
 } from '../../shared/types/cloud-terminal.protocol.js';
-import type { BlockKind } from '../../shared/types/gespraech.protocol.js';
+import type { BlockKind } from '../../shared/types/hook-events.protocol.js';
 
 export interface PersistedWorktreeV1 {
   worktreePath: string;
@@ -61,15 +61,13 @@ export interface PersistedCloudSessionV1 {
   agentStatusAt?: string;
   agentStatusReason?: string;
   /**
-   * INT-2026-007 (FA-08): hook context and dialog state survive a restart so
-   * the Gespräch can reattach to the transcript and the plan-review toggle
-   * keeps its setting. All optional — older files stay valid.
+   * INT-2026-007 (FA-08): hook context, block kind and the plan-review
+   * settings survive a restart. All optional — older files stay valid
+   * (a `dialogSeq` written before INT-2026-011 is ignored).
    */
   transcriptPath?: string;
   claudeSessionId?: string;
   blockKind?: BlockKind;
-  /** Monotonic counter for `seq:<n>` dialog ids (permissions without a tool call). */
-  dialogSeq?: number;
   planReviewEnabled?: boolean;
   planReviewReviewers?: Array<{ providerId: string; modelId: string }>;
   lastDetectedPlanPath?: string;

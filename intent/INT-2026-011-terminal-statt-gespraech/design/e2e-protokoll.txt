@@ -109,3 +109,42 @@ Prüfzeilen des Gesamtlaufs:
   screenshot ist-11-handy
   ✓ FA-20: Handy — „Im Terminal öffnen" öffnet das Vollbild-Terminal, nicht angedockt {"isOpen":true,"docked":false,"w":390,"h":844,"terminals":1}
   screenshot ist-11-handy-terminal
+
+E2E Stufe 2 — nach dem Abbau (FA-22), Playwright gegen Branch-Backend 3111 (2026-09-17, e2e-011-s2.mjs)
+---------------------------------------------------------------------------------------------------------
+
+Umgebung wie Stufe 1 (tmux AN, SPECWRIGHT_RUNTIME_DIR=/tmp/sw-3111, Scratch /private/tmp/scratch-int010 auf d07f8c6, Chrome headless 1440×900).
+Backend ohne GespraechService/GespraechHandler/TranscriptTailer (Commit 0230972), Frontend Stufe 1 (PR #65).
+Phasen: glocke | rueckfrage | freigabe | neu. Sitzung `plan` auf INT-2026-001 (haiku) per `vorhaben:start-step`; „Neue Absicht" per UI mit haiku.
+
+Prüfzeilen (Läufe 4, 5, 7 — Läufe 1–3 waren Harness-Fehler, siehe unten):
+  ✓ Terminal angedockt, Tab der Sitzung gewählt (Stufe 1 intakt)
+  ✓ Cmd+D schließt das angedockte Terminal
+  ✓ FA-22 Glocke: Stop-Hook → Zeile „fertig" für die Sitzung, Zähler 0 → 1 nach 3262 ms ab Eingabe (Stop-Frame → Glocke 1 ms); rows [{"kind":"done","preview":"OK"}]; Hooks stop@3261ms
+  ✓ Cmd+D öffnet wieder angedockt; sichtbare Sitzung verschwindet aus der Glocke (aktiver Tab der offenen Sidebar wird nie gelistet, INT-2026-010 E2)
+  ✓ FA-22 Zustand: Sitzung wartet (agent-event stop → done) zustand wartet, session.status done
+  ✓ agent-event stop trägt preview, keine Beitrag-/Dialog-Felder {"event":"stop","status":"done","preview":"OK"}
+  ✓ FA-22 blockKind: PreToolUse AskUserQuestion → Zustand wartet_rueckfrage, blockKind rueckfrage, Hinweis „Die Sitzung stellt eine Rückfrage — im Terminal antworten."
+  ✓ agent-event blocked: blockKind rueckfrage, reason = Frage („Rot oder Blau?"), kein dialog-Feld
+  ✓ Glocke (Sidebar zu) zeigt die wartende Sitzung als „wartet" mit der Frage {"kind":"blocked","preview":"Rot oder Blau?"}
+  ✓ FA-22 PostToolUse: Antwort im Terminal (Enter) → Zustand verlässt wartet_rueckfrage → arbeitet
+  ✓ danach wieder wartet (Stop)
+  ✓ Knopf „Freigeben" frei (spec.md entwurf, Sitzung wartet)
+  ✓ FA-22 Zustellung: Freigabe-Text „Freigabe: spec.md (Stand …)" binnen 2 s im Terminal — 393 ms ab Klick (EK-03)
+  ✓ FA-22 Protokoll: gesendet → angenommen (UserPromptSubmit-Bestätigung über session.prompt-text)
+  ✓ Freigabe-Dialog geschlossen
+  ✓ EK-01 Laufzeit: kein gespraech:*-Frame in beide Richtungen (0 Frames)
+  ✓ Starten → anhängige Absicht-Sitzung; Terminal angedockt mit dem Tab der Absicht-Sitzung nach 111 ms
+  ✓ FA-22 erste Eingabe: Text der Absicht zugestellt (Protokoll freitext, angenommen) nach 16 s (erster Stop)
+  ✓ Agent wartet erneut (Rückfrage 2 und 3 als Prosa) → Antwort getippt
+  ✓ FA-22 Claim: Ordner da → Route #/vorhaben/…/INT-2026-006, Terminal derselbe Tab, angedockt (116 s ab Starten)
+  ✓ EK-01 Laufzeit (neu): kein gespraech:*-Frame
+
+Befunde aus dem Lauf (behoben in dieser Stufe, plan.md §14):
+  - `cloud-terminal:agent-event` trug nie `blockKind`, obwohl der Nachrichtentyp es deklariert (websocket.ts ließ das Feld weg; Bestand seit INT-2026-007). Jetzt weitergereicht.
+  - `PermissionRequest AskUserQuestion` feuert 2 ms nach `PreToolUse` und überschrieb den Grund mit „Berechtigung: AskUserQuestion" — Glocke und Tab zeigten so nicht die Frage. Jetzt: Grund = erste Frage.
+
+Harness-Lehren (kein UI-Befund):
+  - Läufe 1 und 3: `/specwright:plan` läuft in den Plan-Modus; der ExitPlanMode-Dialog („❯ 1. Yes …") täuschte das alte `waitIdle` (Prompt-Zeichen ohne Spinner), die per ws getippte Eingabe wählte Option 1, Haiku führte den Plan aus und committete `plan.md` im Scratch-Projekt (Phase → bau, kein Review-Dokument). Scratch auf d07f8c6 zurückgesetzt; `waitIdle` prüft jetzt auf leere Prompt-Zeile und schickt bei Dialog Escape.
+  - Lauf 6: dieselbe Escape-Logik brach das Absicht-Interview (AskUserQuestion) ab. Für `neu` jetzt: Status der anhängigen Sitzung abwarten (blocked → Enter, done → Text), bis zu drei Runden.
+  - `wartet_auf_dich` gibt es nur mit Review-Dokument (spec.md entwurf); ohne ist der Ruhezustand `wartet`.

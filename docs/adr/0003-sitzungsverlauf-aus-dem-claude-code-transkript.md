@@ -1,6 +1,6 @@
 # ADR-0003: Sitzungsverlauf der Web-UI aus dem Claude-Code-Transkript, nicht aus dem Bildschirm
 
-> Status: Angenommen
+> Status: Abgelöst durch ADR-0004 (INT-2026-011, 2026-09-17) — der Transkript-Leser und das Gespräch sind entfernt; der Hook-Kontext (Transkriptpfad) wird weiter gespeichert, aber nicht gelesen
 > Datum: 2026-09-16
 > Betrifft: Web-UI (`ui/src/server/services/transcript-reader.ts`, `gespraech-service.ts`, `claude-hooks.ts`, `cloud-terminal-manager.ts`), Vorhaben INT-2026-007
 > Umgesetzt in: PR zu `feat/INT-2026-007-sitzung-als-gespraech` (Stufe 1)
