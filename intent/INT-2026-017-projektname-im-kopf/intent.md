@@ -115,5 +115,6 @@ Keine. Drei Rückfragen am 2026-09-17 entschieden (PO): Ort → AK-01, NZ-01 · 
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-17 | Umgesetzt in PR #76 (`feat/INT-2026-017-projektname-im-kopf`, Commit fe186c6): `aos-vorhaben-seite` `.projekt` über der Kennung, drei Tests AK-01–AK-03, Screenshots `design/ist/`, `docs/design.md` §4; Abweichungen in `plan.md` §14. Status bleibt `angenommen` bis Merge | AK-01–AK-04 | — |
 | 1.0.0 | 2026-09-17 | Angenommen ohne Änderung am Entwurf; Bypass ja (Größe S) → direkt `/plan`. Abgleich Mensch/Agent: ohne Befund (Kopf S/niedrig/Bypass deckt Endzustand AK-01–AK-04: eine Komponente, kein Backend, keine Daten) | alle | PO, 17.09. |
 | 0.1.0 | 2026-09-17 | Entwurf nach Gespräch; drei Rückfragen mit den Vorschlägen entschieden | alle | — |

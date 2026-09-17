@@ -1,7 +1,7 @@
 # Plan: UI: Projektname im Kopf der Vorhaben-Seite
 
 > **Intent:** `intent.md` (INT-2026-017) · **Spec:** entfällt (bypass: Größe S, eine Anzeige-Zeile in einer Frontend-Komponente, Daten liegen schon in der Zeile)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt (PR #76, Merge steht aus)
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger) — im Chat „freigabe", 2026-09-17
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 960c22e), `CLAUDE.md`, `docs/security.md`
 
