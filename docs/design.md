@@ -42,7 +42,7 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | Leerzustand | ein Satz + eine Aktion | Projektliste ohne Projekte |
 | Mobil | ein Pane, Terminal mit Flex-Host für xterm-Höhe | Mobile-Terminal-Fix (`4cdb276`) |
 | Dokument mit Leser-Teil und Agenten-Teil (INT-2026-009) | Mensch-Abschnitte offen, Agenten-Abschnitte als zugeklappte Kästen mit sichtbarer Überschrift; ein Schalter „Technik zeigen" je Dokument öffnet alle; Dokumente ohne oder mit nur teilweiser Kennzeichnung bleiben ganz offen | `aos-dokument-leser` (`details.technik`, INT-2026-010 Stufe 3) |
-| Sitzung neben dem Dokument (INT-2026-011) | das Terminal selbst, angedockt als rechte Spalte (halbe Breite, unter der Kopfzeile, kein Zieh-Griff, kein Schatten), Tab der Vorhaben-Sitzung vorne; kein nachgebauter Verlauf. Kennungen des Dokuments (`FA-03`, `AK-01`, `F1`) sind im Terminal unterstrichen: Hover zeigt den Absatz, Klick springt im Dokument hin und klappt den Kasten auf; nur Codes, die das Dokument enthält | `aos-cloud-terminal-sidebar` (`docked`), `kennung-link-provider.ts`, `aos-dokument-leser.openKennung` |
+| Sitzung neben dem Dokument (INT-2026-011) | das Terminal selbst, angedockt als rechte Spalte (halbe Breite, unter der Kopfzeile, kein Zieh-Griff, kein Schatten), Tab der Vorhaben-Sitzung vorne; kein nachgebauter Verlauf. Stapelordnung: angedockt liegt die Spalte unter der Kopfzeile (Glocken-Liste davor), schwebend und im Vollbild über ihr (INT-2026-014). Kennungen des Dokuments (`FA-03`, `AK-01`, `F1`) sind im Terminal unterstrichen: Hover zeigt den Absatz, Klick springt im Dokument hin und klappt den Kasten auf; nur Codes, die das Dokument enthält | `aos-cloud-terminal-sidebar` (`docked`), `kennung-link-provider.ts`, `aos-dokument-leser.openKennung` |
 
 ## 5. Responsiv und Barrierefreiheit
 
@@ -73,4 +73,5 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | 2026-09-16 | §1 Prinzip 5 (Rahmen = Kopfzeile), §3 Beispiele und Light-DOM-Regel, §4 Muster Glocke und Projekt-Seite, §5 Dokument über Gespräch unter 1024 px, Handy-Terminal (INT-2026-010, Stufe 1) | PR folgt |
 | 2026-09-17 | §4 Muster „Dokument mit Leser-Teil und Agenten-Teil" (INT-2026-010 Stufe 3) | PR #63 |
 | 2026-09-17 | §4 Muster „Sitzung neben dem Dokument" (angedocktes Terminal, Kennungen als Verweise), §5 Vorhaben-Seite ab 1024 px angedockt statt „Dokument über dem Gespräch" (INT-2026-011, Stufe 1 PR #65, Stufe 2) | PR #66 |
-| 2026-09-17 | §5 volle Breite für Liste, Vorhaben-Seite und Dokument; angedockt immer ein Fenster, gespeicherte Aufteilung nur schwebend (INT-2026-013, Nachbesserung nach PR #66) | PR folgt |
+| 2026-09-17 | §5 volle Breite für Liste, Vorhaben-Seite und Dokument; angedockt immer ein Fenster, gespeicherte Aufteilung nur schwebend (INT-2026-013, Nachbesserung nach PR #66) | PR #68 |
+| 2026-09-17 | §4 Stapelordnung angedockt: Spalte unter der Kopfzeile, Glocken-Liste davor (INT-2026-014) | PR folgt |

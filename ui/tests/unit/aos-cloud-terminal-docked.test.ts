@@ -337,3 +337,20 @@ describe('aos-cloud-terminal-sidebar docked = one pane (INT-2026-013, AK-04)', (
     expect(storedKeys().mode).toBe('split-2');
   });
 });
+
+describe('aos-cloud-terminal-sidebar docked stacking (INT-2026-014, AK-01/AK-02)', () => {
+  /** The sidebar injects one <style> into the document (light DOM); happy-dom does not cascade, so the rule text is the proof. */
+  const sidebarCss = (): string => Array.from(document.querySelectorAll('style')).map((s) => s.textContent ?? '').find((t) => t.includes('.terminal-sidebar.docked')) ?? '';
+  const rule = (css: string, selector: string): string => {
+    const m = new RegExp(`(?:^|[}\\s])${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`).exec(css);
+    return m ? m[1].replace(/\s+/g, ' ') : '';
+  };
+
+  it('docked column stacks below the header (z-index 55 < 60) so the bell dropdown lies in front; floating/fullscreen keep 1000', async () => {
+    await sidebar({ docked: true });
+    const css = sidebarCss();
+    expect(css).not.toBe('');
+    expect(rule(css, '.terminal-sidebar.docked')).toMatch(/z-index:\s*55\b/);
+    expect(rule(css, '.terminal-sidebar')).toMatch(/z-index:\s*1000\b/);
+  });
+});

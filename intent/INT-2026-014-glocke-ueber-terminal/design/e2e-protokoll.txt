@@ -1,0 +1,21 @@
+E2E-Protokoll INT-2026-014 — Glocken-Liste vor dem angedockten Terminal
+======================================================================
+
+Umgebung: Branch-Backend 3111 (Worktree session-sdlc-ui, verify: OK-Build), Scratch /private/tmp/scratch-int010,
+Playwright 1.57 (global) mit Chrome headless, Viewport 1 728 × 1 000, keine Sitzung nötig (leere Liste rendert
+das Dropdown ebenso). Skript e2e-014.mjs (Sitzungs-Scratchpad, nicht im Repo).
+
+Vorher: Michaels Screenshot design/befund-glocke.png (Liste hinter dem angedockten Terminal). Ursache:
+aos-kopfzeile sticky z-index 60 (Stapelkontext, Dropdown darin z 200), .terminal-sidebar fixed z-index 1000
+auch angedockt.
+
+Nachher (4/4 grün):
+  Vorbedingung: Vorhaben-Seite INT-2026-001, Cmd+D → .terminal-sidebar open docked, computed z-index 55.
+  AK-01 Glocke geklickt → .glocke-dropdown (340 × 81 px bei 1316/50); document.elementFromPoint an drei Punkten
+        (oben links, Mitte, unten rechts) liefert jeweils ein Element in .glocke-dropdown; z-Werte: Dropdown 200,
+        Kopfzeile 60, Sidebar 55 → design/ist/ist-glocke.png
+  AK-02 Liste (schwebend): .terminal-sidebar open, nicht docked, computed z-index 1000; elementFromPoint auf der
+        Glocken-Taste trifft die Sidebar — sie deckt die Kopfzeile wie bisher ab.
+
+Unit: aos-cloud-terminal-docked.test.ts „docked column stacks below the header" — rot vor der Stilzeile,
+grün danach; bash scripts/verify.sh → verify: OK (53 s).
