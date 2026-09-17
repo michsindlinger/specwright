@@ -10,7 +10,7 @@ import { KennungLinkProvider } from './terminal/kennung-link-provider.js';
 import { CLOUD_TERMINAL_CONFIG } from '../../../src/shared/types/cloud-terminal.protocol.js';
 import type { PromptTemplate } from '../../../src/shared/types/prompt-templates.protocol.js';
 import { stripTerminalQueries } from './terminal/replay-sanitize.js';
-import { isPaneZoomShortcut } from '../utils/keyboard-shortcuts.js';
+import { isPaneZoomShortcut, isBackToOverviewShortcut, TERMINAL_INPUT_ATTR } from '../utils/keyboard-shortcuts.js';
 import '@xterm/xterm/css/xterm.css';
 
 const DARK_THEME = {
@@ -392,6 +392,11 @@ export class AosTerminal extends LitElement {
     // Open terminal in container
     this.terminal.open(this.terminalContainer);
 
+    // Mark xterm's input textarea (public API, set synchronously by open()) so the app's Cmd+←
+    // handler can tell it from other text fields (INT-2026-015, AK-07): the terminal ignores
+    // Cmd+Arrow, the page may take the key. Our attribute, no xterm class name, no DOM position.
+    this.terminal.textarea?.setAttribute(TERMINAL_INPUT_ATTR, '');
+
     // Fit terminal to container
     this.fitAddon.fit();
 
@@ -481,6 +486,13 @@ export class AosTerminal extends LitElement {
         if (event.type === 'keydown') event.preventDefault();
         return false; // Block keydown/keypress/keyup alike
       }
+
+      // Cmd+← = back to the overview (app.ts, INT-2026-015 AK-08). Verified on @xterm/xterm 6.0.0:
+      // Keyboard.ts case 37 + metaKey → no key, _keyDown returns before triggerDataEvent and before
+      // cancel(). This keeps it out of the PTY should a later version map it. `false` ends xterm's
+      // _keyDown only — no preventDefault, no stopPropagation, the event still bubbles to the app's
+      // document listener (review G5: re-check both facts on every xterm major).
+      if (isBackToOverviewShortcut(event)) return false;
 
       // Shift+Enter → send newline to PTY (cloud mode only)
       // Must return false for ALL event types (keydown, keypress, keyup) to fully

@@ -47,7 +47,7 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 ## 5. Responsiv und Barrierefreiheit
 
 - **Breakpoints:** Handy (< 768 px, ein Pane) / Desktop (Split-Panes). Vorhaben-Seite: Terminal angedockt ab 1024 px, darunter schwebend wie auf jeder anderen Seite (INT-2026-011).
-- **Volle Breite:** Liste, Vorhaben-Seite und Dokument nutzen die volle Fensterbreite — angedockt ist das Dokument die linke Hälfte, zugeklappt das ganze Fenster; keine Breitengrenze für einzelne Seiten der View, auch nicht für „Neue Absicht" und die Projekt-Seite (PO 17.09., INT-2026-013). Angedockt zeigt das Terminal immer genau ein Fenster mit der Sitzung der Seite; die gespeicherte Aufteilung (zwei oder vier Fenster) gilt nur schwebend und bleibt erhalten.
+- **Volle Breite:** Liste, Vorhaben-Seite und Dokument nutzen die volle Fensterbreite — angedockt ist das Dokument die linke Hälfte, zugeklappt das ganze Fenster; keine Breitengrenze für einzelne Seiten der View, auch nicht für „Neue Absicht" und die Projekt-Seite (PO 17.09., INT-2026-013). Angedockt zeigt das Terminal immer genau ein Fenster mit der Sitzung der Seite; die gespeicherte Aufteilung (zwei oder vier Fenster) gilt nur schwebend und bleibt erhalten. Beim Verlassen einer angedockten Seite auf eine Seite ohne Spalte schließt das Terminal (Sitzung läuft weiter, Cmd+D öffnet schwebend); Cmd+← führt von der Vorhaben-Seite und von „Neue Absicht" zur Übersicht, außer der Cursor steht in einem Textfeld (INT-2026-015).
 - **Mobil zuerst für:** Cloud-Terminal, Projektwechsel. Am Handy öffnet das Terminal-Symbol der Kopfzeile die Sitzungen; ein Sprung aus Glocke oder Vorhaben-Seite setzt die aktive Sitzung (kein Solo-Modus).
 - **Mindeststandard:** Tastatur-Bedienbarkeit, Kontrast ≥ 4.5:1, Fokus sichtbar, Labels an jedem Feld.
 
@@ -75,3 +75,4 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | 2026-09-17 | §4 Muster „Sitzung neben dem Dokument" (angedocktes Terminal, Kennungen als Verweise), §5 Vorhaben-Seite ab 1024 px angedockt statt „Dokument über dem Gespräch" (INT-2026-011, Stufe 1 PR #65, Stufe 2) | PR #66 |
 | 2026-09-17 | §5 volle Breite für Liste, Vorhaben-Seite und Dokument; angedockt immer ein Fenster, gespeicherte Aufteilung nur schwebend (INT-2026-013, Nachbesserung nach PR #66) | PR #68 |
 | 2026-09-17 | §4 Stapelordnung angedockt: Spalte unter der Kopfzeile, Glocken-Liste davor (INT-2026-014) | PR #69 |
+| 2026-09-17 | §5 Terminal schließt beim Verlassen einer angedockten Seite; Cmd+← zur Übersicht (INT-2026-015) | PR #71 |

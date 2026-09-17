@@ -14,9 +14,18 @@
  * retries a failed project switch (at most three attempts, then a toast) and
  * never fires a second switch while one is in flight. Cmd+D and the header
  * toggle open on the page's tab; explicit openers keep their own tab.
+ *
+ * INT-2026-015 (AK-01 … AK-09, NZ-05, NZ-06): leaving a docked page for one
+ * without a column closes the terminal window (sessions stay, the bell rings
+ * for a waiting one, Cmd+D reopens floating); Cmd+← on the two docked routes
+ * goes to the overview unless the key lands in a text field — the terminal's
+ * own textarea (marked `data-terminal-input`) excepted. Text fields live in
+ * shadow roots, so the fixtures are `div` hosts with `attachShadow`.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { TerminalSession } from '../../frontend/src/components/terminal/aos-cloud-terminal-sidebar.js';
+import type { BellRow } from '../../frontend/src/components/terminal/agent-notifications.js';
+import { gateway } from '../../frontend/src/gateway.js';
 
 type RouteListener = (route: { view: string; segments: string[]; params?: Record<string, string> }) => void;
 /** app.ts and the mounted view both subscribe — every listener gets the route. */
@@ -145,6 +154,7 @@ interface AppInternals extends HTMLElement {
   openProjects: Project[];
   activeProjectId: string | null;
   lastActiveSessionByProject: Map<string, string>;
+  glockeRows: BellRow[];
   _showSessionSolo(tabId: string): void;
   showToast(message: string, type?: string): void;
   updateComplete: Promise<boolean>;
@@ -194,6 +204,23 @@ const cmdD = (): void => {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', metaKey: true, bubbles: true, cancelable: true }));
 };
 const sidebarOf = (el: HTMLElement): SidebarInternals => el.querySelector('aos-cloud-terminal-sidebar') as SidebarInternals;
+/**
+ * Cmd+← as the browser sends it: bubbles, cancelable, composed — so a press inside an open
+ * shadow root reaches the app's `document` listener with the field as `composedPath()[0]`
+ * (INT-2026-015). Returns the event for `defaultPrevented`.
+ */
+const cmdLeft = (target: EventTarget = document.body, init: KeyboardEventInit = {}): KeyboardEvent => {
+  const e = new KeyboardEvent('keydown', { key: 'ArrowLeft', metaKey: true, bubbles: true, cancelable: true, composed: true, ...init });
+  target.dispatchEvent(e);
+  return e;
+};
+/** A shadow host with one child — the shape of the Anmerkung/Absicht fields and of `aos-terminal`'s textarea. */
+function shadowChild<T extends HTMLElement>(child: T): T {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  host.attachShadow({ mode: 'open' }).appendChild(child);
+  return child;
+}
 /** A switch whose ack the test releases by hand. */
 function deferredSwitch(): { resolve: (r: SwitchResult) => void } {
   let resolve: (r: SwitchResult) => void = () => undefined;
@@ -540,6 +567,237 @@ describe('app.ts — open-terminal-session with a docked terminal (AN-S08)', () 
     document.dispatchEvent(new CustomEvent('open-terminal-session', { detail: { sessionId: 'cloud-a1' } }));
     await settle(el);
     expect(el._showSessionSolo).toHaveBeenCalledWith('a1');
+    el.remove();
+  });
+});
+
+describe('app.ts — leaving a docked page closes the terminal, Cmd+← (INT-2026-015)', () => {
+  /** Vorhaben page with the page's session open and docked — the starting point of most cases. */
+  async function dockedPage(): Promise<AppInternals> {
+    const el = await app();
+    route('vorhaben', ['p', 'INT-2026-003']);
+    pageSession('cloud-a2');
+    await settle(el);
+    expect(el.isTerminalSidebarOpen).toBe(true);
+    expect(el.terminalDocked).toBe(true);
+    expect(el.activeTerminalSessionId).toBe('a2');
+    return el;
+  }
+
+  it('AK-01: back to the list closes the window in the same update; a late announcement cannot reopen it', async () => {
+    const el = await dockedPage();
+    route('vorhaben', []);
+    // synchronous — one task, one Lit update: no intermediate "floating open" render (review G3)
+    expect(el.isTerminalSidebarOpen).toBe(false);
+    expect(el.terminalDocked).toBe(false);
+    await settle(el);
+    expect(sidebarOf(el).isOpen).toBe(false);
+    expect(sidebarOf(el).docked).toBe(false);
+    expect(el.pendingDockSessionId).toBeNull();
+    // the view's late announcement after leaving (review E2/E12)
+    pageSession('cloud-a2');
+    await settle(el);
+    expect(el.isTerminalSidebarOpen).toBe(false);
+    expect(el.pendingDockSessionId).toBeNull();
+    el.remove();
+  });
+
+  it('AK-01: the project page and „Neue Absicht" → list close it too', async () => {
+    const el = await dockedPage();
+    route('projekt', ['p']);
+    await settle(el);
+    expect(el.isTerminalSidebarOpen).toBe(false);
+    expect(sidebarOf(el).isOpen).toBe(false);
+    el.remove();
+
+    const el2 = await app();
+    route('neu', ['p']);
+    pageSession('cloud-a2');
+    await settle(el2);
+    expect(el2.isTerminalSidebarOpen).toBe(true);
+    route('vorhaben', []);
+    await settle(el2);
+    expect(el2.isTerminalSidebarOpen).toBe(false);
+    el2.remove();
+  });
+
+  it('AK-01 start case: the first route being a Vorhaben page opens, never closes (wasDocked starts false, review G4)', async () => {
+    const el = await app();
+    expect(el.terminalDocked).toBe(false);
+    route('vorhaben', ['p', 'INT-2026-003']);
+    pageSession('cloud-a2');
+    await settle(el);
+    expect(el.isTerminalSidebarOpen).toBe(true);
+    expect(sidebarOf(el).docked).toBe(true);
+    el.remove();
+  });
+
+  it('AK-02: docked → docked keeps the window open on the new page\'s session', async () => {
+    const el = await dockedPage();
+    route('vorhaben', ['p', 'INT-2026-004']);
+    pageSession('cloud-a1');
+    await settle(el);
+    expect(el.isTerminalSidebarOpen).toBe(true);
+    expect(el.activeTerminalSessionId).toBe('a1');
+    route('neu', ['p']);
+    await settle(el);
+    expect(el.isTerminalSidebarOpen).toBe(true);
+    expect(el.terminalDocked).toBe(true);
+    el.remove();
+  });
+
+  it('AK-03: the session left behind rings the bell once the window is closed', async () => {
+    const el = await dockedPage();
+    const blocked = (): TerminalSession[] => el.terminalSessions.map((s) => (s.id === 'a2' ? { ...s, agentStatus: 'blocked' as const, agentStatusAt: 5 } : s));
+    // before leaving: a2 is looked at → not listed
+    el.terminalSessions = blocked();
+    await settle(el);
+    expect(el.glockeRows.some((r) => r.sessionId === 'a2')).toBe(false);
+    route('vorhaben', []);
+    await settle(el);
+    expect(el.isTerminalSidebarOpen).toBe(false);
+    const row = el.glockeRows.find((r) => r.sessionId === 'a2');
+    expect(row?.kind).toBe('blocked');
+    el.remove();
+  });
+
+  it('AK-04: Cmd+D after leaving reopens floating on the same tab, nothing armed', async () => {
+    const el = await dockedPage();
+    route('vorhaben', []);
+    await settle(el);
+    cmdD();
+    await settle(el);
+    expect(el.isTerminalSidebarOpen).toBe(true);
+    expect(sidebarOf(el).docked).toBe(false);
+    expect(el.activeTerminalSessionId).toBe('a2');
+    expect(el.pendingDockSessionId).toBeNull();
+    el.remove();
+  });
+
+  it('NZ-06: closing the window keeps every session and sends no close to the backend', async () => {
+    const el = await dockedPage();
+    const count = el.terminalSessions.length;
+    vi.mocked(gateway.send).mockClear();
+    route('vorhaben', []);
+    await settle(el);
+    expect(el.terminalSessions).toHaveLength(count);
+    const closes = vi.mocked(gateway.send).mock.calls.filter((c) => (c[0] as { type?: string })?.type === 'cloud-terminal:close');
+    expect(closes).toHaveLength(0);
+    el.remove();
+  });
+
+  it('NZ-05: on the phone nothing closes and Cmd+← does nothing', async () => {
+    mobile = true;
+    const el = await app();
+    route('vorhaben', ['p', 'INT-2026-003']);
+    el.isTerminalSidebarOpen = true;
+    await settle(el);
+    route('vorhaben', []);
+    await settle(el);
+    expect(el.isTerminalSidebarOpen).toBe(true);
+    route('vorhaben', ['p', 'INT-2026-003']);
+    await settle(el);
+    const e = cmdLeft();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(e.defaultPrevented).toBe(false);
+    el.remove();
+  });
+
+  it('AK-05: Cmd+← on the Vorhaben page and on „Neue Absicht" goes to the overview', async () => {
+    const el = await app();
+    route('vorhaben', ['p', 'INT-2026-003']);
+    await settle(el);
+    let e = cmdLeft();
+    expect(navigate).toHaveBeenCalledWith('vorhaben');
+    expect(e.defaultPrevented).toBe(true);
+    navigate.mockClear();
+    route('neu', ['p']);
+    await settle(el);
+    e = cmdLeft();
+    expect(navigate).toHaveBeenCalledWith('vorhaben');
+    expect(e.defaultPrevented).toBe(true);
+    el.remove();
+  });
+
+  it('AK-09: everywhere else the browser keeps Cmd+← — also with the floating terminal focused', async () => {
+    const el = await app();
+    for (const [view, segments] of [['vorhaben', []], ['projekt', ['p']], ['not-found', []]] as const) {
+      route(view, [...segments]);
+      await settle(el);
+      const e = cmdLeft();
+      expect(navigate).not.toHaveBeenCalled();
+      expect(e.defaultPrevented).toBe(false);
+    }
+    // floating terminal on the list, key pressed in its textarea (reviews E7/E13)
+    route('vorhaben', []);
+    cmdD();
+    await settle(el);
+    expect(el.isTerminalSidebarOpen).toBe(true);
+    expect(sidebarOf(el).docked).toBe(false);
+    const ta = shadowChild(document.createElement('textarea'));
+    ta.setAttribute('data-terminal-input', '');
+    const e = cmdLeft(ta);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(e.defaultPrevented).toBe(false);
+    el.remove();
+  });
+
+  it('G12: a held key counts once — repeats are ignored', async () => {
+    const el = await app();
+    route('vorhaben', ['p', 'INT-2026-003']);
+    await settle(el);
+    let e = cmdLeft(document.body, { repeat: true });
+    expect(navigate).not.toHaveBeenCalled();
+    expect(e.defaultPrevented).toBe(false);
+    e = cmdLeft();
+    expect(navigate).toHaveBeenCalledWith('vorhaben');
+    expect(e.defaultPrevented).toBe(true);
+    el.remove();
+  });
+
+  it('AK-06: text fields keep the key — light DOM and inside shadow roots (textarea, contenteditable, input)', async () => {
+    const el = await app();
+    route('vorhaben', ['p', 'INT-2026-003']);
+    await settle(el);
+    const light = document.createElement('input');
+    document.body.appendChild(light);
+    const ta = shadowChild(document.createElement('textarea'));
+    const ce = shadowChild(document.createElement('div'));
+    ce.setAttribute('contenteditable', 'true');
+    const input = shadowChild(document.createElement('input'));
+    for (const field of [light, ta, ce, input]) {
+      const e = cmdLeft(field);
+      expect(navigate).not.toHaveBeenCalled();
+      expect(e.defaultPrevented).toBe(false);
+    }
+    el.remove();
+  });
+
+  it('AK-06 control: a composed keydown from a non-editable shadow child does reach the app (review G1)', async () => {
+    const el = await app();
+    route('vorhaben', ['p', 'INT-2026-003']);
+    await settle(el);
+    const div = shadowChild(document.createElement('div'));
+    const e = cmdLeft(div);
+    expect(navigate).toHaveBeenCalledWith('vorhaben');
+    expect(e.defaultPrevented).toBe(true);
+    el.remove();
+  });
+
+  it('AK-07: the terminal\'s own textarea (data-terminal-input) does not keep the key; without the marker it does', async () => {
+    const el = await app();
+    route('vorhaben', ['p', 'INT-2026-003']);
+    await settle(el);
+    const ta = shadowChild(document.createElement('textarea'));
+    ta.setAttribute('data-terminal-input', '');
+    let e = cmdLeft(ta);
+    expect(navigate).toHaveBeenCalledWith('vorhaben');
+    expect(e.defaultPrevented).toBe(true);
+    navigate.mockClear();
+    ta.removeAttribute('data-terminal-input');
+    e = cmdLeft(ta);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(e.defaultPrevented).toBe(false);
     el.remove();
   });
 });

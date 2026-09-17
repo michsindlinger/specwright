@@ -40,6 +40,7 @@ import type { VorhabenState } from '../../src/shared/types/vorhaben.protocol.js'
 import { assignAutoNames, isOwnCreateRequest, toRestoredTab, type BackendSessionLike, type WorkflowMetadataLike } from './components/terminal/session-naming.js';
 import { glockeZiel } from './components/rahmen/glocke-ziel.js';
 import { terminalDockedFor } from './components/terminal/terminal-dock.js';
+import { isBackToOverviewShortcut, isTypingTarget } from './utils/keyboard-shortcuts.js';
 import type { GlockeOpenDetail, GlockeSession } from './components/rahmen/aos-glocke.js';
 import { gitState, type GitState, type PullStrategy } from './services/git-state.service.js';
 import { vorhabenService } from './services/vorhaben.service.js';
@@ -204,10 +205,16 @@ export class AosApp extends LitElement {
 
   private boundRouteChangeHandler = (route: import('./types/route.types.js').ParsedRoute) => {
     this.currentRoute = route.view;
+    const wasDocked = this.terminalDocked;
     this.terminalDocked = terminalDockedFor(route);
     // Routes without a docked column have no page session — also the ones
     // where the Vorhaben view is replaced and cannot announce (review #7).
     if (!this.terminalDocked) this.pageSessionId = null;
+    // Leaving a docked page closes the terminal (INT-2026-015, AK-01): the target page is usable at
+    // once. Only the window — sessions and tabs stay, a waiting one rings the bell (AK-03, NZ-06).
+    // Docked → docked keeps it open on the new page's session (AK-02); the phone has no docked
+    // column and keeps its overlay (NZ-05). Nothing is stored: open/closed stays browser state (RB-01).
+    if (wasDocked && !this.terminalDocked && !this.breakpoint.isMobile) this.isTerminalSidebarOpen = false;
   };
   private boundReconnectingHandler: MessageHandler = (msg) => {
     this.isReconnecting = true;
@@ -1577,6 +1584,17 @@ export class AosApp extends LitElement {
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 'd') {
       e.preventDefault();
       this._toggleTerminalSidebar();
+      return;
+    }
+    // Cmd+← = „‹ Vorhaben" on the docked pages (INT-2026-015, AK-05) — the same two routes that dock
+    // the terminal (terminal-dock.ts; a page that docks without a back shortcut would split this
+    // predicate, reviews E5/G9); Mac only like the column itself (NZ-05); a held key counts once.
+    // Text fields keep the key (AK-06); the terminal's own textarea does not — xterm ignores
+    // Cmd+Arrow (AK-07/AK-08). Everywhere else the browser keeps it (AK-09).
+    if (isBackToOverviewShortcut(e)) {
+      if (!this.terminalDocked || this.breakpoint.isMobile || e.repeat || isTypingTarget(e.composedPath())) return;
+      e.preventDefault();
+      routerService.navigate('vorhaben');
     }
   }
 

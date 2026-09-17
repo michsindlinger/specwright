@@ -41,3 +41,34 @@ export function isEditableTarget(el: unknown): boolean {
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
   return node.isContentEditable === true;
 }
+
+/**
+ * Cmd+← — back to the Vorhaben overview from the Vorhaben page and „Neue Absicht" (INT-2026-015,
+ * AK-05). Cmd only (RB-02): Ctrl+← is the word jump in the terminal (NZ-03); Shift/Alt variants and
+ * every other page stay with the browser (AK-09).
+ */
+export function isBackToOverviewShortcut(e: KeyComboLike): boolean {
+  return e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && e.key === 'ArrowLeft';
+}
+
+/**
+ * Marker `aos-terminal` puts on xterm's input textarea (`terminal.textarea`, public API) right
+ * after `open()`, so a document-level shortcut can tell the terminal from other text fields
+ * without knowing any xterm class name or DOM position (INT-2026-015, reviews E1/G2).
+ */
+export const TERMINAL_INPUT_ATTR = 'data-terminal-input';
+
+/**
+ * A key stays with the element the person types in: the event path starts in a form control or
+ * contenteditable (AK-06) — unless that field is the terminal's input (`TERMINAL_INPUT_ATTR`),
+ * where the terminal ignores Cmd+Arrow (AK-07/AK-08). Takes the whole `e.composedPath()`: a
+ * listener on `document` sees only the shadow host of the Anmerkung/Absicht fields as `e.target`,
+ * never the field. Empty path (event already dispatched, or a synthetic event on `document`) →
+ * not typing.
+ */
+export function isTypingTarget(path: ReadonlyArray<unknown>): boolean {
+  const target = path[0];
+  if (!isEditableTarget(target)) return false;
+  const el = target as { hasAttribute?(name: string): boolean };
+  return el.hasAttribute?.(TERMINAL_INPUT_ATTR) !== true;
+}
