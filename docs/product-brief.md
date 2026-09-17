@@ -1,7 +1,7 @@
 # Produkt: Specwright
 
 > **Firma:** Sindlinger Business Solutions — Auftrag, Werte, Marke: Firmen-Repo (`mission.md`, `brand.md`; entsteht in Phase 3 des SDLC-Umbaus)
-> **Stand:** 2026-09-15 · **Verantwortlich:** Product Owner (Michael Sindlinger)
+> **Stand:** 2026-09-17 · **Verantwortlich:** Product Owner (Michael Sindlinger)
 > **Gilt für:** jede `intent.md` (Feld `bezuege.product`), jede Spec (Bedenken-Prüfung), Plan Mode
 
 ## 1. In einem Satz
@@ -37,7 +37,7 @@ Ohne festen Ablauf zerfällt Softwarearbeit mit einem Agenten in Chat-Sitzungen:
 | Hooks `protect-tests`, `no-secrets`, `production-gate` | jedes Projekt | live |
 | Installer (`install.sh`, `setup*.sh`, `update-specwright.sh`) aus einem Manifest, Update räumt Entferntes auf | Entwickler | in Arbeit (INT-2026-002) |
 | Alt-Befehle für Produktplanung, Story-Specs, Bugs, Skills, Changelog (`/plan-product`, `/create-spec`, `/add-bug`, …) | Entwickler (Terminal) | live, Umbau je Befehl später |
-| Web-UI: Vorhaben-Übersicht, Dokument-Leser, Review-Kanal, Gespräch (Sitzung als Verlauf mit Freitext-Eingabe, Mac), Projekt-Seite, Cloud-Terminal, Shared Workspace | Entwickler (Mac, Handy, Droplet) | live (INT-2026-004; Gespräch INT-2026-007 Stufe 1) |
+| Web-UI: Vorhaben-Übersicht, Dokument-Leser, Review-Kanal, Terminal angedockt neben dem Dokument mit Kennungen als Verweisen (INT-2026-011), Projekt-Seite, Cloud-Terminal, Shared Workspace | Entwickler (Mac, Handy, Droplet) | live (INT-2026-004; angedocktes Terminal INT-2026-011 Stufe 1) |
 | Kanban-MCP-Server mit Memory-Store | Alt-Befehle in Sitzungen | live; Abbau als eigenes Vorhaben |
 
 ## 6. Erfolgsmaße
