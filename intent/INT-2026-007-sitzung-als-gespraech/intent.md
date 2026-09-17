@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-007"  
 titel: "Vorhaben ohne Terminal führen: Sitzung als Gespräch in der Web-UI, Sprache in beide Richtungen"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "abgeloest"  
+version: "1.0.2"  
 autor: "Michael Sindlinger (Gespräch mit Claude, 15.09.2026)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-15"  
@@ -167,6 +167,7 @@ Anlass: Michael hat den Vorhaben-Flow am 15.09. zum ersten Mal aus der UI gestar
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.2 | 2026-09-16 | Abgelöst durch INT-2026-011 „Terminal statt Gespräch" (PO, Chat 16.09.): Stufe 1 (Gespräch, Freitext) wird dort abgebaut, Stufe 2 (Dialog-Karten) und Stufe 3 (Sprache) werden nicht gebaut; Sprache bei Bedarf als eigenes Vorhaben | — | Product Owner, 16.09. |
 | 1.0.1 | 2026-09-16 | `bezuege.plan` gesetzt: `plan.md` freigegeben (drei Runden externer Review) | — | Product Owner, 16.09. |
 | 1.0.0 | 2026-09-15 | Angenommen ohne inhaltliche Änderung; Kern bewusst über 450 Wörter (Belege in Abschnitt 1, PO-Entscheidung „F6 lassen") | alle | Product Owner, 15.09. |
 | 0.1.0 | 2026-09-15 | Entwurf aus dem Gespräch: Sitzung als Chat, Sprache beide Richtungen, Mac zuerst, Dialoge Freitext/Rückfragen/Plan-Dialog/Plan-Review | alle | — |
