@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-013"  
 titel: "UI: Nachbesserung Terminal neben dem Dokument — Liste ohne Überlauf, volle Breite, angedockt immer ein Fenster"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.1.0"  
 autor: "Michael Sindlinger (Test am 1 728-px-Mac, 17.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-17"  
@@ -93,3 +93,4 @@ Michael hat die gemergte Stufe 1 + 2 von INT-2026-011 am 17.09. auf seinem 1 728
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
 | 1.0.0 | 2026-09-17 | Angenommen als Bypass; Plan im Plan Mode entworfen, externer Review (3 Reviewer, 22 Findings) in `plan.md` §12 adressiert; B2-Entscheidung „alles 100 %" (PO). Abgleich Mensch/Agent: ohne Befund | AK-01–AK-04 | PO, 17.09. (Chat) |
+| 1.1.0 | 2026-09-17 | Umgesetzt: PR #68 gemergt `7da7167` (17.09., Merge von Michael beauftragt), CI `verify` grün; Stichprobe am 1 728-px-Mac bestanden („sieht gut aus"). Folgefund Glocken-Liste → INT-2026-014 | AK-01–AK-04 | PO, 17.09. (Chat) |
