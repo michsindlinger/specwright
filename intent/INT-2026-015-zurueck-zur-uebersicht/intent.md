@@ -1,7 +1,7 @@
 ---
 intent_id: "INT-2026-015"  
 titel: "UI: Terminal schließt beim Verlassen der Vorhaben-Seite, Cmd+← führt zur Übersicht"  
-status: "angenommen"  
+status: "umgesetzt"  
 version: "1.0.0"  
 autor: "Michael Sindlinger (Feedback aus dem Gebrauch, 17.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
