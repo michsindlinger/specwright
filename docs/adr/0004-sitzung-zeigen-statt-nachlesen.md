@@ -3,7 +3,7 @@
 > Status: Angenommen — löst ADR-0003 ab
 > Datum: 2026-09-17
 > Betrifft: Web-UI (`ui/frontend/src/components/terminal/aos-cloud-terminal-sidebar.ts`, `kennung-link-provider.ts`, `ui/src/server/services/claude-hooks.ts`, `cloud-terminal-manager.ts`, `ui/src/shared/types/hook-events.protocol.ts`), Vorhaben INT-2026-011
-> Umgesetzt in: PR #65 (Stufe 1: Andocken, Kennungen, Gesprächs-Frontend entfernt), PR zu `feat/INT-2026-011-s2` (Stufe 2: Backend-Abbau, Docs)
+> Umgesetzt in: PR #65 (Stufe 1: Andocken, Kennungen, Gesprächs-Frontend entfernt), PR #66 (Stufe 2: Backend-Abbau, Docs)
 
 ---
 

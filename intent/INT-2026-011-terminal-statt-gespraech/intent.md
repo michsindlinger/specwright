@@ -1,12 +1,12 @@
 ---
 intent_id: "INT-2026-011"  
 titel: "UI: Terminal statt Gespräch — die Sitzung selbst neben dem Dokument"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.0.1"  
 autor: "Michael Sindlinger (Gespräch mit Claude, 16.09.2026, nach Sicht von PR #59/#60)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-16"  
-geaendert: "2026-09-16"  
+geaendert: "2026-09-17"  
 risikoklasse: "mittel"  
 groesse: "M"  
 bypass: "nein"  
@@ -16,7 +16,7 @@ bezuege:
   spec: "spec.md"  
   plan: "plan.md"  
   board_karte: ""  
-  adr: ["docs/adr/0003-sitzungsverlauf-aus-dem-claude-code-transkript.md"]  
+  adr: ["docs/adr/0004-sitzung-zeigen-statt-nachlesen.md", "docs/adr/0003-sitzungsverlauf-aus-dem-claude-code-transkript.md"]  
   ersetzt: "intent/INT-2026-007-sitzung-als-gespraech/intent.md (Stufe 2 und 3 nie gebaut, siehe OF-03)"  
 schlagworte: [ui, terminal, gespraech, abbau, vorhaben-seite, kennungen, less-is-more, phase-5]  
 freigabe:  
@@ -203,6 +203,7 @@ Anlass: Nach PR #58 wurde das Layout zweimal gedreht (PR #59 Gespräch links, PR
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-17 | Umgesetzt: Stufe 1 (PR #65 `624ed65`: Andocken, Sitzung folgen, Kennungen, Gesprächs-Frontend weg) und Stufe 2 (PR #66 `f917165`: Backend-Abbau, Docs, ADR-0004 löst ADR-0003 ab) auf `main`; `bezuege.adr` um ADR-0004. Offen aus plan §10: Cloud-Stichprobe, Board | AK-01–AK-14 | PO, 17.09. (Merge) |
 | 1.0.0 | 2026-09-16 | Angenommen; OF-01 (angedockt, sobald offen), OF-02 (unter 1024 px schwebend → AK-14), OF-03 (007 abgelöst) mit den Vorschlägen entschieden; NZ-07 Textfeld auf „Neue Absicht" bleibt; Mock 11d ergänzt. Abgleich Mensch/Agent: ohne Befund (ER-09/ER-10 decken NZ-06 und AN-01/AN-03/AN-04) | OF-01–OF-03, AK-14, NZ-07, B-01 | PO, 16.09. |
 | 0.1.0 | 2026-09-16 | Entwurf aus dem Gespräch vom 16.09. abends (nach PR #59/#60); drei Empfehlungen vom PO angenommen: Sidebar andocken statt zweites xterm, Schritt bleibt neue Sitzung (NZ-04), Gespräch komplett abbauen; 010 Stufe 3 abgespeckt zuerst (OF-04) | alle | — |
 
