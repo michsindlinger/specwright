@@ -1,0 +1,17 @@
+E2E-Protokoll INT-2026-016 — Branch-Backend 127.0.0.1:3111 (tmux off), Scratch-Projekt /private/tmp/scratch-int016, Chrome headless 1440×900
+Skript: e2e-016-pr1.mjs (Sitzungs-Scratchpad, nicht im Repo) · Claude Code 2.1.274, Modell haiku
+
+PR 1 (AK-01 bis AK-04), 17.09.2026 15:00–15:02
+
+1. Vorhaben INT-2026-001 mit intent.md `umgesetzt`, plan.md `umgesetzt`, keine Sitzung → Zeile: phase umgesetzt, zustand keine_sitzung (eingeklappt).
+2. vorhaben:start-step build (haiku) auf der umgesetzten Zeile → Sitzung cloud-1789657252777-1, Trust-Dialog per Down+Enter, erster Stop nach 15 s.
+   agent-event stop trägt doneAt (2026-09-17T15:01:08.568Z). Zeile: umgesetzt · wartet.
+3. Übersicht (Gerät 1): Gruppe „Wartet auf dich · 1", Zeile sichtbar, Chip „Umgesetzt", Zustand „wartet", kein eingeklappter Kasten (AK-01). Screenshot a-uebersicht-umgesetzt-wartet.png
+   Glocke: Badge 1, Eintrag kind done, title „INT-2026-001 · Glocke-Test: …", label „wartet" (AK-02, AK-03). Screenshot b-glocke-vorhaben.png
+4. Reload → Badge 1, derselbe Eintrag (AK-02, Reload). Zweites Gerät (frischer Browser-Kontext) → Badge 1 (AK-02, Gerät). Screenshot c-glocke-zweites-geraet.png
+5. Antwort per cloud-terminal:input („Danke, das reicht." + Enter) → prompt-submitted, doneAt weg → Glocke leer binnen 700 ms, Zeile „arbeitet · haiku" unter „Läuft · 1" (AK-01, AK-03). Screenshot d-uebersicht-arbeitet.png
+   Zweiter Stop 2 s später → Badge wieder 1 (AK-02).
+6. cloud-terminal:close → Zuordnung ended, Zeile eingeklappt unter Umgesetzt, Glocke leer (AK-01). Screenshot e-uebersicht-nach-schliessen.png
+
+AK-04 (Marke überlebt Neustart bis 24 h): Unit-Test cloud-terminal-restore.test.ts („restores the fertig mark only while it is younger than 24 h"); kein Neustart des Branch-Backends im Lauf.
+Ergebnis: E2E PR1: OK
