@@ -1,7 +1,7 @@
 # Plan: UI: Terminal schließt beim Verlassen der Vorhaben-Seite, Cmd+← führt zur Übersicht
 
 > **Intent:** `intent.md` (INT-2026-015) · **Spec:** entfällt (bypass: Größe S, zwei Verhaltensänderungen im Frontend ohne Daten und ohne Backend)
-> **Status:** umgesetzt (Merge steht aus)
+> **Status:** umgesetzt
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** PO (Michael Sindlinger), 2026-09-17 14:55
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand a0adbd1), `CLAUDE.md`, `docs/security.md`
 
@@ -344,7 +344,7 @@ Entfällt.
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
 | Plan freigeben (diese Datei, `Status: freigegeben`) | PO (Michael) | vor Umsetzung | [x] 2026-09-17 14:55 |
-| PR mergen — löst den Auto-Deploy der UI auf dem Cloud-Host aus (Weg: `architecture.md` §5 „Cloud-Host … Auto-Deploy bei Push auf `main`", Deploy-Gate `GET /api/status/deploy-readiness`); kein `deploy`-Befehl aus der Bausitzung, Hook `production-gate` bleibt unberührt | Michael | nach grünem PR-Check | [ ] |
+| PR mergen — löst den Auto-Deploy der UI auf dem Cloud-Host aus (Weg: `architecture.md` §5 „Cloud-Host … Auto-Deploy bei Push auf `main`", Deploy-Gate `GET /api/status/deploy-readiness`); kein `deploy`-Befehl aus der Bausitzung, Hook `production-gate` bleibt unberührt | Michael | nach grünem PR-Check | [x] 2026-09-17, PR #71 → `90ee689`; Michael hat im Gebrauch getestet: alles funktioniert |
 | AN-02 prüfen: fehlt „Verlauf zurück" auf den zwei Seiten? Wenn ja: neues Vorhaben | Michael | eine Woche nach Merge | [ ] |
 
 Keine Secrets, keine Flags, keine Datenläufe, keine Umgebungsvariablen.
