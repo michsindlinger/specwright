@@ -5771,10 +5771,9 @@ aos-model-selector .model-option.selected .model-name {
 /* =================================================================
    VORHABEN VIEW (INT-2026-004) — light-DOM parts: view frame, mobile shell.
    The document reader (aos-dokument-leser) carries its own styles (shadow DOM).
+   No max-width on the view (INT-2026-013, AK-02): list, page and document use
+   the full width — docked, the page is the left half; closed, the window.
    ================================================================= */
-.vorhaben-view {
-  max-width: 1180px;
-}
 .vorhaben-status {
   color: var(--color-text-secondary);
   padding: var(--spacing-md);

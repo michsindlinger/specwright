@@ -79,17 +79,36 @@ export function parseIntentHead(text: string): IntentHead | null {
   };
 }
 
+/** Upper bound of `StatusLine.note` / `VorhabenRow.phaseNote` in plain characters (INT-2026-013, AK-01). */
+export const NOTE_MAX_CHARS = 80;
+
+/**
+ * The note next to the status, bounded for the list and the page
+ * (INT-2026-013, AK-01): the text after the status word minus a leading
+ * separator, cut at the first ` · ` (the head-field separator of every sdlc
+ * template — newer plans put „Erstellt", „Freigabe" on the same line), without
+ * `**` and backticks, at most NOTE_MAX_CHARS characters with an ellipsis. The
+ * reader is the one place that shortens text; the frontend only clips.
+ */
+export function boundNote(raw: string): string {
+  let note = raw.replace(/^[·—–\-:|\s]+/, '').trim();
+  const field = note.indexOf(' · ');
+  if (field >= 0) note = note.slice(0, field);
+  note = note.replace(/\*\*|`/g, '').trim();
+  if (note.length > NOTE_MAX_CHARS) note = `${note.slice(0, NOTE_MAX_CHARS - 1).trimEnd()}…`;
+  return note;
+}
+
 /**
  * Reads the `> **Status:** wort rest` line of spec.md / plan.md (FA-11). The
- * first word is the status, the rest (minus a leading separator) the note.
+ * first word is the status, the rest (bounded by `boundNote`) the note.
  */
 export function parseStatusLine(text: string): StatusLine | null {
   const lines = text.split(/\r?\n/, 60);
   for (const line of lines) {
     const m = /^>\s*\*\*Status:\*\*\s*(\S+)\s*(.*)$/.exec(line);
     if (m) {
-      const note = m[2].replace(/^[·—–\-:|\s]+/, '').trim();
-      return { status: m[1].replace(/[.,;]+$/, '').toLowerCase(), note };
+      return { status: m[1].replace(/[.,;]+$/, '').toLowerCase(), note: boundNote(m[2]) };
     }
   }
   return null;

@@ -81,7 +81,12 @@ export class AosVorhabenView extends LitElement {
 
   private readonly breakpoint = new MobileBreakpointController(this);
   private unsubscribeState: (() => void) | null = null;
-  /** Last session announced to app.ts (`vorhaben-page-session`); a page without a session announces nothing (AN-S03). */
+  /**
+   * Last session announced to app.ts (`vorhaben-page-session`). Every change
+   * is announced, including the change to `null` (session ended, page without
+   * one — INT-2026-013 B3); a fresh page without a session is no change
+   * (null → null) and announces nothing (AN-S03).
+   */
   private lastPageSessionId: string | null = null;
   /** A Kennung link in the terminal was clicked (FA-13): the page jumps to the block. */
   private readonly onKennungOpen = (e: Event): void => {
@@ -138,16 +143,18 @@ export class AosVorhabenView extends LitElement {
 
   /**
    * After every render: tell app.ts which session belongs to the page when
-   * that changed (FA-02, FA-08, FA-18/FA-19) — the terminal docks on that tab.
-   * Mac only; the phone keeps „Im Terminal öffnen" (FA-20). A page without a
-   * document (list, project page, `neu` before „Starten") has no Kennungen (FA-16).
+   * that changed (FA-02, FA-08, FA-18/FA-19) — the terminal docks on that tab;
+   * `null` says the page has none any more (INT-2026-013 B3, app.ts drops a
+   * pending tab). Mac only; the phone keeps „Im Terminal öffnen" (FA-20). A
+   * page without a document (list, project page, `neu` before „Starten") has
+   * no Kennungen (FA-16).
    */
   protected override updated(): void {
     const sessionId = this.pageSessionId();
     if (sessionId !== this.lastPageSessionId) {
       this.lastPageSessionId = sessionId;
-      if (sessionId && !this.breakpoint.isMobile) {
-        document.dispatchEvent(new CustomEvent<{ terminalSessionId: string }>('vorhaben-page-session', { detail: { terminalSessionId: sessionId } }));
+      if (!this.breakpoint.isMobile) {
+        document.dispatchEvent(new CustomEvent<{ terminalSessionId: string | null }>('vorhaben-page-session', { detail: { terminalSessionId: sessionId } }));
       }
     }
     if (!this.querySelector('aos-vorhaben-seite')) kennungenService.clear();

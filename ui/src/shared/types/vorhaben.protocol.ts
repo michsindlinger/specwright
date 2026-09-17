@@ -111,7 +111,7 @@ export interface VorhabenRow {
   arbeitskopie: string;
   titel: string;
   phase: VorhabenPhase;
-  /** Text next to the phase: PR reference, "Spec entfällt". */
+  /** Text next to the phase: PR reference, "Spec entfällt". Plain text, at most 80 characters (reader `boundNote`, INT-2026-013). */
   phaseNote: string;
   bypass: boolean;
   zustand: VorhabenZustand;

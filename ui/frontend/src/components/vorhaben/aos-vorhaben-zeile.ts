@@ -1,7 +1,9 @@
 /**
  * aos-vorhaben-zeile — one row of the overview (mock 01/02): project,
  * id, title, phase (+ note), state (+ detail, model), last change. A view,
- * not a board: no drag, no status controls (FA-08).
+ * not a board: no drag, no status controls (FA-08). The phase column is
+ * bounded (INT-2026-013, AK-01): the note is clipped with an ellipsis
+ * before the title gives up any width.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -19,7 +21,7 @@ export class AosVorhabenZeile extends LitElement {
     }
     .zeile {
       display: grid;
-      grid-template-columns: minmax(90px, 130px) 118px minmax(0, 1fr) auto minmax(150px, auto) 70px;
+      grid-template-columns: minmax(90px, 130px) 118px minmax(0, 1fr) minmax(0, max-content) minmax(150px, auto) 70px;
       gap: var(--spacing-md);
       align-items: center;
       padding: var(--spacing-sm) var(--spacing-md);
@@ -70,6 +72,10 @@ export class AosVorhabenZeile extends LitElement {
       gap: var(--spacing-xs);
       font-size: var(--font-size-sm);
       white-space: nowrap;
+      /* The item's max-width bounds its max-content contribution to the track (overflow alone would not). */
+      max-width: 36ch;
+      min-width: 0;
+      overflow: hidden;
     }
     .badge {
       padding: 2px 8px;
@@ -82,6 +88,8 @@ export class AosVorhabenZeile extends LitElement {
       color: var(--color-text-muted);
       font-family: var(--font-family-mono);
       font-size: var(--font-size-sm);
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .zustand {
       display: inline-flex;

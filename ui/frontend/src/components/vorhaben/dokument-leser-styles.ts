@@ -45,9 +45,7 @@ export const dokumentLeserStyles = css`
   .leser-error {
     color: var(--color-accent-error);
   }
-  .markdown-body {
-    max-width: 900px;
-  }
+  /* No max-width on .markdown-body (INT-2026-013, AK-02): the text takes the column. */
   .markdown-body .kopffelder {
     width: auto;
     margin: 0 0 var(--spacing-lg);
