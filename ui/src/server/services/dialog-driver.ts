@@ -17,6 +17,7 @@
  * nie einen Dialog").
  */
 
+import type { BlockKind } from '../../shared/types/hook-events.protocol.js';
 import { PLAN_DIALOG_CUE, stripScreen } from '../utils/plan-dialog-state.js';
 
 export type DialogCueKind = 'plan' | 'rueckfrage' | 'berechtigung' | 'trust';
@@ -45,6 +46,20 @@ export function findDialogCue(screen: string): DialogCue | null {
 }
 
 export const hasDialogCue = (screen: string): boolean => findDialogCue(screen) !== null;
+
+/** INT-2026-016 (AK-10): the block kind the dialog probe reports for a cue (trust dialogs have no kind of their own). */
+export function cueToBlockKind(kind: DialogCueKind): BlockKind {
+  switch (kind) {
+    case 'plan':
+      return 'plan';
+    case 'rueckfrage':
+      return 'rueckfrage';
+    case 'berechtigung':
+      return 'berechtigung';
+    default:
+      return 'unbekannt';
+  }
+}
 
 /** The slice of the terminal manager the driver reads. */
 export interface ScreenSource {

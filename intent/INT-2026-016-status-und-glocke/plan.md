@@ -1,7 +1,7 @@
 # Plan: UI: Vorhaben-Status, Glocke und angedocktes Terminal stimmen wieder
 
 > **Intent:** `intent.md` (INT-2026-016) · **Spec:** entfällt (bypass: vier Fehlerberichte aus dem Gebrauch, kein Datenmodell-Umbau)
-> **Status:** freigegeben
+> **Status:** in_umsetzung (PR 1 #73, PR 2 #74, PR 3 folgt)
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** PO (Michael Sindlinger), 2026-09-17 (Plan Mode, Fassung 4)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 7124f3a), `CLAUDE.md`, `docs/design.md`, Spec INT-2026-004 (FA-02, FA-13), Spec INT-2026-010 (FA-04/05, §4/§5, AN-S01), Spec INT-2026-011 (FA-06, AK-09), Plan INT-2026-013
 > **Review:** Self-Review + externes Multi-LLM-Review, zwei Runden (je 3 Reviewer; Runde 1: 3 Blocker + 17 weitere, Runde 2: 3 Likely + 17 Minority) — alle in §12 entschieden
@@ -355,4 +355,10 @@ PR 1 ≈ 3 h (D1 klein, D2 Backend-Marke + Frontend-Abbau + Glocke), PR 2 ≈ 4 
 
 | Datum | Abweichung | Grund | Auswirkung |
 |---|---|---|---|
-| — | noch keine | — | — |
+| 2026-09-17 | Schritt 0: Unter Claude Code 2.1.274 mit Haiku feuern für **beide** Plan-Dialoge `PreToolUse ExitPlanMode` + `PermissionRequest ExitPlanMode` (auch nach Option 3 mit Feedback); der compass-Befund (Dialog ohne Hook) ließ sich so nicht reproduzieren. [Likely] Ursache: die compass-Sitzung lief noch unter einem älteren Claude Code (gestartet 16.09., vor dem Update auf 2.1.274) oder das Verhalten hängt am Modell (Fable 5.1). | Beobachtung im E2E (`e2e-016-pr3.mjs`, `probe-summary.txt`) | D7 bleibt als hook-unabhängige Rückfallebene; der verpasste Hook wurde simuliert (falsches `UserPromptSubmit` bei offenem Dialog) — die Probe setzte `wartet · Plan-Entscheidung` nach 1 518 ms, eine Leseoperation. Memory-Notiz aktualisiert. |
+| 2026-09-17 | Probe wird zusätzlich bei jedem Übergang nach `working` armiert, nicht nur bei Terminal-Ausgabe. | Im E2E blieb eine Sitzung, die ohne weitere Ausgabe `working` wurde (Hook nach dem Dialog), ungeprüft; nach dem Neustart deckte dasselbe Muster die Lücke auf (Restore-Arm war schon vorgesehen). | Unit-Test „a session that becomes working without further output is probed"; Live-Beleg: Backend-Neustart mit offenem Dialog → `blocked/plan/probe` nach 1,5 s. |
+| 2026-09-17 | Berechtigungs-Dialog als Fixture aus einer **einfachen** `claude`-tmux-Sitzung ohne Bypass (Write-Dialog „Do you want to create …?"), nicht aus einer UI-Sitzung. | UI-Sitzungen laufen mit `--dangerously-skip-permissions`; dort gibt es keinen Berechtigungs-Dialog. | E2E (f) entfällt als UI-Fall; `findDialogCue` gegen die Fixture getestet (`dialog-driver.test.ts`). |
+| 2026-09-17 | `vorhaben:session.assign` fehlte in der Weiche `websocket.ts` (PR 2). | Handler-Tests grün, Weiche nicht abgedeckt; im E2E gefunden. | Behoben in PR 2; Folgekarte: Weiche testbar machen. |
+| 2026-09-17 | Das aktive Projekt ist gerätelokal (`localStorage['specwright-active-project']`), nicht Workspace-Zustand. | Review-1-Einwand (Minority 4) ging von Workspace-Zustand aus. | D3 bleibt lokal (einfacher, kein Projektwechsel ohne Sitzung); der Einwand „alle Geräte schalten um" traf so nicht zu. |
+| 2026-09-17 | Fixtures für 2.1.274 unter `ui/tests/fixtures/tui/2.1.274/` (idle, AskUserQuestion, Plan-Dialog ×3, Berechtigung), Test `dialog-driver.test.ts` läuft über alle Versionsordner. | Plan nannte `ui/tests/fixtures/dialog-screens/`; der Ordner `tui/<Version>/` existierte schon aus INT-2026-007. | Bestehende Ablage weiterverwendet. |
+| 2026-09-17 | „Fertig"-Marke wird persistiert (24 h), wie in Fassung 4 entschieden; die Glocke zeigt einen Vorhaben-Eintrag mit Chip „fertig" und Zustandstext „wartet" (Zeilen-Semantik). | Review 2 Nr. 1. | Kein Umbau; Chip = Sitzungs-Ereignis, Text = Zustand der Zeile. |

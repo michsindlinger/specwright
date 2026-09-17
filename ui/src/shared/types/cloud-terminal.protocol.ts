@@ -167,6 +167,8 @@ export interface CloudTerminalSession {
   agentDoneAt?: Date;
   /** blocked only: kind of dialog (INT-2026-007, FA-09). Absent for shell sessions. */
   blockKind?: BlockKind;
+  /** blocked only: who set the block — a hook or the screen probe (INT-2026-016, AK-10). */
+  blockedBy?: 'hook' | 'probe';
   /** Transcript file Claude Code writes for this session, once a hook reported it (INT-2026-007). */
   transcriptPath?: string;
   claudeSessionId?: string;
@@ -675,6 +677,14 @@ export const CLOUD_TERMINAL_CONFIG = {
    * every tab that was left after a Stop weeks ago.
    */
   AGENT_DONE_MAX_AGE_MS: 24 * 60 * 60 * 1000,
+
+  /**
+   * INT-2026-016 (AK-10): a claude-code session that reports `working` but
+   * has printed nothing for this long gets its screen read once for a
+   * dialog cue (plan approval, question, permission) — the hooks are the
+   * first source, this is the fallback for a dialog they did not report.
+   */
+  DIALOG_PROBE_QUIET_MS: 1500,
 
   /** Default terminal size */
   DEFAULT_COLS: 120,

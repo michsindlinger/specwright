@@ -30,3 +30,19 @@ PR 2 (AK-05 bis AK-09), 17.09.2026 15:23–15:24 — Skript e2e-016-pr2.mjs; Pro
 AK-09 (Arbeitskopie nach Inhalt): Unit-Tests vorhaben-reader.test.ts (identische Kopien → Haupt-Checkout; abweichender Inhalt → neueste; Zuordnung gewinnt; kaputter Kopf hat Fingerabdruck).
 Befund im Lauf: die Nachricht vorhaben:session.assign fehlte zunächst in der Weiche in websocket.ts (Handler-Tests grün, Live stumm) — behoben, Weiche ergänzt.
 Ergebnis: E2E PR2: OK
+
+PR 3 (AK-10, AK-11) + Schritt 0, 17.09.2026 15:40–15:41 — Skript e2e-016-pr3.mjs; Branch-Backend 3111 mit tmux ON, Haiku-Sitzung in /private/tmp/scratch-int016, Claude Code 2.1.274
+
+Schritt 0 (Hooks beobachten, temporäre Log-Zeile in cloud-terminal.routes.ts, nicht committet):
+- AskUserQuestion: UserPromptSubmit, PreToolUse AskUserQuestion, PermissionRequest AskUserQuestion → Zeile wartet · Rückfrage (Hook-Weg).
+- Plan-Dialog 1 (EnterPlanMode → ExitPlanMode): UserPromptSubmit, PreToolUse ExitPlanMode, PermissionRequest ExitPlanMode → Zeile wartet · Plan-Entscheidung.
+- Option 3 + Feedback + Enter → Zeile arbeitet (user-input), kein weiterer Hook bis zur Nachbesserung.
+- Plan-Dialog 2 (nach Feedback): PreToolUse ExitPlanMode, PermissionRequest ExitPlanMode → blocked nach 1 ms über den Hook. Der compass-Befund (Dialog ohne Hook) ist unter 2.1.274/Haiku NICHT reproduzierbar (plan.md §14).
+- Fixtures 2.1.274: idle-prompt, askuserquestion-single, plan-dialog, plan-dialog-option3-text, plan-dialog-after-feedback (aus dieser Sitzung), permission-write (einfache claude-Sitzung ohne Bypass, Write-Dialog). findDialogCue trifft alle (dialog-driver.test.ts, 14 Tests).
+
+AK-10 (verpasster Hook simuliert): bei offenem Plan-Dialog 2 ein falsches UserPromptSubmit an die Hook-Route → Sitzung working → Probe liest nach 1 518 ms den tmux-Screen → blocked/plan, Grund „Claude has written up a plan and is ready to execute. Would you like to proceed?", Herkunft probe, Log „dialog probe: … shows a plan dialog without a hook"; Zeile wartet · Plan-Entscheidung, Glocke Badge 1 mit „INT-2026-001 · Glocke-Test …" / „wartet · Plan-Entscheidung". Screenshot e-plan-dialog-wartet.png
+AK-11: genau 1 Leseoperation für die Simulation, 2 insgesamt im Lauf (Zähler dialogProbeCount / Log-Zeilen).
+(h) Backend-Neustart mit offenem Dialog → Sitzung reattached, agentStatus blocked, blockKind plan, blockedBy probe (Registry). Zusätzlich live belegt: ein restaurierter working-Zustand mit offenem Dialog wird nach dem Neustart einmal geprobt und wird blocked/plan/probe.
+(g) Enter im Dialog → user-input → working (Plan läuft), danach Stop.
+(f) Berechtigungs-Dialog in einer UI-Sitzung nicht möglich (bypass) — über Fixture + Unit-Test abgedeckt.
+Ergebnis: E2E PR3: OK

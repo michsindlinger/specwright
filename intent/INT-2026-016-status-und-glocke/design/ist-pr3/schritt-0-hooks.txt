@@ -1,0 +1,5 @@
+dialog1 hooks: UserPromptSubmit , PreToolUse ExitPlanMode, PermissionRequest ExitPlanMode
+dialog2 hooks: PreToolUse ExitPlanMode, PermissionRequest ExitPlanMode
+dialog2 blocked via: hook after 1 ms
+missed-hook simulation: probe blocked after 1518 ms, reads: 1
+probe reads total: 2
