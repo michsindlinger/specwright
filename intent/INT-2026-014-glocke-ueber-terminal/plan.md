@@ -1,7 +1,7 @@
 # Plan: UI: Glocken-Liste liegt vor dem angedockten Terminal
 
 > **Intent:** `intent.md` (INT-2026-014, Bypass) · **Spec:** entfällt (Bypass)
-> **Status:** umgesetzt (PR folgt, Merge = Michael)
+> **Status:** umgesetzt — PR #69 gemergt `9a60228` (17.09., von Michael beauftragt), CI `verify` grün; §10 Stichprobe bestanden
 > **Erstellt:** 2026-09-17 im Chat (Bugfix, eine Stilzeile) · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-17 (Chat: „Bau das bitte direkt, ich gebe es frei")
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 7da7167), `CLAUDE.md`, `docs/design.md` §4/§5
 > **Branch:** `fix/INT-2026-014-glocke-ueber-terminal` von `origin/main` 7da7167, Worktree `session-sdlc-ui`. Hook `protect-tests`: Test zuerst rot, dann `.claude/fix-mode`, dann Code.

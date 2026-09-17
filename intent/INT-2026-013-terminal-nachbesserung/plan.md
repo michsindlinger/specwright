@@ -1,7 +1,7 @@
 # Plan: UI: Nachbesserung Terminal neben dem Dokument — Liste ohne Überlauf, volle Breite, angedockt immer ein Fenster
 
 > **Intent:** `intent.md` (INT-2026-013, Bypass) · **Spec:** entfällt (Bypass)
-> **Status:** umgesetzt (PR folgt, Merge = Michael)
+> **Status:** umgesetzt — PR #68 gemergt `7da7167` (17.09., von Michael beauftragt), CI `verify` grün; §10 Stichprobe bestanden, Debounce-Karte im Board
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-17 (Chat, nach externem Review mit 22 Findings, §12)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 79c0ec6), `CLAUDE.md`, `docs/security.md`, `docs/design.md`
 > **Branch:** `fix/INT-2026-013-terminal-nachbesserung` von `origin/main` 79c0ec6, Worktree `session-sdlc-ui`. Hook `protect-tests`: Tests zuerst rot, dann `.claude/fix-mode`, dann Code.

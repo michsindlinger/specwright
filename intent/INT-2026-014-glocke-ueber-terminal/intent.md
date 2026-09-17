@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-014"  
 titel: "UI: Glocken-Liste liegt vor dem angedockten Terminal"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.1.0"  
 autor: "Michael Sindlinger (Fund am 1 728-px-Mac, 17.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-17"  
@@ -86,3 +86,4 @@ Seit INT-2026-011 beginnt das angedockte Terminal unter der Kopfzeile, damit die
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
 | 1.0.0 | 2026-09-17 | Angenommen als Bypass; Ursache und Fix im Chat vorgelegt und freigegeben. Abgleich Mensch/Agent: ohne Befund | AK-01–AK-02 | PO, 17.09. (Chat) |
+| 1.1.0 | 2026-09-17 | Umgesetzt: PR #69 gemergt `9a60228` (17.09., Merge von Michael beauftragt), CI `verify` grün; Stichprobe bestanden („sieht gut aus") | AK-01–AK-02 | PO, 17.09. (Chat) |
