@@ -32,7 +32,7 @@ async function anchorsOf(text: string) {
   const { renderDocument } = await import('../../frontend/src/components/vorhaben/vorhaben-markdown.js');
   const { deriveAnchors } = await import('../../frontend/src/components/vorhaben/vorhaben-anchors.js');
   const root = document.createElement('div');
-  root.innerHTML = renderDocument(text);
+  root.innerHTML = renderDocument(text).html;
   return deriveAnchors(root);
 }
 
@@ -76,5 +76,16 @@ describe('vorhaben-anchors (FA-23, FA-24)', () => {
     // moved paragraph: the prefix still finds it
     const moved = await anchorsOf('# Neu\n\n' + md);
     expect(locateAnmerkung(moved, { ordinal: 2, snippet: p.snippet })?.element.tagName).toBe('P');
+  });
+});
+
+describe('vorhaben-anchors with technik sections (INT-2026-010 Stufe 3)', () => {
+  it('blocks inside <details class="technik"> are anchored in document order, summary headings included; details/summary are no blocks', async () => {
+    const anchors = await anchorsOf('## 1. Ziel\n\n<!-- leser: mensch -->\n\nOffen\n\n## 2. Daten\n\n<!-- leser: agent -->\n\n| ID | Text |\n|---|---|\n| AK-01 | technisch |\n\n### 2.1 Tiefer\n\n<!-- leser: agent -->\n\nNoch tiefer\n');
+    expect(anchors.map((a) => a.element.tagName)).toEqual(['H2', 'P', 'H2', 'TR', 'TR', 'H3', 'P']);
+    expect(anchors.map((a) => a.ordinal)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(anchors[2].element.closest('summary')).not.toBeNull();
+    expect(anchors[4].ref).toBe('AK-01 · §2');
+    expect(anchors[6].ref).toBe('§2.1 · Absatz „Noch tiefer"');
   });
 });

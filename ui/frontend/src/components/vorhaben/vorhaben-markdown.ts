@@ -6,7 +6,7 @@
  * from the shared code renderer of markdown-renderer.ts.
  */
 
-import { Marked } from 'marked';
+import { Marked, type Token, type Tokens } from 'marked';
 import { codeRenderer, escapeHtml } from '../../utils/markdown-renderer.js';
 
 const reader = new Marked({ gfm: true, breaks: false });
@@ -60,14 +60,110 @@ export function slugify(text: string): string {
     .replace(/\s+/g, '-');
 }
 
+export interface RenderedDocument {
+  html: string;
+  /** True when every `##`/`###` heading carries a reader marker — then agent sections are collapsed (FA-13). */
+  gekennzeichnet: boolean;
+}
+
+/**
+ * Reader markers of INT-2026-009 (`<!-- leser: mensch -->` / `<!-- leser: agent -->`,
+ * first non-empty line under a `##`–`####` heading). Three outcomes (FA-13, FA-14,
+ * AN-S03): `vollstaendig` = every `##` and `###` heading carries one (`####` may
+ * inherit); `keine` = no heading carries one; `teilweise` = anything else and is
+ * treated like `keine` by the reader (all open, no switch).
+ */
+export type Kennzeichnung = 'keine' | 'vollstaendig' | 'teilweise';
+export type Leser = 'mensch' | 'agent';
+
+const LESER_MARKER_RE = /^<!--\s*leser:\s*(mensch|agent)\s*-->$/;
+/** Heading depths that carry a marker in the templates. */
+const MARKED_DEPTHS = new Set([2, 3, 4]);
+
+interface MarkerHit {
+  /** Index of the heading token. */
+  heading: number;
+  /** Index of the marker token (dropped from the output), -1 when none. */
+  marker: number;
+  depth: number;
+  leser: Leser | null;
+}
+
+/** Reads the marker under each `##`–`####` heading. Markers inside code fences are `code` tokens and never match. */
+export function leserMarkerAnalyse(tokens: Token[]): { kennzeichnung: Kennzeichnung; hits: MarkerHit[] } {
+  const hits: MarkerHit[] = [];
+  tokens.forEach((tok, i) => {
+    if (tok.type !== 'heading' || !MARKED_DEPTHS.has((tok as Tokens.Heading).depth)) return;
+    let j = i + 1;
+    while (j < tokens.length && tokens[j].type === 'space') j++;
+    const next = tokens[j];
+    const m = next && next.type === 'html' ? LESER_MARKER_RE.exec((next as Tokens.HTML).raw.trim()) : null;
+    hits.push({ heading: i, marker: m ? j : -1, depth: (tok as Tokens.Heading).depth, leser: m ? (m[1] as Leser) : null });
+  });
+  const pflicht = hits.filter((h) => h.depth <= 3);
+  const marked = hits.filter((h) => h.leser !== null).length;
+  let kennzeichnung: Kennzeichnung;
+  if (marked === 0) kennzeichnung = 'keine';
+  else if (pflicht.every((h) => h.leser !== null)) kennzeichnung = 'vollstaendig';
+  else kennzeichnung = 'teilweise';
+  return { kennzeichnung, hits };
+}
+
+/** Marker outcome of a body markdown (tests, tooling). */
+export function kennzeichnungVon(markdown: string): Kennzeichnung {
+  return leserMarkerAnalyse(reader.lexer(markdown)).kennzeichnung;
+}
+
+/**
+ * Renders a fully marked document as nested sections: an `agent` section (heading
+ * plus everything up to the next heading of the same or a higher level) becomes
+ * `<details class="technik"><summary>[heading]</summary>[body]</details>`; `mensch`
+ * sections stay open. `####` without a marker inherits by staying inside its
+ * parent's body; deeper headings belong to the enclosing section body.
+ */
+function renderSectioned(tokens: Token[], hits: MarkerHit[]): string {
+  const byHeading = new Map<number, MarkerHit>(hits.map((h) => [h.heading, h]));
+  const dropped = new Set(hits.filter((h) => h.marker >= 0).map((h) => h.marker));
+  // Open sections as a stack: each collects rendered HTML; closing wraps it.
+  // A heading with its own `agent` marker wraps; one without a marker (`####`)
+  // inherits its visibility by simply staying inside the parent's body.
+  interface Open { depth: number; wrap: boolean; heading: string; parts: string[] }
+  const stack: Open[] = [];
+  const out: string[] = [];
+  const emit = (html: string): void => {
+    (stack.length ? stack[stack.length - 1].parts : out).push(html);
+  };
+  const close = (): void => {
+    const sec = stack.pop();
+    if (!sec) return;
+    const body = sec.parts.join('');
+    emit(sec.wrap ? `<details class="technik"><summary>${sec.heading.trim()}</summary>${body}</details>` : sec.heading + body);
+  };
+  tokens.forEach((tok, i) => {
+    if (dropped.has(i)) return;
+    const hit = byHeading.get(i);
+    if (!hit) {
+      emit(reader.parser([tok]));
+      return;
+    }
+    while (stack.length && stack[stack.length - 1].depth >= hit.depth) close();
+    stack.push({ depth: hit.depth, wrap: hit.leser === 'agent', heading: reader.parser([tok]), parts: [] });
+  });
+  while (stack.length) close();
+  return out.join('');
+}
+
 /** Body markdown → HTML. Errors fall back to escaped text. */
-export function renderDocumentBody(markdown: string): string {
+export function renderDocumentBody(markdown: string): RenderedDocument {
   try {
-    const html = reader.parse(markdown, { async: false }) as string;
-    return addHeadingIds(html);
+    const tokens = reader.lexer(markdown);
+    const { kennzeichnung, hits } = leserMarkerAnalyse(tokens);
+    const gekennzeichnet = kennzeichnung === 'vollstaendig';
+    const html = gekennzeichnet ? renderSectioned(tokens, hits) : reader.parser(tokens);
+    return { html: addHeadingIds(html), gekennzeichnet };
   } catch (err) {
     console.error('[vorhaben-markdown] parse failed:', err);
-    return `<pre>${escapeHtml(markdown)}</pre>`;
+    return { html: `<pre>${escapeHtml(markdown)}</pre>`, gekennzeichnet: false };
   }
 }
 
@@ -84,9 +180,10 @@ export function addHeadingIds(html: string): string {
 }
 
 /** Full document: frontmatter table + body. */
-export function renderDocument(text: string): string {
+export function renderDocument(text: string): RenderedDocument {
   const { frontmatter, body } = splitFrontmatter(text);
-  return renderFrontmatterTable(frontmatter) + renderDocumentBody(body);
+  const { html, gekennzeichnet } = renderDocumentBody(body);
+  return { html: renderFrontmatterTable(frontmatter) + html, gekennzeichnet };
 }
 
 /**
