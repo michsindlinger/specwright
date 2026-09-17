@@ -1,7 +1,7 @@
 # Plan: UI: Terminal schließt beim Verlassen der Vorhaben-Seite, Cmd+← führt zur Übersicht
 
 > **Intent:** `intent.md` (INT-2026-015) · **Spec:** entfällt (bypass: Größe S, zwei Verhaltensänderungen im Frontend ohne Daten und ohne Backend)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt (Merge steht aus)
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** PO (Michael Sindlinger), 2026-09-17 14:55
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand a0adbd1), `CLAUDE.md`, `docs/security.md`
 
@@ -410,15 +410,15 @@ Keine Secrets, keine Flags, keine Datenläufe, keine Umgebungsvariablen.
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (AK-08: Grep + E2E-Protokoll).
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Protokoll und Screenshot im PR.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` unverändert (Abschnitt 3 „Nein"); `docs/design.md` §5 angepasst.
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR (Kandidat: „Shadow-Root: auf `document` ist `e.target` der Host — `composedPath()[0]` nehmen", falls es in der Bausitzung ein zweites Mal beißt).
-- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte neu, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-015-zurueck-zur-uebersicht/`; Kandidat F7 als eigene Karte); Nachziehen in eigener Sitzung.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (AK-08: Grep + E2E-Protokoll) — `keyboard-shortcuts.test.ts` 16/16, `app-terminal-dock.test.ts` 30/30 (14 neu), E2E 19/19.
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert (8 greps, RB-01 `localStorage`-Diff = 0).
+- [x] E2E-Pfad läuft (Abschnitt 8), Protokoll in §14 und im PR, Screenshots in `design/`.
+- [x] `verify: OK` lokal (48 s), Ausgabe im PR — [ ] PR-Checks grün (CI ist die Wahrheit, steht aus).
+- [x] `docs/architecture.md` unverändert (Abschnitt 3 „Nein"); `docs/design.md` §5 angepasst + Protokollzeile.
+- [x] Manuelle Schritte (Abschnitt 10): Merge und AN-02-Prüfung im PR als offen markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (3, alle Test-/Skript-Details).
+- [x] 2x-Regel-Check — kein Wiederholungsfehler; der Shadow-Root-Kandidat hat nicht gebissen (Tests AK-06/AK-07 grün beim ersten Lauf), die E2E-Falle „Split-Fenster ohne Projekt-Anker" ist neu → Memory-Addendum, kein `CLAUDE.md`-Vorschlag. Ursprünglich: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR (Kandidat: „Shadow-Root: auf `document` ist `e.target` der Host — `composedPath()[0]` nehmen", falls es in der Bausitzung ein zweites Mal beißt).
+- [x] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte neu, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-015-zurueck-zur-uebersicht/`; Kandidat F7 als eigene Karte); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
 
@@ -428,4 +428,8 @@ Keine Secrets, keine Flags, keine Datenläufe, keine Umgebungsvariablen.
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-17 | E2E-Schritt 5b öffnet die Datei über `aos-file-editor-panel.openFile()` statt über einen „Dateibaum-Knopf der Kopfzeile" | Den Knopf gibt es nur auf der Projekt-Seite (`aos-projekt-seite.ts:127`), nicht in der Kopfzeile; das Panel ist global (`app.ts` `<main>`), der Editor derselbe — CodeMirror `.cm-content` mit `contenteditable`, Fokus dort hält Cmd+← (grün) | §8 E2E-Pfad (Skript-Detail, kein Produktbefund) |
+| 2026-09-17 | E2E-Schritt 3/3b seedet zusätzlich `cloud-terminal-pane-sessions` + `cloud-terminal-pane-projects` | Mit nur `cloud-terminal-layout-mode = split-2` zeigen beide Fenster „Projekt wählen", die Sitzung liegt in einem verborgenen `aos-terminal-session`, ihre Textarea ist nicht fokussierbar (erster Lauf 18/19); das Produkt verhält sich wie bisher, das Skript brauchte den Restore-Anker (Projektpfad) | §8 E2E-Pfad (Skript-Detail) |
+| 2026-09-17 | AK-01-Test „Start-Fall" und AK-02 laufen schon vor der Änderung grün | Sie sichern das Nicht-Schließen (Regressionsschutz), kein Rot-vor-Grün möglich; 8 Positivfälle waren rot vor dem Code | §8 (Testreihenfolge) |
+
+**E2E-Protokoll 2026-09-17** (Skript `e2e-015.mjs` im Sitzungs-Scratchpad, Branch-Backend 3111, Scratch `/private/tmp/scratch-int010`, eine `shell`-Sitzung per `cloud-terminal:create`, Chrome headless 1440×900): 19/19 grün — (1) angedockt offen · (2) Cmd+← von `body` → `#/vorhaben`, Sidebar `isOpen=false`, kein `.terminal-sidebar.open` (AK-01/AK-05), Screenshot `design/ist-uebersicht-nach-verlassen.png` · (3) Cmd+D → schwebend, `effectiveLayoutMode = split-2` (AK-04), Screenshot `design/ist-schwebend-nach-cmd-d.png` · (3b) Übersicht + schwebendes Terminal, `[data-terminal-input]` fokussiert, Cmd+← → Hash unverändert, 0 `cloud-terminal:input`-Frames (AK-09/AK-08) · (4) Vorhaben-Seite, `[data-terminal-input]` fokussiert (belegt die Markierung durch `aos-terminal` in Chrome), Kontrolle `type('x')` → 1 Frame, dann Cmd+← → `#/vorhaben`, 0 Frames, Terminal zu (AK-07/AK-08/AK-01) · (5) `#/neu`, Textarea von `aos-neue-absicht` fokussiert → Hash unverändert (AK-06); ohne Feld-Fokus → `#/vorhaben` (AK-05) · (5b) Datei-Editor `.cm-content` (`isContentEditable`) fokussiert → Hash unverändert (AK-06 × CodeMirror) · (6) `#/projekt` → Hash unverändert (AK-09). Aufräumen: Sitzung geschlossen, 3111 beendet, 3001 unberührt.
