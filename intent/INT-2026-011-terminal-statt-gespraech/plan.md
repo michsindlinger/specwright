@@ -1,7 +1,7 @@
 # Plan: UI: Terminal statt Gespräch — die Sitzung selbst neben dem Dokument
 
 > **Intent:** `intent.md` (INT-2026-011) · **Spec:** `spec.md`
-> **Status:** umgesetzt
+> **Status:** umgesetzt (Stufe 1 PR #65 `624ed65`, Stufe 2 PR #66 `f917165`)
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („Freigegeben, beide Auslegungen ja", Chat)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 1153a33), `CLAUDE.md`, `docs/security.md`
 
@@ -276,7 +276,7 @@ Entfällt.
 | Frischer Worktree von `origin/main` für Stufe 1: `git worktree add ../specwright-worktrees/INT-2026-011-s1 -b feat/INT-2026-011-s1 origin/main`, `cd ui && npm ci && (cd frontend && npm ci)`, `chmod +x ui/node_modules/node-pty/prebuilds/*/spawn-helper` (Memory) | Claude | vor Umsetzung | [x] Branch `feat/INT-2026-011-s1` im Worktree `session-sdlc-ui` (§14) |
 | PR 1 mergen (`gh pr merge <n> --merge`) — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`architecture.md` §5, Timer außerhalb des Repos) | Michael | nach CI grün Stufe 1 | [x] PR #65 (2026-09-17) |
 | Stichprobe Cloud nach Deploy: Vorhaben-Seite mit laufender Sitzung öffnen, Terminal angedockt, Kennung klicken; laufende tmux-Sitzungen noch da | Michael | nach Deploy 1 | [ ] |
-| PR 2 mergen (Abbau + Docs + ADR) — Auto-Deploy | Michael | nach CI grün Stufe 2 | [ ] |
+| PR 2 mergen (Abbau + Docs + ADR) — Auto-Deploy | Michael | nach CI grün Stufe 2 | [x] PR #66 (2026-09-17) |
 | Board-Karte nachziehen (Block „Für das Board" aus dem Abschlussbericht; Skill `obsidian-po-board` in eigener Sitzung) | Michael/Claude | nach Merge 2 | [ ] |
 
 Keine Secrets, keine Flags, keine Datenläufe. Hook `production-gate` wird nicht berührt (kein Deploy-Befehl im Repo).

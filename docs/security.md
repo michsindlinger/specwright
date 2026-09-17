@@ -94,7 +94,7 @@
 |---|---|---|
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
 | 2026-09-16 | §2 Vertrauensannahme (ein Nutzer, Hook-Route vertraut dem Token), §6 Zeile Transkript-Allowlist (INT-2026-007, Stufe 1) | PR 1 |
-| 2026-09-17 | §2 Vertrauensannahme: Hooks liefern Zustand, Blockart, Kontext — keine Dialoge und Beiträge mehr; §6 Transkript-Zeile: derzeit ohne Leser, Regel bleibt (INT-2026-011, Stufe 2) | PR folgt |
+| 2026-09-17 | §2 Vertrauensannahme: Hooks liefern Zustand, Blockart, Kontext — keine Dialoge und Beiträge mehr; §6 Transkript-Zeile: derzeit ohne Leser, Regel bleibt (INT-2026-011, Stufe 2) | PR #66 |
 | 2026-09-16 | §3: Sprachdienst-Zugänge ergänzt, Vorfall versionierte `voice-config.json` (INT-2026-007 PR 0); Datei aus dem Index, `.gitignore`, Guard in `verify.sh` | PR 0 |
 | 2026-09-15 | §7: T-06 verweist auf ein eigenes Vorhaben statt auf den Gesamtplan Phase 5 (INT-2026-004, Stufe 3); §4 Stand unverändert offen | PR #46 |
 | 2026-09-16 | §3: Sprachdienst-Zeile auf „entfernt" — Anruf-Modus, Sprachdienste, Chat-Handler und Bild-Upload (`/api/images`) aus der UI gelöscht; Guard und `.gitignore`-Eintrag bleiben (INT-2026-010, Stufe 1); kein neuer Endpunkt | PR folgt |
