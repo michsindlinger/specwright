@@ -222,10 +222,10 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
   it('INT-2026-012 E17: a missing CLI names the provider, not the npm package — except for `claude` itself', async () => {
     cli.available = false;
     cli.command = 'claude-codex';
-    await expect(mgr.createSession(project, 'claude-code', { model: 'gpt-6-astra', provider: 'codex' })).rejects.toThrow(
+    await expect(mgr.createSession(project, 'claude-code', { model: 'gpt-5.6-terra', provider: 'codex' })).rejects.toThrow(
       /CLI 'claude-codex' nicht im PATH gefunden\. Provider 'codex' braucht dieses Programm/
     );
-    await expect(mgr.createSession(project, 'claude-code', { model: 'gpt-6-astra', provider: 'codex' })).rejects.not.toThrow(/@anthropic-ai\/claude-code/);
+    await expect(mgr.createSession(project, 'claude-code', { model: 'gpt-5.6-terra', provider: 'codex' })).rejects.not.toThrow(/@anthropic-ai\/claude-code/);
 
     cli.command = 'claude';
     await expect(mgr.createSession(project, 'claude-code', { model: 'x' })).rejects.toThrow(/npm install -g @anthropic-ai\/claude-code/);

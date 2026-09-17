@@ -273,7 +273,7 @@ describe('aos-naechster-schritt (FA-35, FA-40)', () => {
   });
 
   it('INT-2026-012 D1: a foreign provider (Codex nativ) is not offered and a step default on it falls back', async () => {
-    const gpt = (providerId: string) => [{ id: 'gpt-6-astra', name: 'GPT-6 Astra', providerId }];
+    const gpt = (providerId: string) => [{ id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra', providerId }];
     modelList.mockImplementationOnce(async () => ({
       providers: [
         { id: 'anthropic', name: 'Anthropic', cliKind: 'claude', models: [{ id: 'opus', name: 'Opus', providerId: 'anthropic' }, { id: 'sonnet', name: 'Sonnet', providerId: 'anthropic' }] },
@@ -281,7 +281,7 @@ describe('aos-naechster-schritt (FA-35, FA-40)', () => {
         { id: 'codex-cli', name: 'Codex (nativ)', cliKind: 'foreign', models: gpt('codex-cli') },
       ],
       defaultSelection: { providerId: 'anthropic', modelId: 'sonnet' },
-      stepDefaults: { intent: { providerId: 'anthropic', modelId: 'opus' }, spec: { providerId: 'anthropic', modelId: 'opus' }, plan: { providerId: 'codex-cli', modelId: 'gpt-6-astra' }, build: { providerId: 'anthropic', modelId: 'opus' } },
+      stepDefaults: { intent: { providerId: 'anthropic', modelId: 'opus' }, spec: { providerId: 'anthropic', modelId: 'opus' }, plan: { providerId: 'codex-cli', modelId: 'gpt-5.6-terra' }, build: { providerId: 'anthropic', modelId: 'opus' } },
     }));
     await import('../../frontend/src/components/vorhaben/aos-naechster-schritt.js');
     const el = document.createElement('aos-naechster-schritt');
@@ -298,7 +298,7 @@ describe('aos-naechster-schritt (FA-35, FA-40)', () => {
     expect(sel.externalSelectedProviderId).toBe('anthropic');
     expect(sel.externalSelectedModelId).toBe('sonnet');
     // a last model on the foreign provider is ignored as well
-    el.lastModel = { providerId: 'codex-cli', modelId: 'gpt-6-astra' };
+    el.lastModel = { providerId: 'codex-cli', modelId: 'gpt-5.6-terra' };
     await settle(el);
     expect(el.shadowRoot!.querySelector('aos-model-selector')!.externalSelectedProviderId).toBe('anthropic');
     el.remove();

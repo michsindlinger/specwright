@@ -201,7 +201,7 @@ describe('aos-naechster-schritt gesperrt (FA-21) and model-wahl', () => {
 
   it('INT-2026-012 D1: nurClaudeSitzungen drops foreign providers, keeps claude and unmarked ones (fail-open, E6)', async () => {
     const { nurClaudeSitzungen } = await import('../../frontend/src/components/vorhaben/model-wahl.js');
-    const gpt = (providerId: string) => [{ id: 'gpt-6-astra', name: 'GPT-6 Astra', providerId }];
+    const gpt = (providerId: string) => [{ id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra', providerId }];
     const out = nurClaudeSitzungen({
       ...models,
       providers: [

@@ -16,9 +16,9 @@ vi.mock('fs', () => ({
 }));
 
 const gpt = [
-  { id: 'gpt-6-astra', name: 'GPT-6 Astra' },
-  { id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol' },
+  { id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra' },
   { id: 'gpt-5.6-luna', name: 'GPT-5.6 Luna' },
+  { id: 'gpt-5.5', name: 'GPT-5.5' },
 ];
 
 const baseConfig: ModelConfig = {
@@ -49,7 +49,7 @@ describe('model-config provider kind (INT-2026-012)', () => {
     const mc = await fresh(baseConfig);
     const reviewers = mc.getReviewerProviders();
     expect(reviewers.map((p) => p.id)).toEqual(['anthropic', 'codex']);
-    expect(reviewers[1].models.map((m) => m.id)).toEqual(['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-luna']);
+    expect(reviewers[1].models.map((m) => m.id)).toEqual(['gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5']);
     expect(mc.getAllProviders().map((p) => p.id)).toEqual(['anthropic', 'codex', 'codex-cli']);
   });
 
@@ -75,24 +75,24 @@ describe('model-config provider kind (INT-2026-012)', () => {
 
   it('D1: isClaudeSessionModel — true for codex, false for codex-cli, unknown provider or model', async () => {
     const mc = await fresh(baseConfig);
-    expect(mc.isClaudeSessionModel('codex', 'gpt-6-astra')).toBe(true);
+    expect(mc.isClaudeSessionModel('codex', 'gpt-5.6-terra')).toBe(true);
     expect(mc.isClaudeSessionModel('anthropic', 'opus')).toBe(true);
-    expect(mc.isClaudeSessionModel('codex-cli', 'gpt-6-astra')).toBe(false);
+    expect(mc.isClaudeSessionModel('codex-cli', 'gpt-5.6-terra')).toBe(false);
     expect(mc.isClaudeSessionModel('codex', 'nope')).toBe(false);
-    expect(mc.isClaudeSessionModel('nope', 'gpt-6-astra')).toBe(false);
+    expect(mc.isClaudeSessionModel('nope', 'gpt-5.6-terra')).toBe(false);
   });
 
   it('D1: setStepDefault refuses a foreign provider with a naming error; a Claude provider is accepted', async () => {
     const mc = await fresh(baseConfig);
-    expect(() => mc.setStepDefault('plan', { providerId: 'codex-cli', modelId: 'gpt-6-astra' })).toThrow('Provider startet keine Claude-Sitzung: codex-cli');
+    expect(() => mc.setStepDefault('plan', { providerId: 'codex-cli', modelId: 'gpt-5.6-terra' })).toThrow('Provider startet keine Claude-Sitzung: codex-cli');
     expect(() => mc.setStepDefault('plan', { providerId: 'codex-cli', modelId: 'nope' })).toThrow('Model not found: codex-cli/nope');
     expect(writeFileSync).not.toHaveBeenCalled();
-    mc.setStepDefault('plan', { providerId: 'codex', modelId: 'gpt-6-astra' });
-    expect(mc.getStepDefault('plan')).toEqual({ providerId: 'codex', modelId: 'gpt-6-astra' });
+    mc.setStepDefault('plan', { providerId: 'codex', modelId: 'gpt-5.6-terra' });
+    expect(mc.getStepDefault('plan')).toEqual({ providerId: 'codex', modelId: 'gpt-5.6-terra' });
   });
 
   it('E11: a hand-edited step default on a foreign provider loads without throwing and falls back to anthropic/opus', async () => {
-    const mc = await fresh({ ...baseConfig, stepDefaults: { plan: { providerId: 'codex-cli', modelId: 'gpt-6-astra' } } });
+    const mc = await fresh({ ...baseConfig, stepDefaults: { plan: { providerId: 'codex-cli', modelId: 'gpt-5.6-terra' } } });
     expect(mc.getStepDefault('plan')).toEqual({ providerId: 'anthropic', modelId: 'opus' });
     expect(mc.getStepDefaults().plan).toEqual({ providerId: 'anthropic', modelId: 'opus' });
   });

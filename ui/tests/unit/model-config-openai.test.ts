@@ -21,7 +21,7 @@ const config = JSON.parse(readFileSync(CONFIG_PATH, 'utf-8')) as ModelConfig;
  * that provider would silently lose status, reviewer use and step start.
  */
 const KNOWN_FOREIGN_PROVIDERS = ['codex-cli'];
-const GPT_IDS = ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-luna'];
+const GPT_IDS = ['gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5'];
 
 async function fresh(): Promise<typeof import('../../src/server/model-config.js')> {
   vi.resetModules();
@@ -53,13 +53,13 @@ describe('model-config.json OpenAI providers (INT-2026-012)', () => {
     expect(isClaudeCli(cli!.cliCommand)).toBe(false);
   });
 
-  it('AK-05: getProviderCommand builds `codex --dangerously-bypass-approvals-and-sandbox --model gpt-6-astra`', async () => {
+  it('AK-05: getProviderCommand builds `codex --dangerously-bypass-approvals-and-sandbox --model gpt-5.6-terra`', async () => {
     const mc = await fresh();
-    expect(mc.getProviderCommand('codex-cli', 'gpt-6-astra')).toEqual({
+    expect(mc.getProviderCommand('codex-cli', 'gpt-5.6-terra')).toEqual({
       command: 'codex',
-      args: ['--dangerously-bypass-approvals-and-sandbox', '--model', 'gpt-6-astra'],
+      args: ['--dangerously-bypass-approvals-and-sandbox', '--model', 'gpt-5.6-terra'],
     });
-    expect(mc.getProviderCommand('codex', 'gpt-6-astra')).toEqual({ command: 'claude-codex', args: ['--model', 'gpt-6-astra'] });
+    expect(mc.getProviderCommand('codex', 'gpt-5.6-terra')).toEqual({ command: 'claude-codex', args: ['--model', 'gpt-5.6-terra'] });
   });
 
   it('AK-04/AK-07 on the real file: reviewers include codex, never codex-cli; the terminal list keeps both', async () => {
