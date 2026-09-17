@@ -50,8 +50,8 @@ class FakeManager extends EventEmitter {
     this.sessions.set(id, { sessionId: id, status: 'active', projectPath, effectiveCwd: projectPath, agentStatus: 'unknown', modelConfig: args[2] as { model: string; provider?: string } });
     return { sessionId: id, effectiveCwd: projectPath };
   }
-  add(id: string, projectPath: string, agentStatus: VorhabenSessionInfo['agentStatus'] = 'done', model = 'opus'): void {
-    this.sessions.set(id, { sessionId: id, status: 'active', projectPath, effectiveCwd: projectPath, agentStatus, modelConfig: { model, provider: 'anthropic' } });
+  add(id: string, projectPath: string, agentStatus: VorhabenSessionInfo['agentStatus'] = 'done', model = 'opus', terminalType: 'shell' | 'claude-code' = 'claude-code'): void {
+    this.sessions.set(id, { sessionId: id, status: 'active', projectPath, effectiveCwd: projectPath, agentStatus, terminalType, modelConfig: { model, provider: 'anthropic' } });
   }
 }
 
@@ -63,6 +63,10 @@ describe('pure helpers', () => {
     expect(detectV4Command('  /specwright:build INT-2026-004 weiter')).toEqual({ step: 'build', intentId: 'INT-2026-004' });
     expect(detectV4Command('/intent')).toEqual({ step: 'intent' });
     expect(detectV4Command('/intent\nzweite Zeile')).toEqual({ step: 'intent' });
+    // INT-2026-016 (AK-08): the short form resolves later; the long form must win the alternation
+    expect(detectV4Command('/specwright:plan INT-002')).toEqual({ step: 'plan', intentId: 'INT-002' });
+    expect(detectV4Command('/plan INT-2026-002')).toEqual({ step: 'plan', intentId: 'INT-2026-002' });
+    expect(detectV4Command('/build INT-0021')).toEqual({ step: 'build' });
     expect(detectV4Command('bitte /plan INT-2026-004')).toBeUndefined();
     expect(detectV4Command('/planen INT-2026-004')).toBeUndefined();
     expect(detectV4Command('Änderungen zu spec.md')).toBeUndefined();
@@ -217,6 +221,105 @@ describe('VorhabenService stage 2', () => {
     manager.add('s7', projA, 'working');
     manager.emit('session.prompt-text', 's7', '/intent');
     expect(store.getPendingIntents().map(([id]) => id)).toEqual(['s7']);
+  });
+
+  it('INT-2026-016 (AK-08): a session that moves on by command leaves its old row; the short id resolves when unique; ambiguous or unknown short ids assign nothing', async () => {
+    manager.add('s1', projA, 'working');
+    manager.emit('session.prompt-text', 's1', '/spec INT-2026-004');
+    await service.rescan();
+    expect(row('INT-2026-004').session?.id).toBe('s1');
+    // the same session now plans another Vorhaben, typed with the short id
+    manager.emit('session.prompt-text', 's1', '/specwright:plan INT-005');
+    await service.rescan();
+    expect(row('INT-2026-005').session?.id).toBe('s1');
+    expect(row('INT-2026-004').session).toBeUndefined();
+    expect(row('INT-2026-004').zustand).toBe('keine_sitzung');
+    expect(store.getAssignment('pa', 'INT-2026-004')).toBeUndefined();
+    // unknown short id → nothing changes
+    manager.emit('session.prompt-text', 's1', '/build INT-099');
+    await service.rescan();
+    expect(row('INT-2026-005').session?.id).toBe('s1');
+    // ambiguous short id (two years) → nothing changes, a warning
+    const alt = join(projA, 'intent', 'INT-2025-005-alt');
+    mkdirSync(alt, { recursive: true });
+    writeFileSync(join(alt, 'intent.md'), intentText('INT-2025-005', 'angenommen'));
+    watcher.emit('dir-added', projA, 'INT-2025-005');
+    watcher.emit('changed', projA);
+    await service.rescan();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    manager.add('s2', projA, 'working');
+    manager.emit('session.prompt-text', 's2', '/spec INT-005');
+    await service.rescan();
+    expect(row('INT-2026-005').session?.id).toBe('s1');
+    expect(row('INT-2025-005').session).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('INT-005'));
+    warn.mockRestore();
+    // /intent without id: the session starts something new → its assignments go, it is pending
+    manager.emit('session.prompt-text', 's1', '/intent');
+    await service.rescan();
+    expect(row('INT-2026-005').session).toBeUndefined();
+    expect(store.getPendingIntents().map(([id]) => id)).toEqual(['s1']);
+    // the claim of a new folder is a move as well
+    const dir = join(projA, 'intent', 'INT-2026-007-neu');
+    mkdirSync(dir);
+    writeFileSync(join(dir, 'intent.md'), intentText('INT-2026-007', 'entwurf'));
+    watcher.emit('dir-added', projA, 'INT-2026-007');
+    watcher.emit('changed', projA);
+    await service.rescan();
+    expect(row('INT-2026-007').session?.id).toBe('s1');
+    expect(store.allAssignments().filter(([, a]) => a.sessionId === 's1').map(([k]) => k)).toEqual(['pa::INT-2026-007']);
+  });
+
+  it('INT-2026-016 (AK-08): a pending /intent session closed before its folder exists leaves no assignment and no pending', async () => {
+    manager.add('s9', projA, 'working');
+    manager.emit('session.prompt-text', 's9', '/intent');
+    expect(store.getPendingIntents()).toHaveLength(1);
+    manager.sessions.delete('s9');
+    manager.emit('session.closed', 's9');
+    await service.rescan();
+    expect(store.getPendingIntents()).toHaveLength(0);
+    expect(store.allAssignments().some(([, a]) => a.sessionId === 's9')).toBe(false);
+  });
+
+  it('INT-2026-016 (AK-06/AK-07): assignSession binds a live claude-code tab of the project to a row without a session, never moves, and names every refusal', async () => {
+    manager.add('t1', projA, 'idle');
+    manager.add('t2', projA, 'idle');
+    manager.add('sh', projA, undefined, 'opus', 'shell');
+    manager.add('fremd', join(root, 'b'), 'idle');
+    await service.rescan();
+    await service.assignSession('pa', 'INT-2026-004', 't1');
+    await service.rescan();
+    expect(row('INT-2026-004').session).toMatchObject({ id: 't1', agentStatus: 'idle' });
+    expect(store.getAssignment('pa', 'INT-2026-004')).toMatchObject({ sessionId: 't1', step: 'spec' });
+    // the row has a session now → a second tab is refused
+    await expect(service.assignSession('pa', 'INT-2026-004', 't2')).rejects.toMatchObject({ code: 'ROW_HAS_SESSION' });
+    // t1 belongs to INT-2026-004 → it cannot be clicked onto INT-2026-005
+    await expect(service.assignSession('pa', 'INT-2026-005', 't1')).rejects.toMatchObject({ code: 'SESSION_ASSIGNED_ELSEWHERE', message: expect.stringContaining('INT-2026-004') });
+    expect(store.getAssignment('pa', 'INT-2026-005')).toBeUndefined();
+    await expect(service.assignSession('pa', 'INT-2026-005', 'sh')).rejects.toMatchObject({ code: 'SESSION_NOT_CLAUDE' });
+    await expect(service.assignSession('pa', 'INT-2026-005', 'fremd')).rejects.toMatchObject({ code: 'SESSION_NOT_IN_PROJECT' });
+    await expect(service.assignSession('pa', 'INT-2026-005', 'gibt-es-nicht')).rejects.toMatchObject({ code: 'SESSION_NOT_ACTIVE' });
+    await expect(service.assignSession('pa', 'INT-2026-999', 't2')).rejects.toMatchObject({ code: 'UNKNOWN_VORHABEN' });
+    await expect(service.assignSession('zz', 'INT-2026-005', 't2')).rejects.toMatchObject({ code: 'UNKNOWN_PROJECT' });
+    // an ended assignment does not block the row nor the session
+    manager.sessions.delete('t1');
+    manager.emit('session.closed', 't1');
+    await service.rescan();
+    expect(row('INT-2026-004').zustand).toBe('sitzung_beendet');
+    await service.assignSession('pa', 'INT-2026-004', 't2');
+    await service.rescan();
+    expect(row('INT-2026-004').session?.id).toBe('t2');
+    // handler: request/reply with requestId, validation errors carry the requestId
+    handler.handle({ type: 'vorhaben:session.assign', requestId: 'r1', projectId: 'pa', intentId: 'INT-2026-005', sessionId: 't2' } as never, reply);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(reply).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'vorhaben:error', requestId: 'r1', code: 'SESSION_ASSIGNED_ELSEWHERE' }));
+    handler.handle({ type: 'vorhaben:session.assign', requestId: 'r2', projectId: 'pa', intentId: 'nope', sessionId: 't2' } as never, reply);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(reply).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'vorhaben:error', requestId: 'r2', code: 'INVALID_MESSAGE' }));
+    manager.add('t3', projA, 'idle');
+    handler.handle({ type: 'vorhaben:session.assign', requestId: 'r3', projectId: 'pa', intentId: 'INT-2026-005', sessionId: 't3' } as never, reply);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(reply).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'vorhaben:session-assigned', requestId: 'r3', projectId: 'pa', intentId: 'INT-2026-005', sessionId: 't3' }));
   });
 
   it('session.closed marks the assignment ended: row shows "Sitzung beendet" and offers the next step again (FA-22)', async () => {

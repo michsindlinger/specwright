@@ -328,4 +328,41 @@ describe('scanCopy / toRow on a temp dir', () => {
     const assigned = mergeCandidates(cands, new Map([['INT-2026-004', root]]));
     expect(assigned[0].arbeitskopie).toBe('main');
   });
+
+  it('INT-2026-016 (AK-09): byte-identical copies → the main checkout wins although the worktree is newer (git worktree add restamps files); the assignment still wins over both', () => {
+    const wt = join(root, 'wt');
+    const docs = { 'intent.md': intentText('angenommen'), 'plan.md': statusDoc('umgesetzt (Merge steht aus)'), 'build-stand.md': '# Stand\n' };
+    mk(root, 'INT-2026-012-openai', docs);
+    mk(wt, 'INT-2026-012-openai', docs);
+    const old = new Date(Date.now() - 60_000);
+    for (const f of ['intent.md', 'plan.md', 'build-stand.md']) utimesSync(join(root, 'intent', 'INT-2026-012-openai', f), old, old);
+    utimesSync(join(root, 'intent', 'INT-2026-012-openai'), old, old);
+    const cands = [
+      ...scanCopy({ cwd: root, arbeitskopie: 'main', main: true }, nodeReaderFs, cache),
+      ...scanCopy({ cwd: wt, arbeitskopie: 'chore/INT-2026-015-abschluss' }, nodeReaderFs, cache),
+    ];
+    expect(cands[0].fingerprint).toBe(cands[1].fingerprint);
+    expect(mergeCandidates(cands, new Map())[0].arbeitskopie).toBe('main');
+    expect(mergeCandidates([cands[1], cands[0]], new Map())[0].arbeitskopie).toBe('main');
+    expect(mergeCandidates(cands, new Map([['INT-2026-012', wt]]))[0].arbeitskopie).toBe('chore/INT-2026-015-abschluss');
+  });
+
+  it('INT-2026-016 (AK-09): a real change in the worktree (plan.md §14, build-stand.md) diverges the fingerprint → the newer copy wins as before (FA-06)', () => {
+    const wt = join(root, 'wt');
+    mk(root, 'INT-2026-013-bau', { 'intent.md': intentText('angenommen'), 'plan.md': statusDoc('in_umsetzung') });
+    mk(wt, 'INT-2026-013-bau', { 'intent.md': intentText('angenommen'), 'plan.md': statusDoc('in_umsetzung'), 'build-stand.md': '# Stand\n' });
+    const old = new Date(Date.now() - 60_000);
+    for (const f of ['intent.md', 'plan.md']) utimesSync(join(root, 'intent', 'INT-2026-013-bau', f), old, old);
+    utimesSync(join(root, 'intent', 'INT-2026-013-bau'), old, old);
+    const cands = [
+      ...scanCopy({ cwd: root, arbeitskopie: 'main', main: true }, nodeReaderFs, cache),
+      ...scanCopy({ cwd: wt, arbeitskopie: 'session/x' }, nodeReaderFs, cache),
+    ];
+    expect(cands[0].fingerprint).not.toBe(cands[1].fingerprint);
+    expect(mergeCandidates(cands, new Map())[0].arbeitskopie).toBe('session/x');
+    // a broken head still fingerprints (raw text, not the parse result)
+    mk(root, 'INT-2026-014-kaputt', { 'intent.md': '---\nintent_id: "INT-2026-014"\n' });
+    const broken = scanCopy({ cwd: root, arbeitskopie: 'main', main: true }, nodeReaderFs, cache).find((c) => c.intentId === 'INT-2026-014')!;
+    expect(broken.fingerprint).toMatch(/intent:[0-9a-f]{64}/);
+  });
 });

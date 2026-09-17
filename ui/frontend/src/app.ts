@@ -46,6 +46,27 @@ import type { AosGettingStartedView } from './views/aos-getting-started-view.js'
 const AGENT_STATUS_VALUES: ReadonlySet<string> = new Set(['unknown', 'idle', 'working', 'blocked', 'error', 'done']);
 
 /** Picks the agent-status fields off a backend session record (ISO → epoch ms). */
+/**
+ * INT-2026-016 (AK-05): project id and Vorhaben id of a docked route —
+ * `vorhaben/<project>/<INT-…>` or `neu/<project>`; nothing otherwise.
+ */
+export function pageOfRoute(route: { view: string; segments: string[] }): { projectId: string | null; intentId: string | null } {
+  const decode = (v: string | undefined): string | null => {
+    if (!v) return null;
+    try {
+      return decodeURIComponent(v);
+    } catch {
+      return null;
+    }
+  };
+  if (route.view === 'vorhaben' && route.segments.length >= 2) {
+    const intentId = /^INT-\d{4}-\d{3}$/.test(route.segments[1]) ? route.segments[1] : null;
+    return { projectId: decode(route.segments[0]), intentId };
+  }
+  if (route.view === 'neu' && route.segments.length >= 1) return { projectId: decode(route.segments[0]), intentId: null };
+  return { projectId: null, intentId: null };
+}
+
 function agentStatusFields(b: { agentStatus?: CloudTerminalAgentStatus; agentStatusAt?: string; agentStatusReason?: string; agentDoneAt?: string }): {
   agentStatus?: CloudTerminalAgentStatus;
   agentStatusAt?: number;
@@ -143,6 +164,26 @@ export class AosApp extends LitElement {
   private dockSwitchAttempts = 0;
   private static readonly DOCK_SWITCH_MAX_ATTEMPTS = 3;
 
+  /**
+   * INT-2026-016 (AK-05): the project and Vorhaben the docked page is about,
+   * read from the route (`#/vorhaben/<project>/<INT-…>`, `#/neu/<project>`).
+   * `null` when the route names no open project — the dock then follows the
+   * active project as before. The workspace's active project is never
+   * switched for this (it is shared by every window and device, AR-05).
+   */
+  @state()
+  private pageProjectId: string | null = null;
+  @state()
+  private pageIntentId: string | null = null;
+
+  /**
+   * INT-2026-016 (AK-06): tabs created with „Neue Session" on a docked
+   * Vorhaben page, keyed by frontend tab id — bound to that Vorhaben once the
+   * backend session is connected (claude-code only). Cleared on connect,
+   * tab close and route change.
+   */
+  private assignOnConnect = new Map<string, { projectId: string; intentId: string }>();
+
   @state()
   private isFileTreeOpen = false;
 
@@ -200,11 +241,20 @@ export class AosApp extends LitElement {
     // Routes without a docked column have no page session — also the ones
     // where the Vorhaben view is replaced and cannot announce (review #7).
     if (!this.terminalDocked) this.pageSessionId = null;
+    // INT-2026-016 (AK-05): the page's project and Vorhaben from the address.
+    const page = this.terminalDocked ? pageOfRoute(route) : { projectId: null, intentId: null };
+    this.pageProjectId = page.projectId;
+    this.pageIntentId = page.intentId;
+    this.assignOnConnect.clear();
     // Leaving a docked page closes the terminal (INT-2026-015, AK-01): the target page is usable at
     // once. Only the window — sessions and tabs stay, a waiting one rings the bell (AK-03, NZ-06).
     // Docked → docked keeps it open on the new page's session (AK-02); the phone has no docked
     // column and keeps its overlay (NZ-05). Nothing is stored: open/closed stays browser state (RB-01).
-    if (wasDocked && !this.terminalDocked && !this.breakpoint.isMobile) this.isTerminalSidebarOpen = false;
+    if (wasDocked && !this.terminalDocked && !this.breakpoint.isMobile) {
+      this.isTerminalSidebarOpen = false;
+      // The floating sidebar shows the active project's tabs again: leave a page-project tab behind.
+      this._restoreActiveProjectTab();
+    }
   };
   private boundReconnectingHandler: MessageHandler = (msg) => {
     this.isReconnecting = true;
@@ -377,6 +427,69 @@ export class AosApp extends LitElement {
     if (this.activeTerminalSessionId !== match.id) this.activeTerminalSessionId = match.id;
     if (match.needsInput) {
       this.terminalSessions = this.terminalSessions.map(s => (s.id === match.id ? { ...s, needsInput: false } : s));
+    }
+  }
+
+  /**
+   * INT-2026-016 (AK-05): the project the docked column shows — the page's
+   * project when the address names an open one, else the active project.
+   */
+  private get pageProject(): Project | undefined {
+    return this.pageProjectId ? this.openProjects.find(p => p.id === this.pageProjectId) : undefined;
+  }
+
+  private get dockProject(): Project | undefined {
+    return (this.terminalDocked ? this.pageProject : undefined) ?? this.openProjects.find(p => p.id === this.activeProjectId);
+  }
+
+  /**
+   * INT-2026-016 (AK-05): a docked column without a page session shows the
+   * page project's last tab (else its first, else the empty state) — never a
+   * tab of the workspace-active project. Runs at the end of willUpdate();
+   * a pending page tab (_syncDock) takes precedence.
+   */
+  private _syncDockProject(): void {
+    if (!this.terminalDocked || !this.isTerminalSidebarOpen || this.pendingDockSessionId) return;
+    const pp = this.pageProject;
+    if (!pp) return;
+    const active = this.terminalSessions.find(s => s.id === this.activeTerminalSessionId);
+    if (active && active.projectPath === pp.path) return;
+    if (active) {
+      const owner = this.openProjects.find(p => p.path === active.projectPath);
+      if (owner) this.lastActiveSessionByProject.set(owner.id, active.id);
+    }
+    const remembered = this.lastActiveSessionByProject.get(pp.id);
+    const candidate =
+      this.terminalSessions.find(s => s.id === remembered && s.projectPath === pp.path) ??
+      this.terminalSessions.find(s => s.projectPath === pp.path);
+    this.activeTerminalSessionId = candidate?.id ?? null;
+  }
+
+  /** After a docked page of another project: the floating sidebar is about the active project again. */
+  private _restoreActiveProjectTab(): void {
+    const activeProject = this.openProjects.find(p => p.id === this.activeProjectId);
+    if (!activeProject) return;
+    const active = this.terminalSessions.find(s => s.id === this.activeTerminalSessionId);
+    if (active && active.projectPath === activeProject.path) return;
+    const remembered = this.lastActiveSessionByProject.get(activeProject.id);
+    const candidate =
+      this.terminalSessions.find(s => s.id === remembered && s.projectPath === activeProject.path) ??
+      this.terminalSessions.find(s => s.projectPath === activeProject.path);
+    if (candidate) this.activeTerminalSessionId = candidate.id;
+  }
+
+  /**
+   * INT-2026-016 (AK-06, AK-07): bind a tab to the Vorhaben of the docked
+   * page. The backend answers (or refuses with a reason); both land as a
+   * toast, the row follows in the next `vorhaben:state`. No retry — a second
+   * click is cheaper than a queue (plan R9).
+   */
+  private async _assignSessionToVorhaben(projectId: string, intentId: string, terminalSessionId: string, name: string): Promise<void> {
+    try {
+      await vorhabenService.assignSession(projectId, intentId, terminalSessionId);
+      this.showToast(`Sitzung ‚${name}' gehört jetzt zu ${intentId}`, 'success');
+    } catch (err) {
+      this.showToast(err instanceof Error && err.message ? err.message : `Zuordnung zu ${intentId} fehlgeschlagen`, 'warning');
     }
   }
 
@@ -680,9 +793,10 @@ export class AosApp extends LitElement {
   }
 
   private _handleNewTerminalSession(e?: CustomEvent<{ projectPath?: string }>): void {
-    // Project path: explicit override (per-pane "+" in split mode) or active project.
-    const activeProject = this.openProjects.find(p => p.id === this.activeProjectId);
-    const projectPath = e?.detail?.projectPath || activeProject?.path || '';
+    // Project path: explicit override (per-pane "+" in split mode), the docked
+    // page's project (INT-2026-016, AK-05/AK-06), else the active project.
+    const dockProject = this.dockProject;
+    const projectPath = e?.detail?.projectPath || dockProject?.path || '';
     if (!projectPath) {
       this.showToast('Kein Projekt ausgewählt', 'error');
       return;
@@ -699,14 +813,19 @@ export class AosApp extends LitElement {
     };
     this.terminalSessions = [...this.terminalSessions, newSession];
     this.activeTerminalSessionId = newSession.id;
+    // INT-2026-016 (AK-06): started on a docked Vorhaben page → it belongs to that Vorhaben once connected.
+    const pp = this.pageProject;
+    if (this.terminalDocked && this.currentRoute === 'vorhaben' && pp && this.pageIntentId && pp.path === projectPath && !this.breakpoint.isMobile) {
+      this.assignOnConnect.set(newSession.id, { projectId: pp.id, intentId: this.pageIntentId });
+    }
   }
 
   /**
    * Get terminal sessions filtered by current project
    */
   private get projectTerminalSessions(): TerminalSession[] {
-    const activeProject = this.openProjects.find(p => p.id === this.activeProjectId);
-    const projectPath = activeProject?.path || '';
+    // INT-2026-016 (AK-05): docked = the page's project; otherwise the active project.
+    const projectPath = this.dockProject?.path || '';
     return this.terminalSessions.filter(s => s.projectPath === projectPath);
   }
 
@@ -717,8 +836,18 @@ export class AosApp extends LitElement {
     return map;
   }
 
-  private _handleTerminalSessionSelect(e: CustomEvent<{ sessionId: string; clearNeedsInput?: boolean }>): void {
+  private _handleTerminalSessionSelect(e: CustomEvent<{ sessionId: string; clearNeedsInput?: boolean; userInitiated?: boolean }>): void {
     this.activeTerminalSessionId = e.detail.sessionId;
+    // INT-2026-016 (AK-07): a user's click on a Claude tab in the docked column of a
+    // Vorhaben page without a live session binds that tab to the Vorhaben. Only the
+    // click — Cmd+D, list responses and project switches select programmatically.
+    const pp = this.pageProject;
+    if (e.detail.userInitiated && this.terminalDocked && this.isTerminalSidebarOpen && this.currentRoute === 'vorhaben' && pp && this.pageIntentId && !this.pageSessionId && !this.breakpoint.isMobile) {
+      const tab = this.terminalSessions.find(s => s.id === e.detail.sessionId);
+      if (tab?.terminalSessionId && tab.projectPath === pp.path && (tab.terminalType ?? 'claude-code') === 'claude-code') {
+        void this._assignSessionToVorhaben(pp.id, this.pageIntentId, tab.terminalSessionId, tab.name);
+      }
+    }
 
     // WTT-004: Clear needsInput flag when tab becomes active
     if (e.detail.clearNeedsInput) {
@@ -812,6 +941,7 @@ export class AosApp extends LitElement {
       this.terminalSessions = assignAutoNames(this.terminalSessions, this.sessionNames);
     }
     this._syncDock(changed);
+    this._syncDockProject();
   }
 
   /**
@@ -866,6 +996,7 @@ export class AosApp extends LitElement {
     }
 
     this.terminalSessions = this.terminalSessions.filter(s => s.id !== sessionId);
+    this.assignOnConnect.delete(sessionId);
 
     if (this.activeTerminalSessionId === sessionId) {
       this.activeTerminalSessionId = this.terminalSessions.length > 0
@@ -895,6 +1026,15 @@ export class AosApp extends LitElement {
       if (updated.customNameSet) this._shareSessionName(terminalSessionId, updated.name);
       return updated;
     });
+    // INT-2026-016 (AK-06): „Neue Session" on a docked Vorhaben page → bind it now (claude-code only).
+    const pend = this.assignOnConnect.get(sessionId);
+    if (pend) {
+      this.assignOnConnect.delete(sessionId);
+      if (resolvedType === 'claude-code') {
+        const name = this.terminalSessions.find(s => s.id === sessionId)?.name ?? terminalSessionId;
+        void this._assignSessionToVorhaben(pend.projectId, pend.intentId, terminalSessionId, name);
+      }
+    }
   }
 
   // --- Legacy tab-name store (localStorage) — read once for the workspace migration only. ---

@@ -26,7 +26,7 @@ import { buildAenderungenText, buildFreigabeText, formatStandLabel } from '../..
 import { vorhabenService, type ModelListInfo, type SendResult } from '../../services/vorhaben.service.js';
 import { ladeModelle, vorauswahl } from './model-wahl.js';
 import { STEP_LABELS, ZUSTAND_LABELS, formatStand } from './vorhaben-sort.js';
-import { dialogZielText, leisteGrund } from './aos-sende-leiste.js';
+import { dialogZielText, leisteGrund, ZUORDNUNG_HINWEIS } from './aos-sende-leiste.js';
 import './aos-dokument-leser.js';
 import './aos-sende-leiste.js';
 import './aos-anmerkungen-sammel.js';
@@ -101,6 +101,13 @@ const GRUND_TEXT: Record<string, string> = {
   beendet: 'Sitzung beendet — nächsten Schritt starten',
   bereit: '',
 };
+
+/** INT-2026-016 (AK-07): the collector's target line names the docked terminal's way too (Mac only). */
+export function grundText(grund: string, mobile: boolean): string {
+  const base = GRUND_TEXT[grund] ?? '';
+  if (mobile || (grund !== 'keine_sitzung' && grund !== 'beendet')) return base;
+  return `${base} oder ${ZUORDNUNG_HINWEIS}`;
+}
 
 @customElement('aos-vorhaben-seite')
 export class AosVorhabenSeite extends LitElement {
@@ -675,7 +682,7 @@ export class AosVorhabenSeite extends LitElement {
         .preview=${this.preview()}
         .sessionName=${session?.name ?? ''}
         .bereit=${grund === 'bereit'}
-        .grund=${grund === 'dialog' ? dialogZielText(r) : GRUND_TEXT[grund] ?? ''}
+        .grund=${grund === 'dialog' ? dialogZielText(r) : grundText(grund, this.mobile)}
         .sending=${this.sending}
         @sammel-close=${() => (this.sammelOpen = false)}
         @sammel-send=${() => this.send('aenderungen')}

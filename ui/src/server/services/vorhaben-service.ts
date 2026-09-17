@@ -25,6 +25,7 @@ import {
   mergeCandidates,
   nodeReaderFs,
   scanCopy,
+  stepOfPhase,
   toRow,
   VorhabenParseCache,
   type ReaderFs,
@@ -43,6 +44,7 @@ import {
   type ProtokollEintrag,
   type SendeGrund,
   type VorhabenDocKey,
+  type VorhabenErrorCode,
   type VorhabenPendingIntent,
   type VorhabenPhaseDoc,
   type VorhabenProjectInfo,
@@ -71,6 +73,8 @@ export interface VorhabenSessionInfo {
   status: string;
   projectPath: string;
   effectiveCwd: string;
+  /** INT-2026-016 (AK-06): only claude-code sessions can be the session of a Vorhaben. */
+  terminalType?: 'shell' | 'claude-code';
   agentStatus?: CloudTerminalAgentStatus;
   /** INT-2026-007 (FA-09): kind of the dialog while blocked. */
   blockKind?: BlockKind;
@@ -164,8 +168,22 @@ function cleanText(rawText: string): string {
 /** How long after `prompt-submitted` we still wait for the prompt text before using the fallback. */
 const PROMPT_TEXT_GRACE_MS = 100;
 
-/** `/spec INT-2026-004`, `/specwright:plan INT-…`, `/intent` (FA-21). */
-export const V4_COMMAND_RE = /^\s*\/(?:specwright:)?(intent|spec|plan|build)(?:\s+(INT-\d{4}-\d{3}))?\b/;
+/**
+ * `/spec INT-2026-004`, `/specwright:plan INT-…`, `/intent` (FA-21).
+ * INT-2026-016 (AK-08): the short form `INT-002` is accepted too — the long
+ * form stays first in the alternation so `INT-2026-002` never reads as `INT-202`.
+ */
+export const V4_COMMAND_RE = /^\s*\/(?:specwright:)?(intent|spec|plan|build)(?:\s+(INT-\d{4}-\d{3}|INT-\d{3}))?\b/;
+
+/** `INT-002` → the one row of the project whose id ends in `-002`; undefined when none or several (a warning names it). */
+export function resolveShortIntentId(short: string, rows: readonly Pick<VorhabenRow, 'intentId'>[]): string | undefined {
+  if (!/^INT-\d{3}$/.test(short)) return short;
+  const suffix = short.slice(3);
+  const hits = rows.filter((r) => r.intentId.endsWith(suffix)).map((r) => r.intentId);
+  if (hits.length === 1) return hits[0];
+  console.warn(`[vorhaben] Kurz-Kennung ${short} ${hits.length === 0 ? 'unbekannt' : `mehrdeutig (${hits.join(', ')})`} — keine Zuordnung`);
+  return undefined;
+}
 
 export function detectV4Command(prompt: string): { step: VorhabenStep; intentId?: string } | undefined {
   const m = V4_COMMAND_RE.exec(prompt);
@@ -178,7 +196,7 @@ export { buildAenderungenText, buildFreigabeText, formatStandLabel, normalizeAnm
 
 export class VorhabenError extends Error {
   constructor(
-    public readonly code: 'UNKNOWN_PROJECT' | 'UNKNOWN_VORHABEN' | 'UNKNOWN_SESSION' | 'NOT_FOUND' | 'TOO_LARGE' | 'IO_ERROR' | 'INVALID_MESSAGE' | 'START_FAILED',
+    public readonly code: VorhabenErrorCode,
     message: string
   ) {
     super(message);
@@ -800,13 +818,56 @@ export class VorhabenService {
     if (!project) return;
     const model = session.modelConfig?.model ?? '';
     if (cmd.intentId) {
+      const intentId = resolveShortIntentId(cmd.intentId, this.rows.filter((r) => r.projectId === project.id));
+      if (!intentId) return;
       this.deps.store.clearPendingIntent(sessionId);
-      this.deps.store.setAssignment(project.id, cmd.intentId, { sessionId, step: cmd.step, model, cwd: session.effectiveCwd, at: this.now().toISOString() });
+      // INT-2026-016 (AK-08): the session moved on — its older rows let go.
+      this.deps.store.moveAssignment(sessionId, project.id, intentId, { sessionId, step: cmd.step, model, cwd: session.effectiveCwd, at: this.now().toISOString() });
       this.scheduleRescan(0);
     } else if (cmd.step === 'intent') {
+      // INT-2026-016 (AK-08): a new intent is something new — the session leaves its rows.
+      const dropped = this.deps.store.clearAssignmentsOfSession(sessionId);
       this.deps.store.setPendingIntent(sessionId, { projectId: project.id, cwd: session.effectiveCwd, step: 'intent', model, since: this.now().toISOString() });
-      this.broadcastState();
+      if (dropped > 0) this.scheduleRescan(0);
+      else this.broadcastState();
     }
+  }
+
+  /**
+   * INT-2026-016 (AK-06, AK-07): bind a live claude-code session of the
+   * project to a row without a live session. Checks in this order, each with
+   * its own code (the client shows `message` as a toast): project open, row
+   * known, session live, claude-code, same project, row free, session not the
+   * live session of another row. A click never moves a session — that is the
+   * typed command's job (AK-08, `moveAssignment`).
+   */
+  public async assignSession(projectId: string, intentId: string, sessionId: string): Promise<void> {
+    const project = this.findProject(projectId);
+    if (!project) throw new VorhabenError('UNKNOWN_PROJECT', 'Projekt ist nicht geöffnet');
+    const row = this.findRow(projectId, intentId);
+    if (!row) throw new VorhabenError('UNKNOWN_VORHABEN', `${intentId} nicht gefunden`);
+    const session = this.deps.sessions?.getSession(sessionId);
+    if (!session || session.status === 'closed') throw new VorhabenError('SESSION_NOT_ACTIVE', 'Sitzung ist nicht aktiv');
+    if (session.terminalType && session.terminalType !== 'claude-code') throw new VorhabenError('SESSION_NOT_CLAUDE', 'Nur eine Claude-Sitzung kann einem Vorhaben gehören');
+    if (safeKey(session.projectPath) !== safeKey(project.path)) throw new VorhabenError('SESSION_NOT_IN_PROJECT', 'Sitzung läuft in einem anderen Projekt');
+    if (row.session && !row.session.ended) throw new VorhabenError('ROW_HAS_SESSION', `${intentId} hat schon eine Sitzung (${row.session.name})`);
+    const names = this.deps.workspace.getState().sessionNames ?? {};
+    const name = names[sessionId] ?? sessionId;
+    for (const [key, a] of this.deps.store.allAssignments()) {
+      if (a.sessionId !== sessionId || a.ended) continue;
+      const [pid, otherIntent] = key.split('::');
+      if (pid === projectId && otherIntent === intentId) continue;
+      throw new VorhabenError('SESSION_ASSIGNED_ELSEWHERE', `Sitzung ‚${name}' gehört zu ${otherIntent}`);
+    }
+    const at = this.now().toISOString();
+    this.deps.store.setAssignment(projectId, intentId, {
+      sessionId,
+      step: stepOfPhase(row.phase) ?? 'build',
+      model: session.modelConfig?.model ?? '',
+      cwd: session.effectiveCwd,
+      at,
+    });
+    this.scheduleRescan(0);
   }
 
   /** `/intent` session claims the first new folder that appears under its cwd (FA-21). */
@@ -815,7 +876,8 @@ export class VorhabenService {
     for (const [sessionId, p] of this.deps.store.getPendingIntents()) {
       if (safeKey(p.cwd) !== key) continue;
       this.deps.store.clearPendingIntent(sessionId);
-      this.deps.store.setAssignment(p.projectId, intentId, { sessionId, step: 'intent', model: p.model, cwd, at: this.now().toISOString() });
+      // INT-2026-016 (AK-08): the claim is a move as well — no older row keeps the session.
+      this.deps.store.moveAssignment(sessionId, p.projectId, intentId, { sessionId, step: 'intent', model: p.model, cwd, at: this.now().toISOString() });
       // The interview sent from the project page moves into the Vorhaben's protocol (INT-2026-008, AK-03).
       this.deps.store.claimPendingProtocol(sessionId, intentId);
       break;
@@ -991,7 +1053,7 @@ export class VorhabenService {
           const ownKey = safeKey(project.path);
           const own = wt.entries.find((e) => safeKey(e.path) === ownKey);
           info.arbeitskopie = own?.branch ?? '';
-          copies.push({ cwd: project.path, arbeitskopie: info.arbeitskopie });
+          copies.push({ cwd: project.path, arbeitskopie: info.arbeitskopie, main: true });
           for (const e of wt.entries) {
             if (e.bare || e.prunable || safeKey(e.path) === ownKey) continue;
             const label = e.branch ?? basename(e.path);
@@ -1000,7 +1062,7 @@ export class VorhabenService {
           }
         } catch (err) {
           info.error = (err as Error).message;
-          copies.push({ cwd: project.path, arbeitskopie: '' });
+          copies.push({ cwd: project.path, arbeitskopie: '', main: true });
         }
         const candidates: VorhabenCandidate[] = [];
         for (const copy of copies) {

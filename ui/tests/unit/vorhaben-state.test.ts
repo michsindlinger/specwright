@@ -72,6 +72,22 @@ describe('VorhabenStateStore stage 2 (FA-21/22/26/32/40)', () => {
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
+  it('INT-2026-016 (AK-08): moveAssignment drops the other rows of the session, keeps foreign sessions, commits once; clearAssignmentsOfSession empties them', async () => {
+    const store = new VorhabenStateStore(file, { port: 3111 });
+    const a = (sessionId: string) => ({ sessionId, step: 'build' as const, model: 'opus', cwd: '/p', at: '2026-09-17T10:00:00.000Z' });
+    store.setAssignment('p', 'INT-2026-001', a('s1'));
+    store.setAssignment('p', 'INT-2026-002', a('s1'));
+    store.setAssignment('p', 'INT-2026-003', a('s2'));
+    store.moveAssignment('s1', 'p', 'INT-2026-004', a('s1'));
+    expect(store.allAssignments().map(([k, v]) => [k, v.sessionId])).toEqual([
+      ['p::INT-2026-003', 's2'],
+      ['p::INT-2026-004', 's1'],
+    ]);
+    expect(store.clearAssignmentsOfSession('s1')).toBe(1);
+    expect(store.clearAssignmentsOfSession('s1')).toBe(0);
+    expect(store.allAssignments().map(([k]) => k)).toEqual(['p::INT-2026-003']);
+  });
+
   it('assignments: newest wins, ended marks every row of the session, survives load() (FA-21, FA-22)', async () => {
     const store = new VorhabenStateStore(file, { port: 3111 });
     store.setAssignment('p1', 'INT-2026-004', { sessionId: 's1', step: 'spec', model: 'opus', cwd: '/a', at: '2026-09-15T10:00:00Z' });

@@ -359,6 +359,7 @@ export class WebSocketHandler {
         case 'vorhaben:send':
         case 'vorhaben:start-step':
         case 'vorhaben:ansicht.set':
+        case 'vorhaben:session.assign':
         case 'project-docs:list':
         case 'project-docs:read':
         case 'project-docs:write':
