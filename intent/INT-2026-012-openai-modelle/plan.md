@@ -1,7 +1,7 @@
 # Plan: OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI
 
 > **Intent:** `intent.md` (INT-2026-012) · **Spec:** entfällt (bypass: Größe S — zwei Provider-Einträge, eine Sperre in der Prüfer-Auswahl mit Test, eine Doc-Zeile; Rest ist Einrichtung außerhalb des Repos)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt (Merge steht aus)
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 — „Alle vier ok, Freigabe" (D1–D4 wie vorgeschlagen)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `d0d8b8c`), `CLAUDE.md`, `docs/security.md`
 
