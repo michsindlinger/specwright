@@ -225,7 +225,8 @@ export function mapHookPayload(body: Record<string, unknown>): HookMapping {
       const tool = str(body.tool_name);
       const reason = tool ? `Berechtigung: ${tool}` : 'Berechtigung';
       if (tool === 'ExitPlanMode') return ev('blocked', { reason, blockKind: 'plan' });
-      if (tool === 'AskUserQuestion') return ev('blocked', { reason, blockKind: 'rueckfrage' });
+      // fires ~2 ms after PreToolUse and would overwrite its reason with „Berechtigung: AskUserQuestion" — keep the question (bell, tab tooltip)
+      if (tool === 'AskUserQuestion') return ev('blocked', { reason: summarizePreview(firstQuestion(body.tool_input)) ?? 'Frage', blockKind: 'rueckfrage' });
       return ev('blocked', { reason, blockKind: 'berechtigung' });
     }
     case 'PreToolUse':

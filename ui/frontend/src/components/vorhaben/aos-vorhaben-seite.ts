@@ -763,7 +763,7 @@ export class AosVorhabenSeite extends LitElement {
     if (r.phase === 'absicht' && !this.liveSession()) {
       return html`<div class="hinweis"><span>Entwurf im Terminal fortsetzen.</span></div>`;
     }
-    // INT-2026-007 (FA-09): the hint names the kind of dialog. Stage 1 answers in the terminal; stage 2 brings the cards.
+    // INT-2026-007 (FA-09): the hint names the kind of dialog; the answer happens in the docked terminal (INT-2026-011).
     if (r.zustand === 'wartet_rueckfrage') {
       return html`<div class="hinweis"><span>Die Sitzung stellt eine Rückfrage — im Terminal antworten.</span></div>`;
     }

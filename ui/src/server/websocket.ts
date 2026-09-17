@@ -2143,6 +2143,7 @@ export class WebSocketHandler {
           statusAt: detail.statusAt.toISOString(),
           ...(detail.preview ? { preview: detail.preview } : {}),
           ...(detail.reason ? { reason: detail.reason } : {}),
+          ...(detail.blockKind ? { blockKind: detail.blockKind } : {}),
           timestamp: new Date().toISOString(),
         });
       }

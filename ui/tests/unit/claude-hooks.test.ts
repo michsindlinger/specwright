@@ -292,10 +292,11 @@ describe('mapHookPayload() — hook context and block kind (INT-2026-007, reduce
     expect(ev({ hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', tool_input: { questions: 'x' } }).detail).toEqual({ reason: 'Frage', blockKind: 'rueckfrage' });
   });
 
-  it('PermissionRequest AskUserQuestion → blocked rueckfrage (recorded: fires 2 ms after PreToolUse)', () => {
+  it('PermissionRequest AskUserQuestion → blocked rueckfrage with the question as reason (fires 2 ms after PreToolUse and must not overwrite it with „Berechtigung: …")', () => {
     const m = ev({ hook_event_name: 'PermissionRequest', tool_name: 'AskUserQuestion', tool_input: { questions } });
     expect(m.event).toBe('blocked');
-    expect(m.detail).toEqual({ reason: 'Berechtigung: AskUserQuestion', blockKind: 'rueckfrage' });
+    expect(m.detail).toEqual({ reason: 'Welche Farbe magst du?', blockKind: 'rueckfrage' });
+    expect(ev({ hook_event_name: 'PermissionRequest', tool_name: 'AskUserQuestion' }).detail).toEqual({ reason: 'Frage', blockKind: 'rueckfrage' });
   });
 
   it('PreToolUse/PermissionRequest ExitPlanMode → blocked plan without the plan text', () => {

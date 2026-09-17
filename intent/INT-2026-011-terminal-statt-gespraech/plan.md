@@ -1,7 +1,7 @@
 # Plan: UI: Terminal statt Gespräch — die Sitzung selbst neben dem Dokument
 
 > **Intent:** `intent.md` (INT-2026-011) · **Spec:** `spec.md`
-> **Status:** in_umsetzung
+> **Status:** umgesetzt
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („Freigegeben, beide Auslegungen ja", Chat)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 1153a33), `CLAUDE.md`, `docs/security.md`
 
@@ -274,7 +274,7 @@ Entfällt.
 |---|---|---|---|
 | INT-2026-010 Stufe 3 **abgespeckt** bauen und mergen (Plan 010 §4: #80, #83, #90 ganz; #82 nur Schalter/`technikOffen`/`ensureSichtbar`; **ohne** #81, #84–#89, #93, #94 und ohne `openKennung`/`kennungen` aus #82/#91/#92; Vermerk in 010 `plan.md` §14 „Code-Links → INT-2026-011") — Weg: `/build INT-2026-010 stufe 3` in frischem Worktree, PR, `gh pr merge` | Claude (Bau), Michael (Merge) | vor Umsetzung (AN-05) | [x] PR #63, #64 (2026-09-17) |
 | Frischer Worktree von `origin/main` für Stufe 1: `git worktree add ../specwright-worktrees/INT-2026-011-s1 -b feat/INT-2026-011-s1 origin/main`, `cd ui && npm ci && (cd frontend && npm ci)`, `chmod +x ui/node_modules/node-pty/prebuilds/*/spawn-helper` (Memory) | Claude | vor Umsetzung | [x] Branch `feat/INT-2026-011-s1` im Worktree `session-sdlc-ui` (§14) |
-| PR 1 mergen (`gh pr merge <n> --merge`) — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`architecture.md` §5, Timer außerhalb des Repos) | Michael | nach CI grün Stufe 1 | [ ] |
+| PR 1 mergen (`gh pr merge <n> --merge`) — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`architecture.md` §5, Timer außerhalb des Repos) | Michael | nach CI grün Stufe 1 | [x] PR #65 (2026-09-17) |
 | Stichprobe Cloud nach Deploy: Vorhaben-Seite mit laufender Sitzung öffnen, Terminal angedockt, Kennung klicken; laufende tmux-Sitzungen noch da | Michael | nach Deploy 1 | [ ] |
 | PR 2 mergen (Abbau + Docs + ADR) — Auto-Deploy | Michael | nach CI grün Stufe 2 | [ ] |
 | Board-Karte nachziehen (Block „Für das Board" aus dem Abschlussbericht; Skill `obsidian-po-board` in eigener Sitzung) | Michael/Claude | nach Merge 2 | [ ] |
@@ -312,15 +312,15 @@ Keine Secrets, keine Flags, keine Datenläufe. Hook `production-gate` wird nicht
 
 <!-- leser: agent -->
 
-- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test — Stufe 1 (FA-01–FA-20, FA-24: Tests #17–#22 + E2E); Stufe 2 (FA-21–FA-23, FA-25) offen.
-- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert — Stufe-1-Zeilen in PR 1; Stufe-2-Zeilen in PR 2 offen.
-- [x] E2E-Pfad läuft (Abschnitt 8), Screenshots 11a–11d neben dem Mock (`design/ist-stufe1/`), Messwerte EK-02 (58 ms) / EK-03 (389 ms) in `design/e2e-protokoll.txt`.
-- [x] `verify` grün, Ausgabe im PR — PR-Checks: siehe PR 1 (CI ist die Wahrheit).
-- [ ] `docs/architecture.md`, `design.md`, `security.md`, `product-brief.md`, ADR-0003/0004 angepasst (PR 2, Abschnitt 3 „Ja").
-- [x] Manuelle Schritte (Abschnitt 10): Zeile 1 erledigt (PR #63/#64), Zeile 2 erledigt (anderer Worktree, §14); Merge PR 1, Stichprobe, PR 2, Board offen und im PR markiert.
-- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (Stufe 1).
-- [x] 2x-Regel-Check: `theme.css` erreicht keinen Shadow-Root (3. Fall) → `CLAUDE.md`-Zeile in PR 1.
-- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-011-terminal-statt-gespraech/`); Nachziehen in eigener Sitzung.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test — Stufe 1 (FA-01–FA-20, FA-24: Tests #17–#22 + E2E, PR #65); Stufe 2 (FA-21: `find` leer; FA-22: reduzierte Tests `claude-hooks`, `cloud-terminal-routes`, `cloud-terminal-agent-event` + E2E Glocke/Rückfrage/Freigabe/Claim; FA-23: `grep Gespräch docs/` nur Änderungsprotokoll, ADR-0004; FA-25: PR #65 vor PR 2 gemerged).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert — Stufe-1-Zeilen in PR #65; Stufe-2-Zeilen in PR 2.
+- [x] E2E-Pfad läuft (Abschnitt 8), Screenshots 11a–11d neben dem Mock (`design/ist-stufe1/`), Messwerte EK-02 (58 ms) / EK-03 (389 ms, Stufe 2: 393 ms) in `design/e2e-protokoll.txt`; E2E nach Abbau (FA-22) im Protokoll „E2E Stufe 2".
+- [x] `verify` grün, Ausgabe im PR — PR-Checks: PR #65 grün; PR 2: CI ist die Wahrheit.
+- [x] `docs/architecture.md`, `design.md`, `security.md`, `product-brief.md`, ADR-0003 (abgelöst), ADR-0004 (neu) angepasst (PR 2, Abschnitt 3 „Ja"). Kein `check:adr`-Guard im Projekt; Leser-Marker-Guard grün.
+- [x] Manuelle Schritte (Abschnitt 10): Zeilen 1–3 erledigt (PR #63/#64, Worktree, PR #65 gemerged); Stichprobe Cloud nach Deploy 1, Merge PR 2, Board offen und im PR markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (Stufe 1 und 2).
+- [x] 2x-Regel-Check: Stufe 1 `theme.css`/Shadow-Root (`CLAUDE.md`-Zeile in PR #65); Stufe 2: kein wiederkehrender Fehler — der E2E-Harness-Fehler (Dialog als Ruhe gelesen) ist neu und steht als Lehre im Protokoll und im Auto-Memory.
+- [x] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-011-terminal-statt-gespraech/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
 
@@ -335,3 +335,9 @@ Keine Secrets, keine Flags, keine Datenläufe. Hook `production-gate` wird nicht
 | 2026-09-17 | `aos-vorhaben-seite` meldet bei Dokument-/Vorhaben-Wechsel zuerst eine leere Kennungsmenge (`kennungen-changed`), der Leser füllt sie danach. | FA-16: Entwurfsansicht und „Kein Dokument in dieser Phase" senden nie `leser-loaded`; ohne Reset blieben die Verweise des vorigen Dokuments stehen. | §4 #8 |
 | 2026-09-17 | Test #19 mountet die ganze `aos-app` in happy-dom mit gemockten Diensten (Router, Gateway, Vorhaben-, Git-, Projekt-Dienste, Terminal-Stubs); Routenableitung liegt als reine Funktion in `components/terminal/terminal-dock.ts`. | Erstes DOM-Test-Muster für `app.ts`; die Merkstelle und `switchToProject` sind nur am echten App-Zustand prüfbar. | §4 #19, neue Datei `terminal-dock.ts` |
 | 2026-09-17 | E2E-Gesamtlauf 33/34: FA-19 im Gesamtlauf rot (Haiku legte in 180 s keinen Ordner an), in zwei Einzelläufen grün (INT-2026-005, gleicher Tab, 0 Remounts). | Agentenvarianz der Absicht-Sitzung, kein UI-Befund; Protokoll `design/e2e-protokoll.txt`. | §8 FA-19 |
+| 2026-09-17 | Stufe 2: über §4 #39 hinaus drei weitere Tests angepasst — `cloud-terminal-agent-event.test.ts` (zwei Tests `reportDialog`/`reportBeitrag` entfernt), `cloud-session-registry.test.ts` und `cloud-terminal-restore.test.ts` (`dialogSeq`, `nextDialogSeq`). | `grep` in Schritt 8 fand sie; §2 hatte nur die drei Tests aus dem Hook-Pfad gelistet. | §4 #39 |
+| 2026-09-17 | Stufe 2: `websocket.ts` reicht `blockKind` im `cloud-terminal:agent-event`-Broadcast jetzt weiter. | E2E-Befund: der Nachrichtentyp `CloudTerminalAgentEventMessage` deklariert `blockKind`, der Broadcast ließ es seit INT-2026-007 weg (kein Frontend-Leser, aber ein unehrlicher Vertrag). Einzeiler, kein neuer Typ. | §4 #30, §5 |
+| 2026-09-17 | Stufe 2: `PermissionRequest AskUserQuestion` liefert als Grund die erste Frage statt „Berechtigung: AskUserQuestion". | E2E-Befund: der Hook feuert 2 ms nach `PreToolUse` und überschrieb dessen Grund; Glocke und Tab zeigten die Frage nicht (FA-22 Glocke). Nutzt `firstQuestion`, das für `PreToolUse` ohnehin bleibt; Test angepasst. | §4 #36, §8 FA-22 |
+| 2026-09-17 | Stufe 2: Dialog-Monotonie (`closedDialogIds`) entfällt planmäßig; Restrisiko in ADR-0004 „Konsequenzen" benannt: ein verspäteter `blocked`-Hook nach `PostToolUse` könnte den Status kurz auf „wartet" setzen, der nächste Stop/Prompt korrigiert. | Im E2E nicht aufgetreten (Hooks Sekunden auseinander); für einen String ohne Karte kein `toolUseId`-Tracking behalten. | §3 Ansatz 10, §9 |
+| 2026-09-17 | Stufe 2 läuft im Worktree `session-sdlc-ui` auf Branch `feat/INT-2026-011-s2` von `origin/main` 624ed65 (PR #65 gemerged). | wie Stufe 1 (§14 Zeile 2). | §10 |
+| 2026-09-17 | E2E Stufe 2, Läufe 1–3 und 6 waren Harness-Fehler (Plan-Dialog als Ruhe gelesen → Haiku führte im Scratch einen Plan aus und committete `plan.md`; Escape brach das Absicht-Interview ab). Scratch auf d07f8c6 zurückgesetzt; Skript dialogfest; Läufe 4, 5, 7 grün (25/25). | Protokoll `design/e2e-protokoll.txt` „E2E Stufe 2"; kein UI-Befund. | §8 FA-22 |
