@@ -260,7 +260,7 @@ Entfällt.
 | E5 | `cli.command = '/usr/local/bin/codex'` + `extraCliArgs: ['--mcp-config','x']` → Args enthalten weder `--mcp-config` noch `--settings`; für `claude-glm` bleiben beide | `cloud-terminal-agent-event.test.ts` (erweitert) | Unit |
 | E11 | Config mit `stepDefaults.plan = {codex-cli, gpt-6-astra}` lädt ohne Wurf; `getStepDefault('plan')` → `anthropic/opus`; `console.warn` je fremdem Provider genau einmal | `model-config-provider-kind.test.ts` | Unit |
 | E17 | `checkCliAvailability` → false für `claude-codex` (Mock): Fehlertext nennt `claude-codex` und den Provider, nicht `@anthropic-ai/claude-code`; für `claude` bleibt der npm-Hinweis | `cloud-terminal-agent-event.test.ts` (erweitert; Mock `checkCliAvailability` parametrisierbar) | Unit |
-| AK-02 | Sitzung auf GPT-6 Astra aus der UI; `/status` bzw. `/model` in der Sitzung nennt `gpt-6-astra`; Transkript `~/.claude-codex/projects/<slug>/<id>.jsonl` enthält `"model":"gpt-6-astra"` | Protokoll im PR | Stichprobe |
+| AK-02 | Sitzung auf GPT-5.6 Terra aus der UI (Astra nicht im Konto, §14); Transkript `~/.claude-codex/projects/<slug>/<id>.jsonl` enthält `"model":"gpt-5.6-terra"` | Protokoll `design/e2e-protokoll.txt` | Stichprobe |
 | AK-03 | Status-Punkt (working/done), Glocke bei `Stop`, Gespräch-Tab zeigt den Verlauf der OpenAI-Sitzung | Protokoll + Screenshot | Stichprobe |
 | AK-04 | `getReviewerProviders()` mit Config {anthropic, codex(`claude-codex`), codex-cli(`codex`)} liefert `['anthropic','codex']` — `codex` mit 3 Modellen | `ui/tests/unit/model-config-provider-kind.test.ts` (neu, `fresh()`-Muster) | Unit |
 | AK-05 | Echte Config: Provider `codex-cli`, `cliCommand === 'codex'`, gleiche drei IDs, `cliFlags` enthält `--model` und `{modelId}`; `getProviderCommand('codex-cli','gpt-6-astra')` → `{ command: 'codex', args: [..., '--model', 'gpt-6-astra'] }` | `model-config-openai.test.ts` | Unit |
@@ -306,15 +306,15 @@ Entfällt.
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| 1. Proxy-Upgrade: `brew upgrade raine/claude-code-proxy/claude-code-proxy` → 0.1.40 (`brew info` zeigt „stable 0.1.40"); danach `claude-code-proxy models \| grep -c gpt-6-astra` → 1 (RB-04) | Michael | vor den Stichproben | [ ] |
-| 2. Codex-Anmeldung im Proxy: `claude-code-proxy codex auth login` (Browser, ChatGPT-Konto, OF-02); `claude-code-proxy codex auth status` → angemeldet; Ausgabezeile notieren (Wrapper-`grep`, §3) | Michael | nach 1 | [ ] |
-| 3. Proxy-Neustart (unterbricht Grok, RB-03): `~/Entwicklung/claude-code-proxy/start-proxy.sh --restart`; `--status` → „version: 0.1.40", „health: /v1/models OK" | Michael | nach 2, Zeitpunkt abgestimmt | [ ] |
-| 4. Alten Stand sichern (OF-04): `mv ~/.claude-codex ~/.claude-codex.bak-2026-09-16`; `mkdir ~/.claude-codex`; `settings.json` nach Vorlage §3 (D4-Mapping); `enabledPlugins`/`extraKnownMarketplaces` aus `~/.claude/settings.json` übernehmen; Symlinks: `for d in skills agents commands CLAUDE.md plugins; do ln -sfn ~/.claude/$d ~/.claude-codex/$d; done` | Michael (Agent bereitet die Datei vor, Michael legt sie ab — RB-01, außerhalb des Repos) | nach 3 | [ ] |
-| 5. Wrapper `~/bin/claude-codex` nach Vorlage §3, `chmod +x`; Probe: `claude-codex -p "Antworte nur mit OK"` → `OK`; Gegenprobe AK-08: `start-proxy.sh --stop` → Meldung und Exit 1; `--start` | Michael | nach 4 | [ ] |
-| 6. Codex-CLI: `cp ~/.codex/auth.json ~/.codex/auth.json.bak-2026-09-16`; `npm install -g @openai/codex@latest` → `codex --version` = 0.154.0; `codex login` (ChatGPT); `codex login status` → „Logged in using ChatGPT"; OF-03: `codex --help` (Flags `--model`, `--dangerously-bypass-approvals-and-sandbox`) und Probelauf `codex --model gpt-6-astra` — bei anderen IDs Abweichung in §14, Eintrag `codex-cli` anpassen | Michael | nach 3 | [ ] |
+| 1. Proxy-Upgrade: `brew upgrade raine/claude-code-proxy/claude-code-proxy` → 0.1.40 (`brew info` zeigt „stable 0.1.40"); danach `claude-code-proxy models \| grep -c gpt-6-astra` → 1 (RB-04) | Michael | vor den Stichproben | [x] 2026-09-17, 0.1.40 |
+| 2. Codex-Anmeldung im Proxy: `claude-code-proxy codex auth login` (Browser, ChatGPT-Konto, OF-02); `claude-code-proxy codex auth status` → angemeldet; Ausgabezeile notieren (Wrapper-`grep`, §3) | Michael | nach 1 | [x] 2026-09-17 (Michael); Ausgabe angemeldet: „Account: … / Expires: … / Storage: macOS Keychain" |
+| 3. Proxy-Neustart (unterbricht Grok, RB-03): `~/Entwicklung/claude-code-proxy/start-proxy.sh --restart`; `--status` → „version: 0.1.40", „health: /v1/models OK" | Michael | nach 2, Zeitpunkt abgestimmt | [x] 2026-09-17; eine Grok-Sitzung lief, Freigabe Michael |
+| 4. Alten Stand sichern (OF-04): `mv ~/.claude-codex ~/.claude-codex.bak-2026-09-16`; `mkdir ~/.claude-codex`; `settings.json` nach Vorlage §3 (D4-Mapping); `enabledPlugins`/`extraKnownMarketplaces` aus `~/.claude/settings.json` übernehmen; Symlinks: `for d in skills agents commands CLAUDE.md plugins; do ln -sfn ~/.claude/$d ~/.claude-codex/$d; done` | Michael (Agent bereitet die Datei vor, Michael legt sie ab — RB-01, außerhalb des Repos) | nach 3 | [x] 2026-09-17 (Agent, Skript aus dem Scratchpad); D4 nachträglich Terra/Terra/Luna |
+| 5. Wrapper `~/bin/claude-codex` nach Vorlage §3, `chmod +x`; Probe: `claude-codex -p "Antworte nur mit OK"` → `OK`; Gegenprobe AK-08: `start-proxy.sh --stop` → Meldung und Exit 1; `--start` | Michael | nach 4 | [x] 2026-09-17; OK; beide Fehlwege belegt (Protokoll) |
+| 6. Codex-CLI: `cp ~/.codex/auth.json ~/.codex/auth.json.bak-2026-09-16`; `npm install -g @openai/codex@latest` → `codex --version` = 0.154.0; `codex login` (ChatGPT); `codex login status` → „Logged in using ChatGPT"; OF-03: `codex --help` (Flags `--model`, `--dangerously-bypass-approvals-and-sandbox`) und Probelauf `codex --model gpt-6-astra` — bei anderen IDs Abweichung in §14, Eintrag `codex-cli` anpassen | Michael | nach 3 | [x] 2026-09-17; 0.154.0; OF-03: Astra/Sol nicht im Konto → §14 |
 | 7. Backend am Mac neu starten nach Merge/Pull (Config-Cache `model-config.ts:103`; Neustart beendet offene UI-Terminals, Memory `project_cloud_autodeploy_gate`) | Michael | nach Merge | [ ] |
 | 8. Merge nach `main` ist Michaels Schritt; löst den Auto-Deploy der UI auf dem Droplet aus (dort unverändert nutzbar, neue Provider scheitern sichtbar, R3). Kein weiterer Deploy-Schritt; Hook `production-gate` nicht betroffen | Michael | — | [ ] |
-| 9. Nur bei D2 = B: `git add ui/config/model-config.json && git commit -m "feat(ui): OpenAI-Provider codex und codex-cli (INT-2026-012)"` in Michaels Terminal (Hook gilt nur für Claude); künftig bei jeder Änderung an dieser Datei | Michael | vor PR | [ ] |
+| 9. Nur bei D2 = B: `git add ui/config/model-config.json && git commit -m "feat(ui): OpenAI-Provider codex und codex-cli (INT-2026-012)"` in Michaels Terminal (Hook gilt nur für Claude); künftig bei jeder Änderung an dieser Datei | Michael | vor PR | [–] entfällt (D2 = A″) |
 | 10. R3/E17-Sichtprobe auf dem Droplet nach dem Auto-Deploy: OpenAI wählen → Fehlertext nennt `claude-codex` und den Provider (kein npm-Hinweis); kein Deploy-Befehl, nur Lesen | Michael | nach Deploy | [ ] |
 
 Alle Wege belegt: brew-Formel (`brew info`), Proxy-CLI (`claude-code-proxy codex auth --help`), `start-proxy.sh` (gelesen), npm-Paket (`npm view @openai/codex version`), Codex-Login (Context7 `codex-rs/cli/src/login.rs`). Kein `[Uncertain]` in dieser Tabelle; die Codex-Flag-Namen (§2, [Likely]) prüft Schritt 6 vor dem ersten Start aus der UI.
@@ -377,15 +377,15 @@ Code, Tests, Docs: 4–6 h (S; nach E1–E17 eine Stunde mehr für `providersFor
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (AK-01/04/05/06/07, D1 als Unit/Component; AK-02/03/05/08/10 als Stichprobe mit Protokoll; AK-09 als Messung mit Befehl und Ausgabe).
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Screenshots im PR.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` §2 + Protokoll, `docs/security.md` §1/§3 + Protokoll angepasst.
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (insbesondere OF-03-Befund).
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR (Kandidat: `no-secrets` vs. versionierte Config — erstes Vorkommen, nur notieren).
-- [ ] `intent.md`: `bezuege.plan`, nach Bau `status: umgesetzt`; Memory `reference_ui_model_provider_mechanism` Punkt 7 um Ergebnis ergänzen.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (AK-01/04/05/06/07, D1 als Unit/Component; AK-02/03/05/08/10 als Stichprobe mit Protokoll; AK-09 als Messung mit Befehl und Ausgabe).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8), Screenshots im PR (`design/ist/`, Protokoll `design/e2e-protokoll.txt`).
+- [x] `verify` grün, Ausgabe im PR — [ ] PR-Checks grün (CI ist die Wahrheit; steht aus).
+- [x] `docs/architecture.md` §2 + Protokoll, `docs/security.md` §1/§3 + Protokoll angepasst.
+- [x] Manuelle Schritte (Abschnitt 10) 1–6 erledigt; 7, 8, 10 offen (nach Merge), im PR markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (insbesondere OF-03-Befund).
+- [x] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR (Kandidat: `no-secrets` vs. versionierte Config — erstes Vorkommen, nur notieren).
+- [x] `intent.md`: `bezuege.plan` gesetzt, Protokoll 1.0.3; `status: umgesetzt` nach Merge; Memory `reference_ui_model_provider_mechanism` ergänzt.
 - [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte „neu: OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI", Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-012-openai-modelle/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
@@ -401,3 +401,7 @@ Code, Tests, Docs: 4–6 h (S; nach E1–E17 eine Stunde mehr für `providersFor
 | 2026-09-16 | Schritt 0: vierter `model.list`-Konsument `cloud-terminal.service.ts:688` (`getConfiguredProviders`) — ohne Aufrufer im Frontend, unverändert gelassen | Vorgefunden | §2 (Konsumentenliste) |
 | 2026-09-16 | Vertragstest `model-config-openai.test.ts` ohne `vi.mock('fs')`: der Mock trifft auch `node:fs`, und `model-config.ts` liest die echte Datei ohnehin über den eigenen Pfad; nichts schreibt | Test-Technik | §8 AK-01/AK-05/E3 |
 | 2026-09-17 | Kennung INT-2026-011 → INT-2026-012 in Ordner, Frontmatter, Code-Kommentaren, Testnamen, Docs, Branch und den 7 Commit-Messages (ungepusht, `filter-branch --msg-filter`, Tree unverändert) | INT-2026-011 war parallel für „Terminal statt Gespräch“ (PR #61) vergeben; dieses Vorhaben lag nur lokal, daher hier umnummeriert | Kopfzeile, §4 Nr. 13 (`no-secrets-allow.txt`-Kommentar) |
+| 2026-09-17 | **OF-03/R2: Modell-IDs.** Das ChatGPT-Konto bietet weder `gpt-6-astra` noch `gpt-5.6-sol` — nativ (Codex-CLI 0.154.0) und über den Proxy antwortet OpenAI `400 The '<id>' model is not supported when using Codex with a ChatGPT account.`; `~/.codex/models_cache.json` (vom Server für dieses Konto) kennt nur `gpt-5.6-terra` (Codex-Standard), `gpt-5.6-luna`, `gpt-5.5`, kein Upgrade-Hinweis. Entscheidung Michael 2026-09-17: beide Provider auf Terra/Luna/GPT-5.5; D4-Mapping Opus→Terra, Sonnet→Terra, Haiku→Luna (Luna übernimmt die Hintergrundaufrufe, im Proxy-Log sichtbar). AK-02 „Sitzung auf GPT-6 Astra" wird „auf GPT-5.6 Terra"; der Intent-Titel bleibt (Astra ist das Ziel, sobald das Konto es freischaltet: eine JSON-Zeile + `settings.json`) | Beim ersten Wrapper-Lauf gefunden | §3 Ansatz 1 und Vorlage `settings.json`, §4 Nr. 1, §8 AK-01/02/05, §10 Schritt 4/6, Teil 1 |
+| 2026-09-17 | AK-06 „ohne Status-Punkt": der Tab der Codex-Sitzung zeigt weiterhin den grünen Prozess-Punkt (`tab-status active`, Tooltip „(active)"), wie jedes Shell-Terminal — das ist der Sitzungs-, nicht der Agent-Status. Agent-Farbe, Label, Glocke und Gespräch fehlen wie zugesichert (`agentStatus` bleibt `unknown`, 0 Hook-Ereignisse) | E2E-Screenshot 01/06 | §8 AK-06, Teil 1 (Formulierung) |
+| 2026-09-17 | AK-08 (2) beim ersten Durchlauf mit gestopptem Proxy gemessen (falscher Zweig), Proxy per `start-proxy.sh` (ohne `--start`, das Skript kennt den Schalter nicht) neu gestartet und Probe wiederholt; der Logout löschte den Keychain-Eintrag → zweiter `auth login` durch Michael | Ablauffehler des Agenten | §10 Schritt 5 |
+| 2026-09-17 | E2E am Branch-Backend 3111 mit ws-Skript und Playwright (23 Prüfungen grün) statt Playwright-MCP; Protokoll und 7 Screenshots unter `design/` (Muster INT-2026-010). Erster OpenAI-Lauf 12/14 wegen zweier Skriptfehler (Feldname `delta.upsert`; AK-09 zählte eine Grok-Zeile der parallel laufenden Sitzung auf 3001), korrigiert und wiederholt | Nachweis | §8 E2E-Pfad, §13 |

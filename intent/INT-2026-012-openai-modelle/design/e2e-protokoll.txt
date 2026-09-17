@@ -1,0 +1,75 @@
+E2E-Protokoll INT-2026-012 — OpenAI-Modelle (Terra, Luna, GPT-5.5) und Codex (nativ) in der Web-UI
+Datum: 2026-09-17 · Branch-Backend Port 3111 (SPECWRIGHT_TMUX=off, eigener Runtime-Ordner) · Scratch-Projekt /private/tmp/scratch-int011 · Skripte e2e-011.mjs (ws), shots-011.mjs / shots-011b.mjs (Playwright, headless Chrome) im Sitzungs-Scratchpad, nicht im Repo.
+
+Einrichtung vorher (§10 Schritte 1–6): claude-code-proxy 0.1.34 → 0.1.40 (brew); `claude-code-proxy codex auth login` (Michael, Browser); Proxy-Neustart (eine Grok-Sitzung lief, Freigabe Michael); ~/.claude-codex neu (alter LiteLLM-Stand → ~/.claude-codex.bak-2026-09-16), Symlinks skills/agents/commands/CLAUDE.md/plugins; ~/bin/claude-codex; @openai/codex 0.93.0 (kaputt, vendor-Binary fehlte) → 0.154.0; `codex login` (Michael, ChatGPT; alte API-Key-auth.json → auth.json.bak-2026-09-16).
+
+OF-03 Befund: Astra und Sol sind für das ChatGPT-Konto nicht freigeschaltet — nativ und über den Proxy:
+  400 The 'gpt-6-astra' model is not supported when using Codex with a ChatGPT account.   (ebenso gpt-5.6-sol, gpt-5.4)
+~/.codex/models_cache.json (vom OpenAI-Server für dieses Konto) listet gpt-5.6-terra (Codex-Standard, "Balanced agentic coding model"), gpt-5.6-luna ("Fast and affordable agentic coding model"), gpt-5.5 ("Proven previous-generation model"); kein Upgrade-Hinweis in den Metadaten. Entscheidung Michael 2026-09-17: beide Provider auf diese drei IDs; D4-Mapping Opus→Terra, Sonnet→Terra, Haiku→Luna.
+
+Wrapper-Proben im Terminal (§10 Schritt 5, AK-08):
+  claude-codex -p "Antworte nur mit OK" → OK; proxy.log: request_completed provider=codex model=gpt-5.6-terra status=200
+  (1) Proxy gestoppt → "claude-codex: claude-code-proxy antwortet nicht unter http://127.0.0.1:18765 — starten: ~/Entwicklung/claude-code-proxy/start-proxy.sh", exit=1
+  (2) Proxy läuft, `codex auth logout` → "claude-codex: ChatGPT-Konto im Proxy nicht angemeldet — claude-code-proxy codex auth login", exit=1; danach erneut `auth login` (Michael)
+  `claude-code-proxy codex auth status` angemeldet: "Account: <id> / Expires: 2026-09-27T… / Storage: macOS Keychain" (Positivformat notiert; der Wrapper prüft nur das Negativmuster "Not authenticated")
+
+Phase lists (WS model.list / model.providers.list, 12:19 Uhr):
+  OK  AK-05/D1 model.list: codex=claude, codex-cli=foreign, alle Provider dabei — {"anthropic":"claude","glm":"claude","gemini":"claude","kimi-kw":"claude","minimax":"claude","deepseek":"claude","openrouter":"claude","grok":"claude","codex":"claude","codex-cli":"foreign"}
+  OK  AK-01 model.list codex-Modelle — ["gpt-5.6-terra","gpt-5.6-luna","gpt-5.5"]
+  OK  AK-07 model.providers.list: OpenAI drin, Codex (nativ) nicht — anthropic,glm,gemini,kimi-kw,minimax,deepseek,openrouter,grok,codex
+  OK  AK-07 Prüfer-Liste hat kein cliKind-Feld nötig (Form unverändert)
+
+Erster OpenAI-Lauf (12:29, Sitzung cloud-1789640957558-3): 12/14 — die zwei roten Prüfungen waren Skriptfehler (Feldname der Gespräch-Deltas; AK-09 zählte eine grok-4.6-Zeile der parallel laufenden Grok-Sitzung auf 3001 mit). Skript korrigiert, Lauf wiederholt:
+
+Phase openai (Sitzung cloud-1789641389770-4, Provider codex, Modell gpt-5.6-terra; Start 2026-09-17T10:36:29.762Z):
+  OK  AK-02 OpenAI-Sitzung startet (Prompt sichtbar) — ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────⏎⏵⏵bypasspermissionson (shift+tabtocycle)·←foragents●high·/effort⏎[>0q
+  OK  AK-02 Antwort auf Prompt 1 (OK, nicht nur das Echo) — 2× OK
+  OK  AK-02 Antwort auf Prompt 2 (2) — 3× 2
+  OK  AK-10 Vorbereitung: Plan-Pfad im Puffer (Antwort) — 3× Pfad
+  OK  AK-03 Status-Punkt: Hook-Ereignisse working/done — session-start→idle prompt-submitted→working stop→done prompt-submitted→working stop→done prompt-submitted→working stop→done
+  OK  AK-03 Glocke: stop-Ereignis gemeldet — 3 stop
+  OK  AK-03 agentStatus der OpenAI-Sitzung = done — done
+  OK  AK-03 Gespräch zeigt Turns (Prompt + Antwort) — 14 Frames, 12 Beiträge: nutzer:Antworte nur mit OK | nutzer:Antworte nur mit OK | claude:OK | claude:OK | nutzer:Antworte nur mit der Zahl 2 | nutzer:Antworte nur mit der Zahl 2 | clau
+  OK  AK-02 Transkript unter ~/.claude-codex nennt gpt-5.6-terra — /Users/michaelsindlinger/.claude-codex/projects/-private-tmp-scratch-int011/3599602b-d692-440a-84bb-8fbf4c57c315.jsonl
+  OK  AK-02 Transkript enthält kein claude-*-Modell als Antwortmodell
+  OK  AK-10 Plan-Review gestartet (manuell) — {"source":"manual","reviewerCount":1}
+  OK  AK-10 Prüfer OpenAI/GPT-5.6 Terra liefert Ergebnis — fulfilled No material risks. Scope matches requirement: create `README.md` containing `Hallo Welt`.  Minor: clarify newline convention if repository enforces formatting r
+  OK  AK-10 Review aggregiert — 408 Zeichen
+  OK  AK-09 Messung: 8 codex-Aufrufe seit 2026-09-17T10:36:29.769Z, alle model=gpt-*; 0 claude-*-Modelle — codex-Modelle: gpt-5.6-luna,gpt-5.6-terra; fremde Zeilen (andere Sitzungen am Proxy, z. B. Grok auf 3001): 0 → —
+
+  AK-09 Proxy-Zeilen (t, provider, model, status):
+    2026-09-17T10:36:36Z codex gpt-5.6-luna 200
+    2026-09-17T10:36:39Z codex gpt-5.6-terra 200
+    2026-09-17T10:38:37Z codex gpt-5.6-terra 200
+    2026-09-17T10:40:41Z codex gpt-5.6-terra 200
+    2026-09-17T10:42:49Z codex gpt-5.6-terra 200
+    2026-09-17T10:42:51Z codex gpt-5.6-luna 200
+    2026-09-17T10:42:52Z codex gpt-5.6-terra 200
+    2026-09-17T10:42:53Z codex gpt-5.6-terra 200
+
+Phase codex (Sitzung cloud-1789641782602-5, Provider codex-cli, Modell gpt-5.6-terra):
+  OK  AK-05 Codex-TUI startet aus der UI — atch-int011      │⏎│ permissions: YOLO mode                        │⏎╰───────────────────────────────────────────────╯⏎⏎  Tip: Use /permissions to control when Codex asks for confirmation.  › Ask Codex to do anything   g
+  OK  AK-05 Codex antwortet auf Prompt
+  OK  AK-05/OF-03 Codex nennt gpt-5.6-terra — gpt-5.6-terra,gpt-5.6-terra,gpt-5.6-terra,gpt-5.6-terra
+  OK  AK-06 keine Hook-Ereignisse für die Codex-Sitzung — 0 Ereignisse
+  OK  AK-06 agentStatus der Codex-Sitzung bleibt unknown — unknown
+
+DOM-Befunde der Screenshots:
+  tabs: [{"name": "Claude Session 1", "status": "tab-status active agent-blocked", "title": "Wartet auf Eingabe: Plan-Review eingefügt (1/1 Reviewer) (vor 5 Min)"}, {"name": "Claude Session 2", "status": "tab-status active ", "title": ""}]
+  reviewer-groups: Anthropic, GLM, Gemini, KIMI K2, MiniMax, DeepSeek V4, OpenRouter, Grok, OpenAI
+  terminal-dropdown-providers: Shell, Anthropic, GLM, Gemini, KIMI K2, MiniMax, DeepSeek V4, OpenRouter, Grok, OpenAI, Codex (nativ)
+  neue-absicht-modellwahl-provider: anthropic:claude, glm:claude, gemini:claude, kimi-kw:claude, minimax:claude, deepseek:claude, openrouter:claude, grok:claude, codex:claude
+  neue-absicht-dropdown-labels: Anthropic, GLM, Gemini, KIMI K2, MiniMax, DeepSeek V4, OpenRouter, Grok, OpenAI
+  settings-step-default-options (codex-Anteil): codex::gpt-5.6-terra, codex::gpt-5.6-luna, codex::gpt-5.5
+
+Bildschirm der Codex-Sitzung (Auszug): "OpenAI Codex (v0.154.0) · model: gpt-5.6-terra · directory: /private/tmp/scratch-int011 · permissions: YOLO mode" → Prompt "Antworte nur mit OK" → "OK". Die Codex-Vertrauensfrage für den Ordner kam einmal (R10) und wurde per Enter bestätigt.
+
+Screenshots (design/ist/, 1440×900, headless Chrome gegen 3111):
+  01 Tabs: OpenAI-Sitzung mit orangem Agent-Punkt "Wartet auf Eingabe: Plan-Review eingefügt (1/1 Reviewer)"; Codex-Sitzung nur mit grünem Prozess-Punkt (Session-Status active, wie bei Shell-Terminals — bestehendes Verhalten, plan §14), kein Agent-Status, Tooltip "(active)"
+  02 / 02b Prüfer-Liste oben und ans Ende gescrollt: 9 Gruppen, OpenAI drin, "Codex (nativ)" fehlt (AK-07)
+  03 Terminal-Dropdown: Shell + 9 Provider inkl. OpenAI und Codex (nativ), je 3 Modelle (AK-05)
+  04 Neue Absicht, Modellwahl (D1): 9 Provider, codex-cli fehlt
+  05 Settings, Schritt-Standards (D1): Optionen enthalten codex::gpt-5.6-terra/luna/gpt-5.5, kein codex-cli::…; Provider-Karten zeigen OpenAI und Codex (nativ)
+  06 Codex-Sitzung aktiv: TUI mit Modell und YOLO mode, Antwort OK
+
+Aufräumen: beide Sitzungen per cloud-terminal:close geschlossen, Backend 3111 beendet, Port frei; Backend 3001 (Michael) unberührt. Scratch-Projekt und ~/.claude-codex/plans/int011-e2e.md bleiben liegen.
