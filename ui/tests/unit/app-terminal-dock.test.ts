@@ -26,6 +26,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { TerminalSession } from '../../frontend/src/components/terminal/aos-cloud-terminal-sidebar.js';
 import type { BellRow } from '../../frontend/src/components/terminal/agent-notifications.js';
 import { gateway } from '../../frontend/src/gateway.js';
+import { vorhabenService } from '../../frontend/src/services/vorhaben.service.js';
 
 type RouteListener = (route: { view: string; segments: string[]; params?: Record<string, string> }) => void;
 /** app.ts and the mounted view both subscribe — every listener gets the route. */
@@ -62,6 +63,7 @@ vi.mock('../../frontend/src/services/vorhaben.service.js', () => ({
     modelList: vi.fn(async () => ({ providers: [], defaultSelection: { providerId: 'anthropic', modelId: 'opus' }, stepDefaults: {} })),
     targets: vi.fn(async () => ({ isGitRepo: false, worktrees: [], worktreeCreationEnabled: false })),
     startStep: vi.fn(),
+    assignSession: vi.fn(async () => ({})),
     setAnsicht: vi.fn(),
     setDraft: vi.fn(),
     deleteDraft: vi.fn(),
@@ -502,7 +504,7 @@ describe('app.ts — Cmd+D and the header toggle open on the page\'s tab (INT-20
     el.remove();
   });
 
-  it('Cmd+D on a docked page without a session opens a single pane with the current tab, whatever layout is stored', async () => {
+  it('Cmd+D on a docked page whose address names no open project opens a single pane with the current tab, whatever layout is stored', async () => {
     localStorage.setItem('cloud-terminal-layout-mode', 'split-2');
     localStorage.setItem('cloud-terminal-pane-sessions', JSON.stringify(['a1', 'b1']));
     localStorage.setItem('cloud-terminal-pane-projects', JSON.stringify(['/a', '/b']));
@@ -522,6 +524,170 @@ describe('app.ts — Cmd+D and the header toggle open on the page\'s tab (INT-20
     expect(sb.querySelector('.pane-headers')).toBeNull();
     expect(localStorage.getItem('cloud-terminal-layout-mode')).toBe('split-2');
     el.remove();
+  });
+
+  describe('INT-2026-016 — the docked column belongs to the page project (AK-05), and binds tabs to the Vorhaben (AK-06, AK-07)', () => {
+    const assign = vi.mocked(vorhabenService.assignSession);
+    beforeEach(() => {
+      assign.mockReset();
+      assign.mockResolvedValue({ projectId: 'pb', intentId: 'INT-2026-003', sessionId: 'cloud-b1' });
+    });
+    /** A docked page of project B while the workspace's active project is A. */
+    async function pageOfB(): Promise<AppInternals> {
+      const el = await app();
+      route('vorhaben', [encodeURIComponent('pb'), 'INT-2026-003']);
+      await settle(el);
+      expect(el.terminalDocked).toBe(true);
+      expect(el.isTerminalSidebarOpen).toBe(false);
+      return el;
+    }
+    const sessionsShown = (el: AppInternals): string[] => (sidebarOf(el) as unknown as { sessions: TerminalSession[] }).sessions.map((s) => s.id);
+    const selectTab = (el: AppInternals, sessionId: string, userInitiated: boolean): void => {
+      sidebarOf(el).dispatchEvent(new CustomEvent('session-select', { detail: userInitiated ? { sessionId, userInitiated: true } : { sessionId }, bubbles: true, composed: true }));
+    };
+
+    it('AK-05: Cmd+D on a page of B without a session shows the tabs of B (last one first), the active project stays A', async () => {
+      const el = await pageOfB();
+      el.lastActiveSessionByProject.set('pb', 'b1');
+      cmdD();
+      await settle(el);
+      expect(el.isTerminalSidebarOpen).toBe(true);
+      expect(el.activeProjectId).toBe('pa');
+      expect(switchProject).not.toHaveBeenCalled();
+      expect(sessionsShown(el)).toEqual(['b1']);
+      expect(el.activeTerminalSessionId).toBe('b1');
+      expect(el.pendingDockSessionId).toBeNull();
+      // no tab of B at all → empty state, nothing of A is shown
+      el.terminalSessions = el.terminalSessions.filter((s) => s.projectPath !== '/b');
+      await settle(el);
+      expect(sessionsShown(el)).toEqual([]);
+      expect(el.activeTerminalSessionId).toBeNull();
+      el.remove();
+    });
+
+    it('AK-05: leaving the page of B gives the floating sidebar the tabs of A back', async () => {
+      const el = await pageOfB();
+      cmdD();
+      await settle(el);
+      expect(el.activeTerminalSessionId).toBe('b1');
+      route('vorhaben', []);
+      await settle(el);
+      expect(el.isTerminalSidebarOpen).toBe(false);
+      expect(el.activeTerminalSessionId).toBe('a1');
+      cmdD();
+      await settle(el);
+      expect(sessionsShown(el)).toEqual(['a1', 'a2']);
+      el.remove();
+    });
+
+    it('AK-06: „Neue Session" on the page of B is created in B although A is active; a claude-code connect binds it, a shell does not (assign-before-switch)', async () => {
+      const el = await pageOfB();
+      cmdD();
+      await settle(el);
+      sidebarOf(el).dispatchEvent(new CustomEvent('new-session', { bubbles: true, composed: true }));
+      await settle(el);
+      const fresh = el.terminalSessions.find((s) => s.name === 'Neue Session')!;
+      expect(fresh.projectPath).toBe('/b');
+      expect(el.activeTerminalSessionId).toBe(fresh.id);
+      // connect as claude-code → assign with the backend id
+      sidebarOf(el).dispatchEvent(new CustomEvent('session-connected', { detail: { sessionId: fresh.id, terminalSessionId: 'cloud-neu', terminalType: 'claude-code' }, bubbles: true, composed: true }));
+      await settle(el);
+      expect(assign).toHaveBeenCalledWith('pb', 'INT-2026-003', 'cloud-neu');
+      expect(el.showToast).toHaveBeenCalledWith(expect.stringMatching(/gehört jetzt zu INT-2026-003/), 'success');
+      // a second connect of the same tab does not bind again (memory cleared)
+      sidebarOf(el).dispatchEvent(new CustomEvent('session-connected', { detail: { sessionId: fresh.id, terminalSessionId: 'cloud-neu', terminalType: 'claude-code' }, bubbles: true, composed: true }));
+      await settle(el);
+      expect(assign).toHaveBeenCalledTimes(1);
+      // a shell tab created there is never bound
+      sidebarOf(el).dispatchEvent(new CustomEvent('new-session', { bubbles: true, composed: true }));
+      await settle(el);
+      const shell = el.terminalSessions.filter((s) => s.name === 'Neue Session').pop()!;
+      sidebarOf(el).dispatchEvent(new CustomEvent('session-connected', { detail: { sessionId: shell.id, terminalSessionId: 'cloud-sh', terminalType: 'shell' }, bubbles: true, composed: true }));
+      await settle(el);
+      expect(assign).toHaveBeenCalledTimes(1);
+      el.remove();
+    });
+
+    it('AK-06: a refusal lands as a toast with the server message; a route change or a closed tab drops the memory', async () => {
+      const el = await pageOfB();
+      cmdD();
+      await settle(el);
+      sidebarOf(el).dispatchEvent(new CustomEvent('new-session', { bubbles: true, composed: true }));
+      await settle(el);
+      const fresh = el.terminalSessions.find((s) => s.name === 'Neue Session')!;
+      assign.mockRejectedValueOnce(Object.assign(new Error("Sitzung ‚x' gehört zu INT-2026-004"), { code: 'SESSION_ASSIGNED_ELSEWHERE' }));
+      sidebarOf(el).dispatchEvent(new CustomEvent('session-connected', { detail: { sessionId: fresh.id, terminalSessionId: 'cloud-neu', terminalType: 'claude-code' }, bubbles: true, composed: true }));
+      await settle(el);
+      expect(el.showToast).toHaveBeenCalledWith(expect.stringMatching(/gehört zu INT-2026-004/), 'warning');
+      // memory dropped on route change
+      sidebarOf(el).dispatchEvent(new CustomEvent('new-session', { bubbles: true, composed: true }));
+      await settle(el);
+      const second = el.terminalSessions.filter((s) => s.name === 'Neue Session').pop()!;
+      route('vorhaben', []);
+      await settle(el);
+      sidebarOf(el).dispatchEvent(new CustomEvent('session-connected', { detail: { sessionId: second.id, terminalSessionId: 'cloud-2', terminalType: 'claude-code' }, bubbles: true, composed: true }));
+      await settle(el);
+      expect(assign).toHaveBeenCalledTimes(1);
+      el.remove();
+    });
+
+    it('AK-07: a user click on a Claude tab in the docked column of a page without a session binds it; Cmd+D alone, a page with a session, a floating sidebar, a shell tab and the phone never do', async () => {
+      const el = await pageOfB();
+      el.terminalSessions = [...el.terminalSessions, { ...tab('b2', '/b'), terminalType: 'shell' }];
+      cmdD();
+      await settle(el);
+      // Cmd+D selected b1 programmatically → nothing sent
+      expect(assign).not.toHaveBeenCalled();
+      selectTab(el, 'b1', false);
+      await settle(el);
+      expect(assign).not.toHaveBeenCalled();
+      selectTab(el, 'b1', true);
+      await settle(el);
+      expect(assign).toHaveBeenCalledWith('pb', 'INT-2026-003', 'cloud-b1');
+      expect(el.showToast).toHaveBeenCalledWith(expect.stringMatching(/gehört jetzt zu INT-2026-003/), 'success');
+      // shell tab → nothing
+      selectTab(el, 'b2', true);
+      await settle(el);
+      expect(assign).toHaveBeenCalledTimes(1);
+      // the page has a session now → a click on another tab does not move anything
+      pageSession('cloud-b1');
+      await settle(el);
+      selectTab(el, 'b2', true);
+      selectTab(el, 'b1', true);
+      await settle(el);
+      expect(assign).toHaveBeenCalledTimes(1);
+      // refusal → toast with the server's text
+      pageSession(null);
+      await settle(el);
+      assign.mockRejectedValueOnce(Object.assign(new Error("Sitzung ‚b1' gehört zu INT-2026-004"), { code: 'SESSION_ASSIGNED_ELSEWHERE' }));
+      selectTab(el, 'b1', true);
+      await settle(el);
+      expect(el.showToast).toHaveBeenCalledWith("Sitzung ‚b1' gehört zu INT-2026-004", 'warning');
+      // floating (not docked) → nothing
+      route('vorhaben', []);
+      await settle(el);
+      cmdD();
+      await settle(el);
+      selectTab(el, 'a1', true);
+      await settle(el);
+      expect(assign).toHaveBeenCalledTimes(2);
+      el.remove();
+    });
+
+    it('AK-07: on the phone a tap on a tab never binds', async () => {
+      mobile = true;
+      try {
+        const el = await pageOfB();
+        el.isTerminalSidebarOpen = true;
+        await settle(el);
+        selectTab(el, 'b1', true);
+        await settle(el);
+        expect(assign).not.toHaveBeenCalled();
+        el.remove();
+      } finally {
+        mobile = false;
+      }
+    });
   });
 
   it('Cmd+D outside the docked routes leaves the tab alone', async () => {

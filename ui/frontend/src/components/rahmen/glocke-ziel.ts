@@ -7,8 +7,9 @@
  * review E4):
  *
  *   1. rows whose `session.id` is the session — first the ones whose
- *      assignment has not `ended` (the backend marks the older assignment of
- *      a re-assigned session `ended`), among several the one with the newest
+ *      assignment has not `ended` (a closed session keeps its rows as
+ *      `ended`; a session that moved on by command lost its older rows
+ *      altogether, INT-2026-016 AK-08), among several the one with the newest
  *      `lastChangedMs`;
  *   2. otherwise a pending `/intent` session → the „Neue Absicht" page of its
  *      project;

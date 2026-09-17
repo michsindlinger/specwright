@@ -102,6 +102,19 @@ const GRUND_TEXT: Record<string, string> = {
   bereit: '',
 };
 
+/**
+ * INT-2026-016 (AK-07): on the Mac the docked terminal offers a second way
+ * for a row without a live session — a click on a Claude tab there, or
+ * „Neue Session", binds it to this Vorhaben. Named here so the footer says
+ * what the click will do; the phone has no docked terminal.
+ */
+export const ZUORDNUNG_HINWEIS = 'oder im Terminal (Cmd+D) einen Claude-Tab anklicken bzw. Neue Session: gehört dann diesem Vorhaben';
+export function grundText(grund: string, mobile: boolean): string {
+  const base = GRUND_TEXT[grund] ?? '';
+  if (mobile || (grund !== 'keine_sitzung' && grund !== 'beendet')) return base;
+  return `${base} ${ZUORDNUNG_HINWEIS}`;
+}
+
 @customElement('aos-vorhaben-seite')
 export class AosVorhabenSeite extends LitElement {
   @property({ attribute: false }) row!: VorhabenRow;
@@ -675,7 +688,7 @@ export class AosVorhabenSeite extends LitElement {
         .preview=${this.preview()}
         .sessionName=${session?.name ?? ''}
         .bereit=${grund === 'bereit'}
-        .grund=${grund === 'dialog' ? dialogZielText(r) : GRUND_TEXT[grund] ?? ''}
+        .grund=${grund === 'dialog' ? dialogZielText(r) : grundText(grund, this.mobile)}
         .sending=${this.sending}
         @sammel-close=${() => (this.sammelOpen = false)}
         @sammel-send=${() => this.send('aenderungen')}

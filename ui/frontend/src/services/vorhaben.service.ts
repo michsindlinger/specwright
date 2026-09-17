@@ -173,6 +173,21 @@ export class VorhabenClientService {
   }
 
   /**
+   * INT-2026-016 (AK-06, AK-07): bind a live claude-code tab to a Vorhaben
+   * row without a session. Resolves on `vorhaben:session-assigned`, rejects
+   * with the server's code and message (`VorhabenRequestError`) — the caller
+   * shows the message as a toast.
+   */
+  assignSession(projectId: string, intentId: string, sessionId: string): Promise<{ projectId: string; intentId: string; sessionId: string }> {
+    return this.request<{ projectId: string; intentId: string; sessionId: string }>('vorhaben:session-assigned', {
+      type: 'vorhaben:session.assign',
+      projectId,
+      intentId,
+      sessionId,
+    });
+  }
+
+  /**
    * INT-2026-010 (FA-03, FA-12; AR-05): shared view state — project chip of
    * the overview and the chosen phase document of a Vorhaben. The answer is
    * the next `vorhaben:state` broadcast (every device follows).

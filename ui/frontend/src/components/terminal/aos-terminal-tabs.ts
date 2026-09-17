@@ -387,9 +387,11 @@ export class AosTerminalTabs extends LitElement {
   }
 
   private _handleTabClick(sessionId: string) {
+    // INT-2026-016 (AK-07): only a real click may bind a tab to the Vorhaben
+    // of a docked page — programmatic selection never carries this flag.
     this.dispatchEvent(
       new CustomEvent('session-select', {
-        detail: { sessionId },
+        detail: { sessionId, userInitiated: true },
         bubbles: true,
         composed: true,
       })
