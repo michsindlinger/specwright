@@ -1,6 +1,7 @@
 /**
  * aos-vorhaben-seite — one Vorhaben (mock 03; INT-2026-010 skizze 3): head
- * with id, title and the Phasen-Chips intent · spec · plan · build
+ * with project name (grey line above the id, INT-2026-017), id, title and
+ * the Phasen-Chips intent · spec · plan · build
  * (+ design/ when sketches exist; FA-12), state line, review hint while the
  * session waits (FA-15), protocol of sent answers (FA-31), the reader with
  * annotation marks (FA-23) or „Kein Dokument in dieser Phase", below it the
@@ -155,6 +156,10 @@ export class AosVorhabenSeite extends LitElement {
     .kopf-text {
       min-width: 0;
       flex: 1 1 320px;
+    }
+    .projekt {
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-sm);
     }
     .kennung {
       font-family: var(--font-family-mono);
@@ -627,6 +632,7 @@ export class AosVorhabenSeite extends LitElement {
         <button type="button" class="zurueck" @click=${this.back}>‹ Vorhaben</button>
         <div class="kopf">
           <div class="kopf-text">
+            <div class="projekt">${r.projectName}</div>
             <div class="kennung">${r.intentId}</div>
             <h1>${r.titel}</h1>
           </div>

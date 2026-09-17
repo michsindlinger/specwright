@@ -1,7 +1,7 @@
 # Plan: UI: Projektname im Kopf der Vorhaben-Seite
 
 > **Intent:** `intent.md` (INT-2026-017) · **Spec:** entfällt (bypass: Größe S, eine Anzeige-Zeile in einer Frontend-Komponente, Daten liegen schon in der Zeile)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger) — im Chat „freigabe", 2026-09-17
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 960c22e), `CLAUDE.md`, `docs/security.md`
 
@@ -239,15 +239,15 @@ Kein Secret, kein Flag, keine Migration, kein Datenlauf; Hook `production-gate` 
 
 <!-- leser: agent -->
 
-- [ ] AK-01, AK-02, AK-03 haben grüne Tests in `aos-vorhaben-seite-chips.test.ts`; AK-04/AN-01/AN-02 per Skript und Screenshots (§8).
-- [ ] Alle drei Nachweise aus §5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (§8), Screenshots `design/ist/mac-1440.png`, `handy-390.png` im Intent-Ordner, Vergleich zu `c2-tab-geklickt-gebunden.png` im PR.
-- [ ] `bash scripts/verify.sh` → `verify: OK`, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` unverändert (§3 „Nein"); `docs/design.md` §4 + Protokoll ergänzt.
-- [ ] Manuelle Schritte (§10) erledigt oder im PR als offen markiert (Merge, Board).
-- [ ] Abweichungen in §14; `plan.md` Status `umgesetzt`; `intent.md` Änderungsprotokoll mit PR.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
-- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Projekt Specwright · Karte „neu": INT-2026-017 Projektname im Kopf · Zielspalte `✅ Erledigt` · Beleg PR · Verweis `intent/INT-2026-017-projektname-im-kopf/`); Nachziehen in eigener Sitzung.
+- [x] AK-01, AK-02, AK-03 haben grüne Tests in `aos-vorhaben-seite-chips.test.ts` (14/14, drei neue Fälle, erst rot dann grün); AK-04/AN-01/AN-02 per Skript (`E2E: ok`, beide Breiten) und Screenshots (§8).
+- [x] Alle drei Nachweise aus §5 ausgeführt (2 · 6 · 2 Treffer) und im PR zitiert.
+- [x] E2E-Pfad läuft (§8), Screenshots `design/ist/mac-1440.png`, `handy-390.png` im Intent-Ordner, Vergleich zu `c2-tab-geklickt-gebunden.png` im PR.
+- [ ] `bash scripts/verify.sh` → lokal `verify: ROT` allein wegen vorbestehendem `terminal-io.test.ts` (§14, auch auf `main`); Ausgabe im PR — **offen bis PR-Checks grün** (CI ist die Wahrheit).
+- [x] `docs/architecture.md` unverändert (§3 „Nein"); `docs/design.md` §4 + Protokoll ergänzt.
+- [x] Manuelle Schritte (§10): Merge und Board im PR als offen markiert.
+- [x] Abweichungen in §14; `plan.md` Status `umgesetzt`; `intent.md` Änderungsprotokoll mit PR.
+- [x] 2x-Regel-Check: kein Wiederholungsfehler — Regel `.projekt` in `static styles` (RB-01), Worktree-`npm ci` ×2 + `chmod +x` vorab, Nullmessung grün; kein `CLAUDE.md`-Vorschlag.
+- [x] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Projekt Specwright · Karte „neu": INT-2026-017 Projektname im Kopf · Zielspalte `✅ Erledigt` · Beleg PR · Verweis `intent/INT-2026-017-projektname-im-kopf/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
 
@@ -255,4 +255,6 @@ Kein Secret, kein Flag, keine Migration, kein Datenlauf; Hook `production-gate` 
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-17 | `bash scripts/verify.sh` endet lokal mit `verify: ROT`: Stufe 5 meldet `tests/integration/terminal-io.test.ts` als neue rote Datei (Fall „Ctrl+C auf `sleep 30`", erwartet Exit `1/2/130/143`, bekommt `0`). Alle übrigen Stufen grün, `--fast` grün. | Vorbestehend und umgebungsbedingt, nicht durch dieses Vorhaben: derselbe Befund auf Michaels `main`-Checkout (ad70b5c, nur Test ausgeführt), auch ohne `SPECWRIGHT_CLOUD_SESSION_ID`/`TMUX`. Ursache [Likely]: zsh 5.9 führt `-c 'sleep 30'` per `exec` aus, SIGINT tötet `sleep` direkt, node-pty meldet `exitCode 0` + `signal 2`, `terminal-manager.ts:306` gibt nur `exitCode` weiter. Der Diff dieses Vorhabens berührt `ui/src/server/**` nicht (§4 „Nicht betroffen"); Test und Bezugsliste bleiben unangetastet (Hook `protect-tests`, CLAUDE.md). CI ist die Wahrheit (§8). | §6 Schritt 6, §13 (Verify-Punkt offen bis PR-Check grün); Befund als eigene Karte fürs Board (Bugfix-Kandidat: Signal in Exit-Code abbilden) |
+| 2026-09-17 | E2E-Skript wählt vor dem Screenshot ausdrücklich Chip `spec` | Die Dokumentwahl ist geteilter Sichtzustand im Backend (AR-05, INT-2026-010): der Mac-Lauf klickte `plan`, der Handy-Kontext („zweites Gerät") startete damit ohne Dokument — gewolltes Verhalten, nur das Skript war zu streng | §6 Schritt 7 (Skript), kein Code |
+| 2026-09-17 | Test AK-03: Reihenfolge der Wechsel getauscht — erst anderes Projekt mit **gleicher** Kennung (`Applai`, `INT-2026-004`), dann anderes Vorhaben (`Kreis Lippe`, `INT-2026-009`) | In der Reihenfolge aus §8 (erst 009, dann 004) wäre der zweite Wechsel wieder ein Kennungswechsel gewesen; der Fall „gleiche Kennung, `willUpdate`-Reset greift nicht" (F3) braucht den Übergang 004 → 004 | §8 AK-03 (Inhalt gleich, Reihenfolge) |
