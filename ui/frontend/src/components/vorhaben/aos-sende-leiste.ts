@@ -15,6 +15,14 @@ import { formatClock } from './vorhaben-sort.js';
 export type LeisteGrund = 'bereit' | 'keine_sitzung' | 'arbeitet' | 'dialog' | 'beendet';
 
 /** Readiness of the row's session for a send (client-side mirror of the backend checks). */
+/**
+ * INT-2026-016 (AK-07): on the Mac the docked terminal offers a second way
+ * for a row without a live session — a click on a Claude tab there, or
+ * „Neue Session", binds it to this Vorhaben. The bar says so; the phone has
+ * no docked terminal and stays silent.
+ */
+export const ZUORDNUNG_HINWEIS = 'Tab im Terminal anklicken oder Neue Session: gehört dann diesem Vorhaben';
+
 export function leisteGrund(row: VorhabenRow): LeisteGrund {
   const s = row.session;
   if (!s || row.zustand === 'keine_sitzung') return 'keine_sitzung';
@@ -201,10 +209,15 @@ export class AosSendeLeiste extends LitElement {
       case 'dialog':
         return html`<span class="ziel"><span class="dot dialog"></span>${dialogZielText(this.row)}</span>`;
       case 'beendet':
-        return html`<span class="ziel"><span class="dot beendet"></span>Sitzung ‚${name}' beendet${this.endedAt()}</span>`;
+        return html`<span class="ziel"><span class="dot beendet"></span>Sitzung ‚${name}' beendet${this.endedAt()}${this.hinweis()}</span>`;
       default:
-        return html`<span class="ziel"><span class="dot"></span>keine Sitzung zu diesem Vorhaben</span>`;
+        return html`<span class="ziel"><span class="dot"></span>keine Sitzung zu diesem Vorhaben${this.hinweis()}</span>`;
     }
+  }
+
+  /** INT-2026-016 (AK-07): the docked terminal's way to bind a tab — Mac only. */
+  private hinweis() {
+    return this.mobile ? nothing : html` — <span class="hinweis">${ZUORDNUNG_HINWEIS}</span>`;
   }
 
   private endedAt(): string {

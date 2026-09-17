@@ -26,7 +26,7 @@ import { buildAenderungenText, buildFreigabeText, formatStandLabel } from '../..
 import { vorhabenService, type ModelListInfo, type SendResult } from '../../services/vorhaben.service.js';
 import { ladeModelle, vorauswahl } from './model-wahl.js';
 import { STEP_LABELS, ZUSTAND_LABELS, formatStand } from './vorhaben-sort.js';
-import { dialogZielText, leisteGrund } from './aos-sende-leiste.js';
+import { dialogZielText, leisteGrund, ZUORDNUNG_HINWEIS } from './aos-sende-leiste.js';
 import './aos-dokument-leser.js';
 import './aos-sende-leiste.js';
 import './aos-anmerkungen-sammel.js';
@@ -102,17 +102,11 @@ const GRUND_TEXT: Record<string, string> = {
   bereit: '',
 };
 
-/**
- * INT-2026-016 (AK-07): on the Mac the docked terminal offers a second way
- * for a row without a live session — a click on a Claude tab there, or
- * „Neue Session", binds it to this Vorhaben. Named here so the footer says
- * what the click will do; the phone has no docked terminal.
- */
-export const ZUORDNUNG_HINWEIS = 'oder im Terminal (Cmd+D) einen Claude-Tab anklicken bzw. Neue Session: gehört dann diesem Vorhaben';
+/** INT-2026-016 (AK-07): the collector's target line names the docked terminal's way too (Mac only). */
 export function grundText(grund: string, mobile: boolean): string {
   const base = GRUND_TEXT[grund] ?? '';
   if (mobile || (grund !== 'keine_sitzung' && grund !== 'beendet')) return base;
-  return `${base} ${ZUORDNUNG_HINWEIS}`;
+  return `${base} oder ${ZUORDNUNG_HINWEIS}`;
 }
 
 @customElement('aos-vorhaben-seite')

@@ -2429,15 +2429,18 @@ export class AosCloudTerminalSidebar extends LitElement {
     );
   }
 
-  private _handleSessionSelect(e: CustomEvent<{ sessionId: string }>) {
+  private _handleSessionSelect(e: CustomEvent<{ sessionId: string; userInitiated?: boolean }>) {
     const sessionId = e.detail.sessionId;
     this.activeSessionId = sessionId;
+    // The tabs' own event is composed and would reach app.ts a second time — one event, with
+    // the click flag carried over (INT-2026-016, AK-07: only a click may bind a tab).
+    e.stopPropagation();
 
     // Emit event to parent (app.ts) to clear needsInput flag when tab becomes active
     // WTT-004: Tab-Notifications bei Input-Bedarf
     this.dispatchEvent(
       new CustomEvent('session-select', {
-        detail: { sessionId, clearNeedsInput: true },
+        detail: { sessionId, clearNeedsInput: true, ...(e.detail.userInitiated ? { userInitiated: true } : {}) },
         bubbles: true,
         composed: true,
       })

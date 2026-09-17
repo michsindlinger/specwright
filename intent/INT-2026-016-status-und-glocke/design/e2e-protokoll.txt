@@ -15,3 +15,18 @@ PR 1 (AK-01 bis AK-04), 17.09.2026 15:00–15:02
 
 AK-04 (Marke überlebt Neustart bis 24 h): Unit-Test cloud-terminal-restore.test.ts („restores the fertig mark only while it is younger than 24 h"); kein Neustart des Branch-Backends im Lauf.
 Ergebnis: E2E PR1: OK
+
+PR 2 (AK-05 bis AK-09), 17.09.2026 15:23–15:24 — Skript e2e-016-pr2.mjs; Projekt A /private/tmp/scratch-int016a (aktiv, per localStorage), Projekt B /private/tmp/scratch-int016 (Seite)
+
+1. Seite #/vorhaben/<B>/INT-2026-001 ohne lebende Sitzung, aktives Projekt A: Fußzeile „keine Sitzung zu diesem Vorhaben — Tab im Terminal anklicken oder Neue Session: gehört dann diesem Vorhaben" (AK-07 Hinweis).
+   Cmd+D → Spalte angedockt, Leerzustand „Keine aktiven Sessions" (B hat keine Tabs), gezeigte Sitzungen = nur B, aktives Projekt bleibt A (AK-05). Screenshot c1-dock-seitenprojekt-leer.png
+2. cloud-terminal:create (haiku) in B → Tab erscheint in der Spalte; Zeile 001 bleibt ohne lebende Sitzung — Anzeigen allein bindet nicht (AK-07).
+3. Klick auf den Tab → vorhaben:session.assign (1 Nachricht im Backend-Log), Toast „Sitzung ‚Claude Session 1' gehört jetzt zu INT-2026-001", Zeile 001 trägt die Sitzung (wartet) (AK-07). Screenshot c2-tab-geklickt-gebunden.png
+4. Reload → Seite öffnet die Spalte mit genau diesem Tab von selbst (AK-05/INT-013). Screenshot c3-reload-tab-offen.png
+5. In der Sitzung getippt: /specwright:plan INT-002 (Kurzform) → Zeile 001 keine_sitzung („ruht"), Zeile 002 arbeitet mit derselben Sitzung (AK-08, Verschieben + Kurz-Kennung). Screenshot d-kurzkennung-verschoben.png
+6. Seite 001 (wieder ohne Sitzung), Cmd+D, „Neue Session starten" in der Spalte, Modell haiku + Hauptverzeichnis wie im Dialog → Sitzung entsteht in B (nicht im aktiven A), nach dem Verbinden Toast „Sitzung ‚Neue Session' gehört jetzt zu INT-2026-001", Zeile 001 trägt sie (AK-06). Screenshot c4-neue-session-gebunden.png
+   Backend-Log: genau 2 × vorhaben:session.assign (Klick, Neue Session), 0 × agent-event rejected.
+
+AK-09 (Arbeitskopie nach Inhalt): Unit-Tests vorhaben-reader.test.ts (identische Kopien → Haupt-Checkout; abweichender Inhalt → neueste; Zuordnung gewinnt; kaputter Kopf hat Fingerabdruck).
+Befund im Lauf: die Nachricht vorhaben:session.assign fehlte zunächst in der Weiche in websocket.ts (Handler-Tests grün, Live stumm) — behoben, Weiche ergänzt.
+Ergebnis: E2E PR2: OK
