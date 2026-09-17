@@ -191,7 +191,7 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
     expect(terminal.last.args).toContain('--settings');
   });
 
-  it('INT-2026-011 E5: extraCliArgs go to claude-* wrappers only; a foreign CLI gets neither them nor --settings', async () => {
+  it('INT-2026-012 E5: extraCliArgs go to claude-* wrappers only; a foreign CLI gets neither them nor --settings', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     cli.command = '/home/me/bin/claude-glm';
     await mgr.createSession(project, 'claude-code', { model: 'x' }, 80, 24, undefined, ['--mcp-config', 'x']);
@@ -206,7 +206,7 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
     warn.mockRestore();
   });
 
-  it('INT-2026-011 AK-06: a foreign CLI session stays agentStatus unknown — no hook ever reports', async () => {
+  it('INT-2026-012 AK-06: a foreign CLI session stays agentStatus unknown — no hook ever reports', async () => {
     cli.command = '/usr/local/bin/codex';
     const emitted: string[] = [];
     mgr.on('session.agent-event', (_id: string, event: string) => emitted.push(event));
@@ -219,7 +219,7 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
     expect(emitted).toEqual([]);
   });
 
-  it('INT-2026-011 E17: a missing CLI names the provider, not the npm package — except for `claude` itself', async () => {
+  it('INT-2026-012 E17: a missing CLI names the provider, not the npm package — except for `claude` itself', async () => {
     cli.available = false;
     cli.command = 'claude-codex';
     await expect(mgr.createSession(project, 'claude-code', { model: 'gpt-6-astra', provider: 'codex' })).rejects.toThrow(

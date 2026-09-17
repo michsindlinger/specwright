@@ -17,7 +17,7 @@ export function ladeModelle(): Promise<ModelListInfo> {
 }
 
 /**
- * INT-2026-011 (D1): a step starts `/specwright:<step> …`, which only a Claude
+ * INT-2026-012 (D1): a step starts `/specwright:<step> …`, which only a Claude
  * session understands — a foreign agent CLI (Codex nativ, `cliKind: 'foreign'`)
  * is not offered here. Fail-open on a missing field (older backend, E6); the
  * backend guard (`isClaudeSessionModel`) catches the rest with a naming error.

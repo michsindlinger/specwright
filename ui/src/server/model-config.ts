@@ -108,7 +108,7 @@ export function isBuiltInProvider(providerId: string): boolean {
 }
 
 /**
- * INT-2026-011 (E3): the session kind is a naming convention (`claude-<id>`,
+ * INT-2026-012 (E3): the session kind is a naming convention (`claude-<id>`,
  * `shared/provider-cli.ts`). Make every foreign provider visible once at load
  * time so a wrapper that drops out of the convention is noticed, not silent.
  */
@@ -242,7 +242,7 @@ export function getAllProviders(): ModelProvider[] {
 }
 
 /**
- * Providers usable as plan reviewers (INT-2026-011, AK-07). Reviewers run
+ * Providers usable as plan reviewers (INT-2026-012, AK-07). Reviewers run
  * through the Claude Agent SDK with `CLAUDE_CONFIG_DIR=~/.claude-<id>`
  * (`utils/provider-env.ts`); a foreign agent CLI (Codex nativ) cannot take
  * that path, so it is not offered.
@@ -280,7 +280,7 @@ export function providersForModelList(): ModelListProvider[] {
 
 /**
  * True when the pair names a configured model of a provider that starts
- * Claude Code (INT-2026-011, D1) — the precondition for step defaults and for
+ * Claude Code (INT-2026-012, D1) — the precondition for step defaults and for
  * starting a Specwright step from the Vorhaben page.
  */
 export function isClaudeSessionModel(providerId: string, modelId: string): boolean {
@@ -593,7 +593,7 @@ const STEP_FALLBACK: StepDefault = { providerId: 'anthropic', modelId: 'opus' };
 export function getStepDefault(step: StepKey): StepDefault {
   const config = loadModelConfig();
   const configured = config.stepDefaults?.[step];
-  // INT-2026-011 (E11): a hand-edited default on a foreign provider falls back, no throw on load.
+  // INT-2026-012 (E11): a hand-edited default on a foreign provider falls back, no throw on load.
   if (configured && isClaudeSessionModel(configured.providerId, configured.modelId)) return { ...configured };
   if (getModel(STEP_FALLBACK.providerId, STEP_FALLBACK.modelId)) return { ...STEP_FALLBACK };
   return getDefaultSelection();
@@ -622,7 +622,7 @@ export function setStepDefault(step: StepKey, selection: StepDefault | null): Mo
     if (!getModel(selection.providerId, selection.modelId)) {
       throw new Error(`Model not found: ${selection.providerId}/${selection.modelId}`);
     }
-    // INT-2026-011 (D1): a step starts `/specwright:<step> …` — only a Claude session understands it.
+    // INT-2026-012 (D1): a step starts `/specwright:<step> …` — only a Claude session understands it.
     if (!isClaudeSessionModel(selection.providerId, selection.modelId)) {
       throw new Error(`Provider startet keine Claude-Sitzung: ${selection.providerId}`);
     }

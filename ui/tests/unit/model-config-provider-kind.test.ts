@@ -1,5 +1,5 @@
 /**
- * INT-2026-011 (AK-04, AK-07, D1, E3, E11, E14): provider session kind in
+ * INT-2026-012 (AK-04, AK-07, D1, E3, E11, E14): provider session kind in
  * model-config — reviewer list, `model.list` shape with `cliKind`, step-default
  * guards, one-time warning per foreign provider. Separate file on purpose —
  * `model-config.test.ts` is red in the baseline (`ui/tests/known-failures.txt`).
@@ -40,7 +40,7 @@ async function fresh(config: ModelConfig): Promise<typeof import('../../src/serv
   return import('../../src/server/model-config.js');
 }
 
-describe('model-config provider kind (INT-2026-011)', () => {
+describe('model-config provider kind (INT-2026-012)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });

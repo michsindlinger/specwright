@@ -671,7 +671,7 @@ export class WebSocketHandler {
 
     const response: WebSocketMessage = {
       type: 'model.list',
-      // All providers with providerId per model and the derived `cliKind` (INT-2026-011, D1).
+      // All providers with providerId per model and the derived `cliKind` (INT-2026-012, D1).
       providers: providersForModelList(),
       defaultSelection,
       // INT-2026-004 (FA-40/41): resolved per-step defaults for the Vorhaben page.
@@ -682,7 +682,7 @@ export class WebSocketHandler {
   }
 
   private handleModelProvidersList(client: WebSocketClient): void {
-    // Plan reviewers: Claude CLIs only — a foreign agent CLI cannot review (INT-2026-011, AK-07).
+    // Plan reviewers: Claude CLIs only — a foreign agent CLI cannot review (INT-2026-012, AK-07).
     const providers = getReviewerProviders();
 
     // Transform providers to include providerId in each model (same format as handleModelList)

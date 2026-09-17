@@ -272,7 +272,7 @@ describe('aos-naechster-schritt (FA-35, FA-40)', () => {
     el.remove();
   });
 
-  it('INT-2026-011 D1: a foreign provider (Codex nativ) is not offered and a step default on it falls back', async () => {
+  it('INT-2026-012 D1: a foreign provider (Codex nativ) is not offered and a step default on it falls back', async () => {
     const gpt = (providerId: string) => [{ id: 'gpt-6-astra', name: 'GPT-6 Astra', providerId }];
     modelList.mockImplementationOnce(async () => ({
       providers: [

@@ -1,6 +1,6 @@
 # Plan: OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI
 
-> **Intent:** `intent.md` (INT-2026-011) · **Spec:** entfällt (bypass: Größe S — zwei Provider-Einträge, eine Sperre in der Prüfer-Auswahl mit Test, eine Doc-Zeile; Rest ist Einrichtung außerhalb des Repos)
+> **Intent:** `intent.md` (INT-2026-012) · **Spec:** entfällt (bypass: Größe S — zwei Provider-Einträge, eine Sperre in der Prüfer-Auswahl mit Test, eine Doc-Zeile; Rest ist Einrichtung außerhalb des Repos)
 > **Status:** in_umsetzung
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 — „Alle vier ok, Freigabe" (D1–D4 wie vorgeschlagen)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `d0d8b8c`), `CLAUDE.md`, `docs/security.md`
@@ -124,7 +124,7 @@ Vorlage `~/bin/claude-codex`:
 
 ```bash
 #!/bin/bash
-# Claude Code über claude-code-proxy (Codex/ChatGPT-Konto). Vorprüfung: Proxy erreichbar, Konto angemeldet (INT-2026-011, AK-08).
+# Claude Code über claude-code-proxy (Codex/ChatGPT-Konto). Vorprüfung: Proxy erreichbar, Konto angemeldet (INT-2026-012, AK-08).
 export CLAUDE_CONFIG_DIR="$HOME/.claude-codex"
 unset ANTHROPIC_API_KEY
 PROXY="${CCP_URL:-http://127.0.0.1:18765}"
@@ -184,11 +184,11 @@ exec claude --dangerously-skip-permissions "$@"
 | 7 | `ui/frontend/src/components/model-selector.ts:11-15` | ändern | `cliKind?: ProviderCliKind` in `ModelSelectorProvider` (Import Typ aus `../../../src/shared/provider-cli.js`) | D1 |
 | 8 | `ui/frontend/src/components/vorhaben/aos-naechster-schritt.ts:155-160, 211-217` | ändern | `private claudeProviders()` = `this.models.providers.filter(p => p.cliKind !== 'foreign')`; `preselect()` und `.externalProviders` nutzen sie | D1, Z-04 |
 | 9 | `ui/frontend/src/views/settings-view.ts:1058` | ändern | `this.config!.providers.filter(p => isClaudeCli(p.cliCommand)).flatMap(...)`; Import aus `../../../src/shared/provider-cli.js`; Satz in `section-description`: „Nur Anbieter, die Claude Code starten." | D1 |
-| 10 | `docs/security.md` | ändern | §1 Tabelle: `ui/config/model-config.json` aus „intern" streichen, in „öffentlich" ergänzen („Provider- und Modellnamen der UI; Zugänge nie darin"); „vertraulich" ergänzen um `~/.claude-<id>/settings.json`, `~/.config/claude-code-proxy/<provider>/auth.json`, `~/.codex/auth.json`. §3 neue Zeile „OpenAI/ChatGPT-Zugang (INT-2026-011)": Proxy-OAuth + Codex-CLI-Login, Laufzeit über `claude-code-proxy serve` (localhost) bzw. Codex-Prozess, Rotation Nutzer, Ausfallverhalten wie §3 oben. Änderungsprotokoll | OF-01, RB-01, §6 |
-| 11 | `docs/architecture.md` | ändern | §2 Backend-Zeile Halbsatz „startet auch fremde Agenten-CLIs (Codex nativ) aus der Modell-Config — ohne Hooks, Status, Gespräch und Prüfer-Einsatz (INT-2026-011)"; Änderungsprotokoll-Zeile | Self-Review F2 |
+| 10 | `docs/security.md` | ändern | §1 Tabelle: `ui/config/model-config.json` aus „intern" streichen, in „öffentlich" ergänzen („Provider- und Modellnamen der UI; Zugänge nie darin"); „vertraulich" ergänzen um `~/.claude-<id>/settings.json`, `~/.config/claude-code-proxy/<provider>/auth.json`, `~/.codex/auth.json`. §3 neue Zeile „OpenAI/ChatGPT-Zugang (INT-2026-012)": Proxy-OAuth + Codex-CLI-Login, Laufzeit über `claude-code-proxy serve` (localhost) bzw. Codex-Prozess, Rotation Nutzer, Ausfallverhalten wie §3 oben. Änderungsprotokoll | OF-01, RB-01, §6 |
+| 11 | `docs/architecture.md` | ändern | §2 Backend-Zeile Halbsatz „startet auch fremde Agenten-CLIs (Codex nativ) aus der Modell-Config — ohne Hooks, Status, Gespräch und Prüfer-Einsatz (INT-2026-012)"; Änderungsprotokoll-Zeile | Self-Review F2 |
 | 12 | `.claude/hooks/no-secrets.sh` **und** `specwright/templates/sdlc/hooks/no-secrets.sh` (identisch halten, `diff -q`) | ändern (D2, A'') | Nach `BAD_FILES`: `ALLOW_FILE="$PROJECT/.claude/no-secrets-allow.txt"`; wenn vorhanden, jede Nicht-Kommentar-Zeile als erweiterte Regex gegen `BAD_FILES` anwenden (`grep -Ev -f`), Rest bleibt blockiert; Bash 3.2-tauglich (kein `mapfile`, keine Prozess-Substitution nötig: Muster-Datei per `grep -Ev '^[[:space:]]*(#\|$)' > tmp`); Kommentar „Ausnahmeliste je Projekt: nur die Dateinamen-Regel; die Inhaltsregel prüft weiter jede hinzugefügte Zeile"; README-Tabelle Spalte „Ausnahme" für `no-secrets.sh`: „`.claude/no-secrets-allow.txt` (Regex je Zeile) — nur für versionierte Configs ohne Zugänge" | D2, E13 |
-| 13 | `.claude/no-secrets-allow.txt` | neu (D2, A'') | `# no-secrets: versionierte UI-Configs ohne Zugänge (INT-2026-011)` + `^ui/config/(model-config\|general-config\|prompt-templates)\.json$` | D2 |
-| 14 | `VERSION`, `install.sh` (`FRAMEWORK_VERSION`), `CHANGELOG.md` | ändern (D2, A'') | 4.1.1; Eintrag „Neu: `no-secrets` liest eine optionale Ausnahmeliste `.claude/no-secrets-allow.txt` für versionierte Configs ohne Zugänge; ohne Datei unverändert streng (INT-2026-011)" | D2 |
+| 13 | `.claude/no-secrets-allow.txt` | neu (D2, A'') | `# no-secrets: versionierte UI-Configs ohne Zugänge (INT-2026-012)` + `^ui/config/(model-config\|general-config\|prompt-templates)\.json$` | D2 |
+| 14 | `VERSION`, `install.sh` (`FRAMEWORK_VERSION`), `CHANGELOG.md` | ändern (D2, A'') | 4.1.1; Eintrag „Neu: `no-secrets` liest eine optionale Ausnahmeliste `.claude/no-secrets-allow.txt` für versionierte Configs ohne Zugänge; ohne Datei unverändert streng (INT-2026-012)" | D2 |
 
 **Nicht betroffen (ausdrücklich):** `ui/src/server/utils/provider-env.ts` (Provider `codex` → `~/.claude-codex`, wie jeder Nicht-Anthropic-Provider); `external-reviewer.ts`, `plan-review-orchestrator.ts`, `finding-aggregator.ts` (AK-10 läuft über den bestehenden SDK-Pfad); `aos-auto-review-toggle.ts`, `aos-cloud-terminal-sidebar.ts`, `aos-model-dropdown.ts` (Terminal-Dropdown zeigt alle Provider); `DEFAULT_REVIEWER_IDS` (NZ-04); `DEFAULT_CONFIG` in `model-config.ts:47-101` (Board-Karte DEBT-007, eigenes Thema); `specwright/manifest.tsv`, `removed.tsv` (keine Datei kommt hinzu oder fällt weg); Cloud-Droplet (NZ-01); `ui/tests/known-failures.txt`; `~/.claude-grok`, Grok-Eintrag.
 
@@ -218,7 +218,7 @@ exec claude --dangerously-skip-permissions "$@"
 <!-- leser: agent -->
 
 0. Lesende Vorprüfung: `grep -rn "startsWith('claude')" ui/src` (genau ein Treffer, `:852`); `grep -rn "getAllProviders" ui/src/server` (Konsumenten: `websocket.ts:141,940,967`; `:141` `defaultConfigDirs` bleibt auf allen Providern — `~/.claude-codex-cli` existiert nicht, harmlos); `grep -rn "model.providers.list\|model\.list" ui/frontend/src` (Konsumenten aus §2, keine weiteren); `git diff --stat ui/config/model-config.json` (sauber, keine E2E-Reste) → prüfbar durch Ausgabe im Bauprotokoll.
-1. D2 (A''): Hook in beiden Kopien ändern, `.claude/no-secrets-allow.txt` anlegen, README, `VERSION`/`install.sh`/`CHANGELOG` → `bash scripts/check-manifest.sh` grün, `diff -q` leer, Hook-Probe aus §8 (D2) mit Exit-Codes im Protokoll. Eigener Commit **vor** jeder Änderung an `ui/config/model-config.json` (E15): `feat(hooks): no-secrets mit projekteigener Ausnahmeliste (4.1.1, INT-2026-011)`.
+1. D2 (A''): Hook in beiden Kopien ändern, `.claude/no-secrets-allow.txt` anlegen, README, `VERSION`/`install.sh`/`CHANGELOG` → `bash scripts/check-manifest.sh` grün, `diff -q` leer, Hook-Probe aus §8 (D2) mit Exit-Codes im Protokoll. Eigener Commit **vor** jeder Änderung an `ui/config/model-config.json` (E15): `feat(hooks): no-secrets mit projekteigener Ausnahmeliste (4.1.1, INT-2026-012)`.
 2. `ui/src/shared/provider-cli.ts` + `ui/tests/unit/provider-cli.test.ts` → `cd ui && npx vitest run tests/unit/provider-cli.test.ts` grün.
 3. `cloud-terminal-manager.ts:852` auf `isClaudeCli`; AK-06-Test in `cloud-terminal-agent-event.test.ts` → Datei grün.
 4. `model-config.ts` (`getReviewerProviders`, `isClaudeSessionModel`, `setStepDefault`-Guard) + `ui/tests/unit/model-config-provider-kind.test.ts` → grün.
@@ -314,7 +314,7 @@ Entfällt.
 | 6. Codex-CLI: `cp ~/.codex/auth.json ~/.codex/auth.json.bak-2026-09-16`; `npm install -g @openai/codex@latest` → `codex --version` = 0.154.0; `codex login` (ChatGPT); `codex login status` → „Logged in using ChatGPT"; OF-03: `codex --help` (Flags `--model`, `--dangerously-bypass-approvals-and-sandbox`) und Probelauf `codex --model gpt-6-astra` — bei anderen IDs Abweichung in §14, Eintrag `codex-cli` anpassen | Michael | nach 3 | [ ] |
 | 7. Backend am Mac neu starten nach Merge/Pull (Config-Cache `model-config.ts:103`; Neustart beendet offene UI-Terminals, Memory `project_cloud_autodeploy_gate`) | Michael | nach Merge | [ ] |
 | 8. Merge nach `main` ist Michaels Schritt; löst den Auto-Deploy der UI auf dem Droplet aus (dort unverändert nutzbar, neue Provider scheitern sichtbar, R3). Kein weiterer Deploy-Schritt; Hook `production-gate` nicht betroffen | Michael | — | [ ] |
-| 9. Nur bei D2 = B: `git add ui/config/model-config.json && git commit -m "feat(ui): OpenAI-Provider codex und codex-cli (INT-2026-011)"` in Michaels Terminal (Hook gilt nur für Claude); künftig bei jeder Änderung an dieser Datei | Michael | vor PR | [ ] |
+| 9. Nur bei D2 = B: `git add ui/config/model-config.json && git commit -m "feat(ui): OpenAI-Provider codex und codex-cli (INT-2026-012)"` in Michaels Terminal (Hook gilt nur für Claude); künftig bei jeder Änderung an dieser Datei | Michael | vor PR | [ ] |
 | 10. R3/E17-Sichtprobe auf dem Droplet nach dem Auto-Deploy: OpenAI wählen → Fehlertext nennt `claude-codex` und den Provider (kein npm-Hinweis); kein Deploy-Befehl, nur Lesen | Michael | nach Deploy | [ ] |
 
 Alle Wege belegt: brew-Formel (`brew info`), Proxy-CLI (`claude-code-proxy codex auth --help`), `start-proxy.sh` (gelesen), npm-Paket (`npm view @openai/codex version`), Codex-Login (Context7 `codex-rs/cli/src/login.rs`). Kein `[Uncertain]` in dieser Tabelle; die Codex-Flag-Namen (§2, [Likely]) prüft Schritt 6 vor dem ersten Start aus der UI.
@@ -386,7 +386,7 @@ Code, Tests, Docs: 4–6 h (S; nach E1–E17 eine Stunde mehr für `providersFor
 - [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (insbesondere OF-03-Befund).
 - [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR (Kandidat: `no-secrets` vs. versionierte Config — erstes Vorkommen, nur notieren).
 - [ ] `intent.md`: `bezuege.plan`, nach Bau `status: umgesetzt`; Memory `reference_ui_model_provider_mechanism` Punkt 7 um Ergebnis ergänzen.
-- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte „neu: OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI", Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-011-openai-modelle/`); Nachziehen in eigener Sitzung.
+- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte „neu: OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI", Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-012-openai-modelle/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
 
@@ -400,3 +400,4 @@ Code, Tests, Docs: 4–6 h (S; nach E1–E17 eine Stunde mehr für `providersFor
 | 2026-09-16 | D1-Filter im Frontend liegt in `model-wahl.ts` (`ladeModelle()` → `nurClaudeSitzungen()`), nicht in `aos-naechster-schritt.ts`: INT-2026-010 hat den Modell-Loader in diesen Helfer gezogen, den drei Komponenten teilen (`aos-naechster-schritt`, `aos-neue-absicht`, `aos-vorhaben-seite`). Eine Stelle statt drei; `preselect()` und `.externalProviders` bekommen die gefilterte Liste automatisch. Test in `aos-vorhaben-stage2.test.ts` (Komponente) und `aos-neue-absicht.test.ts` (Helfer) | Code seit Planfreigabe verschoben | §4 Nr. 8, §5 Zeile 6 (grep-Treffer in `model-wahl.ts`), §8 D1 |
 | 2026-09-16 | Schritt 0: vierter `model.list`-Konsument `cloud-terminal.service.ts:688` (`getConfiguredProviders`) — ohne Aufrufer im Frontend, unverändert gelassen | Vorgefunden | §2 (Konsumentenliste) |
 | 2026-09-16 | Vertragstest `model-config-openai.test.ts` ohne `vi.mock('fs')`: der Mock trifft auch `node:fs`, und `model-config.ts` liest die echte Datei ohnehin über den eigenen Pfad; nichts schreibt | Test-Technik | §8 AK-01/AK-05/E3 |
+| 2026-09-17 | Kennung INT-2026-011 → INT-2026-012 in Ordner, Frontmatter, Code-Kommentaren, Testnamen, Docs, Branch und den 7 Commit-Messages (ungepusht, `filter-branch --msg-filter`, Tree unverändert) | INT-2026-011 war parallel für „Terminal statt Gespräch“ (PR #61) vergeben; dieses Vorhaben lag nur lokal, daher hier umnummeriert | Kopfzeile, §4 Nr. 13 (`no-secrets-allow.txt`-Kommentar) |

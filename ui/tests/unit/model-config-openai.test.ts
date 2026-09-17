@@ -1,5 +1,5 @@
 /**
- * INT-2026-011 (AK-01, AK-05, E3): contract against the real
+ * INT-2026-012 (AK-01, AK-05, E3): contract against the real
  * `ui/config/model-config.json` — the two OpenAI providers and the naming
  * convention every provider must follow (`claude…` or listed as known-foreign).
  * No fs mock on purpose: `model-config.ts` resolves the shipped file by its own
@@ -30,7 +30,7 @@ async function fresh(): Promise<typeof import('../../src/server/model-config.js'
   return import('../../src/server/model-config.js');
 }
 
-describe('model-config.json OpenAI providers (INT-2026-011)', () => {
+describe('model-config.json OpenAI providers (INT-2026-012)', () => {
   it('AK-01: provider codex runs Claude Code via the claude-codex wrapper with the three proxy model ids', () => {
     const codex = config.providers.find((p) => p.id === 'codex');
     expect(codex).toBeDefined();

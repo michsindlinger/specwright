@@ -1,12 +1,12 @@
 ---
-intent_id: "INT-2026-011"  
+intent_id: "INT-2026-012"  
 titel: "OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI"  
 status: "angenommen"  
-version: "1.0.1"  
+version: "1.0.2"  
 autor: "Michael Sindlinger (Gespräch mit Claude, 16.09.2026)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-16"  
-geaendert: "2026-09-16"  
+geaendert: "2026-09-17"  
 risikoklasse: "niedrig"  
 groesse: "S"  
 bypass: "ja"  
@@ -27,7 +27,7 @@ freigabe:
 
 # Absicht: OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI
 
-<!-- Ablage: intent/INT-2026-011-openai-modelle/intent.md -->
+<!-- Ablage: intent/INT-2026-012-openai-modelle/intent.md -->
 
 ## Felder im Kopf
 
@@ -141,6 +141,7 @@ Der Terminal-Start der UI verträgt eine fremde CLI schon: Claude-Hooks bekommen
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.2 | 2026-09-17 | Kennung INT-2026-011 → INT-2026-012 (Ordner, `intent_id`, alle Verweise in Code, Tests, Docs, Branch, Commit-Messages): INT-2026-011 war am 16.09. abends parallel für „Terminal statt Gespräch“ (PR #61, auf `origin`) vergeben | — | PO, 17.09. (Chat) |
 | 1.0.1 | 2026-09-16 | `bezuege.plan` gesetzt; Plan freigegeben (D1–D4 wie vorgeschlagen, externer Review E1–E17 eingearbeitet) | — | PO, 16.09. |
 | 1.0.0 | 2026-09-16 | Angenommen; OF-01 bis OF-04 entschieden; AK-04 auf ein Modalverb gekürzt, Rückmeldung als AK-10 ausgegliedert, AK-08 auf ein Modalverb; Abgleich Mensch/Agent: ohne Befund | AK-04, AK-08, AK-10, OF-01…04 | PO, 16.09. |
 | 0.1.0 | 2026-09-16 | Entwurf nach Gespräch: Weg A (Proxy) + B Stufe 1 (native Codex-CLI), drei Modelle, nur Mac, Prüfer wählbar | alle | — |

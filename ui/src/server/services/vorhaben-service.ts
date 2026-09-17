@@ -237,7 +237,7 @@ export class VorhabenService {
     this.worktreeTtlMs = deps.worktreeTtlMs ?? 5000;
     this.now = deps.now ?? ((): Date => new Date());
     this.timeZone = deps.timeZone ?? process.env.SPECWRIGHT_TZ ?? 'Europe/Berlin';
-    // INT-2026-011 (D1): a step starts `/specwright:<step> …` — only a Claude session can run it.
+    // INT-2026-012 (D1): a step starts `/specwright:<step> …` — only a Claude session can run it.
     this.resolveModel = deps.resolveModel ?? ((sel): boolean => isClaudeSessionModel(sel.providerId, sel.modelId));
     this.updatedAt = this.now().toISOString();
     this.watcher.on('changed', () => this.scheduleRescan());

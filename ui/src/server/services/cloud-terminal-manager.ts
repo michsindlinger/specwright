@@ -843,7 +843,7 @@ export class CloudTerminalManager extends EventEmitter {
           : undefined) ?? getCliCommandForModel(modelConfig.model);
         shellCommand = cliConfig.command;
         shellArgs = [...cliConfig.args];
-        // INT-2026-011: one rule for the session kind (`shared/provider-cli.ts`).
+        // INT-2026-012: one rule for the session kind (`shared/provider-cli.ts`).
         // A foreign agent CLI (e.g. `codex`) gets neither Claude flags nor the
         // hook settings — it runs without status, bell and Gespräch (AK-06).
         const claudeCli = isClaudeCli(shellCommand);
@@ -876,7 +876,7 @@ export class CloudTerminalManager extends EventEmitter {
 
       // Pre-flight check: verify CLI command exists in PATH
       if (!checkCliAvailability(shellCommand)) {
-        // INT-2026-011 (E17): name the provider — on a host without the wrapper
+        // INT-2026-012 (E17): name the provider — on a host without the wrapper
         // (cloud droplet) this is the first thing the user sees for OpenAI.
         const hint = shellCommand === 'claude'
           ? 'Bitte installieren: npm install -g @anthropic-ai/claude-code'

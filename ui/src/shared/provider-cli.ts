@@ -1,6 +1,6 @@
 /**
  * Session kind of a model provider, derived from its CLI command
- * (INT-2026-011, AK-06/AK-07).
+ * (INT-2026-012, AK-06/AK-07).
  *
  * One rule, five consumers: the hook attachment in `cloud-terminal-manager.ts`
  * (`--settings`, `extraCliArgs`), the reviewer list (`getReviewerProviders`),

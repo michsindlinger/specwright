@@ -12,7 +12,7 @@ export interface ModelSelectorModel {
 export interface ModelSelectorProvider {
   id: string;
   name: string;
-  /** INT-2026-011: `claude` = Claude Code session, `foreign` = other agent CLI (Codex nativ). Absent on older backends. */
+  /** INT-2026-012: `claude` = Claude Code session, `foreign` = other agent CLI (Codex nativ). Absent on older backends. */
   cliKind?: ProviderCliKind;
   models: ModelSelectorModel[];
 }

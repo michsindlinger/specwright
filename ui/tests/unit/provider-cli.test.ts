@@ -1,11 +1,11 @@
 /**
- * INT-2026-011 (AK-01, AK-07, E1): the one rule for the session kind of a
+ * INT-2026-012 (AK-01, AK-07, E1): the one rule for the session kind of a
  * provider — basename of the CLI command starts with `claude`.
  */
 import { describe, it, expect } from 'vitest';
 import { isClaudeCli, providerCliKind } from '../../src/shared/provider-cli.js';
 
-describe('provider-cli (INT-2026-011)', () => {
+describe('provider-cli (INT-2026-012)', () => {
   it('claude and claude-* wrappers are Claude CLIs', () => {
     expect(providerCliKind('claude')).toBe('claude');
     expect(providerCliKind('claude-codex')).toBe('claude');
