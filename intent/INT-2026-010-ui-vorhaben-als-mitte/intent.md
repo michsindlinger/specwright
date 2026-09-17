@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-010"  
 titel: "UI: Vorhaben als Mitte — Rahmen ohne Seitenleiste, Glocke immer sichtbar, Dokumente klappbar"  
-status: "angenommen"  
-version: "1.0.1"  
+status: "umgesetzt"  
+version: "1.0.2"  
 autor: "Michael Sindlinger (Skizze und Gespräch mit Claude, 16.09.2026, Skill ux-less-is-more)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-16"  
@@ -164,6 +164,7 @@ Der Rahmen der UI stammt aus v3 und trägt mehr, als der Vorhaben-Flow braucht: 
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.2 | 2026-09-17 | Umgesetzt: Stufe 3 gemergt (PR #63 `8321c8b`); alle drei Stufen auf `main` (PR #57, #58, #63; Fixes #59/#60). AK-13 (Code-Links) läuft unter INT-2026-011 weiter | — | PO, 17.09. (Merge) |
 | 1.0.1 | 2026-09-17 | Stufe 1 (PR #57), Stufe 2 (PR #58, Fixes #59/#60) und Stufe 3 abgespeckt (PR folgt) gebaut; AK-13 (Code-Links im Gespräch) geht mit OF-04 an INT-2026-011, das Gespräch wird dort durch das Terminal ersetzt; Status bleibt `angenommen` bis zum Merge der Stufe 3 | AK-11, AK-12, AK-13 | PO, 16.09. (OF-04) |
 | 1.0.0 | 2026-09-16 | Angenommen; OF-01 entschieden (kein Handy-Gespräch, NZ-07), OF-02 entschieden (Badges auf die Projekt-Seite, AK-14); OF-03 bleibt offen für den Plan Mode | OF-01, OF-02, AK-14 | PO, 16.09. |
 | 0.1.0 | 2026-09-16 | Entwurf aus Skizze und Gespräch vom 16.09.; fünf Zuschnittsfragen vom PO beantwortet (Reihenfolge, alte Dokumente, Chat/Voice raus, Bottom-Nav weg, Projekt-Tabs und Git-Leiste auf die Projekt-Seite) | alle | — |

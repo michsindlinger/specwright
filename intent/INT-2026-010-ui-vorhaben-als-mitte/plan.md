@@ -1,7 +1,7 @@
 # Plan: UI: Vorhaben als Mitte — Rahmen ohne Seitenleiste, Glocke immer sichtbar, Dokumente klappbar
 
 > **Intent:** `intent.md` (INT-2026-010) · **Spec:** `spec.md`
-> **Status:** umgesetzt (Stufe 3 abgespeckt, Merge steht aus; Stufe 1 gemerged PR #57, Stufe 2 gemerged PR #58; Code-Links → INT-2026-011)
+> **Status:** umgesetzt (Stufe 1 PR #57, Stufe 2 PR #58, Stufe 3 abgespeckt PR #63 `8321c8b`; Code-Links → INT-2026-011)
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („plan freigegeben", Chat; Fassung 2 nach externem Review, 4 Reviewer, 23 Findings, §12)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand b2a8fb0), `CLAUDE.md`, `docs/security.md`, `docs/design.md`, `specwright/workflows/meta/leser-und-rueckfragen.md`
 
