@@ -28,6 +28,7 @@ import {
   type VorhabenSendRejectedMessage,
   type VorhabenSentMessage,
   type VorhabenStep,
+  type VorhabenSessionAssignedMessage,
   type VorhabenStepStartedMessage,
   FREITEXT_MAX_CHARS,
 } from '../../shared/types/vorhaben.protocol.js';
@@ -49,6 +50,7 @@ export const VORHABEN_MESSAGE_TYPES = new Set([
   'vorhaben:send',
   'vorhaben:start-step',
   'vorhaben:ansicht.set',
+  'vorhaben:session.assign',
   'project-docs:list',
   'project-docs:read',
   'project-docs:write',
@@ -221,6 +223,23 @@ export class VorhabenHandler {
           .then(({ sessionId }) =>
             reply({ type: 'vorhaben:step-started', ...(requestId ? { requestId } : {}), sessionId, projectId: project.id, ...(intentId ? { intentId } : {}), step } as VorhabenStepStartedMessage)
           )
+          .catch((err) => reply(this.fromError(err, requestId)));
+        return true;
+      }
+
+      case 'vorhaben:session.assign': {
+        // INT-2026-016 (AK-06, AK-07): request/reply; the row follows in the broadcast.
+        const project = this.project(message, reply, requestId);
+        if (!project) return true;
+        const intentId = str(message.intentId);
+        const sessionId = str(message.sessionId);
+        if (!intentId || !INTENT_ID_RE.test(intentId) || !sessionId) {
+          reply(this.error('INVALID_MESSAGE', 'intentId (INT-JJJJ-NNN) und sessionId sind erforderlich', requestId));
+          return true;
+        }
+        void this.service
+          .assignSession(project.id, intentId, sessionId)
+          .then(() => reply({ type: 'vorhaben:session-assigned', ...(requestId ? { requestId } : {}), projectId: project.id, intentId, sessionId } as VorhabenSessionAssignedMessage))
           .catch((err) => reply(this.fromError(err, requestId)));
         return true;
       }

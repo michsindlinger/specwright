@@ -229,6 +229,33 @@ export class VorhabenStateStore {
     this.commit();
   }
 
+  /**
+   * INT-2026-016 (AK-08): the session moved on to another Vorhaben — every
+   * other row it was assigned to loses it (the old row shows „ruht", not
+   * „Sitzung beendet": the session lives) and the new row gets it. One commit.
+   */
+  public moveAssignment(sessionId: string, projectId: string, intentId: string, a: VorhabenAssignment): void {
+    const key = assignmentKey(projectId, intentId);
+    for (const [k, v] of Object.entries(this.state.assignments)) {
+      if (k !== key && v.sessionId === sessionId) delete this.state.assignments[k];
+    }
+    this.state.assignments[key] = { ...a };
+    this.commit();
+  }
+
+  /** INT-2026-016 (AK-08): drops every assignment of the session (it starts something new, `/intent`); returns the number removed. */
+  public clearAssignmentsOfSession(sessionId: string): number {
+    let n = 0;
+    for (const [k, v] of Object.entries(this.state.assignments)) {
+      if (v.sessionId === sessionId) {
+        delete this.state.assignments[k];
+        n++;
+      }
+    }
+    if (n > 0) this.commit();
+    return n;
+  }
+
   /** Marks every assignment of the session as ended (FA-22); returns the number of rows touched. */
   public markSessionEnded(sessionId: string): number {
     let n = 0;

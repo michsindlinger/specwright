@@ -470,7 +470,31 @@ export interface VorhabenAnsichtSetMessage {
   phase?: { projectId: string; intentId: string; doc: VorhabenPhaseDoc };
 }
 
+/**
+ * INT-2026-016 (AK-06, AK-07): bind a live claude-code session of the
+ * project to a row that has no live session — „Neue Session" on a docked
+ * Vorhaben page or a user click on a tab there. Answer is
+ * `vorhaben:session-assigned` or `vorhaben:error` with the same `requestId`;
+ * the row follows in the next `vorhaben:state` broadcast. Never moves a
+ * session that belongs to another row (typed commands do that, AK-08).
+ */
+export interface VorhabenSessionAssignMessage {
+  type: 'vorhaben:session.assign';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+  sessionId: string;
+}
+
 // ---- Server → Client ----
+
+export interface VorhabenSessionAssignedMessage {
+  type: 'vorhaben:session-assigned';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+  sessionId: string;
+}
 
 export interface VorhabenSentMessage {
   type: 'vorhaben:sent';
@@ -566,7 +590,18 @@ export type VorhabenErrorCode =
   | 'NOT_FOUND'
   | 'TOO_LARGE'
   | 'IO_ERROR'
-  | 'START_FAILED';
+  | 'START_FAILED'
+  // INT-2026-016 (AK-06/AK-07): refusals of `vorhaben:session.assign`, in the order the service checks.
+  /** The session is unknown to the terminal manager or closed. */
+  | 'SESSION_NOT_ACTIVE'
+  /** A shell tab (no hooks, no status) cannot be the session of a Vorhaben. */
+  | 'SESSION_NOT_CLAUDE'
+  /** The session runs in another project than the row. */
+  | 'SESSION_NOT_IN_PROJECT'
+  /** The row already has a live session. */
+  | 'ROW_HAS_SESSION'
+  /** The session is the live session of another row (`message` names it) — a click never moves. */
+  | 'SESSION_ASSIGNED_ELSEWHERE';
 
 export const ANMERKUNG_MAX_CHARS = 4000;
 

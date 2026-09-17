@@ -7,6 +7,7 @@
  */
 
 import * as fsDefault from 'fs';
+import { createHash } from 'crypto';
 import { join } from 'path';
 import {
   VORHABEN_DOC_FILES,
@@ -271,6 +272,8 @@ export const nodeReaderFs: ReaderFs = {
 export interface ScanCopy {
   cwd: string;
   arbeitskopie: string;
+  /** INT-2026-016 (AK-09): the project's main checkout — wins over a byte-identical worktree copy. */
+  main?: boolean;
 }
 
 export interface ScanProject {
@@ -290,6 +293,10 @@ export interface VorhabenCandidate {
   designFiles: string[];
   hasBuildStand: boolean;
   lastChangedMs: number;
+  /** INT-2026-016 (AK-09): `key:sha256` of every document's raw text, joined — equal ⇔ the copies carry the same documents. */
+  fingerprint: string;
+  /** The candidate comes from the main checkout (ScanCopy.main). */
+  main: boolean;
 }
 
 interface CacheEntry {
@@ -297,9 +304,15 @@ interface CacheEntry {
   parsed: IntentHead | StatusLine | null;
 }
 
+interface HashEntry {
+  mtimeMs: number;
+  hash: string;
+}
+
 /** Parse cache keyed by absolute path; re-parses only when mtime changed (FA-07). */
 export class VorhabenParseCache {
   private readonly entries = new Map<string, CacheEntry>();
+  private readonly hashes = new Map<string, HashEntry>();
 
   public get<T extends IntentHead | StatusLine>(path: string, mtimeMs: number, parse: () => T | null): T | null {
     const hit = this.entries.get(path);
@@ -309,9 +322,30 @@ export class VorhabenParseCache {
     return parsed;
   }
 
+  /**
+   * INT-2026-016 (AK-09): sha256 of the raw file text, cached by mtime like
+   * the parse — computed before and independent of any parse, so a broken
+   * head fingerprints too. Unreadable → 'unlesbar' (still comparable).
+   */
+  public hash(path: string, mtimeMs: number, read: () => string): string {
+    const hit = this.hashes.get(path);
+    if (hit && hit.mtimeMs === mtimeMs) return hit.hash;
+    let hash: string;
+    try {
+      hash = createHash('sha256').update(read()).digest('hex');
+    } catch {
+      hash = 'unlesbar';
+    }
+    this.hashes.set(path, { mtimeMs, hash });
+    return hash;
+  }
+
   public prune(livePaths: Set<string>): void {
     for (const key of this.entries.keys()) {
       if (!livePaths.has(key)) this.entries.delete(key);
+    }
+    for (const key of this.hashes.keys()) {
+      if (!livePaths.has(key)) this.hashes.delete(key);
     }
   }
 }
@@ -344,6 +378,7 @@ function readCandidate(
 ): VorhabenCandidate {
   const heads: DocHeads = {};
   const docs: VorhabenDocInfo[] = [];
+  const hashes: string[] = [];
   let lastChangedMs = folderMtime;
   for (const key of VORHABEN_DOC_ORDER) {
     const file = VORHABEN_DOC_FILES[key];
@@ -351,6 +386,7 @@ function readCandidate(
     const st = fs.stat(p);
     if (!st || !st.isFile()) continue;
     lastChangedMs = Math.max(lastChangedMs, st.mtimeMs);
+    hashes.push(`${key}:${cache.hash(p, st.mtimeMs, () => fs.readFile(p))}`);
     const info: VorhabenDocInfo = { key, file, mtimeMs: st.mtimeMs };
     if (key === 'intent') {
       const head = cache.get<IntentHead>(p, st.mtimeMs, () => safeParse(() => parseIntentHead(fs.readFile(p))));
@@ -392,6 +428,8 @@ function readCandidate(
     designFiles,
     hasBuildStand: docs.some((d) => d.key === 'build-stand'),
     lastChangedMs,
+    fingerprint: hashes.join('|'),
+    main: copy.main === true,
   };
 }
 
@@ -405,10 +443,16 @@ function safeParse<T>(fn: () => T | null): T | null {
 
 /**
  * FA-06: one row per intentId across copies — the copy of the assigned
- * session wins, otherwise the newest `lastChangedMs`.
+ * session wins, otherwise the newest `lastChangedMs`. INT-2026-016 (AK-09):
+ * between byte-identical copies the main checkout wins — `git worktree add`
+ * restamps every file, so a fresh worktree looked "newest" without any change.
  */
 export function mergeCandidates(candidates: VorhabenCandidate[], preferredCwd: Map<string, string>): VorhabenCandidate[] {
   const byId = new Map<string, VorhabenCandidate>();
+  const newer = (c: VorhabenCandidate, prev: VorhabenCandidate): boolean => {
+    if (c.fingerprint === prev.fingerprint && c.main !== prev.main) return c.main;
+    return c.lastChangedMs > prev.lastChangedMs;
+  };
   for (const c of candidates) {
     const prev = byId.get(c.intentId);
     if (!prev) {
@@ -419,10 +463,10 @@ export function mergeCandidates(candidates: VorhabenCandidate[], preferredCwd: M
     if (wanted) {
       if (c.cwd === wanted) byId.set(c.intentId, c);
       else if (prev.cwd === wanted) continue;
-      else if (c.lastChangedMs > prev.lastChangedMs) byId.set(c.intentId, c);
+      else if (newer(c, prev)) byId.set(c.intentId, c);
       continue;
     }
-    if (c.lastChangedMs > prev.lastChangedMs) byId.set(c.intentId, c);
+    if (newer(c, prev)) byId.set(c.intentId, c);
   }
   return [...byId.values()];
 }
