@@ -413,7 +413,7 @@ Keine Secrets, keine Flags, keine Datenläufe, keine Umgebungsvariablen.
 - [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (AK-08: Grep + E2E-Protokoll) — `keyboard-shortcuts.test.ts` 16/16, `app-terminal-dock.test.ts` 30/30 (14 neu), E2E 19/19.
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert (8 greps, RB-01 `localStorage`-Diff = 0).
 - [x] E2E-Pfad läuft (Abschnitt 8), Protokoll in §14 und im PR, Screenshots in `design/`.
-- [x] `verify: OK` lokal (48 s), Ausgabe im PR — [ ] PR-Checks grün (CI ist die Wahrheit, steht aus).
+- [x] `verify: OK` lokal (48 s), Ausgabe im PR — [x] PR-Checks grün (Run 35225900437 nach Rerun; erster Lauf rot durch Flake in `vorhaben-service-stage4.test.ts`, Backend-Test mit 5-ms-Ticks, nicht berührt, lokal 5/5 grün, gleicher Branch 3 min zuvor grün).
 - [x] `docs/architecture.md` unverändert (Abschnitt 3 „Nein"); `docs/design.md` §5 angepasst + Protokollzeile.
 - [x] Manuelle Schritte (Abschnitt 10): Merge und AN-02-Prüfung im PR als offen markiert.
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (3, alle Test-/Skript-Details).
