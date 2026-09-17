@@ -4,7 +4,8 @@
  * view renders the page only — no split, no Gespräch; the session stands
  * next to it as the docked terminal sidebar, which app.ts owns. The view
  * tells app.ts which session belongs to the page (`vorhaben-page-session` on
- * `document`, Mac only, on change, never for an ended session or none) and
+ * `document`, Mac only, on every change — including the change to `null`
+ * when the session ends or the page has none, INT-2026-013 B3) and
  * feeds the document's Kennungen to `kennungenService` (set on
  * `kennungen-changed`, cleared when the page goes away).
  *
@@ -70,9 +71,9 @@ vi.mock('../../frontend/src/services/vorhaben.service.js', () => ({
 import { kennungenService } from '../../frontend/src/services/kennungen.service.js';
 
 /** `vorhaben-page-session` events seen on `document` since the last reset. */
-let pageSessions: string[] = [];
+let pageSessions: (string | null)[] = [];
 const onPageSession = (e: Event): void => {
-  pageSessions.push((e as CustomEvent<{ terminalSessionId: string }>).detail.terminalSessionId);
+  pageSessions.push((e as CustomEvent<{ terminalSessionId: string | null }>).detail.terminalSessionId);
 };
 document.addEventListener('vorhaben-page-session', onPageSession);
 
@@ -157,13 +158,13 @@ describe('aos-vorhaben-view — page only, the session is the docked terminal (F
     await settle(el);
     expect(el.querySelector('aos-vorhaben-seite')).not.toBeNull();
     expect(pageSessions).toEqual([]);
-    // the session ends while the page is open → no event, the page stays (FA-24)
+    // the session ends while the page is open → `null` is announced once, the page stays (FA-24, INT-2026-013 B3)
     stateListener!(state([row()]));
     await settle(el);
     expect(pageSessions).toEqual(['cloud-1-1']);
     stateListener!(state([row({ zustand: 'sitzung_beendet', session: { id: 'cloud-1-1', name: 'spec INT-2026-003', model: 'opus', agentStatus: 'unknown', ended: true } })]));
     await settle(el);
-    expect(pageSessions).toEqual(['cloud-1-1']);
+    expect(pageSessions).toEqual(['cloud-1-1', null]);
     expect(el.querySelector('aos-vorhaben-seite')).not.toBeNull();
     el.remove();
     pageSessions = [];
@@ -310,7 +311,7 @@ describe('aos-vorhaben-view — started step stays on the page (FA-22, AN-S03)',
     stateListener!(state([row({ intentId: 'INT-2026-010', session: { id: 'cloud-2-3', name: 'intent', model: 'opus', agentStatus: 'working' } })]));
     await settle(el);
     expect(navigate).toHaveBeenCalledWith('vorhaben', ['p', 'INT-2026-010']);
-    expect(pageSessions).toEqual(['cloud-2-2', 'cloud-2-3']);
+    expect(pageSessions).toEqual(['cloud-2-2', null, 'cloud-2-3']);
     el.remove();
   });
 
@@ -436,6 +437,58 @@ describe('aos-vorhaben-view — shared view state (INT-2026-010 FA-03, FA-12; AR
     expect(seen).toEqual(['cs-5']);
     expect(toasts[0]).toContain('Freigabe wird nach der ersten Frage übergeben');
     document.removeEventListener('open-terminal-session', onOpen);
+    el.remove();
+  });
+});
+
+describe('aos-vorhaben-view — vorhaben-page-session announces every change, including null (INT-2026-013, B3)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    mobile = false;
+    navigate.mockClear();
+    setAnsicht.mockClear();
+    pageSessions = [];
+    kennungenService.clear();
+    route = { view: 'vorhaben', segments: ['p', 'INT-2026-003'] };
+  });
+
+  it('losing the session announces null exactly once; a fresh page without a session announces nothing', async () => {
+    const el = await view();
+    stateListener!(state([row()]));
+    await settle(el);
+    expect(pageSessions).toEqual(['cloud-1-1']);
+    // the session vanishes from the row (closed elsewhere) → one null
+    stateListener!(state([row({ zustand: 'keine_sitzung', session: undefined })]));
+    await settle(el);
+    expect(pageSessions).toEqual(['cloud-1-1', null]);
+    // further broadcasts without a session: nothing more
+    stateListener!(state([row({ zustand: 'keine_sitzung', session: undefined })]));
+    stateListener!(state([row({ zustand: 'sitzung_beendet', session: { id: 'cloud-1-1', name: 'spec INT-2026-003', model: 'opus', agentStatus: 'unknown', ended: true } })]));
+    await settle(el);
+    expect(pageSessions).toEqual(['cloud-1-1', null]);
+    el.remove();
+    // a fresh page whose row has no session: null → null is no change
+    pageSessions = [];
+    const f = await view();
+    stateListener!(state([row({ zustand: 'keine_sitzung', session: undefined })]));
+    await settle(f);
+    stateListener!(state([row({ zustand: 'keine_sitzung', session: undefined })]));
+    await settle(f);
+    expect(pageSessions).toEqual([]);
+    f.remove();
+  });
+
+  it('the same session id is never announced twice (FA-19), a switch to another session and back is', async () => {
+    const el = await view();
+    stateListener!(state([row()]));
+    stateListener!(state([row()]));
+    await settle(el);
+    expect(pageSessions).toEqual(['cloud-1-1']);
+    stateListener!(state([row({ session: { id: 'cloud-1-2', name: 'plan INT-2026-003', model: 'opus', agentStatus: 'working' } })]));
+    await settle(el);
+    stateListener!(state([row()]));
+    await settle(el);
+    expect(pageSessions).toEqual(['cloud-1-1', 'cloud-1-2', 'cloud-1-1']);
     el.remove();
   });
 });

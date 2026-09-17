@@ -85,6 +85,8 @@ export interface LoadingState {
  */
 /** Per-column row-ratio state keys that the pane-maximize toggle can drive. */
 type RowKey = 'splitRowRatio' | 'quadLeftRowRatio' | 'quadRightRowRatio';
+/** Split-screen layout: single pane, 2 rows (top/bottom), or 2x2 quad (fullscreen only). */
+export type LayoutMode = 'single' | 'split-2' | 'quad-4';
 
 /** Below this window width the docked mode falls back to the floating sidebar (FA-07, design.md §5). */
 export const DOCK_MIN_WIDTH = 1024;
@@ -110,8 +112,12 @@ export class AosCloudTerminalSidebar extends LitElement {
   @state() private sidebarWidth = 500;
   @state() private isResizing = false;
   @state() private isFullscreen = false;
-  /** Split-screen layout: single pane, 2 rows (top/bottom), or 2x2 quad (fullscreen only). */
-  @state() private layoutMode: 'single' | 'split-2' | 'quad-4' = 'single';
+  /**
+   * The user's split-screen layout, persisted (AR-05 legacy). Raw value — the
+   * docked column never applies it (see `effectiveLayoutMode`) and never
+   * writes it (INT-2026-013, AK-04/RB-03).
+   */
+  @state() private layoutMode: LayoutMode = 'single';
   /** Session id per pane slot (length 2 for split-2, 4 for quad-4). null = empty slot. */
   @state() private paneSessionIds: (string | null)[] = [];
   /** Which pane currently owns toolbar/keyboard intent (visual focus ring + session-select sync). */
@@ -168,6 +174,18 @@ export class AosCloudTerminalSidebar extends LitElement {
     return this.docked && !this._mobileController.isMobile && window.innerWidth >= DOCK_MIN_WIDTH;
   }
 
+  /**
+   * Layout in effect (INT-2026-013, AK-04): docked is always ONE pane — the
+   * page's session next to the document — whatever `layoutMode` says; the
+   * stored layout returns as soon as the column is floating again. Every
+   * input of `isDocked` is reactive (`docked` prop, breakpoint controller,
+   * resize handler), so the getter needs no tracking of its own. Mounting
+   * (`_mountedSessions`), persistence and restore read the raw value.
+   */
+  get effectiveLayoutMode(): LayoutMode {
+    return this.isDocked ? 'single' : this.layoutMode;
+  }
+
   /** Half of the content area: the window minus the file tree (its width lives on the root, like ours). */
   private dockWidth(): number {
     const raw = document.documentElement.style.getPropertyValue('--file-tree-open-width') || getComputedStyle(document.documentElement).getPropertyValue('--file-tree-open-width');
@@ -188,9 +206,10 @@ export class AosCloudTerminalSidebar extends LitElement {
     if (!this.docked || this._resizeRaf !== null) return;
     this._resizeRaf = requestAnimationFrame(() => {
       this._resizeRaf = null;
+      // The 1024-px threshold flips isDocked without a prop change (FA-07).
+      this._applyDockLayout();
       this.updateContentOffset();
       this.requestUpdate();
-      this._refreshVisibleTerminals();
     });
   };
 
@@ -1057,7 +1076,7 @@ export class AosCloudTerminalSidebar extends LitElement {
               </svg>
               Neue Session
             </button>
-            ${this._renderLayoutSwitcher()}
+            ${this.isDocked ? nothing : this._renderLayoutSwitcher()}
             <button
               class="action-btn"
               @click=${this._toggleFullscreen}
@@ -1127,11 +1146,25 @@ export class AosCloudTerminalSidebar extends LitElement {
     `;
   }
 
+  private static paneCountOf(mode: LayoutMode): number {
+    return mode === 'quad-4' ? 4 : mode === 'split-2' ? 2 : 1;
+  }
+
+  /** Panes in effect (docked → 1). */
   private get _paneCount(): number {
-    return this.layoutMode === 'quad-4' ? 4 : this.layoutMode === 'split-2' ? 2 : 1;
+    return AosCloudTerminalSidebar.paneCountOf(this.effectiveLayoutMode);
   }
 
   private get _isSplit(): boolean {
+    return this.effectiveLayoutMode !== 'single';
+  }
+
+  /** Panes of the stored layout — only `_mountedSessions` reads these, so docking parks pane sessions instead of unmounting them (RB-01). */
+  private get _paneCountRaw(): number {
+    return AosCloudTerminalSidebar.paneCountOf(this.layoutMode);
+  }
+
+  private get _isSplitRaw(): boolean {
     return this.layoutMode !== 'single';
   }
 
@@ -1162,7 +1195,7 @@ export class AosCloudTerminalSidebar extends LitElement {
     // When the row-axis sibling is collapsed (maximize / too-small), this pane owns the full
     // column height — top:0, height:100% — instead of its ratio slice.
     const fullAxis = this._isPaneFullAxis(idx);
-    if (this.layoutMode === 'quad-4') {
+    if (this.effectiveLayoutMode === 'quad-4') {
       const isRight = idx === 1 || idx === 3;
       const isBottom = idx === 2 || idx === 3;
       const rv = isRight ? '--rr' : '--rl';
@@ -1199,7 +1232,7 @@ export class AosCloudTerminalSidebar extends LitElement {
 
   /** Which row-ratio governs pane `idx`, and whether it's the top pane of its column. */
   private _paneRowAxis(idx: number): { key: RowKey; isTop: boolean } {
-    if (this.layoutMode === 'quad-4') {
+    if (this.effectiveLayoutMode === 'quad-4') {
       const isRight = idx === 1 || idx === 3;
       const isBottom = idx === 2 || idx === 3;
       return { key: isRight ? 'quadRightRowRatio' : 'quadLeftRowRatio', isTop: !isBottom };
@@ -1240,7 +1273,7 @@ export class AosCloudTerminalSidebar extends LitElement {
    */
   private _healRowRatios(): void {
     if (!this._isSplit || !(this._containerHeightPx > 0)) return;
-    const keys: RowKey[] = this.layoutMode === 'quad-4'
+    const keys: RowKey[] = this.effectiveLayoutMode === 'quad-4'
       ? ['quadLeftRowRatio', 'quadRightRowRatio']
       : ['splitRowRatio'];
     let changed = false;
@@ -1484,11 +1517,13 @@ export class AosCloudTerminalSidebar extends LitElement {
   private _mountedSessions(): TerminalSession[] {
     const map = new Map<string, TerminalSession>();
     for (const s of this.sessions) map.set(s.id, s);
-    if (this._isSplit) {
+    // Raw layout on purpose: while docked the pane sessions stay mounted (hidden), so
+    // undocking shows them again without a remount/replay (INT-2026-013, RB-01).
+    if (this._isSplitRaw) {
       // Mount every session of each pane's (derived) project so in-pane tab switching is
       // buffer-free, same as single-mode keeps the active project's sessions mounted.
       const paneProjects = new Set<string>();
-      for (let i = 0; i < this._paneCount; i++) {
+      for (let i = 0; i < this._paneCountRaw; i++) {
         const p = this._projectOf(i);
         if (p) paneProjects.add(p);
       }
@@ -1671,7 +1706,7 @@ export class AosCloudTerminalSidebar extends LitElement {
             @auto-review-trigger-manual=${this._handleAutoReviewTriggerManual}
           ></aos-terminal-tabs>`}
       <div
-        class="terminal-sessions-container ${this.layoutMode}"
+        class="terminal-sessions-container ${this.effectiveLayoutMode}"
         style=${styleMap(this._isSplit ? this._containerVars() : {})}
       >
         ${this.loadingState.isLoading ? this._renderLoadingOverlay() : ''}
@@ -1726,7 +1761,7 @@ export class AosCloudTerminalSidebar extends LitElement {
   private _renderPaneHeaders() {
     const panes = Array.from({ length: this._paneCount }, (_, i) => i);
     return html`
-      <div class="pane-headers ${this.layoutMode}">
+      <div class="pane-headers ${this.effectiveLayoutMode}">
         ${repeat(
           panes,
           (i) => i,
@@ -1776,7 +1811,7 @@ export class AosCloudTerminalSidebar extends LitElement {
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
                 </button>
-                ${this.layoutMode !== 'single'
+                ${this.effectiveLayoutMode !== 'single'
                   ? html`<button
                       class="pane-maximize-btn ${this._isPaneMaximized(i) ? 'active' : ''}"
                       ?disabled=${zoomActive}
@@ -1858,7 +1893,7 @@ export class AosCloudTerminalSidebar extends LitElement {
   private _renderSplitters() {
     // No splitters while a pane is zoomed — there is nothing to divide.
     if (this._effectiveZoom !== null) return nothing;
-    if (this.layoutMode === 'split-2') {
+    if (this.effectiveLayoutMode === 'split-2') {
       // No row splitter while one pane is collapsed to full height — reverse via the maximize button.
       if (this._hiddenPaneOnAxis('splitRowRatio') !== null) return nothing;
       return html`<div
@@ -1867,7 +1902,7 @@ export class AosCloudTerminalSidebar extends LitElement {
         @pointerdown=${(e: PointerEvent) => this._startSplitterDrag(e, 'row')}
       ></div>`;
     }
-    if (this.layoutMode === 'quad-4') {
+    if (this.effectiveLayoutMode === 'quad-4') {
       const showRowL = this._hiddenPaneOnAxis('quadLeftRowRatio') === null;
       const showRowR = this._hiddenPaneOnAxis('quadRightRowRatio') === null;
       return html`
@@ -2067,12 +2102,32 @@ export class AosCloudTerminalSidebar extends LitElement {
     this._setFullscreen(!this.isFullscreen);
   }
 
+  /**
+   * Docked ↔ floating (INT-2026-013, AK-04): docking ends an active fullscreen
+   * (the column is the page's right half); undocking with a stored quad
+   * brings fullscreen back; then the panes of the layout now in effect are
+   * reconciled (no-op docked; resolves `_paneRestoreProjects` when floating
+   * again) and the visible terminals refit. Called on a `docked` change and
+   * from the resize handler (1024-px threshold).
+   */
+  private _applyDockLayout(): void {
+    if (this.isDocked && this.isFullscreen) {
+      this.isFullscreen = false;
+    } else if (!this.isDocked && this.isOpen && this.layoutMode === 'quad-4' && !this.isFullscreen) {
+      this.isFullscreen = true;
+    }
+    this.updateContentOffset();
+    this._reconcilePanes();
+    this._refreshVisibleTerminals();
+  }
+
   /** Fullscreen on/off with the follow-ups a layout change needs; no-op when already there. */
   private _setFullscreen(on: boolean) {
     if (this.isFullscreen === on) return;
     this.isFullscreen = on;
     // Quad is fullscreen-only — leaving fullscreen downgrades to 2-split (top row survives).
-    if (!on && this.layoutMode === 'quad-4') {
+    // Docked shows a single pane, so the stored quad is left alone (INT-2026-013).
+    if (!on && this.effectiveLayoutMode === 'quad-4') {
       this._setLayout('split-2');
     }
     this.updateContentOffset();
@@ -2116,7 +2171,7 @@ export class AosCloudTerminalSidebar extends LitElement {
     if (e.key === 'Escape' && this.isFullscreen) {
       e.preventDefault();
       this.isFullscreen = false;
-      if (this.layoutMode === 'quad-4') this._setLayout('split-2');
+      if (this.effectiveLayoutMode === 'quad-4') this._setLayout('split-2');
       this.updateContentOffset();
       this._refreshVisibleTerminals();
     }
@@ -2125,7 +2180,7 @@ export class AosCloudTerminalSidebar extends LitElement {
   // ---- Split-screen layout management ----
 
   private _renderLayoutSwitcher() {
-    const btn = (mode: 'single' | 'split-2' | 'quad-4', title: string, paths: unknown) => html`
+    const btn = (mode: LayoutMode, title: string, paths: unknown) => html`
       <button
         class="layout-btn ${this.layoutMode === mode ? 'active' : ''}"
         title=${title}
@@ -2153,7 +2208,7 @@ export class AosCloudTerminalSidebar extends LitElement {
     `;
   }
 
-  private _setLayout(mode: 'single' | 'split-2' | 'quad-4') {
+  private _setLayout(mode: LayoutMode) {
     // Layout change invalidates a pending "+" adoption (pane indices may shift).
     this._pendingNewSession = null;
     // Maximize/zoom tracking is per-axis/index — meaningless across a layout switch.
@@ -2261,6 +2316,8 @@ export class AosCloudTerminalSidebar extends LitElement {
   }
 
   private _persistLayout() {
+    // Docked never writes the layout: the column is a presentation, not the user's choice (RB-03).
+    if (this.isDocked) return;
     try {
       localStorage.setItem('cloud-terminal-layout-mode', this.layoutMode);
       localStorage.setItem('cloud-terminal-pane-sessions', JSON.stringify(this.paneSessionIds));
@@ -2320,8 +2377,8 @@ export class AosCloudTerminalSidebar extends LitElement {
       } else {
         this.paneSessionIds = [];
       }
-      // Quad is only usable in fullscreen.
-      if (this.layoutMode === 'quad-4') this.isFullscreen = true;
+      // Quad is only usable in fullscreen — not while docked (app.ts sets `docked` before connect).
+      if (this.layoutMode === 'quad-4' && !this.isDocked) this.isFullscreen = true;
 
       // Restore splitter ratios (clamp 0.15–0.85, default 0.5).
       const ratiosRaw = localStorage.getItem('cloud-terminal-split-ratios');
@@ -2694,19 +2751,20 @@ export class AosCloudTerminalSidebar extends LitElement {
     if (changed.has('allSessions') || changed.has('activeSessionId') || this._pendingNewSession) {
       this._reconcilePanes();
     }
-    // Docked on/off changes the width of the same instance: content offset and
-    // a refit, nothing else (no remount, no replay — spike Schritt 0 (d)).
+    // Docked on/off changes the width of the same instance and which panes are
+    // visible: content offset, fullscreen/pane reconciliation and a refit —
+    // no remount, no replay (spike Schritt 0 (d); INT-2026-013 RB-01).
     if (changed.has('docked') && changed.get('docked') !== undefined) {
+      this._applyDockLayout();
       this.updateContentOffset();
-      this._refreshVisibleTerminals();
     }
     if (changed.has('isOpen')) {
       // No fullscreen persistence for the manual toggle — a fresh open starts in normal mode,
-      // EXCEPT a restored quad layout, which is only usable in fullscreen.
-      if (!this.isOpen && this.isFullscreen && this.layoutMode !== 'quad-4') {
+      // EXCEPT a restored quad layout, which is only usable in fullscreen (never docked).
+      if (!this.isOpen && this.isFullscreen && this.effectiveLayoutMode !== 'quad-4') {
         this.isFullscreen = false;
       }
-      if (this.isOpen && this.layoutMode === 'quad-4') {
+      if (this.isOpen && this.effectiveLayoutMode === 'quad-4') {
         this.isFullscreen = true;
       }
       this.updateContentOffset();
