@@ -76,3 +76,32 @@ PO-Entscheidung von Michael nach Sicht des Split-Fix-Stands: Dokument links, Ges
 - 1440×900: Dokument l 29 · w 680 — Gespräch l 731 · r 1440 · w 709 (680 + 29 Padding) — Sende-Leiste l 0 · r 731 (ist-04-vorhaben-mac.png).
 - 1440×900 + Terminal-Sidebar (Cmd+D): Dokument l 29 · w 430 — Gespräch l 481 · r 940 = linker Rand der Sidebar — Leiste r 481 (ist-04-vorhaben-terminal-mac.png).
 - 900×1000: Dokument oben (w 842), Gespräch darunter statisch (w 842, 70vh), Leiste volle Breite (ist-04-vorhaben-900.png).
+
+# E2E-Protokoll INT-2026-010 Stufe 3 (abgespeckt: Leser klappt, ohne Code-Links) — 2026-09-17
+
+Branch-Backend 3111 (`SPECWRIGHT_TMUX=off`, Runtime `/tmp/sw-3111`), Frontend-Build aus dem Branch `feat/INT-2026-010-s3`, Scratch-Projekt `/private/tmp/scratch-int010`, Playwright 1.57 (Chrome headless). Keine Sitzung nötig. Skript `e2e-010-s3.mjs` im Scratchpad (nicht im Repo). Ergebnis: 11/11 grün.
+
+## Schritt 0 (lesende Vorprüfung)
+
+- `renderDocument`-Konsumenten: `aos-dokument-leser.ts:97,191`, `tests/unit/vorhaben-markdown.test.ts`, `tests/unit/vorhaben-anchors.test.ts` → alle auf `{html, gekennzeichnet}` umgestellt.
+- `deriveAnchors`-Konsumenten: nur `aos-dokument-leser.ts:216` und der Anker-Test — unverändert.
+- marked 17.0.1: `reader.lexer()` und `reader.parser()` vorhanden, `parse(src) === parser(lexer(src))` (Referenz-Links inklusive). Marker ist immer ein eigenes `html`-Token (auch ohne Leerzeile davor/danach, auch vor einer Tabelle); ein Marker im Codezaun bleibt im `code`-Token. Ein fremder Kommentar vor dem Marker ist ein eigenes `html`-Token → Überschrift gilt als unmarkiert (wie der Guard).
+
+## Mac 1440×900 — INT-2026-001 spec.md (17 Marker, vollständig)
+
+- Chip `spec` gewählt; 3 Technik-Kästen: „5. Daten, fachlich“, „7. Bedenken aus den Projekt-Docs“, „10. Freigabe“ — alle zu; 7 Mensch-Abschnitte (`h2` direkt im Körper) offen.
+- Kasten zu: Höhe = Überschrift (25 px = 25 px); Chrome behält die Layout-Werte des verborgenen Inhalts (`content-visibility`), deshalb misst das Skript den Kasten, nicht die Kinder.
+- Schalter „Technik zeigen“ (`aria-pressed=false`) → Klick → alle 3 Kästen offen (812 / 2496 / 544 px), Beschriftung „Technik ausblenden“, `aria-pressed=true` → Klick → alle wieder zu. Screenshots `ist-stufe3/ist-05-leser-zu.png`, `ist-05-leser-offen.png` (Kasten unter der Kopfzeile).
+- Chip `intent` (intent.md ohne Marker): keine Kästen, kein Schalter (FA-14).
+
+## Mac 1440×900 — INT-2026-002 plan.md (ohne Marker)
+
+- Chip `plan` gewählt, 2 `h2` offen, keine Kästen, kein Schalter (FA-14, AK-12). Screenshot `ist-05-unmarkiert.png`.
+
+## Handy 390×844 — INT-2026-001 spec.md
+
+- 3 Kästen zu, Schalter „Technik zeigen“ da, `scrollWidth − clientWidth = 0` (AK-17: kein horizontales Scrollen). Schalter öffnet alle. Screenshot `ist-05-leser-zu-handy.png`.
+
+## Nicht in dieser Stufe (OF-04, INT-2026-011)
+
+- Klick auf `FA-12` im Gespräch springt und klappt auf (AK-13/FA-15/FA-16), `ist-06-code-link.png` — kommt mit INT-2026-011 (Kennungen im Terminal).

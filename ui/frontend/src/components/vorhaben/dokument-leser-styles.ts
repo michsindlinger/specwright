@@ -215,6 +215,66 @@ export const dokumentLeserStyles = css`
     color: var(--color-text-muted);
     font-size: var(--font-size-xs);
   }
+  /* Stage 3 (FA-13): switch above a marked document, technik sections as closed boxes */
+  .leser-technik {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--spacing-sm);
+  }
+  .leser-technik-btn {
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+  }
+  .leser-technik-btn[aria-pressed='true'] {
+    color: var(--color-text-primary);
+    border-color: var(--color-primary);
+  }
+  .markdown-body details.technik {
+    margin: var(--spacing-md) 0;
+    padding: 0 0 0 var(--spacing-md);
+    border-left: 3px solid var(--color-border);
+  }
+  .markdown-body details.technik > summary {
+    cursor: pointer;
+    list-style: none;
+    color: var(--color-text-secondary);
+  }
+  .markdown-body details.technik > summary::-webkit-details-marker {
+    display: none;
+  }
+  .markdown-body details.technik > summary::before {
+    content: '▸';
+    display: inline-block;
+    width: 1em;
+    color: var(--color-text-muted);
+  }
+  .markdown-body details.technik[open] > summary::before {
+    content: '▾';
+  }
+  .markdown-body details.technik > summary > h2,
+  .markdown-body details.technik > summary > h3,
+  .markdown-body details.technik > summary > h4 {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1em;
+    font-weight: 600;
+  }
+  .markdown-body details.technik:not([open]) > summary::after {
+    content: ' · Technik';
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+  }
+  .markdown-body details.technik[open] > summary {
+    margin-bottom: var(--spacing-sm);
+  }
   .markdown-body.annotierbar {
     padding-left: 32px;
   }
