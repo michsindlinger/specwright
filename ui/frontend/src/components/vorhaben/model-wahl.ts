@@ -8,9 +8,22 @@
 import { vorhabenService, type ModelListInfo } from '../../services/vorhaben.service.js';
 import type { ModelSelection, VorhabenStep } from '../../../../src/shared/types/vorhaben.protocol.js';
 
-/** Providers, defaults and step defaults as the settings know them (`model.list`). */
+/**
+ * Providers, defaults and step defaults as the settings know them (`model.list`),
+ * reduced to providers that start Claude Code (`nurClaudeSitzungen`).
+ */
 export function ladeModelle(): Promise<ModelListInfo> {
-  return vorhabenService.modelList();
+  return vorhabenService.modelList().then(nurClaudeSitzungen);
+}
+
+/**
+ * INT-2026-012 (D1): a step starts `/specwright:<step> …`, which only a Claude
+ * session understands — a foreign agent CLI (Codex nativ, `cliKind: 'foreign'`)
+ * is not offered here. Fail-open on a missing field (older backend, E6); the
+ * backend guard (`isClaudeSessionModel`) catches the rest with a naming error.
+ */
+export function nurClaudeSitzungen(models: ModelListInfo): ModelListInfo {
+  return { ...models, providers: models.providers.filter((p) => p.cliKind !== 'foreign') };
 }
 
 /** True when the selection names a configured provider and model. */

@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
+import { isClaudeCli, providerCliKind, type ProviderCliKind } from '../shared/provider-cli.js';
 
 export interface Model {
   id: string;
@@ -106,6 +107,19 @@ export function isBuiltInProvider(providerId: string): boolean {
   return BUILT_IN_PROVIDERS.includes(providerId);
 }
 
+/**
+ * INT-2026-012 (E3): the session kind is a naming convention (`claude-<id>`,
+ * `shared/provider-cli.ts`). Make every foreign provider visible once at load
+ * time so a wrapper that drops out of the convention is noticed, not silent.
+ */
+function warnForeignProviders(config: ModelConfig): void {
+  for (const p of config.providers) {
+    if (!isClaudeCli(p.cliCommand)) {
+      console.warn(`[ModelConfig] provider ${p.id} runs a foreign CLI (${p.cliCommand}): no hooks, status, reviewer, step start`);
+    }
+  }
+}
+
 export function loadModelConfig(): ModelConfig {
   if (cachedConfig) {
     return cachedConfig;
@@ -116,6 +130,7 @@ export function loadModelConfig(): ModelConfig {
       const configData = readFileSync(CONFIG_PATH, 'utf-8');
       cachedConfig = JSON.parse(configData) as ModelConfig;
       console.log('[ModelConfig] Loaded config from:', CONFIG_PATH);
+      warnForeignProviders(cachedConfig);
       return cachedConfig;
     } catch (error) {
       console.warn('[ModelConfig] Failed to load config file, using defaults:', error);
@@ -125,6 +140,7 @@ export function loadModelConfig(): ModelConfig {
   }
 
   cachedConfig = DEFAULT_CONFIG;
+  warnForeignProviders(cachedConfig);
   return cachedConfig;
 }
 
@@ -223,6 +239,54 @@ export function getProviderCommand(providerId: string, modelId: string): { comma
 export function getAllProviders(): ModelProvider[] {
   const config = loadModelConfig();
   return config.providers;
+}
+
+/**
+ * Providers usable as plan reviewers (INT-2026-012, AK-07). Reviewers run
+ * through the Claude Agent SDK with `CLAUDE_CONFIG_DIR=~/.claude-<id>`
+ * (`utils/provider-env.ts`); a foreign agent CLI (Codex nativ) cannot take
+ * that path, so it is not offered.
+ */
+export function getReviewerProviders(): ModelProvider[] {
+  return getAllProviders().filter(p => isClaudeCli(p.cliCommand));
+}
+
+/** One provider row of the `model.list` answer — `cliKind` derived, never stored (E4). */
+export interface ModelListProvider {
+  id: string;
+  name: string;
+  cliKind: ProviderCliKind;
+  models: Array<{ id: string; name: string; description?: string; providerId: string }>;
+}
+
+/**
+ * The `model.list` shape: all providers (the terminal dropdown shows every
+ * one, AK-05) with the derived `cliKind`, so the Vorhaben page can hide
+ * foreign providers where a Specwright step is started (D1). Pure; E14.
+ */
+export function providersForModelList(): ModelListProvider[] {
+  return getAllProviders().map(provider => ({
+    id: provider.id,
+    name: provider.name,
+    cliKind: providerCliKind(provider.cliCommand),
+    models: provider.models.map(model => ({
+      id: model.id,
+      name: model.name,
+      description: model.description,
+      providerId: provider.id
+    }))
+  }));
+}
+
+/**
+ * True when the pair names a configured model of a provider that starts
+ * Claude Code (INT-2026-012, D1) — the precondition for step defaults and for
+ * starting a Specwright step from the Vorhaben page.
+ */
+export function isClaudeSessionModel(providerId: string, modelId: string): boolean {
+  const provider = getProvider(providerId);
+  if (!provider || !isClaudeCli(provider.cliCommand)) return false;
+  return !!getModel(providerId, modelId);
 }
 
 export function getDefaultSelection(): { providerId: string; modelId: string } {
@@ -529,7 +593,8 @@ const STEP_FALLBACK: StepDefault = { providerId: 'anthropic', modelId: 'opus' };
 export function getStepDefault(step: StepKey): StepDefault {
   const config = loadModelConfig();
   const configured = config.stepDefaults?.[step];
-  if (configured && getModel(configured.providerId, configured.modelId)) return { ...configured };
+  // INT-2026-012 (E11): a hand-edited default on a foreign provider falls back, no throw on load.
+  if (configured && isClaudeSessionModel(configured.providerId, configured.modelId)) return { ...configured };
   if (getModel(STEP_FALLBACK.providerId, STEP_FALLBACK.modelId)) return { ...STEP_FALLBACK };
   return getDefaultSelection();
 }
@@ -556,6 +621,10 @@ export function setStepDefault(step: StepKey, selection: StepDefault | null): Mo
   } else {
     if (!getModel(selection.providerId, selection.modelId)) {
       throw new Error(`Model not found: ${selection.providerId}/${selection.modelId}`);
+    }
+    // INT-2026-012 (D1): a step starts `/specwright:<step> …` — only a Claude session understands it.
+    if (!isClaudeSessionModel(selection.providerId, selection.modelId)) {
+      throw new Error(`Provider startet keine Claude-Sitzung: ${selection.providerId}`);
     }
     stepDefaults[step] = { providerId: selection.providerId, modelId: selection.modelId };
   }

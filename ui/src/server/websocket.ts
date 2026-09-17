@@ -10,7 +10,8 @@ import { fileHandler } from './handlers/file.handler.js';
 import { documentPreviewHandler } from './handlers/document-preview.handler.js';
 import { PreviewWatcher } from './services/preview-watcher.service.js';
 import {
-  getAllProviders,
+  getReviewerProviders,
+  providersForModelList,
   getDefaultSelection,
   loadModelConfig,
   updateProvider,
@@ -635,24 +636,12 @@ export class WebSocketHandler {
   }
 
   private handleModelList(client: WebSocketClient): void {
-    const providers = getAllProviders();
     const defaultSelection = getDefaultSelection();
-
-    // Transform providers to include providerId in each model
-    const transformedProviders = providers.map(provider => ({
-      id: provider.id,
-      name: provider.name,
-      models: provider.models.map(model => ({
-        id: model.id,
-        name: model.name,
-        description: model.description,
-        providerId: provider.id
-      }))
-    }));
 
     const response: WebSocketMessage = {
       type: 'model.list',
-      providers: transformedProviders,
+      // All providers with providerId per model and the derived `cliKind` (INT-2026-012, D1).
+      providers: providersForModelList(),
       defaultSelection,
       // INT-2026-004 (FA-40/41): resolved per-step defaults for the Vorhaben page.
       stepDefaults: getStepDefaults(),
@@ -662,7 +651,8 @@ export class WebSocketHandler {
   }
 
   private handleModelProvidersList(client: WebSocketClient): void {
-    const providers = getAllProviders();
+    // Plan reviewers: Claude CLIs only — a foreign agent CLI cannot review (INT-2026-012, AK-07).
+    const providers = getReviewerProviders();
 
     // Transform providers to include providerId in each model (same format as handleModelList)
     const transformedProviders = providers.map(provider => ({

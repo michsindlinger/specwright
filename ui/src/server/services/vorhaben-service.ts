@@ -17,7 +17,7 @@ import * as fs from 'fs';
 import { basename, join } from 'path';
 import { listRepoWorktrees, pathKey, type RepoWorktreeInfo } from '../utils/git-worktree-list.js';
 import { parseSessionTarget, SessionTargetError, type ParsedTarget } from '../utils/session-target.js';
-import { getModel } from '../model-config.js';
+import { isClaudeSessionModel } from '../model-config.js';
 import { buildAenderungenText, buildFreigabeText, formatStandLabel, normalizeAnmerkungText } from '../../shared/vorhaben-text.js';
 import {
   designDirOf,
@@ -241,7 +241,8 @@ export class VorhabenService {
     this.worktreeTtlMs = deps.worktreeTtlMs ?? 5000;
     this.now = deps.now ?? ((): Date => new Date());
     this.timeZone = deps.timeZone ?? process.env.SPECWRIGHT_TZ ?? 'Europe/Berlin';
-    this.resolveModel = deps.resolveModel ?? ((sel): boolean => !!getModel(sel.providerId, sel.modelId));
+    // INT-2026-012 (D1): a step starts `/specwright:<step> …` — only a Claude session can run it.
+    this.resolveModel = deps.resolveModel ?? ((sel): boolean => isClaudeSessionModel(sel.providerId, sel.modelId));
     this.updatedAt = this.now().toISOString();
     this.watcher.on('changed', () => this.scheduleRescan());
     this.watcher.on('dir-added', (cwd: string, intentId: string) => this.onDirAdded(cwd, intentId));
@@ -639,7 +640,7 @@ export class VorhabenService {
         throw new VorhabenError('INVALID_MESSAGE', `Kein Modell für ${step} konfiguriert — Projekt › Einstellungen › Modelle`);
       }
     } else if (!this.resolveModel(model)) {
-      throw new VorhabenError('INVALID_MESSAGE', `Modell nicht konfiguriert: ${model.providerId}/${model.modelId}`);
+      throw new VorhabenError('INVALID_MESSAGE', `Modell nicht konfiguriert oder keine Claude-Sitzung: ${model.providerId}/${model.modelId}`);
     }
     let target: ParsedTarget;
     try {

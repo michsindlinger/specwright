@@ -8,11 +8,11 @@ import { mkdtempSync, rmSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-const cli = { command: 'claude' };
+const cli = { command: 'claude', available: true };
 vi.mock('../../src/server/model-config.js', () => ({
   getCliCommandForModel: () => ({ command: cli.command, args: ['--model', 'x'] }),
   getProviderCommand: () => undefined,
-  checkCliAvailability: () => true,
+  checkCliAvailability: () => cli.available,
 }));
 vi.mock('../../src/server/general-config.js', () => ({
   getCloudSessionWorktreeEnabled: () => false,
@@ -93,6 +93,7 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
     terminal = new FakeTerminalManager();
     tmux = new FakeTmux();
     cli.command = 'claude';
+    cli.available = true;
     mgr = build({ settingsPath: join(dir, 'hooks.json'), secretPath: join(dir, 'secret'), port: 3001 });
   });
 
@@ -188,6 +189,46 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
     cli.command = '/home/me/bin/claude-glm';
     await mgr.createSession(project, 'claude-code', { model: 'x' });
     expect(terminal.last.args).toContain('--settings');
+  });
+
+  it('INT-2026-012 E5: extraCliArgs go to claude-* wrappers only; a foreign CLI gets neither them nor --settings', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    cli.command = '/home/me/bin/claude-glm';
+    await mgr.createSession(project, 'claude-code', { model: 'x' }, 80, 24, undefined, ['--mcp-config', 'x']);
+    expect(terminal.last.args).toContain('--mcp-config');
+    expect(terminal.last.args).toContain('--settings');
+
+    cli.command = '/usr/local/bin/codex';
+    await mgr.createSession(project, 'claude-code', { model: 'x' }, 80, 24, undefined, ['--mcp-config', 'x']);
+    expect(terminal.last.args).not.toContain('--mcp-config');
+    expect(terminal.last.args).not.toContain('--settings');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('extraCliArgs für fremde CLI'));
+    warn.mockRestore();
+  });
+
+  it('INT-2026-012 AK-06: a foreign CLI session stays agentStatus unknown — no hook ever reports', async () => {
+    cli.command = '/usr/local/bin/codex';
+    const emitted: string[] = [];
+    mgr.on('session.agent-event', (_id: string, event: string) => emitted.push(event));
+    const { sessionId } = await mgr.createSession(project, 'claude-code', { model: 'x', provider: 'codex-cli' });
+    expect(terminal.last.args).not.toContain('--settings');
+    expect(terminal.last.args).toEqual(['--model', 'x']);
+    expect(mgr.getSession(sessionId)?.agentStatus).toBe('unknown');
+    mgr.sendInput(sessionId, '\r');
+    expect(mgr.getSession(sessionId)?.agentStatus).toBe('unknown');
+    expect(emitted).toEqual([]);
+  });
+
+  it('INT-2026-012 E17: a missing CLI names the provider, not the npm package — except for `claude` itself', async () => {
+    cli.available = false;
+    cli.command = 'claude-codex';
+    await expect(mgr.createSession(project, 'claude-code', { model: 'gpt-5.6-terra', provider: 'codex' })).rejects.toThrow(
+      /CLI 'claude-codex' nicht im PATH gefunden\. Provider 'codex' braucht dieses Programm/
+    );
+    await expect(mgr.createSession(project, 'claude-code', { model: 'gpt-5.6-terra', provider: 'codex' })).rejects.not.toThrow(/@anthropic-ai\/claude-code/);
+
+    cli.command = 'claude';
+    await expect(mgr.createSession(project, 'claude-code', { model: 'x' })).rejects.toThrow(/npm install -g @anthropic-ai\/claude-code/);
   });
 
   it('degrades: unwritable hook paths → no flag, no secret, session still starts', async () => {

@@ -21,7 +21,7 @@ Nicht verhandelbare Hooks (z. B. `production-gate`) gehören zusätzlich in die 
 | Hook | Ereignis | Blockiert | Ausnahme |
 |---|---|---|---|
 | `protect-tests.sh` | `PreToolUse` für `Edit`, `Write`, `MultiEdit` | Änderungen an Testdateien und Test-Baselines, solange die Marker-Datei `.claude/fix-mode` existiert; Baselines immer | Marker löschen (Plan-Phase „finalize") oder `ALLOW_TEST_EDITS=1` |
-| `no-secrets.sh` | `PreToolUse` für `Bash` bei `git commit` | Commit, wenn im Staging Secret-Muster oder Secret-Dateien liegen | keine — Datei aus dem Staging nehmen |
+| `no-secrets.sh` | `PreToolUse` für `Bash` bei `git commit` | Commit, wenn im Staging Secret-Muster oder Secret-Dateien liegen | `.claude/no-secrets-allow.txt` (eine Regex je Zeile, `#`-Kommentare) nimmt Pfade aus der Dateinamen-Regel — nur für versionierte Configs ohne Zugänge; die Inhaltsregel prüft weiter jede Zeile. Sonst: Datei aus dem Staging nehmen |
 | `production-gate.sh` | `PreToolUse` für `Bash` | Befehle, die auf `deploy` **und** `prod`/`production` passen, ohne `RELEASE_APPROVAL` | `RELEASE_APPROVAL=[Name JJJJ-MM-TT]` in der Umgebung oder Datei `.claude/release-approval` (wird nach dem Deploy gelöscht) |
 
 ## Mechanik
@@ -35,7 +35,7 @@ Bei einem Bugfix gilt: Test zuerst, Fehlschlag bestätigen, dann Fix, Test bleib
 ## Anpassen
 
 - Testdatei-Muster und Baselines: oben in `protect-tests.sh` (`TEST_PATTERNS`, `BASELINES`).
-- Secret-Muster und Dateinamen: oben in `no-secrets.sh`.
+- Secret-Muster und Dateinamen: oben in `no-secrets.sh`. Projekteigene Ausnahmen von der Dateinamen-Regel: `.claude/no-secrets-allow.txt` (versioniert, im Review lesbar; ohne Datei bleibt der Hook unverändert streng).
 - Deploy-Muster: oben in `production-gate.sh` (`DEPLOY_PATTERN`, `PROD_PATTERN`).
 
 Jede Änderung an einem Hook läuft durch die Eval-Suite (Phase 4).

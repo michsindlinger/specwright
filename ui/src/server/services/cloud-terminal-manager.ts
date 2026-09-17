@@ -69,6 +69,7 @@ import {
 import { getPasteImageRoot, getSessionRegistryPath } from '../utils/runtime-paths.js';
 import { sanitizeSessionEnv } from '../utils/session-env.js';
 import type { BlockKind, HookContext } from '../../shared/types/hook-events.protocol.js';
+import { isClaudeCli } from '../../shared/provider-cli.js';
 
 /** MIME type → filename extension for pasted-image persistence */
 const PASTE_MIME_TO_EXT: ReadonlyMap<string, string> = new Map([
@@ -782,14 +783,22 @@ export class CloudTerminalManager extends EventEmitter {
           : undefined) ?? getCliCommandForModel(modelConfig.model);
         shellCommand = cliConfig.command;
         shellArgs = [...cliConfig.args];
+        // INT-2026-012: one rule for the session kind (`shared/provider-cli.ts`).
+        // A foreign agent CLI (e.g. `codex`) gets neither Claude flags nor the
+        // hook settings — it runs without status and bell (AK-06).
+        const claudeCli = isClaudeCli(shellCommand);
         // v3.22.0: extra flags (e.g. --mcp-config + --strict-mcp-config) must
         // precede the positional initialPrompt
         if (extraCliArgs && extraCliArgs.length > 0) {
-          shellArgs.push(...extraCliArgs);
+          if (claudeCli) {
+            shellArgs.push(...extraCliArgs);
+          } else {
+            console.warn(`[CloudTerminal] extraCliArgs für fremde CLI '${shellCommand}' verworfen: ${extraCliArgs.join(' ')}`);
+          }
         }
         // Claude Code hooks (agent status + bell). Only for claude CLIs / claude-* wrappers
         // — a user-configured foreign CLI must not receive an unknown flag.
-        if (this.hookSettingsPath && path.basename(shellCommand).startsWith('claude')) {
+        if (this.hookSettingsPath && claudeCli) {
           shellArgs.push('--settings', this.hookSettingsPath);
         }
         if (initialPrompt) {
@@ -807,7 +816,12 @@ export class CloudTerminalManager extends EventEmitter {
 
       // Pre-flight check: verify CLI command exists in PATH
       if (!checkCliAvailability(shellCommand)) {
-        const error = new Error(`CLI '${shellCommand}' nicht im PATH gefunden. Bitte installieren: npm install -g @anthropic-ai/claude-code`);
+        // INT-2026-012 (E17): name the provider — on a host without the wrapper
+        // (cloud droplet) this is the first thing the user sees for OpenAI.
+        const hint = shellCommand === 'claude'
+          ? 'Bitte installieren: npm install -g @anthropic-ai/claude-code'
+          : `Provider '${modelConfig?.provider ?? 'unbekannt'}' braucht dieses Programm auf diesem Host (Wrapper unter ~/bin oder CLI).`;
+        const error = new Error(`CLI '${shellCommand}' nicht im PATH gefunden. ${hint}`);
         (error as Error & { code: string }).code = CLOUD_TERMINAL_ERROR_CODES.CLI_NOT_FOUND;
         throw error;
       }

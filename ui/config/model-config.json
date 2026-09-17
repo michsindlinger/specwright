@@ -214,6 +214,59 @@
           "description": "xAI frontier coding model (via Grok subscription proxy)"
         }
       ]
+    },
+    {
+      "id": "codex",
+      "name": "OpenAI",
+      "cliCommand": "claude-codex",
+      "cliFlags": [
+        "--model",
+        "{modelId}"
+      ],
+      "models": [
+        {
+          "id": "gpt-5.6-terra",
+          "name": "GPT-5.6 Terra",
+          "description": "via ChatGPT-Konto (claude-code-proxy)"
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "name": "GPT-5.6 Luna",
+          "description": "via ChatGPT-Konto (claude-code-proxy)"
+        },
+        {
+          "id": "gpt-5.5",
+          "name": "GPT-5.5",
+          "description": "via ChatGPT-Konto (claude-code-proxy)"
+        }
+      ]
+    },
+    {
+      "id": "codex-cli",
+      "name": "Codex (nativ)",
+      "cliCommand": "codex",
+      "cliFlags": [
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--model",
+        "{modelId}"
+      ],
+      "models": [
+        {
+          "id": "gpt-5.6-terra",
+          "name": "GPT-5.6 Terra",
+          "description": "Codex-CLI von OpenAI; ohne Status, Glocke, Prüfer"
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "name": "GPT-5.6 Luna",
+          "description": "Codex-CLI von OpenAI; ohne Status, Glocke, Prüfer"
+        },
+        {
+          "id": "gpt-5.5",
+          "name": "GPT-5.5",
+          "description": "Codex-CLI von OpenAI; ohne Status, Glocke, Prüfer"
+        }
+      ]
     }
   ]
 }
