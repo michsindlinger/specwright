@@ -4,6 +4,12 @@
  * state — a session that waits for an answer waits for Michael) → "Läuft"
  * (everything else, by last change, newest first) → umgesetzt (collapsed).
  * The key `wartet` stays in the type for the tests of older stages.
+ *
+ * INT-2026-016 (AK-01): the session state decides the group BEFORE the
+ * phase. The phase is the state of the file (intent.md `umgesetzt`), the
+ * session state is the state of whoever works on it right now; a row whose
+ * session works or waits is never collapsed, whatever the file says. Only a
+ * row without a live session is filed by its phase.
  */
 
 import type { VorhabenPhase, VorhabenRow, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
@@ -23,9 +29,15 @@ export const GROUP_LABELS: Record<VorhabenGroupKey, string> = {
   umgesetzt: 'Umgesetzt',
 };
 
+/** Every `wartet*` state: the session waits for Michael (review, question, dialog, permission). */
+export function isWaitingZustand(z: VorhabenZustand): boolean {
+  return z === 'wartet_auf_dich' || z === 'wartet' || z === 'wartet_rueckfrage' || z === 'wartet_plan' || z === 'wartet_berechtigung';
+}
+
 export function groupOf(row: VorhabenRow): VorhabenGroupKey {
+  if (isWaitingZustand(row.zustand)) return 'wartet_auf_dich';
+  if (row.zustand === 'arbeitet') return 'laeuft';
   if (row.phase === 'umgesetzt') return 'umgesetzt';
-  if (row.zustand === 'wartet_auf_dich' || row.zustand === 'wartet' || row.zustand === 'wartet_rueckfrage' || row.zustand === 'wartet_plan' || row.zustand === 'wartet_berechtigung') return 'wartet_auf_dich';
   return 'laeuft';
 }
 
