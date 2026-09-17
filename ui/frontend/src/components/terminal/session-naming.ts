@@ -21,6 +21,7 @@ export interface BackendSessionLike {
   agentStatus?: CloudTerminalAgentStatus;
   agentStatusAt?: string | Date;
   agentStatusReason?: string;
+  agentDoneAt?: string | Date;
 }
 
 export interface WorkflowMetadataLike {
@@ -111,6 +112,7 @@ export function toRestoredTab(b: BackendSessionLike, workflow?: WorkflowMetadata
           agentStatus: b.agentStatus,
           agentStatusAt: at || undefined,
           agentStatusReason: b.agentStatusReason,
+          ...(toMs(b.agentDoneAt) ? { agentDoneAt: toMs(b.agentDoneAt) } : {}),
         }
       : {}),
   };

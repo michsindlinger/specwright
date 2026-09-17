@@ -36,7 +36,7 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | Situation | Muster | Beispiel im Code |
 |---|---|---|
 | Liste mit vielen Einträgen (Projekte, Sessions) | Sortierung, Suche, Recents zuerst | Projekt-Seite (offene Projekte, zuletzt geöffnet) |
-| Meldung, die nicht verloren gehen darf (Agent fertig, Agent wartet) | ein Zähler an einem Symbol, das auf jeder Seite da ist; Tipp führt zum Ort der Antwort | `aos-glocke` in der Kopfzeile |
+| Meldung, die nicht verloren gehen darf (Agent fertig, Agent wartet) | ein Zähler an einem Symbol, das auf jeder Seite da ist; Tipp führt zum Ort der Antwort. Die Einträge kommen aus dem Backend-Stand der Sitzungen (INT-2026-016): jede Claude-Sitzung, die einen Dialog zeigt oder fertig gemeldet und noch nicht beantwortet ist (Marke, überlebt Neuladen, Gerätewechsel und einen Neustart bis 24 h); Sitzungen eines Vorhabens heißen nach Kennung und Titel und zeigen den Zustand der Zeile. Ein Eintrag bleibt, bis in der Sitzung geantwortet oder der Tab geschlossen wird — nicht bis man hingeschaut hat; der grüne Punkt am Tab verblasst dagegen nach 10 Minuten (Dekoration, keine Meldung). Die gerade sichtbare Sitzung wird nicht gelistet | `aos-glocke` in der Kopfzeile, `buildBellRows` |
 | Langlaufender Vorgang (Auto-Mode, Installer) | Fortschritt je Schritt, nie nur Spinner; Abschluss mit Zählern | `install.sh` `step`/`substep`, Auto-Mode-Log |
 | Fehler nach Aktion | Inline mit Ursache und nächstem Schritt („nicht gelöscht: lokal geändert — behalten per keep.txt oder von Hand löschen") | `install-lib.sh` |
 | Leerzustand | ein Satz + eine Aktion | Projektliste ohne Projekte |
@@ -76,3 +76,4 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | 2026-09-17 | §5 volle Breite für Liste, Vorhaben-Seite und Dokument; angedockt immer ein Fenster, gespeicherte Aufteilung nur schwebend (INT-2026-013, Nachbesserung nach PR #66) | PR #68 |
 | 2026-09-17 | §4 Stapelordnung angedockt: Spalte unter der Kopfzeile, Glocken-Liste davor (INT-2026-014) | PR #69 |
 | 2026-09-17 | §5 Terminal schließt beim Verlassen einer angedockten Seite; Cmd+← zur Übersicht (INT-2026-015) | PR #71 |
+| 2026-09-17 | §4 Glocke aus dem Backend-Stand: Dialog oder Marke „fertig, unbeantwortet", Vorhaben-Titel und -Zustand, bleibt bis zur Antwort; Übersicht gruppiert nach Sitzungszustand vor Phase (INT-2026-016, PR 1) | PR folgt |

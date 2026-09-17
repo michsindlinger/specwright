@@ -2,50 +2,19 @@
  * Pure helpers for the agent bell (blocked / finished) in the app header
  * (`aos-glocke`, INT-2026-010; before that in the cloud-terminal header).
  *
- * DOM-free (unit-tested in ui/tests/unit/agent-notifications.test.ts). The list
- * itself is owned by app.ts (it owns the sessions and the visible session);
- * the bell renders it and app.ts resolves where a click has to jump.
+ * DOM-free (unit-tested in ui/tests/unit/agent-notifications.test.ts). The
+ * list is derived — never kept — from what app.ts owns: the terminal sessions
+ * (backend snapshot: status, the „fertig, unbeantwortet"-mark), the Vorhaben
+ * rows (labels only) and the visible session. INT-2026-016 (AK-02): the
+ * browser-side notification list of earlier stages is gone; the backend is
+ * the single source, so a reload, another device or a restart all show the
+ * same bell.
  */
 
 import { paneShowingProject } from './pane-zoom.js';
+import { STEP_LABELS, ZUSTAND_LABELS } from '../vorhaben/vorhaben-sort.js';
 import type { CloudTerminalAgentStatus } from '../../../../src/shared/types/cloud-terminal.protocol.js';
-
-export interface AgentNotification {
-  /** Frontend TerminalSession.id (what the sidebar / panes key on). */
-  sessionId: string;
-  /** Backend CloudTerminalSessionId (what WS messages carry). */
-  terminalSessionId: string;
-  /** Epoch ms of the Stop event. */
-  finishedAt: number;
-  /** Sanitized, truncated excerpt of the last assistant message, if delivered. */
-  preview?: string;
-}
-
-/** One entry per session: replaces an existing one and moves it to the front (newest first). */
-export function upsertNotification(
-  list: readonly AgentNotification[],
-  entry: AgentNotification
-): AgentNotification[] {
-  return [entry, ...list.filter((n) => n.sessionId !== entry.sessionId)];
-}
-
-/** Returns the SAME array when nothing was removed, so Lit sees no change. */
-export function removeNotification(
-  list: AgentNotification[],
-  sessionId: string | null | undefined
-): AgentNotification[] {
-  if (!sessionId || !list.some((n) => n.sessionId === sessionId)) return list;
-  return list.filter((n) => n.sessionId !== sessionId);
-}
-
-/** Drops entries whose session no longer exists. Same-reference when nothing changes. */
-export function pruneNotifications(
-  list: AgentNotification[],
-  liveSessionIds: ReadonlySet<string>
-): AgentNotification[] {
-  if (list.every((n) => liveSessionIds.has(n.sessionId))) return list;
-  return list.filter((n) => liveSessionIds.has(n.sessionId));
-}
+import type { VorhabenStep, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
 
 /** What {@link ringsForAgentEvent} needs to know about one agent-event message. */
 export interface RingInput {
@@ -162,19 +131,25 @@ export function soloJumpTarget(target: JumpTarget, paneSessionIds: readonly (str
 }
 
 /**
- * A row in the bell dropdown. Two sources feed it (see {@link buildBellRows}):
- * `blocked` comes from the live agent status, `done` from a Stop notification.
+ * A row in the bell dropdown, derived from one terminal session
+ * (see {@link buildBellRows}).
  */
 export interface BellRow {
-  /** Frontend TerminalSession.id. */
+  /** Frontend TerminalSession.id — what the sidebar, the panes and the visible-session rule key on. */
   sessionId: string;
   /** Backend CloudTerminalSessionId — what `vorhaben:state` and the WS carry (INT-2026-010, FA-06). */
   terminalSessionId?: string;
   kind: 'blocked' | 'done';
-  /** Epoch ms of the event this row is about. */
+  /** Epoch ms: when the dialog opened (blocked) or the Stop that set the mark (done). */
   at: number;
   /** Reason (blocked) or last-assistant-message excerpt (done), when known. */
   preview?: string;
+  /** INT-2026-016 (AK-03): „INT-2026-004 · Titel" when the session belongs to a Vorhaben row. */
+  title?: string;
+  /** INT-2026-016 (AK-03): the row's state as the list shows it („wartet auf dich · Spec · spec.md"). */
+  label?: string;
+  /** Project of the Vorhaben row (its id is the path); falls back to the session's project in the bell. */
+  projectPath?: string;
 }
 
 /** The session fields {@link buildBellRows} reads. */
@@ -184,52 +159,74 @@ export interface BellSession {
   agentStatus?: CloudTerminalAgentStatus;
   agentStatusAt?: number;
   agentStatusReason?: string;
+  /** Epoch ms of the „fertig, unbeantwortet"-mark (backend, INT-2026-016). */
+  agentDoneAt?: number;
+  /** Excerpt of the last assistant message that came with the Stop, when this browser saw it. */
+  agentDonePreview?: string;
+}
+
+/** The Vorhaben row fields {@link buildBellRows} reads for labels (a subset of VorhabenRow). */
+export interface BellVorhabenRow {
+  projectId: string;
+  intentId: string;
+  titel: string;
+  zustand: VorhabenZustand;
+  zustandDetail: string;
+  step?: VorhabenStep;
+  lastChangedMs: number;
+  session?: { id: string; ended?: boolean };
+}
+
+/** The state text of a row as the list renders it (mirrors aos-vorhaben-zeile). */
+export function bellLabelOf(row: BellVorhabenRow): string {
+  const detail = row.zustand === 'wartet_auf_dich' && row.step ? `${STEP_LABELS[row.step]} · ${row.zustandDetail}` : row.zustandDetail;
+  const base = ZUSTAND_LABELS[row.zustand];
+  // Dialog labels already name the kind („wartet · Plan-Entscheidung"); do not say it twice.
+  return detail && !base.endsWith(detail) ? `${base} · ${detail}` : base;
 }
 
 /**
- * What the bell lists: sessions blocked on the user, then agents that finished.
- *
- * `blocked` is derived from the live agent status rather than kept as its own
- * notification, so it appears and disappears exactly when the status does — no
- * second copy of the state to clear. A session that is blocked never also shows
- * a done row. The session the user is *looking at* is never listed: that is the
- * active tab of an OPEN terminal sidebar (`sichtbareSessionId`); with the
- * sidebar closed every session is listed, the last active one included
- * (INT-2026-010 review E2 — the bell must not stay silent for the session
- * Michael left open behind a closed sidebar).
+ * What the bell lists (INT-2026-016, AK-02): every session that shows a
+ * dialog (`blocked`) or carries the backend's „fertig, unbeantwortet"-mark
+ * (`agentDoneAt`) — nothing else, so a fresh session (`unknown`), a working
+ * one, or a `done` whose mark did not survive a restart is never listed.
+ * The session the user is *looking at* is never listed: that is the active
+ * tab of an OPEN terminal sidebar (`sichtbareSessionId`); with the sidebar
+ * closed every session is listed, the last active one included (INT-2026-010
+ * review E2). The Vorhaben rows only label: a session that is the live
+ * session of a row shows Kennung · Titel, the row's state and its project
+ * (AK-03); among several rows the newest change wins, as the bell jump does.
+ * Blocked rows come first, then finished ones, each newest first.
  */
 export function buildBellRows(
-  notifications: readonly AgentNotification[],
   sessions: readonly BellSession[],
+  rows: readonly BellVorhabenRow[],
   sichtbareSessionId: string | null | undefined
 ): BellRow[] {
-  const blocked: BellRow[] = [];
-  const blockedIds = new Set<string>();
-  const backendIdOf = new Map(sessions.map((s) => [s.id, s.terminalSessionId] as const));
-  for (const s of sessions) {
-    if (s.agentStatus !== 'blocked' || s.id === sichtbareSessionId) continue;
-    blockedIds.add(s.id);
-    blocked.push({
-      sessionId: s.id,
-      ...(s.terminalSessionId ? { terminalSessionId: s.terminalSessionId } : {}),
-      kind: 'blocked',
-      at: s.agentStatusAt ?? 0,
-      ...(s.agentStatusReason ? { preview: s.agentStatusReason } : {}),
-    });
+  const rowByBackendId = new Map<string, BellVorhabenRow>();
+  for (const r of rows) {
+    if (!r.session || r.session.ended) continue;
+    const prev = rowByBackendId.get(r.session.id);
+    if (!prev || r.lastChangedMs > prev.lastChangedMs) rowByBackendId.set(r.session.id, r);
   }
 
-  const known = new Set(sessions.map((s) => s.id));
+  const blocked: BellRow[] = [];
   const done: BellRow[] = [];
-  for (const n of notifications) {
-    if (!known.has(n.sessionId) || blockedIds.has(n.sessionId) || n.sessionId === sichtbareSessionId) continue;
-    const terminalSessionId = n.terminalSessionId || backendIdOf.get(n.sessionId);
-    done.push({
-      sessionId: n.sessionId,
-      ...(terminalSessionId ? { terminalSessionId } : {}),
-      kind: 'done',
-      at: n.finishedAt,
-      ...(n.preview ? { preview: n.preview } : {}),
-    });
+  for (const s of sessions) {
+    if (s.id === sichtbareSessionId) continue;
+    const isBlocked = s.agentStatus === 'blocked';
+    if (!isBlocked && !s.agentDoneAt) continue;
+    const row = s.terminalSessionId ? rowByBackendId.get(s.terminalSessionId) : undefined;
+    const preview = isBlocked ? s.agentStatusReason : s.agentDonePreview;
+    const entry: BellRow = {
+      sessionId: s.id,
+      ...(s.terminalSessionId ? { terminalSessionId: s.terminalSessionId } : {}),
+      kind: isBlocked ? 'blocked' : 'done',
+      at: isBlocked ? (s.agentStatusAt ?? 0) : (s.agentDoneAt ?? 0),
+      ...(preview ? { preview } : {}),
+      ...(row ? { title: `${row.intentId} · ${row.titel}`, label: bellLabelOf(row), projectPath: row.projectId } : {}),
+    };
+    (isBlocked ? blocked : done).push(entry);
   }
 
   const newestFirst = (a: BellRow, b: BellRow): number => b.at - a.at;

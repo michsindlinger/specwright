@@ -158,6 +158,13 @@ export interface CloudTerminalSession {
   agentStatusAt?: Date;
   /** Reason for blocked / error, when the hook delivered one. */
   agentStatusReason?: string;
+  /**
+   * INT-2026-016 (AK-02): the session finished a turn (Stop) and nobody has
+   * answered since — set by `stop`, cleared by an input, a dialog, a session
+   * start or a failure; the done → idle decay keeps it. The bell lists a
+   * session while this is set. Absent for shell sessions.
+   */
+  agentDoneAt?: Date;
   /** blocked only: kind of dialog (INT-2026-007, FA-09). Absent for shell sessions. */
   blockKind?: BlockKind;
   /** Transcript file Claude Code writes for this session, once a hook reported it (INT-2026-007). */
@@ -448,6 +455,8 @@ export interface CloudTerminalAgentEventDetail {
   reason?: string;
   /** blocked only: what kind of dialog the session shows (INT-2026-007, FA-09). */
   blockKind?: BlockKind;
+  /** INT-2026-016: the „fertig, unbeantwortet"-mark after this event (see CloudTerminalSession.agentDoneAt). */
+  doneAt?: Date;
 }
 
 /**
@@ -462,6 +471,8 @@ export interface CloudTerminalAgentEventMessage {
   status: CloudTerminalAgentStatus;
   /** ISO timestamp of the status change. */
   statusAt: string;
+  /** INT-2026-016: ISO timestamp of the mark „fertig, unbeantwortet", when set. */
+  doneAt?: string;
   preview?: string;
   reason?: string;
   blockKind?: BlockKind;
@@ -657,6 +668,13 @@ export const CLOUD_TERMINAL_CONFIG = {
 
   /** A `done` agent status decays to `idle` after this long without another agent event. */
   AGENT_IDLE_AFTER_MS: 10 * 60 * 1000,
+
+  /**
+   * INT-2026-016 (AK-04): a persisted „fertig, unbeantwortet"-mark older than
+   * this is not restored after a backend restart — the bell must not list
+   * every tab that was left after a Stop weeks ago.
+   */
+  AGENT_DONE_MAX_AGE_MS: 24 * 60 * 60 * 1000,
 
   /** Default terminal size */
   DEFAULT_COLS: 120,

@@ -173,6 +173,18 @@ describe('CloudTerminalManager boot-restore', () => {
     expect(typeof stored?.agentStatusAt).toBe('string');
   });
 
+  it('INT-2026-016 (AK-04): restores the „fertig" mark only while it is younger than 24 h', async () => {
+    const now = Date.now();
+    await registry.upsert(persisted('s-fresh', { agentStatus: 'idle', agentDoneAt: new Date(now - 60 * 60 * 1000).toISOString() }));
+    await registry.upsert(persisted('s-old', { agentStatus: 'idle', agentDoneAt: new Date(now - 25 * 60 * 60 * 1000).toISOString() }));
+    tmux.liveSessions.add('cs-s-fresh');
+    tmux.liveSessions.add('cs-s-old');
+    const manager = makeManager();
+    await manager.whenReady();
+    expect(manager.getSession('s-fresh')?.agentDoneAt).toBeInstanceOf(Date);
+    expect(manager.getSession('s-old')?.agentDoneAt).toBeUndefined();
+  });
+
   it('entries without agent status fields (older files) restore as unknown', async () => {
     await registry.upsert(persisted('s2'));
     tmux.liveSessions.add('cs-s2');

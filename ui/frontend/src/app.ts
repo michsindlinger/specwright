@@ -23,12 +23,8 @@ import './components/git/aos-git-diff-viewer.js';
 import './components/git/aos-git-pull-strategy-dialog.js';
 import type { TerminalSession } from './components/terminal/aos-cloud-terminal-sidebar.js';
 import {
-  upsertNotification,
-  removeNotification,
-  pruneNotifications,
   ringsForAgentEvent,
   buildBellRows,
-  type AgentNotification,
   type BellRow,
 } from './components/terminal/agent-notifications.js';
 import type { CloudTerminalAgentStatus } from '../../src/shared/types/cloud-terminal.protocol.js';
@@ -50,17 +46,20 @@ import type { AosGettingStartedView } from './views/aos-getting-started-view.js'
 const AGENT_STATUS_VALUES: ReadonlySet<string> = new Set(['unknown', 'idle', 'working', 'blocked', 'error', 'done']);
 
 /** Picks the agent-status fields off a backend session record (ISO → epoch ms). */
-function agentStatusFields(b: { agentStatus?: CloudTerminalAgentStatus; agentStatusAt?: string; agentStatusReason?: string }): {
+function agentStatusFields(b: { agentStatus?: CloudTerminalAgentStatus; agentStatusAt?: string; agentStatusReason?: string; agentDoneAt?: string }): {
   agentStatus?: CloudTerminalAgentStatus;
   agentStatusAt?: number;
   agentStatusReason?: string;
+  agentDoneAt?: number;
 } {
   if (b.agentStatus === undefined) return {};
   const at = typeof b.agentStatusAt === 'string' ? Date.parse(b.agentStatusAt) : NaN;
+  const doneAt = typeof b.agentDoneAt === 'string' ? Date.parse(b.agentDoneAt) : NaN;
   return {
     agentStatus: b.agentStatus,
     agentStatusAt: Number.isFinite(at) ? at : undefined,
     agentStatusReason: b.agentStatusReason,
+    agentDoneAt: Number.isFinite(doneAt) ? doneAt : undefined,
   };
 }
 import { recentlyOpenedService } from './services/recently-opened.service.js';
@@ -161,15 +160,6 @@ export class AosApp extends LitElement {
 
   @state()
   private activeTerminalSessionId: string | null = null;
-
-  /**
-   * "Agent finished" bell entries (Claude Code Stop hook → cloud-terminal:agent-event).
-   * Kept here because this class owns the sessions and the active id: willUpdate()
-   * clears an entry as soon as its session becomes active by ANY path, and prunes
-   * entries whose session disappeared.
-   */
-  @state()
-  private agentNotifications: AgentNotification[] = [];
 
   /** Remember last active terminal session per project */
   private lastActiveSessionByProject = new Map<string, string>();
@@ -388,7 +378,6 @@ export class AosApp extends LitElement {
     if (match.needsInput) {
       this.terminalSessions = this.terminalSessions.map(s => (s.id === match.id ? { ...s, needsInput: false } : s));
     }
-    this.agentNotifications = removeNotification(this.agentNotifications, match.id);
   }
 
   /**
@@ -400,12 +389,10 @@ export class AosApp extends LitElement {
     const { sessionId, terminalSessionId } = e.detail;
     const ziel = terminalSessionId ? glockeZiel(terminalSessionId, this.vorhabenState) : { route: 'terminal' as const };
     if (ziel.route === 'vorhaben') {
-      this.agentNotifications = removeNotification(this.agentNotifications, sessionId);
       routerService.navigate('vorhaben', [encodeURIComponent(ziel.segments[0]), ziel.segments[1]]);
       return;
     }
     if (ziel.route === 'neu') {
-      this.agentNotifications = removeNotification(this.agentNotifications, sessionId);
       routerService.navigate('neu', [encodeURIComponent(ziel.segments[0])]);
       return;
     }
@@ -426,8 +413,13 @@ export class AosApp extends LitElement {
     return this.isTerminalSidebarOpen ? this.activeTerminalSessionId : null;
   }
 
+  /**
+   * INT-2026-016 (AK-02): derived, never kept — the backend snapshot in
+   * `terminalSessions` (dialog or „fertig, unbeantwortet"-mark) decides, the
+   * Vorhaben rows only label. Same bell after a reload and on every device.
+   */
   private get glockeRows(): BellRow[] {
-    return buildBellRows(this.agentNotifications, this.terminalSessions, this.sichtbareSessionId);
+    return buildBellRows(this.terminalSessions, this.vorhabenState?.rows ?? [], this.sichtbareSessionId);
   }
 
   private get glockeSessions(): GlockeSession[] {
@@ -727,9 +719,6 @@ export class AosApp extends LitElement {
 
   private _handleTerminalSessionSelect(e: CustomEvent<{ sessionId: string; clearNeedsInput?: boolean }>): void {
     this.activeTerminalSessionId = e.detail.sessionId;
-    // Drop the bell entry here as well as in willUpdate(): a forced re-select of the already
-    // active session (bell jump) does not change the property, so willUpdate never runs.
-    this.agentNotifications = removeNotification(this.agentNotifications, e.detail.sessionId);
 
     // WTT-004: Clear needsInput flag when tab becomes active
     if (e.detail.clearNeedsInput) {
@@ -774,6 +763,12 @@ export class AosApp extends LitElement {
       // Server status is authoritative: a session that is working/done/idle
       // is by definition not waiting for input, whatever the regex thought.
       const clearNeedsInput = agentStatus === 'working' || agentStatus === 'done' || agentStatus === 'idle';
+      // INT-2026-016 (AK-02): the „fertig, unbeantwortet"-mark travels with the event;
+      // absent means cleared (an answer, a dialog, a start). The Stop preview is kept
+      // only as long as the mark — and only in the browser that saw the event.
+      const doneAtRaw = typeof msg.doneAt === 'string' ? Date.parse(msg.doneAt) : NaN;
+      const agentDoneAt = Number.isFinite(doneAtRaw) ? doneAtRaw : undefined;
+      const agentDonePreview = agentDoneAt ? (event === 'stop' && typeof msg.preview === 'string' ? msg.preview : match.agentDonePreview) : undefined;
       this.terminalSessions = this.terminalSessions.map(s =>
         s.id === match.id
           ? {
@@ -781,20 +776,12 @@ export class AosApp extends LitElement {
               agentStatus,
               agentStatusAt: Number.isFinite(at) ? at : Date.now(),
               agentStatusReason: typeof msg.reason === 'string' ? msg.reason : undefined,
+              agentDoneAt,
+              agentDonePreview,
               ...(clearNeedsInput ? { needsInput: false } : {}),
             }
           : s
       );
-    }
-
-    if (event === 'stop' && !isActive) {
-      const ts = typeof msg.timestamp === 'string' ? Date.parse(msg.timestamp) : NaN;
-      this.agentNotifications = upsertNotification(this.agentNotifications, {
-        sessionId: match.id,
-        terminalSessionId: backendId,
-        finishedAt: Number.isFinite(ts) ? ts : Date.now(),
-        preview: typeof msg.preview === 'string' ? msg.preview : undefined,
-      });
     }
     // Same chime for finished, blocked and plan-review — obeys the bell's mute
     // toggle and rings even while the sidebar is closed, when it matters most.
@@ -819,19 +806,10 @@ export class AosApp extends LitElement {
 
   override willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
-    // An entry is cleared when its session becomes VISIBLE: active tab while the
-    // sidebar is open, or the sidebar opening on the active tab (INT-2026-010).
-    if ((changed.has('activeTerminalSessionId') || changed.has('isTerminalSidebarOpen')) && this.isTerminalSidebarOpen) {
-      this.agentNotifications = removeNotification(this.agentNotifications, this.activeTerminalSessionId);
-    }
     if (changed.has('terminalSessions')) {
       // One choke point for tab names (list, adoption, connect, rename): the
       // helper returns the same array when nothing changes, so no extra cycle.
       this.terminalSessions = assignAutoNames(this.terminalSessions, this.sessionNames);
-      this.agentNotifications = pruneNotifications(
-        this.agentNotifications,
-        new Set(this.terminalSessions.map(s => s.id))
-      );
     }
     this._syncDock(changed);
   }
@@ -1513,10 +1491,11 @@ export class AosApp extends LitElement {
         agentStatus: b.agentStatus,
         agentStatusAt: typeof b.agentStatusAt === 'string' ? b.agentStatusAt : b.agentStatusAt?.toISOString(),
         agentStatusReason: b.agentStatusReason,
+        agentDoneAt: typeof b.agentDoneAt === 'string' ? b.agentDoneAt : b.agentDoneAt?.toISOString(),
       });
-      if (fields.agentStatus === s.agentStatus && fields.agentStatusAt === s.agentStatusAt && fields.agentStatusReason === s.agentStatusReason) return s;
+      if (fields.agentStatus === s.agentStatus && fields.agentStatusAt === s.agentStatusAt && fields.agentStatusReason === s.agentStatusReason && fields.agentDoneAt === s.agentDoneAt) return s;
       refreshed = true;
-      return { ...s, ...fields };
+      return { ...s, ...fields, ...(fields.agentDoneAt ? {} : { agentDonePreview: undefined }) };
     });
     if (refreshed) this.terminalSessions = refreshedSessions;
 

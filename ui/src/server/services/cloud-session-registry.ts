@@ -60,6 +60,8 @@ export interface PersistedCloudSessionV1 {
   /** ISO timestamp of `agentStatus`. */
   agentStatusAt?: string;
   agentStatusReason?: string;
+  /** INT-2026-016 (AK-04): ISO timestamp of the mark „fertig, unbeantwortet"; restored only while younger than AGENT_DONE_MAX_AGE_MS. */
+  agentDoneAt?: string;
   /**
    * INT-2026-007 (FA-08): hook context, block kind and the plan-review
    * settings survive a restart. All optional — older files stay valid

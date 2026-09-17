@@ -1,54 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
-  upsertNotification,
-  removeNotification,
-  pruneNotifications,
   formatRelativeTime,
   resolveJumpTarget,
   soloJumpTarget,
   buildBellRows,
   ringsForAgentEvent,
-  type AgentNotification,
   type BellSession,
+  type BellVorhabenRow,
   type JumpInput,
 } from '../../frontend/src/components/terminal/agent-notifications.js';
-
-const n = (sessionId: string, finishedAt = 0, preview?: string): AgentNotification => ({
-  sessionId,
-  terminalSessionId: `cloud-${sessionId}`,
-  finishedAt,
-  preview,
-});
-
-describe('upsertNotification()', () => {
-  it('prepends new entries (newest first)', () => {
-    const list = upsertNotification([n('a', 1)], n('b', 2));
-    expect(list.map((x) => x.sessionId)).toEqual(['b', 'a']);
-  });
-
-  it('keeps one entry per session, refreshing time/preview and moving it to the front', () => {
-    const list = upsertNotification([n('a', 1), n('b', 2, 'old')], n('b', 3, 'new'));
-    expect(list.map((x) => x.sessionId)).toEqual(['b', 'a']);
-    expect(list[0]).toMatchObject({ finishedAt: 3, preview: 'new' });
-    expect(list).toHaveLength(2);
-  });
-});
-
-describe('removeNotification() / pruneNotifications()', () => {
-  it('remove: same reference when nothing matches, filtered copy otherwise', () => {
-    const list = [n('a'), n('b')];
-    expect(removeNotification(list, 'zzz')).toBe(list);
-    expect(removeNotification(list, null)).toBe(list);
-    expect(removeNotification(list, 'a').map((x) => x.sessionId)).toEqual(['b']);
-  });
-
-  it('prune: same reference when all sessions live, drops dead ones otherwise', () => {
-    const list = [n('a'), n('b')];
-    expect(pruneNotifications(list, new Set(['a', 'b', 'c']))).toBe(list);
-    expect(pruneNotifications(list, new Set(['b'])).map((x) => x.sessionId)).toEqual(['b']);
-    expect(pruneNotifications(list, new Set())).toEqual([]);
-  });
-});
 
 describe('formatRelativeTime()', () => {
   const now = Date.UTC(2026, 8, 9, 12, 0, 0);
@@ -159,61 +119,85 @@ describe('soloJumpTarget() (INT-2026-005)', () => {
   });
 });
 
-describe('buildBellRows()', () => {
-  const s = (id: string, agentStatus?: BellSession['agentStatus'], agentStatusAt = 0, reason?: string): BellSession => ({
-    id,
-    agentStatus,
-    agentStatusAt,
-    agentStatusReason: reason,
+describe('buildBellRows() — INT-2026-016 (AK-02, AK-03): one source, the backend', () => {
+  const s = (id: string, o: Partial<BellSession> = {}): BellSession => ({ id, terminalSessionId: `cloud-${id}`, ...o });
+  const vr = (o: Partial<BellVorhabenRow> & { intentId: string; sessionId?: string }): BellVorhabenRow => ({
+    projectId: '/p',
+    titel: 'Titel ' + o.intentId,
+    zustand: 'keine_sitzung',
+    zustandDetail: '',
+    lastChangedMs: 0,
+    ...(o.sessionId ? { session: { id: o.sessionId } } : {}),
+    ...o,
   });
 
-  it('lists blocked sessions above finished agents', () => {
-    const rows = buildBellRows([n('done-1', 500)], [s('done-1', 'done', 500), s('blk', 'blocked', 1)], null);
-    expect(rows.map((r) => [r.sessionId, r.kind])).toEqual([
-      ['blk', 'blocked'],
-      ['done-1', 'done'],
+  it('lists a session while it shows a dialog (blocked) or carries the „fertig, unbeantwortet" mark; nothing else', () => {
+    const sessions = [
+      s('blk', { agentStatus: 'blocked', agentStatusAt: 5, agentStatusReason: 'Berechtigung: Bash' }),
+      s('fin', { agentStatus: 'idle', agentDoneAt: 3 }),
+      s('done-no-mark', { agentStatus: 'done' }), // after a restart the mark can be gone → not listed
+      s('working', { agentStatus: 'working', agentStatusAt: 9 }),
+      s('fresh', { agentStatus: 'unknown' }),
+      s('idle', { agentStatus: 'idle', agentStatusAt: 1 }),
+      s('shell'),
+    ];
+    const rows = buildBellRows(sessions, [], null);
+    expect(rows.map((r) => [r.sessionId, r.kind, r.at])).toEqual([
+      ['blk', 'blocked', 5],
+      ['fin', 'done', 3],
     ]);
+    expect(rows[0]).toMatchObject({ terminalSessionId: 'cloud-blk', preview: 'Berechtigung: Bash' });
   });
 
-  it('orders newest first inside each group', () => {
-    const sessions = [s('b-old', 'blocked', 1), s('b-new', 'blocked', 9), s('d-old', 'idle'), s('d-new', 'idle')];
-    const rows = buildBellRows([n('d-old', 2), n('d-new', 8)], sessions, null);
-    expect(rows.map((r) => r.sessionId)).toEqual(['b-new', 'b-old', 'd-new', 'd-old']);
+  it('orders blocked above finished, newest first inside each group', () => {
+    const sessions = [
+      s('b-old', { agentStatus: 'blocked', agentStatusAt: 1 }),
+      s('d-new', { agentStatus: 'done', agentDoneAt: 8 }),
+      s('b-new', { agentStatus: 'blocked', agentStatusAt: 9 }),
+      s('d-old', { agentStatus: 'idle', agentDoneAt: 2 }),
+    ];
+    expect(buildBellRows(sessions, [], null).map((r) => r.sessionId)).toEqual(['b-new', 'b-old', 'd-new', 'd-old']);
   });
 
-  it('never lists the session the user is looking at (sidebar open, tab active)', () => {
-    expect(buildBellRows([n('a', 1)], [s('a', 'blocked', 1)], 'a')).toEqual([]);
-    expect(buildBellRows([n('a', 1)], [s('a', 'done', 1)], 'a')).toEqual([]);
+  it('never lists the session the user is looking at (sidebar open, tab active); with the sidebar closed it is back (INT-2026-010 review E2)', () => {
+    expect(buildBellRows([s('a', { agentStatus: 'blocked', agentStatusAt: 1 })], [], 'a')).toEqual([]);
+    expect(buildBellRows([s('a', { agentStatus: 'done', agentDoneAt: 1 })], [], 'a')).toEqual([]);
+    expect(buildBellRows([s('a', { agentStatus: 'done', agentDoneAt: 1 })], [], null).map((r) => r.sessionId)).toEqual(['a']);
+    expect(buildBellRows([s('a', { agentStatus: 'done', agentDoneAt: 1 })], [], undefined).map((r) => r.sessionId)).toEqual(['a']);
   });
 
-  it('INT-2026-010 (FA-04, review E2): with the sidebar closed nothing is visible — the last active session is listed too', () => {
-    expect(buildBellRows([n('a', 1)], [s('a', 'done', 1)], undefined).map((r) => r.sessionId)).toEqual(['a']);
-    expect(buildBellRows([], [s('a', 'blocked', 1)], null).map((r) => r.kind)).toEqual(['blocked']);
+  it('a session of a Vorhaben row is labelled with Kennung, Titel, the row state and the project — the row never decides the listing', () => {
+    const sessions = [
+      s('spec', { agentStatus: 'idle', agentDoneAt: 4 }),
+      s('plan', { agentStatus: 'blocked', agentStatusAt: 6, agentStatusReason: 'ExitPlanMode' }),
+      s('quiet', { agentStatus: 'idle' }),
+    ];
+    const rows: BellVorhabenRow[] = [
+      vr({ intentId: 'INT-2026-004', sessionId: 'cloud-spec', zustand: 'wartet_auf_dich', zustandDetail: 'spec.md', step: 'spec', projectId: '/applai' }),
+      vr({ intentId: 'INT-2026-002', sessionId: 'cloud-plan', zustand: 'wartet_plan', zustandDetail: 'Plan-Entscheidung', projectId: '/compass' }),
+      vr({ intentId: 'INT-2026-009', sessionId: 'cloud-quiet', zustand: 'wartet', zustandDetail: '' }), // row waits (F8: unknown/idle) but no mark → not listed
+    ];
+    const out = buildBellRows(sessions, rows, null);
+    expect(out.map((r) => r.sessionId)).toEqual(['plan', 'spec']);
+    expect(out[0]).toMatchObject({ kind: 'blocked', title: 'INT-2026-002 · Titel INT-2026-002', label: 'wartet · Plan-Entscheidung', projectPath: '/compass', preview: 'ExitPlanMode' });
+    expect(out[1]).toMatchObject({ kind: 'done', title: 'INT-2026-004 · Titel INT-2026-004', label: 'wartet auf dich · Spec · spec.md', projectPath: '/applai', at: 4 });
   });
 
-  it('INT-2026-010 (FA-06): rows carry the backend id — from the notification, else from the session', () => {
-    const rows = buildBellRows([n('d', 3)], [{ ...s('b', 'blocked', 5), terminalSessionId: 'cloud-b' }, s('d', 'done')], null);
-    expect(rows.map((r) => [r.sessionId, r.terminalSessionId])).toEqual([
-      ['b', 'cloud-b'],
-      ['d', 'cloud-d'],
-    ]);
-    expect(buildBellRows([], [s('x', 'blocked')], null)[0].terminalSessionId).toBeUndefined();
+  it('a session assigned to two rows takes the label of the newest row; an ended assignment does not label', () => {
+    const sessions = [s('x', { agentStatus: 'done', agentDoneAt: 1 })];
+    const rows: BellVorhabenRow[] = [
+      vr({ intentId: 'INT-2026-001', sessionId: 'cloud-x', zustand: 'wartet', lastChangedMs: 10 }),
+      vr({ intentId: 'INT-2026-002', sessionId: 'cloud-x', zustand: 'wartet', lastChangedMs: 20 }),
+      vr({ intentId: 'INT-2026-003', session: { id: 'cloud-x', ended: true }, zustand: 'sitzung_beendet', lastChangedMs: 99 }),
+    ];
+    expect(buildBellRows(sessions, rows, null)[0].title).toBe('INT-2026-002 · Titel INT-2026-002');
+    expect(buildBellRows(sessions, [rows[2]], null)[0].title).toBeUndefined();
   });
 
-  it('drops notifications whose session is gone', () => {
-    expect(buildBellRows([n('ghost', 1)], [s('other', 'idle')], null)).toEqual([]);
-  });
-
-  it('shows a blocked session once, never also as finished', () => {
-    const rows = buildBellRows([n('a', 1, 'All done')], [s('a', 'blocked', 2, 'Berechtigung: Bash')], null);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ kind: 'blocked', preview: 'Berechtigung: Bash', at: 2 });
-  });
-
-  it('carries the stop preview through and copes with a missing status timestamp', () => {
-    expect(buildBellRows([n('a', 7, 'All done')], [s('a', 'done', 7)], null)[0])
-      .toMatchObject({ kind: 'done', preview: 'All done', at: 7 });
-    expect(buildBellRows([], [{ id: 'a', agentStatus: 'blocked' }], null)[0]).toMatchObject({ at: 0 });
+  it('a session without a row keeps its own preview and no title; a missing timestamp reads 0', () => {
+    expect(buildBellRows([s('a', { agentStatus: 'done', agentDoneAt: 7, agentDonePreview: 'All done' })], [], null)[0]).toMatchObject({ kind: 'done', preview: 'All done', at: 7 });
+    expect(buildBellRows([{ id: 'a', agentStatus: 'blocked' }], [], null)[0]).toMatchObject({ at: 0 });
+    expect(buildBellRows([{ id: 'a', agentStatus: 'blocked' }], [], null)[0].terminalSessionId).toBeUndefined();
   });
 });
 

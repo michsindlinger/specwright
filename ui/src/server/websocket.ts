@@ -2131,6 +2131,7 @@ export class WebSocketHandler {
           event,
           status: detail.status,
           statusAt: detail.statusAt.toISOString(),
+          ...(detail.doneAt ? { doneAt: detail.doneAt.toISOString() } : {}),
           ...(detail.preview ? { preview: detail.preview } : {}),
           ...(detail.reason ? { reason: detail.reason } : {}),
           ...(detail.blockKind ? { blockKind: detail.blockKind } : {}),

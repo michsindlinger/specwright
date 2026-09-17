@@ -23,6 +23,10 @@ const rows: BellRow[] = [
   { sessionId: 's-blocked', terminalSessionId: 'cloud-2', kind: 'blocked', at: 2000, preview: 'Berechtigung: Bash' },
   { sessionId: 's-done', terminalSessionId: 'cloud-1', kind: 'done', at: 1000, preview: 'Fertig.' },
 ];
+const vorhabenRows: BellRow[] = [
+  { sessionId: 's-blocked', terminalSessionId: 'cloud-2', kind: 'blocked', at: 2000, preview: 'ExitPlanMode', title: 'INT-2026-002 · Thread-Zusammenfassung', label: 'wartet · Plan-Entscheidung', projectPath: '/compass' },
+  { sessionId: 's-done', terminalSessionId: 'cloud-1', kind: 'done', at: 1000, title: 'INT-2026-004 · Bewerbungen je Person', label: 'wartet auf dich · Spec · spec.md', projectPath: '/p' },
+];
 const sessions = [
   { id: 's-blocked', name: 'plan INT-2026-010', projectPath: '/p' },
   { id: 's-done', name: 'spec INT-2026-009', projectPath: '/q' },
@@ -74,6 +78,22 @@ describe('aos-glocke', () => {
     await el.updateComplete;
     expect(seen).toEqual([{ sessionId: 's-done', terminalSessionId: 'cloud-1' }]);
     expect(el.querySelector('.glocke-dropdown')).toBeNull();
+    el.remove();
+  });
+
+  it('INT-2026-016 (AK-03): a Vorhaben row shows Kennung · Titel, the row state instead of the preview, and the project of the row', async () => {
+    const el = await glocke(vorhabenRows);
+    (el.querySelector('.glocke-btn') as HTMLButtonElement).click();
+    await el.updateComplete;
+    const list = [...el.querySelectorAll('.glocke-row')];
+    expect(list[0].querySelector('.glocke-name')?.textContent).toBe('INT-2026-002 · Thread-Zusammenfassung');
+    expect(list[0].querySelector('.glocke-kind')?.textContent).toBe('wartet');
+    expect(list[0].querySelector('.glocke-preview')?.textContent).toBe('wartet · Plan-Entscheidung');
+    expect(list[0].querySelector('.glocke-project')?.textContent?.trim()).toBe('compass');
+    expect(list[1].querySelector('.glocke-name')?.textContent).toBe('INT-2026-004 · Bewerbungen je Person');
+    expect(list[1].querySelector('.glocke-kind')?.textContent).toBe('fertig');
+    expect(list[1].querySelector('.glocke-preview')?.textContent).toBe('wartet auf dich · Spec · spec.md');
+    expect(list[1].querySelector('.glocke-project')?.textContent?.trim()).toBe('Specwright');
     el.remove();
   });
 
