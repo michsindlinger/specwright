@@ -380,7 +380,7 @@ Code, Tests, Docs: 4–6 h (S; nach E1–E17 eine Stunde mehr für `providersFor
 - [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (AK-01/04/05/06/07, D1 als Unit/Component; AK-02/03/05/08/10 als Stichprobe mit Protokoll; AK-09 als Messung mit Befehl und Ausgabe).
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
 - [x] E2E-Pfad läuft (Abschnitt 8), Screenshots im PR (`design/ist/`, Protokoll `design/e2e-protokoll.txt`).
-- [x] `verify` grün, Ausgabe im PR — [ ] PR-Checks grün (CI ist die Wahrheit; steht aus).
+- [x] `verify` grün, Ausgabe im PR — [x] PR-Checks grün (CI ist die Wahrheit; verify-Run 35213855956 auf `8ab9441`).
 - [x] `docs/architecture.md` §2 + Protokoll, `docs/security.md` §1/§3 + Protokoll angepasst.
 - [x] Manuelle Schritte (Abschnitt 10) 1–6 erledigt; 7, 8, 10 offen (nach Merge), im PR markiert.
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (insbesondere OF-03-Befund).
