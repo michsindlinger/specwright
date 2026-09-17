@@ -261,10 +261,15 @@ export class AosCloudTerminalSidebar extends LitElement {
       }
 
       /* Docked (INT-2026-011): the right column of the Vorhaben page — starts
-         under the header (the bell stays visible), no shadow over the document. */
+         under the header (the bell stays visible), no shadow over the document.
+         Below the sticky header (z-index 60) so the bell dropdown, which lives
+         in the header's stacking context, lies in front of the column; above
+         the page's fixed bars (50). Floating and fullscreen keep 1000 — there
+         the sidebar covers the header on purpose (INT-2026-014). */
       .terminal-sidebar.docked {
         top: var(--header-height, 56px);
         box-shadow: none;
+        z-index: 55;
       }
 
       .sidebar-resizer {
