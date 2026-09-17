@@ -61,6 +61,7 @@ Schlägt ein Test fehl: Code reparieren, nicht den Test, nicht die Bezugsliste.
 
 - Installer-Liste ergänzt, aber nicht in allen Skripten (je ein Befehl am 2026-02-27 und am 2026-09-14) → seit 4.0.0 Manifest + Guard; neue Datei ohne Manifest-Zeile bricht `verify`.
 - Lokal grün für CI-grün gehalten (Pilot INT-2026-001; Worktree-node-pty) → Bezugsliste nur nach CI-Lauf ändern; im Worktree `chmod +x ui/node_modules/node-pty/prebuilds/*/spawn-helper` nach `npm ci`.
+- `theme.css`-Regeln für Elemente unter einem Shadow-Root geschrieben (INT-004, INT-010, INT-011: Tooltip in `aos-terminal`, dessen Wirt `aos-terminal-session` ein Shadow-Root ist) → vor dem Stylen den Wirt prüfen (`createRenderRoot`?); Shadow-Wirte bekommen `static styles` oder ein eigenes `<style>`, nie `theme.css`.
 
 ## Hooks aktiv (`.claude/settings.json`)
 

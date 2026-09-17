@@ -1,7 +1,7 @@
 # Plan: UI: Terminal statt Gespräch — die Sitzung selbst neben dem Dokument
 
 > **Intent:** `intent.md` (INT-2026-011) · **Spec:** `spec.md`
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („Freigegeben, beide Auslegungen ja", Chat)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 1153a33), `CLAUDE.md`, `docs/security.md`
 
@@ -272,8 +272,8 @@ Entfällt.
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| INT-2026-010 Stufe 3 **abgespeckt** bauen und mergen (Plan 010 §4: #80, #83, #90 ganz; #82 nur Schalter/`technikOffen`/`ensureSichtbar`; **ohne** #81, #84–#89, #93, #94 und ohne `openKennung`/`kennungen` aus #82/#91/#92; Vermerk in 010 `plan.md` §14 „Code-Links → INT-2026-011") — Weg: `/build INT-2026-010 stufe 3` in frischem Worktree, PR, `gh pr merge` | Claude (Bau), Michael (Merge) | vor Umsetzung (AN-05) | [ ] |
-| Frischer Worktree von `origin/main` für Stufe 1: `git worktree add ../specwright-worktrees/INT-2026-011-s1 -b feat/INT-2026-011-s1 origin/main`, `cd ui && npm ci && (cd frontend && npm ci)`, `chmod +x ui/node_modules/node-pty/prebuilds/*/spawn-helper` (Memory) | Claude | vor Umsetzung | [ ] |
+| INT-2026-010 Stufe 3 **abgespeckt** bauen und mergen (Plan 010 §4: #80, #83, #90 ganz; #82 nur Schalter/`technikOffen`/`ensureSichtbar`; **ohne** #81, #84–#89, #93, #94 und ohne `openKennung`/`kennungen` aus #82/#91/#92; Vermerk in 010 `plan.md` §14 „Code-Links → INT-2026-011") — Weg: `/build INT-2026-010 stufe 3` in frischem Worktree, PR, `gh pr merge` | Claude (Bau), Michael (Merge) | vor Umsetzung (AN-05) | [x] PR #63, #64 (2026-09-17) |
+| Frischer Worktree von `origin/main` für Stufe 1: `git worktree add ../specwright-worktrees/INT-2026-011-s1 -b feat/INT-2026-011-s1 origin/main`, `cd ui && npm ci && (cd frontend && npm ci)`, `chmod +x ui/node_modules/node-pty/prebuilds/*/spawn-helper` (Memory) | Claude | vor Umsetzung | [x] Branch `feat/INT-2026-011-s1` im Worktree `session-sdlc-ui` (§14) |
 | PR 1 mergen (`gh pr merge <n> --merge`) — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`architecture.md` §5, Timer außerhalb des Repos) | Michael | nach CI grün Stufe 1 | [ ] |
 | Stichprobe Cloud nach Deploy: Vorhaben-Seite mit laufender Sitzung öffnen, Terminal angedockt, Kennung klicken; laufende tmux-Sitzungen noch da | Michael | nach Deploy 1 | [ ] |
 | PR 2 mergen (Abbau + Docs + ADR) — Auto-Deploy | Michael | nach CI grün Stufe 2 | [ ] |
@@ -312,14 +312,14 @@ Keine Secrets, keine Flags, keine Datenläufe. Hook `production-gate` wird nicht
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert (Stufe-1-Zeilen in PR 1, Stufe-2-Zeilen in PR 2).
-- [ ] E2E-Pfad läuft (Abschnitt 8), Screenshots 11a–11d neben dem Mock, Messwerte EK-02/EK-03 im Protokoll.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test — Stufe 1 (FA-01–FA-20, FA-24: Tests #17–#22 + E2E); Stufe 2 (FA-21–FA-23, FA-25) offen.
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert — Stufe-1-Zeilen in PR 1; Stufe-2-Zeilen in PR 2 offen.
+- [x] E2E-Pfad läuft (Abschnitt 8), Screenshots 11a–11d neben dem Mock (`design/ist-stufe1/`), Messwerte EK-02 (58 ms) / EK-03 (389 ms) in `design/e2e-protokoll.txt`.
+- [x] `verify` grün, Ausgabe im PR — PR-Checks: siehe PR 1 (CI ist die Wahrheit).
 - [ ] `docs/architecture.md`, `design.md`, `security.md`, `product-brief.md`, ADR-0003/0004 angepasst (PR 2, Abschnitt 3 „Ja").
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
+- [x] Manuelle Schritte (Abschnitt 10): Zeile 1 erledigt (PR #63/#64), Zeile 2 erledigt (anderer Worktree, §14); Merge PR 1, Stichprobe, PR 2, Board offen und im PR markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (Stufe 1).
+- [x] 2x-Regel-Check: `theme.css` erreicht keinen Shadow-Root (3. Fall) → `CLAUDE.md`-Zeile in PR 1.
 - [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-011-terminal-statt-gespraech/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
@@ -328,4 +328,10 @@ Keine Secrets, keine Flags, keine Datenläufe. Hook `production-gate` wird nicht
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-17 | Schritt 0 (c): Klick auf eine Kennung sendet 2 `cloud-terminal:input`-Frames mit SGR-Maus-Reports (`ESC[<0;x;yM`/`m`), weil tmux `mouse on` xterm ins Maus-Tracking setzt. Claude Code selbst hat keinen Maus-Modus (tmux-Pane-Flags 0), tmux verwirft den Report — die Sitzung bleibt unverändert. Umsetzung: `KennungLinkProvider` stoppt `mousedown` auf `.xterm-screen`, solange eine Kennung gehovert ist (nach dem Linkifier-Listener, vor dem Terminal-Listener), ruft `preventDefault` und `terminal.focus()` selbst → 0 Frames. Keine Rückfallebene Cmd/Ctrl+Klick nötig. | Messung `design/e2e-protokoll.txt` Schritt 0 (c) | §3 Ansatz 6, §8 AK-07 (Nachweis bleibt „0 Frames", jetzt erreicht durch den Stopper) |
+| 2026-09-17 | Stufe 1 läuft im bestehenden Worktree `session-sdlc-ui` auf Branch `feat/INT-2026-011-s1` (von `origin/main` a63ac64), nicht in einem neuen Worktree `INT-2026-011-s1`. | Worktree mit fertigen `node_modules` und `spawn-helper`-Fix vorhanden; die Bausitzung wurde dort gestartet. | §10 Zeile 2 (erledigt, anderer Pfad) |
+| 2026-09-17 | Tooltip-Stil `.kennung-tip` steht im eigenen `<style>` von `aos-terminal.ts`, nicht in `theme.css` (#13). | `aos-terminal` ist Light DOM, sein Wirt `aos-terminal-session` aber ein Shadow-Root — `theme.css` erreicht den Tooltip nicht (E2E: Tooltip ungestylt). Dritter Fall dieser Falle (INT-004, INT-010) → 2x-Regel, `CLAUDE.md`-Zeile in dieser PR. | §3 Ansatz 6, §4 #13 (`theme.css` verliert nur den Gesprächsblock) |
+| 2026-09-17 | `leser-loaded` feuert erst nach `await this.updateComplete` (statt direkt nach `readDoc`). | Die Kennungen entstehen mit den Ankern in `syncAnchors()` — erst nach dem Render; das Ereignis trägt jetzt `kennungen` (Plan §3 Ansatz 5). `readStand` kommt einen Render später, fachlich gleich. | §4 #6 |
+| 2026-09-17 | `aos-vorhaben-seite` meldet bei Dokument-/Vorhaben-Wechsel zuerst eine leere Kennungsmenge (`kennungen-changed`), der Leser füllt sie danach. | FA-16: Entwurfsansicht und „Kein Dokument in dieser Phase" senden nie `leser-loaded`; ohne Reset blieben die Verweise des vorigen Dokuments stehen. | §4 #8 |
+| 2026-09-17 | Test #19 mountet die ganze `aos-app` in happy-dom mit gemockten Diensten (Router, Gateway, Vorhaben-, Git-, Projekt-Dienste, Terminal-Stubs); Routenableitung liegt als reine Funktion in `components/terminal/terminal-dock.ts`. | Erstes DOM-Test-Muster für `app.ts`; die Merkstelle und `switchToProject` sind nur am echten App-Zustand prüfbar. | §4 #19, neue Datei `terminal-dock.ts` |
+| 2026-09-17 | E2E-Gesamtlauf 33/34: FA-19 im Gesamtlauf rot (Haiku legte in 180 s keinen Ordner an), in zwei Einzelläufen grün (INT-2026-005, gleicher Tab, 0 Remounts). | Agentenvarianz der Absicht-Sitzung, kein UI-Befund; Protokoll `design/e2e-protokoll.txt`. | §8 FA-19 |

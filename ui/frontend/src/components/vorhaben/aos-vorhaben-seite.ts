@@ -32,7 +32,8 @@ import './aos-sende-leiste.js';
 import './aos-anmerkungen-sammel.js';
 import './aos-vorhaben-protokoll.js';
 import './aos-naechster-schritt.js';
-import type { LeserDoc } from './aos-dokument-leser.js';
+import type { AosDokumentLeser, LeserDoc, LeserLoadedDetail } from './aos-dokument-leser.js';
+import type { KennungEintrag } from '../../services/kennungen.service.js';
 
 /** The four phase chips of the Vorhaben page (FA-12) and the document each one shows. */
 export type PhasenChip = 'intent' | 'spec' | 'plan' | 'build';
@@ -112,14 +113,6 @@ export class AosVorhabenSeite extends LitElement {
   @property({ attribute: false }) protocol: ProtokollEintrag[] = [];
   /** `lastModelKey(...)` → selection (from the state). */
   @property({ attribute: false }) lastModel: Record<string, ModelSelection> = {};
-  /**
-   * CSS width of the Gespräch column right of the page (INT-2026-007, Mac
-   * only; INT-2026-010: 50/50); sets `--gespraech-width` and
-   * `--gespraech-versatz`, which the fixed send bar subtracts from its right
-   * edge. Empty = no Gespräch.
-   */
-  @property({ type: String }) gespraechBreite = '';
-
   @state() private sammelOpen = false;
   @state() private lost: string[] = [];
   @state() private sending = false;
@@ -391,17 +384,30 @@ export class AosVorhabenSeite extends LitElement {
   `;
 
   protected override willUpdate(changed: PropertyValues<this>): void {
-    if (changed.has('gespraechBreite')) {
-      this.style.setProperty('--gespraech-width', this.gespraechBreite || '0px');
-      // The fixed Gespräch panel also covers the view's right padding (theme.css .vorhaben-split aos-gespraech); 0 without a Gespräch.
-      this.style.setProperty('--gespraech-versatz', this.gespraechBreite ? 'var(--spacing-xl)' : '0px');
-    }
     if (changed.has('mobile')) this.toggleAttribute('mobile', this.mobile);
     if (changed.has('doc') || (changed.has('row') && (changed.get('row') as VorhabenRow | undefined)?.intentId !== this.row?.intentId)) {
       this.readStand = 0;
       this.sendError = '';
       this.lost = [];
+      // Another document: no Kennungen until its reader reported them (FA-16/FA-17) — the design view and „Kein Dokument" never do.
+      this.emitKennungen(new Map());
     }
+  }
+
+  /** The terminal links exactly the Kennungen of the shown document (INT-2026-011, FA-13) — the view feeds them to `kennungenService`. */
+  private emitKennungen(kennungen: ReadonlyMap<string, KennungEintrag>): void {
+    this.dispatchEvent(new CustomEvent<{ kennungen: ReadonlyMap<string, KennungEintrag> }>('kennungen-changed', { bubbles: true, composed: true, detail: { kennungen } }));
+  }
+
+  private onLeserLoaded(e: CustomEvent<LeserLoadedDetail>): void {
+    this.readStand = e.detail.mtimeMs;
+    this.emitKennungen(e.detail.kennungen);
+  }
+
+  /** A Kennung link in the terminal was clicked (FA-13/FA-14): the reader opens the section and scrolls to the block. */
+  public openKennung(code: string): boolean {
+    const leser = this.renderRoot.querySelector('aos-dokument-leser') as AosDokumentLeser | null;
+    return leser?.openKennung(code) ?? false;
   }
 
   private back(): void {
@@ -594,7 +600,7 @@ export class AosVorhabenSeite extends LitElement {
     if (id) document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId: id } }));
   }
 
-  /** Scrolls the „nächster Schritt" block into view (send bar, Gespräch input). */
+  /** Scrolls the „nächster Schritt" block into view (send bar). */
   public scrollToNextStep(): void {
     this.renderRoot.querySelector('aos-naechster-schritt')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
@@ -640,7 +646,7 @@ export class AosVorhabenSeite extends LitElement {
               @anmerkung-save=${this.onAnmerkungSave}
               @anmerkung-delete=${this.onAnmerkungDelete}
               @anmerkungen-located=${this.onLocated}
-              @leser-loaded=${(e: CustomEvent<{ mtimeMs: number }>) => (this.readStand = e.detail.mtimeMs)}
+              @leser-loaded=${this.onLeserLoaded}
             ></aos-dokument-leser>`
           : html`<div class="kein-dokument">Kein Dokument in dieser Phase</div>`}
         ${this.renderAktionen()}

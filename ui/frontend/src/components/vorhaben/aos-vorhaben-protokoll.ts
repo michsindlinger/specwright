@@ -12,7 +12,7 @@ import type { ProtokollEintrag } from '../../../../src/shared/types/vorhaben.pro
 import { VORHABEN_DOC_FILES } from '../../../../src/shared/types/vorhaben.protocol.js';
 import { formatClock } from './vorhaben-sort.js';
 
-/** Label per Art (R-6): reader sends, free text and card answers of the Gespräch (INT-2026-007). */
+/** Label per Art (R-6): reader sends and free text (INT-2026-007; the `freitext` label stays readable after INT-2026-011). */
 export function protokollLabel(e: ProtokollEintrag): string {
   switch (e.art) {
     case 'freigabe':

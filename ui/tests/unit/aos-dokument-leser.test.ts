@@ -196,3 +196,70 @@ describe('aos-dokument-leser Stufe 3: technik sections (FA-13, FA-14, AN-S03)', 
     el.remove();
   });
 });
+
+describe('aos-dokument-leser Kennungen (INT-2026-011, FA-13, FA-14, FA-16)', () => {
+  const MARKIERT = '---\nstatus: "entwurf"  \n---\n\n## 1. Ziel\n\n<!-- leser: mensch -->\n\nText zu AK-01.\n\n## 2. Daten\n\n<!-- leser: agent -->\n\n| ID | Text |\n|---|---|\n| AK-01 | technisch |\n| FA-05 | fachlich |\n';
+  const mount = async (doc: string) => {
+    await import('../../frontend/src/components/vorhaben/aos-dokument-leser.js');
+    const el = document.createElement('aos-dokument-leser');
+    const loaded: Array<{ mtimeMs: number; kennungen: ReadonlyMap<string, { ref: string; ordinal: number }> }> = [];
+    el.addEventListener('leser-loaded', (e) => loaded.push((e as CustomEvent<{ mtimeMs: number; kennungen: ReadonlyMap<string, { ref: string; ordinal: number }> }>).detail));
+    el.projectId = 'p';
+    el.intentId = 'INT-2026-001';
+    el.doc = doc as 'intent' | 'spec' | 'plan';
+    el.mtimeMs = 1;
+    document.body.appendChild(el);
+    await settle(el);
+    return { el, loaded };
+  };
+
+  it('leser-loaded carries the Kennungen of the rendered document (after the render, so the anchors exist)', async () => {
+    docs.spec = { content: MARKIERT, mtimeMs: 1 };
+    const { el, loaded } = await mount('spec');
+    expect(loaded.length).toBe(1);
+    expect(loaded[0].mtimeMs).toBe(1);
+    expect([...loaded[0].kennungen.keys()].sort()).toEqual(['AK-01', 'FA-05']);
+    expect(loaded[0].kennungen.get('FA-05')?.ref).toBe('FA-05 · §2');
+    // AK-01: the row starts with it → the row wins over the paragraph mention
+    expect(loaded[0].kennungen.get('AK-01')?.ref).toBe('AK-01 · §2');
+    // another document → its own Kennungen
+    docs.plan = { content: '## 1. Nur\n\nText ohne Codes.\n', mtimeMs: 2 };
+    el.doc = 'plan';
+    await settle(el);
+    expect(loaded.length).toBe(2);
+    expect(loaded[1].kennungen.size).toBe(0);
+    el.remove();
+  });
+
+  it('openKennung: opens the closed technik section, scrolls the block to the center, highlights it for 2 s; unknown code → false', async () => {
+    docs.spec = { content: MARKIERT, mtimeMs: 1 };
+    const { el } = await mount('spec');
+    const sr = el.shadowRoot!;
+    const scrolled: Array<{ text: string; block: string | undefined }> = [];
+    Element.prototype.scrollIntoView = function (arg?: boolean | ScrollIntoViewOptions) {
+      scrolled.push({ text: (this as Element).textContent ?? '', block: typeof arg === 'object' ? arg.block : undefined });
+    };
+    expect(sr.querySelector('details.technik')?.hasAttribute('open')).toBe(false);
+    vi.useFakeTimers();
+    try {
+      expect(el.openKennung('FA-05')).toBe(true);
+      const row = sr.querySelector('tr.kennung-hit')!;
+      expect(row).not.toBeNull();
+      expect(row.textContent).toContain('FA-05');
+      expect(row.closest('details')?.hasAttribute('open')).toBe(true);
+      expect(scrolled).toEqual([{ text: expect.stringContaining('FA-05'), block: 'center' }]);
+      vi.advanceTimersByTime(1900);
+      expect(sr.querySelector('.kennung-hit')).not.toBeNull();
+      vi.advanceTimersByTime(200);
+      expect(sr.querySelector('.kennung-hit')).toBeNull();
+      // a second jump moves the highlight
+      expect(el.openKennung('AK-01')).toBe(true);
+      expect(sr.querySelectorAll('.kennung-hit').length).toBe(1);
+      expect(sr.querySelector('.kennung-hit')?.textContent).toContain('technisch');
+      expect(el.openKennung('FA-99')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+    el.remove();
+  });
+});

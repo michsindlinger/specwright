@@ -5,6 +5,8 @@ import { FitAddon } from '@xterm/addon-fit';
 import { gateway } from '../gateway';
 import type { MessageHandler } from '../gateway';
 import { themeService, type ResolvedTheme } from '../services/theme.service.js';
+import { kennungenService } from '../services/kennungen.service.js';
+import { KennungLinkProvider } from './terminal/kennung-link-provider.js';
 import { CLOUD_TERMINAL_CONFIG } from '../../../src/shared/types/cloud-terminal.protocol.js';
 import type { PromptTemplate } from '../../../src/shared/types/prompt-templates.protocol.js';
 import { stripTerminalQueries } from './terminal/replay-sanitize.js';
@@ -127,6 +129,9 @@ export class AosTerminal extends LitElement {
   @state() private _templatesOpen = false;
 
   private terminal: Terminal | null = null;
+  /** Kennungen of the Vorhaben page as links (INT-2026-011, cloud mode only); disposed with the terminal. */
+  private kennungLinks: KennungLinkProvider | null = null;
+  private kennungLinksRegistration: { dispose(): void } | null = null;
   private fitAddon: FitAddon | null = null;
   private terminalContainer: HTMLElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -389,6 +394,14 @@ export class AosTerminal extends LitElement {
 
     // Fit terminal to container
     this.fitAddon.fit();
+
+    // Kennungen of the document next to the terminal become links (INT-2026-011,
+    // FA-13): the provider reads the page's codes from kennungenService on every
+    // hover, so a document change needs no re-registration (FA-17).
+    if (this.cloudMode) {
+      this.kennungLinks = new KennungLinkProvider(this.terminal, () => kennungenService.get());
+      this.kennungLinksRegistration = this.terminal.registerLinkProvider(this.kennungLinks);
+    }
 
     // OSC 52 clipboard support.
     // Interactive apps running in the (cloud) terminal — e.g. Claude Code — copy
@@ -1378,6 +1391,11 @@ export class AosTerminal extends LitElement {
       this.resizeObserver = null;
     }
 
+    this.kennungLinksRegistration?.dispose();
+    this.kennungLinksRegistration = null;
+    this.kennungLinks?.dispose();
+    this.kennungLinks = null;
+
     if (this.terminal) {
       this.terminal.dispose();
       this.terminal = null;
@@ -1400,6 +1418,47 @@ export class AosTerminal extends LitElement {
           flex: 1;
           min-height: 0;
           height: auto;
+        }
+        /* Kennung tooltip (INT-2026-011, FA-13): hover over a Kennung link —
+           reference · snippet · hint, positioned by kennung-link-provider.ts
+           (fixed, clamped to the viewport). Lives here, not in theme.css:
+           the host aos-terminal-session is a shadow root, theme.css never
+           reaches this subtree. */
+        .kennung-tip {
+          position: fixed;
+          z-index: 1100;
+          max-width: 420px;
+          padding: 8px 12px;
+          border: 1px solid var(--color-accent-primary, #00d4ff);
+          border-radius: 8px;
+          background: var(--color-bg-secondary, #1e2a3a);
+          color: var(--color-text-primary, #e6edf3);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+          font-family: var(--font-family, system-ui, sans-serif);
+          font-size: 13px;
+          line-height: 1.45;
+          pointer-events: none;
+        }
+        .kennung-tip-kopf {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 4px;
+          font-family: 'JetBrains Mono', 'Fira Code', monospace;
+          font-size: 11px;
+        }
+        .kennung-tip-ref {
+          color: var(--color-accent-primary, #00d4ff);
+        }
+        .kennung-tip-hinweis {
+          color: var(--color-text-muted, #7a92a9);
+          white-space: nowrap;
+        }
+        .kennung-tip-text {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
         .aos-terminal-inner {
           flex: 1;

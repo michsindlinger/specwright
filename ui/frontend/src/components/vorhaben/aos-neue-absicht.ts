@@ -4,12 +4,12 @@
  * wann?"), the model choice (preselected like every step, `model-wahl.ts`)
  * and „Starten". Start = `vorhaben:start-step intent` with the text as
  * `firstInput`; the backend hands it to the session at its first Stop, so it
- * appears as Michael's first Beitrag in the Gespräch. While a `/intent`
+ * appears as Michael's first input in the terminal. While a `/intent`
  * session of the project is still pending (no folder yet), the page shows
- * that session instead of the form: on the Mac the Gespräch stands left of
- * this card (the view renders it), on the phone the card offers the terminal
- * (AK-06). The view follows the session to its Vorhaben page once a folder
- * claims it (`followStartedIntent`).
+ * that session instead of the form: on the Mac the docked terminal stands
+ * right of this card (app.ts docks it, INT-2026-011 FA-18), on the phone the
+ * card offers the terminal (AK-06). The view follows the session to its
+ * Vorhaben page once a folder claims it (`followStartedIntent`).
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -229,7 +229,7 @@ export class AosNeueAbsicht extends LitElement {
   private renderPending(p: VorhabenPendingIntent) {
     return html`<div class="karte gestartet">
       <span><span class="dot"></span>Absicht-Sitzung „${p.session.name}" läuft — Vorhaben entsteht …</span>
-      <span class="status">${this.mobile ? 'im Terminal antworten' : 'Gespräch rechts'} — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span>
+      <span class="status">${this.mobile ? 'im Terminal antworten' : 'Terminal rechts'} — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span>
       ${p.session.firstInputPending ? html`<span class="uebergabe">Dein Text wird nach der ersten Frage übergeben.</span>` : nothing}
       <button type="button" class="terminal" @click=${this.toTerminal}>Im Terminal öffnen ↗</button>
     </div>`;

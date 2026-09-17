@@ -86,6 +86,9 @@ export interface LoadingState {
 /** Per-column row-ratio state keys that the pane-maximize toggle can drive. */
 type RowKey = 'splitRowRatio' | 'quadLeftRowRatio' | 'quadRightRowRatio';
 
+/** Below this window width the docked mode falls back to the floating sidebar (FA-07, design.md §5). */
+export const DOCK_MIN_WIDTH = 1024;
+
 @customElement('aos-cloud-terminal-sidebar')
 export class AosCloudTerminalSidebar extends LitElement {
   @property({ type: Boolean }) isOpen = false;
@@ -95,6 +98,14 @@ export class AosCloudTerminalSidebar extends LitElement {
   @property({ attribute: false }) allSessions: TerminalSession[] = [];
   /** Map projectPath -> display name, for the pane dropdown's <optgroup> labels. */
   @property({ attribute: false }) projectNames: Record<string, string> = {};
+  /**
+   * Docked (INT-2026-011, FA-01/FA-03): the sidebar is the right column of the
+   * Vorhaben page — half the content width, below the header, no resizer, no
+   * shadow. A presentation of the same instance, not a second terminal (RB-07):
+   * tabs, panes, fullscreen and the buffer stay untouched. Set by app.ts from
+   * the route; ignored on the phone and below 1024 px (FA-07). Not persisted.
+   */
+  @property({ type: Boolean, reflect: true }) docked = false;
 
   @state() private sidebarWidth = 500;
   @state() private isResizing = false;
@@ -152,6 +163,37 @@ export class AosCloudTerminalSidebar extends LitElement {
     return window.innerWidth * 0.75;
   }
 
+  /** Docked applies only on the Mac layout at 1024 px and up (FA-07). */
+  private get isDocked(): boolean {
+    return this.docked && !this._mobileController.isMobile && window.innerWidth >= DOCK_MIN_WIDTH;
+  }
+
+  /** Half of the content area: the window minus the file tree (its width lives on the root, like ours). */
+  private dockWidth(): number {
+    const raw = document.documentElement.style.getPropertyValue('--file-tree-open-width') || getComputedStyle(document.documentElement).getPropertyValue('--file-tree-open-width');
+    const fileTree = parseFloat(raw) || 0;
+    return Math.floor((window.innerWidth - fileTree) / 2);
+  }
+
+  /** Width the sidebar takes on screen: fullscreen wins, then docked, then the dragged width. */
+  private effectiveWidth(): number {
+    if (this.isFullscreen) return window.innerWidth;
+    if (this.isDocked) return this.dockWidth();
+    return this.sidebarWidth;
+  }
+
+  private _resizeRaf: number | null = null;
+  /** Docked width follows the window; coalesced to one layout pass per frame. */
+  private readonly boundHandleWindowResize = (): void => {
+    if (!this.docked || this._resizeRaf !== null) return;
+    this._resizeRaf = requestAnimationFrame(() => {
+      this._resizeRaf = null;
+      this.updateContentOffset();
+      this.requestUpdate();
+      this._refreshVisibleTerminals();
+    });
+  };
+
   @state() private availableProviders: AvailableProvider[] = [];
   @state() private sessionReviewConfigs: Record<string, { enabled: boolean; reviewers: ReviewerConfig[] }> = {};
 
@@ -197,6 +239,13 @@ export class AosCloudTerminalSidebar extends LitElement {
 
       .terminal-sidebar.open {
         transform: translateX(0);
+      }
+
+      /* Docked (INT-2026-011): the right column of the Vorhaben page — starts
+         under the header (the bell stays visible), no shadow over the document. */
+      .terminal-sidebar.docked {
+        top: var(--header-height, 56px);
+        box-shadow: none;
       }
 
       .sidebar-resizer {
@@ -952,17 +1001,20 @@ export class AosCloudTerminalSidebar extends LitElement {
       return this.renderMobile();
     }
 
-    const effectiveWidth = this.isFullscreen ? window.innerWidth : this.sidebarWidth;
+    const effectiveWidth = this.effectiveWidth();
+    // Fullscreen covers the page and wins over docked (FA-04); leaving it returns to the docked column.
+    const docked = this.isDocked && !this.isFullscreen;
 
     const sidebarStyles = {
       '--sidebar-width': `${effectiveWidth}px`,
     };
 
     // Resizer is positioned relative to the sidebar's left edge via calc().
-    // Hidden in fullscreen so the full-width view can't be accidentally dragged.
+    // Hidden in fullscreen so the full-width view can't be accidentally dragged,
+    // and when docked — the width is always half the content (FA-01).
     const resizerStyles = {
-      right: this.isOpen && !this.isFullscreen ? `${this.sidebarWidth - 3}px` : '-10px',
-      display: this.isFullscreen ? 'none' : '',
+      right: this.isOpen && !this.isFullscreen && !docked ? `${this.sidebarWidth - 3}px` : '-10px',
+      display: this.isFullscreen || docked ? 'none' : '',
     };
 
     return html`
@@ -973,7 +1025,7 @@ export class AosCloudTerminalSidebar extends LitElement {
       ></div>
 
       <div
-        class="terminal-sidebar ${this.isOpen ? 'open' : ''}"
+        class="terminal-sidebar ${this.isOpen ? 'open' : ''} ${docked ? 'docked' : ''}"
         style=${styleMap(sidebarStyles)}
       >
         <div class="sidebar-header">
@@ -2599,8 +2651,7 @@ export class AosCloudTerminalSidebar extends LitElement {
    * pattern used by aos-file-tree-sidebar.
    */
   private updateContentOffset(): void {
-    const openWidth = this.isFullscreen ? window.innerWidth : this.sidebarWidth;
-    const width = (this.isOpen && !this._mobileController.isMobile) ? openWidth : 0;
+    const width = (this.isOpen && !this._mobileController.isMobile) ? this.effectiveWidth() : 0;
     document.documentElement.style.setProperty('--terminal-open-width', `${width}px`);
   }
 
@@ -2642,6 +2693,12 @@ export class AosCloudTerminalSidebar extends LitElement {
   override updated(changed: PropertyValues): void {
     if (changed.has('allSessions') || changed.has('activeSessionId') || this._pendingNewSession) {
       this._reconcilePanes();
+    }
+    // Docked on/off changes the width of the same instance: content offset and
+    // a refit, nothing else (no remount, no replay — spike Schritt 0 (d)).
+    if (changed.has('docked') && changed.get('docked') !== undefined) {
+      this.updateContentOffset();
+      this._refreshVisibleTerminals();
     }
     if (changed.has('isOpen')) {
       // No fullscreen persistence for the manual toggle — a fresh open starts in normal mode,
@@ -2725,6 +2782,7 @@ export class AosCloudTerminalSidebar extends LitElement {
     gateway.on('plan-review:config.snapshot', this.boundHandleConfigSnapshot);
     gateway.on('gateway.connected', this.boundHandleGatewayConnected);
     document.addEventListener('keydown', this.boundHandleFullscreenKeydown);
+    window.addEventListener('resize', this.boundHandleWindowResize);
     if (gateway.getConnectionStatus()) {
       gateway.send({ type: 'model.providers.list' });
     }
@@ -2741,6 +2799,11 @@ export class AosCloudTerminalSidebar extends LitElement {
     gateway.off('plan-review:config.snapshot', this.boundHandleConfigSnapshot);
     gateway.off('gateway.connected', this.boundHandleGatewayConnected);
     document.removeEventListener('keydown', this.boundHandleFullscreenKeydown);
+    window.removeEventListener('resize', this.boundHandleWindowResize);
+    if (this._resizeRaf !== null) {
+      cancelAnimationFrame(this._resizeRaf);
+      this._resizeRaf = null;
+    }
   }
 }
 

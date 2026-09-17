@@ -89,3 +89,61 @@ describe('vorhaben-anchors with technik sections (INT-2026-010 Stufe 3)', () => 
     expect(anchors[6].ref).toBe('§2.1 · Absatz „Noch tiefer"');
   });
 });
+
+describe('indexKennungen (INT-2026-011, FA-13/FA-16)', () => {
+  const doc = `# Spec
+
+## 1. Zusammenfassung
+
+Die Liste blendet erledigte Vorhaben aus (AK-01, AK-02); siehe auch F1 und R2.
+
+## 3. Fachliche Anforderungen
+
+| ID | Anforderung | Herkunft |
+|---|---|---|
+| FA-01 | Die Liste DARF ein Vorhaben mit Status umgesetzt nicht zeigen. | AK-01 |
+| FA-02 | Wenn der Schalter an ist, MUSS die Liste erledigte zeigen. | AK-02 |
+
+- AN-S03 Auslegung: nichts geschieht ohne Sitzung
+- Punkt mit FA-02 im Text
+
+Review: F1 entkräftet, D3 offen.
+`;
+
+  it('every code of every block; the first block wins, a block starting with the code beats an earlier mention in running text', async () => {
+    const { indexKennungen } = await import('../../frontend/src/components/vorhaben/vorhaben-anchors.js');
+    const anchors = await anchorsOf(doc);
+    const idx = indexKennungen(anchors);
+    // FA-01 starts its table row → that row, with the row's derived reference
+    expect(idx.get('FA-01')?.ref).toBe('FA-01 · §3');
+    expect(idx.get('FA-01')?.snippet).toContain('Die Liste DARF');
+    expect(anchors[idx.get('FA-01')!.ordinal].element.tagName).toBe('TR');
+    // AK-01 is only mentioned in running text: first mention = the summary paragraph, not the FA-01 row that cites it later
+    expect(anchors[idx.get('AK-01')!.ordinal].element.tagName).toBe('P');
+    expect(idx.get('AK-01')?.ref).toBe('AK-01 · §1');
+    // FA-02: its row starts with it; the later list item mentioning it does not replace that
+    expect(anchors[idx.get('FA-02')!.ordinal].element.tagName).toBe('TR');
+    // stage codes and reference points
+    expect(anchors[idx.get('AN-S03')!.ordinal].element.tagName).toBe('LI');
+    expect(anchors[idx.get('F1')!.ordinal].element.tagName).toBe('P');
+    expect(idx.get('F1')?.ref).toBe('AK-01 · §1'); // first mention in the summary
+    expect(idx.get('R2')).toBeDefined();
+    expect(idx.get('D3')?.ref).toBe('§3 · Absatz „Review: F1 entkräftet, D3 offen."');
+    expect(idx.has('FA-03')).toBe(false);
+    expect([...idx.keys()].sort()).toEqual(['AK-01', 'AK-02', 'AN-S03', 'D3', 'F1', 'FA-01', 'FA-02', 'R2']);
+  });
+
+  it('a block that starts with a code replaces an earlier running-text mention (the row comes after the paragraph)', async () => {
+    const { indexKennungen } = await import('../../frontend/src/components/vorhaben/vorhaben-anchors.js');
+    const anchors = await anchorsOf('## 1. Text\n\nAbsatz nennt FA-07 vorab.\n\n## 3. Tabelle\n\n| ID | Text |\n|---|---|\n| FA-07 | Die Zeile. |\n');
+    const idx = indexKennungen(anchors);
+    expect(anchors[idx.get('FA-07')!.ordinal].element.tagName).toBe('TR');
+    expect(idx.get('FA-07')?.ref).toBe('FA-07 · §3');
+  });
+
+  it('no codes → empty index', async () => {
+    const { indexKennungen } = await import('../../frontend/src/components/vorhaben/vorhaben-anchors.js');
+    const idx = indexKennungen(await anchorsOf('## 1. Nur Text\n\nOhne Kennungen.\n'));
+    expect(idx.size).toBe(0);
+  });
+});

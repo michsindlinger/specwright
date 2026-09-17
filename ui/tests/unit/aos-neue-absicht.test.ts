@@ -4,7 +4,7 @@
  * three elements (FA-10), „Starten" calls start-step intent with the text as
  * firstInput and emits vorhaben-session-started (FA-11); while a `/intent`
  * session of the project is pending the card replaces the form — Mac points
- * to the Gespräch, phone to the terminal (AK-06) — and names the pending
+ * to the docked terminal (INT-2026-011), phone to the terminal (AK-06) — and names the pending
  * first input until it is delivered. Also: the `gesperrt` state of
  * aos-naechster-schritt (FA-21) and the shared model preselection helper.
  */
@@ -121,7 +121,7 @@ describe('aos-neue-absicht (FA-10, FA-11)', () => {
     el.remove();
   });
 
-  it('pending session: the card replaces the form — Mac „Gespräch rechts", phone „im Terminal antworten" with a terminal button; the pending first input is named until delivered (AK-06, plan §3)', async () => {
+  it('pending session: the card replaces the form — Mac „Terminal rechts", phone „im Terminal antworten" with a terminal button; the pending first input is named until delivered (AK-06, plan §3)', async () => {
     const seen: string[] = [];
     const onOpen = (e: Event): void => {
       seen.push((e as CustomEvent<{ sessionId: string }>).detail.sessionId);
@@ -131,7 +131,7 @@ describe('aos-neue-absicht (FA-10, FA-11)', () => {
     const sr = el.shadowRoot!;
     expect(sr.querySelector('textarea')).toBeNull();
     expect(sr.textContent).toContain('Absicht-Sitzung „intent" läuft — Vorhaben entsteht');
-    expect(sr.textContent).toContain('Gespräch rechts');
+    expect(sr.textContent).toContain('Terminal rechts');
     expect(sr.textContent).toContain('Dein Text wird nach der ersten Frage übergeben.');
     (sr.querySelector('button.terminal') as HTMLButtonElement).click();
     expect(seen).toEqual(['cloud-1-7']);
