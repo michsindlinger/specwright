@@ -1,0 +1,57 @@
+E2E-Protokoll INT-2026-013 — Nachbesserung Terminal neben dem Dokument
+======================================================================
+
+Umgebung: Branch-Backend auf Port 3111 (Worktree session-sdlc-ui, Runtime /tmp/sw-3111, tmux an),
+Scratch-Projekte /private/tmp/scratch-int010 (Stand d07f8c6, INT-2026-001 mit spec.md/intent.md,
+INT-2026-002 mit langer Status-Zeile in plan.md) und /private/tmp/scratch-int013b (leer, als aktives
+Projekt für den Fall „Sitzung in fremdem Projekt"). Playwright 1.57 (global) mit Chrome headless,
+Viewport 1 728 × 1 000. Skript e2e-013.mjs (Sitzungs-Scratchpad, nicht im Repo).
+Sitzung: `plan` auf INT-2026-001 mit Haiku (cloud-1789635204272-1), nach dem Lauf geschlossen.
+
+Schritt 0 — Ist-Stand vor der Änderung (Commit c61aa67, Screenshots vorher-*.png)
+----------------------------------------------------------------------------------
+(a) neu und Projekt-Seite bei 1 728 px: .vorhaben-view 1 180 px (max-width 1180px) → vorher-neu.png,
+    vorher-projekt.png. Nach der Änderung 1 670 px (= 1 728 − 2 × 29 Padding), keine eigene Grenze
+    (PO-Entscheidung „alles 100 %") → ist-neu.png, ist-projekt.png.
+(b) grep -n "layoutMode" aos-cloud-terminal-sidebar.ts → 22 Treffer (Plan §2 nannte 24, §9 21):
+    effektiv umgestellt: _paneCount, _isSplit, _paneGeom, _paneRowAxis, _healRowRatios,
+    Container-Klasse, Pane-Köpfe (2), _renderSplitters (2), _setFullscreen, Escape, updated() isOpen (2);
+    roh geblieben: Feld, _paneCountRaw/_isSplitRaw (nur _mountedSessions), Switcher-Aktivknopf,
+    _setLayout, _applyDockLayout (Undock mit quad-4); Persistenz: _persistLayout, _restoreLayout (4).
+(c) Befunde vorher:
+    B1  Liste: Zeile INT-2026-002 scrollWidth 2 765 / clientWidth 1 176, Titel 0 px, Notiz 293 Zeichen
+        (vorher-liste.png). Übrige Zeilen ohne Überlauf.
+    B2  Vorhaben-Seite zu: .vorhaben-view 1 180, aos-vorhaben-seite 1 180, .markdown-body 932 px
+        (max-width 900px + Padding) bei innerWidth 1 728 (vorher-seite-zu.png). Angedockt: 806 px
+        (Offset 864) — Andocken selbst korrekt.
+    B3  Liste → Vorhaben bei zu (aktives Projekt 013b, Sitzung in 010): Terminal angedockt offen nach
+        15 ms, Tab nach 169 ms (Projektwechsel mit Ack). Wiederbesuch (Cmd+D zu → Liste → dasselbe
+        Vorhaben): offen nach 7 ms. Das Symptom „erscheint nicht sofort" ließ sich im Skript NICHT
+        reproduzieren — Ursache laut Plan §2 (Ereignis nur bei Wechsel, Debounce-Race) bleibt die
+        Arbeitshypothese; die Umsetzung folgt dem Plan (jeder Wechsel inkl. null, Abgleich in
+        willUpdate, bis zu 3 Wechselversuche).
+    B4  split-2 gespeichert + angedockt: Container split-2, Pane-Köpfe, 1 Splitter, Switcher sichtbar,
+        keine Tab-Leiste (vorher-dock-single.png). Reproduziert.
+
+Schritt 8 — Nachweis nach der Änderung (Build aus verify: OK, Screenshots ist-*.png)
+--------------------------------------------------------------------------------------
+16/16 Prüfungen grün:
+  AK-01 Liste: alle 5 Zeilen scrollWidth === clientWidth (1 666); Zeile INT-2026-002: Titel 766 px,
+        Notiz 79 Zeichen „PR #54 offen (Merge = Michael), verify: OK lokal (65 s) und CI grün;
+        Fassung 2…", Notiz-Breite 296 px (max-width 36ch, Ellipse) → ist-liste.png
+  AK-02 Liste: .vorhaben-view 1 670 px (max-width none) bei 1 728.
+  AK-02 Vorhaben-Seite zu: Seite 1 670, .markdown-body 1 670 (max-width none) → ist-seite-zu.png
+  AK-02 Vorhaben-Seite angedockt: Seite 806 px, Offset 864, Terminal docked (Bild = ist-dock-single.png)
+  AK-03 Liste → Vorhaben bei zu (aktiv 013b, Sitzung in 010, split-2 gespeichert): angedockt offen
+        nach 7 ms, Tab der Sitzung nach 178 ms (nach Ack, aktives Projekt = 010).
+  AK-04 angedockt: _isSplit false, Container single, keine Pane-Köpfe, 0 Splitter, Switcher aus,
+        Tab-Leiste da, kein Vollbild, localStorage split-2 unverändert → ist-dock-single.png
+  RB-01 aos-terminal-Elemente über Liste → Seite, Cmd+D zu/auf und Undock identisch (0 Remounts).
+  AK-04 Cmd+D zu → auf: angedockt, gleicher Tab, ein Pane.
+  RB-03 localStorage cloud-terminal-layout-mode bleibt split-2.
+  AK-03 Wiederbesuch (Cmd+D zu → Liste → dasselbe Vorhaben): offen auf dem Seiten-Tab nach 6 ms, ein Pane.
+  AK-04 Projekt-Seite: Terminal schwebend, split-2 zurück (Pane-Köpfe, Splitter, Switcher) → ist-projekt-split.png
+
+Unit-Nachweise (vitest): vorhaben-reader 3 neue, aos-vorhaben-zeile 2 (neu), aos-vorhaben-view-terminal
+3 geändert/neu, app-terminal-dock 10 neu/geändert, aos-cloud-terminal-docked 7 neu — vor dem Fix 23 rot,
+Bestand 59 grün; nach dem Fix alle grün. bash scripts/verify.sh → verify: OK (47 s).

@@ -1,0 +1,150 @@
+E2E-Protokoll INT-2026-011 — Terminal statt Gespräch
+=====================================================
+
+Umgebung: Branch-Backend 127.0.0.1:3111 (tmux AN, Standard), SPECWRIGHT_RUNTIME_DIR=/tmp/sw-3111,
+Scratch-Projekt /private/tmp/scratch-int010, Playwright 1.57 (global) mit Google Chrome headless, Viewport 1440×900.
+Skripte im Sitzungs-Scratchpad (nicht im Repo): spike-011.mjs, e2e-011.mjs, ws-op.mjs.
+
+Schritt 0 — lesende Vorprüfung und Spikes (2026-09-17)
+-------------------------------------------------------
+
+(a) Lieferung von INT-2026-010 Stufe 3 (origin/main a63ac64, PR #63/#64):
+    grep -n "indexKennungen|openKennung|kennungen|ensureSichtbar|technikOffen" aos-dokument-leser.ts vorhaben-anchors.ts aos-vorhaben-seite.ts
+    → Treffer nur ensureSichtbar (Leser :22,:139,:163,:204) und technikOffen (Leser). Kein indexKennungen, kein openKennung, kein kennungen.
+    → Schnitt aus Plan §2 bestätigt: dieses Vorhaben liefert KENNUNG_ALL_RE, indexKennungen, openKennung, leser-loaded.kennungen; ensureSichtbar wird genutzt.
+
+(b) Konsumenten von .vorhaben-split, GESPRAECH_BREITE, --gespraech-width/-versatz, gespraechBreite:
+    grep -rn … ui/frontend/src ui/tests
+    → theme.css (5805–5833, 6687–6711), aos-vorhaben-seite.ts (:117–121, :394–397), aos-gespraech.ts (:30–33),
+      aos-sende-leiste.ts (:61, :69), aos-vorhaben-view.ts (:33, :317, :324–326, :395–397), tests/unit/aos-vorhaben-view-split.test.ts.
+    → nur Dateien aus Plan §4. Keine weiteren Konsumenten.
+
+(c) Spike Klick im Terminal (tmux AN, Sitzung `plan` auf INT-2026-001, haiku; Link-Provider provisorisch per page.evaluate registriert, Code „FA-01" in Claudes Eingabezeile getippt):
+    tmux display '#{mouse_any_flag} …' (Pane = Claude Code):   any=0 button=0 std=0 sgr=0 all=0 utf8=0  (vor und nach dem Klick)
+    xterm terminal.modes.mouseTrackingMode:                     "drag"   (tmux `mouse on` → xterm im Maus-Tracking)
+    Hover über FA-01: hover-Callback 6×, Cursor „pointer"
+    Klick: activate-Callback 1× (13 ms nach Klick)
+    cloud-terminal:input-Frames beim Klick: 2 — Inhalt ESC[<0;11;11M und ESC[<0;11;11m (SGR-Maus-Reports, kein Text)
+    tmux capture-pane vor/nach: Eingabezeile „❯ Probe FA-01 Ende" unverändert; Unterschied nur in der Spinner-Zeile („Simmering… 7s" → „8s"), weil Haiku noch dachte.
+    Befund: Claude Code hat keinen Maus-Modus (alle Pane-Flags 0) → tmux `send-keys -M` reicht den Report nicht weiter; die Sitzung sieht keine Eingabe.
+    Aber: xterm sendet die Maus-Reports als cloud-terminal:input-Frames, weil tmux das Tracking anschaltet. Der Plan-Nachweis „kein Frame" hält so nicht.
+    Entscheidung (Plan §14): KennungLinkProvider stoppt `mousedown` auf .xterm-screen, solange eine Kennung gehovert ist (nach dem Linkifier-Listener,
+    vor dem Terminal-Listener, der den Report sendet) und ruft selbst preventDefault + terminal.focus(). Klick auf Kennung → 0 Frames. Kein Cmd/Ctrl+Klick nötig.
+    Nachweis nach Umsetzung: E2E Phase `kennung` (Frame-Zähler = 0, capture-pane identisch bei ruhender Sitzung).
+
+(d) Spike Andocken ohne Replay (dieselbe Sidebar-Instanz, sidebarWidth 500 → 720 → 500 per DOM, updateContentOffset + _refreshVisibleTerminals):
+    aos-terminal hinzugefügt/entfernt (MutationObserver auf body): 0 / 0; dieselbe Instanz lebt (isConnected)
+    Frames gesendet: cloud-terminal:resize ×2 (erwartet)
+    Frames empfangen: cloud-terminal:data ×120 (laufende Haiku-Ausgabe), gespraech:delta ×1 — cloud-terminal:buffer-request 0, buffer-response 0
+    Buffer-Zeilen 31 → 28 (Refit auf neue Spaltenzahl, kein Replay)
+    Befund: Breitenwechsel der Instanz löst keinen Replay aus → Andocken über Breite + Klasse ist sicher (ER-10 nicht ausgelöst).
+
+E2E Stufe 1 — Playwright gegen Branch-Backend 3111 (2026-09-17, e2e-011.mjs)
+------------------------------------------------------------------------------
+
+Ablauf (Phasen): dock → kennung → freigabe → cmdd → schmal → ende → schritt → neu → handy.
+Sitzungen: `plan` auf INT-2026-001 (haiku) per `vorhaben:start-step`; „Neue Absicht" per UI („Starten") mit haiku.
+Screenshots (neben den Mocks design/11a…11d-terminal-mac.png): ist-11a.png (Vorhaben-Seite, Terminal angedockt), ist-11a-kennung.png (FA-01 im Terminal
+unterstrichen, Zeile im Dokument hervorgehoben), ist-11a-freigabe.png (Freigabe im Terminal, Protokoll angenommen), ist-11b.png (neuer Schritt: Tab vorne,
+Befehl läuft), ist-11c.png (Cmd+D: Dokument volle Breite), ist-11-schmal.png (1000 px: schwebend), ist-11d.png (Neue Absicht: Karte + Terminal),
+ist-11d-claimed.png (nach dem Claim: Vorhaben-Seite, gleicher Tab), ist-11-handy.png / ist-11-handy-terminal.png (390 px).
+
+Messwerte:
+  Geometrie 1440×900: Terminal width 720, top 56, left 721; Dokument-Spalte (aos-vorhaben-seite) width 664, right 692; --terminal-open-width 720px; 1 Sidebar; Resizer display none.
+  EK-02 (FA-08): vorhaben:start-step → Tab der neuen Sitzung aktiv im angedockten Terminal: 57–58 ms ab Start (Frame → DOM 43 ms); Ziel < 2 s.
+  EK-03 (FA-10): „Freigeben" (Dialog bestätigt) → Text „Freigabe: spec.md (Stand …)" im xterm-Buffer: 389 ms ab Klick; Protokoll gesendet → angenommen.
+  FA-13: Klick auf FA-01 → Zeile im Dokument hervorgehoben (kennung-hit) nach 2–13 ms; Hover-Tooltip „FA-01 · §3" + Text.
+  FA-15: Klick → 0 cloud-terminal:input-Frames; tmux capture-pane vor/nach identisch (ruhende Sitzung).
+  FA-17: Chip-Wechsel spec → intent: FA-01 nach 92–94 ms kein Verweis mehr.
+  FA-18: „Starten" → Terminal angedockt mit Tab „intent": 108–109 ms.
+  FA-19: Claim des Ordners → Route wechselt, Tab „intent" bleibt, aos-terminal hinzugefügt/entfernt 0/0 (zwei Läufe grün; im Gesamtlauf blieb Haikus dritte Rückfrage ohne Ordner, 180 s — Agentenvarianz, kein UI-Befund).
+  FA-07: 1000 px → schwebend 500 px, top 0; zurück 1440 → angedockt 720, gleicher Tab, 0 buffer-request, 0 Remounts, 2 resize-Frames.
+  FA-24: cloud-terminal:close → Terminal bleibt angedockt (0 Tabs), Zustandszeile „ruht · Sitzung beendet … beendet".
+
+Gesamtlauf (node e2e-011.mjs all): 33/34 grün — rot nur FA-19 (Agent legte in 180 s keinen Ordner an); FA-19 danach zweimal einzeln grün (INT-2026-005).
+Einzelläufe: kennung 13/13, freigabe 11/11, ende+schritt 9/9, neu 6/6, handy 2/2.
+
+Prüfzeilen des Gesamtlaufs:
+  ✓ FA-01/FA-02: Terminal angedockt, Tab der Vorhaben-Sitzung gewählt {"sidebars":1,"open":true,"docked":true,"top":56,"width":720,"left":732,"resizer":"none","openWidth":"720px","seiteWidth":674,"seiteRight":703,"header":true,"newSession":true,"tabCount":1,"activeTab":"plan INT-2026-001","activeSessionId":"restored-cloud-17896204
+  ✓ FA-01: Terminal-Breite = Hälfte (720 ± 2) und beginnt unter der Kopfzeile (top 56) width 720, top 56, left 732
+  ✓ FA-01: Dokument-Spalte endet am Terminalrand (seite.right ≤ 720 + Padding) seite width 674, right 703
+  ✓ FA-03: genau eine Sidebar, kein Resizer sidebars 1, resizer "none"
+  ✓ FA-04: Kopf mit Tabs und Knöpfen vorhanden tabs 1
+  ✓ --terminal-open-width = Dock-Breite 720px
+  screenshot ist-11a
+  ✓ FA-13: Hover zeigt den Absatz (Tooltip mit Bezug und Text) {"ref":"FA-01 · §3","text":"FA-01 Nach dem Öffnen der UI MUSS die Vorhaben-Liste die ers","cursor":"pointer","bg":"rgb(22, 42, 69)","pos":"fixed"}
+  ✓ FA-13: Klick springt im Dokument zur FA-01-Zeile und hebt sie hervor {"text":"FA-01\nNach dem Öffnen der UI MUSS die Vorhaben-Lis","top":417,"bottom":483,"inView":true,"tag":"TR"} (3 ms)
+  ✓ AK-07/FA-15: Klick sendet keinen cloud-terminal:input-Frame []
+  ✓ AK-07/FA-15: tmux-Bildschirm vor/nach dem Klick identisch 
+  screenshot ist-11a-kennung
+  ✓ FA-14: Kennung in zugeklapptem Agenten-Abschnitt: Abschnitt geht auf, Zeile sichtbar vorher [false,false,false], {"open":true,"inView":true,"text":"architecture.md §3 „Nutzerzustand\", inte"}
+  ✓ FA-16: fremder Code ist kein Verweis (kein Tooltip, kein Zeiger) {"tip":false,"cursor":"default"}
+  ✓ FA-17: Chip intent → FA-01 ist dort kein Verweis mehr (Verweise folgen dem Dokument, < 1 s) 92 ms
+  ✓ Sitzung wartet auf dich (Stop-Hook) 
+  ✓ Freigabe möglich (spec.md entwurf, Sitzung wartet) 
+  ✓ Knopf „Freigeben" frei {"disabled":false,"title":""}
+  ✓ FA-10: Text binnen 2 s im Terminal sichtbar 387 ms ab Klick
+  ✓ FA-10: Protokoll gesendet → angenommen ["gesendet","angenommen"]
+  screenshot ist-11a-freigabe
+  ✓ FA-05: Cmd+D → Terminal weg, Dokument volle Breite, --terminal-open-width 0 {"open":false,"openWidth":"0px","seiteWidth":1180,"seiteRight":1209}
+  ✓ FA-05: Sende-Leiste volle Breite (right = 1440) right 1440
+  screenshot ist-11c
+  ✓ FA-05: zweites Cmd+D → angedockt zurück, gleicher Tab {"open":true,"docked":true,"tab":"plan INT-2026-001"}
+  ✓ FA-07: 1000 px → nicht angedockt (schwebend, 500 px, top 0), gleicher Tab {"docked":false,"width":500,"top":0,"resizer":""}
+  screenshot ist-11-schmal
+  ✓ FA-07: zurück auf 1440 → angedockt, gleicher Tab, kein Replay, kein neues aos-terminal {"docked":true,"width":720,"remounts":{"added":0,"removed":0},"bufferRequests":0,"resizes":2}
+  ✓ FA-24: Sitzung endet → Terminal bleibt angedockt, Zustandszeile „beendet" {"open":true,"docked":true,"tabs":0} meta:  ruht · Sitzung beendet Sitzung plan INT-2026-001 · haiku · beendet Arbeitskopie main 
+  ✓ FA-08: neue Sitzung als gewählter Tab im angedockten Terminal < 2 s 58 ms ab Start (Frame → Tab 43 ms), Tab „plan INT-2026-001"
+  ✓ FA-08: Befehl läuft sichtbar im Terminal 
+  screenshot ist-11b
+  ✓ neu vor Starten: Formular, Terminal (falls offen) angedockt — Auslegung F3 {"open":false,"docked":true}
+  ✓ Starten → anhängige Sitzung cloud-1789620498900-10
+  ✓ FA-18: Karte „Absicht-Sitzung läuft" mit „Terminal rechts", Terminal angedockt mit dem Tab der Absicht-Sitzung 108 ms, Tab „intent"
+  screenshot ist-11d
+  ✓ FA-18: Text der Absicht wird zugestellt (Protokoll freitext) status gesendet
+  ✓ Agent wartet erneut 
+  ✗ FA-19: Ordner da → Seite wechselt auf das Vorhaben, Terminal derselbe Tab, aos-terminal nicht neu angelegt kein Wechsel; remounts {"added":0,"removed":0}; Tab „intent"
+  screenshot ist-11d-claimed
+  ✓ FA-20: Handy — kein angedocktes Terminal, Knopf „Im Terminal öffnen ↗" vorhanden {"docked":false,"open":false,"openWidth":"0px","btn":"Im Terminal öffnen ↗"}
+  screenshot ist-11-handy
+  ✓ FA-20: Handy — „Im Terminal öffnen" öffnet das Vollbild-Terminal, nicht angedockt {"isOpen":true,"docked":false,"w":390,"h":844,"terminals":1}
+  screenshot ist-11-handy-terminal
+
+E2E Stufe 2 — nach dem Abbau (FA-22), Playwright gegen Branch-Backend 3111 (2026-09-17, e2e-011-s2.mjs)
+---------------------------------------------------------------------------------------------------------
+
+Umgebung wie Stufe 1 (tmux AN, SPECWRIGHT_RUNTIME_DIR=/tmp/sw-3111, Scratch /private/tmp/scratch-int010 auf d07f8c6, Chrome headless 1440×900).
+Backend ohne GespraechService/GespraechHandler/TranscriptTailer (Commit 0230972), Frontend Stufe 1 (PR #65).
+Phasen: glocke | rueckfrage | freigabe | neu. Sitzung `plan` auf INT-2026-001 (haiku) per `vorhaben:start-step`; „Neue Absicht" per UI mit haiku.
+
+Prüfzeilen (Läufe 4, 5, 7 — Läufe 1–3 waren Harness-Fehler, siehe unten):
+  ✓ Terminal angedockt, Tab der Sitzung gewählt (Stufe 1 intakt)
+  ✓ Cmd+D schließt das angedockte Terminal
+  ✓ FA-22 Glocke: Stop-Hook → Zeile „fertig" für die Sitzung, Zähler 0 → 1 nach 3262 ms ab Eingabe (Stop-Frame → Glocke 1 ms); rows [{"kind":"done","preview":"OK"}]; Hooks stop@3261ms
+  ✓ Cmd+D öffnet wieder angedockt; sichtbare Sitzung verschwindet aus der Glocke (aktiver Tab der offenen Sidebar wird nie gelistet, INT-2026-010 E2)
+  ✓ FA-22 Zustand: Sitzung wartet (agent-event stop → done) zustand wartet, session.status done
+  ✓ agent-event stop trägt preview, keine Beitrag-/Dialog-Felder {"event":"stop","status":"done","preview":"OK"}
+  ✓ FA-22 blockKind: PreToolUse AskUserQuestion → Zustand wartet_rueckfrage, blockKind rueckfrage, Hinweis „Die Sitzung stellt eine Rückfrage — im Terminal antworten."
+  ✓ agent-event blocked: blockKind rueckfrage, reason = Frage („Rot oder Blau?"), kein dialog-Feld
+  ✓ Glocke (Sidebar zu) zeigt die wartende Sitzung als „wartet" mit der Frage {"kind":"blocked","preview":"Rot oder Blau?"}
+  ✓ FA-22 PostToolUse: Antwort im Terminal (Enter) → Zustand verlässt wartet_rueckfrage → arbeitet
+  ✓ danach wieder wartet (Stop)
+  ✓ Knopf „Freigeben" frei (spec.md entwurf, Sitzung wartet)
+  ✓ FA-22 Zustellung: Freigabe-Text „Freigabe: spec.md (Stand …)" binnen 2 s im Terminal — 393 ms ab Klick (EK-03)
+  ✓ FA-22 Protokoll: gesendet → angenommen (UserPromptSubmit-Bestätigung über session.prompt-text)
+  ✓ Freigabe-Dialog geschlossen
+  ✓ EK-01 Laufzeit: kein gespraech:*-Frame in beide Richtungen (0 Frames)
+  ✓ Starten → anhängige Absicht-Sitzung; Terminal angedockt mit dem Tab der Absicht-Sitzung nach 111 ms
+  ✓ FA-22 erste Eingabe: Text der Absicht zugestellt (Protokoll freitext, angenommen) nach 16 s (erster Stop)
+  ✓ Agent wartet erneut (Rückfrage 2 und 3 als Prosa) → Antwort getippt
+  ✓ FA-22 Claim: Ordner da → Route #/vorhaben/…/INT-2026-006, Terminal derselbe Tab, angedockt (116 s ab Starten)
+  ✓ EK-01 Laufzeit (neu): kein gespraech:*-Frame
+
+Befunde aus dem Lauf (behoben in dieser Stufe, plan.md §14):
+  - `cloud-terminal:agent-event` trug nie `blockKind`, obwohl der Nachrichtentyp es deklariert (websocket.ts ließ das Feld weg; Bestand seit INT-2026-007). Jetzt weitergereicht.
+  - `PermissionRequest AskUserQuestion` feuert 2 ms nach `PreToolUse` und überschrieb den Grund mit „Berechtigung: AskUserQuestion" — Glocke und Tab zeigten so nicht die Frage. Jetzt: Grund = erste Frage.
+
+Harness-Lehren (kein UI-Befund):
+  - Läufe 1 und 3: `/specwright:plan` läuft in den Plan-Modus; der ExitPlanMode-Dialog („❯ 1. Yes …") täuschte das alte `waitIdle` (Prompt-Zeichen ohne Spinner), die per ws getippte Eingabe wählte Option 1, Haiku führte den Plan aus und committete `plan.md` im Scratch-Projekt (Phase → bau, kein Review-Dokument). Scratch auf d07f8c6 zurückgesetzt; `waitIdle` prüft jetzt auf leere Prompt-Zeile und schickt bei Dialog Escape.
+  - Lauf 6: dieselbe Escape-Logik brach das Absicht-Interview (AskUserQuestion) ab. Für `neu` jetzt: Status der anhängigen Sitzung abwarten (blocked → Enter, done → Text), bis zu drei Runden.
+  - `wartet_auf_dich` gibt es nur mit Review-Dokument (spec.md entwurf); ohne ist der Ruhezustand `wartet`.

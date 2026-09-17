@@ -485,32 +485,6 @@ describe('CloudTerminalManager Claude-hook wiring', () => {
       expect(mgr.getSession(id)!.blockKind).toBe('plan');
     });
 
-    it('reportDialog emits open/closed and refuses to reopen a closed id (monotony, E1)', async () => {
-      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
-      const changes: unknown[] = [];
-      mgr.on('session.dialog', (_id: string, c: unknown) => changes.push(c));
-      const open = { kind: 'rueckfrage' as const, toolUseId: 'toolu_1', questions: [] };
-      expect(mgr.reportDialog(id, { open })).toBe(true);
-      expect(mgr.reportDialog(id, { closed: { toolUseId: 'toolu_1', tool: 'AskUserQuestion', answers: { q: 'a' } } })).toBe(true);
-      expect(mgr.isDialogClosed(id, 'toolu_1')).toBe(true);
-      expect(mgr.reportDialog(id, { open })).toBe(false);
-      expect(changes).toHaveLength(2);
-      // dialogs without an id (permissions) always pass
-      expect(mgr.reportDialog(id, { open: { kind: 'berechtigung', tool: 'Bash' } })).toBe(true);
-      expect(mgr.nextDialogSeq(id)).toBe('seq:1');
-      expect(mgr.nextDialogSeq(id)).toBe('seq:2');
-    });
-
-    it('reportBeitrag emits the full text with a timestamp, server-internally', async () => {
-      const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
-      const got: unknown[] = [];
-      mgr.on('session.beitrag', (...a: unknown[]) => got.push(a));
-      expect(mgr.reportBeitrag(id, { kind: 'claude', text: 'Hallo' })).toBe(true);
-      expect(got[0]).toEqual([id, { kind: 'claude', text: 'Hallo', at: expect.any(Date) }]);
-      mgr.closeSession(id);
-      expect(mgr.reportBeitrag(id, { kind: 'claude', text: 'spät' })).toBe(false);
-    });
-
     it('withMachineWrite: one machine writer at a time, the second is refused as beschaeftigt (E3)', async () => {
       const { sessionId: id } = await mgr.createSession(project, 'claude-code', { model: 'x' });
       let release: () => void = () => {};

@@ -56,17 +56,15 @@ export class AosSendeLeiste extends LitElement {
 
   static override styles = css`
     /* Mac: fixed above the page (main-content has overflow-x:hidden, so sticky
-       would never engage), full width from the left. With a Gespräch
-       (INT-2026-010, FA-12: document left, Gespräch right) the bar ends where
-       the Gespräch panel starts: its width plus --gespraech-versatz (the view
-       padding the panel covers), both set by aos-vorhaben-seite; without a
-       Gespräch both are 0 → up to the terminal. */
+       would never engage), full width from the left up to the terminal
+       sidebar — docked as the right column of the page or floating, the
+       sidebar publishes its width as --terminal-open-width (INT-2026-011, FA-01/FA-05). */
     :host {
       display: block;
       position: fixed;
       bottom: 0;
       left: 0;
-      right: calc(var(--terminal-open-width, 0px) + var(--gespraech-width, 0px) + var(--gespraech-versatz, 0px));
+      right: var(--terminal-open-width, 0px);
       z-index: 50;
       background: var(--color-bg-primary);
       border-top: 1px solid var(--color-border);
@@ -75,12 +73,6 @@ export class AosSendeLeiste extends LitElement {
       font-size: var(--font-size-sm);
       box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.25);
       transition: right 0.3s ease;
-    }
-    /* Below 1024 px the Gespräch sits under the document (design.md §5) → the bar spans the full width again. */
-    @media (max-width: 1023px) {
-      :host {
-        right: var(--terminal-open-width, 0px);
-      }
     }
     /* Phone: sticky at the bottom of the page. */
     :host([mobile]) {

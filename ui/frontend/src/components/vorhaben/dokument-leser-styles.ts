@@ -45,9 +45,7 @@ export const dokumentLeserStyles = css`
   .leser-error {
     color: var(--color-accent-error);
   }
-  .markdown-body {
-    max-width: 900px;
-  }
+  /* No max-width on .markdown-body (INT-2026-013, AK-02): the text takes the column. */
   .markdown-body .kopffelder {
     width: auto;
     margin: 0 0 var(--spacing-lg);
@@ -215,6 +213,66 @@ export const dokumentLeserStyles = css`
     color: var(--color-text-muted);
     font-size: var(--font-size-xs);
   }
+  /* Stage 3 (FA-13): switch above a marked document, technik sections as closed boxes */
+  .leser-technik {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--spacing-sm);
+  }
+  .leser-technik-btn {
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+  }
+  .leser-technik-btn[aria-pressed='true'] {
+    color: var(--color-text-primary);
+    border-color: var(--color-primary);
+  }
+  .markdown-body details.technik {
+    margin: var(--spacing-md) 0;
+    padding: 0 0 0 var(--spacing-md);
+    border-left: 3px solid var(--color-border);
+  }
+  .markdown-body details.technik > summary {
+    cursor: pointer;
+    list-style: none;
+    color: var(--color-text-secondary);
+  }
+  .markdown-body details.technik > summary::-webkit-details-marker {
+    display: none;
+  }
+  .markdown-body details.technik > summary::before {
+    content: '▸';
+    display: inline-block;
+    width: 1em;
+    color: var(--color-text-muted);
+  }
+  .markdown-body details.technik[open] > summary::before {
+    content: '▾';
+  }
+  .markdown-body details.technik > summary > h2,
+  .markdown-body details.technik > summary > h3,
+  .markdown-body details.technik > summary > h4 {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1em;
+    font-weight: 600;
+  }
+  .markdown-body details.technik:not([open]) > summary::after {
+    content: ' · Technik';
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+  }
+  .markdown-body details.technik[open] > summary {
+    margin-bottom: var(--spacing-sm);
+  }
   .markdown-body.annotierbar {
     padding-left: 32px;
   }
@@ -288,6 +346,27 @@ export const dokumentLeserStyles = css`
   .markdown-body .leser-getippt {
     background: rgba(var(--color-accent-primary-rgb, 0, 212, 255), 0.08);
     box-shadow: 0 0 0 1px var(--color-accent-primary);
+  }
+  /* INT-2026-011 (FA-13): the block a Kennung link in the terminal jumped to — two seconds, then gone (mock 11a). */
+  .markdown-body .kennung-hit {
+    background: rgba(var(--color-accent-primary-rgb, 0, 212, 255), 0.12);
+    box-shadow: 0 0 0 1px var(--color-accent-primary);
+    animation: kennung-hit-fade 2s ease-out forwards;
+  }
+  @keyframes kennung-hit-fade {
+    0%, 60% {
+      background: rgba(var(--color-accent-primary-rgb, 0, 212, 255), 0.12);
+      box-shadow: 0 0 0 1px var(--color-accent-primary);
+    }
+    100% {
+      background: transparent;
+      box-shadow: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .markdown-body .kennung-hit {
+      animation: none;
+    }
   }
   .leser-tapbar {
     display: flex;

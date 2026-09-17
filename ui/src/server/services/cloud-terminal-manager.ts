@@ -68,7 +68,7 @@ import {
 } from './cloud-session-registry.js';
 import { getPasteImageRoot, getSessionRegistryPath } from '../utils/runtime-paths.js';
 import { sanitizeSessionEnv } from '../utils/session-env.js';
-import type { BlockKind, HookBeitrag, HookContext, HookDialog, HookDialogClosed } from '../../shared/types/gespraech.protocol.js';
+import type { BlockKind, HookContext } from '../../shared/types/hook-events.protocol.js';
 import { isClaudeCli } from '../../shared/provider-cli.js';
 
 /** MIME type → filename extension for pasted-image persistence */
@@ -173,17 +173,13 @@ interface ManagedCloudSession extends CloudTerminalSession {
   /** Pending done → idle decay timer (see applyAgentEvent). */
   agentIdleTimer?: NodeJS.Timeout;
 
-  // ---- INT-2026-007: hook context, dialog state, machine-write lock ----
+  // ---- INT-2026-007: hook context, block kind, machine-write lock ----
 
-  /** Transcript file of the claude session, from the last hook payload (FA-01). */
+  /** Transcript file of the claude session, from the last hook payload (FA-01); stored, not read (ADR-0004). */
   transcriptPath?: string;
   claudeSessionId?: string;
   /** Kind of the dialog while `blocked` (FA-09); cleared when the block ends. */
   blockKind?: BlockKind;
-  /** Monotonic counter for `seq:<n>` dialog ids (permissions without a tool call). */
-  dialogSeq: number;
-  /** Dialog ids already closed — a late `blocked` hook for one of them is ignored (monotony, E1). */
-  closedDialogIds: Set<string>;
   /** Reviewer selection of the plan-review toggle, persisted with the session (FA-08). */
   planReviewReviewers?: Array<{ providerId: string; modelId: string }>;
   /** Path of the plan whose review was last injected (dedup across restarts, E6/E23). */
@@ -191,9 +187,6 @@ interface ManagedCloudSession extends CloudTerminalSession {
   /** Single-flight lock: a machine write (paste, keys) is in progress (E3/G2). */
   machineWriteBusy?: boolean;
 }
-
-/** Most recent closed dialog ids kept per session (bounded memory). */
-const CLOSED_DIALOG_IDS_MAX = 50;
 
 /** Result of {@link CloudTerminalManager.withMachineWrite}. */
 export type MachineWriteResult<T> = { ok: true; value: T } | { ok: false; grund: 'beschaeftigt' | 'nicht_aktiv' };
@@ -249,8 +242,6 @@ function bufferTail(chunks: readonly string[], max: number): string {
  * - 'session.notice' (CloudTerminalSessionId, level: 'warn'|'info', message) - User-facing notice (e.g. worktree kept due to uncommitted changes, or started without worktree)
  * - 'session.agent-event' (CloudTerminalSessionId, event, { preview?, reason?, blockKind?, status, statusAt }) - Agent status changed (Claude Code hooks, keystrokes on a blocked session, idle decay). `stop` still drives the bell.
  * - 'session.hook-context' (CloudTerminalSessionId, { transcriptPath?, claudeSessionId?, cwd? }) - INT-2026-007: a hook reported (a new) transcript path / Claude session id
- * - 'session.dialog' (CloudTerminalSessionId, { open: HookDialog } | { closed: HookDialogClosed }) - INT-2026-007: a dialog opened / closed as reported by hooks
- * - 'session.beitrag' (CloudTerminalSessionId, { kind: 'claude'|'nutzer', text, at: Date }) - INT-2026-007: full text of a turn from a hook (server-internal, never broadcast)
  */
 /**
  * Where the hook settings file and its shared secret live. Tests inject
@@ -451,7 +442,7 @@ export class CloudTerminalManager extends EventEmitter {
     });
   }
 
-  // ---- INT-2026-007: hook context, dialogs, Beiträge, machine-write lock ----
+  // ---- INT-2026-007: hook context, machine-write lock ----
 
   /**
    * Transcript path / Claude session id from a hook payload (FA-01). Emits
@@ -473,55 +464,6 @@ export class CloudTerminalManager extends EventEmitter {
       claudeSessionId: session.claudeSessionId,
       ...(ctx.cwd ? { cwd: ctx.cwd } : {}),
     } satisfies HookContext);
-    return true;
-  }
-
-  /**
-   * A dialog opened (`PreToolUse` / `PermissionRequest`) or closed
-   * (`PostToolUse`) as the hooks report it. Returns false for an `open` whose
-   * id is already closed — the caller then skips the `blocked` status too
-   * (monotony: a closed dialog never reopens, review E1).
-   */
-  public reportDialog(sessionId: CloudTerminalSessionId, change: { open: HookDialog } | { closed: HookDialogClosed }): boolean {
-    const session = this.sessions.get(sessionId);
-    if (!session || session.closing || session.status === 'closed') return false;
-    if ('open' in change) {
-      const id = change.open.toolUseId;
-      if (id && session.closedDialogIds.has(id)) return false;
-    } else if (change.closed.toolUseId) {
-      session.closedDialogIds.add(change.closed.toolUseId);
-      if (session.closedDialogIds.size > CLOSED_DIALOG_IDS_MAX) {
-        const oldest = session.closedDialogIds.values().next().value;
-        if (oldest !== undefined) session.closedDialogIds.delete(oldest);
-      }
-    }
-    this.emit('session.dialog', sessionId, change);
-    return true;
-  }
-
-  /** Whether the hooks already reported this dialog id as closed. */
-  public isDialogClosed(sessionId: CloudTerminalSessionId, dialogId: string): boolean {
-    return this.sessions.get(sessionId)?.closedDialogIds.has(dialogId) ?? false;
-  }
-
-  /** Next `seq:<n>` id for a dialog without a tool_use_id (permission of another tool). */
-  public nextDialogSeq(sessionId: CloudTerminalSessionId): string {
-    const session = this.sessions.get(sessionId);
-    if (!session) return 'seq:0';
-    session.dialogSeq += 1;
-    if (session.tmuxSessionName) void this.registry.upsert(this.toPersistedEntry(session));
-    return `seq:${session.dialogSeq}`;
-  }
-
-  /**
-   * Full text of a turn from a hook (`Stop.last_assistant_message`,
-   * `UserPromptSubmit.prompt`). Server-internal: emitted as `session.beitrag`
-   * for the Gespräch, never broadcast or persisted here.
-   */
-  public reportBeitrag(sessionId: CloudTerminalSessionId, beitrag: HookBeitrag): boolean {
-    const session = this.sessions.get(sessionId);
-    if (!session || session.closing || session.status === 'closed') return false;
-    this.emit('session.beitrag', sessionId, { ...beitrag, at: new Date() });
     return true;
   }
 
@@ -667,8 +609,6 @@ export class CloudTerminalManager extends EventEmitter {
       lastActivity: new Date(),
       executionId,
       agentStatus: 'unknown',
-      dialogSeq: 0,
-      closedDialogIds: new Set(),
     };
 
     // Store session
@@ -845,7 +785,7 @@ export class CloudTerminalManager extends EventEmitter {
         shellArgs = [...cliConfig.args];
         // INT-2026-012: one rule for the session kind (`shared/provider-cli.ts`).
         // A foreign agent CLI (e.g. `codex`) gets neither Claude flags nor the
-        // hook settings — it runs without status, bell and Gespräch (AK-06).
+        // hook settings — it runs without status and bell (AK-06).
         const claudeCli = isClaudeCli(shellCommand);
         // v3.22.0: extra flags (e.g. --mcp-config + --strict-mcp-config) must
         // precede the positional initialPrompt
@@ -1800,7 +1740,6 @@ export class CloudTerminalManager extends EventEmitter {
       transcriptPath: session.transcriptPath,
       claudeSessionId: session.claudeSessionId,
       blockKind: session.blockKind,
-      dialogSeq: session.dialogSeq,
       planReviewEnabled: session.planReviewEnabled,
       planReviewReviewers: session.planReviewReviewers,
       lastDetectedPlanPath: session.lastDetectedPlanPath,
@@ -1927,8 +1866,6 @@ export class CloudTerminalManager extends EventEmitter {
       transcriptPath: entry.transcriptPath,
       claudeSessionId: entry.claudeSessionId,
       blockKind: entry.agentStatus === 'blocked' ? entry.blockKind ?? 'unbekannt' : undefined,
-      dialogSeq: entry.dialogSeq ?? 0,
-      closedDialogIds: new Set(),
       planReviewEnabled: entry.planReviewEnabled,
       planReviewReviewers: entry.planReviewReviewers,
       lastDetectedPlanPath: entry.lastDetectedPlanPath,

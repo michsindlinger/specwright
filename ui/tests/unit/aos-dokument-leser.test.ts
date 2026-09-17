@@ -86,3 +86,180 @@ describe('aos-dokument-leser (FA-17, FA-19)', () => {
     el.remove();
   });
 });
+
+describe('aos-dokument-leser Stufe 3: technik sections (FA-13, FA-14, AN-S03)', () => {
+  const MARKIERT = '---\nstatus: "entwurf"  \n---\n\n## 1. Ziel\n\n<!-- leser: mensch -->\n\nText\n\n## 2. Daten\n\n<!-- leser: agent -->\n\n| ID | Text |\n|---|---|\n| AK-01 | technisch |\n\n### 2.1 Tiefer\n\n<!-- leser: agent -->\n\nNoch tiefer\n';
+  const mount = async (doc: string) => {
+    await import('../../frontend/src/components/vorhaben/aos-dokument-leser.js');
+    docs[doc] = docs[doc] ?? { content: '', mtimeMs: 1 };
+    const el = document.createElement('aos-dokument-leser');
+    el.projectId = 'p';
+    el.intentId = 'INT-2026-001';
+    el.doc = doc as 'intent' | 'spec' | 'plan';
+    el.mtimeMs = 1;
+    document.body.appendChild(el);
+    await settle(el);
+    return el;
+  };
+
+  it('fully marked document: agent sections closed, switch "Technik zeigen" toggles all of them and its label', async () => {
+    docs.spec = { content: MARKIERT, mtimeMs: 1 };
+    const el = await mount('spec');
+    const sr = el.shadowRoot!;
+    const details = sr.querySelectorAll('details.technik');
+    expect(details.length).toBe(2);
+    details.forEach((d) => expect(d.hasAttribute('open')).toBe(false));
+    expect(sr.querySelector('details.technik > summary > h2[id="2-daten"]')).not.toBeNull();
+    expect(sr.querySelector('h2[id="1-ziel"]')?.closest('details')).toBeNull(); // mensch stays open
+    const btn = sr.querySelector<HTMLButtonElement>('.leser-technik-btn')!;
+    expect(btn.textContent?.trim()).toBe('Technik zeigen');
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    btn.click();
+    await settle(el);
+    sr.querySelectorAll('details.technik').forEach((d) => expect(d.hasAttribute('open')).toBe(true));
+    expect(btn.textContent?.trim()).toBe('Technik ausblenden');
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    btn.click();
+    await settle(el);
+    sr.querySelectorAll('details.technik').forEach((d) => expect(d.hasAttribute('open')).toBe(false));
+    el.remove();
+  });
+
+  it('unmarked and partly marked documents: everything open, no switch', async () => {
+    docs.intent = { content: '## 1. Ziel\n\nText\n\n## 2. Daten\n\nOffen\n', mtimeMs: 1 };
+    const a = await mount('intent');
+    expect(a.shadowRoot!.querySelector('.leser-technik-btn')).toBeNull();
+    expect(a.shadowRoot!.querySelector('details')).toBeNull();
+    expect(a.shadowRoot!.textContent).toContain('Offen');
+    a.remove();
+    docs.plan = { content: '## 1. Ziel\n\n<!-- leser: mensch -->\n\nText\n\n## 2. Daten\n\nOhne Marker\n', mtimeMs: 1 };
+    const b = await mount('plan');
+    expect(b.shadowRoot!.querySelector('.leser-technik-btn')).toBeNull();
+    expect(b.shadowRoot!.querySelector('details')).toBeNull();
+    b.remove();
+  });
+
+  it('switch state is transient: switching to another document resets it; a reload keeps it', async () => {
+    docs.spec = { content: MARKIERT, mtimeMs: 1 };
+    docs.plan = { content: MARKIERT.replace('## 1. Ziel', '## 1. Plan-Ziel'), mtimeMs: 1 };
+    const el = await mount('spec');
+    const sr = el.shadowRoot!;
+    sr.querySelector<HTMLButtonElement>('.leser-technik-btn')!.click();
+    await settle(el);
+    expect(sr.querySelector('details.technik')?.hasAttribute('open')).toBe(true);
+    el.reload();
+    await settle(el);
+    expect(sr.querySelector('details.technik')?.hasAttribute('open')).toBe(true); // reload = same view
+    el.doc = 'plan';
+    await settle(el);
+    expect(sr.querySelector('h2[id="1-plan-ziel"]')).not.toBeNull();
+    expect(sr.querySelector('details.technik')?.hasAttribute('open')).toBe(false); // other document = fresh
+    expect(sr.querySelector('.leser-technik-btn')?.textContent?.trim()).toBe('Technik zeigen');
+    el.remove();
+  });
+
+  it('openAnmerkung on a block inside a closed technik section opens the section first (ensureSichtbar)', async () => {
+    docs.spec = { content: MARKIERT, mtimeMs: 1 };
+    const el = await mount('spec');
+    el.annotierbar = true;
+    el.anmerkungen = [{ id: 'an-1', ordinal: 99, ref: 'AK-01', snippet: 'AK-01 technisch', text: 'Frage', updatedAt: '2026-09-17T00:00:00Z' }];
+    await settle(el);
+    const sr = el.shadowRoot!;
+    const scrolled: string[] = [];
+    Element.prototype.scrollIntoView = function () {
+      scrolled.push((this as Element).textContent ?? '');
+    };
+    expect(sr.querySelector('details.technik')?.hasAttribute('open')).toBe(false);
+    el.openAnmerkung('an-1');
+    await settle(el);
+    const row = sr.querySelector('tr.leser-aktiv');
+    expect(row?.textContent).toContain('AK-01');
+    expect(row?.closest('details')?.hasAttribute('open')).toBe(true);
+    expect(scrolled.length).toBe(1);
+    // The other technik section stays closed — only the ancestors open
+    expect(sr.querySelector('details.technik h3[id="21-tiefer"]')?.closest('details')?.hasAttribute('open')).toBe(false);
+    el.remove();
+  });
+
+  it('reload keeps the reading position on a visible heading, never on one hidden in a closed section', async () => {
+    docs.spec = { content: MARKIERT, mtimeMs: 1 };
+    const el = await mount('spec');
+    const sr = el.shadowRoot!;
+    // happy-dom: every rect is 0 → the first heading not hidden wins; "1. Ziel" (open) must win over nothing else
+    const scrolled: string[] = [];
+    Element.prototype.scrollIntoView = function () {
+      scrolled.push((this as Element).id);
+    };
+    el.reload();
+    await settle(el);
+    expect(scrolled).toEqual(['1-ziel']);
+    el.remove();
+  });
+});
+
+describe('aos-dokument-leser Kennungen (INT-2026-011, FA-13, FA-14, FA-16)', () => {
+  const MARKIERT = '---\nstatus: "entwurf"  \n---\n\n## 1. Ziel\n\n<!-- leser: mensch -->\n\nText zu AK-01.\n\n## 2. Daten\n\n<!-- leser: agent -->\n\n| ID | Text |\n|---|---|\n| AK-01 | technisch |\n| FA-05 | fachlich |\n';
+  const mount = async (doc: string) => {
+    await import('../../frontend/src/components/vorhaben/aos-dokument-leser.js');
+    const el = document.createElement('aos-dokument-leser');
+    const loaded: Array<{ mtimeMs: number; kennungen: ReadonlyMap<string, { ref: string; ordinal: number }> }> = [];
+    el.addEventListener('leser-loaded', (e) => loaded.push((e as CustomEvent<{ mtimeMs: number; kennungen: ReadonlyMap<string, { ref: string; ordinal: number }> }>).detail));
+    el.projectId = 'p';
+    el.intentId = 'INT-2026-001';
+    el.doc = doc as 'intent' | 'spec' | 'plan';
+    el.mtimeMs = 1;
+    document.body.appendChild(el);
+    await settle(el);
+    return { el, loaded };
+  };
+
+  it('leser-loaded carries the Kennungen of the rendered document (after the render, so the anchors exist)', async () => {
+    docs.spec = { content: MARKIERT, mtimeMs: 1 };
+    const { el, loaded } = await mount('spec');
+    expect(loaded.length).toBe(1);
+    expect(loaded[0].mtimeMs).toBe(1);
+    expect([...loaded[0].kennungen.keys()].sort()).toEqual(['AK-01', 'FA-05']);
+    expect(loaded[0].kennungen.get('FA-05')?.ref).toBe('FA-05 · §2');
+    // AK-01: the row starts with it → the row wins over the paragraph mention
+    expect(loaded[0].kennungen.get('AK-01')?.ref).toBe('AK-01 · §2');
+    // another document → its own Kennungen
+    docs.plan = { content: '## 1. Nur\n\nText ohne Codes.\n', mtimeMs: 2 };
+    el.doc = 'plan';
+    await settle(el);
+    expect(loaded.length).toBe(2);
+    expect(loaded[1].kennungen.size).toBe(0);
+    el.remove();
+  });
+
+  it('openKennung: opens the closed technik section, scrolls the block to the center, highlights it for 2 s; unknown code → false', async () => {
+    docs.spec = { content: MARKIERT, mtimeMs: 1 };
+    const { el } = await mount('spec');
+    const sr = el.shadowRoot!;
+    const scrolled: Array<{ text: string; block: string | undefined }> = [];
+    Element.prototype.scrollIntoView = function (arg?: boolean | ScrollIntoViewOptions) {
+      scrolled.push({ text: (this as Element).textContent ?? '', block: typeof arg === 'object' ? arg.block : undefined });
+    };
+    expect(sr.querySelector('details.technik')?.hasAttribute('open')).toBe(false);
+    vi.useFakeTimers();
+    try {
+      expect(el.openKennung('FA-05')).toBe(true);
+      const row = sr.querySelector('tr.kennung-hit')!;
+      expect(row).not.toBeNull();
+      expect(row.textContent).toContain('FA-05');
+      expect(row.closest('details')?.hasAttribute('open')).toBe(true);
+      expect(scrolled).toEqual([{ text: expect.stringContaining('FA-05'), block: 'center' }]);
+      vi.advanceTimersByTime(1900);
+      expect(sr.querySelector('.kennung-hit')).not.toBeNull();
+      vi.advanceTimersByTime(200);
+      expect(sr.querySelector('.kennung-hit')).toBeNull();
+      // a second jump moves the highlight
+      expect(el.openKennung('AK-01')).toBe(true);
+      expect(sr.querySelectorAll('.kennung-hit').length).toBe(1);
+      expect(sr.querySelector('.kennung-hit')?.textContent).toContain('technisch');
+      expect(el.openKennung('FA-99')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+    el.remove();
+  });
+});

@@ -77,16 +77,10 @@ export function createCloudTerminalRouter(
     }
 
     const id = sessionId as CloudTerminalSessionId;
-    // INT-2026-007: context first (transcript path), then the dialog change, then
-    // the status. A `blocked` for a dialog the hooks already closed is dropped
-    // together with its status flip (monotony, plan §3 Zustandsmaschine).
+    // INT-2026-007: context first (transcript path, Claude session id), then
+    // the status with its block kind.
     if (!manager.reportHookContext(id, mapped.context)) {
       reject(404, 'session not active');
-      return;
-    }
-    if (mapped.dialogClosed) manager.reportDialog(id, { closed: mapped.dialogClosed });
-    if (mapped.dialog && !manager.reportDialog(id, { open: mapped.dialog })) {
-      res.status(204).end();
       return;
     }
     const accepted = manager.reportAgentEvent(id, mapped.event, mapped.detail);
@@ -94,7 +88,6 @@ export function createCloudTerminalRouter(
       reject(404, 'session not active');
       return;
     }
-    if (mapped.beitrag) manager.reportBeitrag(id, mapped.beitrag);
     // The submitted prompt travels server-internally only (Vorhaben
     // assignment, send confirmation) — it is deliberately not part of the
     // agent-event detail and never reaches a broadcast or a log line.

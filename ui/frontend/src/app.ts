@@ -39,6 +39,7 @@ import type { WorkspaceState } from '../../src/shared/types/workspace.protocol.j
 import type { VorhabenState } from '../../src/shared/types/vorhaben.protocol.js';
 import { assignAutoNames, isOwnCreateRequest, toRestoredTab, type BackendSessionLike, type WorkflowMetadataLike } from './components/terminal/session-naming.js';
 import { glockeZiel } from './components/rahmen/glocke-ziel.js';
+import { terminalDockedFor } from './components/terminal/terminal-dock.js';
 import type { GlockeOpenDetail, GlockeSession } from './components/rahmen/aos-glocke.js';
 import { gitState, type GitState, type PullStrategy } from './services/git-state.service.js';
 import { vorhabenService } from './services/vorhaben.service.js';
@@ -111,6 +112,37 @@ export class AosApp extends LitElement {
   @state()
   private isTerminalSidebarOpen = false;
 
+  /**
+   * The terminal is the right column of the page (INT-2026-011, FA-01): on
+   * the Vorhaben page and on „Neue Absicht" — derived from the route, never
+   * stored (AR-05). Docked is a presentation of the same sidebar; open/closed
+   * stays `isTerminalSidebarOpen` (Cmd/Ctrl+D, FA-05).
+   */
+  @state()
+  private terminalDocked = false;
+
+  /**
+   * Session of the current page (INT-2026-013, B3): set by the Vorhaben view
+   * (`vorhaben-page-session`, `null` = none) and cleared by the route handler
+   * on routes that are not docked. Backend id (`terminalSessionId`).
+   */
+  @state()
+  private pageSessionId: string | null = null;
+
+  /**
+   * The page's tab to put in front as soon as it exists (FA-08, review F2:
+   * `cloud-terminal:created`/`list` may arrive after the page asked). Armed
+   * by _syncDock() when page session or dock change and by the toggle
+   * (Cmd+D, header) on a docked page; resolved in willUpdate() on every
+   * update and kept until the tab really is in front (INT-2026-013 B3/B4).
+   */
+  private pendingDockSessionId: string | null = null;
+  /** Project switch _syncDock() fired and still waits for (at most one in flight — the service debounces). */
+  private dockSwitchProjectId: string | null = null;
+  /** Switch attempts for the current pending tab; after three failures a toast says so. */
+  private dockSwitchAttempts = 0;
+  private static readonly DOCK_SWITCH_MAX_ATTEMPTS = 3;
+
   @state()
   private isFileTreeOpen = false;
 
@@ -172,6 +204,10 @@ export class AosApp extends LitElement {
 
   private boundRouteChangeHandler = (route: import('./types/route.types.js').ParsedRoute) => {
     this.currentRoute = route.view;
+    this.terminalDocked = terminalDockedFor(route);
+    // Routes without a docked column have no page session — also the ones
+    // where the Vorhaben view is replaced and cannot announce (review #7).
+    if (!this.terminalDocked) this.pageSessionId = null;
   };
   private boundReconnectingHandler: MessageHandler = (msg) => {
     this.isReconnecting = true;
@@ -240,11 +276,11 @@ export class AosApp extends LitElement {
   };
 
   /**
-   * Bring a backend session into the terminal. Mac: alone on the screen
-   * (INT-2026-005 solo, INT-2026-007 FA-21/FA-22). Phone (INT-2026-010, FA-20,
-   * review F11): no panes — make it the active session (switching the project
-   * first when it belongs to another one) and open the sidebar, whose phone
-   * layout renders the session tabs with the active one.
+   * Bring a backend session into the terminal. Mac with a floating sidebar:
+   * alone on the screen (INT-2026-005 solo). Phone (INT-2026-010, FA-20) and
+   * the docked column (INT-2026-011, AN-S08): no solo — just select the tab
+   * (switching the project first when it belongs to another one) and open
+   * the sidebar.
    */
   private _openSessionInTerminal(terminalSessionId: string): void {
     const match = this.terminalSessions.find(s => s.terminalSessionId === terminalSessionId);
@@ -252,14 +288,8 @@ export class AosApp extends LitElement {
       this.showToast('Terminal-Session nicht mehr aktiv', 'warning');
       return;
     }
-    if (this.breakpoint.isMobile) {
-      const project = this.openProjects.find(p => p.path === match.projectPath);
-      if (project && project.id !== this.activeProjectId) {
-        this.lastActiveSessionByProject.set(project.id, match.id);
-        this.switchToProject(project.id);
-      } else {
-        this.activeTerminalSessionId = match.id;
-      }
+    if (this.breakpoint.isMobile || this.terminalDocked) {
+      this._selectSessionTab(match);
       this.isTerminalSidebarOpen = true;
     } else {
       this._showSessionSolo(match.id);
@@ -269,6 +299,89 @@ export class AosApp extends LitElement {
         s.id === match.id ? { ...s, needsInput: false } : s
       );
     }
+  }
+
+  /**
+   * Make a tab the active one without solo/fullscreen: the project switch
+   * lands on the tab via `lastActiveSessionByProject` (the bell's path), else
+   * the active id changes directly. Used by the phone and the docked column
+   * for explicit openers (INT-2026-011); the page-session follow runs through
+   * _syncDock() (INT-2026-013).
+   */
+  private _selectSessionTab(match: TerminalSession): void {
+    const project = this.openProjects.find(p => p.path === match.projectPath);
+    if (project && project.id !== this.activeProjectId) {
+      this.lastActiveSessionByProject.set(project.id, match.id);
+      this.switchToProject(project.id);
+    } else {
+      this.activeTerminalSessionId = match.id;
+    }
+  }
+
+  /**
+   * The Vorhaben page (or „Neue Absicht") says which session belongs to it
+   * (INT-2026-011, FA-02/FA-08/FA-18; INT-2026-013 B3: every change, `null`
+   * = none). Only state here — _syncDock() opens the docked terminal on that
+   * tab, waits for a tab that has not arrived yet and retries a failed
+   * project switch.
+   */
+  private _handleVorhabenPageSession = (e: CustomEvent<{ terminalSessionId: string | null }>): void => {
+    this.pageSessionId = e.detail?.terminalSessionId || null;
+  };
+
+  /** Remember the tab to put in front; a fresh arming starts the switch attempts from zero. */
+  private _armDock(terminalSessionId: string): void {
+    this.pendingDockSessionId = terminalSessionId;
+    this.dockSwitchAttempts = 0;
+  }
+
+  /**
+   * One reconciliation for the docked column (INT-2026-013, AK-03/AK-04), run
+   * at the end of willUpdate() — state changes there are allowed in Lit and
+   * cost no second cycle. Page session or dock changed → arm the page's tab
+   * and open the sidebar (FA-02: it appears in the same update), or drop the
+   * memory when the page has none / the route is not docked. Then resolve the
+   * memory: tab missing → wait (FA-08); tab in another project → switch it
+   * the way the bell does, at most one switch in flight and at most three
+   * attempts, then a toast; tab in the active project → in front, done.
+   */
+  private _syncDock(changed: PropertyValues): void {
+    if (changed.has('pageSessionId') || changed.has('terminalDocked')) {
+      if (this.terminalDocked && this.pageSessionId) {
+        this._armDock(this.pageSessionId);
+        this.isTerminalSidebarOpen = true;
+      } else {
+        this.pendingDockSessionId = null;
+        this.dockSwitchProjectId = null;
+      }
+    }
+    // A switch landed (ours or a foreign one that orphaned ours in the service's debounce).
+    if (changed.has('activeProjectId')) this.dockSwitchProjectId = null;
+    const pending = this.pendingDockSessionId;
+    if (!pending) return;
+    const match = this.terminalSessions.find(s => s.terminalSessionId === pending);
+    if (!match) return;
+    const project = this.openProjects.find(p => p.path === match.projectPath);
+    if (project && project.id !== this.activeProjectId) {
+      if (this.dockSwitchProjectId !== null) return;
+      if (this.dockSwitchAttempts >= AosApp.DOCK_SWITCH_MAX_ATTEMPTS) {
+        this.pendingDockSessionId = null;
+        this.showToast('Projektwechsel für die Sitzung fehlgeschlagen — Tab von Hand wählen', 'warning');
+        return;
+      }
+      this.dockSwitchAttempts++;
+      this.dockSwitchProjectId = project.id;
+      this.lastActiveSessionByProject.set(project.id, match.id);
+      this.switchToProject(project.id);
+      return;
+    }
+    this.pendingDockSessionId = null;
+    this.dockSwitchProjectId = null;
+    if (this.activeTerminalSessionId !== match.id) this.activeTerminalSessionId = match.id;
+    if (match.needsInput) {
+      this.terminalSessions = this.terminalSessions.map(s => (s.id === match.id ? { ...s, needsInput: false } : s));
+    }
+    this.agentNotifications = removeNotification(this.agentNotifications, match.id);
   }
 
   /**
@@ -349,6 +462,8 @@ export class AosApp extends LitElement {
 
     // Listen for open-terminal-session events (Vorhaben page)
     document.addEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
+    // The Vorhaben page names its session → docked terminal on that tab (INT-2026-011)
+    document.addEventListener('vorhaben-page-session', this._handleVorhabenPageSession as EventListener);
 
     // Global error handler
     window.addEventListener('error', this.handleGlobalError.bind(this));
@@ -386,6 +501,7 @@ export class AosApp extends LitElement {
     this.unsubscribeGeneratedMessage?.();
     this.unsubscribeVorhaben = this.unsubscribeGit = this.unsubscribeGeneratedMessage = null;
     document.removeEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
+    document.removeEventListener('vorhaben-page-session', this._handleVorhabenPageSession as EventListener);
   }
 
   private handleGlobalError(event: ErrorEvent): void {
@@ -427,6 +543,7 @@ export class AosApp extends LitElement {
     const project = this.openProjects.find((p) => p.id === projectId);
 
     if (!project || project.id === this.activeProjectId) {
+      this.dockSwitchProjectId = null;
       return;
     }
 
@@ -435,8 +552,12 @@ export class AosApp extends LitElement {
     const result = await projectStateService.switchProject(project);
     if (!result.success) {
       this.showToast(`Failed to switch project: ${result.error}`, 'error');
+      // The docked page's tab may still be waiting: let _syncDock() try again (INT-2026-013).
+      this.dockSwitchProjectId = null;
+      if (this.pendingDockSessionId) this.requestUpdate();
       return; // Don't switch UI if backend failed
     }
+    this.dockSwitchProjectId = null;
 
     // Remember last active terminal session for the project we're leaving
     const previousProject = this.openProjects.find(p => p.id === this.activeProjectId);
@@ -542,7 +663,17 @@ export class AosApp extends LitElement {
   // --- Cloud Terminal Event Handlers ---
 
   private _handleTerminalToggle(): void {
+    this._toggleTerminalSidebar();
+  }
+
+  /**
+   * Cmd/Ctrl+D and the header toggle (FA-05). Opening on a docked page puts
+   * the page's session in front (INT-2026-013, AK-04) — explicit openers
+   * (bell, „Im Terminal öffnen", setup) keep their own tab.
+   */
+  private _toggleTerminalSidebar(): void {
     this.isTerminalSidebarOpen = !this.isTerminalSidebarOpen;
+    if (this.isTerminalSidebarOpen && this.terminalDocked && this.pageSessionId) this._armDock(this.pageSessionId);
   }
 
   private _handleTerminalClose(): void {
@@ -695,6 +826,7 @@ export class AosApp extends LitElement {
         new Set(this.terminalSessions.map(s => s.id))
       );
     }
+    this._syncDock(changed);
   }
 
   /**
@@ -1412,9 +1544,9 @@ export class AosApp extends LitElement {
     if (!this.activeTerminalSessionId && activeProject?.path === session.projectPath) {
       this.activeTerminalSessionId = tab.id;
     }
-    // A step started from the Vorhaben page no longer jumps into the terminal
-    // (INT-2026-007, FA-22): the page shows the session as Gespräch; the jump
-    // stays behind „Im Terminal öffnen" (`open-terminal-session`).
+    // A step started from the Vorhaben page: the page names its session via
+    // `vorhaben-page-session`; when that arrived before this tab, willUpdate()
+    // resolves the pending dock now (INT-2026-011, FA-08).
   }
 
   /**
@@ -1423,7 +1555,7 @@ export class AosApp extends LitElement {
    * render, so the sidebar already lists the tab in `allSessions`. In single mode with
    * another project active the sidebar answers with `session-jump` and
    * `_handleTerminalSessionJump` switches the project. Reached only via
-   * `open-terminal-session` (Vorhaben page, Gespräch head, FA-22).
+   * `open-terminal-session` from pages without a docked terminal (INT-2026-011).
    */
   private _showSessionSolo(tabId: string): void {
     this.activeTerminalSessionId = tabId;
@@ -1444,7 +1576,7 @@ export class AosApp extends LitElement {
     // Cmd/Ctrl+D toggles cloud terminal sidebar
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 'd') {
       e.preventDefault();
-      this.isTerminalSidebarOpen = !this.isTerminalSidebarOpen;
+      this._toggleTerminalSidebar();
     }
   }
 
@@ -1604,6 +1736,7 @@ export class AosApp extends LitElement {
       ></aos-document-preview-panel>
       <aos-cloud-terminal-sidebar
         .isOpen=${this.isTerminalSidebarOpen}
+        .docked=${this.terminalDocked}
         .sessions=${this.projectTerminalSessions}
         .allSessions=${this.terminalSessions}
         .projectNames=${this.terminalProjectNames}

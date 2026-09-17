@@ -51,10 +51,14 @@ import {
   type VorhabenState,
   type VorhabenStateMessage,
   type VorhabenStep,
+  FREITEXT_GRUND_TEXT,
+  FREITEXT_MAX_CHARS,
+  FREITEXT_QUEUE_MAX,
+  type FreitextGrund,
   stepCommand,
 } from '../../shared/types/vorhaben.protocol.js';
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
-import { GESPRAECH_GRUND_TEXT, GESPRAECH_QUEUE_MAX, GESPRAECH_TEXT_MAX_CHARS, type BlockKind, type GespraechGrund } from '../../shared/types/gespraech.protocol.js';
+import type { BlockKind } from '../../shared/types/hook-events.protocol.js';
 import { findDialogCue, readStableScreen } from './dialog-driver.js';
 
 export interface VorhabenWorkspaceSource {
@@ -155,7 +159,7 @@ export const QUEUE_CONFIRM_GRACE_MS = 5_000;
 const TEXT_CONTROL_CHARS = /[\x00-\x08\x0b-\x1f\x7f]/g;
 /** Normalises a free text for the PTY (line ends, control chars, trailing blanks, length). */
 function cleanText(rawText: string): string {
-  return rawText.replace(/\r\n?/g, '\n').replace(TEXT_CONTROL_CHARS, '').replace(/[ \t]+$/gm, '').trimEnd().slice(0, GESPRAECH_TEXT_MAX_CHARS);
+  return rawText.replace(/\r\n?/g, '\n').replace(TEXT_CONTROL_CHARS, '').replace(/[ \t]+$/gm, '').trimEnd().slice(0, FREITEXT_MAX_CHARS);
 }
 /** How long after `prompt-submitted` we still wait for the prompt text before using the fallback. */
 const PROMPT_TEXT_GRACE_MS = 100;
@@ -183,7 +187,7 @@ export class VorhabenError extends Error {
 
 export class SendRejectedError extends Error {
   constructor(
-    public readonly grund: GespraechGrund,
+    public readonly grund: FreitextGrund,
     message: string,
     public readonly currentStand?: number
   ) {
@@ -456,7 +460,7 @@ export class VorhabenService {
    * Free text from the Gespräch (INT-2026-007, FA-06/FA-11, AN-S09): pasted as
    * one bracketed-paste block plus Enter, unchanged (a leading `/` or `!` is
    * what the user typed). Allowed while the session waits (`gesendet`) or
-   * works (`eingereiht`, at most GESPRAECH_QUEUE_MAX); refused while a dialog
+   * works (`eingereiht`, at most FREITEXT_QUEUE_MAX); refused while a dialog
    * is open (reason per block kind), after the session ended, and — fail
    * closed — whenever the screen shows a dialog cue or cannot be read while
    * the session works.
@@ -512,7 +516,7 @@ export class VorhabenService {
     }
     if (status === 'eingereiht') {
       const queued = this.deps.store.pendingSends().filter((e) => e.sessionId === ref.id && e.status === 'eingereiht').length;
-      if (queued >= GESPRAECH_QUEUE_MAX) throw this.rejected('warteschlange_voll');
+      if (queued >= FREITEXT_QUEUE_MAX) throw this.rejected('warteschlange_voll');
     }
     const sentAt = this.now();
     const entry: ProtokollEintrag = {
@@ -559,9 +563,9 @@ export class VorhabenService {
    * happens, no dialog is possible after a finished turn), `working` (queueing
    * needs a live screen without cue; otherwise `kein_bildschirm`).
    */
-  private pasteLocked(sessions: VorhabenSessionSource, sessionId: string, text: string, mode: 'waiting' | 'working' = 'waiting'): Promise<true | GespraechGrund> {
-    let resolvePasted: (r: true | GespraechGrund) => void = () => {};
-    const pasted = new Promise<true | GespraechGrund>((resolve) => {
+  private pasteLocked(sessions: VorhabenSessionSource, sessionId: string, text: string, mode: 'waiting' | 'working' = 'waiting'): Promise<true | FreitextGrund> {
+    let resolvePasted: (r: true | FreitextGrund) => void = () => {};
+    const pasted = new Promise<true | FreitextGrund>((resolve) => {
       resolvePasted = resolve;
     });
     // Screen check + paste; resolves the caller as soon as the paste is written.
@@ -695,8 +699,8 @@ export class VorhabenService {
 
   // ---- internals ----
 
-  private rejected(grund: GespraechGrund, currentStand?: number): SendRejectedError {
-    const text = (SEND_REASON_TEXT as Record<string, string>)[grund] ?? GESPRAECH_GRUND_TEXT[grund];
+  private rejected(grund: FreitextGrund, currentStand?: number): SendRejectedError {
+    const text = (SEND_REASON_TEXT as Record<string, string>)[grund] ?? FREITEXT_GRUND_TEXT[grund];
     return new SendRejectedError(grund, text, currentStand);
   }
 

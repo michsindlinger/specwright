@@ -29,6 +29,18 @@ export const DOKUMENT_GESAMT = 'Dokument gesamt';
 
 /** Ids of the Specwright documents (spec FA-24 list plus the plan's tables). */
 export const KENNUNG_RE = /\b(?:AK|FA|RB|B|NZ|Z|EK|ER|AN|OF|D|T|AR|AP|V)-S?\d+\b/;
+/**
+ * Every code a block may carry (INT-2026-011, FA-13): the document families
+ * above plus the Reference Points of reviews and findings (`F1`, `R2`, `D3`,
+ * `O1`, `A4`). Global — one block can name several.
+ */
+export const KENNUNG_ALL_RE = /\b(?:(?:AK|FA|RB|B|NZ|Z|EK|ER|AN|OF|D|T|AR|AP|V)-S?\d+|[FRDOA]\d{1,2})\b/g;
+
+export interface KennungIndexEintrag {
+  ref: string;
+  snippet: string;
+  ordinal: number;
+}
 
 const NUMBERED_HEADING_RE = /^\s*(\d+(?:\.\d+)*)\.?\s+/;
 const BLOCK_SELECTOR = 'h1, h2, h3, h4, h5, h6, p, li, tr, pre';
@@ -98,6 +110,33 @@ export function deriveAnchors(root: ParentNode): BlockAnchor[] {
       ref = sec ? `${sec} · ${label}` : label;
     }
     out.push({ ordinal: ordinal++, ref, snippet: text.slice(0, SNIPPET_MAX), element: el });
+  }
+  return out;
+}
+
+/**
+ * Code → block of a rendered document (INT-2026-011, FA-13/FA-16): the
+ * terminal marks exactly these codes as links, a click jumps to the block.
+ * Every code in a block's text counts; the first block wins — except that a
+ * block which STARTS with the code (its table row, its heading, its list
+ * item) replaces an earlier mention in running text, so `FA-03` lands on the
+ * FA-03 row, not on the paragraph that cites it.
+ */
+export function indexKennungen(anchors: readonly BlockAnchor[]): Map<string, KennungIndexEintrag> {
+  const out = new Map<string, KennungIndexEintrag>();
+  const amAnfang = new Set<string>();
+  for (const a of anchors) {
+    const text = normalizeText(a.element.textContent ?? '');
+    let first = true;
+    for (const m of text.matchAll(KENNUNG_ALL_RE)) {
+      const code = m[0];
+      const startsBlock = first && m.index === 0;
+      first = false;
+      if (!out.has(code) || (startsBlock && !amAnfang.has(code))) {
+        out.set(code, { ref: a.ref, snippet: a.snippet, ordinal: a.ordinal });
+        if (startsBlock) amAnfang.add(code);
+      }
+    }
   }
   return out;
 }

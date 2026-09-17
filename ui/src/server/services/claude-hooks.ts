@@ -40,7 +40,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
 import { getClaudeHookSettingsPath, getHookSecretPath } from '../utils/runtime-paths.js';
 import type { CloudTerminalAgentEvent, CloudTerminalAgentEventDetail } from '../../shared/types/cloud-terminal.protocol.js';
-import type { HookBeitrag, HookContext, HookDialog, HookDialogClosed, RueckfrageFrage } from '../../shared/types/gespraech.protocol.js';
+import type { HookContext } from '../../shared/types/hook-events.protocol.js';
 
 /** Env var the launch script exports; the hook reads it to name its session. */
 export const CLOUD_SESSION_ID_ENV = 'SPECWRIGHT_CLOUD_SESSION_ID';
@@ -66,8 +66,8 @@ export const HOOK_EVENTS: ReadonlyArray<{ event: string; matcher?: string }> = [
   { event: 'SessionStart', matcher: 'startup|resume|clear|fork' },
   { event: 'UserPromptSubmit' },
   { event: 'PermissionRequest' },
-  // INT-2026-007: ExitPlanMode too — the plan dialog and its terminal decision
-  // arrive as PreToolUse (plan text, tool_use_id) and PostToolUse (result).
+  // INT-2026-007: ExitPlanMode too — the plan decision blocks (PreToolUse,
+  // blockKind `plan`) and unblocks (PostToolUse) the status like a question.
   { event: 'PreToolUse', matcher: 'AskUserQuestion|ExitPlanMode' },
   { event: 'PostToolUse', matcher: 'AskUserQuestion|ExitPlanMode' },
   { event: 'Notification', matcher: 'elicitation_dialog|elicitation_url_dialog|agent_needs_input|idle_prompt' },
@@ -167,12 +167,10 @@ export const CLOUD_SESSION_ID_RE = /^cloud-\d+-\d+$/;
  *   a notification type we do not track),
  * - `reject`: not a payload we registered for (400, logged).
  *
- * INT-2026-007: an `event` additionally carries what the Gespräch needs —
- * `context` (transcript path, Claude session id, cwd — every payload has
- * them), `beitrag` (the full text of a turn: `Stop.last_assistant_message`,
- * `UserPromptSubmit.prompt`), `dialog` (questions with options / plan text /
- * permission detail) and `dialogClosed` (PostToolUse result). None of these
- * reach the `cloud-terminal:agent-event` broadcast; `preview` stays 160 chars.
+ * INT-2026-007: an `event` additionally carries `context` (transcript path,
+ * Claude session id, cwd — every payload has them) and a structured
+ * `blockKind` in its detail. Dialog contents and turn texts are not extracted
+ * any more (INT-2026-011, ADR-0004); `preview` stays 160 chars.
  */
 export type HookMapping =
   | {
@@ -180,28 +178,11 @@ export type HookMapping =
       event: CloudTerminalAgentEvent;
       detail: CloudTerminalAgentEventDetail;
       context: HookContext;
-      beitrag?: HookBeitrag;
-      dialog?: HookDialog;
-      dialogClosed?: HookDialogClosed;
     }
   | { kind: 'ignore'; reason: string }
   | { kind: 'reject'; reason: string };
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
-
-/** Upper bound for a single text field taken from a hook (plan, turn text). */
-export const HOOK_TEXT_MAX_CHARS = 200_000;
-/** Bounds of an AskUserQuestion dialog as the card renders it (FA-12). */
-export const RUECKFRAGE_MAX_QUESTIONS = 4;
-export const RUECKFRAGE_MAX_OPTIONS = 4;
-export const RUECKFRAGE_MAX_CHARS = 2_000;
-/** Detail of a permission (command, file path …) as shown on the card (FA-21). */
-const BERECHTIGUNG_DETAIL_MAX_CHARS = 200;
-
-const bounded = (v: unknown, max: number): string | undefined => {
-  const t = str(v);
-  return t === undefined ? undefined : t.length > max ? t.slice(0, max) : t;
-};
 
 function hookContext(body: Record<string, unknown>): HookContext {
   const ctx: HookContext = {};
@@ -214,79 +195,11 @@ function hookContext(body: Record<string, unknown>): HookContext {
   return ctx;
 }
 
-/** `tool_input.questions` of AskUserQuestion, validated and bounded; malformed entries are skipped. */
-export function parseRueckfrageQuestions(input: unknown): RueckfrageFrage[] {
+/** First question of an AskUserQuestion `tool_input` — the status reason (tab, bell). */
+function firstQuestion(input: unknown): unknown {
   const raw = (input as { questions?: unknown } | undefined)?.questions;
-  if (!Array.isArray(raw)) return [];
-  const out: RueckfrageFrage[] = [];
-  for (const q of raw) {
-    if (out.length >= RUECKFRAGE_MAX_QUESTIONS) break;
-    if (!q || typeof q !== 'object') continue;
-    const question = bounded((q as { question?: unknown }).question, RUECKFRAGE_MAX_CHARS);
-    if (!question) continue;
-    const header = bounded((q as { header?: unknown }).header, RUECKFRAGE_MAX_CHARS);
-    const options: RueckfrageFrage['options'] = [];
-    const rawOptions = (q as { options?: unknown }).options;
-    if (Array.isArray(rawOptions)) {
-      for (const o of rawOptions) {
-        if (options.length >= RUECKFRAGE_MAX_OPTIONS) break;
-        if (!o || typeof o !== 'object') continue;
-        const label = bounded((o as { label?: unknown }).label, RUECKFRAGE_MAX_CHARS);
-        if (!label) continue;
-        const description = bounded((o as { description?: unknown }).description, RUECKFRAGE_MAX_CHARS);
-        options.push(description ? { label, description } : { label });
-      }
-    }
-    out.push({ question, ...(header ? { header } : {}), multiSelect: (q as { multiSelect?: unknown }).multiSelect === true, options });
-  }
-  return out;
-}
-
-function permissionDetail(toolInput: unknown): string | undefined {
-  if (!toolInput || typeof toolInput !== 'object') return undefined;
-  const i = toolInput as Record<string, unknown>;
-  for (const key of ['command', 'file_path', 'path', 'pattern', 'url', 'query', 'description']) {
-    const v = summarizePreview(i[key], BERECHTIGUNG_DETAIL_MAX_CHARS);
-    if (v) return v;
-  }
-  return undefined;
-}
-
-function planDialog(body: Record<string, unknown>): HookDialog {
-  const plan = bounded((body.tool_input as { plan?: unknown } | undefined)?.plan, HOOK_TEXT_MAX_CHARS) ?? '';
-  const toolUseId = str(body.tool_use_id);
-  return { kind: 'plan', ...(toolUseId ? { toolUseId } : {}), plan };
-}
-
-function rueckfrageDialog(body: Record<string, unknown>): HookDialog {
-  const toolUseId = str(body.tool_use_id);
-  return { kind: 'rueckfrage', ...(toolUseId ? { toolUseId } : {}), questions: parseRueckfrageQuestions(body.tool_input) };
-}
-
-/** Answers of an AskUserQuestion as `tool_response.answers` (question → answer). */
-function rueckfrageAnswers(response: unknown): Record<string, string> | undefined {
-  const raw = (response as { answers?: unknown } | undefined)?.answers;
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
-  const out: Record<string, string> = {};
-  for (const [q, a] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof a === 'string') out[q.slice(0, RUECKFRAGE_MAX_CHARS)] = a.slice(0, RUECKFRAGE_MAX_CHARS);
-  }
-  return out;
-}
-
-/**
- * ExitPlanMode result by structure, not by English prose (G9): an object with
- * `plan` = accepted; a string = rejected, its text after the first blank line
- * is what the user typed; anything else = unknown (no `planResult`).
- */
-function planResult(response: unknown): HookDialogClosed['planResult'] {
-  if (response && typeof response === 'object' && typeof (response as { plan?: unknown }).plan === 'string') return { accepted: true };
-  if (typeof response === 'string') {
-    const m = /said:\n([\s\S]*)$/.exec(response);
-    const text = (m?.[1] ?? '').replace(/\n\s*Note: [\s\S]*$/, '').trim();
-    return text ? { accepted: false, text: text.slice(0, HOOK_TEXT_MAX_CHARS) } : { accepted: false };
-  }
-  return undefined;
+  const first = Array.isArray(raw) ? raw[0] : undefined;
+  return first && typeof first === 'object' ? (first as { question?: unknown }).question : undefined;
 }
 
 /**
@@ -296,33 +209,25 @@ function planResult(response: unknown): HookDialogClosed['planResult'] {
 export function mapHookPayload(body: Record<string, unknown>): HookMapping {
   const name = body.hook_event_name;
   const context = hookContext(body);
-  const ev = (
-    event: CloudTerminalAgentEvent,
-    detail: CloudTerminalAgentEventDetail = {},
-    extra: { beitrag?: HookBeitrag; dialog?: HookDialog; dialogClosed?: HookDialogClosed } = {}
-  ): HookMapping => ({ kind: 'event', event, detail, context, ...extra });
+  const ev = (event: CloudTerminalAgentEvent, detail: CloudTerminalAgentEventDetail = {}): HookMapping => ({ kind: 'event', event, detail, context });
 
   switch (name) {
     case undefined:
-    case 'Stop': {
-      const text = bounded(body.last_assistant_message, HOOK_TEXT_MAX_CHARS);
-      return ev('stop', { preview: summarizePreview(body.last_assistant_message) }, text ? { beitrag: { kind: 'claude', text } } : {});
-    }
+    case 'Stop':
+      return ev('stop', { preview: summarizePreview(body.last_assistant_message) });
     case 'StopFailure':
       return ev('stop-failure', {
         reason: summarizePreview(body.last_assistant_message) ?? str(body.error) ?? 'API-Fehler',
       });
-    case 'UserPromptSubmit': {
-      const text = bounded(body.prompt, HOOK_TEXT_MAX_CHARS);
-      return ev('prompt-submitted', {}, text ? { beitrag: { kind: 'nutzer', text } } : {});
-    }
+    case 'UserPromptSubmit':
+      return ev('prompt-submitted');
     case 'PermissionRequest': {
       const tool = str(body.tool_name);
       const reason = tool ? `Berechtigung: ${tool}` : 'Berechtigung';
-      if (tool === 'ExitPlanMode') return ev('blocked', { reason, blockKind: 'plan' }, { dialog: planDialog(body) });
-      if (tool === 'AskUserQuestion') return ev('blocked', { reason, blockKind: 'rueckfrage' }, { dialog: rueckfrageDialog(body) });
-      const detail = permissionDetail(body.tool_input);
-      return ev('blocked', { reason, blockKind: 'berechtigung' }, { dialog: { kind: 'berechtigung', tool: tool ?? 'unbekannt', ...(detail ? { detail } : {}) } });
+      if (tool === 'ExitPlanMode') return ev('blocked', { reason, blockKind: 'plan' });
+      // fires ~2 ms after PreToolUse and would overwrite its reason with „Berechtigung: AskUserQuestion" — keep the question (bell, tab tooltip)
+      if (tool === 'AskUserQuestion') return ev('blocked', { reason: summarizePreview(firstQuestion(body.tool_input)) ?? 'Frage', blockKind: 'rueckfrage' });
+      return ev('blocked', { reason, blockKind: 'berechtigung' });
     }
     case 'PreToolUse':
     case 'PostToolUse': {
@@ -330,24 +235,9 @@ export function mapHookPayload(body: Record<string, unknown>): HookMapping {
       if (tool !== 'AskUserQuestion' && tool !== 'ExitPlanMode') {
         return { kind: 'reject', reason: `unexpected tool ${String(tool)} on ${name}` };
       }
-      const toolUseId = str(body.tool_use_id);
-      if (name === 'PostToolUse') {
-        const closed: HookDialogClosed = { ...(toolUseId ? { toolUseId } : {}), tool };
-        if (tool === 'AskUserQuestion') {
-          const answers = rueckfrageAnswers(body.tool_response);
-          if (answers) closed.answers = answers;
-        } else {
-          const result = planResult(body.tool_response);
-          if (result) closed.planResult = result;
-        }
-        return ev('unblocked', {}, { dialogClosed: closed });
-      }
-      if (tool === 'ExitPlanMode') {
-        return ev('blocked', { reason: 'Berechtigung: ExitPlanMode', blockKind: 'plan' }, { dialog: planDialog(body) });
-      }
-      const dialog = rueckfrageDialog(body);
-      const question = dialog.kind === 'rueckfrage' ? summarizePreview(dialog.questions[0]?.question) : undefined;
-      return ev('blocked', { reason: question ?? 'Frage', blockKind: 'rueckfrage' }, { dialog });
+      if (name === 'PostToolUse') return ev('unblocked');
+      if (tool === 'ExitPlanMode') return ev('blocked', { reason: 'Berechtigung: ExitPlanMode', blockKind: 'plan' });
+      return ev('blocked', { reason: summarizePreview(firstQuestion(body.tool_input)) ?? 'Frage', blockKind: 'rueckfrage' });
     }
     case 'Notification': {
       const type = str(body.notification_type) ?? '';

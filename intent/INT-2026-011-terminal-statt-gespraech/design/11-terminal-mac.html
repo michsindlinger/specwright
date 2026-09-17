@@ -1,0 +1,196 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Mock 11 — Terminal statt Gespräch, Mac</title><link rel="stylesheet" href="mock.css"></head>
+<body><div class="stage">
+
+<div id="s11a">
+<div class="caption">11a · Vorhaben-Seite: Dokument links, angedocktes Terminal rechts (50/50), Sitzung „wartet" · Kennung im Terminal ist ein Verweis: Hover zeigt den Absatz, Klick springt im Dokument hin · Mac 1440×900 · Z-01, Z-03, AK-01, AK-02, AK-06, AK-07</div>
+<div class="screen mac">
+  <div class="topbar"><span class="title">Vorhaben</span><span class="grow"></span><span class="ic">🔔<span class="badge">1</span></span><span class="ic">▭</span></div>
+  <div class="body">
+    <div class="page">
+      <div class="docscroll">
+        <div class="crumb">‹ Vorhaben</div>
+        <div class="headrow">
+          <div><div class="id">INT-2026-003</div><h1>Erledigte Vorhaben in der Liste ausblenden</h1></div>
+          <div class="chips"><span class="chip">intent</span><span class="chip cur">spec</span><span class="chip dash">plan</span><span class="chip dash">build</span></div>
+        </div>
+        <div class="state"><span class="dot warn"></span><b>wartet auf dich</b> · Sitzung <b>spec INT-2026-003</b> · haiku · Arbeitskopie main · Frage gestellt 10:04</div>
+        <div class="log">Protokoll <b>Nachricht</b> an ‚spec INT-2026-003' gesendet 09:58 <span class="ok">angenommen 09:58</span> ▸ Text <span class="more">▸ 1 weiterer Eintrag</span></div>
+        <div class="anmrow"><span class="btn sm">Allgemeine Anmerkung</span><span>Marke am Rand oder Enter auf einer Stelle: Anmerkung</span></div>
+        <div class="doc">
+          <h2>Spec: Erledigte Vorhaben in der Liste ausblenden</h2>
+          <div class="fm"><b>Intent:</b> <code>intent.md</code> (INT-2026-003, Version 1.0.0) · <b>Status:</b> entwurf · <b>Erstellt:</b> 2026-09-16</div>
+          <h3>1. Zusammenfassung</h3>
+          <div class="para"><span class="mark">+</span><p>Die Vorhaben-Liste zeigt heute alle Ordner unter <code>intent/</code>, auch die mit Status <code>umgesetzt</code>. Nach dem Umbau blendet sie erledigte Vorhaben aus und bietet einen Schalter „Erledigte zeigen" (AK-01, AK-02).</p></div>
+          <div class="tech"><span><b>Technik</b> · 2 Abschnitte für den Agenten zugeklappt (§5 Daten, §10 Checkliste)</span><span>Technik zeigen ▾</span></div>
+          <h3>3. Fachliche Anforderungen</h3>
+          <table><tr><th>ID</th><th>Anforderung</th><th>Herkunft</th><th>Prüfung</th></tr>
+            <tr><td>FA-01</td><td>Die Liste DARF ein Vorhaben mit Status umgesetzt nicht in den Gruppen „Wartet auf dich" und „Läuft" zeigen.</td><td>AK-01</td><td>Test</td></tr>
+            <tr><td>FA-02</td><td>Wenn der Schalter „Erledigte zeigen" an ist, MUSS die Liste erledigte Vorhaben in einer eigenen Gruppe zeigen.</td><td>AK-02</td><td>Test</td></tr>
+            <tr class="hit"><td>FA-03</td><td>Der Schalter MUSS auf allen Geräten denselben Stand haben.</td><td>AK-02</td><td>Test</td></tr>
+          </table>
+          <h3>4. Fehler- und Randfälle</h3>
+          <div class="para"><span class="mark">+</span><p>Ein Vorhaben ohne YAML-Kopf hat keinen Status; es bleibt sichtbar (Phase „unbekannt").</p></div>
+          <div class="actions"><span class="lbl">Nächster Schritt</span><span class="btn disabled">Plan erstellen ›</span><span class="select">Modell: haiku</span><span class="select">Arbeitskopie: main</span><span class="lbl">— gesperrt, Sitzung wartet auf deine Antwort</span></div>
+        </div>
+      </div>
+      <div class="sendbar"><span class="cnt">0 Anmerkungen</span><span class="target"><span class="dot warn"></span>Sitzung ‚spec INT-2026-003' wartet</span><span class="grow"></span><span class="btn ghost disabled">Alle ansehen</span><span class="btn primary">Freigeben</span></div>
+    </div>
+    <div class="term">
+      <div class="thead"><span class="ttl">🖥 Cloud Terminal</span><span class="grow"></span><span class="btn primary sm">+ Neue Session</span><span class="ic on">▢</span><span class="ic">⊟</span><span class="ic">⤢</span><span class="ic">×</span></div>
+      <div class="tabs"><span class="tab on"><span class="dot warn"></span>spec INT-2026-003<span class="x">×</span></span><span class="tab"><span class="dot acc"></span>intent (neu)<span class="x">×</span></span><span class="tab plus">+</span></div>
+      <div class="xterm"><span class="me">❯ /specwright:spec INT-2026-003</span>
+
+<span class="dim">⏺ Read intent/INT-2026-003-erledigte-ausblenden/intent.md
+⏺ Read docs/product-brief.md
+⏺ Read ui/frontend/src/components/vorhaben/aos-vorhaben-uebersicht.ts</span>
+
+⏺ Spec-Entwurf steht: zwei Abläufe, drei Anforderungen, ein Randfall.
+  Eine Sache ist mir unklar, bevor ich sie vorlege:
+
+  <a>AK-02</a> verlangt einen Schalter „Erledigte zeigen". <a class="hov">FA-03</a> leitet
+  daraus ab, dass der Schalter auf allen Geräten denselben Stand hat —
+  also Nutzerzustand im Backend (AR-05). Die Absicht sagt dazu nichts.
+
+  Soll der Schalter geteilter Zustand sein (Backend, wie der Projekt-Chip)
+  oder flüchtig je Gerät?
+
+<span class="dim">⏺ Stop · 10:04 · wartet auf Eingabe</span>
+
+<div class="prompt"><span>❯</span><span class="cur"></span></div>
+<div class="status"><span>? for shortcuts</span><span>haiku · main · Kontext 18 %</span></div>
+        <div class="pop"><div class="ph"><span>FA-03 · spec.md §3</span><span>Klick springt hin</span></div>Der Schalter MUSS auf allen Geräten denselben Stand haben. · Herkunft AK-02 · Test</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="s11b">
+<div class="caption">11b · Nach „Freigeben" und „Plan erstellen": Freigabe stand als Eingabe sichtbar in der Spec-Sitzung; der Knopf startet eine neue Sitzung, ihr Tab erscheint im angedockten Terminal und ist gewählt, der Befehl läuft dort · Knöpfe links gesperrt, solange die Sitzung arbeitet · AK-03, AK-04, AK-05</div>
+<div class="screen mac">
+  <div class="topbar"><span class="title">Vorhaben</span><span class="grow"></span><span class="ic">🔔</span><span class="ic">▭</span></div>
+  <div class="body">
+    <div class="page">
+      <div class="docscroll">
+        <div class="crumb">‹ Vorhaben</div>
+        <div class="headrow">
+          <div><div class="id">INT-2026-003</div><h1>Erledigte Vorhaben in der Liste ausblenden</h1></div>
+          <div class="chips"><span class="chip">intent</span><span class="chip">spec</span><span class="chip cur dash">plan</span><span class="chip dash">build</span></div>
+        </div>
+        <div class="state"><span class="dot acc"></span><b>arbeitet</b> · Sitzung <b>plan INT-2026-003</b> · opus · Arbeitskopie main · gestartet 10:12</div>
+        <div class="log">Protokoll <b>Freigabe</b> spec.md an ‚spec INT-2026-003' gesendet 10:11 <span class="ok">angenommen 10:11</span> · <b>Schritt</b> plan gestartet 10:12 <span class="more">▸ 2 weitere Einträge</span></div>
+        <div class="anmrow"><span class="btn sm disabled">Allgemeine Anmerkung</span><span>Kein Dokument in dieser Phase — plan.md entsteht gerade</span></div>
+        <div class="doc">
+          <div class="tech" style="border-style:solid"><span><b>plan.md</b> · noch nicht da. Die Sitzung schreibt es; die Seite folgt, sobald die Datei erscheint.</span></div>
+          <h3 style="color:var(--t3)">Zuletzt: spec.md · freigegeben 10:11</h3>
+          <div class="para"><span class="mark">+</span><p style="color:var(--t2)">Die Vorhaben-Liste zeigt heute alle Ordner unter <code>intent/</code>, auch die mit Status <code>umgesetzt</code> …</p></div>
+          <div class="actions"><span class="lbl">Nächster Schritt</span><span class="btn disabled">Bauen ›</span><span class="select">Modell: opus</span><span class="select">Arbeitskopie: main</span><span class="lbl">— gesperrt, Sitzung arbeitet</span></div>
+        </div>
+      </div>
+      <div class="sendbar"><span class="cnt">0 Anmerkungen</span><span class="target"><span class="dot acc"></span>Sitzung ‚plan INT-2026-003' arbeitet</span><span class="grow"></span><span class="btn ghost disabled">Alle ansehen</span><span class="btn primary disabled">Freigeben</span></div>
+    </div>
+    <div class="term">
+      <div class="thead"><span class="ttl">🖥 Cloud Terminal</span><span class="grow"></span><span class="btn primary sm">+ Neue Session</span><span class="ic on">▢</span><span class="ic">⊟</span><span class="ic">⤢</span><span class="ic">×</span></div>
+      <div class="tabs"><span class="tab"><span class="dot mute"></span>spec INT-2026-003<span class="x">×</span></span><span class="tab on"><span class="dot acc"></span>plan INT-2026-003<span class="x">×</span></span><span class="tab"><span class="dot acc"></span>intent (neu)<span class="x">×</span></span><span class="tab plus">+</span></div>
+      <span class="callout" style="right:24px;top:98px">neuer Tab, gewählt</span>
+      <div class="xterm"><span class="dim">Claude Code v2.1 · opus · /scratch-011 · Sitzung gestartet 10:12 durch „Plan erstellen"</span>
+
+<span class="me">❯ /specwright:plan INT-2026-003</span>
+
+<span class="dim">⏺ Read intent/INT-2026-003-erledigte-ausblenden/spec.md
+⏺ Read docs/architecture.md
+⏺ Grep "umgesetzt" ui/src/server/services/vorhaben-reader.ts</span>
+
+⏺ Spec ist freigegeben (Status 10:11). Ich lese die Architektur-Regeln
+  AR-03 und AR-05 und schreibe dann plan.md im Plan Mode …
+
+<span class="spin">✻</span> <span class="dim">Planning… (12 s · ↓ 3.1k tokens)</span>
+
+<div class="prompt"><span>❯</span><span class="cur"></span></div>
+<div class="status"><span>? for shortcuts</span><span>opus · main · Kontext 6 %</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="s11c">
+<div class="caption">11c · Cmd/Ctrl+D klappt das angedockte Terminal weg: Dokument nutzt die volle Breite, Sende-Leiste ebenso; Cmd/Ctrl+D holt es zurück · AK-08</div>
+<div class="screen mac">
+  <div class="topbar"><span class="title">Vorhaben</span><span class="grow"></span><span class="ic">🔔<span class="badge">1</span></span><span class="ic">▭</span></div>
+  <div class="body">
+    <div class="page full">
+      <div class="docscroll">
+        <div class="crumb">‹ Vorhaben</div>
+        <div class="headrow">
+          <div><div class="id">INT-2026-003</div><h1>Erledigte Vorhaben in der Liste ausblenden</h1></div>
+          <div class="chips"><span class="chip">intent</span><span class="chip cur">spec</span><span class="chip dash">plan</span><span class="chip dash">build</span></div>
+        </div>
+        <div class="state"><span class="dot warn"></span><b>wartet auf dich</b> · Sitzung <b>spec INT-2026-003</b> · haiku · Arbeitskopie main · Frage gestellt 10:04 · <span class="dim" style="color:var(--t3)">Terminal ⌘D</span></div>
+        <div class="log">Protokoll <b>Nachricht</b> an ‚spec INT-2026-003' gesendet 09:58 <span class="ok">angenommen 09:58</span> ▸ Text <span class="more">▸ 1 weiterer Eintrag</span></div>
+        <div class="anmrow"><span class="btn sm">Allgemeine Anmerkung</span><span>Marke am Rand oder Enter auf einer Stelle: Anmerkung</span></div>
+        <div class="doc" style="max-width:1100px">
+          <h2>Spec: Erledigte Vorhaben in der Liste ausblenden</h2>
+          <div class="fm"><b>Intent:</b> <code>intent.md</code> (INT-2026-003, Version 1.0.0) · <b>Status:</b> entwurf · <b>Erstellt:</b> 2026-09-16</div>
+          <h3>1. Zusammenfassung</h3>
+          <div class="para"><span class="mark">+</span><p>Die Vorhaben-Liste zeigt heute alle Ordner unter <code>intent/</code>, auch die mit Status <code>umgesetzt</code>. Nach dem Umbau blendet sie erledigte Vorhaben aus und bietet einen Schalter „Erledigte zeigen" (AK-01, AK-02).</p></div>
+          <div class="tech"><span><b>Technik</b> · 2 Abschnitte für den Agenten zugeklappt (§5 Daten, §10 Checkliste)</span><span>Technik zeigen ▾</span></div>
+          <h3>3. Fachliche Anforderungen</h3>
+          <table><tr><th>ID</th><th>Anforderung</th><th>Herkunft</th><th>Prüfung</th></tr>
+            <tr><td>FA-01</td><td>Die Liste DARF ein Vorhaben mit Status umgesetzt nicht in den Gruppen „Wartet auf dich" und „Läuft" zeigen.</td><td>AK-01</td><td>Test</td></tr>
+            <tr><td>FA-02</td><td>Wenn der Schalter „Erledigte zeigen" an ist, MUSS die Liste erledigte Vorhaben in einer eigenen Gruppe zeigen.</td><td>AK-02</td><td>Test</td></tr>
+            <tr><td>FA-03</td><td>Der Schalter MUSS auf allen Geräten denselben Stand haben.</td><td>AK-02</td><td>Test</td></tr>
+          </table>
+          <div class="actions"><span class="lbl">Nächster Schritt</span><span class="btn disabled">Plan erstellen ›</span><span class="select">Modell: haiku</span><span class="select">Arbeitskopie: main</span><span class="lbl">— gesperrt, Sitzung wartet auf deine Antwort</span></div>
+        </div>
+      </div>
+      <div class="sendbar"><span class="cnt">0 Anmerkungen</span><span class="target"><span class="dot warn"></span>Sitzung ‚spec INT-2026-003' wartet</span><span class="grow"></span><span class="btn ghost disabled">Alle ansehen</span><span class="btn primary">Freigeben</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="s11d">
+<div class="caption">11d · Neue Absicht nach „Starten": links die Karte (Textfeld und Modellwahl bleiben davor wie heute, der Text wird nach der ersten Frage übergeben), rechts das angedockte Terminal mit der Absicht-Sitzung; sobald Claude den Ordner anlegt, springt die Seite auf das Vorhaben (11a) · AK-10, NZ-07</div>
+<div class="screen mac">
+  <div class="topbar"><span class="title">Vorhaben</span><span class="grow"></span><span class="ic">🔔</span><span class="ic">▭</span></div>
+  <div class="body">
+    <div class="page">
+      <div class="docscroll">
+        <div class="crumb">‹ Vorhaben</div>
+        <h1 style="max-width:none;font-size:22px">Neue Absicht</h1>
+        <div class="state" style="margin-bottom:18px">Projekt <b>Scratch 011</b> · Was stört, wen, seit wann?</div>
+        <div class="log" style="border-color:var(--acc);flex-direction:column;align-items:flex-start;gap:6px;padding:12px 14px">
+          <span style="color:var(--t1)"><span class="dot acc"></span>&nbsp;Absicht-Sitzung „intent" läuft — Vorhaben entsteht …</span>
+          <span>Terminal rechts — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span>
+          <span style="color:var(--acc)">Dein Text wird nach der ersten Frage übergeben.</span>
+        </div>
+        <div class="tech" style="border-style:solid;color:var(--t2)"><span><b>Dein Text</b> · „Die Liste zeigt erledigte Vorhaben mit an. Ich will sie ausblenden können, mit einem Schalter, der auf allen Geräten gleich steht."</span><span>haiku</span></div>
+      </div>
+    </div>
+    <div class="term">
+      <div class="thead"><span class="ttl">🖥 Cloud Terminal</span><span class="grow"></span><span class="btn primary sm">+ Neue Session</span><span class="ic on">▢</span><span class="ic">⊟</span><span class="ic">⤢</span><span class="ic">×</span></div>
+      <div class="tabs"><span class="tab on"><span class="dot acc"></span>intent (neu)<span class="x">×</span></span><span class="tab"><span class="dot mute"></span>spec INT-2026-002<span class="x">×</span></span><span class="tab plus">+</span></div>
+      <span class="callout" style="right:24px;top:98px">Sitzung gerade gestartet</span>
+      <div class="xterm"><span class="dim">Claude Code v2.1 · haiku · /scratch-011 · Sitzung gestartet 10:20 durch „Starten"</span>
+
+<span class="me">❯ /specwright:intent</span>
+
+<span class="dim">⏺ Read specwright/workflows/core/intent.md
+⏺ Read specwright/templates/sdlc/vorhaben/intent-template.md
+⏺ Read docs/product-brief.md</span>
+
+⏺ Neues Vorhaben. Bevor ich schreibe, eine Frage: Beschreibe das Vorhaben
+  in zwei bis drei Sätzen — was stört, wen, seit wann?
+
+<span class="dim">⏺ Stop · 10:20 · wartet auf Eingabe</span>
+
+<div class="prompt"><span>❯</span><span class="acc">Die Liste zeigt erledigte Vorhaben mit an. Ich will sie ausblenden können, mit einem Schalter, der auf allen Geräten gleich steht.</span><span class="cur"></span></div>
+<div class="status"><span class="acc">↑ dein Text aus dem Textfeld, automatisch nach der ersten Frage</span><span>haiku · main · Kontext 4 %</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+</div></body></html>

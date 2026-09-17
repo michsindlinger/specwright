@@ -380,7 +380,6 @@ describe('CloudTerminalManager boot-restore', () => {
         transcriptPath: '/home/me/.claude/projects/-tmp-project/abc.jsonl',
         claudeSessionId: 'abc',
         blockKind: 'plan',
-        dialogSeq: 2,
         planReviewEnabled: true,
         planReviewReviewers: [{ providerId: 'anthropic', modelId: 'haiku' }],
         lastInjectedPlanPath: 'hook:toolu_1',
@@ -396,7 +395,6 @@ describe('CloudTerminalManager boot-restore', () => {
     const s7 = manager.getSession('s7')!;
     expect(s7).toMatchObject({ agentStatus: 'blocked', blockKind: 'plan', transcriptPath: '/home/me/.claude/projects/-tmp-project/abc.jsonl', claudeSessionId: 'abc' });
     expect(manager.getPlanReviewSettings('s7')).toEqual({ enabled: true, reviewers: [{ providerId: 'anthropic', modelId: 'haiku' }], lastInjectedPlanPath: 'hook:toolu_1' });
-    expect(manager.nextDialogSeq('s7')).toBe('seq:3');
     // a stale block kind on a session that is not blocked is dropped
     expect(manager.getSession('s8')!.blockKind).toBeUndefined();
   });

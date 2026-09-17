@@ -7,6 +7,8 @@ import { stepCommand } from '../../src/shared/types/vorhaben.protocol.js';
 import {
   parseIntentHead,
   parseStatusLine,
+  boundNote,
+  NOTE_MAX_CHARS,
   derivePhase,
   deriveReviewDoc,
   deriveZustand,
@@ -54,6 +56,27 @@ describe('parseStatusLine (FA-11)', () => {
   });
   it('null when the line is missing', () => {
     expect(parseStatusLine('# Plan\n\nText')).toBeNull();
+  });
+  // INT-2026-013 (AK-01, B1): the note is bounded — cut at the first ` · ` head field, no `**`/backticks, at most NOTE_MAX_CHARS plain characters.
+  it('bounds the note: cut at the first head-field separator (INT-2026-009 line)', () => {
+    const line = 'umgesetzt (Merge steht aus; Fassung 2 nach externem Review, 3 Reviewer, 24 Findings, §12) · **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 („freigabe", Chat)';
+    expect(parseStatusLine(statusDoc(line))).toEqual({ status: 'umgesetzt', note: '(Merge steht aus; Fassung 2 nach externem Review, 3 Reviewer, 24 Findings, §12)' });
+  });
+  it('bounds the note: strips ** and backticks, caps at 80 characters with … (INT-2026-005 line)', () => {
+    const line = 'umgesetzt — **PR #49** offen (Merge = Michael), CI `verify` grün (Run 35023234917 auf `7bd02fb`); Bau beauftragt (Michael, „Mach A1", Board-Sitzung 15.09.)';
+    const parsed = parseStatusLine(statusDoc(line))!;
+    expect(parsed.status).toBe('umgesetzt');
+    expect(parsed.note).toBe('PR #49 offen (Merge = Michael), CI verify grün (Run 35023234917 auf 7bd02fb); B…');
+    expect(parsed.note.length).toBeLessThanOrEqual(NOTE_MAX_CHARS);
+    expect(parsed.note).not.toMatch(/\*\*|`/);
+  });
+  it('boundNote: short notes stay as they are, exactly 80 characters are not cut', () => {
+    expect(boundNote('· PR #57')).toBe('PR #57');
+    expect(boundNote('')).toBe('');
+    const exact = 'x'.repeat(NOTE_MAX_CHARS);
+    expect(boundNote(exact)).toBe(exact);
+    expect(boundNote(`${exact}y`)).toBe(`${'x'.repeat(NOTE_MAX_CHARS - 1)}…`);
+    expect(boundNote('**PR #57** · **Erstellt:** heute')).toBe('PR #57');
   });
 });
 

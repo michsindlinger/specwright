@@ -1,6 +1,6 @@
 # Design: Specwright
 
-> **Stand:** 2026-09-15 · **Verantwortlich:** Michael Sindlinger
+> **Stand:** 2026-09-17 · **Verantwortlich:** Michael Sindlinger
 > **Rolle dieses Dokuments:** Pflichtlektüre für jede Spec mit UI-Anteil (Bedenken) und für jeden Plan, der die Web-UI ändert. Legt fest, was „entspricht dem Mock" bedeutet.
 > **Marke:** Farben, Schrift, Tonalität kommen aus dem Firmen-Repo (`brand.md`, Phase 3). Hier steht nur, wie das Produkt sie anwendet.
 
@@ -41,10 +41,13 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | Fehler nach Aktion | Inline mit Ursache und nächstem Schritt („nicht gelöscht: lokal geändert — behalten per keep.txt oder von Hand löschen") | `install-lib.sh` |
 | Leerzustand | ein Satz + eine Aktion | Projektliste ohne Projekte |
 | Mobil | ein Pane, Terminal mit Flex-Host für xterm-Höhe | Mobile-Terminal-Fix (`4cdb276`) |
+| Dokument mit Leser-Teil und Agenten-Teil (INT-2026-009) | Mensch-Abschnitte offen, Agenten-Abschnitte als zugeklappte Kästen mit sichtbarer Überschrift; ein Schalter „Technik zeigen" je Dokument öffnet alle; Dokumente ohne oder mit nur teilweiser Kennzeichnung bleiben ganz offen | `aos-dokument-leser` (`details.technik`, INT-2026-010 Stufe 3) |
+| Sitzung neben dem Dokument (INT-2026-011) | das Terminal selbst, angedockt als rechte Spalte (halbe Breite, unter der Kopfzeile, kein Zieh-Griff, kein Schatten), Tab der Vorhaben-Sitzung vorne; kein nachgebauter Verlauf. Stapelordnung: angedockt liegt die Spalte unter der Kopfzeile (Glocken-Liste davor), schwebend und im Vollbild über ihr (INT-2026-014). Kennungen des Dokuments (`FA-03`, `AK-01`, `F1`) sind im Terminal unterstrichen: Hover zeigt den Absatz, Klick springt im Dokument hin und klappt den Kasten auf; nur Codes, die das Dokument enthält | `aos-cloud-terminal-sidebar` (`docked`), `kennung-link-provider.ts`, `aos-dokument-leser.openKennung` |
 
 ## 5. Responsiv und Barrierefreiheit
 
-- **Breakpoints:** Handy (< 768 px, ein Pane) / Desktop (Split-Panes). Vorhaben-Seite unter 1024 px: Dokument über dem Gespräch (INT-2026-010).
+- **Breakpoints:** Handy (< 768 px, ein Pane) / Desktop (Split-Panes). Vorhaben-Seite: Terminal angedockt ab 1024 px, darunter schwebend wie auf jeder anderen Seite (INT-2026-011).
+- **Volle Breite:** Liste, Vorhaben-Seite und Dokument nutzen die volle Fensterbreite — angedockt ist das Dokument die linke Hälfte, zugeklappt das ganze Fenster; keine Breitengrenze für einzelne Seiten der View, auch nicht für „Neue Absicht" und die Projekt-Seite (PO 17.09., INT-2026-013). Angedockt zeigt das Terminal immer genau ein Fenster mit der Sitzung der Seite; die gespeicherte Aufteilung (zwei oder vier Fenster) gilt nur schwebend und bleibt erhalten.
 - **Mobil zuerst für:** Cloud-Terminal, Projektwechsel. Am Handy öffnet das Terminal-Symbol der Kopfzeile die Sitzungen; ein Sprung aus Glocke oder Vorhaben-Seite setzt die aktive Sitzung (kein Solo-Modus).
 - **Mindeststandard:** Tastatur-Bedienbarkeit, Kontrast ≥ 4.5:1, Fokus sichtbar, Labels an jedem Feld.
 
@@ -68,3 +71,7 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
 | 2026-09-15 | §7: Abweichung „Story-Kanban-Sicht" erledigt — die Web-UI zeigt Vorhaben (INT-2026-004, Stufe 1–3) | PR #46 |
 | 2026-09-16 | §1 Prinzip 5 (Rahmen = Kopfzeile), §3 Beispiele und Light-DOM-Regel, §4 Muster Glocke und Projekt-Seite, §5 Dokument über Gespräch unter 1024 px, Handy-Terminal (INT-2026-010, Stufe 1) | PR folgt |
+| 2026-09-17 | §4 Muster „Dokument mit Leser-Teil und Agenten-Teil" (INT-2026-010 Stufe 3) | PR #63 |
+| 2026-09-17 | §4 Muster „Sitzung neben dem Dokument" (angedocktes Terminal, Kennungen als Verweise), §5 Vorhaben-Seite ab 1024 px angedockt statt „Dokument über dem Gespräch" (INT-2026-011, Stufe 1 PR #65, Stufe 2) | PR #66 |
+| 2026-09-17 | §5 volle Breite für Liste, Vorhaben-Seite und Dokument; angedockt immer ein Fenster, gespeicherte Aufteilung nur schwebend (INT-2026-013, Nachbesserung nach PR #66) | PR #68 |
+| 2026-09-17 | §4 Stapelordnung angedockt: Spalte unter der Kopfzeile, Glocken-Liste davor (INT-2026-014) | PR folgt |

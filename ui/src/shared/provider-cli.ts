@@ -8,7 +8,7 @@
  * (`vorhaben-service.resolveModel`) and the settings view. A provider whose
  * command's basename starts with `claude` runs Claude Code — directly or via a
  * `claude-<id>` wrapper under `~/bin` — and therefore understands Claude flags,
- * fires hooks (status dot, bell, Gespräch), works as a plan reviewer (Agent SDK
+ * fires hooks (status dot, bell), works as a plan reviewer (Agent SDK
  * with `~/.claude-<id>`) and can start a Specwright step (`/specwright:plan …`).
  * Every other command is a foreign agent CLI (e.g. `codex`): no Claude flags,
  * no status, no reviewer use, no step start.

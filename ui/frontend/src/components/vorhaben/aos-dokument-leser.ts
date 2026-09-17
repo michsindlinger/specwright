@@ -13,6 +13,18 @@
  * Anmerkungen show as numbered marks and are relocated by text after the
  * document changed. The editor is inserted imperatively into the rendered
  * HTML (unsafeHTML keeps it until the document is re-rendered).
+ *
+ * Stage 3 (INT-2026-010, FA-13/FA-14): a fully marked document (INT-2026-009
+ * reader markers) shows its agent sections as closed `<details class="technik">`
+ * and a switch "Technik zeigen | ausblenden" above the body; the switch is
+ * transient per page visit (PO decision, not user state). Unmarked and partly
+ * marked documents stay fully open without the switch (AN-S03). Jumps into a
+ * closed section open its `<details>` ancestors first (`ensureSichtbar`).
+ *
+ * INT-2026-011 (FA-13/FA-14): the reader indexes the Kennungen of the
+ * rendered document (`indexKennungen`) and reports them with `leser-loaded`;
+ * `openKennung(code)` opens the closed section, scrolls to the block and
+ * highlights it for two seconds — the terminal's Kennung links land here.
  */
 
 import { LitElement, html, nothing, type PropertyValues } from 'lit';
@@ -22,7 +34,7 @@ import { vorhabenService } from '../../services/vorhaben.service.js';
 import { renderMermaidDiagrams } from '../../utils/mermaid-render.js';
 import { renderDocument } from './vorhaben-markdown.js';
 import { formatClock } from './vorhaben-sort.js';
-import { DOKUMENT_GESAMT, deriveAnchors, locateAnmerkung, type BlockAnchor } from './vorhaben-anchors.js';
+import { DOKUMENT_GESAMT, deriveAnchors, indexKennungen, locateAnmerkung, type BlockAnchor, type KennungIndexEintrag } from './vorhaben-anchors.js';
 import { markdownStyles } from '../../styles/markdown-styles.js';
 import { dokumentLeserStyles } from './dokument-leser-styles.js';
 import type { Anmerkung, VorhabenDocKey } from '../../../../src/shared/types/vorhaben.protocol.js';
@@ -34,6 +46,14 @@ export type LeserDoc = VorhabenDocKey | 'design';
 const IMAGE_RE = /\.(png|jpe?g|svg|webp|gif)$/i;
 /** Width of the click gutter left of a block (matches the CSS mark). */
 const GUTTER_PX = 32;
+/** How long a block stays highlighted after a Kennung jump (FA-13). */
+const KENNUNG_HIT_MS = 2000;
+
+/** `leser-loaded` detail: the Stand Michael read and the Kennungen of that document. */
+export interface LeserLoadedDetail {
+  mtimeMs: number;
+  kennungen: ReadonlyMap<string, KennungIndexEintrag>;
+}
 
 interface Editing {
   /** -1 = "Dokument gesamt". */
@@ -66,6 +86,10 @@ export class AosDokumentLeser extends LitElement {
   @property({ attribute: false }) anmerkungen: Anmerkung[] = [];
 
   @state() private html = '';
+  /** FA-13: the loaded document is fully marked → technik sections are collapsible. */
+  @state() private gekennzeichnet = false;
+  /** Transient "Technik zeigen" state of this document view (reset when another document loads). */
+  @state() private technikOffen = false;
   @state() private loading = false;
   @state() private error = '';
   @state() private loadedMtime = 0;
@@ -77,6 +101,9 @@ export class AosDokumentLeser extends LitElement {
   private loadToken = 0;
   private anchors: BlockAnchor[] = [];
   private anchorsHtml = '';
+  /** Code → block of the rendered document (INT-2026-011); rebuilt with the anchors. */
+  private kennungen: ReadonlyMap<string, KennungIndexEintrag> = new Map();
+  private kennungHitTimer: ReturnType<typeof setTimeout> | null = null;
   private editorEl: AosAnmerkungEditor | null = null;
   private tapbarEl: HTMLElement | null = null;
   private lastLostKey = '';
@@ -94,7 +121,8 @@ export class AosDokumentLeser extends LitElement {
 
   protected override willUpdate(changed: PropertyValues<this>): void {
     if (changed.has('content') && this.content !== undefined) {
-      this.html = renderDocument(this.content);
+      this.setRendered(renderDocument(this.content));
+      this.technikOffen = false;
       this.error = '';
       this.changedAt = null;
       return;
@@ -102,6 +130,7 @@ export class AosDokumentLeser extends LitElement {
     if (changed.has('projectId') || changed.has('intentId') || changed.has('doc') || (changed.has('content') && this.content === undefined)) {
       this.changedAt = null;
       this.editing = null;
+      this.technikOffen = false;
       void this.load();
       return;
     }
@@ -115,14 +144,56 @@ export class AosDokumentLeser extends LitElement {
     // Synchronous DOM work first: right after the commit the DOM matches
     // `this.html`; after an await a newer load may already have replaced it.
     if (changed.has('html') || changed.has('anmerkungen') || changed.has('annotierbar') || changed.has('mobile')) this.syncAnchors();
+    if (changed.has('html') || changed.has('technikOffen')) this.applyTechnik();
     if (changed.has('editing') || changed.has('html')) this.syncEditor();
     await renderMermaidDiagrams(this.root);
     if (this.pendingScrollTo) {
       const id = this.pendingScrollTo;
       this.pendingScrollTo = null;
       const target = [...this.root.querySelectorAll<HTMLElement>('[id]')].find((el) => el.id === id);
-      target?.scrollIntoView({ block: 'start' });
+      if (target) {
+        this.ensureSichtbar(target);
+        target.scrollIntoView({ block: 'start' });
+      }
     }
+  }
+
+  private setRendered(rendered: { html: string; gekennzeichnet: boolean }): void {
+    this.html = rendered.html;
+    this.gekennzeichnet = rendered.gekennzeichnet;
+  }
+
+  // ---- technik sections (FA-13) ----
+
+  /** Sets `open` on every technik section to the switch state (fresh HTML renders them closed). */
+  private applyTechnik(): void {
+    // Attribute, not the `open` property: identical in browsers, and happy-dom (tests) has no HTMLDetailsElement.
+    this.root.querySelectorAll<HTMLElement>('details.technik').forEach((d) => d.toggleAttribute('open', this.technikOffen));
+  }
+
+  private toggleTechnik(): void {
+    this.technikOffen = !this.technikOffen;
+  }
+
+  /** Opens every closed `<details>` above `el` so a jump or an editor lands on a visible block. */
+  private ensureSichtbar(el: Element): void {
+    const ownSummary = el.closest('summary')?.parentElement ?? null; // a summary heading is visible while its box is closed
+    let d = el.parentElement?.closest<HTMLElement>('details') ?? null;
+    while (d) {
+      if (d !== ownSummary) d.setAttribute('open', '');
+      d = d.parentElement?.closest<HTMLElement>('details') ?? null;
+    }
+  }
+
+  /** A heading inside a closed `<details>` (not its summary) is not on screen. */
+  private isVerborgen(el: Element): boolean {
+    const ownSummary = el.closest('summary')?.parentElement ?? null;
+    let d = el.parentElement?.closest<HTMLElement>('details') ?? null;
+    while (d) {
+      if (d !== ownSummary && !d.hasAttribute('open')) return true;
+      d = d.parentElement?.closest<HTMLElement>('details') ?? null;
+    }
+    return false;
   }
 
   /** Reloads the document, keeping the nearest visible heading in view (FA-19). */
@@ -146,13 +217,36 @@ export class AosDokumentLeser extends LitElement {
       this.editing = { ordinal: -1, ref: a.ref, snippet: a.snippet, id: a.id, text: a.text };
       return;
     }
+    this.ensureSichtbar(anchor.element);
     anchor.element.scrollIntoView({ block: 'center' });
     this.editing = { ordinal: anchor.ordinal, ref: a.ref, snippet: a.snippet, id: a.id, text: a.text };
+  }
+
+  /**
+   * A Kennung link in the terminal was clicked (FA-13/FA-14): open the
+   * section the block sits in, scroll it to the middle and highlight it.
+   * False when the document does not carry the code.
+   */
+  public openKennung(code: string): boolean {
+    const entry = this.kennungen.get(code);
+    const anchor = entry ? this.anchors[entry.ordinal] : undefined;
+    if (!anchor || !anchor.element.isConnected) return false;
+    this.ensureSichtbar(anchor.element);
+    anchor.element.scrollIntoView({ block: 'center' });
+    this.root.querySelectorAll('.kennung-hit').forEach((el) => el.classList.remove('kennung-hit'));
+    anchor.element.classList.add('kennung-hit');
+    if (this.kennungHitTimer) clearTimeout(this.kennungHitTimer);
+    this.kennungHitTimer = setTimeout(() => {
+      anchor.element.classList.remove('kennung-hit');
+      this.kennungHitTimer = null;
+    }, KENNUNG_HIT_MS);
+    return true;
   }
 
   private firstVisibleHeadingId(): string | null {
     const headings = this.root.querySelectorAll<HTMLElement>('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
     for (const h of headings) {
+      if (this.isVerborgen(h)) continue;
       const rect = h.getBoundingClientRect();
       if (rect.bottom >= 0) return h.id;
     }
@@ -188,11 +282,14 @@ export class AosDokumentLeser extends LitElement {
       } else {
         const { content, mtimeMs } = await vorhabenService.readDoc(this.projectId, this.intentId, this.doc);
         if (token !== this.loadToken) return;
-        this.html = renderDocument(content);
+        this.setRendered(renderDocument(content));
         this.loadedMtime = mtimeMs;
         this.mtimeMs = mtimeMs;
-        // The page remembers the stand Michael read (FA-27/FA-28 "Stand").
-        this.dispatchEvent(new CustomEvent<{ mtimeMs: number }>('leser-loaded', { bubbles: true, composed: true, detail: { mtimeMs } }));
+        // After the render: the anchors (and with them the Kennungen) exist only once the HTML is in the DOM.
+        await this.updateComplete;
+        if (token !== this.loadToken) return;
+        // The page remembers the stand Michael read (FA-27/FA-28 "Stand") and the Kennungen the terminal may link (INT-2026-011).
+        this.dispatchEvent(new CustomEvent<LeserLoadedDetail>('leser-loaded', { bubbles: true, composed: true, detail: { mtimeMs, kennungen: this.kennungen } }));
       }
     } catch (err) {
       if (token !== this.loadToken) return;
@@ -210,6 +307,7 @@ export class AosDokumentLeser extends LitElement {
     const body = this.body;
     if (!body) {
       this.anchors = [];
+      this.kennungen = new Map();
       return;
     }
     if (this.anchorsHtml !== this.html) {
@@ -218,6 +316,7 @@ export class AosDokumentLeser extends LitElement {
       this.anchors.forEach((a) => {
         a.element.setAttribute('data-ordinal', String(a.ordinal));
       });
+      this.kennungen = indexKennungen(this.anchors);
     }
     for (const a of this.anchors) {
       a.element.removeAttribute('data-anmerkung');
@@ -419,6 +518,13 @@ export class AosDokumentLeser extends LitElement {
               @editor-cancel=${() => (this.editing = null)}
               @editor-delete=${() => this.onEditorDelete()}
             ></aos-anmerkung-editor>`
+          : nothing}
+        ${this.gekennzeichnet && this.doc !== 'design' && this.html
+          ? html`<div class="leser-technik">
+              <button type="button" class="leser-technik-btn" aria-pressed=${this.technikOffen ? 'true' : 'false'} @click=${() => this.toggleTechnik()}>
+                ${this.technikOffen ? 'Technik ausblenden' : 'Technik zeigen'}
+              </button>
+            </div>`
           : nothing}
         ${this.loading && !this.html ? html`<div class="leser-status">Lädt …</div>` : nothing}
         ${this.error ? html`<div class="leser-status leser-error">${this.error}</div>` : nothing}

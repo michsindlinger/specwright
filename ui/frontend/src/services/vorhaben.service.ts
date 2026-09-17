@@ -220,8 +220,7 @@ export class VorhabenClientService {
 /**
  * Request/reply over the gateway (R-17, INT-2026-007): sends `message` with
  * `requestId`, resolves on the first reply type whose `requestId` matches,
- * rejects on `errorType` with the same `requestId` or after 15 s. Shared by
- * the Vorhaben and the Gespräch client services.
+ * rejects on `errorType` with the same `requestId` or after 15 s.
  */
 export function gatewayRequest<T>(replyType: string | string[], message: WebSocketMessage, errorType: string, requestId: string): Promise<T & { type: string }> {
   const types = Array.isArray(replyType) ? replyType : [replyType];
