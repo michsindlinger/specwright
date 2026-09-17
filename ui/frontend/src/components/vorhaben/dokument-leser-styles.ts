@@ -349,6 +349,27 @@ export const dokumentLeserStyles = css`
     background: rgba(var(--color-accent-primary-rgb, 0, 212, 255), 0.08);
     box-shadow: 0 0 0 1px var(--color-accent-primary);
   }
+  /* INT-2026-011 (FA-13): the block a Kennung link in the terminal jumped to — two seconds, then gone (mock 11a). */
+  .markdown-body .kennung-hit {
+    background: rgba(var(--color-accent-primary-rgb, 0, 212, 255), 0.12);
+    box-shadow: 0 0 0 1px var(--color-accent-primary);
+    animation: kennung-hit-fade 2s ease-out forwards;
+  }
+  @keyframes kennung-hit-fade {
+    0%, 60% {
+      background: rgba(var(--color-accent-primary-rgb, 0, 212, 255), 0.12);
+      box-shadow: 0 0 0 1px var(--color-accent-primary);
+    }
+    100% {
+      background: transparent;
+      box-shadow: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .markdown-body .kennung-hit {
+      animation: none;
+    }
+  }
   .leser-tapbar {
     display: flex;
     gap: var(--spacing-xs);

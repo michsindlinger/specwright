@@ -39,6 +39,7 @@ import type { WorkspaceState } from '../../src/shared/types/workspace.protocol.j
 import type { VorhabenState } from '../../src/shared/types/vorhaben.protocol.js';
 import { assignAutoNames, isOwnCreateRequest, toRestoredTab, type BackendSessionLike, type WorkflowMetadataLike } from './components/terminal/session-naming.js';
 import { glockeZiel } from './components/rahmen/glocke-ziel.js';
+import { terminalDockedFor } from './components/terminal/terminal-dock.js';
 import type { GlockeOpenDetail, GlockeSession } from './components/rahmen/aos-glocke.js';
 import { gitState, type GitState, type PullStrategy } from './services/git-state.service.js';
 import { vorhabenService } from './services/vorhaben.service.js';
@@ -111,6 +112,22 @@ export class AosApp extends LitElement {
   @state()
   private isTerminalSidebarOpen = false;
 
+  /**
+   * The terminal is the right column of the page (INT-2026-011, FA-01): on
+   * the Vorhaben page and on „Neue Absicht" — derived from the route, never
+   * stored (AR-05). Docked is a presentation of the same sidebar; open/closed
+   * stays `isTerminalSidebarOpen` (Cmd/Ctrl+D, FA-05).
+   */
+  @state()
+  private terminalDocked = false;
+
+  /**
+   * Session the Vorhaben page asked for before its tab existed (FA-08, review
+   * F2): `cloud-terminal:created`/`list` may arrive after `vorhaben-page-session`.
+   * Resolved in willUpdate() as soon as the tab is in `terminalSessions`.
+   */
+  private pendingDockSessionId: string | null = null;
+
   @state()
   private isFileTreeOpen = false;
 
@@ -172,6 +189,7 @@ export class AosApp extends LitElement {
 
   private boundRouteChangeHandler = (route: import('./types/route.types.js').ParsedRoute) => {
     this.currentRoute = route.view;
+    this.terminalDocked = terminalDockedFor(route);
   };
   private boundReconnectingHandler: MessageHandler = (msg) => {
     this.isReconnecting = true;
@@ -240,11 +258,11 @@ export class AosApp extends LitElement {
   };
 
   /**
-   * Bring a backend session into the terminal. Mac: alone on the screen
-   * (INT-2026-005 solo, INT-2026-007 FA-21/FA-22). Phone (INT-2026-010, FA-20,
-   * review F11): no panes — make it the active session (switching the project
-   * first when it belongs to another one) and open the sidebar, whose phone
-   * layout renders the session tabs with the active one.
+   * Bring a backend session into the terminal. Mac with a floating sidebar:
+   * alone on the screen (INT-2026-005 solo). Phone (INT-2026-010, FA-20) and
+   * the docked column (INT-2026-011, AN-S08): no solo — just select the tab
+   * (switching the project first when it belongs to another one) and open
+   * the sidebar.
    */
   private _openSessionInTerminal(terminalSessionId: string): void {
     const match = this.terminalSessions.find(s => s.terminalSessionId === terminalSessionId);
@@ -252,14 +270,8 @@ export class AosApp extends LitElement {
       this.showToast('Terminal-Session nicht mehr aktiv', 'warning');
       return;
     }
-    if (this.breakpoint.isMobile) {
-      const project = this.openProjects.find(p => p.path === match.projectPath);
-      if (project && project.id !== this.activeProjectId) {
-        this.lastActiveSessionByProject.set(project.id, match.id);
-        this.switchToProject(project.id);
-      } else {
-        this.activeTerminalSessionId = match.id;
-      }
+    if (this.breakpoint.isMobile || this.terminalDocked) {
+      this._selectSessionTab(match);
       this.isTerminalSidebarOpen = true;
     } else {
       this._showSessionSolo(match.id);
@@ -269,6 +281,47 @@ export class AosApp extends LitElement {
         s.id === match.id ? { ...s, needsInput: false } : s
       );
     }
+  }
+
+  /**
+   * Make a tab the active one without solo/fullscreen: the project switch
+   * lands on the tab via `lastActiveSessionByProject` (the bell's path), else
+   * the active id changes directly. Shared by the phone, the docked column
+   * and the page-session follow (INT-2026-011).
+   */
+  private _selectSessionTab(match: TerminalSession): void {
+    const project = this.openProjects.find(p => p.path === match.projectPath);
+    if (project && project.id !== this.activeProjectId) {
+      this.lastActiveSessionByProject.set(project.id, match.id);
+      this.switchToProject(project.id);
+    } else {
+      this.activeTerminalSessionId = match.id;
+    }
+  }
+
+  /**
+   * The Vorhaben page (or „Neue Absicht") says which session belongs to it
+   * (INT-2026-011, FA-02/FA-08/FA-18): open the docked terminal on that tab.
+   * A tab that has not arrived yet is remembered and selected in willUpdate().
+   */
+  private _handleVorhabenPageSession = (e: CustomEvent<{ terminalSessionId: string }>): void => {
+    const id = e.detail?.terminalSessionId;
+    if (!id) return;
+    this._dockSession(id);
+  };
+
+  private _dockSession(terminalSessionId: string): void {
+    this.isTerminalSidebarOpen = true;
+    const match = this.terminalSessions.find(s => s.terminalSessionId === terminalSessionId);
+    if (match) {
+      this.pendingDockSessionId = null;
+      this._selectSessionTab(match);
+      if (match.needsInput) {
+        this.terminalSessions = this.terminalSessions.map(s => (s.id === match.id ? { ...s, needsInput: false } : s));
+      }
+      return;
+    }
+    this.pendingDockSessionId = terminalSessionId;
   }
 
   /**
@@ -349,6 +402,8 @@ export class AosApp extends LitElement {
 
     // Listen for open-terminal-session events (Vorhaben page)
     document.addEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
+    // The Vorhaben page names its session → docked terminal on that tab (INT-2026-011)
+    document.addEventListener('vorhaben-page-session', this._handleVorhabenPageSession as EventListener);
 
     // Global error handler
     window.addEventListener('error', this.handleGlobalError.bind(this));
@@ -386,6 +441,7 @@ export class AosApp extends LitElement {
     this.unsubscribeGeneratedMessage?.();
     this.unsubscribeVorhaben = this.unsubscribeGit = this.unsubscribeGeneratedMessage = null;
     document.removeEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
+    document.removeEventListener('vorhaben-page-session', this._handleVorhabenPageSession as EventListener);
   }
 
   private handleGlobalError(event: ErrorEvent): void {
@@ -694,6 +750,14 @@ export class AosApp extends LitElement {
         this.agentNotifications,
         new Set(this.terminalSessions.map(s => s.id))
       );
+      // The page's session arrived as a tab after the page asked for it (FA-08).
+      if (this.pendingDockSessionId) {
+        const match = this.terminalSessions.find(s => s.terminalSessionId === this.pendingDockSessionId);
+        if (match) {
+          this.pendingDockSessionId = null;
+          this._selectSessionTab(match);
+        }
+      }
     }
   }
 
@@ -1412,9 +1476,9 @@ export class AosApp extends LitElement {
     if (!this.activeTerminalSessionId && activeProject?.path === session.projectPath) {
       this.activeTerminalSessionId = tab.id;
     }
-    // A step started from the Vorhaben page no longer jumps into the terminal
-    // (INT-2026-007, FA-22): the page shows the session as Gespräch; the jump
-    // stays behind „Im Terminal öffnen" (`open-terminal-session`).
+    // A step started from the Vorhaben page: the page names its session via
+    // `vorhaben-page-session`; when that arrived before this tab, willUpdate()
+    // resolves the pending dock now (INT-2026-011, FA-08).
   }
 
   /**
@@ -1423,7 +1487,7 @@ export class AosApp extends LitElement {
    * render, so the sidebar already lists the tab in `allSessions`. In single mode with
    * another project active the sidebar answers with `session-jump` and
    * `_handleTerminalSessionJump` switches the project. Reached only via
-   * `open-terminal-session` (Vorhaben page, Gespräch head, FA-22).
+   * `open-terminal-session` from pages without a docked terminal (INT-2026-011).
    */
   private _showSessionSolo(tabId: string): void {
     this.activeTerminalSessionId = tabId;
@@ -1604,6 +1668,7 @@ export class AosApp extends LitElement {
       ></aos-document-preview-panel>
       <aos-cloud-terminal-sidebar
         .isOpen=${this.isTerminalSidebarOpen}
+        .docked=${this.terminalDocked}
         .sessions=${this.projectTerminalSessions}
         .allSessions=${this.terminalSessions}
         .projectNames=${this.terminalProjectNames}
