@@ -41,6 +41,7 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | Fehler nach Aktion | Inline mit Ursache und nächstem Schritt („nicht gelöscht: lokal geändert — behalten per keep.txt oder von Hand löschen") | `install-lib.sh` |
 | Leerzustand | ein Satz + eine Aktion | Projektliste ohne Projekte |
 | Mobil | ein Pane, Terminal mit Flex-Host für xterm-Höhe | Mobile-Terminal-Fix (`4cdb276`) |
+| Dokument mit Leser-Teil und Agenten-Teil (INT-2026-009) | Mensch-Abschnitte offen, Agenten-Abschnitte als zugeklappte Kästen mit sichtbarer Überschrift; ein Schalter „Technik zeigen" je Dokument öffnet alle; Dokumente ohne oder mit nur teilweiser Kennzeichnung bleiben ganz offen | `aos-dokument-leser` (`details.technik`, INT-2026-010 Stufe 3) |
 
 ## 5. Responsiv und Barrierefreiheit
 
@@ -68,3 +69,4 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
 | 2026-09-15 | §7: Abweichung „Story-Kanban-Sicht" erledigt — die Web-UI zeigt Vorhaben (INT-2026-004, Stufe 1–3) | PR #46 |
 | 2026-09-16 | §1 Prinzip 5 (Rahmen = Kopfzeile), §3 Beispiele und Light-DOM-Regel, §4 Muster Glocke und Projekt-Seite, §5 Dokument über Gespräch unter 1024 px, Handy-Terminal (INT-2026-010, Stufe 1) | PR folgt |
+| 2026-09-17 | §4 Muster „Dokument mit Leser-Teil und Agenten-Teil" (INT-2026-010 Stufe 3) | folgt |
