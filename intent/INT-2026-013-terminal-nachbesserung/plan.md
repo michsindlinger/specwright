@@ -1,7 +1,7 @@
 # Plan: UI: Nachbesserung Terminal neben dem Dokument — Liste ohne Überlauf, volle Breite, angedockt immer ein Fenster
 
 > **Intent:** `intent.md` (INT-2026-013, Bypass) · **Spec:** entfällt (Bypass)
-> **Status:** freigegeben
+> **Status:** umgesetzt (PR folgt, Merge = Michael)
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-17 (Chat, nach externem Review mit 22 Findings, §12)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 79c0ec6), `CLAUDE.md`, `docs/security.md`, `docs/design.md`
 > **Branch:** `fix/INT-2026-013-terminal-nachbesserung` von `origin/main` 79c0ec6, Worktree `session-sdlc-ui`. Hook `protect-tests`: Tests zuerst rot, dann `.claude/fix-mode`, dann Code.
@@ -211,4 +211,12 @@ Verify: `bash scripts/verify.sh` → `verify: OK`; CI ist die Wahrheit; Bezugsli
 
 <!-- leser: mensch -->
 
-(leer — wird in der Bausitzung geführt)
+| Datum | Abweichung | Grund | Abschnitt |
+|---|---|---|---|
+| 2026-09-17 | B3-Symptom („Terminal erscheint nicht sofort") im E2E-Skript nicht reproduzierbar: Erstbesuch aus der Liste öffnet in 15 ms, Wiederbesuch (Cmd+D zu → Liste → dasselbe Vorhaben) in 7 ms, Sitzung in fremdem Projekt landet nach 169 ms. B1, B2, B4 reproduziert (Zahlen in `design/e2e-protokoll.txt`). | Die View setzt ihren Merker auf der Liste auf `null` zurück, also meldet sie beim Wiederbesuch doch. Der Umbau wurde trotzdem wie geplant gebaut: die Ursache laut §2 (Ereignis nie `null`, Cmd+D ohne Seitenbezug, Debounce-Race beim Projektwechsel) bleibt die Arbeitshypothese für Michaels „manchmal"; Stichprobe am 1 728-px-Mac (§10) entscheidet. | §2, §8 |
+| 2026-09-17 | `grep layoutMode` liefert 22 Treffer, nicht 24 (§2) bzw. 21 (§9). | Checkliste ist der grep, nicht die Zahl (Review #19); Zuordnung in `design/e2e-protokoll.txt` Schritt 0 (b). | §6 Schritt 0b |
+| 2026-09-17 | Test #9 (`aos-vorhaben-zeile.test.ts`) prüft zusätzlich den Stylesheet-Text (Spur `minmax(0, max-content)`, `.phase` min-width/overflow/max-width, `.note` ellipsis). | happy-dom hat kein Layout; ohne diese Prüfung wäre der Test vor dem Fix grün gewesen (Regel „Tests zuerst rot"). Die Breite selbst beweist E2E (§8). | §4 #9, §8 |
+| 2026-09-17 | `_syncDock` löscht `dockSwitchProjectId` zusätzlich bei jeder Änderung von `activeProjectId`. | Ein fremder Wechsel (Glocke, Projekt-Tab) kann im 150-ms-Debounce das Promise unseres Wechsels verwaisen lassen; ohne diese Zeile bliebe der In-Flight-Guard bis zum Verlassen der Seite gesetzt und der Abgleich stumm. | §3 App |
+| 2026-09-17 | `handleProjectTabSelect` ruft bei misslungenem Wechsel `requestUpdate()`, wenn ein Seiten-Tab aussteht. | „Nächstes Update" hätte sonst auf ein unbeteiligtes Ereignis gewartet; so laufen die bis zu drei Versuche direkt hintereinander (Test #11 „Wechsel scheitert"). | §3 App |
+| 2026-09-17 | Sichtprüfung B2 (§6 Schritt 4) im E2E-Lauf von Schritt 8 statt als eigener Schritt. | Braucht denselben Frontend-Build; Zahlen und Screenshots liegen in `design/ist/` (`ist-liste.png`, `ist-seite-zu.png`, `ist-neu.png`, `ist-projekt.png`). | §6 Schritt 4 |
+| 2026-09-17 | E2E ergänzt um den Wiederbesuch-Pfad (Cmd+D zu → Liste → dasselbe Vorhaben) und die Projekt-Seite als Undock-Beleg; Screenshots `vorher-*.png` (Schritt 0) neben `ist-*.png`. | Michaels B3-Beschreibung ist der Wiederbesuch; der Plan nannte nur Liste → Vorhaben. | §8 |
