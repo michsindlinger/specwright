@@ -93,6 +93,8 @@ export class WebSocketHandler {
   private workspaceStore: WorkspaceStateStore;
   private workspaceHandler: WorkspaceHandler;
   private vorhabenStore: VorhabenStateStore;
+  /** INT-2026-019: the one `load()` of the Vorhaben store — the reaper's guards and `bootWorkspace` wait for it. */
+  private vorhabenLoaded: Promise<{ existed: boolean; healthy: boolean }>;
   private vorhabenService: VorhabenService;
   private vorhabenHandler: VorhabenHandler;
   /** Sessions the user closed via cloud-terminal:close — their `closed` event carries closedBy:'user'. */
@@ -105,14 +107,29 @@ export class WebSocketHandler {
     this.projectManager = new ProjectManager();
     this.workflowExecutor = new WorkflowExecutor();
     this.fileHandler = fileHandler;
-    this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager());
+    // INT-2026-019 (AK-05, AK-07; AN-03): the store exists before the manager,
+    // whose boot-reap asks it whether a session worktree is the home of an open
+    // Vorhaben and reports sessions that ended while the backend was down. The
+    // guards only wait for this one file read (milliseconds); the boot order
+    // `whenReady()` → `vorhabenService.start()` in bootWorkspace is unchanged.
+    this.vorhabenStore = new VorhabenStateStore(getVorhabenStatePath());
+    this.vorhabenLoaded = this.vorhabenStore.load();
+    this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager(), undefined, undefined, {}, {
+      keepWorktree: async (worktreePath) => {
+        await this.vorhabenLoaded;
+        return this.vorhabenStore.hasOpenAssignmentIn(worktreePath);
+      },
+      sessionEnded: async (sessionId) => {
+        await this.vorhabenLoaded;
+        this.vorhabenStore.markSessionEnded(sessionId);
+      },
+    });
     this.planReviewOrchestrator = new PlanReviewOrchestrator(this.cloudTerminalManager);
     this.previewWatcher = new PreviewWatcher();
     this.previewWatcher.init();
     this.workspaceStore = new WorkspaceStateStore(getWorkspaceStatePath(), { pathKey, pathExists: (p: string): boolean => existsSync(p) });
     this.workspaceHandler = new WorkspaceHandler(this.workspaceStore, (m) => this.broadcast(m as WebSocketMessage));
     // INT-2026-004: Vorhaben view — reads intent/ of the open projects, broadcasts vorhaben:state.
-    this.vorhabenStore = new VorhabenStateStore(getVorhabenStatePath());
     this.vorhabenService = new VorhabenService({
       workspace: this.workspaceStore,
       store: this.vorhabenStore,
@@ -149,7 +166,7 @@ export class WebSocketHandler {
       }
       const pruned = this.workspaceStore.pruneSessionNames(new Set(live.map((s) => s.sessionId)));
       if (pruned > 0) console.log(`[WebSocket] workspace: pruned ${pruned} stale tab name(s)`);
-      const vh = await this.vorhabenStore.load();
+      const vh = await this.vorhabenLoaded;
       if (!vh.healthy) console.warn('[WebSocket] vorhaben state was unreadable — started empty (backup kept)');
       const t0 = Date.now();
       await this.vorhabenService.start();

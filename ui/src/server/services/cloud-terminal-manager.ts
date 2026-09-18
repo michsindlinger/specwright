@@ -249,6 +249,22 @@ function bufferTail(chunks: readonly string[], max: number): string {
  * - 'session.notice' (CloudTerminalSessionId, level: 'warn'|'info', message) - User-facing notice (e.g. worktree kept due to uncommitted changes, or started without worktree)
  * - 'session.agent-event' (CloudTerminalSessionId, event, { preview?, reason?, blockKind?, status, statusAt }) - Agent status changed (Claude Code hooks, keystrokes on a blocked session, idle decay). `stop` still drives the bell.
  * - 'session.hook-context' (CloudTerminalSessionId, { transcriptPath?, claudeSessionId?, cwd? }) - INT-2026-007: a hook reported (a new) transcript path / Claude session id
+ *
+ * Guards (INT-2026-019): two optional callbacks handed in at construction
+ * (`CloudTerminalGuards`), so the manager never has to know the Vorhaben
+ * service (AN-03).
+ * - `keepWorktree(path)` is asked before a clean session worktree is removed
+ *   in the boot-reap (dead registry entry without a survivor in that
+ *   directory) and in `shutdown()` for direct-spawn sessions — never on a
+ *   regular exit or `closeSession`. `true` keeps the directory (the home of an
+ *   open Vorhaben, AK-07). A throwing guard keeps it too; registry entry and
+ *   launch artifacts are removed regardless, so a broken guard cannot make an
+ *   entry re-reap on every boot.
+ * - `sessionEnded(sessionId, exitCode)` is called in the boot-reap when the
+ *   run script left an exit file: the inner command ended regularly while the
+ *   backend was down (`/exit`, error end) — the Vorhaben assignment is marked
+ *   ended, no resume (AK-05). A crash, `kill-server` or `kill-session` leaves
+ *   no exit file and stays "lost".
  */
 /**
  * Where the hook settings file and its shared secret live. Tests inject
@@ -260,6 +276,17 @@ export interface HookOptions {
   secretPath?: string;
   port?: number;
 }
+
+/** INT-2026-019: callbacks the boot-reap and shutdown consult (see the class comment, „Guards"). */
+export interface CloudTerminalGuards {
+  /** AK-07: may a clean session worktree be removed at boot-reap/shutdown? true = keep. */
+  keepWorktree?: (worktreePath: string) => Promise<boolean>;
+  /** AK-05: a tmux session ended regularly while the backend was down (exit file present). */
+  sessionEnded?: (sessionId: CloudTerminalSessionId, exitCode: number) => Promise<void>;
+}
+
+/** INT-2026-019: how boot-restore ended; a Vorhaben resume runs only after `'complete'`. */
+export type CloudTerminalRestoreOutcome = 'pending' | 'complete' | 'timeout';
 
 /**
  * Outcome of a {@link CloudTerminalManager.resizeSession} call.
@@ -318,6 +345,16 @@ export class CloudTerminalManager extends EventEmitter {
   private static readonly RESTORE_TIMEOUT_MS = 60_000;
 
   /**
+   * INT-2026-019: `'timeout'` when the watchdog fired while restores were still
+   * running (they continue in the background and may add sessions later);
+   * `'complete'` once every restore/reap has settled — also after a timeout.
+   */
+  private restoreOutcomeValue: CloudTerminalRestoreOutcome = 'pending';
+
+  /** INT-2026-019: guards for the boot-reap and shutdown (see class comment). */
+  private readonly guards: CloudTerminalGuards;
+
+  /**
    * `--settings` file handed to every claude-code session (Stop hook → agent
    * finished). Undefined when the hook could not be set up — sessions then
    * start without it and the bell stays silent (see claude-hooks.ts).
@@ -330,12 +367,14 @@ export class CloudTerminalManager extends EventEmitter {
     terminalManager: TerminalManager,
     tmux?: TmuxSessionBackend,
     registry?: CloudSessionRegistry,
-    hooks: HookOptions | null = {}
+    hooks: HookOptions | null = {},
+    guards: CloudTerminalGuards = {}
   ) {
     super();
     this.terminalManager = terminalManager;
     this.tmux = tmux ?? new TmuxSessionBackend();
     this.registry = registry ?? new CloudSessionRegistry(getSessionRegistryPath());
+    this.guards = guards;
 
     // Forward TerminalManager events to handle PTY output
     this.setupTerminalManagerListeners();
@@ -367,6 +406,24 @@ export class CloudTerminalManager extends EventEmitter {
   /** Resolves when boot-restore has settled. See {@link restoreReady}. */
   public whenReady(): Promise<void> {
     return this.restoreReady;
+  }
+
+  /** INT-2026-019: see {@link restoreOutcomeValue}. */
+  public restoreOutcome(): CloudTerminalRestoreOutcome {
+    return this.restoreOutcomeValue;
+  }
+
+  /**
+   * INT-2026-019: runs a guard; a rejection is logged and answered with
+   * `onError` (for `keepWorktree`: keep — never delete on a broken guard).
+   */
+  private async guard<T>(what: string, fn: () => Promise<T> | T, onError: T): Promise<T> {
+    try {
+      return await fn();
+    } catch (err) {
+      console.warn(`[CloudTerminalManager] guard ${what} failed:`, err instanceof Error ? err.message : err);
+      return onError;
+    }
   }
 
   /** Shared secret expected from the Stop hook; undefined while the hook is disabled. */
@@ -617,6 +674,7 @@ export class CloudTerminalManager extends EventEmitter {
 
   private startRestore(): Promise<void> {
     if (!this.tmux.isEnabled()) {
+      this.restoreOutcomeValue = 'complete';
       return Promise.resolve();
     }
     let timer: NodeJS.Timeout | undefined;
@@ -625,14 +683,20 @@ export class CloudTerminalManager extends EventEmitter {
         console.warn(
           `[CloudTerminalManager] boot-restore exceeded ${CloudTerminalManager.RESTORE_TIMEOUT_MS}ms — continuing with the sessions restored so far`
         );
+        if (this.restoreOutcomeValue === 'pending') this.restoreOutcomeValue = 'timeout';
         resolve();
       }, CloudTerminalManager.RESTORE_TIMEOUT_MS);
       // Do not keep the process alive just for this watchdog.
       timer.unref?.();
     });
-    const restore = this.restorePersistedSessions().catch((err) => {
-      console.error('[CloudTerminalManager] boot-restore failed (continuing without restored sessions):', err);
-    });
+    const restore = this.restorePersistedSessions()
+      .catch((err) => {
+        console.error('[CloudTerminalManager] boot-restore failed (continuing without restored sessions):', err);
+      })
+      .finally(() => {
+        // Also after a timeout: once the late restores settled, the map is complete again (INT-2026-019).
+        this.restoreOutcomeValue = 'complete';
+      });
     return Promise.race([restore, timeout]).finally(() => {
       if (timer) clearTimeout(timer);
     });
@@ -2030,6 +2094,11 @@ export class CloudTerminalManager extends EventEmitter {
    * A registry entry whose tmux session died while the backend was down:
    * treat like an exit that happened in absence — dispose the owned worktree,
    * remove launch artifacts, paste dir and the registry entry.
+   *
+   * INT-2026-019: the exit file (read before the artifacts go) tells a regular
+   * end apart from a crash → `guards.sessionEnded`; a clean worktree that is
+   * the home of an open Vorhaben stays (`guards.keepWorktree`, AK-07). Registry
+   * entry and artifacts are removed in every case (review E2).
    */
   private async reapDeadEntry(
     entry: PersistedCloudSessionV1,
@@ -2037,6 +2106,10 @@ export class CloudTerminalManager extends EventEmitter {
     handovers: Array<{ to: CloudTerminalSessionId; worktree: PersistedWorktreeV1 }>
   ): Promise<void> {
     console.log(`[CloudTerminalManager] reaping dead session ${entry.sessionId} (tmux session gone)`);
+    const code = await this.tmux.readExitCode(entry.sessionId);
+    if (code !== undefined) {
+      await this.guard('sessionEnded', () => this.guards.sessionEnded?.(entry.sessionId, code), undefined);
+    }
     if (entry.worktree) {
       const owned = rehydrateOwnedSessionWorktree(entry.worktree);
       if (owned) {
@@ -2047,6 +2120,8 @@ export class CloudTerminalManager extends EventEmitter {
         const survivor = survivingByCwd.get(pathKey(owned.worktreePath));
         if (survivor && survivor.sessionId !== entry.sessionId) {
           handovers.push({ to: survivor.sessionId, worktree: entry.worktree });
+        } else if (await this.guard('keepWorktree', () => this.guards.keepWorktree?.(owned.worktreePath) ?? false, true)) {
+          console.log(`[CloudTerminalManager] worktree kept (offenes Vorhaben): ${owned.worktreePath}`);
         } else {
           await removeCloudSessionWorktree(
             owned.mainProjectPath,
@@ -2202,8 +2277,18 @@ export class CloudTerminalManager extends EventEmitter {
 
     // tmux-backed sessions deliberately survive shutdown: their tmux session,
     // worktree, paste dir and registry entry are the restart-restore payload.
-    // Only direct-spawn sessions (which die with us anyway) get torn down.
-    const snapshot = [...this.sessions.values()].filter((s) => !s.tmuxSessionName);
+    // Only direct-spawn sessions (which die with us anyway) get torn down —
+    // INT-2026-019 (AK-07): except the worktree of an open Vorhaben, which
+    // stays like a user-owned one (a broken guard keeps it too).
+    const direct = [...this.sessions.values()].filter((s) => !s.tmuxSessionName);
+    const snapshot: ManagedCloudSession[] = [];
+    for (const session of direct) {
+      if (session.worktreeCleanup && (await this.guard('keepWorktree', () => this.guards.keepWorktree?.(session.effectiveCwd) ?? false, true))) {
+        console.log(`[CloudTerminalManager] worktree kept (offenes Vorhaben): ${session.effectiveCwd}`);
+        continue;
+      }
+      snapshot.push(session);
+    }
     await Promise.allSettled(snapshot.map((session) => this.disposeSessionWorktree(session)));
 
     for (const session of this.sessions.values()) {

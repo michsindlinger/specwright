@@ -14,7 +14,8 @@ vi.mock('../../src/server/utils/cloud-session-worktree.js', async (importOrigina
   };
 });
 
-import { CloudTerminalManager } from '../../src/server/services/cloud-terminal-manager.js';
+import { CloudTerminalManager, type CloudTerminalGuards } from '../../src/server/services/cloud-terminal-manager.js';
+import { VorhabenStateStore } from '../../src/server/services/vorhaben-state.js';
 import { CLOUD_TERMINAL_CONFIG } from '../../src/shared/types/cloud-terminal.protocol.js';
 import {
   CloudSessionRegistry,
@@ -124,13 +125,21 @@ describe('CloudTerminalManager boot-restore', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  function makeManager(): CloudTerminalManager {
+  function makeManager(guards?: CloudTerminalGuards): CloudTerminalManager {
     return new CloudTerminalManager(
       terminal as never,
       tmux as unknown as TmuxSessionBackend,
-      registry
+      registry,
+      {},
+      guards
     );
   }
+
+  const deadWithWorktree = (id = 'dead', wt = '/tmp/project-worktrees/session-dead'): PersistedCloudSessionV1 =>
+    persisted(id, {
+      effectiveCwd: wt,
+      worktree: { worktreePath: wt, branchName: 'session/dead', mainProjectPath: '/tmp/project', seededClaudeConfig: [] },
+    });
 
   it('restores a live entry: session in map, buffer seeded, attach spawned, occupancy re-established', async () => {
     await registry.upsert(persisted('s1', { effectiveCwd: '/tmp/project-worktrees/session-s1' }));
@@ -272,6 +281,159 @@ describe('CloudTerminalManager boot-restore', () => {
     expect(persistedAlive?.worktree).toMatchObject({ worktreePath: wt, branchName: 'session/dead' });
     expect(rehydrateOwnedSessionWorktree(persistedAlive!.worktree!)).toBeDefined();
     expect((await registry.load()).entries.some((e) => e.sessionId === 'dead')).toBe(false);
+  });
+
+  describe('INT-2026-019: guards of the boot-reap (AK-05, AK-07)', () => {
+    it('keepWorktree true → removeCloudSessionWorktree not called, artifacts cleaned, registry entry removed; false → removed as before', async () => {
+      await registry.upsert(deadWithWorktree());
+      const keep = vi.fn(async () => true);
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      let manager = makeManager({ keepWorktree: keep });
+      await manager.whenReady();
+      expect(keep).toHaveBeenCalledWith('/tmp/project-worktrees/session-dead');
+      expect(vi.mocked(removeCloudSessionWorktree)).not.toHaveBeenCalled();
+      expect(tmux.cleanedArtifacts).toContain('dead');
+      expect((await registry.load()).entries).toEqual([]);
+      expect(log).toHaveBeenCalledWith('[CloudTerminalManager] worktree kept (offenes Vorhaben): /tmp/project-worktrees/session-dead');
+      expect(manager.restoreOutcome()).toBe('complete');
+      log.mockRestore();
+
+      await registry.upsert(deadWithWorktree());
+      tmux.cleanedArtifacts = [];
+      manager = makeManager({ keepWorktree: async () => false });
+      await manager.whenReady();
+      expect(vi.mocked(removeCloudSessionWorktree)).toHaveBeenCalledTimes(1);
+      expect(tmux.cleanedArtifacts).toContain('dead');
+      expect((await registry.load()).entries).toEqual([]);
+    });
+
+    it('keepWorktree throws → kept (never delete on a broken guard), warn logged, registry entry still removed (review E2)', async () => {
+      await registry.upsert(deadWithWorktree());
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const manager = makeManager({ keepWorktree: async () => { throw new Error('store kaputt'); } });
+      await manager.whenReady();
+      expect(vi.mocked(removeCloudSessionWorktree)).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('guard keepWorktree failed'), 'store kaputt');
+      expect(tmux.cleanedArtifacts).toContain('dead');
+      expect((await registry.load()).entries).toEqual([]);
+      warn.mockRestore();
+    });
+
+    it('a survivor in the worktree → handover as before, the guard is not asked', async () => {
+      const wt = '/tmp/project-worktrees/session-dead';
+      await registry.upsert(deadWithWorktree('dead', wt));
+      await registry.upsert(persisted('alive', { effectiveCwd: wt }));
+      tmux.liveSessions.add('cs-alive');
+      const keep = vi.fn(async () => true);
+      const manager = makeManager({ keepWorktree: keep });
+      await manager.whenReady();
+      expect(keep).not.toHaveBeenCalled();
+      expect(vi.mocked(removeCloudSessionWorktree)).not.toHaveBeenCalled();
+      expect((await registry.load()).entries.find((e) => e.sessionId === 'alive')?.worktree?.worktreePath).toBe(wt);
+    });
+
+    it('exit file present → sessionEnded(id, code) before the artifacts go; absent → not called', async () => {
+      await registry.upsert(persisted('dead'));
+      tmux.exitCodeResult = 0;
+      const order: string[] = [];
+      const ended = vi.fn(async (id: string, code: number) => { order.push(`ended:${id}:${code}:${tmux.cleanedArtifacts.length}`); });
+      let manager = makeManager({ sessionEnded: ended });
+      await manager.whenReady();
+      expect(ended).toHaveBeenCalledWith('dead', 0);
+      // Called while the artifacts (incl. the exit file) still exist.
+      expect(order).toEqual(['ended:dead:0:0']);
+      expect(tmux.cleanedArtifacts).toContain('dead');
+
+      await registry.upsert(persisted('crashed'));
+      tmux.exitCodeResult = undefined;
+      ended.mockClear();
+      manager = makeManager({ sessionEnded: ended });
+      await manager.whenReady();
+      expect(ended).not.toHaveBeenCalled();
+
+      // A throwing sessionEnded is logged and ignored; the reap continues.
+      await registry.upsert(persisted('dead2'));
+      tmux.exitCodeResult = 1;
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      manager = makeManager({ sessionEnded: async () => { throw new Error('nope'); } });
+      await manager.whenReady();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('guard sessionEnded failed'), 'nope');
+      expect((await registry.load()).entries).toEqual([]);
+      warn.mockRestore();
+    });
+
+    it('closures as wired in websocket.ts: exit file → markSessionEnded → hasOpenAssignmentIn false → worktree removed; no exit file → kept', async () => {
+      const wt = '/tmp/project-worktrees/session-dead';
+      const store = new VorhabenStateStore(join(dir, 'vorhaben-3001.json'), { port: 3001 });
+      const loaded = store.load();
+      store.setAssignment('p', 'INT-2026-019', { sessionId: 'dead', step: 'build', model: 'opus', cwd: wt, at: '2026-09-17T10:00:00Z' });
+      const guards: CloudTerminalGuards = {
+        keepWorktree: async (p) => { await loaded; return store.hasOpenAssignmentIn(p); },
+        sessionEnded: async (id) => { await loaded; store.markSessionEnded(id); },
+      };
+      // (a) crash: no exit file → the assignment stays open → the worktree is kept.
+      await registry.upsert(deadWithWorktree('dead', wt));
+      let manager = makeManager(guards);
+      await manager.whenReady();
+      expect(vi.mocked(removeCloudSessionWorktree)).not.toHaveBeenCalled();
+      expect(store.getAssignment('p', 'INT-2026-019')?.ended).toBeUndefined();
+      // (b) `/exit` while the backend was down: exit file → ended → removed like a regular end (AK-05, O2).
+      await registry.upsert(deadWithWorktree('dead', wt));
+      tmux.exitCodeResult = 0;
+      manager = makeManager(guards);
+      await manager.whenReady();
+      expect(store.getAssignment('p', 'INT-2026-019')?.ended).toBe(true);
+      expect(vi.mocked(removeCloudSessionWorktree)).toHaveBeenCalledTimes(1);
+      await store.flush();
+    });
+
+    it('first boot: the guard blocks the reap until the store is loaded; whenReady resolves after it (review E8/E11)', async () => {
+      await registry.upsert(deadWithWorktree());
+      let resolve!: (v: boolean) => void;
+      const deferred = new Promise<boolean>((r) => (resolve = r));
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const manager = makeManager({ keepWorktree: () => deferred });
+      let ready = false;
+      void manager.whenReady().then(() => (ready = true));
+      await new Promise((r) => setTimeout(r, 20));
+      expect(manager.restoreOutcome()).toBe('pending');
+      expect(ready).toBe(false);
+      expect(vi.mocked(removeCloudSessionWorktree)).not.toHaveBeenCalled();
+      expect((await registry.load()).entries.map((e) => e.sessionId)).toEqual(['dead']);
+      resolve(true);
+      await manager.whenReady();
+      expect(ready).toBe(true);
+      expect(manager.restoreOutcome()).toBe('complete');
+      expect(vi.mocked(removeCloudSessionWorktree)).not.toHaveBeenCalled();
+      expect((await registry.load()).entries).toEqual([]);
+      expect(log).toHaveBeenCalledWith(expect.stringContaining('boot-restore complete'));
+      log.mockRestore();
+    });
+
+    it('restoreOutcome: pending before whenReady, complete after; timeout when the watchdog fires, complete once the late restore settles', async () => {
+      vi.useFakeTimers();
+      try {
+        let release!: () => void;
+        const gate = new Promise<void>((r) => (release = r));
+        tmux.listSessions = async () => { await gate; return new Set<string>(); };
+        await registry.upsert(persisted('slow'));
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const manager = makeManager();
+        expect(manager.restoreOutcome()).toBe('pending');
+        await vi.advanceTimersByTimeAsync(60_001);
+        await manager.whenReady();
+        expect(manager.restoreOutcome()).toBe('timeout');
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('boot-restore exceeded'));
+        release();
+        // The late restore finishes on real I/O (registry write) — poll with real timers.
+        vi.useRealTimers();
+        for (let i = 0; i < 100 && manager.restoreOutcome() !== 'complete'; i++) await new Promise((r) => setTimeout(r, 10));
+        expect(manager.restoreOutcome()).toBe('complete');
+        warn.mockRestore();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   it('kills orphaned cs-* sessions only when the registry is healthy', async () => {

@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
-import { existsSync } from 'fs';
+import { existsSync, realpathSync } from 'fs';
 import { execSync } from 'child_process';
 import { EventEmitter } from 'events';
 import { join, basename } from 'path';
@@ -533,6 +533,40 @@ describe('CloudTerminalManager per-session worktree wiring', () => {
     // Public metadata keeps the main project path, not the worktree.
     expect(session.projectPath).toBe(repo.projectPath);
     await mgr.shutdown();
+  });
+
+  it('INT-2026-019 (AK-07): shutdown() keeps the session worktree of an open Vorhaben (guard true, or guard throws) and removes it otherwise', async () => {
+    // Direct spawn (tmux off): shutdown tears the session down — that is where the guard is asked.
+    const tmuxOff = { isEnabled: () => false, logAvailability(): void {}, availability: () => 'disabled-by-flag', cleanupSessionArtifacts: async (): Promise<void> => {} } as never;
+    const target = { sessionTarget: { target: { kind: 'new-worktree' as const }, explicit: true } };
+    const start = async (keepWorktree: (p: string) => Promise<boolean>) => {
+      const fake = new FakeTerminalManager();
+      const mgr = new CloudTerminalManager(fake as never, tmuxOff, undefined, {}, { keepWorktree });
+      await mgr.createSession(repo.projectPath, 'claude-code', { model: 'x' }, undefined, undefined, undefined, undefined, undefined, target);
+      return { mgr, cwd: fake.lastSpawn!.cwd };
+    };
+    const keep = vi.fn(async () => true);
+    const a = await start(keep);
+    await a.mgr.shutdown();
+    expect(keep).toHaveBeenCalledTimes(1);
+    // `effectiveCwd` is pathKey-normalised (realpath), the spawn cwd is not.
+    expect(keep.mock.calls[0]![0]).toBe(realpathSync(a.cwd));
+    expect(existsSync(a.cwd)).toBe(true);
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const b = await start(async () => { throw new Error('store kaputt'); });
+    await b.mgr.shutdown();
+    expect(existsSync(b.cwd)).toBe(true);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('guard keepWorktree failed'), 'store kaputt');
+    warn.mockRestore();
+
+    const c = await start(async () => false);
+    await c.mgr.shutdown();
+    expect(existsSync(c.cwd)).toBe(false);
+    const list = execSync('git worktree list', { cwd: repo.projectPath, encoding: 'utf-8' });
+    expect(list).toContain(basename(a.cwd));
+    expect(list).toContain(basename(b.cwd));
+    expect(list).not.toContain(basename(c.cwd));
   });
 
   it('shell terminal ignores isolateInWorktree → stays in the main project dir', async () => {
