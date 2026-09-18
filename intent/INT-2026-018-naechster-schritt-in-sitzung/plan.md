@@ -1,7 +1,7 @@
 # Plan: UI: Nächster Schritt startet in der fertigen Sitzung — /clear, dann Befehl
 
 > **Intent:** `intent.md` (INT-2026-018) · **Spec:** entfällt (bypass: Größe S, eine Freigabe-Regel im Backend, ein Startweg über den vorhandenen gesicherten Schreibpfad, Hinweistext im Kasten; kein neues Datenobjekt)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt
 > **Erstellt:** 2026-09-18 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-18 — im Chat: „freigabe, O1 wie vorgeschlagen"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `d26e26e`), `CLAUDE.md`, `docs/security.md`
 
@@ -545,15 +545,15 @@ Kein Datenlauf auf Bestandsdaten, keine Freigabe je Umgebung: die Zuordnungsdate
 
 <!-- leser: agent -->
 
-- [ ] Jedes AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Screenshots A–D (Mac und Handy) in der PR.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit; lokal bleibt `terminal-io.test.ts` bekannt rot).
-- [ ] `docs/architecture.md` §2/§3/Änderungsprotokoll und `docs/design.md` angepasst (Abschnitt 3 „Nein", Konvention).
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert; Probe Schritt 0 als Zeile in §14.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
-- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte „PO-Entscheidung FA-12 …" → `✅ Erledigt`, PR-Link, Stand, Verweis auf `intent/INT-2026-018-naechster-schritt-in-sitzung/`); Nachziehen in eigener Sitzung.
+- [x] Jedes AK aus Abschnitt 8 hat einen grünen Test (Reader 46, Service 21 neu + 72 bestehend, dialog-driver 18, Frontend 7 neu + bestehende).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert (#1–#10, `userClosedSessionIds` = 0).
+- [x] E2E-Pfad läuft (Abschnitt 8): Protokoll und Screenshots A–E (Mac und Handy) unter `design/`.
+- [x] `verify: OK` lokal (47 s), Ausgabe im PR — PR-Checks stehen aus (CI ist die Wahrheit).
+- [x] `docs/architecture.md` §2/§3/Änderungsprotokoll und `docs/design.md` angepasst (kein ADR, Abschnitt 3 „Nein").
+- [x] Manuelle Schritte (Abschnitt 10): O1 und Probe erledigt, Merge und Prüfung nach dem Deploy offen; Probe als Zeile in §14.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (6 Zeilen).
+- [x] 2x-Regel-Check: kein Fehler aus der Liste wiederholt; ein neuer Vorschlag für `CLAUDE.md` steht im PR (Bildschirm-Merkmale je Claude-Code-Version).
+- [x] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte „PO-Entscheidung FA-12 …" → `✅ Erledigt`, PR-Link, Stand, Verweis auf `intent/INT-2026-018-naechster-schritt-in-sitzung/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
 
