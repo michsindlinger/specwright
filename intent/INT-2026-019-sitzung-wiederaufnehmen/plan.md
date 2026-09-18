@@ -1,7 +1,7 @@
 # Plan: UI: Verlorene Sitzung eines Vorhabens beim Öffnen wieder aufnehmen
 
 > **Intent:** `intent.md` (INT-2026-019) · **Spec:** entfällt (bypass: Größe S, eine Wiederaufnahme-Regel über den vorhandenen Startpfad, eine Schutzregel im Aufräumer, Felder in der Zuordnung)
-> **Status:** umgesetzt
+> **Status:** umgesetzt — Merge PR #77 (`286727f`), 2026-09-18
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-18 — im Chat: „freigabe, O1 und O2 wie vorgeschlagen"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `960c22e`), `CLAUDE.md`, `docs/security.md`
 
@@ -357,7 +357,7 @@ Entfällt.
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
 | AN-01 belegen: Port prüfen (`lsof -nP -iTCP:3111 -sTCP:LISTEN` leer), Branch-Backend `cd ui && PORT=3111 npm run dev:backend` (`PORT` wird in `ui/src/server/index.ts:12` gelesen) mit Scratch-Projekt, Sitzung starten, Frage stellen, tmux-Server des Test-Backends killen (`tmux -S <getTmuxSocketPath(), ui/src/server/utils/runtime-paths.ts:126-128: …/specwright-3111.sock> kill-server` — nur dieser Socket), prüfen, dass **keine** Exit-Datei entstand (`ls <runtime>/…/exit-*` laut `tmux-session-backend.ts` `exitCodePath`), im selben Verzeichnis `claude --resume <claudeSessionId aus <runtime>/sessions-3111.json>` — Gespräch sichtbar, Hook meldet dieselbe `session_id`; Ergebnis als Protokollzeile im PR | Agent in der Bausitzung | vor dem ersten Commit | [x] 2026-09-18, Protokoll im PR (Abweichung 1 in §14: Probe direkt mit tmux + CLI) |
-| Merge des PR nach `main` — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`docs/architecture.md` §5, Gate `GET /api/status/deploy-readiness`); kein weiterer Deploy-Schritt, kein Secret, kein Flag | Michael | nach CI grün | [ ] |
+| Merge des PR nach `main` — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`docs/architecture.md` §5, Gate `GET /api/status/deploy-readiness`); kein weiterer Deploy-Schritt, kein Secret, kein Flag | Michael | nach CI grün | [x] 2026-09-18, PR #77 (`286727f`) |
 | Nach dem Deploy: einmal die Vorhaben-Übersicht öffnen und die Backend-Logzeile `vorhaben: … Kennungen nachgetragen` prüfen (Backfill für laufende Sitzungen) | Michael | nach Deploy | [ ] |
 | O1 und O2 entscheiden (siehe „Was musst du entscheiden?") | Michael | vor Freigabe | [x] 2026-09-18, wie vorgeschlagen |
 
