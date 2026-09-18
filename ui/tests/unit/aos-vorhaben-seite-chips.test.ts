@@ -17,7 +17,7 @@ vi.mock('../../frontend/src/gateway.js', () => ({
 }));
 vi.mock('../../frontend/src/utils/mermaid-render.js', () => ({ renderMermaidDiagrams: vi.fn(async () => undefined) }));
 
-const startStep = vi.fn(async () => ({ sessionId: 'cs-9' }));
+const startStep = vi.fn(async () => ({ sessionId: 'cs-9', modus: 'neu' as const }));
 const send = vi.fn(async () => ({ ok: true, entry: { anzahl: 0 } }));
 const modelList = vi.fn(async () => ({
   providers: [{ id: 'anthropic', name: 'Anthropic', models: [{ id: 'opus', name: 'Opus', providerId: 'anthropic' }, { id: 'sonnet', name: 'Sonnet', providerId: 'anthropic' }] }],
@@ -134,6 +134,26 @@ describe('aos-vorhaben-seite — action bar (FA-21, FA-22)', () => {
     busy.remove();
     const frei = await seite(row());
     expect(frei.shadowRoot!.querySelector('.aktionen aos-naechster-schritt')!.gesperrt).toBe(false);
+    frei.remove();
+  });
+
+  it('INT-2026-018 (AK-02, AK-07): the page passes sperre and sitzung of the next step through to the box', async () => {
+    const locked = await seite(row({ zustand: 'wartet', sessionBusy: true, nextStep: { step: 'spec', command: '/specwright:spec INT-2026-004', label: 'Spec schreiben', sperre: 'gleiche_phase' }, session: { id: 's1', name: 'spec INT-2026-004', model: 'opus', agentStatus: 'done', step: 'spec' } }));
+    const nsL = locked.shadowRoot!.querySelector('.aktionen aos-naechster-schritt')!;
+    expect(nsL.gesperrt).toBe(true);
+    expect(nsL.sperre).toBe('gleiche_phase');
+    expect(nsL.sitzung).toBeUndefined();
+    await settle(nsL);
+    expect(nsL.shadowRoot!.querySelector('.sperre')?.textContent).toContain('gehört schon zu diesem Schritt');
+    locked.remove();
+    const sitzung = { id: 's1', name: 'intent INT-2026-004', model: { providerId: 'anthropic', modelId: 'sonnet' }, target: { kind: 'main' as const } };
+    const frei = await seite(row({ zustand: 'wartet', sessionBusy: false, nextStep: { step: 'spec', command: '/specwright:spec INT-2026-004', label: 'Spec schreiben', sitzung }, session: { id: 's1', name: 'intent INT-2026-004', model: 'sonnet', agentStatus: 'done', step: 'intent', provider: 'anthropic', target: { kind: 'main' } } }));
+    const nsF = frei.shadowRoot!.querySelector('.aktionen aos-naechster-schritt')!;
+    expect(nsF.gesperrt).toBe(false);
+    expect(nsF.sperre).toBeNull();
+    expect(nsF.sitzung).toEqual(sitzung);
+    await settle(nsF);
+    expect(nsF.shadowRoot!.querySelector('.text')?.textContent?.replace(/\s+/g, ' ')).toContain("in der laufenden Sitzung ‚intent INT-2026-004'");
     frei.remove();
   });
 

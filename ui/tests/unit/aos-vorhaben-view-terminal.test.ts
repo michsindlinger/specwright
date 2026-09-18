@@ -250,6 +250,11 @@ describe('aos-vorhaben-view — started step stays on the page (FA-22, AN-S03)',
     expect(toasts).toEqual(['Sitzung gestartet']);
     expect(navigate).not.toHaveBeenCalled();
     expect(el.querySelector('aos-vorhaben-seite')).not.toBeNull();
+    // INT-2026-018 (AK-04/AK-05): the toast says what the click did
+    el.querySelector('aos-vorhaben-seite')!.dispatchEvent(new CustomEvent('vorhaben-session-started', { bubbles: true, composed: true, detail: { sessionId: 'cloud-1-2', step: 'plan', intentId: 'INT-2026-003', modus: 'in_sitzung' } }));
+    el.querySelector('aos-vorhaben-seite')!.dispatchEvent(new CustomEvent('vorhaben-session-started', { bubbles: true, composed: true, detail: { sessionId: 'cloud-1-3', step: 'plan', intentId: 'INT-2026-003', modus: 'neu', geschlossen: 'cloud-1-2' } }));
+    await settle(el);
+    expect(toasts.slice(1)).toEqual(['Nächster Schritt in der laufenden Sitzung gestartet', 'Sitzung gestartet — die vorige wurde geschlossen']);
     el.remove();
   });
 

@@ -5,16 +5,24 @@
  * `model-wahl.ts`) and the target (project or an existing worktree, new
  * worktree — the picker's data, V-14) and the start button (FA-35, mock 03b).
  * INT-2026-010 (FA-21): always shown on the Vorhaben page; `gesperrt` greys
- * the button out while a session of the Vorhaben works or waits.
+ * the button out. INT-2026-018: `sperre` names the reason (backend rule,
+ * `NEXT_STEP_SPERRE_TEXT`); `sitzung` is the live session the click continues
+ * in (`/clear`, then the command) — the box preselects its model and target
+ * (O1) and announces what the click will do: continue there, or start a new
+ * session and close it when model or target differ (AK-07). The box never
+ * decides — it only compares its own selection with what the backend said.
  */
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { vorhabenService, type ModelListInfo } from '../../services/vorhaben.service.js';
-import { istSchrittStandard, ladeModelle, vorauswahl } from './model-wahl.js';
-import { stepCommand, type ModelSelection, type VorhabenStep } from '../../../../src/shared/types/vorhaben.protocol.js';
+import { istSchrittStandard, ladeModelle, modellVorhanden, vorauswahl } from './model-wahl.js';
+import { NEXT_STEP_SPERRE_TEXT, stepCommand, type ModelSelection, type VorhabenNextStep, type VorhabenNextStepSperre, type VorhabenStep } from '../../../../src/shared/types/vorhaben.protocol.js';
 import type { CloudTerminalSessionTarget, CloudTerminalWorktreeEntry } from '../../../../src/shared/types/cloud-terminal.protocol.js';
 import '../model-selector.js';
+
+/** Today's sentence for a locked box without a reason (older backend). */
+const SPERRE_FALLBACK = 'Sitzung arbeitet oder wartet — erst danach kann der nächste Schritt starten';
 
 const STEP_TEXT: Record<VorhabenStep, string> = {
   intent: 'Absicht beginnen',
@@ -40,6 +48,10 @@ export class AosNaechsterSchritt extends LitElement {
   @property({ type: Boolean }) compact = false;
   /** INT-2026-010 (FA-21): a session of the Vorhaben works or waits — the button is disabled with a hint. */
   @property({ type: Boolean, reflect: true }) gesperrt = false;
+  /** INT-2026-018 (AK-02): why the button is locked (`nextStep.sperre`); null = no reason known. */
+  @property({ attribute: false }) sperre: VorhabenNextStepSperre | null = null;
+  /** INT-2026-018 (AK-07): the live session the click continues in when model and target match (`nextStep.sitzung`). */
+  @property({ attribute: false }) sitzung: VorhabenNextStep['sitzung'] | undefined = undefined;
 
   @state() private models: ModelListInfo | null = null;
   @state() private selected: ModelSelection | null = null;
@@ -49,6 +61,15 @@ export class AosNaechsterSchritt extends LitElement {
   @state() private target = 'main';
   @state() private starting = false;
   @state() private error = '';
+  /**
+   * INT-2026-018 (review E3): the session's worktree when the target list does
+   * not know it (created after the list was loaded, or not a git worktree of
+   * this repo) — offered as its own option so the preselection never falls
+   * back to „Im Projekt" silently.
+   */
+  @state() private extraWorktree: string | null = null;
+  /** INT-2026-018 (review F11): `${step}|${sitzung.id}` of the last preselection — every broadcast brings new row objects. */
+  private vorbelegtFuer: string | null = null;
 
   static override styles = css`
     :host {
@@ -140,7 +161,11 @@ export class AosNaechsterSchritt extends LitElement {
 
   protected override willUpdate(changed: PropertyValues<this>): void {
     if (changed.has('projectPath') && this.projectPath) void this.loadTargets();
-    if ((changed.has('lastModel') || changed.has('step')) && this.models) this.preselect();
+    // INT-2026-018: preselect once per (step, session) — not on every broadcast (F11); without a session as before (FA-40).
+    const key = `${this.step}|${this.sitzung?.id ?? ''}`;
+    const neu = changed.has('sitzung') || changed.has('step') ? key !== this.vorbelegtFuer : false;
+    if (neu && this.sitzung && this.sitzung.target.kind === 'existing-worktree') void this.ensureTargetOption(this.sitzung.target.path);
+    if ((neu || (changed.has('lastModel') && !this.sitzung)) && this.models) this.preselect();
   }
 
   private async loadModels(): Promise<void> {
@@ -164,10 +189,36 @@ export class AosNaechsterSchritt extends LitElement {
     }
   }
 
-  /** FA-40: last model of (Vorhaben, step) → step default → general default (`model-wahl.ts`). */
+  /** E3: the session's worktree must be selectable — reload the list, and add the path as an option when it is still missing. */
+  private async ensureTargetOption(path: string): Promise<void> {
+    if (this.worktrees.some((w) => w.path === path)) return;
+    await this.loadTargets();
+    this.extraWorktree = this.worktrees.some((w) => w.path === path) ? null : path;
+  }
+
+  /**
+   * FA-40: last model of (Vorhaben, step) → step default → general default
+   * (`model-wahl.ts`). INT-2026-018 (O1): with a live session its model and
+   * target come first, so the plain click is „/clear, dann Befehl".
+   */
   private preselect(): void {
     if (!this.models) return;
+    this.vorbelegtFuer = `${this.step}|${this.sitzung?.id ?? ''}`;
+    if (this.sitzung) {
+      this.selected = modellVorhanden(this.models, this.sitzung.model) ? this.sitzung.model : vorauswahl(this.models, this.step, this.lastModel);
+      this.target = this.sitzung.target.kind === 'existing-worktree' ? this.sitzung.target.path : 'main';
+      return;
+    }
     this.selected = vorauswahl(this.models, this.step, this.lastModel);
+  }
+
+  /** AK-07: the selection equals the live session (provider, model, target) → the click continues in it. */
+  private gleich(): boolean {
+    const s = this.sitzung;
+    if (!s || !this.selected) return false;
+    if (s.model.providerId !== this.selected.providerId || s.model.modelId !== this.selected.modelId) return false;
+    const sessionTarget = s.target.kind === 'existing-worktree' ? s.target.path : s.target.kind === 'main' ? 'main' : 'new';
+    return sessionTarget === this.target;
   }
 
   private onModel(e: CustomEvent<{ providerId: string; modelId: string }>): void {
@@ -186,12 +237,12 @@ export class AosNaechsterSchritt extends LitElement {
     this.starting = true;
     this.error = '';
     try {
-      const { sessionId } = await vorhabenService.startStep(this.projectId, this.intentId || undefined, this.step, this.selected, this.sessionTarget());
+      const { sessionId, modus, geschlossen } = await vorhabenService.startStep(this.projectId, this.intentId || undefined, this.step, this.selected, this.sessionTarget());
       this.dispatchEvent(
-        new CustomEvent<{ sessionId: string; step: VorhabenStep; intentId?: string }>('vorhaben-session-started', {
+        new CustomEvent<{ sessionId: string; step: VorhabenStep; intentId?: string; modus: 'neu' | 'in_sitzung'; geschlossen?: string }>('vorhaben-session-started', {
           bubbles: true,
           composed: true,
-          detail: { sessionId, step: this.step, ...(this.intentId ? { intentId: this.intentId } : {}) },
+          detail: { sessionId, step: this.step, ...(this.intentId ? { intentId: this.intentId } : {}), modus, ...(geschlossen ? { geschlossen } : {}) },
         })
       );
     } catch (err) {
@@ -206,12 +257,22 @@ export class AosNaechsterSchritt extends LitElement {
     return istSchrittStandard(this.models, this.step, this.selected, this.lastModel) ? ` (Standard ${STEP_TEXT[this.step].split(' ')[0]})` : '';
   }
 
+  /** AK-07: what the click will do — continue in the live session, or start a new one and close it; without a session today's sentence. */
+  private ankuendigung(command: string) {
+    const s = this.sitzung;
+    if (s && this.gleich()) return html`startet in der laufenden Sitzung ‚${s.name}': <code>/clear</code>, dann <code>${command}</code>`;
+    if (s) return html`startet eine neue Sitzung mit <code>${command}</code>${this.modelLabel()} — die laufende ‚${s.name}' wird geschlossen`;
+    return html`startet eine Sitzung mit <code>${command}</code>${this.modelLabel()}`;
+  }
+
   override render() {
     const label = this.label || STEP_TEXT[this.step];
     const command = this.command || stepCommand(this.step, this.intentId || undefined);
+    const sperreText = this.sperre ? NEXT_STEP_SPERRE_TEXT[this.sperre] : SPERRE_FALLBACK;
+    const extra = this.extraWorktree && !this.worktrees.some((w) => w.path === this.extraWorktree) ? this.extraWorktree : null;
     return html`<div class="kasten">
       <span class="text">
-        ${this.compact ? nothing : html`<strong>Nächster Schritt:</strong> ${label} — `}startet eine Sitzung mit <code>${command}</code>${this.modelLabel()}
+        ${this.compact ? nothing : html`<strong>Nächster Schritt:</strong> ${label} — `}${this.ankuendigung(command)}
       </span>
       <div class="wahl">
         ${this.models
@@ -225,11 +286,12 @@ export class AosNaechsterSchritt extends LitElement {
         <select aria-label="Arbeitskopie" @change=${(e: Event) => (this.target = (e.target as HTMLSelectElement).value)}>
           <option value="main" ?selected=${this.target === 'main'}>Im Projekt</option>
           ${this.worktrees.filter((w) => !w.isProjectRoot).map((w) => html`<option value=${w.path} ?selected=${this.target === w.path}>Worktree ${w.branch ?? w.name}</option>`)}
+          ${extra ? html`<option value=${extra} ?selected=${this.target === extra}>Worktree ${extra.split('/').pop()}</option>` : nothing}
           ${this.isGitRepo && this.worktreeCreationEnabled ? html`<option value="new" ?selected=${this.target === 'new'}>Neuer Worktree</option>` : nothing}
         </select>
-        <button type="button" class="start" ?disabled=${!this.selected || this.starting || this.gesperrt} title=${this.gesperrt ? 'Sitzung arbeitet oder wartet' : ''} @click=${this.start}>${this.starting ? 'Startet …' : label}</button>
+        <button type="button" class="start" ?disabled=${!this.selected || this.starting || this.gesperrt} title=${this.gesperrt ? sperreText : ''} @click=${this.start}>${this.starting ? 'Startet …' : label}</button>
       </div>
-      ${this.gesperrt ? html`<div class="sperre">Sitzung arbeitet oder wartet — erst danach kann der nächste Schritt starten.</div>` : nothing}
+      ${this.gesperrt ? html`<div class="sperre">${sperreText}.</div>` : nothing}
       ${this.error ? html`<div class="fehler">${this.error}</div>` : nothing}
     </div>`;
   }

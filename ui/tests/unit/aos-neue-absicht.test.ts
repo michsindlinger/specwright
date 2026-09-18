@@ -16,7 +16,7 @@ vi.mock('../../frontend/src/gateway.js', () => ({
   gateway: { send: vi.fn(), on: vi.fn(), off: vi.fn(), getConnectionStatus: () => false, isConnecting: () => false, getProjectPath: vi.fn() },
 }));
 
-const startStep = vi.fn(async () => ({ sessionId: 'cs-9' }));
+const startStep = vi.fn(async () => ({ sessionId: 'cs-9', modus: 'neu' as const }));
 const pasteAbsichtBild = vi.fn(async (_projectId: string, _base64: string, _mimeType: string) => ({ absolutePath: '/rt/intent-paste/img-1.png' }));
 const models = {
   providers: [
@@ -185,6 +185,11 @@ describe('aos-naechster-schritt gesperrt (FA-21) and model-wahl', () => {
     start.click();
     await settle(el);
     expect(startStep).not.toHaveBeenCalled();
+    // INT-2026-018 (AK-02): with a reason from the backend the hint names it
+    el.sperre = 'arbeitet';
+    await settle(el);
+    expect(sr.querySelector('.sperre')?.textContent).toBe('Sitzung arbeitet — erst danach kann der nächste Schritt starten.');
+    el.sperre = null;
     el.gesperrt = false;
     await settle(el);
     expect((sr.querySelector('button.start') as HTMLButtonElement).disabled).toBe(false);
