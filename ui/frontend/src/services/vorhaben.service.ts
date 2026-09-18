@@ -163,8 +163,9 @@ export class VorhabenClientService {
     model: ModelSelection | undefined,
     sessionTarget?: CloudTerminalSessionTarget,
     opts: { firstInput?: string } = {}
-  ): Promise<{ sessionId: string }> {
-    return this.request<{ sessionId: string }>('vorhaben:step-started', {
+  ): Promise<{ sessionId: string; modus: 'neu' | 'in_sitzung'; geschlossen?: string }> {
+    // INT-2026-018: `modus` = in_sitzung when the click continued in the live session; `geschlossen` = the session closed for a new one.
+    return this.request<{ sessionId: string; modus: 'neu' | 'in_sitzung'; geschlossen?: string }>('vorhaben:step-started', {
       type: 'vorhaben:start-step',
       projectId,
       ...(intentId ? { intentId } : {}),

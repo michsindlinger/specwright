@@ -31,6 +31,7 @@ import { buildAenderungenText, buildFreigabeText, formatStandLabel, normalizeAnm
 import {
   designDirOf,
   docPathOf,
+  deriveNextStepSperre,
   mergeCandidates,
   nodeReaderFs,
   scanCopy,
@@ -42,7 +43,7 @@ import {
   type VorhabenCandidate,
 } from './vorhaben-reader.js';
 import { VorhabenWatcher } from './vorhaben-watcher.js';
-import { FIRST_INPUT_MAX_VERSUCHE, type VorhabenStateStore } from './vorhaben-state.js';
+import { FIRST_INPUT_MAX_VERSUCHE, type VorhabenAssignment, type VorhabenStateStore } from './vorhaben-state.js';
 import {
   VORHABEN_DOC_FILES,
   VORHABEN_MAX_DOC_BYTES,
@@ -66,12 +67,13 @@ import {
   FREITEXT_GRUND_TEXT,
   FREITEXT_MAX_CHARS,
   FREITEXT_QUEUE_MAX,
+  NEXT_STEP_SPERRE_TEXT,
   type FreitextGrund,
   stepCommand,
 } from '../../shared/types/vorhaben.protocol.js';
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
 import type { BlockKind } from '../../shared/types/hook-events.protocol.js';
-import { findDialogCue, readStableScreen } from './dialog-driver.js';
+import { findDialogCue, isIdlePrompt, readStableScreen } from './dialog-driver.js';
 
 export interface VorhabenWorkspaceSource {
   getState(): { openProjects: Array<{ id: string; path: string; name: string }>; sessionNames?: Record<string, string> };
@@ -118,8 +120,11 @@ export interface VorhabenSessionSource {
     extraEnv: undefined,
     options: { sessionTarget?: ParsedTarget }
   ): Promise<{ sessionId: string; effectiveCwd: string }>;
-  /** INT-2026-019: closes a just-started resume when the row got another session meanwhile (optional, like withMachineWrite). */
-  closeSession?(sessionId: string): boolean;
+  /**
+   * INT-2026-019: closes a just-started resume when the row got another session meanwhile (optional, like withMachineWrite).
+   * INT-2026-018 (AK-05): `{ closedBy: 'user' }` closes as if ✕ was clicked — every client drops the tab (Z-02).
+   */
+  closeSession?(sessionId: string, opts?: { closedBy?: 'user' }): boolean;
   /** INT-2026-019: boot-restore outcome — a resume only runs after `'complete'` (never next to a late-restored session). */
   restoreOutcome?(): 'pending' | 'complete' | 'timeout';
 }
@@ -166,6 +171,17 @@ export const READY_WAIT_MS = 10_000;
 /** Result of `resumeIfLost` (INT-2026-019); failures are thrown as VorhabenError. */
 export type ResumeResult = { ergebnis: 'gestartet'; sessionId: string } | { ergebnis: 'nicht_noetig'; grund: VorhabenResumeGrund };
 
+/** INT-2026-018: result of `startStep` — `in_sitzung` = `/clear` + command in the row's live session; `geschlossen` = the old session closed for the new one (AK-05). */
+export type StartStepResult = { sessionId: string; modus: 'neu' | 'in_sitzung'; geschlossen?: string };
+/** INT-2026-018: why `/clear` + command were not written; `leeren_nicht_bestaetigt` never travels as `send-rejected`. */
+type StartInSessionGrund = FreitextGrund | 'leeren_nicht_bestaetigt';
+const CLEAR_FAILED_TEXT = 'Leeren der Sitzung nicht bestätigt — erneut versuchen oder /clear im Terminal tippen';
+/** INT-2026-018: the row's live session `startStep` compares against (assignment + manager state). */
+interface ReusableSession {
+  a: VorhabenAssignment;
+  live: VorhabenSessionInfo;
+}
+
 const DESIGN_FILE_RE = /^[A-Za-z0-9._-]{1,120}\.(png|jpe?g|svg|webp|gif)$/i;
 const ANY_DESIGN_FILE_RE = /^[A-Za-z0-9._ -]{1,120}$/;
 const MIME: Record<string, string> = {
@@ -183,6 +199,13 @@ export const PASTE_START = '\x1b[200~';
 export const PASTE_END = '\x1b[201~';
 /** Pause between the paste block and Enter, so the REPL has consumed the block. */
 export const PASTE_ENTER_DELAY_MS = 150;
+/**
+ * INT-2026-018 (AK-08): after a pasted `/clear` the SessionStart hook must
+ * report a new Claude session id within this time, else the command is not
+ * sent („Leeren nicht bestätigt", fail closed). The hook runs over loopback
+ * (Schritt 0 measured 104 ms); 5 s is a safety margin below the client's 15 s.
+ */
+export const CLEAR_WAIT_MS = 5_000;
 /** After this the entry is "nicht bestätigt" and the deploy gate opens again (FA-31/FA-34). */
 export const SEND_CONFIRM_TIMEOUT_MS = 10_000;
 /**
@@ -289,6 +312,8 @@ export class VorhabenService {
   private readonly promptTextSeq = new Map<string, number>();
   /** Sessions whose first input is being delivered right now (two Stops in a row must not paste twice). */
   private readonly deliveringFirstInput = new Set<string>();
+  /** INT-2026-018: session id → resolver waiting for a new Claude session id after a pasted `/clear` (one per session, E5). */
+  private readonly clearWaiters = new Map<string, (id: string) => void>();
   private seq = 0;
   private counter = 0;
 
@@ -571,7 +596,7 @@ export class VorhabenService {
     }
     const pending = this.deps.store.getPendingIntents().find(([id, p]) => id === sessionId && p.projectId === projectId);
     if (!pending) throw new VorhabenError('UNKNOWN_SESSION', 'Sitzung ist keine anhängige Absicht dieses Projekts');
-    return this.sendToSession(projectId, undefined, this.sessionRefOf(sessionId, this.pendingName(sessionId), pending[1].model), text);
+    return this.sendToSession(projectId, undefined, this.sessionRefOf(sessionId, this.pendingName(sessionId), pending[1].model, undefined, undefined, { step: 'intent', provider: pending[1].provider }), text);
   }
 
   /** Shared core of sendText/sendTextToSession: status rules, queue limit, protocol entry, locked paste. */
@@ -651,30 +676,11 @@ export class VorhabenService {
     // Enter follows after the settle pause and only then the lock is released,
     // so no other machine write can slip between paste and Enter.
     const run = async (): Promise<void> => {
-      if (sessions.readScreen) {
-        const screen = await readStableScreen(
-          { readScreen: (id, o) => sessions.readScreen!(id, o), waitForIdle: (id, ms) => sessions.waitForIdle?.(id, ms) ?? Promise.resolve() },
-          sessionId
-        );
-        if (screen === 'unstable') {
-          if (mode === 'working') return resolvePasted('kein_bildschirm');
-        } else if (screen.live) {
-          if (findDialogCue(screen.text)) return resolvePasted('dialog_offen');
-        } else if (mode === 'working') {
-          return resolvePasted('kein_bildschirm');
-        }
-      } else if (mode === 'working') {
-        return resolvePasted('kein_bildschirm');
-      }
+      const screen = await this.screenCheck(sessions, sessionId, mode);
+      if (screen !== true) return resolvePasted(screen);
       if (!sessions.sendInput(sessionId, PASTE_START + text + PASTE_END, { inferUnblock: false })) return resolvePasted('senden_fehlgeschlagen');
       resolvePasted(true);
-      await new Promise<void>((done) => {
-        const t = setTimeout(() => {
-          sessions.sendInput(sessionId, '\r', { inferUnblock: false });
-          done();
-        }, PASTE_ENTER_DELAY_MS);
-        t.unref?.();
-      });
+      await this.settleEnter(sessions, sessionId);
     };
     if (!sessions.withMachineWrite) {
       void run();
@@ -684,6 +690,63 @@ export class VorhabenService {
       });
     }
     return pasted;
+  }
+
+  /**
+   * Screen check before a machine write (INT-2026-018 pulled it out of
+   * `pasteLocked`, behaviour of `waiting`/`working` unchanged). `strict` (only
+   * for `/clear` and the phase command, AK-08, review E14/E15): the session
+   * must be seen waiting — live and stable screen, no dialog cue, the empty
+   * prompt line visible and no spinner (`isIdlePrompt`). A `/clear` that hits a
+   * running turn is buffered by Claude Code and executed minutes later (§9 R10).
+   */
+  private async screenCheck(sessions: VorhabenSessionSource, sessionId: string, mode: 'waiting' | 'working' | 'strict'): Promise<true | FreitextGrund> {
+    if (!sessions.readScreen) return mode === 'waiting' ? true : 'kein_bildschirm';
+    const screen = await readStableScreen(
+      { readScreen: (id, o) => sessions.readScreen!(id, o), waitForIdle: (id, ms) => sessions.waitForIdle?.(id, ms) ?? Promise.resolve() },
+      sessionId
+    );
+    if (screen === 'unstable') return mode === 'waiting' ? true : 'kein_bildschirm';
+    if (!screen.live) return mode === 'waiting' ? true : 'kein_bildschirm';
+    if (findDialogCue(screen.text)) return 'dialog_offen';
+    if (mode === 'strict' && !isIdlePrompt(screen.text)) return 'arbeitet';
+    return true;
+  }
+
+  /** Settle pause after a paste block, then Enter (`\r`). The awaiting caller keeps the machine-write lock until then. */
+  private settleEnter(sessions: VorhabenSessionSource, sessionId: string): Promise<void> {
+    return new Promise<void>((done) => {
+      const t = setTimeout(() => {
+        sessions.sendInput(sessionId, '\r', { inferUnblock: false });
+        done();
+      }, PASTE_ENTER_DELAY_MS);
+      t.unref?.();
+    });
+  }
+
+  /**
+   * INT-2026-018 (AK-08): resolves `true` once `onHookContext` reports a
+   * Claude session id `!== vorher` for the session, `false` after `ms`.
+   * `'beschaeftigt'` when a waiter for this session already exists (never
+   * overwrite one, review E5). Armed BEFORE the `/clear` paste — the hook can
+   * be faster than the Enter delay (F7).
+   */
+  private waitForNewConversation(sessionId: string, vorher: string | undefined, ms: number): { promise: Promise<boolean>; cancel: () => void } | 'beschaeftigt' {
+    if (this.clearWaiters.has(sessionId)) return 'beschaeftigt';
+    let settle: (ok: boolean) => void = () => {};
+    const promise = new Promise<boolean>((resolve) => {
+      const t = setTimeout(() => settle(false), ms);
+      t.unref?.();
+      settle = (ok): void => {
+        clearTimeout(t);
+        this.clearWaiters.delete(sessionId);
+        resolve(ok);
+      };
+      this.clearWaiters.set(sessionId, (id) => {
+        if (id !== vorher) settle(true);
+      });
+    });
+    return { promise, cancel: () => settle(false) };
   }
 
   /**
@@ -703,7 +766,7 @@ export class VorhabenService {
     modelRaw: ModelSelection | undefined,
     sessionTargetRaw: CloudTerminalSessionTarget | undefined,
     firstInput?: string
-  ): Promise<{ sessionId: string }> {
+  ): Promise<StartStepResult> {
     const sessions = this.deps.sessions;
     if (!sessions) throw new VorhabenError('START_FAILED', 'Terminal-Manager nicht verfügbar');
     const project = this.findProject(projectId);
@@ -730,6 +793,11 @@ export class VorhabenService {
       throw new VorhabenError('INVALID_MESSAGE', err instanceof SessionTargetError ? err.message : 'ungültiges Sitzungsziel');
     }
     const command = stepCommand(step, intentId);
+    // INT-2026-018: a live session of the row decides the way (AK-04, AK-05, AK-10; NZ-04).
+    const reuse = intentId ? this.reusableSession(projectId, intentId, step) : undefined;
+    if (reuse && this.sameModel(reuse, model) && this.sameTarget(reuse, target, project.path)) {
+      return this.startInSession(sessions, projectId, intentId!, step, model, reuse, command, firstInput);
+    }
     let created: { sessionId: string; effectiveCwd: string };
     try {
       created = await sessions.createSession(
@@ -758,8 +826,134 @@ export class VorhabenService {
     }
     // The text waits for the first Stop (a paste right after the start would hit the startup screen, plan §3 Alternativen).
     if (firstInput !== undefined) this.deps.store.setFirstInput(created.sessionId, { text: firstInput, versuche: 0 });
+    let geschlossen: string | undefined;
+    if (reuse) {
+      // AK-05: the old session goes only once the new one stands (F9); closing as if ✕ was clicked (Z-02).
+      if (sessions.closeSession?.(reuse.a.sessionId, { closedBy: 'user' })) geschlossen = reuse.a.sessionId;
+      else console.warn(`[vorhaben] ${intentId}: alte Sitzung ${reuse.a.sessionId} ließ sich nicht schließen`);
+    }
     this.scheduleRescan(0);
-    return { sessionId: created.sessionId };
+    return { sessionId: created.sessionId, modus: 'neu', ...(geschlossen ? { geschlossen } : {}) };
+  }
+
+  /**
+   * INT-2026-018: the live session of the row, when the click may continue in
+   * it or must close it — `undefined` when the row has none, it ended, or
+   * „Bau fortsetzen" (NZ-04: new session, the old one stays). Throws
+   * `SESSION_BUSY` with the rule's text when the button should have been
+   * locked (stale page, second device): the same `deriveNextStepSperre` the
+   * reader used for the row (E6).
+   */
+  private reusableSession(projectId: string, intentId: string, step: VorhabenStep): ReusableSession | undefined {
+    const row = this.requireRow(projectId, intentId);
+    const a = this.deps.store.getAssignment(projectId, intentId);
+    if (!a || a.ended) return undefined;
+    const live = this.deps.sessions?.getSession(a.sessionId);
+    // An errored session counts as none, exactly like the reader's rule (AK-10) — never `/clear` into it.
+    if (!live || live.status !== 'active' || live.agentStatus === 'error') return undefined;
+    const ref = this.sessionFor(projectId, intentId);
+    const interrupted = row.phase === 'bau' && row.hasBuildStand;
+    const sperre = deriveNextStepSperre({ session: ref, nextStep: step, freigabeDoc: row.freigabeDoc, interrupted });
+    if (sperre) throw new VorhabenError('SESSION_BUSY', NEXT_STEP_SPERRE_TEXT[sperre]);
+    if (interrupted) return undefined;
+    return { a, live };
+  }
+
+  private sameModel(reuse: ReusableSession, model: ModelSelection): boolean {
+    return this.providerOf(reuse.a, reuse.live) === model.providerId && (reuse.live.modelConfig?.model ?? reuse.a.model) === model.modelId;
+  }
+
+  /** `main` ↔ the session runs in the project path; `existing-worktree` ↔ the same directory (`safeKey`); a new worktree is never the same. */
+  private sameTarget(reuse: ReusableSession, target: ParsedTarget, projectPath: string): boolean {
+    switch (target.target.kind) {
+      case 'main':
+        return safeKey(reuse.a.cwd) === safeKey(projectPath);
+      case 'existing-worktree':
+        return safeKey(target.target.path) === safeKey(reuse.a.cwd);
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * INT-2026-018 (AK-04, AK-06, AK-09): `/clear`, then the phase command in
+   * the row's live session; afterwards the assignment names the new step (the
+   * `UserPromptSubmit` hook of the command confirms it via `moveAssignment`),
+   * the tab is renamed, the model remembered for the step. Nothing is written
+   * to the store when the writes fail (AK-08).
+   */
+  private async startInSession(
+    sessions: VorhabenSessionSource,
+    projectId: string,
+    intentId: string,
+    step: VorhabenStep,
+    model: ModelSelection,
+    reuse: ReusableSession,
+    command: string,
+    firstInput: string | undefined
+  ): Promise<StartStepResult> {
+    const id = reuse.a.sessionId;
+    // E15: the assignment still names this session with the step we compared against.
+    const istNoch = (): boolean => {
+      const a = this.deps.store.getAssignment(projectId, intentId);
+      return !!a && a.sessionId === id && a.step === reuse.a.step && !a.ended;
+    };
+    const written = await this.clearAndPaste(sessions, id, command, istNoch);
+    if (written !== true) throw new VorhabenError('SESSION_WRITE_FAILED', this.grundText(written));
+    // (a) tab name, (b) assignment — no `await` between them (AK-06 order; then the hook, then `onPromptText`).
+    const at = this.now().toISOString();
+    this.deps.setSessionName?.(id, `${step} ${intentId}`);
+    // The conversation is new: `resumed` is dropped, `claudeSessionId` is the id the hook just reported (F16).
+    this.deps.store.setAssignment(projectId, intentId, { sessionId: id, step, model: model.modelId, cwd: reuse.a.cwd, at, provider: model.providerId, ...this.sessionContext(id) });
+    this.deps.store.setLastModel(projectId, intentId, step, model);
+    if (firstInput !== undefined) this.deps.store.setFirstInput(id, { text: firstInput, versuche: 0 });
+    this.scheduleRescan(0);
+    return { sessionId: id, modus: 'in_sitzung' };
+  }
+
+  /**
+   * Two pastes under ONE machine-write lock (F6): `/clear`, wait for the new
+   * Claude session id from the SessionStart hook (the hard signal, review E1;
+   * fail closed after `CLEAR_WAIT_MS`), then the command. Before each paste
+   * the screen must show the session waiting (`strict`, E14); right before the
+   * `/clear` paste a synchronous re-check of status and assignment (E15) — no
+   * `await` from there to the paste, so nothing can interleave (E13).
+   */
+  private async clearAndPaste(sessions: VorhabenSessionSource, sessionId: string, command: string, istNoch: () => boolean): Promise<true | StartInSessionGrund> {
+    const run = async (): Promise<true | StartInSessionGrund> => {
+      const s1 = await this.screenCheck(sessions, sessionId, 'strict');
+      if (s1 !== true) return s1;
+      const live = sessions.getSession(sessionId);
+      if (!live || live.status !== 'active') return 'beendet';
+      if (live.agentStatus === 'working' || live.agentStatus === 'blocked') return 'arbeitet';
+      if (!istNoch()) return 'beschaeftigt';
+      // E1/E3/E13: the id the hook reported LAST, read live and the waiter armed in the same tick.
+      const vorher = live.claudeSessionId;
+      const warten = this.waitForNewConversation(sessionId, vorher, CLEAR_WAIT_MS);
+      if (warten === 'beschaeftigt') return 'beschaeftigt';
+      if (!sessions.sendInput(sessionId, PASTE_START + '/clear' + PASTE_END, { inferUnblock: false })) {
+        warten.cancel();
+        return 'senden_fehlgeschlagen';
+      }
+      await this.settleEnter(sessions, sessionId);
+      if (!(await warten.promise)) {
+        console.warn(`[vorhaben] ${sessionId}: Leeren nicht bestätigt — keine neue Gesprächskennung binnen ${CLEAR_WAIT_MS} ms`);
+        return 'leeren_nicht_bestaetigt';
+      }
+      const s2 = await this.screenCheck(sessions, sessionId, 'strict');
+      if (s2 !== true) return s2;
+      if (!sessions.sendInput(sessionId, PASTE_START + command + PASTE_END, { inferUnblock: false })) return 'senden_fehlgeschlagen';
+      await this.settleEnter(sessions, sessionId);
+      return true;
+    };
+    if (!sessions.withMachineWrite) return run();
+    const r = await sessions.withMachineWrite(sessionId, run);
+    return r.ok ? r.value : r.grund === 'beschaeftigt' ? 'beschaeftigt' : 'beendet';
+  }
+
+  private grundText(g: StartInSessionGrund): string {
+    if (g === 'leeren_nicht_bestaetigt') return CLEAR_FAILED_TEXT;
+    return (SEND_REASON_TEXT as Record<string, string>)[g] ?? FREITEXT_GRUND_TEXT[g];
   }
 
   /**
@@ -812,6 +1006,8 @@ export class VorhabenService {
   private onHookContext(sessionId: string, ctx: unknown): void {
     const id = (ctx as { claudeSessionId?: unknown } | undefined)?.claudeSessionId;
     if (!isClaudeSessionId(id)) return;
+    // INT-2026-018: a pasted `/clear` waits for exactly this — a new conversation id of its session.
+    this.clearWaiters.get(sessionId)?.(id);
     if (this.deps.store.setSessionContext(sessionId, { claudeSessionId: id }) > 0) this.broadcastState();
   }
 
@@ -839,7 +1035,7 @@ export class VorhabenService {
     for (const [sessionId, p] of this.deps.store.getPendingIntents()) {
       const info = this.projects.find((x) => x.id === p.projectId);
       const arbeitskopie = info && safeKey(info.path) === safeKey(p.cwd) ? info.arbeitskopie : basename(p.cwd);
-      out.push({ sessionId, projectId: p.projectId, cwd: p.cwd, arbeitskopie, since: p.since, session: this.sessionRefOf(sessionId, this.pendingName(sessionId), p.model) });
+      out.push({ sessionId, projectId: p.projectId, cwd: p.cwd, arbeitskopie, since: p.since, session: this.sessionRefOf(sessionId, this.pendingName(sessionId), p.model, undefined, undefined, { step: 'intent', provider: p.provider }) });
     }
     return out.sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0));
   }
@@ -1010,7 +1206,7 @@ export class VorhabenService {
     // (7) A finished Vorhaben gets no session (AK-06).
     if (row.phase === 'umgesetzt') return { ergebnis: 'nicht_noetig', grund: 'umgesetzt' };
     // (8) Same model, same provider; a foreign CLI has no Claude conversation (NZ-03).
-    const providerId = a.provider ?? 'anthropic';
+    const providerId = this.providerOf(a, undefined);
     if (!this.resolveModel({ providerId, modelId: a.model })) {
       if (!this.isClaudeProvider(providerId)) return { ergebnis: 'nicht_noetig', grund: 'fremde_cli' };
       throw new VorhabenError('RESUME_FAILED', `Modell nicht mehr konfiguriert: ${providerId}/${a.model}`);
@@ -1022,7 +1218,7 @@ export class VorhabenService {
     // (11) The worktree must exist — the UI never rebuilds it (AK-08, NZ-02).
     if (!fs.existsSync(a.cwd)) throw new VorhabenError('WORKTREE_MISSING', `Arbeitskopie fehlt: ${a.cwd} — von Hand anlegen (git worktree add) oder nächsten Schritt starten`);
     // (12) Session target like `startStep`: main checkout or an existing worktree.
-    const raw: CloudTerminalSessionTarget = safeKey(a.cwd) === safeKey(project.path) ? { kind: 'main' } : { kind: 'existing-worktree', path: a.cwd };
+    const raw = this.targetOf(project.path, a.cwd);
     let target: ParsedTarget;
     try {
       target = parseSessionTarget(raw);
@@ -1156,7 +1352,7 @@ export class VorhabenService {
     }
     const pending = this.deps.store.getPendingIntents().find(([id]) => id === sessionId);
     if (!pending) return undefined;
-    return { projectId: pending[1].projectId, session: this.sessionRefOf(sessionId, this.pendingName(sessionId), pending[1].model) };
+    return { projectId: pending[1].projectId, session: this.sessionRefOf(sessionId, this.pendingName(sessionId), pending[1].model, undefined, undefined, { step: 'intent', provider: pending[1].provider }) };
   }
 
   private confirm(entryId: string): void {
@@ -1185,11 +1381,35 @@ export class VorhabenService {
     const a = this.deps.store.getAssignment(projectId, intentId);
     if (!a) return undefined;
     const names = this.deps.workspace.getState().sessionNames ?? {};
-    return this.sessionRefOf(a.sessionId, names[a.sessionId] ?? `${a.step} ${intentId}`, a.model, a.ended, a.resumed);
+    const project = this.findProject(projectId);
+    const live = this.deps.sessions?.getSession(a.sessionId);
+    // INT-2026-018: step, provider and target of the assignment — the reader's rule and the box need them (AK-03, AK-07).
+    return this.sessionRefOf(a.sessionId, names[a.sessionId] ?? `${a.step} ${intentId}`, a.model, a.ended, a.resumed, {
+      step: a.step,
+      provider: this.providerOf(a, live),
+      ...(project ? { target: this.targetOf(project.path, a.cwd) } : {}),
+    });
+  }
+
+  /** INT-2026-018 (review E4): the one provider rule — live session first, then the assignment, then `anthropic` (before INT-2026-019). */
+  private providerOf(a: { provider?: string }, live: VorhabenSessionInfo | undefined): string {
+    return live?.modelConfig?.provider ?? a.provider ?? 'anthropic';
+  }
+
+  /** INT-2026-018: the session target in picker form — `main` for the project path, else the existing worktree (`safeKey`, like `doResume`). */
+  private targetOf(projectPath: string, cwd: string): CloudTerminalSessionTarget {
+    return safeKey(cwd) === safeKey(projectPath) ? { kind: 'main' } : { kind: 'existing-worktree', path: cwd };
   }
 
   /** Session reference from the live manager state; without a live session: ended (input locked). */
-  private sessionRefOf(sessionId: string, name: string, model: string, ended?: boolean, resumed?: VorhabenSessionRef['resumed']): VorhabenSessionRef {
+  private sessionRefOf(
+    sessionId: string,
+    name: string,
+    model: string,
+    ended?: boolean,
+    resumed?: VorhabenSessionRef['resumed'],
+    extra?: { step?: VorhabenStep; provider?: string; target?: CloudTerminalSessionTarget }
+  ): VorhabenSessionRef {
     const live = this.deps.sessions?.getSession(sessionId);
     if (ended || !live || live.status === 'closed') {
       // The resume mark belongs to a live resumed session; an ended row just says „beendet".
@@ -1205,6 +1425,10 @@ export class VorhabenService {
       ...(this.deps.store.hasFirstInput(sessionId) ? { firstInputPending: true } : {}),
       // INT-2026-019 (OF-02): the page shows „fortgesetzt nach Neustart · Stand HH:MM".
       ...(resumed ? { resumed } : {}),
+      // INT-2026-018: only on a live session (an ended one has no step to compare, AK-10).
+      ...(extra?.step ? { step: extra.step } : {}),
+      ...(extra?.provider ? { provider: extra.provider } : {}),
+      ...(extra?.target ? { target: extra.target } : {}),
     };
   }
 

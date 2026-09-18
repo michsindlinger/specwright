@@ -13,6 +13,7 @@ import {
   deriveReviewDoc,
   deriveZustand,
   deriveNextStep,
+  deriveNextStepSperre,
   mergeCandidates,
   scanCopy,
   toRow,
@@ -191,6 +192,47 @@ describe('deriveNextStep (FA-12)', () => {
   });
 });
 
+describe('INT-2026-018: deriveNextStepSperre (AK-01–AK-03, AK-10, NZ-04) — the one rule reader and service share', () => {
+  const live = (over: Partial<VorhabenSessionRef> = {}): VorhabenSessionRef => ({ id: 's1', name: 'intent INT-2026-004', model: 'opus', agentStatus: 'done', step: 'intent', target: { kind: 'main' }, ...over });
+  const base = { nextStep: 'plan' as const, freigabeDoc: undefined, interrupted: false };
+
+  it('AK-01: a quiet session of an earlier phase frees the button — done or idle, intent → plan, spec → plan, spec → build', () => {
+    expect(deriveNextStepSperre({ ...base, session: live() })).toBeUndefined();
+    expect(deriveNextStepSperre({ ...base, session: live({ agentStatus: 'idle' }) })).toBeUndefined();
+    expect(deriveNextStepSperre({ ...base, session: live({ step: 'spec' }) })).toBeUndefined();
+    expect(deriveNextStepSperre({ ...base, nextStep: 'build', session: live({ step: 'spec' }) })).toBeUndefined();
+  });
+
+  it('AK-10: no session, an ended one, or an errored one → usable (a new session starts as today)', () => {
+    expect(deriveNextStepSperre({ ...base, session: undefined })).toBeUndefined();
+    expect(deriveNextStepSperre({ ...base, session: live({ ended: true, agentStatus: 'unknown' }) })).toBeUndefined();
+    expect(deriveNextStepSperre({ ...base, session: live({ agentStatus: 'error' }) })).toBeUndefined();
+  });
+
+  it('AK-02: working → arbeitet; blocked (every blockKind) → dialog; unknown → unbekannt (E14); first input pending → erste_eingabe', () => {
+    expect(deriveNextStepSperre({ ...base, session: live({ agentStatus: 'working' }) })).toBe('arbeitet');
+    for (const blockKind of ['rueckfrage', 'plan', 'berechtigung', 'unbekannt', undefined] as const) {
+      expect(deriveNextStepSperre({ ...base, session: live({ agentStatus: 'blocked', blockKind }) })).toBe('dialog');
+    }
+    expect(deriveNextStepSperre({ ...base, session: live({ agentStatus: 'unknown' }) })).toBe('unbekannt');
+    expect(deriveNextStepSperre({ ...base, session: live({ firstInputPending: true }) })).toBe('erste_eingabe');
+  });
+
+  it('AK-03: same or later step → gleiche_phase; a ref without step counts as the same phase; an open approval of an earlier step → freigabe_offen', () => {
+    expect(deriveNextStepSperre({ ...base, session: live({ step: 'plan' }) })).toBe('gleiche_phase');
+    expect(deriveNextStepSperre({ ...base, session: live({ step: 'build' }) })).toBe('gleiche_phase');
+    expect(deriveNextStepSperre({ ...base, session: live({ step: undefined }) })).toBe('gleiche_phase');
+    expect(deriveNextStepSperre({ ...base, freigabeDoc: 'spec', session: live({ step: 'spec' }) })).toBe('freigabe_offen');
+    // order: the status reasons win over the phase reasons
+    expect(deriveNextStepSperre({ ...base, freigabeDoc: 'spec', session: live({ step: 'plan', agentStatus: 'working' }) })).toBe('arbeitet');
+  });
+
+  it('NZ-04: „Bau fortsetzen" (interrupted) skips the phase check but not the status checks', () => {
+    expect(deriveNextStepSperre({ ...base, nextStep: 'build', interrupted: true, session: live({ step: 'build' }) })).toBeUndefined();
+    expect(deriveNextStepSperre({ ...base, nextStep: 'build', interrupted: true, session: live({ step: 'build', agentStatus: 'working' }) })).toBe('arbeitet');
+  });
+});
+
 describe('scanCopy / toRow on a temp dir', () => {
   let root: string;
   const cache = new VorhabenParseCache();
@@ -276,6 +318,55 @@ describe('scanCopy / toRow on a temp dir', () => {
     mk(root, 'INT-2026-006-neu', { 'intent.md': intentText('entwurf') });
     const absicht = toRow(project, scanCopy({ cwd: root, arbeitskopie: 'main' }, nodeReaderFs, cache).find((x) => x.intentId === 'INT-2026-006')!, undefined)!;
     expect(absicht.freigabeDoc).toBe('intent');
+  });
+
+  it('INT-2026-018 (AK-01, AK-07): a quiet session of an earlier phase → no sperre, sessionBusy false, nextStep.sitzung names it with model, provider and target', () => {
+    mk(root, 'INT-2026-004-ui', { 'intent.md': intentText('angenommen'), 'spec.md': statusDoc('freigegeben') });
+    const [c] = scanCopy({ cwd: root, arbeitskopie: 'main' }, nodeReaderFs, cache);
+    const ref: VorhabenSessionRef = { id: 's7', name: 'spec INT-2026-004', model: 'haiku', agentStatus: 'done', step: 'spec', provider: 'anthropic', target: { kind: 'existing-worktree', path: '/wt/x' } };
+    const row = toRow(project, c, ref)!;
+    expect(row.phase).toBe('plan');
+    expect(row.nextStep?.step).toBe('plan');
+    expect(row.nextStep?.sperre).toBeUndefined();
+    expect(row.sessionBusy).toBe(false);
+    expect(row.nextStep?.sitzung).toEqual({ id: 's7', name: 'spec INT-2026-004', model: { providerId: 'anthropic', modelId: 'haiku' }, target: { kind: 'existing-worktree', path: '/wt/x' } });
+    // provider absent → anthropic (assignments before INT-2026-019)
+    expect(toRow(project, c, { ...ref, provider: undefined })!.nextStep?.sitzung?.model).toEqual({ providerId: 'anthropic', modelId: 'haiku' });
+    // no target (fixture, old ref) → no sitzung, still usable
+    const noTarget = toRow(project, c, { ...ref, target: undefined })!;
+    expect(noTarget.sessionBusy).toBe(false);
+    expect(noTarget.nextStep?.sitzung).toBeUndefined();
+  });
+
+  it('INT-2026-018 (AK-02, AK-03): sperre travels on nextStep, sessionBusy === !!sperre, no sitzung while locked', () => {
+    mk(root, 'INT-2026-004-ui', { 'intent.md': intentText('angenommen'), 'spec.md': statusDoc('freigegeben') });
+    const [c] = scanCopy({ cwd: root, arbeitskopie: 'main' }, nodeReaderFs, cache);
+    const ref: VorhabenSessionRef = { id: 's7', name: 'spec INT-2026-004', model: 'haiku', agentStatus: 'done', step: 'spec', target: { kind: 'main' } };
+    const cases: Array<[Partial<VorhabenSessionRef>, string]> = [
+      [{ agentStatus: 'working' }, 'arbeitet'],
+      [{ agentStatus: 'blocked', blockKind: 'berechtigung' }, 'dialog'],
+      [{ agentStatus: 'unknown' }, 'unbekannt'],
+      [{ firstInputPending: true }, 'erste_eingabe'],
+      [{ step: 'plan' }, 'gleiche_phase'],
+      [{ step: undefined }, 'gleiche_phase'],
+    ];
+    for (const [over, sperre] of cases) {
+      const row = toRow(project, c, { ...ref, ...over })!;
+      expect(row.nextStep?.sperre, sperre).toBe(sperre);
+      expect(row.sessionBusy, sperre).toBe(true);
+      expect(row.nextStep?.sitzung, sperre).toBeUndefined();
+    }
+  });
+
+  it('INT-2026-018 (NZ-04): „Bau fortsetzen" with a quiet session → usable but without sitzung (new session, the old one stays)', () => {
+    mk(root, 'INT-2026-004-ui', { 'intent.md': intentText('angenommen'), 'plan.md': statusDoc('in_umsetzung'), 'build-stand.md': '# Stand\n' });
+    const [c] = scanCopy({ cwd: root, arbeitskopie: 'main' }, nodeReaderFs, cache);
+    const row = toRow(project, c, { id: 's7', name: 'plan INT-2026-004', model: 'haiku', agentStatus: 'done', step: 'plan', target: { kind: 'main' } })!;
+    expect(row.zustand).toBe('bau_unterbrochen');
+    expect(row.nextStep?.label).toBe('Bau fortsetzen');
+    expect(row.nextStep?.sperre).toBeUndefined();
+    expect(row.sessionBusy).toBe(false);
+    expect(row.nextStep?.sitzung).toBeUndefined();
   });
 
   it('unreadable head → row with folder id, "(Kopf nicht lesbar)", phase unbekannt, no next step (FA-09)', () => {

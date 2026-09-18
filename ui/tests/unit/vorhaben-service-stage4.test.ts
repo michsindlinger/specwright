@@ -282,7 +282,8 @@ describe('VorhabenService stage 4 (INT-2026-010)', () => {
       stepDefaults = { intent: { providerId: 'anthropic', modelId: 'haiku' } };
       handler.handle({ type: 'vorhaben:start-step', requestId: 'r1', projectId: 'pa', step: 'intent' }, reply);
       await tick(10);
-      expect(reply.mock.calls.map((c) => c[0])).toContainEqual(expect.objectContaining({ type: 'vorhaben:step-started', requestId: 'r1' }));
+      // INT-2026-018 (AK-10): a fresh `/intent` start is always a new session
+      expect(reply.mock.calls.map((c) => c[0])).toContainEqual(expect.objectContaining({ type: 'vorhaben:step-started', requestId: 'r1', modus: 'neu' }));
       reply.mockClear();
       handler.handle({ type: 'vorhaben:start-step', requestId: 'r2', projectId: 'pa', step: 'intent', model: { providerId: 'anthropic' } }, reply);
       expect(reply.mock.calls[0][0]).toMatchObject({ type: 'vorhaben:error', code: 'INVALID_MESSAGE', requestId: 'r2' });

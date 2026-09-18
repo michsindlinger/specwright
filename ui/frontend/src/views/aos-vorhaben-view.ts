@@ -323,18 +323,23 @@ export class AosVorhabenView extends LitElement {
    * the view remembers the session and opens the Vorhaben page once a row
    * carries it (AN-S03). The event no longer reaches app.ts.
    */
-  private onSessionStarted(e: CustomEvent<{ sessionId: string; step: string; intentId?: string; firstInput?: boolean }>): void {
+  private onSessionStarted(e: CustomEvent<{ sessionId: string; step: string; intentId?: string; firstInput?: boolean; modus?: 'neu' | 'in_sitzung'; geschlossen?: string }>): void {
     e.stopPropagation();
     const neueAbsicht = e.detail.step === 'intent' && !e.detail.intentId;
     if (neueAbsicht) {
       this.forgetPending();
       this.pendingIntentSessionId = e.detail.sessionId;
     }
+    // INT-2026-018 (AK-04/AK-05): the click continued in the live session, or closed it for a new one.
     const message = neueAbsicht
       ? 'Sitzung gestartet — Vorhaben entsteht'
-      : e.detail.firstInput
-        ? 'Sitzung gestartet — die Freigabe wird nach der ersten Frage übergeben'
-        : 'Sitzung gestartet';
+      : e.detail.modus === 'in_sitzung'
+        ? 'Nächster Schritt in der laufenden Sitzung gestartet'
+        : e.detail.geschlossen
+          ? 'Sitzung gestartet — die vorige wurde geschlossen'
+          : e.detail.firstInput
+            ? 'Sitzung gestartet — die Freigabe wird nach der ersten Frage übergeben'
+            : 'Sitzung gestartet';
     this.dispatchEvent(new CustomEvent('show-toast', { bubbles: true, composed: true, detail: { message, type: 'success' } }));
     // Phone (INT-2026-010, review F12): no docked terminal → the fullscreen terminal opens with the new session.
     if (this.breakpoint.isMobile && !neueAbsicht) {

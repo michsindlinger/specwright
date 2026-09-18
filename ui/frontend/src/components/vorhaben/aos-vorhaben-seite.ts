@@ -811,6 +811,8 @@ export class AosVorhabenSeite extends LitElement {
       .lastModel=${this.lastModel[key]}
       .mobile=${this.mobile}
       .gesperrt=${r.sessionBusy}
+      .sperre=${r.nextStep.sperre ?? null}
+      .sitzung=${r.nextStep.sitzung}
     ></aos-naechster-schritt>`;
   }
 }

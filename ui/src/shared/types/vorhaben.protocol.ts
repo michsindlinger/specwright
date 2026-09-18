@@ -92,7 +92,36 @@ export interface VorhabenSessionRef {
    * The page shows „fortgesetzt nach Neustart · Stand HH:MM".
    */
   resumed?: { at: string; von: string; stand?: string };
+  /**
+   * INT-2026-018: step the assignment was made for (a pending `/intent`
+   * session: `intent`). Absent (old client, fixture) counts as „same phase"
+   * for `deriveNextStepSperre` — locked.
+   */
+  step?: VorhabenStep;
+  /** INT-2026-018: provider of `model` (assignments before INT-2026-019 have none → `anthropic`). */
+  provider?: string;
+  /**
+   * INT-2026-018 (AK-04/AK-05): where the session runs, as the picker names
+   * it — `main` or `existing-worktree` (`safeKey` against the project path,
+   * like `doResume`). Only on a live session.
+   */
+  target?: CloudTerminalSessionTarget;
 }
+
+/**
+ * INT-2026-018 (AK-01–AK-03): why „Nächster Schritt" is locked; absent =
+ * usable. `deriveNextStepSperre` checks in this order.
+ */
+export type VorhabenNextStepSperre = 'arbeitet' | 'dialog' | 'unbekannt' | 'erste_eingabe' | 'freigabe_offen' | 'gleiche_phase';
+
+export const NEXT_STEP_SPERRE_TEXT: Record<VorhabenNextStepSperre, string> = {
+  arbeitet: 'Sitzung arbeitet — erst danach kann der nächste Schritt starten',
+  dialog: 'Sitzung zeigt einen Dialog — im Terminal antworten, dann kann der nächste Schritt starten',
+  unbekannt: 'Zustand der Sitzung unbekannt — im Terminal nachsehen; sobald sie ruhig wartet, ist der Knopf frei',
+  erste_eingabe: 'Sitzung startet — die erste Eingabe wird noch übergeben',
+  freigabe_offen: 'ein Dokument wartet auf deine Freigabe — erst freigeben, dann kann der nächste Schritt starten',
+  gleiche_phase: 'die Sitzung gehört schon zu diesem Schritt — im Terminal fortsetzen oder freigeben',
+};
 
 export interface VorhabenNextStep {
   step: VorhabenStep;
@@ -100,6 +129,15 @@ export interface VorhabenNextStep {
   command: string;
   /** Button label, e.g. "Plan erstellen". */
   label: string;
+  /** INT-2026-018: why the button is locked; absent = usable. `VorhabenRow.sessionBusy` is `!!sperre`. */
+  sperre?: VorhabenNextStepSperre;
+  /**
+   * INT-2026-018 (AK-04, AK-05, AK-07): the live session the click continues
+   * in when model and target match (`/clear`, then the command) — else a new
+   * session starts and this one is closed. Absent: a new session starts and a
+   * live one stays (none, or „Bau fortsetzen", NZ-04).
+   */
+  sitzung?: { id: string; name: string; model: ModelSelection; target: CloudTerminalSessionTarget };
 }
 
 export interface VorhabenRow {
@@ -140,9 +178,9 @@ export interface VorhabenRow {
    */
   nextStep?: VorhabenNextStep;
   /**
-   * INT-2026-010 (FA-21): a live session of this Vorhaben works or waits
-   * (any state but `keine_sitzung` / `sitzung_beendet`) — the next step must
-   * not start a second session then.
+   * INT-2026-010 (FA-21): the next step must not start now. INT-2026-018:
+   * `= !!nextStep?.sperre` — the reason travels in `nextStep.sperre`; a live
+   * session that finished an earlier phase and waits quietly is not busy.
    */
   sessionBusy: boolean;
   docs: VorhabenDocInfo[];
@@ -583,6 +621,10 @@ export interface VorhabenStepStartedMessage {
   projectId: string;
   intentId?: string;
   step: VorhabenStep;
+  /** INT-2026-018: `in_sitzung` = `/clear` + command in the row's live session (AK-04); `neu` = a new session started. */
+  modus: 'neu' | 'in_sitzung';
+  /** INT-2026-018 (AK-05): id of the live session that was closed for the new one. */
+  geschlossen?: string;
 }
 
 export interface VorhabenStateMessage {
@@ -681,7 +723,12 @@ export type VorhabenErrorCode =
   /** Larger than `CLOUD_TERMINAL_CONFIG.MAX_PASTE_IMAGE_BYTES`. */
   | 'PASTE_IMAGE_TOO_LARGE'
   /** MIME type not in `CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME`. */
-  | 'PASTE_IMAGE_UNSUPPORTED_TYPE';
+  | 'PASTE_IMAGE_UNSUPPORTED_TYPE'
+  // INT-2026-018: refusals of `vorhaben:start-step` with a live session of the row.
+  /** The rule refused (`message` = `NEXT_STEP_SPERRE_TEXT[sperre]`) — the page was stale or a second device was faster. */
+  | 'SESSION_BUSY'
+  /** AK-08: `/clear` or the command was not written into the session (`message` = reason); nothing else happened. */
+  | 'SESSION_WRITE_FAILED';
 
 export const ANMERKUNG_MAX_CHARS = 4000;
 
