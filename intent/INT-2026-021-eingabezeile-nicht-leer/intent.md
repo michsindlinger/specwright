@@ -82,9 +82,9 @@ Zweiter, bisher unbemerkter Fehler derselben Funktion: Sie sucht mit `lines.some
 - AK-03: Nur die unterste `❯`-Zeile entscheidet. Ein Bildschirm mit leerer Verlaufszeile und gefüllter Eingabebox gilt als „nicht leer".
 - AK-04: Spinner meldet weiter „arbeitet", ein Dialog weiter „Dialog"; der Vorrang Dialog vor Spinner bleibt wie heute.
 - AK-05: Der Freitext-Pfad (`send`) lehnt eine gefüllte Eingabezeile weiterhin **nicht** ab (NZ-01 nachgewiesen).
-- AK-06: Der Knopf „Eingabezeile leeren und starten" erscheint nur bei diesem Grund, zeigt den zu löschenden Text vor dem Klick und löst nur auf Klick aus.
-- AK-07: Das Räumen schickt höchstens zwei Tasten und liest nach jeder nach; bleibt Text stehen, bricht es mit demselben Grund ab, ohne zu pasten.
-- AK-08: Die Wirkung der Tasten ist durch eine Aufzeichnung belegt (Fixture). Ohne Beleg entfällt AK-06 und AK-07; dann wird Stufe 1 allein ausgeliefert und der Befund im PR vermerkt.
+- AK-06: ~~Der Knopf „Eingabezeile leeren und starten" erscheint nur bei diesem Grund, zeigt den zu löschenden Text vor dem Klick und löst nur auf Klick aus.~~ **Entfallen** — die Messung nach AK-08 fiel negativ aus (plan.md §14).
+- AK-07: ~~Das Räumen schickt höchstens zwei Tasten und liest nach jeder nach; bleibt Text stehen, bricht es mit demselben Grund ab, ohne zu pasten.~~ **Entfallen** mit AK-06.
+- AK-08: Die Wirkung der Tasten ist durch eine Aufzeichnung belegt (Fixture). Ohne Beleg entfallen AK-06 und AK-07; dann wird Stufe 1 allein ausgeliefert und der Befund im PR vermerkt. **Ergebnis: kein Beleg** — im E2E öffnete Esc Esc den Rewind-Wähler und die Rückleseprobe bestätigte das Leeren nicht (plan.md §14).
 
 ## 6. Randbedingungen
 

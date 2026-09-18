@@ -180,10 +180,22 @@ Abgelehnt mit Begründung: eigenes AR-09 für Aufräum-Tasten (AR-08 deckt es in
 - **Einmal Esc leert nicht**, sondern blendet den Hinweis „Esc again to clear" ein (Fixture `key-esc-hinweis.txt`) — die Planannahme „ein Esc leert" war falsch.
 - Zweimal Esc kurz hintereinander leert die Box vollständig. Eine Verlaufs- oder Rewind-Auswahl ging dabei **nicht** auf; das im Plan §9 genannte Risiko trat auf 2.1.277 nicht ein.
 
-**Daraus geänderte Tastenfolge gegenüber §3:** erst Strg-U (harmlos, falls doch eine Runde läuft), nachlesen; steht noch Text, **Esc Esc** als zweiter und letzter Anlauf, nachlesen. Also zwei Anläufe, nicht zwei Tasten — die Obergrenze aus AK-07 bleibt der Sache nach erhalten (feste Zahl, Nachlesen nach jedem Anlauf, sonst Abbruch).
+**Stufe 2 wurde gebaut, im E2E widerlegt und zurückgenommen (Commit `revert(INT-2026-021)`).** Die Isolationsmessung mit `tmux send-keys` war nicht übertragbar. Durch den Backend-Pfad (`sendInput` → PTY) in einer echten Sitzung zeigte sich:
+
+- **Esc Esc auf eine bereits geleerte Box öffnet den Rewind-Wähler** („Restore the code and/or conversation to the point before…"). Genau das Risiko aus §9, das die Messung fälschlich entkräftet hatte — es tritt auf, sobald die Rückleseprobe das Leeren nicht mitbekommt.
+- **Strg-U + Strg-K ließen die Box unverändert erscheinen.** Ein danach gesendetes `XYZ` stand allein in der Box — sie war also längst leer, der gelesene Bildschirm trug ein altes Bild. Eine Rückleseprobe kann das Leeren damit **nicht** bestätigen; der Kern von AK-07 ist nicht erfüllbar.
+- In einem Lauf stand nach den Tasten ein **früherer Entwurf** in der Box statt des getippten Textes.
+
+**Entscheidung nach AK-08:** ohne verlässlichen Beleg kein Knopf. Ausgeliefert wird Stufe 1 allein; **AK-06 und AK-07 entfallen**. Der Weg heraus bleibt das Terminal — die Meldung sagt jetzt, dass und warum.
+
+**AR-08** wird trotzdem nachgetragen, aber ohne die Räum-Tasten und um den harten Befund erweitert: ein Bildschirm, den die UI nicht selbst ausgelöst hat, gilt nicht als Bestätigung.
 
 **Fixture-Version:** Die Aufnahmen liegen unter `2.1.277/`, nicht wie im Plan geschrieben unter `2.1.276/` — der Mac läuft auf 2.1.277. Nebenbefund der Aufnahme: die **lebende** Eingabebox trennt `❯` vom Text mit U+00A0, die Verlaufszeilen mit einem normalen Leerzeichen. Die Regel nutzt das nicht (zu fragil), aber der Test hält beides fest.
 
 **Von den Bestandstests gefangen:** Der Kasten band den Startknopf als `@click=${this.start}`; mit dem neuen Parameter `eingabeLeeren` landete das Klick-Ereignis von Lit in diesem Parameter und machte ihn wahr — jeder normale Klick hätte die Eingabezeile geleert. Drei bestehende Komponententests wurden dadurch rot (`aos-naechster-schritt-sitzung`, `aos-neue-absicht`, `aos-vorhaben-stage2`). Behoben durch `@click=${() => void this.start()}`; die Tests blieben unverändert.
+
+**E2E-Beleg für Stufe 1 (Backend auf Port 3111, Wegwerf-Projekt `/private/tmp/scratch-int021-proj`, echte Cloud-Terminal-Sitzung):** Mit `jetzt den Plan wirklich schreiben` in der Eingabezeile antwortete `vorhaben:start-step` mit `PROMPT_NOT_EMPTY` und der Meldung „in der Eingabezeile der Sitzung steht noch Text: „jetzt den Plan wirklich schreiben" — im Terminal abschicken oder löschen, dann erneut klicken". Der Bildschirm blieb danach unverändert, es wurde nichts geschrieben (AK-01, AK-02 live belegt).
+
+**Nebenwirkung beim E2E:** Beim Neustart des Zweig-Backends hat ein zu weit gefasstes `pkill` auch Michaels laufendes Backend auf Port 3001 beendet. Sofort neu gestartet, alle zehn Sitzungen sind über die tmux-Persistenz wieder angehängt.
 
 **AR-08:** wie in §12 entschieden als Erweiterung nachgetragen, kein eigenes AR-09. `CLAUDE.md` nennt jetzt AR-01…AR-08.
