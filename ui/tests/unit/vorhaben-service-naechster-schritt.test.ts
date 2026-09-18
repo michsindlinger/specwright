@@ -29,6 +29,8 @@ const FIXTURES = resolve(process.cwd(), 'tests', 'fixtures', 'tui', '2.1.276');
 const IDLE_SCREEN = readFileSync(join(FIXTURES, 'prompt-idle.txt'), 'utf8');
 const WORKING_SCREEN = readFileSync(join(FIXTURES, 'prompt-working.txt'), 'utf8');
 const PLAN_DIALOG_SCREEN = readFileSync(resolve(process.cwd(), 'tests', 'fixtures', 'tui', '2.1.273', 'plan-dialog.txt'), 'utf8');
+/** INT-2026-021: a waiting session whose input box carries the text „npm run verify" (recorded on 2.1.277). */
+const TEXT_SCREEN = readFileSync(resolve(process.cwd(), 'tests', 'fixtures', 'tui', '2.1.277', 'prompt-eingabe-text.txt'), 'utf8');
 const CLEAR = PASTE_START + '/clear' + PASTE_END;
 const CMD = PASTE_START + '/specwright:plan INT-2026-001' + PASTE_END;
 const HAIKU = { providerId: 'anthropic', modelId: 'haiku' };
@@ -468,6 +470,32 @@ describe('VorhabenService „Nächster Schritt" in der Sitzung (INT-2026-018)', 
       await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({ code: 'SESSION_WRITE_FAILED', message: expect.stringMatching(/Bildschirm der Sitzung nicht lesbar/) });
       expect(manager.writes(id)).toEqual([]);
       expect(assignment()).toMatchObject({ step: 'intent' });
+    });
+
+    it('(10) INT-2026-021: text in the input box → PROMPT_NOT_EMPTY naming the text, no writes (AK-01, AK-02)', async () => {
+      const id = await liveSession('intent');
+      manager.screen = TEXT_SCREEN;
+      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({
+        code: 'PROMPT_NOT_EMPTY',
+        message: 'in der Eingabezeile der Sitzung steht noch Text: „npm run verify" — im Terminal abschicken oder löschen, dann erneut klicken',
+      });
+      expect(manager.writes(id)).toEqual([]);
+      expect(assignment()).toMatchObject({ step: 'intent' });
+    });
+
+    it('(10b) INT-2026-021: the text appears only after `/clear` → same refusal, the command stays out', async () => {
+      const id = await liveSession('intent');
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const orig = manager.sendInput.bind(manager);
+      manager.sendInput = (sid: string, data: string): boolean => {
+        const ok = orig(sid, data);
+        if (data === CLEAR) manager.screen = TEXT_SCREEN; // the user types between the two pastes
+        return ok;
+      };
+      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({ code: 'PROMPT_NOT_EMPTY' });
+      expect(manager.writes(id)).toEqual([CLEAR, '\r']);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('nach /clear steht Text in der Eingabezeile'));
+      warn.mockRestore();
     });
 
     it('(3) the machine-write lock is busy → beschaeftigt text, no writes', async () => {

@@ -244,6 +244,16 @@ describe('VorhabenService.sendText (INT-2026-007)', () => {
     expect(await rejected(service.sendText('pa', 'INT-2026-007', 'z'))).toBe('ok');
   });
 
+  it('INT-2026-021 (AK-05): a filled input box does NOT stop free text — only the two machine pastes look that closely', async () => {
+    assign('done');
+    await service.rescan();
+    // The same screen that makes „Nächster Schritt" refuse (strict) stays permissive here (waiting).
+    manager.screen = { text: '─────\n❯\u00a0ja, leg den Entwurf an\n─────\n  ⏵⏵ bypass permissions on (shift+tab to cycle)\n', live: true };
+    expect(await rejected(service.sendText('pa', 'INT-2026-007', 'x'))).toBe('ok');
+    await vi.advanceTimersByTimeAsync(150);
+    expect(manager.writes.length).toBeGreaterThan(0);
+  });
+
   it('lock: a second machine write while one runs is refused as beschaeftigt; the reader send() uses the same lock (E3)', async () => {
     assign('done');
     await service.rescan();
