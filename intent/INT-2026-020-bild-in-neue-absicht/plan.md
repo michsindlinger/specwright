@@ -272,7 +272,7 @@ Keine Secrets, keine Migration, keine Bestandsdaten.
 - [x] Jedes AK aus Abschnitt 8 hat einen grünen Test (AK-01…AK-08, RB-01): `vorhaben-absicht-bild.test.ts` (7), `aos-neue-absicht.test.ts` Block INT-2026-020 (6), `vorhaben-service-stage4.test.ts` AK-05 (1); NZ-05 `cloud-terminal-paste-image.test.ts` unverändert grün (6).
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert (18.09.).
 - [x] E2E-Pfad läuft (Abschnitt 8): `design/e2e-protokoll.txt`, `design/ist/01-laden.png`, `02-eingefuegt.png`, `03-fehler-bildart.png`, `04-sitzung-terminal.png`, `design/e2e-terminal-pane.txt` (AN-01: „Read 1 file", Bild beschrieben).
-- [x] `verify` grün (lokal, 38 s), Ausgabe im PR — PR-Checks: **offen** bis CI (CI ist die Wahrheit); `known-failures.txt` unverändert.
+- [x] `verify` grün (lokal 41 s nach Rebase, Ausgabe im PR) und PR-Check grün (CI `verify` pass, 1m49s, Run 35307132076); `known-failures.txt` unverändert.
 - [x] `docs/architecture.md` §3/§8 und `docs/security.md` §1 angepasst; ADR-0005 angelegt (D1 = ja).
 - [x] Manuelle Schritte (Abschnitt 10): Worktree erledigt; Abnahmen Mac/iPhone/Terminal-Gegenprobe und Merge im PR als offen markiert.
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
