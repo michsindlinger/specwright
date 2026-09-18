@@ -1,7 +1,7 @@
 # Plan: UI: Verlorene Sitzung eines Vorhabens beim Öffnen wieder aufnehmen
 
 > **Intent:** `intent.md` (INT-2026-019) · **Spec:** entfällt (bypass: Größe S, eine Wiederaufnahme-Regel über den vorhandenen Startpfad, eine Schutzregel im Aufräumer, Felder in der Zuordnung)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-18 — im Chat: „freigabe, O1 und O2 wie vorgeschlagen"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `960c22e`), `CLAUDE.md`, `docs/security.md`
 
