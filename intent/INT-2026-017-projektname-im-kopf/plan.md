@@ -1,7 +1,7 @@
 # Plan: UI: Projektname im Kopf der Vorhaben-Seite
 
 > **Intent:** `intent.md` (INT-2026-017) · **Spec:** entfällt (bypass: Größe S, eine Anzeige-Zeile in einer Frontend-Komponente, Daten liegen schon in der Zeile)
-> **Status:** umgesetzt (PR #76, Merge steht aus)
+> **Status:** umgesetzt (PR #76 gemergt am 2026-09-18, Merge-Commit `6c2c896`)
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger) — im Chat „freigabe", 2026-09-17
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 960c22e), `CLAUDE.md`, `docs/security.md`
 
@@ -205,7 +205,7 @@ Entfällt.
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
 | Plan freigeben: `Status: freigegeben` in `intent/INT-2026-017-projektname-im-kopf/plan.md`, Commit `plan(INT-2026-017): Plan freigegeben` (Weg: Workflow `specwright/workflows/core/plan.md` Schritt 9b; `intent.bezuege.plan` steht schon auf `plan.md`) | PO (Michael) im Chat, Agent committet | vor Umsetzung | [x] 2026-09-17 |
-| PR mergen — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`architecture.md` §5, Deploy-Gate `GET /api/status/deploy-readiness`); Weg: GitHub-PR, nur Michael (CLAUDE.md „Nie") | Michael | nach CI grün | [ ] |
+| PR mergen — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`architecture.md` §5, Deploy-Gate `GET /api/status/deploy-readiness`); Weg: GitHub-PR, nur Michael (CLAUDE.md „Nie") | Michael | nach CI grün | [x] 2026-09-18, Merge-Commit `6c2c896` |
 | Board nachziehen: Karte zu INT-2026-017 anlegen/verschieben mit dem Block „Für das Board" aus dem Abschlussbericht; Weg: Skill `obsidian-po-board` in eigener kurzer Sitzung nach `/clear` (Regel 15.09.2026) | Michael startet, Agent führt aus | nach PR | [ ] |
 
 Kein Secret, kein Flag, keine Migration, kein Datenlauf; Hook `production-gate` wird nicht ausgelöst (kein `deploy`+`prod`-Befehl in der Bausitzung).
