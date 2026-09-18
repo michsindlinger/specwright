@@ -1,7 +1,7 @@
 # Plan: UI: Bild aus der Zwischenablage in „Neue Absicht" einfügen wie im Terminal
 
 > **Intent:** `intent.md` (INT-2026-020) · **Spec:** entfällt (bypass: Größe S, ein Textfeld bekommt den Einfüge-Weg des Terminals)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-18 im Plan Mode · **Freigabe:** PO (Michael Sindlinger), 2026-09-18 — im Chat „Freigabe: plan.md (Stand 2026-09-18 06:05)"; D1 ohne Einspruch = ADR-0005 ja
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `960c22e`), `CLAUDE.md`, `docs/security.md`
 
@@ -230,7 +230,7 @@ Entfällt.
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| Worktree vorbereiten: `cd ui && npm ci && cd frontend && npm ci`, dann `chmod +x ui/node_modules/node-pty/prebuilds/*/spawn-helper` (Memory `project_ui_test_baseline_worktree`) — Weg belegt: `CLAUDE.md` „Fehler, die Claude hier schon zweimal gemacht hat" | Agent (Bausitzung) | vor Umsetzung | [ ] |
+| Worktree vorbereiten: `cd ui && npm ci && cd frontend && npm ci`, dann `chmod +x ui/node_modules/node-pty/prebuilds/*/spawn-helper` (Memory `project_ui_test_baseline_worktree`) — Weg belegt: `CLAUDE.md` „Fehler, die Claude hier schon zweimal gemacht hat" | Agent (Bausitzung) | vor Umsetzung | [x] 18.09., `verify --fast` grün als Ausgangsstand |
 | D1 entscheiden: ADR-0005 mitliefern (Vorschlag ja) oder nur Docs-Zeilen — entschieden: ja (Freigabe ohne Einspruch, 18.09.) | PO | mit der Freigabe | [x] |
 | Abnahme am Mac: echter macOS-Screenshot (Cmd+Ctrl+Shift+4) → Cmd+V auf „Neue Absicht" → Starten → Claude beschreibt das Bild (AN-01) | Michael | vor Merge | [ ] |
 | Abnahme am iPhone: Foto in Fotos kopieren → Einfügen im Feld (AN-03); Ergebnis in `plan.md` §14 eintragen (auch wenn es nicht geht — dann bleibt der Terminal-Weg, NZ ergänzen) | Michael | vor Merge | [ ] |
@@ -269,14 +269,14 @@ Keine Secrets, keine Migration, keine Bestandsdaten.
 
 <!-- leser: agent -->
 
-- [ ] Jedes AK aus Abschnitt 8 hat einen grünen Test (AK-01…AK-08, RB-01).
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Protokoll und Screenshots unter `design/`.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit); `known-failures.txt` unverändert.
-- [ ] `docs/architecture.md` §3 und `docs/security.md` §1 angepasst; ADR-0005 laut D1.
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
+- [x] Jedes AK aus Abschnitt 8 hat einen grünen Test (AK-01…AK-08, RB-01): `vorhaben-absicht-bild.test.ts` (7), `aos-neue-absicht.test.ts` Block INT-2026-020 (6), `vorhaben-service-stage4.test.ts` AK-05 (1); NZ-05 `cloud-terminal-paste-image.test.ts` unverändert grün (6).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert (18.09.).
+- [x] E2E-Pfad läuft (Abschnitt 8): `design/e2e-protokoll.txt`, `design/ist/01-laden.png`, `02-eingefuegt.png`, `03-fehler-bildart.png`, `04-sitzung-terminal.png`, `design/e2e-terminal-pane.txt` (AN-01: „Read 1 file", Bild beschrieben).
+- [x] `verify` grün (lokal, 38 s), Ausgabe im PR — PR-Checks: **offen** bis CI (CI ist die Wahrheit); `known-failures.txt` unverändert.
+- [x] `docs/architecture.md` §3/§8 und `docs/security.md` §1 angepasst; ADR-0005 angelegt (D1 = ja).
+- [x] Manuelle Schritte (Abschnitt 10): Worktree erledigt; Abnahmen Mac/iPhone/Terminal-Gegenprobe und Merge im PR als offen markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
+- [x] 2x-Regel-Check: ein Fehler zum zweiten Mal (E2E-Deep-Walk-Selektor über eine Shadow-Grenze, siehe §14) → Vorschlag für `CLAUDE.md` im PR.
 - [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte neu, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-020-bild-in-neue-absicht/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
@@ -285,4 +285,11 @@ Keine Secrets, keine Migration, keine Bestandsdaten.
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-18 | R4 trat nicht ein: happy-dom 20.4 liefert `FileReader.readAsDataURL` mit Base64; `blobToBase64` läuft in den Komponententests echt, kein `vi.mock` nötig | Test bewiesen (`aos-neue-absicht.test.ts` AK-01 vergleicht die Base64 des PNG) | §8, §9 R4 (entfällt) |
+| 2026-09-18 | `onPaste` ignoriert einen zweiten Bild-Paste, solange ein Upload läuft (Hinweis „wird hochgeladen…" bleibt stehen) — Gegenstück zu `_pasteInFlight` im Terminal, im Plan nicht genannt | ohne Sperre könnten zwei Pfade in falscher Reihenfolge landen | §3 Ansatz (Ergänzung) |
+| 2026-09-18 | `findClipboardImage` liefert bei leerem `file.type` den Hinweis „Bildart nicht unterstützt: unbekannt" statt eines leeren Strings | Lesbarkeit der Meldung | §3 Ansatz (Ergänzung) |
+| 2026-09-18 | `randomUUID`-Import aus `cloud-terminal-manager.ts` entfernt (nach der Extraktion ungenutzt, `noUnusedLocals`) | Folge von §4 #2 | §4 #2 |
+| 2026-09-18 | `design/` enthält zusätzlich `e2e-testbild.png` (das eingefügte Bild) und `e2e-terminal-pane.txt` (tmux-Pane mit Claudes Antwort, Beleg AN-01); Scratchpad-Pfad in den Textdateien zu `<scratchpad>` gekürzt | Beleg für AN-01 ohne Screenshot-Lesen | §4 #17, §8 |
+| 2026-09-18 | E2E: Ladezustand (Screenshot `01-laden.png`) durch `SIGSTOP` des Branch-Backends eingefangen, sonst zu schnell (lokal < 50 ms); Trust-Dialog des frischen Scratch-Ordners per tmux (Down, Enter) beantwortet | Testtechnik | §8 (Protokoll) |
+| 2026-09-18 | **2x-Fehler (Bausitzung, nicht Produkt):** Deep-Walk-Selektor `'aos-neue-absicht .hinweis'` im E2E-Skript trifft nichts — der Host steht außerhalb seines Shadow-Roots (Memory INT-2026-012: „use the inner class alone"); der Fehlversuch ließ das Backend im `SIGSTOP` zurück (per `kill -CONT` behoben) und hinterließ ein verwaistes Bild unter `intent-paste/` — genau der Fall, den der 7-Tage-Lauf abräumt | zweites Vorkommen → Vorschlag `CLAUDE.md` im PR | §13 (2x-Regel) |
+| 2026-09-18 | Build-Workflow nennt `check:adr`; ein solcher Guard existiert im Repo nicht (`grep -rn adr scripts/verify.sh` leer) — ADR-0005 nach dem Muster von ADR-0004 geschrieben, ohne Guard | Repo-Stand | — (Hinweis für den Workflow) |

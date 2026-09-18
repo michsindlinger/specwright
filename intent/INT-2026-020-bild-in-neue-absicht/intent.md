@@ -16,7 +16,7 @@ bezuege:
   spec: ""  
   plan: "plan.md"  
   board_karte: ""  
-  adr: []  
+  adr: ["docs/adr/0005-bilder-aus-neue-absicht-im-laufzeitverzeichnis.md"]  
   ersetzt: ""  
 schlagworte: [ui, neue-absicht, zwischenablage, screenshot, terminal, phase-5]  
 freigabe:  

@@ -19,6 +19,7 @@
 | Vorhaben, Projekt-Docs von Specwright | öffentlich | Repo | — |
 | Memory-Store des MCP | intern | `~/.specwright/memory.db` | Nutzer entscheidet |
 | Sicherungskopien des Updaters | wie Original | `specwright/backups/<Zeitstempel>/` im Projekt | Nutzer löscht den Ordner |
+| Bilder aus „Neue Absicht" (Screenshots aus der Zwischenablage, vor der Sitzung; INT-2026-020, ADR-0005) | intern (Inhalt = Projektinhalte des jeweiligen Projekts) | `<runtime>/intent-paste/img-<uuid>.<ext>`, `0600`, Ordner `0700` | 7 Tage; Aufräumen beim Backend-Start |
 
 ## 2. Zugriffsmodell
 
@@ -101,3 +102,4 @@
 | 2026-09-16 | §3: Sprachdienst-Zeile auf „entfernt" — Anruf-Modus, Sprachdienste, Chat-Handler und Bild-Upload (`/api/images`) aus der UI gelöscht; Guard und `.gitignore`-Eintrag bleiben (INT-2026-010, Stufe 1); kein neuer Endpunkt | PR folgt |
 | 2026-09-16 | §1: `ui/config/model-config.json` von „intern" nach „öffentlich" (versioniert seit Monaten; Namen, keine Zugänge), „vertraulich" um `~/.claude-<id>/settings.json`, Proxy-OAuth und `~/.codex/auth.json`; §3 Zeile OpenAI/ChatGPT-Zugang mit Ausfallverhalten (INT-2026-012); Hook `no-secrets` liest `.claude/no-secrets-allow.txt` (nur Dateinamen-Regel) und die Inhaltsregel greift jetzt auch mit BSD-grep (leere Alternative behoben) | PR folgt |
 | 2026-09-18 | §2: Claude-Session-ID wird in der Zuordnung gespeichert und als `--resume`-Argument und für eine Existenzprüfung genutzt (UUID-geprüft, Homes sind Backend-Wissen, kein Leser); kein neuer HTTP-Endpunkt (WebSocket-Nachricht `vorhaben:session.resume` mit Validierung wie `session.assign`) (INT-2026-019) | PR #77 |
+| 2026-09-18 | §1: Datenobjekt „Bilder aus „Neue Absicht"" (intern, `<runtime>/intent-paste/`, 7 Tage). Neuer Eingang ist die WebSocket-Nachricht `vorhaben:absicht-bild` (kein HTTP-Endpunkt): Projekt muss offen sein, MIME gegen die Terminal-Allowlist, Endung aus der Map, nie vom Client; leer und > 10 MB abgelehnt; Antwort = Host-Pfad unter dem Laufzeitordner, intern (INT-2026-020, §6 Zeile 1 erfüllt) | ADR-0005 |
