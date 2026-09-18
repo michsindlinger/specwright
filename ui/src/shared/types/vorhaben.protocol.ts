@@ -293,9 +293,21 @@ export type SendeGrund =
 /**
  * Why a free text (Freigabe, Anmerkungen, first input) was not handed to the
  * session: the send reasons plus what the screen check and the queue report
- * (`vorhaben-service.ts` `sendToSession`). Values unchanged since INT-2026-007.
+ * (`vorhaben-service.ts` `sendToSession`). Values unchanged since INT-2026-007,
+ * `eingabe_nicht_leer` added by INT-2026-021.
  */
-export type FreitextGrund = SendeGrund | 'rueckfrage_offen' | 'plan_offen' | 'berechtigung' | 'warteschlange_voll' | 'beschaeftigt' | 'dialog_offen' | 'kein_bildschirm' | 'text_leer';
+export type FreitextGrund =
+  | SendeGrund
+  | 'rueckfrage_offen'
+  | 'plan_offen'
+  | 'berechtigung'
+  | 'warteschlange_voll'
+  | 'beschaeftigt'
+  | 'dialog_offen'
+  | 'kein_bildschirm'
+  | 'text_leer'
+  /** INT-2026-021 (AK-01): the session waits, but its input box carries text the user typed — a paste would be appended to it. */
+  | 'eingabe_nicht_leer';
 
 /** Upper bound of one free text handed to a session (`firstInput`, pasted text). */
 export const FREITEXT_MAX_CHARS = 8000;
@@ -319,7 +331,26 @@ export const FREITEXT_GRUND_TEXT: Record<FreitextGrund, string> = {
   dialog_offen: 'die Sitzung zeigt einen Dialog — im Terminal antworten',
   kein_bildschirm: 'Bildschirm der Sitzung nicht lesbar — nur bei wartender Sitzung senden',
   text_leer: 'kein Text',
+  eingabe_nicht_leer: eingabeNichtLeerText(),
 };
+
+/** How much of the input box the message repeats (INT-2026-021, AK-01). */
+export const EINGABE_TEXT_MAX_CHARS = 80;
+
+/**
+ * INT-2026-021 (AK-01): the refusal that names what is in the way. `text` is
+ * the content of the input box as the screen showed it; it is shortened to
+ * `EINGABE_TEXT_MAX_CHARS`. Without it the sentence stays general. The way out
+ * is deliberately not spelled as one key — which key clears the box is not
+ * recorded (plan §9), so the sentence names the goal, not the keystroke.
+ */
+export function eingabeNichtLeerText(text?: string): string {
+  const kern = 'in der Eingabezeile der Sitzung steht noch Text';
+  const weg = ' — im Terminal abschicken oder löschen, dann erneut klicken';
+  if (!text) return kern + weg;
+  const kurz = text.length > EINGABE_TEXT_MAX_CHARS ? text.slice(0, EINGABE_TEXT_MAX_CHARS - 1) + '…' : text;
+  return `${kern}: „${kurz}"${weg}`;
+}
 
 export const draftKey = (projectId: string, intentId: string, doc: VorhabenDocKey): string => `${projectId}::${intentId}::${doc}`;
 export const lastModelKey = (projectId: string, intentId: string, step: VorhabenStep): string => `${projectId}::${intentId}::${step}`;
@@ -728,7 +759,10 @@ export type VorhabenErrorCode =
   /** The rule refused (`message` = `NEXT_STEP_SPERRE_TEXT[sperre]`) — the page was stale or a second device was faster. */
   | 'SESSION_BUSY'
   /** AK-08: `/clear` or the command was not written into the session (`message` = reason); nothing else happened. */
-  | 'SESSION_WRITE_FAILED';
+  | 'SESSION_WRITE_FAILED'
+  // INT-2026-021 (AK-01/AK-06): its own code so the page can offer the way out; `message` names the text in the box.
+  /** The session waits, but text stands in its input box — nothing was written. */
+  | 'PROMPT_NOT_EMPTY';
 
 export const ANMERKUNG_MAX_CHARS = 4000;
 

@@ -50,6 +50,15 @@ export const hasDialogCue = (screen: string): boolean => findDialogCue(screen) !
 /** The empty prompt line Claude Code draws while it waits — and (since 2.1.276) also while it works. */
 const IDLE_PROMPT_RE = /^\s*❯\s*$/;
 /**
+ * Any prompt line, empty or filled. The transcript keeps the user's earlier
+ * prompts as `❯ …` lines as well (fixture `2.1.276/prompt-idle.txt`, lines
+ * 6/8/18), so only the LAST match is the input box (INT-2026-021, AK-03).
+ * Recorded on 2.1.277: the live box separates `❯` from the text with U+00A0,
+ * the transcript with a plain space — `\s` covers both and the rule never
+ * depends on which one it is.
+ */
+const PROMPT_LINE_RE = /^\s*❯/;
+/**
  * A running turn: the spinner line `✻ Enchanting… (4s · ↓ 204 tokens · thinking)`,
  * `⎿  Running… (3s)` (a tool), or the older `esc to interrupt` hint. The
  * finished marks `✻ Churned for 10s · done 8:38` carry no `…(` and do not match.
@@ -62,13 +71,48 @@ const BUSY_CUE = /…\s*\([^)]*\b\d+s\b|esc to interrupt/;
  * waits for input — an empty prompt line, no spinner, no dialog cue? Only
  * then may `/clear` be pasted: a `/clear` that lands in a running turn is
  * buffered by Claude Code and executed minutes later, without our command
- * (plan §9 R10). Pure; the caller reads a stable screen first.
+ * (plan §9 R10). Since INT-2026-021 a thin wrapper around `promptZustand`,
+ * with unchanged meaning for every caller.
  */
 export function isIdlePrompt(screen: string): boolean {
+  return promptZustand(screen) === 'wartet';
+}
+
+/** INT-2026-021: the four states of the prompt that `screenCheck` tells apart. */
+export type PromptZustand = 'wartet' | 'arbeitet' | 'eingabe_nicht_leer' | 'dialog';
+
+/**
+ * INT-2026-021 (AK-01, AK-03, AK-04): what the screen says about the prompt.
+ * `wartet` — empty input box, no spinner, no dialog: only then may `/clear`
+ * and the phase command be pasted.
+ * `eingabe_nicht_leer` — the box carries text the user typed. A paste would be
+ * appended to it (`ja, leg den Entwurf an/clear`), so it is refused — but under
+ * its own name, not as „arbeitet" (what INT-2026-018 reported for it).
+ * `arbeitet` — a spinner runs, or no prompt line is visible at all (startup
+ * screen, scrolled view): fail closed, exactly as before.
+ * `dialog` — a cue is on screen; checked FIRST so the precedence stays the one
+ * the caller has today (`screenCheck` asks `findDialogCue` before the prompt).
+ * Pure; the caller reads a stable screen first.
+ */
+export function promptZustand(screen: string): PromptZustand {
+  if (findDialogCue(screen) !== null) return 'dialog';
   const lines = stripScreen(screen);
-  if (!lines.some((l) => IDLE_PROMPT_RE.test(l))) return false;
-  if (lines.some((l) => BUSY_CUE.test(l))) return false;
-  return findDialogCue(screen) === null;
+  if (lines.some((l) => BUSY_CUE.test(l))) return 'arbeitet';
+  const eingabe = lines.filter((l) => PROMPT_LINE_RE.test(l)).at(-1);
+  if (eingabe === undefined) return 'arbeitet';
+  return IDLE_PROMPT_RE.test(eingabe) ? 'wartet' : 'eingabe_nicht_leer';
+}
+
+/**
+ * INT-2026-021 (AK-01): the text in the input box, for the message that names
+ * it. Only meaningful when `promptZustand` said `eingabe_nicht_leer`; NBSP and
+ * runs of whitespace collapse to single spaces, an empty result is `undefined`.
+ */
+export function eingabeText(screen: string): string | undefined {
+  const eingabe = stripScreen(screen)
+    .filter((l) => PROMPT_LINE_RE.test(l))
+    .at(-1);
+  return eingabe?.replace(PROMPT_LINE_RE, '').replace(/\s+/g, ' ').trim() || undefined;
 }
 
 /** INT-2026-016 (AK-10): the block kind the dialog probe reports for a cue (trust dialogs have no kind of their own). */
