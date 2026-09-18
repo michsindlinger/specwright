@@ -43,7 +43,7 @@ export interface TranscriptHit {
 }
 
 /**
- * `projects/*​/<id>.jsonl` in any of the homes. Returns undefined for an id
+ * `projects/<dir>/<id>.jsonl` in any of the homes. Returns undefined for an id
  * that is not a UUID (without touching the disk), for unreadable homes and
  * when no file exists.
  */

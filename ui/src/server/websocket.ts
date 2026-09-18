@@ -115,11 +115,11 @@ export class WebSocketHandler {
     this.vorhabenStore = new VorhabenStateStore(getVorhabenStatePath());
     this.vorhabenLoaded = this.vorhabenStore.load();
     this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager(), undefined, undefined, {}, {
-      keepWorktree: async (worktreePath) => {
+      keepWorktree: async (worktreePath): Promise<boolean> => {
         await this.vorhabenLoaded;
         return this.vorhabenStore.hasOpenAssignmentIn(worktreePath);
       },
-      sessionEnded: async (sessionId) => {
+      sessionEnded: async (sessionId): Promise<void> => {
         await this.vorhabenLoaded;
         this.vorhabenStore.markSessionEnded(sessionId);
       },

@@ -16,6 +16,7 @@ import type {
   VorhabenDocKey,
   VorhabenErrorMessage,
   VorhabenPhaseDoc,
+  VorhabenSessionResumedMessage,
   VorhabenState,
   VorhabenStep,
 } from '../../../src/shared/types/vorhaben.protocol.js';
@@ -185,6 +186,18 @@ export class VorhabenClientService {
       intentId,
       sessionId,
     });
+  }
+
+  /**
+   * INT-2026-019 (AK-01): „Vorhaben-Seite geöffnet" — the backend decides
+   * whether the row's session is lost and resumes it (RB-01). Resolves on
+   * `vorhaben:session-resumed` (`gestartet` with the new session id, or
+   * `nicht_noetig` with a reason), rejects with the server's code and message
+   * (`VorhabenRequestError`: WORKTREE_MISSING, RESUME_FAILED, …) — the page
+   * shows the message as a line (AK-08, AK-09).
+   */
+  resumeSession(projectId: string, intentId: string): Promise<VorhabenSessionResumedMessage> {
+    return this.request<VorhabenSessionResumedMessage>('vorhaben:session-resumed', { type: 'vorhaben:session.resume', projectId, intentId });
   }
 
   /**

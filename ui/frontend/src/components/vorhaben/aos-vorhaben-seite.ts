@@ -25,7 +25,7 @@ import type { CloudTerminalSessionTarget } from '../../../../src/shared/types/cl
 import { buildAenderungenText, buildFreigabeText, formatStandLabel } from '../../../../src/shared/vorhaben-text.js';
 import { vorhabenService, type ModelListInfo, type SendResult } from '../../services/vorhaben.service.js';
 import { ladeModelle, vorauswahl } from './model-wahl.js';
-import { STEP_LABELS, ZUSTAND_LABELS, formatStand } from './vorhaben-sort.js';
+import { STEP_LABELS, ZUSTAND_LABELS, formatClock, formatStand } from './vorhaben-sort.js';
 import { dialogZielText, leisteGrund, ZUORDNUNG_HINWEIS } from './aos-sende-leiste.js';
 import './aos-dokument-leser.js';
 import './aos-sende-leiste.js';
@@ -120,6 +120,8 @@ export class AosVorhabenSeite extends LitElement {
   @property({ attribute: false }) protocol: ProtokollEintrag[] = [];
   /** `lastModelKey(...)` → selection (from the state). */
   @property({ attribute: false }) lastModel: Record<string, ModelSelection> = {};
+  /** INT-2026-019 (AK-08/AK-09): why the resume on opening was refused; null = nothing to show. */
+  @property({ attribute: false }) resumeHinweis: string | null = null;
   @state() private sammelOpen = false;
   @state() private lost: string[] = [];
   @state() private sending = false;
@@ -634,7 +636,13 @@ export class AosVorhabenSeite extends LitElement {
         </div>
         <div class="meta">
           <span><span class="dot ${r.zustand}"></span>${ZUSTAND_LABELS[r.zustand]}${r.zustandDetail && r.zustand !== 'wartet_auf_dich' && !ZUSTAND_LABELS[r.zustand].endsWith(r.zustandDetail) ? ` · ${r.zustandDetail}` : ''}</span>
-          ${session ? html`<span>Sitzung <strong>${session.name}</strong>${session.model ? ` · ${session.model}` : ''}${session.ended ? ' · beendet' : ''}</span>` : nothing}
+          ${session
+            ? html`<span
+                >Sitzung <strong>${session.name}</strong>${session.model ? ` · ${session.model}` : ''}${session.ended ? ' · beendet' : ''}${session.resumed
+                  ? ` · fortgesetzt nach Neustart${session.resumed.stand ? `, Stand ${formatClock(Date.parse(session.resumed.stand))}` : ''}`
+                  : ''}</span
+              >`
+            : nothing}
           ${r.arbeitskopie ? html`<span>Arbeitskopie <code>${r.arbeitskopie}</code></span>` : nothing}
           ${r.phaseNote ? html`<span>${r.phaseNote}</span>` : nothing}
         </div>
@@ -759,6 +767,11 @@ export class AosVorhabenSeite extends LitElement {
   }
 
   private renderHinweis() {
+    // INT-2026-019 (AK-08/AK-09): the reason comes first; the state hint below stays (e.g. „Nächster Schritt" remains the way).
+    return html`${this.resumeHinweis ? html`<div class="hinweis resume"><span>Wiederaufnahme nicht möglich: ${this.resumeHinweis}</span></div>` : nothing}${this.renderZustandHinweis()}`;
+  }
+
+  private renderZustandHinweis() {
     const r = this.row;
     if (r.zustand === 'wartet_auf_dich' && r.reviewDoc && r.step) {
       const info = r.docs.find((d) => d.key === r.reviewDoc);
