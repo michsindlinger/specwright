@@ -1,7 +1,7 @@
 # Plan: UI: Vorhaben-Status, Glocke und angedocktes Terminal stimmen wieder
 
 > **Intent:** `intent.md` (INT-2026-016) · **Spec:** entfällt (bypass: vier Fehlerberichte aus dem Gebrauch, kein Datenmodell-Umbau)
-> **Status:** in_umsetzung (PR 1 #73, PR 2 #74, PR 3 folgt)
+> **Status:** umgesetzt — PR 1 #73 (`da806cd`), PR 2 #74 (`250c6c5`), PR 3 #75 (`ad70b5c`), alle 2026-09-17
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** PO (Michael Sindlinger), 2026-09-17 (Plan Mode, Fassung 4)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 7124f3a), `CLAUDE.md`, `docs/design.md`, Spec INT-2026-004 (FA-02, FA-13), Spec INT-2026-010 (FA-04/05, §4/§5, AN-S01), Spec INT-2026-011 (FA-06, AK-09), Plan INT-2026-013
 > **Review:** Self-Review + externes Multi-LLM-Review, zwei Runden (je 3 Reviewer; Runde 1: 3 Blocker + 17 weitere, Runde 2: 3 Likely + 17 Minority) — alle in §12 entschieden
@@ -209,7 +209,7 @@ Vier gemeldete Fehler, sieben Bausteine, drei PRs aus einer Bausitzung. AK-Zuord
 3. PR 1 Tests-zuerst: D1 → D2 Backend (Marke) → D2 Frontend (Builder, Glocke, Abbau der Merkliste) → Docs. `bash scripts/verify.sh --fast` je Baustein, voll am Ende. E2E (a) Zeile umgesetzt + wartende Sitzung sichtbar; (b) Stop einer Vorhaben-Sitzung → Glocke nennt das Vorhaben; Reload → noch da; Antwort → weg. Screenshots `intent/INT-2026-016-…/design/ist/`. PR öffnen, CI abwarten.
 4. PR 2 Tests-zuerst: D5/F5 → D6 → D4 Backend + Handler → D3 → D4/D10 Frontend → Docs. E2E (c) Vorhaben ohne Sitzung in Projekt B bei aktivem Projekt A → Cmd+D → Tabs von B / Leerzustand, aktives Projekt bleibt A, **keine** Zuordnung durch Cmd+D allein; „Neue Session" → entsteht in B, Toast, Zeile `arbeitet` nach Eingabe; (c2) bestehender Claude-Tab von B angeklickt → Toast, Zeile trägt den Tab, Reload → Seite öffnet den Tab von selbst; (d) `/plan INT-002` in der Sitzung von 001 → 001 „ruht", 002 trägt die Sitzung. PR öffnen, CI.
 5. PR 3: Schritt 0, dann D7 Tests-zuerst, E2E (e) Plan-Dialog nach Option 3 → Zeile `wartet · Plan-Entscheidung` binnen 3 s, Glocke klingelt, Proben-Zähler im Log = 1 je Ruhephase; (f) Berechtigungs-Dialog; (g) Dialog beantwortet → `arbeitet`; (h) Backend-Neustart mit offenem Probe-Block → Zustand bleibt `wartet`, `blockedBy` erhalten. Docs, Memory, PR.
-6. Abschluss: `intent.md` `umgesetzt` nach Merge (Michaels Schritt), Board-Block im Abschlussbericht.
+6. Abschluss: `intent.md` `umgesetzt` nach Merge (Michaels Schritt), Board-Block im Abschlussbericht. — Erledigt 2026-09-18 (Abschluss-PR, `intent.md` 1.0.1; Board-Karte in Erledigt).
 
 ### 7. Zerlegung
 
