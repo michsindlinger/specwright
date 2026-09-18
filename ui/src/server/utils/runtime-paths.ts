@@ -53,6 +53,20 @@ export function getPasteImageRoot(): string {
   return join(getCloudTerminalRuntimeDir(), 'paste');
 }
 
+/**
+ * Root for images pasted on „Neue Absicht" before any session exists
+ * (INT-2026-020, ADR-0005): `<runtime>/intent-paste`, flat, no per-session
+ * subdirectories.
+ *
+ * Deliberately NOT under `getPasteImageRoot()`: everything below `paste/`
+ * belongs to a cloud-terminal session and is removed on session close and on
+ * manager shutdown (AK-07). Files here are pruned on backend boot once older
+ * than `INTENT_PASTE_MAX_AGE_MS` (7 days, AK-08).
+ */
+export function getIntentPasteImageRoot(): string {
+  return join(getRuntimeDir(), 'intent-paste');
+}
+
 /** Directory holding generated per-session run scripts and exit-code files. */
 export function getLaunchDir(): string {
   return join(getCloudTerminalRuntimeDir(), 'launch');

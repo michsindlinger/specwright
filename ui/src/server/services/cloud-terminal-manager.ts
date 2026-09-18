@@ -20,7 +20,6 @@
 import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import * as path from 'path';
-import { randomUUID } from 'crypto';
 import {
   CloudTerminalSession,
   CloudTerminalSessionId,
@@ -71,24 +70,7 @@ import { sanitizeSessionEnv } from '../utils/session-env.js';
 import type { BlockKind, HookContext } from '../../shared/types/hook-events.protocol.js';
 import { cueToBlockKind, findDialogCue } from './dialog-driver.js';
 import { isClaudeCli } from '../../shared/provider-cli.js';
-
-/** MIME type → filename extension for pasted-image persistence */
-const PASTE_MIME_TO_EXT: ReadonlyMap<string, string> = new Map([
-  ['image/png', 'png'],
-  ['image/jpeg', 'jpg'],
-  ['image/gif', 'gif'],
-  ['image/webp', 'webp'],
-  ['image/heic', 'heic'],
-  ['image/heif', 'heif'],
-]);
-
-/** Error thrown by savePastedImage; carries a CLOUD_TERMINAL_ERROR_CODES value */
-class PasteImageError extends Error {
-  constructor(public code: string, message: string) {
-    super(message);
-    this.name = 'PasteImageError';
-  }
-}
+import { persistPastedImage, PasteImageError } from '../utils/paste-image.js';
 
 /**
  * Extended cloud terminal session with internal state
@@ -1458,8 +1440,8 @@ export class CloudTerminalManager extends EventEmitter {
    *
    * The cloud Claude Code CLI cannot read the user's local clipboard (it runs on the
    * droplet, no display server). This method bridges that gap: the browser uploads the
-   * image bytes; we write them to /tmp/cloud-terminal-paste/<sessionId>/ and feed the
-   * resulting path into stdin so the user can reference it from the prompt.
+   * image bytes; we write them to `<runtime>/cloud-terminal/paste/<sessionId>/` and
+   * feed the resulting path into stdin so the user can reference it from the prompt.
    *
    * @throws PasteImageError with a CLOUD_TERMINAL_ERROR_CODES code on any validation failure
    */
@@ -1481,32 +1463,11 @@ export class CloudTerminalManager extends EventEmitter {
         `Session not active: ${session.status}`,
       );
     }
-    const ext = PASTE_MIME_TO_EXT.get(mimeType);
-    if (!ext) {
-      throw new PasteImageError(
-        CLOUD_TERMINAL_ERROR_CODES.PASTE_IMAGE_UNSUPPORTED_TYPE,
-        `Unsupported MIME type: ${mimeType}`,
-      );
-    }
-
-    const buf = Buffer.from(base64, 'base64');
-    if (buf.length === 0) {
-      throw new PasteImageError(
-        CLOUD_TERMINAL_ERROR_CODES.PASTE_IMAGE_FAILED,
-        'Decoded image is empty',
-      );
-    }
-    if (buf.length > CLOUD_TERMINAL_CONFIG.MAX_PASTE_IMAGE_BYTES) {
-      throw new PasteImageError(
-        CLOUD_TERMINAL_ERROR_CODES.PASTE_IMAGE_TOO_LARGE,
-        `Image too large: ${buf.length} bytes`,
-      );
-    }
-
-    const dir = path.join(getPasteImageRoot(), sessionId);
-    await fs.promises.mkdir(dir, { recursive: true, mode: 0o700 });
-    const absolutePath = path.join(dir, `img-${randomUUID()}.${ext}`);
-    await fs.promises.writeFile(absolutePath, buf, { mode: 0o600 });
+    // Validation (MIME allowlist, empty, size) and the write itself are shared
+    // with „Neue Absicht" (INT-2026-020) — see utils/paste-image.ts.
+    const absolutePath = await persistPastedImage(
+      path.join(getPasteImageRoot(), sessionId), base64, mimeType,
+    );
 
     // Inject path directly into the PTY with surrounding spaces so it sits as a
     // distinct token regardless of where the user's cursor currently is.
