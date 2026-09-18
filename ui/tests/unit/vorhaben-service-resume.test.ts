@@ -451,8 +451,13 @@ describe('VorhabenService resume (INT-2026-019)', () => {
       manager.sessions.set('tab', { sessionId: 'tab', status: 'active', projectPath: projA, effectiveCwd: projA, terminalType: 'claude-code', agentStatus: 'done', modelConfig: { model: 'opus', provider: 'anthropic' } });
       await expect(service.assignSession('pa', 'INT-2026-019', 'tab')).rejects.toMatchObject({ code: 'RESUME_RUNNING' });
       release();
-      expect((await p).ergebnis).toBe('gestartet');
-      // Afterwards the lock is gone; startStep works again (the newest assignment wins, review E15).
+      const resumed = await p;
+      expect(resumed.ergebnis).toBe('gestartet');
+      // Afterwards the lock is gone: startStep is refused by the row's live session now (INT-2026-018, AK-02), not by RESUME_RUNNING …
+      await expect(service.startStep('pa', 'INT-2026-019', 'build', { providerId: 'anthropic', modelId: 'opus' }, undefined)).rejects.toMatchObject({ code: 'SESSION_BUSY' });
+      // … and works again once that session ended (the newest assignment wins, review E15).
+      manager.end((resumed as { sessionId: string }).sessionId);
+      await service.rescan();
       const next = await service.startStep('pa', 'INT-2026-019', 'build', { providerId: 'anthropic', modelId: 'opus' }, undefined);
       expect(store.getAssignment('pa', 'INT-2026-019')?.sessionId).toBe(next.sessionId);
     });

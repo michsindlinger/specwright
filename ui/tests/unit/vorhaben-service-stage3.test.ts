@@ -341,7 +341,7 @@ describe('VorhabenService.sendTextToSession + pendingIntents (INT-2026-008)', ()
     expect(pending.map((p) => p.sessionId)).toEqual(['s8', 's9']);
     expect(pending[1]).toEqual({
       sessionId: 's9', projectId: 'pa', cwd: projA, arbeitskopie: 'main', since: '2026-09-16T09:01:00.000Z',
-      session: { id: 's9', name: 'intent', model: 'opus', agentStatus: 'working' },
+      session: { id: 's9', name: 'intent', model: 'opus', agentStatus: 'working', step: 'intent' }, // INT-2026-018: a pending `/intent` session names its step
     });
     // no live session (restart, closed) → ended; unknown name → 'intent'; worktree cwd → its directory name
     expect(pending[0]).toMatchObject({ arbeitskopie: 'feat-x', session: { id: 's8', name: 'intent', model: 'sonnet', agentStatus: 'unknown', ended: true } });
