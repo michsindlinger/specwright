@@ -6,7 +6,7 @@ version: "1.0.0"
 autor: "Michael Sindlinger (Feedback aus dem Gebrauch, 17.09.2026, zwei Screenshots, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-17"  
-geaendert: "2026-09-17"  
+geaendert: "2026-09-18"  
 risikoklasse: "niedrig"  
 groesse: "S"  
 bypass: "ja"  
@@ -14,7 +14,7 @@ bypass_grund: "Größe S: eine Freigabe-Regel im Backend, ein Startweg über den
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: "Specwright — Backlog Board · „PO-Entscheidung FA-12: Sitzung „wartet" ohne Review-Dokument — nächsten Schritt anbieten oder erst nach Schließen?" (Needs Discovery)"  
   adr: []  
   ersetzt: ""  
@@ -132,5 +132,6 @@ Keine. Zwei Rückfragen am 2026-09-17 entschieden (PO): Modell/Arbeitskopie bei 
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-18 | `bezuege.plan` gesetzt — Plan freigegeben (PO, im Chat: „freigabe, O1 wie vorgeschlagen"); Korrektur aus dem Plan (§2/F1): der Sitzungsdeckel „höchstens fünf" in §1/RB-03 ist seit `1cc2f1a` (18.02.2026) aufgehoben, RB-03 stützt sich auf das RAM-Argument | RB-03 | PO, 18.09. |
 | 1.0.0 | 2026-09-17 | Angenommen ohne Änderung am Entwurf; Bypass ja (Größe S) → direkt `/plan`. Abgleich Mensch/Agent: ohne Befund (Kopf S/niedrig/Bypass deckt Endzustand AK-01–AK-10; keine Vertragsschicht bei niedrig, §12 Annahmen tragen die Prüfwege) | alle | PO, 17.09. |
 | 0.1.0 | 2026-09-17 | Entwurf nach Gespräch; zwei Rückfragen mit den Vorschlägen entschieden | alle | — |
