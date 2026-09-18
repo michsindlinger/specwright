@@ -98,8 +98,6 @@ export class WebSocketHandler {
   private vorhabenLoaded: Promise<{ existed: boolean; healthy: boolean }>;
   private vorhabenService: VorhabenService;
   private vorhabenHandler: VorhabenHandler;
-  /** Sessions the user closed via cloud-terminal:close — their `closed` event carries closedBy:'user'. */
-  private userClosedSessionIds = new Set<string>();
   /** Sessions created through a WS create handler (they broadcast their own `created`). */
   private wsCreatedSessionIds = new Set<string>();
 
@@ -2047,16 +2045,16 @@ export class WebSocketHandler {
     // to include the requestId for correlation
 
     // Session closed
-    this.cloudTerminalManager.on('session.closed', (sessionId: CloudTerminalSessionId, exitCode?: number) => {
+    this.cloudTerminalManager.on('session.closed', (sessionId: CloudTerminalSessionId, exitCode?: number, closedBy?: 'user') => {
       // closedBy:'user' lets every client drop the tab; a plain process exit
       // keeps the tab with its "Prozess beendet" message (today's UX).
-      const closedByUser = this.userClosedSessionIds.delete(sessionId);
+      // INT-2026-018: the manager says who closed (`closeSession(id, { closedBy: 'user' })`).
       this.wsCreatedSessionIds.delete(sessionId);
       const message: WebSocketMessage = {
         type: 'cloud-terminal:closed',
         sessionId,
         exitCode,
-        ...(closedByUser ? { closedBy: 'user' } : {}),
+        ...(closedBy === 'user' ? { closedBy: 'user' } : {}),
         timestamp: new Date().toISOString()
       };
       this.broadcast(message);
@@ -2581,10 +2579,7 @@ export class WebSocketHandler {
       return;
     }
 
-    // Mark BEFORE the close: the session.closed listener reads the set synchronously.
-    this.userClosedSessionIds.add(sessionId);
-    const closed = this.cloudTerminalManager.closeSession(sessionId);
-    if (!closed) this.userClosedSessionIds.delete(sessionId);
+    const closed = this.cloudTerminalManager.closeSession(sessionId, { closedBy: 'user' });
 
     if (!closed) {
       const errorResponse: WebSocketMessage = {

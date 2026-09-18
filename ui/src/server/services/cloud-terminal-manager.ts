@@ -222,7 +222,7 @@ function bufferTail(chunks: readonly string[], max: number): string {
  *
  * Emits:
  * - 'session.created' (CloudTerminalSession) - New session created
- * - 'session.closed' (CloudTerminalSessionId, exitCode?) - Session closed
+ * - 'session.closed' (CloudTerminalSessionId, exitCode?, closedBy?: 'user') - Session closed; INT-2026-018: `closedBy: 'user'` when closed via `closeSession(id, { closedBy: 'user' })` (the ✕ or the Vorhaben service) — clients drop the tab then
  * - 'session.paused' (CloudTerminalSessionId) - Session paused
  * - 'session.resumed' (CloudTerminalSessionId) - Session resumed
  * - 'session.data' (CloudTerminalSessionId, string) - Terminal output
@@ -1270,9 +1270,11 @@ export class CloudTerminalManager extends EventEmitter {
    * Close a Cloud Terminal session
    *
    * @param sessionId - Session ID to close
+   * @param opts - INT-2026-018: `closedBy: 'user'` travels as the third argument of `session.closed`
+   *   (the ✕ in the terminal and „Nächster Schritt" with another model/target both close as the user)
    * @returns true if closed successfully, false if session not found
    */
-  public closeSession(sessionId: CloudTerminalSessionId): boolean {
+  public closeSession(sessionId: CloudTerminalSessionId, opts: { closedBy?: 'user' } = {}): boolean {
     const session = this.sessions.get(sessionId);
     if (!session) {
       return false;
@@ -1316,7 +1318,7 @@ export class CloudTerminalManager extends EventEmitter {
     console.log(`[CloudTerminalManager] Closed session ${sessionId}`);
 
     // Emit session closed event
-    this.emit('session.closed', sessionId, session.exitCode);
+    this.emit('session.closed', sessionId, session.exitCode, opts.closedBy);
 
     return killed;
   }

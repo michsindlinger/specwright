@@ -550,6 +550,27 @@ describe('CloudTerminalManager boot-restore', () => {
     expect((await registry.load()).entries).toEqual([]);
   });
 
+  it('INT-2026-018 (AK-05, Z-02): closeSession(id, { closedBy: "user" }) emits the closer as third argument; without the option it is undefined', async () => {
+    await registry.upsert(persisted('cu'));
+    tmux.liveSessions.add('cs-cu');
+    await registry.upsert(persisted('cx'));
+    tmux.liveSessions.add('cs-cx');
+    const manager = makeManager();
+    await manager.whenReady();
+
+    const closed: Array<{ id: string; code?: number; closedBy?: string }> = [];
+    manager.on('session.closed', (id: string, code?: number, closedBy?: 'user') => closed.push({ id, code, closedBy }));
+
+    expect(manager.closeSession('cu', { closedBy: 'user' })).toBe(true);
+    expect(manager.closeSession('cx')).toBe(true);
+    expect(closed).toEqual([
+      { id: 'cu', code: undefined, closedBy: 'user' },
+      { id: 'cx', code: undefined, closedBy: undefined },
+    ]);
+    expect(manager.getSession('cu')).toBeUndefined();
+    expect(tmux.killedSessions).toEqual(expect.arrayContaining(['cs-cu', 'cs-cx']));
+  });
+
   it('real inner exit (tmux session gone) → exit code from exit file, session closed', async () => {
     await registry.upsert(persisted('ex'));
     tmux.liveSessions.add('cs-ex');

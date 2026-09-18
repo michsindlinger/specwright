@@ -15,6 +15,7 @@ import {
   type VorhabenDocInfo,
   type VorhabenDocKey,
   type VorhabenNextStep,
+  type VorhabenNextStepSperre,
   type VorhabenPhase,
   type VorhabenRow,
   type VorhabenSessionRef,
@@ -170,6 +171,35 @@ export function deriveNextStep(phase: VorhabenPhase, intentId: string, hasBuildS
     default:
       return undefined;
   }
+}
+
+const STEP_ORDER: Record<VorhabenStep, number> = { intent: 0, spec: 1, plan: 2, build: 3 };
+
+/**
+ * INT-2026-018 (AK-01–AK-03, AK-10, NZ-04): first reason that locks the next
+ * step; undefined = usable. Reader (`toRow`) and service (`reusableSession`)
+ * share this one function, so the button and the refusal never disagree.
+ * An ended or errored session counts as none (AK-10). `unknown` (no hook yet,
+ * restored without a status) is never „ruhig wartend" (review E14). A
+ * session without `step` (old client, fixture) counts as the same phase.
+ */
+export function deriveNextStepSperre(input: {
+  session: VorhabenSessionRef | undefined;
+  nextStep: VorhabenStep;
+  freigabeDoc: VorhabenDocKey | undefined;
+  /** phase `bau` with build-stand.md: „Bau fortsetzen" keeps today's rule (no phase check, NZ-04). */
+  interrupted: boolean;
+}): VorhabenNextStepSperre | undefined {
+  const s = input.session;
+  if (!s || s.ended || s.agentStatus === 'error') return undefined;
+  if (s.agentStatus === 'working') return 'arbeitet';
+  if (s.agentStatus === 'blocked') return 'dialog';
+  if (s.agentStatus === 'unknown') return 'unbekannt';
+  if (s.firstInputPending) return 'erste_eingabe';
+  if (input.freigabeDoc) return 'freigabe_offen';
+  if (input.interrupted) return undefined;
+  if (s.step === undefined || STEP_ORDER[s.step] >= STEP_ORDER[input.nextStep]) return 'gleiche_phase';
+  return undefined;
 }
 
 /** Review document per phase (FA-20) — meaningful only while the session waits. */
@@ -479,11 +509,19 @@ export function toRow(project: ScanProject, c: VorhabenCandidate, session: Vorha
   const intent = c.heads.intent;
   const reviewDocCandidate = deriveReviewDoc(phase, c.heads);
   const z = deriveZustand(phase, c.hasBuildStand, session, reviewDocCandidate);
-  // INT-2026-010 (FA-21): a live session in any state blocks the next step; the step itself stays on the row.
-  const sessionBusy = !!session && !session.ended && (z.zustand === 'arbeitet' || z.zustand === 'wartet' || z.zustand === 'wartet_auf_dich' || isWartetImDialog(z.zustand));
-  const nextStep = deriveNextStep(phase, c.intentId, c.hasBuildStand);
   // INT-2026-010 (FA-22): the document awaiting approval by its head status — independent of a session; none in phase pr.
   const freigabeDoc = phase !== 'pr' && reviewDocCandidate && c.docs.some((d) => d.key === reviewDocCandidate) ? reviewDocCandidate : undefined;
+  // INT-2026-010 (FA-21): the step itself stays on the row. INT-2026-018: `deriveNextStepSperre` decides whether the
+  // button is usable; a usable row names the live session the click continues in (AK-04/AK-05) — not for „Bau fortsetzen".
+  const interrupted = phase === 'bau' && c.hasBuildStand;
+  const nextStepBase = deriveNextStep(phase, c.intentId, c.hasBuildStand);
+  const sperre = nextStepBase ? deriveNextStepSperre({ session, nextStep: nextStepBase.step, freigabeDoc, interrupted }) : undefined;
+  const sitzung =
+    nextStepBase && !sperre && !interrupted && session && !session.ended && session.agentStatus !== 'error' && session.target
+      ? { id: session.id, name: session.name, model: { providerId: session.provider ?? 'anthropic', modelId: session.model }, target: session.target }
+      : undefined;
+  const nextStep = nextStepBase ? { ...nextStepBase, ...(sperre ? { sperre } : {}), ...(sitzung ? { sitzung } : {}) } : undefined;
+  const sessionBusy = !!sperre;
   const planNote = c.heads.plan?.note ?? '';
   const phaseNote = phase === 'pr' ? planNote : intent?.bypass ? 'Spec entfällt' : '';
   return {
