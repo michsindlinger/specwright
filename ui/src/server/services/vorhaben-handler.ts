@@ -231,7 +231,7 @@ export class VorhabenHandler {
         }
         const sessionTarget = message.sessionTarget as CloudTerminalSessionTarget | undefined;
         void this.service
-          .startStep(project.id, intentId, step, model, sessionTarget, firstInput)
+          .startStep(project.id, intentId, step, model, sessionTarget, firstInput, message.eingabeLeeren === true)
           .then(({ sessionId, modus, geschlossen }) =>
             // INT-2026-018: `modus` says whether the click continued in the live session; `geschlossen` names a closed one (AK-04/AK-05).
             reply({ type: 'vorhaben:step-started', ...(requestId ? { requestId } : {}), sessionId, projectId: project.id, ...(intentId ? { intentId } : {}), step, modus, ...(geschlossen ? { geschlossen } : {}) } as VorhabenStepStartedMessage)

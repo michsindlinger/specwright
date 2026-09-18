@@ -15,7 +15,7 @@
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { vorhabenService, type ModelListInfo } from '../../services/vorhaben.service.js';
+import { vorhabenService, VorhabenRequestError, type ModelListInfo } from '../../services/vorhaben.service.js';
 import { istSchrittStandard, ladeModelle, modellVorhanden, vorauswahl } from './model-wahl.js';
 import { NEXT_STEP_SPERRE_TEXT, stepCommand, type ModelSelection, type VorhabenNextStep, type VorhabenNextStepSperre, type VorhabenStep } from '../../../../src/shared/types/vorhaben.protocol.js';
 import type { CloudTerminalSessionTarget, CloudTerminalWorktreeEntry } from '../../../../src/shared/types/cloud-terminal.protocol.js';
@@ -61,6 +61,8 @@ export class AosNaechsterSchritt extends LitElement {
   @state() private target = 'main';
   @state() private starting = false;
   @state() private error = '';
+  /** INT-2026-021 (AK-06): the last refusal was PROMPT_NOT_EMPTY — offer to clear the box. */
+  @state() private leerbar = false;
   /**
    * INT-2026-018 (review E3): the session's worktree when the target list does
    * not know it (created after the list was loaded, or not a git worktree of
@@ -132,6 +134,24 @@ export class AosNaechsterSchritt extends LitElement {
       width: 100%;
       color: var(--color-accent-error);
       font-size: var(--font-size-xs);
+    }
+    button.leeren {
+      margin-top: var(--space-1);
+      padding: 2px var(--space-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--color-text-muted);
+      font-size: var(--font-size-xs);
+      cursor: pointer;
+    }
+    button.leeren:hover {
+      color: var(--color-text);
+      border-color: var(--color-text-muted);
+    }
+    button.leeren:disabled {
+      opacity: 0.6;
+      cursor: default;
     }
     .sperre {
       width: 100%;
@@ -232,12 +252,17 @@ export class AosNaechsterSchritt extends LitElement {
     return { kind: 'existing-worktree', path: this.target };
   }
 
-  private async start(): Promise<void> {
+  private async start(eingabeLeeren = false): Promise<void> {
     if (!this.selected || this.starting || this.gesperrt) return;
     this.starting = true;
     this.error = '';
+    this.leerbar = false;
     try {
-      const { sessionId, modus, geschlossen } = await vorhabenService.startStep(this.projectId, this.intentId || undefined, this.step, this.selected, this.sessionTarget());
+      // The plain start passes no options at all — only the second button adds one (INT-2026-021, AK-06).
+      const args = [this.projectId, this.intentId || undefined, this.step, this.selected, this.sessionTarget()] as const;
+      const { sessionId, modus, geschlossen } = eingabeLeeren
+        ? await vorhabenService.startStep(...args, { eingabeLeeren: true })
+        : await vorhabenService.startStep(...args);
       this.dispatchEvent(
         new CustomEvent<{ sessionId: string; step: VorhabenStep; intentId?: string; modus: 'neu' | 'in_sitzung'; geschlossen?: string }>('vorhaben-session-started', {
           bubbles: true,
@@ -247,6 +272,8 @@ export class AosNaechsterSchritt extends LitElement {
       );
     } catch (err) {
       this.error = (err as Error).message || 'Sitzung konnte nicht gestartet werden';
+      // INT-2026-021 (AK-06): only this refusal has a way out that the page can offer.
+      this.leerbar = err instanceof VorhabenRequestError && err.code === 'PROMPT_NOT_EMPTY';
     } finally {
       this.starting = false;
     }
@@ -289,10 +316,13 @@ export class AosNaechsterSchritt extends LitElement {
           ${extra ? html`<option value=${extra} ?selected=${this.target === extra}>Worktree ${extra.split('/').pop()}</option>` : nothing}
           ${this.isGitRepo && this.worktreeCreationEnabled ? html`<option value="new" ?selected=${this.target === 'new'}>Neuer Worktree</option>` : nothing}
         </select>
-        <button type="button" class="start" ?disabled=${!this.selected || this.starting || this.gesperrt} title=${this.gesperrt ? sperreText : ''} @click=${this.start}>${this.starting ? 'Startet …' : label}</button>
+        <button type="button" class="start" ?disabled=${!this.selected || this.starting || this.gesperrt} title=${this.gesperrt ? sperreText : ''} @click=${() => void this.start()}>${this.starting ? 'Startet …' : label}</button>
       </div>
       ${this.gesperrt ? html`<div class="sperre">${sperreText}.</div>` : nothing}
       ${this.error ? html`<div class="fehler">${this.error}</div>` : nothing}
+      ${this.leerbar
+        ? html`<button type="button" class="leeren" ?disabled=${this.starting} title=${this.error} @click=${() => void this.start(true)}>Eingabezeile leeren und starten</button>`
+        : nothing}
     </div>`;
   }
 }

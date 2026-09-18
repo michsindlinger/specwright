@@ -532,6 +532,12 @@ export interface VorhabenStartStepMessage {
    * first input at the first Stop (trimmed, 1…FREITEXT_MAX_CHARS).
    */
   firstInput?: string;
+  /**
+   * INT-2026-021 (AK-06): the click came from „Eingabezeile leeren und
+   * starten" — the backend may clear the session's input box before it writes.
+   * Only ever set by that second button; the plain start never clears.
+   */
+  eingabeLeeren?: boolean;
 }
 
 /**
