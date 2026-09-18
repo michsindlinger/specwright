@@ -1,7 +1,7 @@
 # Plan: UI: Text in der Eingabezeile meldet nicht mehr „Sitzung arbeitet"
 
 > **Intent:** `intent.md` (INT-2026-021) · **Spec:** entfällt (bypass: Bugfix unter einem Tag)
-> **Status:** in Umsetzung
+> **Status:** umgesetzt, PR #85 offen — `verify: OK` lokal (zweiter Lauf), CI-Check `verify` grün
 > **Erstellt:** 2026-09-18 im Plan Mode · **Freigabe:** PO (Michael Sindlinger), 2026-09-18 — nach externem Multi-Reviewer-Konsens, Antworten in §12
 > **Pflichtinput gelesen:** `docs/architecture.md`, `CLAUDE.md`, `docs/security.md`
 
