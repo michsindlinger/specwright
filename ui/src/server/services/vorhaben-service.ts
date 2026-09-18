@@ -1192,7 +1192,8 @@ export class VorhabenService {
   private sessionRefOf(sessionId: string, name: string, model: string, ended?: boolean, resumed?: VorhabenSessionRef['resumed']): VorhabenSessionRef {
     const live = this.deps.sessions?.getSession(sessionId);
     if (ended || !live || live.status === 'closed') {
-      return { id: sessionId, name, model, agentStatus: 'unknown', ended: true, ...(resumed ? { resumed } : {}) };
+      // The resume mark belongs to a live resumed session; an ended row just says „beendet".
+      return { id: sessionId, name, model, agentStatus: 'unknown', ended: true };
     }
     return {
       id: sessionId,

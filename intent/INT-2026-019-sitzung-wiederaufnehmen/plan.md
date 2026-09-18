@@ -1,7 +1,7 @@
 # Plan: UI: Verlorene Sitzung eines Vorhabens beim Öffnen wieder aufnehmen
 
 > **Intent:** `intent.md` (INT-2026-019) · **Spec:** entfällt (bypass: Größe S, eine Wiederaufnahme-Regel über den vorhandenen Startpfad, eine Schutzregel im Aufräumer, Felder in der Zuordnung)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt
 > **Erstellt:** 2026-09-17 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-18 — im Chat: „freigabe, O1 und O2 wie vorgeschlagen"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `960c22e`), `CLAUDE.md`, `docs/security.md`
 
@@ -356,7 +356,7 @@ Entfällt.
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| AN-01 belegen: Port prüfen (`lsof -nP -iTCP:3111 -sTCP:LISTEN` leer), Branch-Backend `cd ui && PORT=3111 npm run dev:backend` (`PORT` wird in `ui/src/server/index.ts:12` gelesen) mit Scratch-Projekt, Sitzung starten, Frage stellen, tmux-Server des Test-Backends killen (`tmux -S <getTmuxSocketPath(), ui/src/server/utils/runtime-paths.ts:126-128: …/specwright-3111.sock> kill-server` — nur dieser Socket), prüfen, dass **keine** Exit-Datei entstand (`ls <runtime>/…/exit-*` laut `tmux-session-backend.ts` `exitCodePath`), im selben Verzeichnis `claude --resume <claudeSessionId aus <runtime>/sessions-3111.json>` — Gespräch sichtbar, Hook meldet dieselbe `session_id`; Ergebnis als Protokollzeile im PR | Agent in der Bausitzung | vor dem ersten Commit | [ ] |
+| AN-01 belegen: Port prüfen (`lsof -nP -iTCP:3111 -sTCP:LISTEN` leer), Branch-Backend `cd ui && PORT=3111 npm run dev:backend` (`PORT` wird in `ui/src/server/index.ts:12` gelesen) mit Scratch-Projekt, Sitzung starten, Frage stellen, tmux-Server des Test-Backends killen (`tmux -S <getTmuxSocketPath(), ui/src/server/utils/runtime-paths.ts:126-128: …/specwright-3111.sock> kill-server` — nur dieser Socket), prüfen, dass **keine** Exit-Datei entstand (`ls <runtime>/…/exit-*` laut `tmux-session-backend.ts` `exitCodePath`), im selben Verzeichnis `claude --resume <claudeSessionId aus <runtime>/sessions-3111.json>` — Gespräch sichtbar, Hook meldet dieselbe `session_id`; Ergebnis als Protokollzeile im PR | Agent in der Bausitzung | vor dem ersten Commit | [x] 2026-09-18, Protokoll im PR (Abweichung 1 in §14: Probe direkt mit tmux + CLI) |
 | Merge des PR nach `main` — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`docs/architecture.md` §5, Gate `GET /api/status/deploy-readiness`); kein weiterer Deploy-Schritt, kein Secret, kein Flag | Michael | nach CI grün | [ ] |
 | Nach dem Deploy: einmal die Vorhaben-Übersicht öffnen und die Backend-Logzeile `vorhaben: … Kennungen nachgetragen` prüfen (Backfill für laufende Sitzungen) | Michael | nach Deploy | [ ] |
 | O1 und O2 entscheiden (siehe „Was musst du entscheiden?") | Michael | vor Freigabe | [x] 2026-09-18, wie vorgeschlagen |
@@ -428,15 +428,15 @@ Kein Datenlauf auf Bestandsdaten, keine Freigabe je Umgebung nötig: die neuen F
 
 <!-- leser: agent -->
 
-- [ ] Jede AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Protokoll und Screenshot im PR.
-- [ ] AN-01-Probe (Abschnitt 10, Schritt 1) protokolliert.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md`, `docs/security.md`, `docs/design.md` angepasst (Abschnitt 3/4).
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
+- [x] Jede AK aus Abschnitt 8 hat einen grünen Test (`vorhaben-service-resume`, `claude-transcript`, `vorhaben-state`, `cloud-terminal-restore`, `cloud-session-worktree`, `aos-vorhaben-view-resume`, `aos-vorhaben-seite-grund`; 2026-09-18).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8), Protokoll und Screenshots im PR (Mac, Handy, Arbeitskopie fehlt).
+- [x] AN-01-Probe (Abschnitt 10, Schritt 1) protokolliert.
+- [x] `verify` grün, Ausgabe im PR — [ ] PR-Checks grün (CI ist die Wahrheit).
+- [x] `docs/architecture.md`, `docs/security.md`, `docs/design.md` angepasst (Abschnitt 3/4).
+- [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert (Merge, Backfill-Logzeile nach Deploy: offen, Michael).
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
+- [x] 2x-Regel-Check: kein Fehler zum zweiten Mal — kein `CLAUDE.md`-Vorschlag; E2E-Lehren ins Auto-Memory.
 - [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-019-sitzung-wiederaufnehmen/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
@@ -447,4 +447,10 @@ Kein Datenlauf auf Bestandsdaten, keine Freigabe je Umgebung nötig: die neuen F
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-18 | AN-01-Probe direkt mit tmux (eigener Socket), Claude-CLI und einer Hook-Settings-Datei (Run-Script nach dem Muster von `renderRunScript`) statt über das Branch-Backend auf Port 3111 | Gleicher Beleg mit weniger Aufbau: Kennung bleibt bei `--resume` (`source: resume`, eine `.jsonl`), `kill-server` hinterlässt keine Exit-Datei, `/exit` schreibt sie; das Backend-Verhalten deckt der E2E-Pfad ab | §10 Schritt 1 |
+| 2026-09-18 | Neue Dep `isClaudeProvider` im Service (Default: `getProvider` + `isClaudeCli` aus model-config) | Prüfung (8) unterscheidet `fremde_cli` (kein Claude-Prozess) von „Modell nicht mehr konfiguriert" — mit `resolveModel` allein nicht möglich | §3 (8), §4 #3 |
+| 2026-09-18 | `resumed`-Marke steht nur in der Referenz einer lebenden Sitzung; eine beendete Referenz trägt sie nicht | E2E zeigte nach erneutem Verlust „beendet · fortgesetzt nach Neustart" — die Marke gehört zur fortgesetzten Sitzung, nicht zum Zustand „beendet" | §3 Frontend, §8 AK-02 |
+| 2026-09-18 | `restoreOutcome` wechselt nach einem Timeout auf `complete`, sobald die späten Restores abgeschlossen sind | Sonst bliebe die Wiederaufnahme bis zum nächsten Backend-Neustart gesperrt; nach dem Ende der Restores ist die Sitzungs-Map vollständig | §3 Boot-Invariante, §8 AK-01 (Bereitschaft) |
+| 2026-09-18 | Shutdown-Test der Schutzregel in `cloud-session-worktree.test.ts` statt `cloud-terminal-restore.test.ts` | Eine Direct-Spawn-Sitzung mit Aufräum-Zettel braucht ein echtes Git-Repo (Worktree-Anlage); nur dieser Harness hat eins | §4 #14, §8 AK-07 |
+| 2026-09-18 | Test „`/intent`-Ordner-Claim schreibt Provider und Kennung" löst `dir-added` direkt am Watcher aus | `fs.watch` liefert das Ereignis unter Parallel-Last der Testdateien nicht zuverlässig; geprüft wird der Schreiber, nicht der Watcher | §8 AK-01 (Kennung) |
+| 2026-09-18 | `docs/architecture.md`: Änderungsprotokoll-Zeile von INT-2026-016 PR 3 von „PR folgt" auf „PR #75" | Bestandskorrektur beim Anfügen der eigenen Zeile | §4 #17 |
