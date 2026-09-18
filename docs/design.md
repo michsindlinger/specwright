@@ -70,7 +70,7 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 |---|---|---|
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
 | 2026-09-15 | §7: Abweichung „Story-Kanban-Sicht" erledigt — die Web-UI zeigt Vorhaben (INT-2026-004, Stufe 1–3) | PR #46 |
-| 2026-09-16 | §1 Prinzip 5 (Rahmen = Kopfzeile), §3 Beispiele und Light-DOM-Regel, §4 Muster Glocke und Projekt-Seite, §5 Dokument über Gespräch unter 1024 px, Handy-Terminal (INT-2026-010, Stufe 1) | PR folgt |
+| 2026-09-16 | §1 Prinzip 5 (Rahmen = Kopfzeile), §3 Beispiele und Light-DOM-Regel, §4 Muster Glocke und Projekt-Seite, §5 Dokument über Gespräch unter 1024 px, Handy-Terminal (INT-2026-010, Stufe 1) | PR #57 |
 | 2026-09-17 | §4 Muster „Dokument mit Leser-Teil und Agenten-Teil" (INT-2026-010 Stufe 3) | PR #63 |
 | 2026-09-17 | §4 Muster „Sitzung neben dem Dokument" (angedocktes Terminal, Kennungen als Verweise), §5 Vorhaben-Seite ab 1024 px angedockt statt „Dokument über dem Gespräch" (INT-2026-011, Stufe 1 PR #65, Stufe 2) | PR #66 |
 | 2026-09-17 | §5 volle Breite für Liste, Vorhaben-Seite und Dokument; angedockt immer ein Fenster, gespeicherte Aufteilung nur schwebend (INT-2026-013, Nachbesserung nach PR #66) | PR #68 |

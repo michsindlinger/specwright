@@ -117,11 +117,11 @@ Specwright ist zwei Dinge in einem Repo: ein **Framework** aus Markdown-Befehlen
 
 | Datum | Änderung | PR / ADR |
 |---|---|---|
-| 2026-09-14 | Erstfassung (INT-2026-002) | PR folgt |
+| 2026-09-14 | Erstfassung (INT-2026-002) | PR #38 |
 | 2026-09-15 | §3 Nutzerzustand der UI, AR-05 erweitert (INT-2026-004, Stufe 1) | ADR-0002 |
 | 2026-09-15 | §2 Backend-Zeile um Vorhaben-Sicht/Review-Kanal, §5 Deploy-Gate um unbestätigte Review-Antworten (INT-2026-004, Stufe 2) | PR #45 |
 | 2026-09-16 | §2 Backend-Zeile um Gespräch (Transkript-Leser, Lock), §3 Terminal-Sitzungen um Hook-Kontext, neue Zeile Sitzungsverlauf, Nutzerzustand um Freitext-Protokoll (INT-2026-007, Stufe 1) | ADR-0003 |
-| 2026-09-16 | §3 Nutzerzustand: anhängige Absicht-Sitzungen ohne Ordner werden mit `vorhaben:state` ausgeliefert, ihre Freitext-Einträge tragen die Kennung erst ab dem Claim (INT-2026-008); keine AR-Änderung | PR folgt |
+| 2026-09-16 | §3 Nutzerzustand: anhängige Absicht-Sitzungen ohne Ordner werden mit `vorhaben:state` ausgeliefert, ihre Freitext-Einträge tragen die Kennung erst ab dem Claim (INT-2026-008); keine AR-Änderung | PR #54 |
 | 2026-09-15 | Story-Pfad aus der UI entfernt: §1 Diagramm und Text (UI → MCP nur noch über Sitzungen), §2 ohne Auto-Mode, §3 `kanban.json` ohne UI-Leser, AR-03 auf den MCP-Server beschränkt, §5 Gate ohne Auto-Mode, §10 Zeile „Story pro Session" erledigt, zwei neue Abweichungen (INT-2026-004, Stufe 3) | PR #46 |
 | 2026-09-16 | §1 Rahmen (Kopfzeile mit Glocke, kein Chat/Anruf/Team), §2 Frontend-Zeile (Routen `vorhaben`, `neu`, `projekt`; Git-Dienst; Projekt-Seite als Wirt), §10 zwei Bestandszeilen (`terminal.*`-Handler, Team-View ohne Route); Chat-, Voice- und Bild-Upload-Backend entfernt — keine AR-Änderung (INT-2026-010, Stufe 1) | PR #57 |
 | 2026-09-16 | §3 Nutzerzustand um die Ansicht (Projekt-Chip, Phasen-Dokument je Vorhaben; `vorhaben:ansicht.set`) und die erste Eingabe je gestarteter Sitzung (Zustellung beim ersten Stop, nur Flag im Snapshot) erweitert; `start-step` ohne Modell löst lastModel → Schritt-Standard der Einstellungen — keine AR-Änderung, AR-05 eingehalten (INT-2026-010, Stufe 2) | PR #58 |
