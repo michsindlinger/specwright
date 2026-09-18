@@ -498,35 +498,6 @@ describe('VorhabenService „Nächster Schritt" in der Sitzung (INT-2026-018)', 
       warn.mockRestore();
     });
 
-    it('(10d) INT-2026-021: with eingabeLeeren Ctrl-U clears the box, then the normal path runs (AK-06, AK-07)', async () => {
-      const id = await liveSession('intent');
-      manager.screen = TEXT_SCREEN;
-      const orig = manager.sendInput.bind(manager);
-      manager.sendInput = (sid: string, data: string): boolean => {
-        const ok = orig(sid, data);
-        if (data === '\x15') manager.screen = IDLE_SCREEN;
-        return ok;
-      };
-      const r = await service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' }, undefined, true);
-      expect(r.modus).toBe('in_sitzung');
-      expect(manager.writes(id)).toEqual(['\x15', CLEAR, '\r', CMD, '\r']);
-    });
-
-    it('(10e) INT-2026-021: Ctrl-U then Esc Esc and the box is still filled → PROMPT_NOT_EMPTY, nothing pasted (AK-07)', async () => {
-      const id = await liveSession('intent');
-      manager.screen = TEXT_SCREEN; // stays filled whatever we press
-      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' }, undefined, true)).rejects.toMatchObject({ code: 'PROMPT_NOT_EMPTY' });
-      expect(manager.writes(id)).toEqual(['\x15', '\x1b', '\x1b']);
-      expect(assignment()).toMatchObject({ step: 'intent' });
-    });
-
-    it('(10f) INT-2026-021: without the flag no key is ever sent (AK-06: only the second button clears)', async () => {
-      const id = await liveSession('intent');
-      manager.screen = TEXT_SCREEN;
-      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({ code: 'PROMPT_NOT_EMPTY' });
-      expect(manager.writes(id)).toEqual([]);
-    });
-
     it('(3) the machine-write lock is busy → beschaeftigt text, no writes', async () => {
       const id = await liveSession('intent');
       manager.withMachineWrite = async () => ({ ok: false, grund: 'beschaeftigt' });

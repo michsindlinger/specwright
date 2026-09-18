@@ -207,15 +207,6 @@ export const PASTE_ENTER_DELAY_MS = 150;
  * (Schritt 0 measured 104 ms); 5 s is a safety margin below the client's 15 s.
  */
 export const CLEAR_WAIT_MS = 5_000;
-/**
- * INT-2026-021 (AK-07): the keys that clear the input box, and the pause
- * before reading the screen back. Recorded on 2.1.277 (plan §14): Ctrl-U
- * removes what stands BEFORE the cursor, a single Esc only arms the hint
- * „Esc again to clear", a second Esc clears the whole box.
- */
-const KEY_CTRL_U = '\x15';
-const KEY_ESC = '\x1b';
-const KEY_SETTLE_MS = 150;
 /** After this the entry is "nicht bestätigt" and the deploy gate opens again (FA-31/FA-34). */
 export const SEND_CONFIRM_TIMEOUT_MS = 10_000;
 /**
@@ -795,8 +786,7 @@ export class VorhabenService {
     step: VorhabenStep,
     modelRaw: ModelSelection | undefined,
     sessionTargetRaw: CloudTerminalSessionTarget | undefined,
-    firstInput?: string,
-    eingabeLeeren = false
+    firstInput?: string
   ): Promise<StartStepResult> {
     const sessions = this.deps.sessions;
     if (!sessions) throw new VorhabenError('START_FAILED', 'Terminal-Manager nicht verfügbar');
@@ -827,7 +817,7 @@ export class VorhabenService {
     // INT-2026-018: a live session of the row decides the way (AK-04, AK-05, AK-10; NZ-04).
     const reuse = intentId ? this.reusableSession(projectId, intentId, step) : undefined;
     if (reuse && this.sameModel(reuse, model) && this.sameTarget(reuse, target, project.path)) {
-      return this.startInSession(sessions, projectId, intentId!, step, model, reuse, command, firstInput, eingabeLeeren);
+      return this.startInSession(sessions, projectId, intentId!, step, model, reuse, command, firstInput);
     }
     let created: { sessionId: string; effectiveCwd: string };
     try {
@@ -921,8 +911,7 @@ export class VorhabenService {
     model: ModelSelection,
     reuse: ReusableSession,
     command: string,
-    firstInput: string | undefined,
-    eingabeLeeren = false
+    firstInput: string | undefined
   ): Promise<StartStepResult> {
     const id = reuse.a.sessionId;
     // E15: the assignment still names this session with the step we compared against.
@@ -931,7 +920,7 @@ export class VorhabenService {
       return !!a && a.sessionId === id && a.step === reuse.a.step && !a.ended;
     };
     const befund: { eingabe?: string } = {};
-    const written = await this.clearAndPaste(sessions, id, command, istNoch, befund, eingabeLeeren);
+    const written = await this.clearAndPaste(sessions, id, command, istNoch, befund);
     if (written === 'eingabe_nicht_leer') throw new VorhabenError('PROMPT_NOT_EMPTY', eingabeNichtLeerText(befund.eingabe));
     if (written !== true) throw new VorhabenError('SESSION_WRITE_FAILED', this.grundText(written));
     // (a) tab name, (b) assignment — no `await` between them (AK-06 order; then the hook, then `onPromptText`).
@@ -958,15 +947,10 @@ export class VorhabenService {
     sessionId: string,
     command: string,
     istNoch: () => boolean,
-    befund?: { eingabe?: string },
-    eingabeLeeren = false
+    befund?: { eingabe?: string }
   ): Promise<true | StartInSessionGrund> {
     const run = async (): Promise<true | StartInSessionGrund> => {
-      let s1 = await this.screenCheck(sessions, sessionId, 'strict', befund);
-      // INT-2026-021 (AK-06): only on the second button, and only for this one
-      // reason. `leereEingabe` ends with a full strict check of its own, so the
-      // synchronous block below stays the last thing before the paste (E13/E15).
-      if (eingabeLeeren && s1 === 'eingabe_nicht_leer') s1 = await this.leereEingabe(sessions, sessionId, befund);
+      const s1 = await this.screenCheck(sessions, sessionId, 'strict', befund);
       if (s1 !== true) return s1;
       const live = sessions.getSession(sessionId);
       if (!live || live.status !== 'active') return 'beendet';
@@ -999,30 +983,6 @@ export class VorhabenService {
     if (!sessions.withMachineWrite) return run();
     const r = await sessions.withMachineWrite(sessionId, run);
     return r.ok ? r.value : r.grund === 'beschaeftigt' ? 'beschaeftigt' : 'beendet';
-  }
-
-  /**
-   * INT-2026-021 (AK-06/AK-07): clears the session's input box on request and
-   * reports what the screen shows afterwards. Two attempts, never more, and a
-   * strict screen check after each one (AR-08 — the UI only types into a state
-   * it just read, and looks again after every key). Ctrl-U comes first because
-   * it is harmless on a turn that started in the meantime; Esc would interrupt
-   * such a turn, so it is the fallback for the case Ctrl-U cannot cover (the
-   * cursor standing in the middle of the text).
-   */
-  private async leereEingabe(sessions: VorhabenSessionSource, sessionId: string, befund?: { eingabe?: string }): Promise<true | FreitextGrund> {
-    for (const tasten of [[KEY_CTRL_U], [KEY_ESC, KEY_ESC]]) {
-      for (const taste of tasten) {
-        if (!sessions.sendInput(sessionId, taste, { inferUnblock: false })) return 'senden_fehlgeschlagen';
-      }
-      await new Promise<void>((done) => {
-        const t = setTimeout(done, KEY_SETTLE_MS);
-        t.unref?.();
-      });
-      const nachher = await this.screenCheck(sessions, sessionId, 'strict', befund);
-      if (nachher !== 'eingabe_nicht_leer') return nachher;
-    }
-    return 'eingabe_nicht_leer';
   }
 
   private grundText(g: StartInSessionGrund): string {

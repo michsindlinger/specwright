@@ -162,7 +162,7 @@ export class VorhabenClientService {
     step: VorhabenStep,
     model: ModelSelection | undefined,
     sessionTarget?: CloudTerminalSessionTarget,
-    opts: { firstInput?: string; eingabeLeeren?: boolean } = {}
+    opts: { firstInput?: string } = {}
   ): Promise<{ sessionId: string; modus: 'neu' | 'in_sitzung'; geschlossen?: string }> {
     // INT-2026-018: `modus` = in_sitzung when the click continued in the live session; `geschlossen` = the session closed for a new one.
     return this.request<{ sessionId: string; modus: 'neu' | 'in_sitzung'; geschlossen?: string }>('vorhaben:step-started', {
@@ -173,7 +173,6 @@ export class VorhabenClientService {
       ...(model ? { model } : {}),
       ...(sessionTarget ? { sessionTarget } : {}),
       ...(opts.firstInput !== undefined ? { firstInput: opts.firstInput } : {}),
-      ...(opts.eingabeLeeren ? { eingabeLeeren: true } : {}),
     });
   }
 
