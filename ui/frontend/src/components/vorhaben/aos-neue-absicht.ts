@@ -10,13 +10,21 @@
  * right of this card (app.ts docks it, INT-2026-011 FA-18), on the phone the
  * card offers the terminal (AK-06). The view follows the session to its
  * Vorhaben page once a folder claims it (`followStartedIntent`).
+ *
+ * INT-2026-020 (AK-01…AK-06): Cmd+V with an image on the clipboard uploads it
+ * (`vorhaben:absicht-bild`, Terminal rules for type and size) and inserts the
+ * returned path as ` <path> ` at the caret; the path travels with the text as
+ * `firstInput`. Text pastes stay native. While an upload runs, „Starten" and
+ * Cmd+Enter are locked; a status line under the field says what happens.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { vorhabenService, type ModelListInfo } from '../../services/vorhaben.service.js';
 import { ladeModelle, vorauswahl } from './model-wahl.js';
+import { blobToBase64, findClipboardImage } from '../../utils/clipboard-image.js';
 import type { ModelSelection, VorhabenPendingIntent } from '../../../../src/shared/types/vorhaben.protocol.js';
+import { CLOUD_TERMINAL_CONFIG } from '../../../../src/shared/types/cloud-terminal.protocol.js';
 import '../model-selector.js';
 
 export const NEUE_ABSICHT_PLACEHOLDER = 'Was stört, wen, seit wann?';
@@ -37,6 +45,10 @@ export class AosNeueAbsicht extends LitElement {
   @state() private selected: ModelSelection | null = null;
   @state() private starting = false;
   @state() private error = '';
+  /** INT-2026-020: an image upload is in flight — „Starten" is locked meanwhile (AK-06). */
+  @state() private uploading = false;
+  /** INT-2026-020 (AK-03/AK-04): status line under the field; display only, cleared on input. */
+  @state() private hinweis: { text: string; art: 'info' | 'success' | 'error' } | null = null;
 
   static override styles = css`
     :host {
@@ -94,6 +106,16 @@ export class AosNeueAbsicht extends LitElement {
     .fehler {
       color: var(--color-accent-error);
       font-size: var(--font-size-xs);
+    }
+    .hinweis {
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-xs);
+    }
+    .hinweis[data-art='success'] {
+      color: var(--color-accent-success);
+    }
+    .hinweis[data-art='error'] {
+      color: var(--color-accent-error);
     }
     :host([mobile]) .zeile {
       flex-direction: column;
@@ -163,6 +185,65 @@ export class AosNeueAbsicht extends LitElement {
 
   private onInput(e: Event): void {
     this.text = (e.target as HTMLTextAreaElement).value;
+    this.hinweis = null;
+  }
+
+  /**
+   * INT-2026-020: image on the clipboard → upload and insert the path (AK-01);
+   * no image → let the browser paste text (AK-02). Type and size are checked
+   * here first with the Terminal's rules so the user sees the reason without a
+   * round trip (AK-04); the backend checks again.
+   */
+  private onPaste(e: ClipboardEvent): void {
+    const image = findClipboardImage(e.clipboardData, CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME);
+    if (!image) return;
+    e.preventDefault();
+    if (!image.allowed) {
+      this.hinweis = { text: `Bildart nicht unterstützt: ${image.file.type || 'unbekannt'}`, art: 'error' };
+      return;
+    }
+    const maxBytes = CLOUD_TERMINAL_CONFIG.MAX_PASTE_IMAGE_BYTES;
+    if (image.file.size > maxBytes) {
+      this.hinweis = { text: `Screenshot ist zu groß (${(image.file.size / 1024 / 1024).toFixed(1)} MB, Limit ${maxBytes / 1024 / 1024} MB)`, art: 'error' };
+      return;
+    }
+    if (this.uploading) return; // one upload at a time — the status line already says so
+    void this.bildEinfuegen(image.file, e.target as HTMLTextAreaElement);
+  }
+
+  /** Upload the image and insert ` <absolutePath> ` where the caret was (AK-01, AK-03). */
+  private async bildEinfuegen(file: File, ta: HTMLTextAreaElement): Promise<void> {
+    this.uploading = true;
+    this.hinweis = { text: 'Screenshot wird hochgeladen…', art: 'info' };
+    const selStart = ta.selectionStart ?? this.text.length;
+    const selEnd = ta.selectionEnd ?? selStart;
+    try {
+      let base64: string;
+      try {
+        base64 = await blobToBase64(file);
+      } catch (err) {
+        this.hinweis = { text: `Screenshot konnte nicht gelesen werden: ${err instanceof Error ? err.message : String(err)}`, art: 'error' };
+        return;
+      }
+      let absolutePath: string;
+      try {
+        ({ absolutePath } = await vorhabenService.pasteAbsichtBild(this.projectId, base64, file.type));
+      } catch (err) {
+        this.hinweis = { text: `Screenshot-Paste fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`, art: 'error' };
+        return;
+      }
+      // Surrounding spaces so the path sits as a distinct token, like the Terminal does.
+      const token = ` ${absolutePath} `;
+      const start = Math.min(selStart, this.text.length);
+      const end = Math.min(Math.max(selEnd, start), this.text.length);
+      this.text = this.text.slice(0, start) + token + this.text.slice(end);
+      this.hinweis = { text: 'Screenshot eingefügt', art: 'success' };
+      await this.updateComplete;
+      const caret = start + token.length;
+      ta.setSelectionRange(caret, caret);
+    } finally {
+      this.uploading = false;
+    }
   }
 
   /** Cmd/Ctrl+Enter starts like the button. */
@@ -174,7 +255,7 @@ export class AosNeueAbsicht extends LitElement {
   }
 
   private get bereit(): boolean {
-    return this.text.trim().length > 0 && !!this.selected && !this.starting;
+    return this.text.trim().length > 0 && !!this.selected && !this.starting && !this.uploading;
   }
 
   private async start(): Promise<void> {
@@ -210,7 +291,11 @@ export class AosNeueAbsicht extends LitElement {
         ?disabled=${this.starting}
         @input=${this.onInput}
         @keydown=${this.onKeydown}
+        @paste=${this.onPaste}
       ></textarea>
+      ${this.hinweis
+        ? html`<div class="hinweis" data-art=${this.hinweis.art} role=${this.hinweis.art === 'error' ? 'alert' : 'status'}>${this.hinweis.text}</div>`
+        : nothing}
       <div class="zeile">
         ${this.models
           ? html`<aos-model-selector

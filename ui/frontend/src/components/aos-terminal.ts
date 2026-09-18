@@ -11,6 +11,7 @@ import { CLOUD_TERMINAL_CONFIG } from '../../../src/shared/types/cloud-terminal.
 import type { PromptTemplate } from '../../../src/shared/types/prompt-templates.protocol.js';
 import { stripTerminalQueries } from './terminal/replay-sanitize.js';
 import { isPaneZoomShortcut, isBackToOverviewShortcut, TERMINAL_INPUT_ATTR } from '../utils/keyboard-shortcuts.js';
+import { blobToBase64, findClipboardImage } from '../utils/clipboard-image.js';
 import '@xterm/xterm/css/xterm.css';
 
 const DARK_THEME = {
@@ -810,31 +811,16 @@ export class AosTerminal extends LitElement {
    */
   private _handleCloudPasteEvent(event: ClipboardEvent): void {
     if (!this.terminalSessionId) return;
-    const dataTransfer = event.clipboardData;
-    if (!dataTransfer) return;
 
-    const allowed = CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME as readonly string[];
-
-    // Screenshots usually arrive as files; some sources expose them as items.
-    let file: File | null = null;
-    for (const candidate of Array.from(dataTransfer.files)) {
-      if (allowed.includes(candidate.type)) { file = candidate; break; }
-    }
-    if (!file) {
-      for (const item of Array.from(dataTransfer.items)) {
-        if (item.kind === 'file' && allowed.includes(item.type)) {
-          file = item.getAsFile();
-          if (file) break;
-        }
-      }
-    }
-
-    if (!file) return; // no image on the clipboard → let xterm paste text normally
+    // Detection is shared with „Neue Absicht" (utils/clipboard-image.ts, INT-2026-020).
+    // An image of a non-allowed type falls through like no image at all — unchanged.
+    const image = findClipboardImage(event.clipboardData, CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME);
+    if (!image || !image.allowed) return; // no (usable) image on the clipboard → let xterm paste text normally
 
     // We own this paste: stop xterm (and thus Claude Code) from also processing it.
     event.preventDefault();
     event.stopImmediatePropagation();
-    void this._uploadClipboardImageBlob(file, file.type);
+    void this._uploadClipboardImageBlob(image.file, image.file.type);
   }
 
   /**
@@ -859,7 +845,7 @@ export class AosTerminal extends LitElement {
     this._showPasteStatus('Screenshot wird hochgeladen…', 'info');
     let base64: string;
     try {
-      base64 = await this._blobToBase64(blob);
+      base64 = await blobToBase64(blob);
     } catch (err) {
       this._pasteInFlight = false;
       this._showPasteStatus(
@@ -875,19 +861,6 @@ export class AosTerminal extends LitElement {
       base64,
       mimeType,
       timestamp: new Date().toISOString(),
-    });
-  }
-
-  private _blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const r = reader.result as string;
-        const comma = r.indexOf(',');
-        resolve(comma >= 0 ? r.slice(comma + 1) : r);
-      };
-      reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'));
-      reader.readAsDataURL(blob);
     });
   }
 

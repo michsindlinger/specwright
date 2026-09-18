@@ -466,6 +466,34 @@ export interface VorhabenStartStepMessage {
 }
 
 /**
+ * INT-2026-020 (AK-01): an image pasted into the „Neue Absicht" text field
+ * before any session exists. The backend validates it with the Cloud
+ * Terminal's allowlist and size limit (`CLOUD_TERMINAL_CONFIG`, RB-04),
+ * writes it under `<runtime>/intent-paste/` and answers with the absolute
+ * path, which the browser inserts into the text (` <path> `) — the path then
+ * travels with `firstInput` into the session (AK-05). Request/reply via
+ * `requestId`; errors arrive as `vorhaben:error`.
+ */
+export interface VorhabenAbsichtBildMessage {
+  type: 'vorhaben:absicht-bild';
+  requestId?: string;
+  /** Must be an open project (RB-01). */
+  projectId: string;
+  /** Raw image bytes, base64 (no data-URL prefix). */
+  base64: string;
+  /** One of `CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME`. */
+  mimeType: string;
+}
+
+/** Reply to `vorhaben:absicht-bild` (INT-2026-020). */
+export interface VorhabenAbsichtBildSavedMessage {
+  type: 'vorhaben:absicht-bild-saved';
+  requestId?: string;
+  /** Absolute host path of the stored image (`<runtime>/intent-paste/img-<uuid>.<ext>`). */
+  absolutePath: string;
+}
+
+/**
  * INT-2026-010 (FA-03, FA-12): sets the shared view state. `filterProjectId`
  * must be an open project or null; `phase.doc` one of VORHABEN_PHASE_DOCS.
  * Answer is the next `vorhaben:state` broadcast.
@@ -645,7 +673,15 @@ export type VorhabenErrorCode =
   /** Resume did not start (`message` = reason: cap reached, transcript not found, spawn failed, backend still booting). */
   | 'RESUME_FAILED'
   /** A resume for this row is in flight — `start-step`/`session.assign` refused for the moment (AK-04). */
-  | 'RESUME_RUNNING';
+  | 'RESUME_RUNNING'
+  // INT-2026-020 (AK-04): refusals of `vorhaben:absicht-bild` — same strings as
+  // CLOUD_TERMINAL_ERROR_CODES so the browser shows the Terminal's messages.
+  /** Decoded image is empty, or the write failed. */
+  | 'PASTE_IMAGE_FAILED'
+  /** Larger than `CLOUD_TERMINAL_CONFIG.MAX_PASTE_IMAGE_BYTES`. */
+  | 'PASTE_IMAGE_TOO_LARGE'
+  /** MIME type not in `CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME`. */
+  | 'PASTE_IMAGE_UNSUPPORTED_TYPE';
 
 export const ANMERKUNG_MAX_CHARS = 4000;
 

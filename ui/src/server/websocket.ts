@@ -41,7 +41,8 @@ import { setupService, type StepOutput, type StepComplete } from './services/set
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 import { WorkspaceStateStore } from './services/workspace-state.js';
 import { WorkspaceHandler } from './services/workspace-handler.js';
-import { getWorkspaceStatePath, getVorhabenStatePath } from './utils/runtime-paths.js';
+import { getWorkspaceStatePath, getVorhabenStatePath, getIntentPasteImageRoot } from './utils/runtime-paths.js';
+import { INTENT_PASTE_MAX_AGE_MS, pruneOldImages } from './utils/paste-image.js';
 import { VorhabenStateStore } from './services/vorhaben-state.js';
 import { VorhabenService } from './services/vorhaben-service.js';
 import { VorhabenHandler } from './services/vorhaben-handler.js';
@@ -140,7 +141,8 @@ export class WebSocketHandler {
       // INT-2026-010 (FA-22): „Freigeben" without a session starts the step with the settings' step default.
       defaultModel: (step) => getStepDefault(step),
     });
-    this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage));
+    // INT-2026-020: images pasted on „Neue Absicht" land under <runtime>/intent-paste (ADR-0005).
+    this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage), { bildRoot: getIntentPasteImageRoot() });
     this.bootWorkspace();
     this.setupConnectionHandler();
     this.startHeartbeat();
@@ -168,6 +170,9 @@ export class WebSocketHandler {
       if (pruned > 0) console.log(`[WebSocket] workspace: pruned ${pruned} stale tab name(s)`);
       const vh = await this.vorhabenLoaded;
       if (!vh.healthy) console.warn('[WebSocket] vorhaben state was unreadable — started empty (backup kept)');
+      // INT-2026-020 (AK-08): images pasted on „Neue Absicht" belong to no session — prune after 7 days.
+      const prunedImages = await pruneOldImages(getIntentPasteImageRoot(), INTENT_PASTE_MAX_AGE_MS);
+      if (prunedImages > 0) console.log(`[WebSocket] intent-paste: pruned ${prunedImages} image(s) older than 7 days`);
       const t0 = Date.now();
       await this.vorhabenService.start();
       console.log(`[WebSocket] vorhaben: first scan in ${Date.now() - t0} ms (${this.vorhabenService.getState().rows.length} rows)`);
@@ -378,6 +383,7 @@ export class WebSocketHandler {
         case 'vorhaben:ansicht.set':
         case 'vorhaben:session.assign':
         case 'vorhaben:session.resume':
+        case 'vorhaben:absicht-bild':
         case 'project-docs:list':
         case 'project-docs:read':
         case 'project-docs:write':

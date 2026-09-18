@@ -227,6 +227,18 @@ describe('VorhabenService stage 4 (INT-2026-010)', () => {
       expect(lastState().protocol).toEqual([]);
     });
 
+    it('INT-2026-020 (AK-05): a firstInput carrying a pasted-image path arrives at the first Stop unchanged — spaces around the path and the path itself intact', async () => {
+      const text = 'Bitte ansehen: /rt/intent-paste/img-1.png danke';
+      handler.handle({ type: 'vorhaben:start-step', requestId: 'r1', projectId: 'pa', step: 'intent', model: { providerId: 'anthropic', modelId: 'haiku' }, firstInput: text }, reply);
+      await tick(10);
+      const started = reply.mock.calls.map((c) => c[0]).find((m) => m.type === 'vorhaben:step-started') as { sessionId: string };
+      expect(started).toBeDefined();
+      expect(store.getFirstInput(started.sessionId)?.text).toBe(text);
+      manager.stop(started.sessionId);
+      await tick(20);
+      expect(pastes(manager, started.sessionId)).toEqual([text]);
+    });
+
     it('handler: firstInput is trimmed and bounded; empty or oversized → INVALID_MESSAGE', async () => {
       handler.handle({ type: 'vorhaben:start-step', requestId: 'r1', projectId: 'pa', step: 'intent', model: { providerId: 'anthropic', modelId: 'haiku' }, firstInput: '  \n  Hallo Welt \t\n' }, reply);
       await tick(10);
