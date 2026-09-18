@@ -43,6 +43,7 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | Mobil | ein Pane, Terminal mit Flex-Host für xterm-Höhe | Mobile-Terminal-Fix (`4cdb276`) |
 | Dokument mit Leser-Teil und Agenten-Teil (INT-2026-009) | Mensch-Abschnitte offen, Agenten-Abschnitte als zugeklappte Kästen mit sichtbarer Überschrift; ein Schalter „Technik zeigen" je Dokument öffnet alle; Dokumente ohne oder mit nur teilweiser Kennzeichnung bleiben ganz offen | `aos-dokument-leser` (`details.technik`, INT-2026-010 Stufe 3) |
 | Sitzung neben dem Dokument (INT-2026-011) | das Terminal selbst, angedockt als rechte Spalte (halbe Breite, unter der Kopfzeile, kein Zieh-Griff, kein Schatten), Tab der Vorhaben-Sitzung vorne; kein nachgebauter Verlauf. Stapelordnung: angedockt liegt die Spalte unter der Kopfzeile (Glocken-Liste davor), schwebend und im Vollbild über ihr (INT-2026-014). Kennungen des Dokuments (`FA-03`, `AK-01`, `F1`) sind im Terminal unterstrichen: Hover zeigt den Absatz, Klick springt im Dokument hin und klappt den Kasten auf; nur Codes, die das Dokument enthält | `aos-cloud-terminal-sidebar` (`docked`), `kennung-link-provider.ts`, `aos-dokument-leser.openKennung` |
+| Seite, die zu einem Projekt gehört (Vorhaben-Seite, „Neue Absicht", Projekt-Seite) | das Projekt steht auf der Seite, nicht im Rahmen: als graue kleine Zeile im Kopf (Vorhaben-Seite über der Kennung, „Neue Absicht" unter der Überschrift) oder als Überschrift (Projekt-Seite); Text, kein Link (INT-2026-017, NZ-01/NZ-02) | `aos-vorhaben-seite` `.projekt`, `aos-vorhaben-view` `.neue-absicht .sub`, `aos-projekt-seite h1` |
 
 ## 5. Responsiv und Barrierefreiheit
 
@@ -78,5 +79,6 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 | 2026-09-17 | §5 Terminal schließt beim Verlassen einer angedockten Seite; Cmd+← zur Übersicht (INT-2026-015) | PR #71 |
 | 2026-09-17 | §4 Glocke aus dem Backend-Stand: Dialog oder Marke „fertig, unbeantwortet", Vorhaben-Titel und -Zustand, bleibt bis zur Antwort; Übersicht gruppiert nach Sitzungszustand vor Phase (INT-2026-016, PR 1) | PR #73 |
 | 2026-09-17 | §5 angedockte Spalte zeigt das Seiten-Projekt; neuer oder angeklickter Claude-Tab gehört dem Vorhaben; Fußzeilen-Hinweis (INT-2026-016, PR 2) | PR #74 |
+| 2026-09-17 | §4 Muster „Seite, die zu einem Projekt gehört": Projektname als graue Zeile im Kopf der Vorhaben-Seite, Rahmen bleibt neutral (INT-2026-017) | PR #76 |
 | 2026-09-18 | §5 Vorhaben-Seite: Wiederaufnahme beim Öffnen (Toast, Andocken am Mac, Hinweis am Handy), Meta-Zeile „fortgesetzt nach Neustart, Stand HH:MM", Grund-Zeile „Wiederaufnahme nicht möglich: …" (INT-2026-019) | PR #77 |
 | 2026-09-18 | §5 Kasten „Nächster Schritt": Ankündigung vor dem Klick („in der laufenden Sitzung: /clear, dann Befehl" bzw. „neue Sitzung — die laufende wird geschlossen"), Vorbelegung aus der laufenden Sitzung, genauer Sperrgrund statt Einheitssatz, zwei Toasts (INT-2026-018) | PR #82 |

@@ -8,6 +8,9 @@
  * Freigabe, without one it starts the step's session with the Freigabe as
  * first input (AN-S06); an intent draft without a session cannot be resumed.
  * The send bar has no „Freigeben" any more (review F6).
+ * INT-2026-017: the head names the project as a grey line above the id
+ * (AK-01), on every document and without one (AK-02), and follows the row
+ * even when two projects share an id (AK-03).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { VorhabenRow } from '../../src/shared/types/vorhaben.protocol.js';
@@ -82,7 +85,7 @@ describe('aos-vorhaben-seite — head and Phasen-Chips (FA-12)', () => {
     expect(chips(el)).toEqual(['intent', 'spec*!', 'plan°', 'build°']);
     expect(sr.querySelector('aos-dokument-leser')).not.toBeNull();
     expect(sr.querySelector('.kein-dokument')).toBeNull();
-    // no tabs of the old page, no project name in the head
+    // no tabs of the old page
     expect(sr.querySelector('.reiter')).toBeNull();
     el.remove();
     const d = await seite(row({ phase: 'bau', designFiles: ['skizze.png'], docs: [{ key: 'intent', file: 'intent.md', mtimeMs: 1 }, { key: 'spec', file: 'spec.md', mtimeMs: 2 }, { key: 'plan', file: 'plan.md', mtimeMs: 3 }] }), 'design');
@@ -103,6 +106,47 @@ describe('aos-vorhaben-seite — head and Phasen-Chips (FA-12)', () => {
     expect(el.shadowRoot!.querySelector('.kein-dokument')?.textContent).toContain('Kein Dokument in dieser Phase');
     expect(el.shadowRoot!.querySelector('.aktionen aos-naechster-schritt')).not.toBeNull();
     expect(el.shadowRoot!.querySelector('aos-sende-leiste')).toBeNull(); // nothing to annotate
+    el.remove();
+  });
+
+  it('the project name stands as a grey line above the id, the id and title unchanged (AK-01)', async () => {
+    const el = await seite(row());
+    const sr = el.shadowRoot!;
+    expect(sr.querySelector('.projekt')?.textContent).toBe('P');
+    expect([...sr.querySelector('.kopf-text')!.children].map((c) => `${c.tagName}.${c.className}`)).toEqual(['DIV.projekt', 'DIV.kennung', 'H1.']);
+    expect(sr.querySelector('.kennung')?.textContent).toBe('INT-2026-004');
+    expect(sr.querySelector('h1')?.textContent).toBe('Vorhaben als Mitte');
+    el.remove();
+  });
+
+  it('the project name stays on every document and when the phase has none (AK-02)', async () => {
+    const full = row({ phase: 'bau', designFiles: ['skizze.png'], hasBuildStand: true, docs: [{ key: 'intent', file: 'intent.md', mtimeMs: 1 }, { key: 'spec', file: 'spec.md', mtimeMs: 2 }, { key: 'build-stand', file: 'build-stand.md', mtimeMs: 4 }] });
+    for (const doc of ['intent', 'spec', 'plan', 'build-stand', 'design'] as const) {
+      const el = await seite(full, doc);
+      expect(el.shadowRoot!.querySelector('.projekt')?.textContent, doc).toBe('P');
+      if (doc === 'plan') expect(el.shadowRoot!.querySelector('.kein-dokument'), doc).not.toBeNull(); // plan.md missing
+      el.remove();
+    }
+    const none = await seite(row({ docs: [], designFiles: [] }), 'intent');
+    expect(none.shadowRoot!.querySelector('.kein-dokument')).not.toBeNull();
+    expect(none.shadowRoot!.querySelector('.projekt')?.textContent).toBe('P');
+    none.remove();
+  });
+
+  it('the project name follows the row: a different project with the same id (Glocke, id link — no reader reset) and a different Vorhaben (AK-03)', async () => {
+    const el = await seite(row());
+    const sr = el.shadowRoot!;
+    expect(sr.querySelector('.projekt')?.textContent).toBe('P');
+    // same id in another project: willUpdate keeps the reader state, the head must switch anyway
+    el.row = row({ projectId: 'r', projectPath: '/r', projectName: 'Applai' });
+    await settle(el);
+    expect(sr.querySelector('.projekt')?.textContent).toBe('Applai');
+    expect(sr.querySelector('.kennung')?.textContent).toBe('INT-2026-004');
+    // another Vorhaben of a third project
+    el.row = row({ projectId: 'q', projectPath: '/q', projectName: 'Kreis Lippe', intentId: 'INT-2026-009', dirName: 'INT-2026-009-y' });
+    await settle(el);
+    expect(sr.querySelector('.projekt')?.textContent).toBe('Kreis Lippe');
+    expect(sr.querySelector('.kennung')?.textContent).toBe('INT-2026-009');
     el.remove();
   });
 
