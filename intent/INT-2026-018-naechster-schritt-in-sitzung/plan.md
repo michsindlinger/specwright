@@ -1,7 +1,7 @@
 # Plan: UI: Nächster Schritt startet in der fertigen Sitzung — /clear, dann Befehl
 
 > **Intent:** `intent.md` (INT-2026-018) · **Spec:** entfällt (bypass: Größe S, eine Freigabe-Regel im Backend, ein Startweg über den vorhandenen gesicherten Schreibpfad, Hinweistext im Kasten; kein neues Datenobjekt)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-18 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-18 — im Chat: „freigabe, O1 wie vorgeschlagen"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `d26e26e`), `CLAUDE.md`, `docs/security.md`
 
@@ -474,7 +474,7 @@ Entfällt.
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
 | O1 entscheiden (Vorbelegung aus der Sitzung) | Michael | vor Freigabe | [x] 2026-09-18, wie vorgeschlagen |
-| Probe Schritt 0 (b): gepastetes `/clear` und neue Gesprächskennung im Scratch — Weg: Branch-Backend `cd ui && env -u SPECWRIGHT_CLOUD_SESSION_ID PORT=3111 HOST=127.0.0.1 SPECWRIGHT_TMUX=on SPECWRIGHT_RUNTIME_DIR=<scratch>/e2e-runtime npx tsx src/server/index.ts` (`PORT` in `ui/src/server/index.ts:12`), tmux-Socket `getTmuxSocketPath()` (`ui/src/server/utils/runtime-paths.ts:126-128`), Registry `<runtime>/cloud-terminal/sessions-3111.json`; Ergebnis als Protokollzeile in §14 | Agent in der Bausitzung | vor dem ersten Code | [ ] |
+| Probe Schritt 0 (b): gepastetes `/clear` und neue Gesprächskennung im Scratch — Weg: Branch-Backend `cd ui && env -u SPECWRIGHT_CLOUD_SESSION_ID PORT=3111 HOST=127.0.0.1 SPECWRIGHT_TMUX=on SPECWRIGHT_RUNTIME_DIR=<scratch>/e2e-runtime npx tsx src/server/index.ts` (`PORT` in `ui/src/server/index.ts:12`), tmux-Socket `getTmuxSocketPath()` (`ui/src/server/utils/runtime-paths.ts:126-128`), Registry `<runtime>/cloud-terminal/sessions-3111.json`; Ergebnis als Protokollzeile in §14 | Agent in der Bausitzung | vor dem ersten Code | [x] 2026-09-18, bestanden (§14: Kennung wechselt, 104 ms) |
 | Merge des PR nach `main` — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`docs/architecture.md` §5, Gate `GET /api/status/deploy-readiness`); kein weiterer Deploy-Schritt, kein Secret, kein Flag, kein Datenlauf | Michael | nach CI grün | [ ] |
 | Nach dem Deploy: bei der nächsten fertigen Phase den Knopf einmal in der laufenden Sitzung benutzen und prüfen, dass `/clear` und Befehl im Terminal stehen (AN-01/AN-04) | Michael | nach Deploy | [ ] |
 
@@ -563,4 +563,6 @@ Kein Datenlauf auf Bestandsdaten, keine Freigabe je Umgebung: die Zuordnungsdate
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-18 | Probe Schritt 0 (b) bestanden, Plan A bleibt: gepastetes `/clear` (Bracketed Paste über `sendInput`, 150 ms, `\r`) läuft wie getippt — Bildschirm geleert, Messwert 1: Kennung gewechselt (`2d722405…` → `7067d332…`), Messwert 2: Enter → Registry-Änderung **104 ms**; gepastetes `/specwright:plan INT-…` löst `UserPromptSubmit` (Zeile `arbeitet` nach 302 ms, `moveAssignment` ohne Tab-Umbenennung wie erwartet); 0 × `agent-event rejected` | Claude Code 2.1.276, Scratch `/private/tmp/scratch-int018`, Skript `probe-018.mjs` im Sitzungs-Scratchpad | §3 Plan B entfällt; §6 Schritt 0 erledigt |
+| 2026-09-18 | `isIdlePrompt`: Spinner-Erkennung über `…\s*\(…\d+s\b` statt `esc to interrupt` | Claude Code 2.1.276 zeigt die leere Eingabezeile `❯` **auch während eines Turns**; die Spinner-Zeile lautet `✻ Enchanting… (4s · ↓ 204 tokens · thinking)`, `⎿  Running… (3s)`, `· Generating… (10s …)` — ohne „esc to interrupt". Die Regel aus §3 („eine Zeile `^\s*❯\s*$` und keine Zeile mit `esc to interrupt`") hätte eine arbeitende Sitzung als ruhig erkannt (erste Probe-Aufnahme). Idle-Nachlauf `✻ Churned for 10s · done 8:38` enthält kein `…(` und zählt nicht als Spinner | §3 `isIdlePrompt`, §4 #3b, §8 AK-08 (9)/(10) |
+| 2026-09-18 | Fixtures unter `ui/tests/fixtures/tui/2.1.276/` statt `2.1.273/` | Aufnahme lief auf Claude Code 2.1.276 (Version im Bildschirmkopf); Fixture-Ordner tragen die aufgenommene Version | §4 #3c |
