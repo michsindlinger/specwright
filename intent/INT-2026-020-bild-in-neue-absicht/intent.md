@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-020"  
 titel: "UI: Bild aus der Zwischenablage in „Neue Absicht" einfügen wie im Terminal"  
-status: "angenommen"  
-version: "1.0.1"  
+status: "umgesetzt"  
+version: "1.0.2"  
 autor: "Michael Sindlinger (Feedback aus dem Gebrauch, 18.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-18"  
@@ -129,6 +129,7 @@ Keine. Zwei Rückfragen mit der Freigabe 0.1.0 entschieden (PO, 2026-09-18):
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.2 | 2026-09-18 | Umgesetzt: PR #79 gemerged (`417e217`), AK-01–AK-08 und RB-01 mit Tests belegt, E2E mit Haiku: Bild beim ersten Stop gelesen und beschrieben (AN-01 bestätigt, plan.md §8, §13); ADR-0005; zweiter Bild-Paste während eines Uploads wird ignoriert (plan.md §14). Offen: Abnahmen Mac/iPhone, Terminal-Gegenprobe (plan.md §10) | alle | PO, 2026-09-18 |
 | 1.0.1 | 2026-09-18 | Kennung `INT-2026-017` → `INT-2026-020`: 017 war seit 17.09. 21:03 an „Projektname im Kopf" vergeben (`feat/INT-2026-017-projektname-im-kopf`, auf `origin`), 018 und 019 auf anderen Branches; Inhalt unverändert. `bezuege.plan` gesetzt (Plan freigegeben, PO im Chat 18.09. 06:05) | Kopf | PO, 18.09. |
 | 1.0.0 | 2026-09-18 | Angenommen ohne Änderung am Entwurf; OF-01, OF-02 mit den Vorschlägen entschieden; Bypass ja (Größe S) → direkt `/plan`. Abgleich Mensch/Agent: ohne Befund (Kopf S/niedrig/Bypass deckt Endzustand AK-01–AK-08; jedes Ziel durch AK abgedeckt) | alle | PO, 18.09. |
 | 0.1.0 | 2026-09-18 | Entwurf nach Gespräch; Zuschnitt „nur Neue Absicht" entschieden (NZ-01) | alle | — |

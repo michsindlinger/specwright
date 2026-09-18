@@ -1,7 +1,7 @@
 # Plan: UI: Bild aus der Zwischenablage in „Neue Absicht" einfügen wie im Terminal
 
 > **Intent:** `intent.md` (INT-2026-020) · **Spec:** entfällt (bypass: Größe S, ein Textfeld bekommt den Einfüge-Weg des Terminals)
-> **Status:** umgesetzt (PR #79, Merge steht aus)
+> **Status:** umgesetzt — Merge PR #79 (`417e217`), 2026-09-18
 > **Erstellt:** 2026-09-18 im Plan Mode · **Freigabe:** PO (Michael Sindlinger), 2026-09-18 — im Chat „Freigabe: plan.md (Stand 2026-09-18 06:05)"; D1 ohne Einspruch = ADR-0005 ja
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `960c22e`), `CLAUDE.md`, `docs/security.md`
 
@@ -235,7 +235,7 @@ Entfällt.
 | Abnahme am Mac: echter macOS-Screenshot (Cmd+Ctrl+Shift+4) → Cmd+V auf „Neue Absicht" → Starten → Claude beschreibt das Bild (AN-01) | Michael | vor Merge | [ ] |
 | Abnahme am iPhone: Foto in Fotos kopieren → Einfügen im Feld (AN-03); Ergebnis in `plan.md` §14 eintragen (auch wenn es nicht geht — dann bleibt der Terminal-Weg, NZ ergänzen) | Michael | vor Merge | [ ] |
 | Gegenprobe Terminal-Paste (R3): Screenshot in einer laufenden Sitzung einfügen, Pfad erscheint, „Screenshot eingefügt" | Michael | vor Merge | [ ] |
-| PR #79 (https://github.com/michsindlinger/specwright/pull/79) — Merge nach `main` → Auto-Deploy der UI auf dem Cloud-Host (Weg: `.github/workflows/verify.yml` als Tor, Deploy-Timer außerhalb des Repos, `docs/architecture.md` §5); Hook `production-gate` nicht betroffen (kein `deploy`+`prod`-Befehl) | Michael | Merge | [ ] |
+| PR #79 (https://github.com/michsindlinger/specwright/pull/79) — Merge nach `main` → Auto-Deploy der UI auf dem Cloud-Host (Weg: `.github/workflows/verify.yml` als Tor, Deploy-Timer außerhalb des Repos, `docs/architecture.md` §5); Hook `production-gate` nicht betroffen (kein `deploy`+`prod`-Befehl) | Michael | Merge | [x] 18.09., `417e217` |
 | Board: Karte „neu" anlegen und nach Build nach „✅ Erledigt" (Block „Für das Board" im Abschlussbericht, eigene Sitzung mit `obsidian-po-board`) | Agent (eigene Sitzung) | nach Merge | [ ] |
 
 Keine Secrets, keine Migration, keine Bestandsdaten.
@@ -277,7 +277,7 @@ Keine Secrets, keine Migration, keine Bestandsdaten.
 - [x] Manuelle Schritte (Abschnitt 10): Worktree erledigt; Abnahmen Mac/iPhone/Terminal-Gegenprobe und Merge im PR als offen markiert.
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
 - [x] 2x-Regel-Check: ein Fehler zum zweiten Mal (E2E-Deep-Walk-Selektor über eine Shadow-Grenze, siehe §14) → Vorschlag für `CLAUDE.md` im PR.
-- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte neu, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-020-bild-in-neue-absicht/`); Nachziehen in eigener Sitzung.
+- [x] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte neu, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-020-bild-in-neue-absicht/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
 
