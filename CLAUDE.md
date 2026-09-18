@@ -30,7 +30,7 @@ Specwright ist das Framework für den AI-native SDLC: Befehle, Workflows, Vorlag
 ## Projekt-Docs (lesen, wenn die Aufgabe sie berührt)
 
 - `docs/product-brief.md` — für wen, welches Problem, Domänenbegriffe (Vorhaben, Manifest, Bezugsliste)
-- `docs/architecture.md` — **Pflicht im Plan Mode.** Komponenten, Datenbesitz, Regeln AR-01…AR-07, bekannte Abweichungen
+- `docs/architecture.md` — **Pflicht im Plan Mode.** Komponenten, Datenbesitz, Regeln AR-01…AR-08, bekannte Abweichungen
 - `docs/security.md` — Datenklassen (Repo ist öffentlich!), Geheimnisse, Verbotsliste
 - `docs/design.md` — Terminal- und UI-Muster, was „entspricht dem Mock" heißt
 

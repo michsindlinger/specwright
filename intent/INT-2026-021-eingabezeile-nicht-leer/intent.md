@@ -75,7 +75,7 @@ Zweiter, bisher unbemerkter Fehler derselben Funktion: Sie sucht mit `lines.some
 
 ## 5. Abnahmekriterien
 
-<!-- leser: mensch+agent -->
+<!-- leser: mensch -->
 
 - AK-01: Trägt die Eingabezeile Text, meldet der Kasten „in der Eingabezeile der Sitzung steht noch Text: …" samt gekürztem Zeileninhalt — nicht „Sitzung arbeitet — warten".
 - AK-02: In diesem Fall wird nichts in die Sitzung geschrieben (weder `/clear` noch der Befehl).
@@ -88,7 +88,7 @@ Zweiter, bisher unbemerkter Fehler derselben Funktion: Sie sucht mit `lines.some
 
 ## 6. Randbedingungen
 
-<!-- leser: mensch+agent -->
+<!-- leser: mensch -->
 
 - RB-01: Die bestehende Reihenfolge im Schreibpfad bleibt: Die synchrone Schlussprüfung (Status, Zuordnung, Gesprächskennung) ist das Letzte vor dem Paste; das Räumen schiebt sich nicht dazwischen.
 - RB-02: Alles unter der vorhandenen Schreibsperre (`withMachineWrite`), keine zweite Sperre, keine neue Reihenfolge (AR-03).
@@ -103,12 +103,14 @@ Zweiter, bisher unbemerkter Fehler derselben Funktion: Sie sucht mit `lines.some
 
 ## 12. Annahmen
 
-<!-- leser: mensch+agent -->
+<!-- leser: mensch -->
 
 - AN-01: Die unterste `❯`-Zeile ist die Eingabebox. Geprüft gegen dreizehn aufgezeichnete Bildschirme und zehn laufende Sitzungen, ohne Abweichung; ein Test über alle Fixtures hält die Annahme künftig fest.
 - AN-02: Bei mehrzeiliger Eingabe trägt nur die erste Zeile das `❯`; sie bleibt damit die letzte Treffer-Zeile. Wird im Plan mit einer Aufzeichnung geprüft, soweit reproduzierbar.
 
 ## Änderungsprotokoll
+
+<!-- leser: agent -->
 
 | Version | Datum | Autor | Änderung |
 |---|---|---|---|

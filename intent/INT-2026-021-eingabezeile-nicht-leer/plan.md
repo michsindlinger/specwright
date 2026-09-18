@@ -25,9 +25,13 @@
 
 ### 1. Kurzfassung
 
+<!-- leser: agent -->
+
 Die strenge Bildschirmprüfung vor dem maschinellen Schreiben meldet jeden Nicht-Idle-Zustand als `arbeitet`. Eine gefüllte Eingabezeile ist aber weder „arbeitet" noch behebbar durch Warten. Der Plan gibt der Prüfung vier benannte Zustände, reicht den neuen Grund als eigenen Fehlercode durch und bietet in Stufe 2 ein Räumen auf Klick an — messungsgebunden.
 
 ### 2. Ausgangslage im Code
+
+<!-- leser: agent -->
 
 - `ui/src/server/services/dialog-driver.ts:50-72` — `IDLE_PROMPT_RE = /^\s*❯\s*$/`, `BUSY_CUE`, `isIdlePrompt` mit `lines.some(…)`.
 - `ui/src/server/services/vorhaben-service.ts:697-714` — `screenCheck(mode)`; `:712` bildet jeden Nicht-Idle-Fall auf `'arbeitet'` ab.
@@ -41,6 +45,8 @@ Die strenge Bildschirmprüfung vor dem maschinellen Schreiben meldet jeden Nicht
 
 ### 3. Entwurf
 
+<!-- leser: agent -->
+
 `promptZustand(screen)` als reine Funktion mit vier Werten (`wartet`, `arbeitet`, `eingabe_nicht_leer`, `dialog`), Prüfreihenfolge Dialog → Spinner → Eingabezeile. Die Reihenfolge Dialog vor Spinner bildet ab, was `screenCheck:711` heute schon tut. `isIdlePrompt` bleibt als dünner Wrapper (`=== 'wartet'`), damit alle Aufrufer und bestehenden Tests unverändert bleiben. `eingabeText(screen)` liefert den Zeileninhalt für die Meldung.
 
 Maßgeblich ist die **letzte** `❯`-Zeile (AN-01): Der Verlauf trägt frühere Eingaben mit demselben Zeichen; nur die unterste Zeile ist die Eingabebox.
@@ -50,6 +56,8 @@ Maßgeblich ist die **letzte** `❯`-Zeile (AN-01): Der Verlauf trägt frühere 
 Der neue Grund reist als eigener Fehlercode `PROMPT_NOT_EMPTY`; der gekürzte Zeileninhalt steht in `message`. Kein neues Protokollfeld.
 
 ### 4. Änderungen
+
+<!-- leser: agent -->
 
 **Stufe 1**
 
@@ -74,6 +82,8 @@ Frontend: keine Zeile (die Meldung erscheint über den bestehenden `.fehler`-Pfa
 
 ### 5. Verbindungen
 
+<!-- leser: agent -->
+
 | AK | Änderung | Nachweis |
 |---|---|---|
 | AK-01 | 1, 2, 3, 6, 7 | Test (10) in `vorhaben-service-naechster-schritt.test.ts` |
@@ -87,6 +97,8 @@ Frontend: keine Zeile (die Meldung erscheint über den bestehenden `.fehler`-Pfa
 
 ### 6. Reihenfolge der Arbeit
 
+<!-- leser: agent -->
+
 1. `intent.md` + `plan.md` committen (vor dem ersten Code).
 2. Fixture `prompt-eingabe-text.txt` aufnehmen, NBSP per `od -c` prüfen.
 3. `dialog-driver.ts` umbauen; `npx vitest run tests/unit/dialog-driver.test.ts` muss **ohne neue Tests** grün sein (Beweis der Verhaltensgleichheit).
@@ -99,16 +111,22 @@ Frontend: keine Zeile (die Meldung erscheint über den bestehenden `.fehler`-Pfa
 
 ### 7. Zerlegung
 
+<!-- leser: agent -->
+
 Keine. Eine Sitzung setzt den Plan ganz um; Stufe 2 ist ein Entscheidungspunkt, keine eigene Sitzung.
 
 ### 8. Tests und Nachweis
 
-- `ui/tests/fixtures/tui/2.1.276/prompt-eingabe-text.txt` (neu, echte Aufnahme), optional `prompt-eingabe-mehrzeilig.txt`, aus Schritt 7 `key-ctrl-u.txt`, `key-ctrl-u-mitte.txt`, `key-esc.txt`.
+<!-- leser: agent -->
+
+- `ui/tests/fixtures/tui/2.1.277/prompt-eingabe-text.txt` (neu, echte Aufnahme aus `/private/tmp/scratch-int021`), dazu aus der Messung `key-ctrl-u-mitte.txt` und `key-esc-hinweis.txt`.
 - `ui/tests/unit/dialog-driver.test.ts`: ein Test je Rückgabewert; NBSP allein = leer, NBSP + Text = nicht leer; letzte `❯`-Zeile entscheidet; Dialog schlägt Spinner; kein Prompt sichtbar → `arbeitet`; `eingabeText` ohne `❯`/NBSP. **Äquivalenzwächter** über alle Fixtures: `isIdlePrompt(s) === (promptZustand(s) === 'wartet')`.
 - `ui/tests/unit/vorhaben-service-naechster-schritt.test.ts`: (10) Text in der Zeile → `PROMPT_NOT_EMPTY`, Meldung enthält den Inhalt, keine Writes. (10b) Text erst nach `/clear` → derselbe Code, `writes === [CLEAR, '\r']`. (10c) `send` bleibt durchlässig. Stufe 2: (10d) Räumen führt zum Start, (10e) zweimal erfolglos → Abbruch ohne Paste.
 - `ui/tests/known-failures.txt` bleibt unverändert; keine neue rote Testdatei.
 
 ### 9. Risiken
+
+<!-- leser: agent -->
 
 | Risiko | Bewertung | Gegenmaßnahme |
 |---|---|---|
@@ -119,6 +137,8 @@ Keine. Eine Sitzung setzt den Plan ganz um; Stufe 2 ist ein Entscheidungspunkt, 
 | Union-Erweiterung bricht eine `Record`-Abbildung | niedrig | `build:backend` **und** `build:ui` laufen (Frontend importiert `shared/types`) |
 
 ### 10. Manuelle Schritte
+
+<!-- leser: agent -->
 
 Gegen die laufende lokale UI (Backend 3001):
 
@@ -131,9 +151,13 @@ Gegen die laufende lokale UI (Backend 3001):
 
 ### 11. Schätzung
 
+<!-- leser: agent -->
+
 Stufe 1 ~2 h inkl. Tests. Messung ~20 min. Stufe 2 ~3 h inkl. Tests und Doku.
 
 ### 12. Review des Plans
+
+<!-- leser: agent -->
 
 Externer Multi-Reviewer-Konsens (3 von 4 Reviewern erfolgreich), 18.09.2026. Angenommen und eingearbeitet: Tastenwirkung unbelegt (→ Messung als Sperre); Rennfenster und E13/E15-Invariante (→ Räumen vor die vollständige Neubewertung, Schlussblock bleibt letzter Schritt); Vorrang Dialog vor Spinner (→ `findDialogCue` zuerst); `waiting`/`working` nicht mitreißen (→ expliziter Riegel, Test 10c); „letzte `❯`-Zeile" als dokumentierte Annahme (AN-01, AN-02); Strg-U löscht nur vor dem Cursor (→ Messung Schritt 3, Esc als Rückfall); Fehlertransport (→ `PROMPT_NOT_EMPTY`, Code erreicht das Frontend bereits über `VorhabenRequestError`); Äquivalenz braucht einen automatischen Riegel (→ Wächter in §8).
 
@@ -141,8 +165,25 @@ Abgelehnt mit Begründung: eigenes AR-09 für Aufräum-Tasten (AR-08 deckt es in
 
 ### 13. Definition of Done
 
+<!-- leser: agent -->
+
 `verify: OK` mit Ausgabe im PR · CI-Check grün · jedes AK hat einen Test · Verbindungen aus §5 nachgewiesen · E2E-Pfad gelaufen · Screenshot im PR · `architecture.md` aktuell · Abweichungen in §14 · Board nachgezogen.
 
 ### 14. Abweichungen bei der Umsetzung
 
-(noch keine)
+<!-- leser: agent -->
+
+**Messung der Tastenwirkung (Schritt 7, Sperre für Stufe 2) — durchgeführt am 18.09.2026, Claude Code 2.1.277, Wegwerf-Sitzung `/private/tmp/scratch-int021`:**
+
+- Strg-U mit Cursor am Zeilenende: leert die Box vollständig (`❯ npm run verify` → `❯`).
+- Strg-U mit Cursor in der Mitte: löscht nur vor dem Cursor, `abcdefghij` minus drei Schritte zurück → `hij` bleibt stehen. Der Review-Befund 15 ist damit belegt, nicht nur vermutet (Fixture `key-ctrl-u-mitte.txt`).
+- **Einmal Esc leert nicht**, sondern blendet den Hinweis „Esc again to clear" ein (Fixture `key-esc-hinweis.txt`) — die Planannahme „ein Esc leert" war falsch.
+- Zweimal Esc kurz hintereinander leert die Box vollständig. Eine Verlaufs- oder Rewind-Auswahl ging dabei **nicht** auf; das im Plan §9 genannte Risiko trat auf 2.1.277 nicht ein.
+
+**Daraus geänderte Tastenfolge gegenüber §3:** erst Strg-U (harmlos, falls doch eine Runde läuft), nachlesen; steht noch Text, **Esc Esc** als zweiter und letzter Anlauf, nachlesen. Also zwei Anläufe, nicht zwei Tasten — die Obergrenze aus AK-07 bleibt der Sache nach erhalten (feste Zahl, Nachlesen nach jedem Anlauf, sonst Abbruch).
+
+**Fixture-Version:** Die Aufnahmen liegen unter `2.1.277/`, nicht wie im Plan geschrieben unter `2.1.276/` — der Mac läuft auf 2.1.277. Nebenbefund der Aufnahme: die **lebende** Eingabebox trennt `❯` vom Text mit U+00A0, die Verlaufszeilen mit einem normalen Leerzeichen. Die Regel nutzt das nicht (zu fragil), aber der Test hält beides fest.
+
+**Von den Bestandstests gefangen:** Der Kasten band den Startknopf als `@click=${this.start}`; mit dem neuen Parameter `eingabeLeeren` landete das Klick-Ereignis von Lit in diesem Parameter und machte ihn wahr — jeder normale Klick hätte die Eingabezeile geleert. Drei bestehende Komponententests wurden dadurch rot (`aos-naechster-schritt-sitzung`, `aos-neue-absicht`, `aos-vorhaben-stage2`). Behoben durch `@click=${() => void this.start()}`; die Tests blieben unverändert.
+
+**AR-08:** wie in §12 entschieden als Erweiterung nachgetragen, kein eigenes AR-09. `CLAUDE.md` nennt jetzt AR-01…AR-08.
