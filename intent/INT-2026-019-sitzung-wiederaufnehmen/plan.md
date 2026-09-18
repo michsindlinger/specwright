@@ -432,7 +432,7 @@ Kein Datenlauf auf Bestandsdaten, keine Freigabe je Umgebung nötig: die neuen F
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
 - [x] E2E-Pfad läuft (Abschnitt 8), Protokoll und Screenshots im PR (Mac, Handy, Arbeitskopie fehlt).
 - [x] AN-01-Probe (Abschnitt 10, Schritt 1) protokolliert.
-- [x] `verify` grün, Ausgabe im PR — [ ] PR-Checks grün (CI ist die Wahrheit).
+- [x] `verify` grün, Ausgabe im PR — [x] PR-Checks grün (CI ist die Wahrheit; PR #77, verify pass 2026-09-18).
 - [x] `docs/architecture.md`, `docs/security.md`, `docs/design.md` angepasst (Abschnitt 3/4).
 - [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert (Merge, Backfill-Logzeile nach Deploy: offen, Michael).
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
