@@ -41,6 +41,8 @@ export class VorhabenRequestError extends Error {
 }
 
 const REQUEST_TIMEOUT_MS = 15000;
+/** INT-2026-020: image upload from „Neue Absicht" — 10 MB over a phone link needs more than 15 s (R2). */
+const ABSICHT_BILD_TIMEOUT_MS = 60000;
 
 export class VorhabenClientService {
   private _state: VorhabenState | null = null;
@@ -174,6 +176,23 @@ export class VorhabenClientService {
   }
 
   /**
+   * INT-2026-020 (AK-01, AK-03): an image pasted into the „Neue Absicht"
+   * text field before a session exists. The backend validates and writes it
+   * (Terminal rules, RB-04) and answers with the absolute path the browser
+   * inserts into the text. 60 s instead of the usual 15: a 10 MB screenshot
+   * over a phone link may take longer, and the file is already on disk by
+   * then (R2). Rejects with the server's code/message (`VorhabenRequestError`).
+   */
+  pasteAbsichtBild(projectId: string, base64: string, mimeType: string): Promise<{ absolutePath: string }> {
+    return this.request<{ absolutePath: string }>(
+      'vorhaben:absicht-bild-saved',
+      { type: 'vorhaben:absicht-bild', projectId, base64, mimeType },
+      'vorhaben:error',
+      ABSICHT_BILD_TIMEOUT_MS,
+    );
+  }
+
+  /**
    * INT-2026-016 (AK-06, AK-07): bind a live claude-code tab to a Vorhaben
    * row without a session. Resolves on `vorhaben:session-assigned`, rejects
    * with the server's code and message (`VorhabenRequestError`) — the caller
@@ -239,18 +258,19 @@ export class VorhabenClientService {
     return this.request<CloudTerminalTargetsResponseMessage>('cloud-terminal:targets:response', { type: 'cloud-terminal:targets', projectPath }, 'cloud-terminal:targets:error');
   }
 
-  /** Sends a request with a fresh requestId; resolves on the matching reply, rejects on vorhaben:error. */
-  private request<T>(replyType: string | string[], message: WebSocketMessage, errorType = 'vorhaben:error'): Promise<T & { type: string }> {
-    return gatewayRequest<T>(replyType, message, errorType, `vh-${Date.now()}-${++this.requestCounter}`);
+  /** Sends a request with a fresh requestId; resolves on the matching reply, rejects on vorhaben:error (or after `timeoutMs`, default 15 s). */
+  private request<T>(replyType: string | string[], message: WebSocketMessage, errorType = 'vorhaben:error', timeoutMs = REQUEST_TIMEOUT_MS): Promise<T & { type: string }> {
+    return gatewayRequest<T>(replyType, message, errorType, `vh-${Date.now()}-${++this.requestCounter}`, timeoutMs);
   }
 }
 
 /**
  * Request/reply over the gateway (R-17, INT-2026-007): sends `message` with
  * `requestId`, resolves on the first reply type whose `requestId` matches,
- * rejects on `errorType` with the same `requestId` or after 15 s.
+ * rejects on `errorType` with the same `requestId` or after `timeoutMs`
+ * (default 15 s; INT-2026-020 passes 60 s for the image upload).
  */
-export function gatewayRequest<T>(replyType: string | string[], message: WebSocketMessage, errorType: string, requestId: string): Promise<T & { type: string }> {
+export function gatewayRequest<T>(replyType: string | string[], message: WebSocketMessage, errorType: string, requestId: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T & { type: string }> {
   const types = Array.isArray(replyType) ? replyType : [replyType];
   return new Promise((resolve, reject) => {
     const cleanup = (): void => {
@@ -272,7 +292,7 @@ export function gatewayRequest<T>(replyType: string | string[], message: WebSock
     const timer = setTimeout(() => {
       cleanup();
       reject(new VorhabenRequestError('TIMEOUT', 'Keine Antwort vom Backend'));
-    }, REQUEST_TIMEOUT_MS);
+    }, timeoutMs);
     for (const t of types) gateway.on(t, onReply);
     gateway.on(errorType, onError);
     gateway.send({ ...message, requestId });

@@ -7,6 +7,7 @@
  * to the docked terminal (INT-2026-011), phone to the terminal (AK-06) — and names the pending
  * first input until it is delivered. Also: the `gesperrt` state of
  * aos-naechster-schritt (FA-21) and the shared model preselection helper.
+ * INT-2026-020: image paste into the field (AK-01…AK-06) — see the last block.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { VorhabenPendingIntent } from '../../src/shared/types/vorhaben.protocol.js';
@@ -16,6 +17,7 @@ vi.mock('../../frontend/src/gateway.js', () => ({
 }));
 
 const startStep = vi.fn(async () => ({ sessionId: 'cs-9' }));
+const pasteAbsichtBild = vi.fn(async (_projectId: string, _base64: string, _mimeType: string) => ({ absolutePath: '/rt/intent-paste/img-1.png' }));
 const models = {
   providers: [
     { id: 'anthropic', name: 'Anthropic', models: [{ id: 'opus', name: 'Opus', providerId: 'anthropic' }, { id: 'haiku', name: 'Haiku', providerId: 'anthropic' }] },
@@ -29,6 +31,12 @@ vi.mock('../../frontend/src/services/vorhaben.service.js', () => ({
     modelList: vi.fn(async () => models),
     targets: vi.fn(async () => ({ isGitRepo: false, worktrees: [], worktreeCreationEnabled: false })),
     startStep: (...a: unknown[]) => startStep(...(a as [])),
+    pasteAbsichtBild: (...a: unknown[]) => pasteAbsichtBild(...(a as [string, string, string])),
+  },
+  VorhabenRequestError: class extends Error {
+    constructor(public readonly code: string, message: string) {
+      super(message);
+    }
   },
 }));
 
@@ -212,5 +220,154 @@ describe('aos-naechster-schritt gesperrt (FA-21) and model-wahl', () => {
     });
     expect(out.providers.map((p) => p.id)).toEqual([...models.providers.map((p) => p.id), 'codex']);
     expect(out.defaultSelection).toEqual(models.defaultSelection);
+  });
+});
+
+describe('INT-2026-020 Bild einfügen (AK-01…AK-06)', () => {
+  const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52]);
+  const PNG_BASE64 = Buffer.from(PNG_BYTES).toString('base64');
+
+  /** A paste event whose clipboard carries `file` (and optionally text), like a screenshot paste in Chrome/Safari. */
+  const pasteEvent = (file: File | null, text?: string): ClipboardEvent => {
+    const dt = new DataTransfer();
+    if (file) dt.items.add(file);
+    if (text !== undefined) dt.setData('text/plain', text);
+    return new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+  };
+  const png = (name = 'shot.png', type = 'image/png'): File => new File([PNG_BYTES], name, { type });
+
+  /** Field with text and the caret placed after `caretAfter`. */
+  async function feld(el: Awaited<ReturnType<typeof neu>>, text: string, caretAfter: string) {
+    const ta = el.shadowRoot!.querySelector('textarea')!;
+    ta.value = text;
+    ta.dispatchEvent(new Event('input'));
+    await settle(el);
+    const pos = text.indexOf(caretAfter) + caretAfter.length;
+    ta.setSelectionRange(pos, pos);
+    return ta;
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    startStep.mockClear();
+    pasteAbsichtBild.mockReset();
+    pasteAbsichtBild.mockResolvedValue({ absolutePath: '/rt/intent-paste/img-1.png' });
+  });
+
+  it('AK-01: a PNG on the clipboard is uploaded (base64, mime) and its path lands as ` <pfad> ` at the caret; the paste is consumed', async () => {
+    const el = await neu();
+    const ta = await feld(el, 'Vorher Nachher', 'Vorher');
+    const ev = pasteEvent(png());
+    ta.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(true);
+    await settle(el);
+    expect(pasteAbsichtBild).toHaveBeenCalledWith('p', PNG_BASE64, 'image/png');
+    expect(ta.value).toBe('Vorher /rt/intent-paste/img-1.png  Nachher');
+    expect(ta.selectionStart).toBe('Vorher /rt/intent-paste/img-1.png '.length);
+    el.remove();
+  });
+
+  it('AK-02: a text-only paste is not consumed — no upload, the field is untouched by the component', async () => {
+    const el = await neu();
+    const ta = await feld(el, 'Vorher', 'Vorher');
+    const ev = pasteEvent(null, 'nur Text');
+    ta.dispatchEvent(ev);
+    await settle(el);
+    expect(ev.defaultPrevented).toBe(false);
+    expect(pasteAbsichtBild).not.toHaveBeenCalled();
+    expect(ta.value).toBe('Vorher');
+    expect(el.shadowRoot!.querySelector('.hinweis')).toBeNull();
+    el.remove();
+  });
+
+  it('AK-03: „Screenshot wird hochgeladen…" while the upload runs, „Screenshot eingefügt" after; a backend refusal shows „Screenshot-Paste fehlgeschlagen: …" and keeps the text', async () => {
+    let resolve!: (v: { absolutePath: string }) => void;
+    pasteAbsichtBild.mockImplementationOnce(() => new Promise((r) => { resolve = r; }));
+    const el = await neu();
+    const sr = el.shadowRoot!;
+    const ta = await feld(el, 'Text', 'Text');
+    ta.dispatchEvent(pasteEvent(png()));
+    await settle(el);
+    expect(sr.querySelector('.hinweis')?.textContent).toBe('Screenshot wird hochgeladen…');
+    expect(sr.querySelector('.hinweis')?.getAttribute('data-art')).toBe('info');
+    resolve({ absolutePath: '/rt/intent-paste/img-1.png' });
+    await settle(el);
+    expect(sr.querySelector('.hinweis')?.textContent).toBe('Screenshot eingefügt');
+    expect(sr.querySelector('.hinweis')?.getAttribute('data-art')).toBe('success');
+    expect(ta.value).toBe('Text /rt/intent-paste/img-1.png ');
+
+    // backend refusal (the Terminal's code and message travel unchanged)
+    const { VorhabenRequestError } = await import('../../frontend/src/services/vorhaben.service.js');
+    pasteAbsichtBild.mockRejectedValueOnce(new VorhabenRequestError('PASTE_IMAGE_TOO_LARGE', 'Image too large: 10485761 bytes'));
+    const before = ta.value;
+    ta.dispatchEvent(pasteEvent(png()));
+    await settle(el);
+    expect(sr.querySelector('.hinweis')?.textContent).toBe('Screenshot-Paste fehlgeschlagen: Image too large: 10485761 bytes');
+    expect(sr.querySelector('.hinweis')?.getAttribute('role')).toBe('alert');
+    expect(ta.value).toBe(before);
+    // typing clears the status line
+    ta.dispatchEvent(new Event('input'));
+    await settle(el);
+    expect(sr.querySelector('.hinweis')).toBeNull();
+    el.remove();
+  });
+
+  it('AK-04: an image of a type the Terminal does not take is refused with its type; an oversized one with its size — no upload, text unchanged', async () => {
+    const el = await neu();
+    const sr = el.shadowRoot!;
+    const ta = await feld(el, 'Text', 'Text');
+    const tiff = pasteEvent(png('scan.tiff', 'image/tiff'));
+    ta.dispatchEvent(tiff);
+    await settle(el);
+    expect(tiff.defaultPrevented).toBe(true);
+    expect(sr.querySelector('.hinweis')?.textContent).toBe('Bildart nicht unterstützt: image/tiff');
+    expect(pasteAbsichtBild).not.toHaveBeenCalled();
+    expect(ta.value).toBe('Text');
+
+    const big = png();
+    Object.defineProperty(big, 'size', { value: 10 * 1024 * 1024 + 1 });
+    ta.dispatchEvent(pasteEvent(big));
+    await settle(el);
+    expect(sr.querySelector('.hinweis')?.textContent).toBe('Screenshot ist zu groß (10.0 MB, Limit 10 MB)');
+    expect(pasteAbsichtBild).not.toHaveBeenCalled();
+    expect(ta.value).toBe('Text');
+    el.remove();
+  });
+
+  it('AK-05: „Starten" after a paste hands the text with the path as firstInput', async () => {
+    const el = await neu();
+    const sr = el.shadowRoot!;
+    const ta = await feld(el, 'Bitte ansehen: danke', 'Bitte ansehen:');
+    ta.dispatchEvent(pasteEvent(png()));
+    await settle(el);
+    expect(ta.value).toBe('Bitte ansehen: /rt/intent-paste/img-1.png  danke');
+    (sr.querySelector('button.start') as HTMLButtonElement).click();
+    await settle(el);
+    expect(startStep).toHaveBeenCalledWith('p', undefined, 'intent', { providerId: 'anthropic', modelId: 'haiku' }, { kind: 'main' }, { firstInput: 'Bitte ansehen: /rt/intent-paste/img-1.png  danke' });
+    el.remove();
+  });
+
+  it('AK-06: while the upload runs, „Starten" is disabled and neither click nor Cmd+Enter start; afterwards both work again', async () => {
+    let resolve!: (v: { absolutePath: string }) => void;
+    pasteAbsichtBild.mockImplementationOnce(() => new Promise((r) => { resolve = r; }));
+    const el = await neu();
+    const sr = el.shadowRoot!;
+    const ta = await feld(el, 'Text', 'Text');
+    const start = sr.querySelector('button.start') as HTMLButtonElement;
+    expect(start.disabled).toBe(false);
+    ta.dispatchEvent(pasteEvent(png()));
+    await settle(el);
+    expect(start.disabled).toBe(true);
+    start.click();
+    ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }));
+    await settle(el);
+    expect(startStep).not.toHaveBeenCalled();
+    resolve({ absolutePath: '/rt/intent-paste/img-1.png' });
+    await settle(el);
+    expect(start.disabled).toBe(false);
+    ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }));
+    await settle(el);
+    expect(startStep).toHaveBeenCalledTimes(1);
+    el.remove();
   });
 });
