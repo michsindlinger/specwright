@@ -3,7 +3,7 @@
 > Status: Angenommen
 > Datum: 2026-09-18
 > Betrifft: Web-UI (`ui/src/server/utils/paste-image.ts`, `ui/src/server/utils/runtime-paths.ts`, `ui/src/server/services/vorhaben-handler.ts`, `ui/src/server/websocket.ts`), Vorhaben INT-2026-020
-> Umgesetzt in: PR zu `feat/INT-2026-020-bild-in-neue-absicht`
+> Umgesetzt in: PR #79 (`417e217`, 2026-09-18)
 
 ---
 
