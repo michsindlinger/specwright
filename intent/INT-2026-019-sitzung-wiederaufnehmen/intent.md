@@ -2,11 +2,11 @@
 intent_id: "INT-2026-019"  
 titel: "UI: Verlorene Sitzung eines Vorhabens beim Öffnen wieder aufnehmen"  
 status: "angenommen"  
-version: "1.0.0"  
+version: "1.0.1"  
 autor: "Michael Sindlinger (Feedback aus dem Gebrauch nach dem Rechner-Absturz am 17.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-17"  
-geaendert: "2026-09-17"  
+geaendert: "2026-09-18"  
 risikoklasse: "niedrig"  
 groesse: "S"  
 bypass: "ja"  
@@ -14,7 +14,7 @@ bypass_grund: "Größe S: eine Wiederaufnahme-Regel im Backend über den vorhand
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: ""  
@@ -139,5 +139,6 @@ Anlass: der Absturz vom 17.09.2026 mit zwei Vorhaben in der Schwebe; die Wiederh
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-18 | Plan freigegeben (`plan.md`, Status freigegeben; O1 Handy ohne Auto-Vollbild, O2 Schutzregel nur Wiederanlauf/Herunterfahren); `bezuege.plan` gesetzt. AN-02 (`--continue`) im Plan verworfen, siehe plan.md §12 F1 | bezuege.plan, AN-02 | PO, 2026-09-18 |
 | 1.0.0 | 2026-09-17 | Freigabe durch den Product Owner im Chat; OF-01 und OF-02 mit den vorgeschlagenen Übergangsregeln entschieden. Abgleich Mensch/Agent: ohne Befund (drei Sätze nennen AK-01–AK-09 und Kernaufgabe 3 = AK-07/Z-03; NZ-02 und AK-08 decken denselben Fall; keine Agenten-Abschnitte außer diesem Protokoll) | OF-01, OF-02 | PO, 2026-09-17 |
 | 0.1.0 | 2026-09-17 | Entwurf aus dem Gespräch nach dem Absturz; Ursachen im Code belegt (Zuordnung überlebt, Sitzung nicht; Aufräumer löscht saubere Arbeitskopie; Übersicht liest nur Ordner) | alle | — |
