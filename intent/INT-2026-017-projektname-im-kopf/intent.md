@@ -1,12 +1,12 @@
 ---
 intent_id: "INT-2026-017"  
 titel: "UI: Projektname im Kopf der Vorhaben-Seite"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.1.0"  
 autor: "Michael Sindlinger (Feedback aus dem Gebrauch, 17.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-17"  
-geaendert: "2026-09-17"  
+geaendert: "2026-09-18"  
 risikoklasse: "niedrig"  
 groesse: "S"  
 bypass: "ja"  
@@ -115,6 +115,7 @@ Keine. Drei Rückfragen am 2026-09-17 entschieden (PO): Ort → AK-01, NZ-01 · 
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.1.0 | 2026-09-18 | Umgesetzt: PR #76 nach `main` gemergt (Merge-Commit `6c2c896`), CI-Check `verify` grün. Status `angenommen` → `umgesetzt` | alle | PO, 18.09. |
 | 1.0.1 | 2026-09-17 | Umgesetzt in PR #76 (`feat/INT-2026-017-projektname-im-kopf`, Commit fe186c6): `aos-vorhaben-seite` `.projekt` über der Kennung, drei Tests AK-01–AK-03, Screenshots `design/ist/`, `docs/design.md` §4; Abweichungen in `plan.md` §14. Status bleibt `angenommen` bis Merge | AK-01–AK-04 | — |
 | 1.0.0 | 2026-09-17 | Angenommen ohne Änderung am Entwurf; Bypass ja (Größe S) → direkt `/plan`. Abgleich Mensch/Agent: ohne Befund (Kopf S/niedrig/Bypass deckt Endzustand AK-01–AK-04: eine Komponente, kein Backend, keine Daten) | alle | PO, 17.09. |
 | 0.1.0 | 2026-09-17 | Entwurf nach Gespräch; drei Rückfragen mit den Vorschlägen entschieden | alle | — |
