@@ -1,7 +1,7 @@
 # Plan: UI: Nächster Schritt startet in der fertigen Sitzung — /clear, dann Befehl
 
 > **Intent:** `intent.md` (INT-2026-018) · **Spec:** entfällt (bypass: Größe S, eine Freigabe-Regel im Backend, ein Startweg über den vorhandenen gesicherten Schreibpfad, Hinweistext im Kasten; kein neues Datenobjekt)
-> **Status:** umgesetzt (PR #82, Merge steht aus)
+> **Status:** umgesetzt — Merge PR #82 (`289f831`), 2026-09-18
 > **Erstellt:** 2026-09-18 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-18 — im Chat: „freigabe, O1 wie vorgeschlagen"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `d26e26e`), `CLAUDE.md`, `docs/security.md`
 
@@ -475,7 +475,7 @@ Entfällt.
 |---|---|---|---|
 | O1 entscheiden (Vorbelegung aus der Sitzung) | Michael | vor Freigabe | [x] 2026-09-18, wie vorgeschlagen |
 | Probe Schritt 0 (b): gepastetes `/clear` und neue Gesprächskennung im Scratch — Weg: Branch-Backend `cd ui && env -u SPECWRIGHT_CLOUD_SESSION_ID PORT=3111 HOST=127.0.0.1 SPECWRIGHT_TMUX=on SPECWRIGHT_RUNTIME_DIR=<scratch>/e2e-runtime npx tsx src/server/index.ts` (`PORT` in `ui/src/server/index.ts:12`), tmux-Socket `getTmuxSocketPath()` (`ui/src/server/utils/runtime-paths.ts:126-128`), Registry `<runtime>/cloud-terminal/sessions-3111.json`; Ergebnis als Protokollzeile in §14 | Agent in der Bausitzung | vor dem ersten Code | [x] 2026-09-18, bestanden (§14: Kennung wechselt, 104 ms) |
-| Merge des PR nach `main` — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`docs/architecture.md` §5, Gate `GET /api/status/deploy-readiness`); kein weiterer Deploy-Schritt, kein Secret, kein Flag, kein Datenlauf | Michael | nach CI grün | [ ] |
+| Merge des PR nach `main` — löst den Auto-Deploy der UI auf dem Cloud-Host aus (`docs/architecture.md` §5, Gate `GET /api/status/deploy-readiness`); kein weiterer Deploy-Schritt, kein Secret, kein Flag, kein Datenlauf | Michael | nach CI grün | [x] 2026-09-18, PR #82 (`289f831`) |
 | Nach dem Deploy: bei der nächsten fertigen Phase den Knopf einmal in der laufenden Sitzung benutzen und prüfen, dass `/clear` und Befehl im Terminal stehen (AN-01/AN-04) | Michael | nach Deploy | [ ] |
 
 Kein Datenlauf auf Bestandsdaten, keine Freigabe je Umgebung: die Zuordnungsdatei behält Felder und Version, die neuen Protokollfelder sind optional, ein alter Browser-Stand ignoriert sie.

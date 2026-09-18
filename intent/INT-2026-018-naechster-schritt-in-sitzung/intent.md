@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-018"  
 titel: "UI: Nächster Schritt startet in der fertigen Sitzung — /clear, dann Befehl"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.0.2"  
 autor: "Michael Sindlinger (Feedback aus dem Gebrauch, 17.09.2026, zwei Screenshots, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-17"  
@@ -132,6 +132,7 @@ Keine. Zwei Rückfragen am 2026-09-17 entschieden (PO): Modell/Arbeitskopie bei 
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.2 | 2026-09-18 | Umgesetzt: PR #82 gemerged (`289f831`), CI-Check `verify` grün. AK-01–AK-10 und NZ-04 mit Tests belegt (Reader-Regel `deriveNextStepSperre`, Service-Weiche, Kasten); E2E mit Haiku: Klick leert die laufende Sitzung und startet den Phasen-Befehl darin (764 ms bis zur neuen Zuordnung, keine zweite Sitzung), anderes Modell schließt die alte wie per ✕, ausbleibende Bestätigung meldet „Leeren nicht bestätigt" ohne den Befehl zu senden (plan.md §8, Protokoll und Screenshots unter `design/`). Kopf-Version 1.0.1 war im Kopf nicht nachgezogen worden — mit dieser Zeile korrigiert. Offen: Prüfung nach dem Deploy (AN-01/AN-04, plan.md §10) | alle | PO, 2026-09-18 |
 | 1.0.1 | 2026-09-18 | `bezuege.plan` gesetzt — Plan freigegeben (PO, im Chat: „freigabe, O1 wie vorgeschlagen"); Korrektur aus dem Plan (§2/F1): der Sitzungsdeckel „höchstens fünf" in §1/RB-03 ist seit `1cc2f1a` (18.02.2026) aufgehoben, RB-03 stützt sich auf das RAM-Argument | RB-03 | PO, 18.09. |
 | 1.0.0 | 2026-09-17 | Angenommen ohne Änderung am Entwurf; Bypass ja (Größe S) → direkt `/plan`. Abgleich Mensch/Agent: ohne Befund (Kopf S/niedrig/Bypass deckt Endzustand AK-01–AK-10; keine Vertragsschicht bei niedrig, §12 Annahmen tragen die Prüfwege) | alle | PO, 17.09. |
 | 0.1.0 | 2026-09-17 | Entwurf nach Gespräch; zwei Rückfragen mit den Vorschlägen entschieden | alle | — |
