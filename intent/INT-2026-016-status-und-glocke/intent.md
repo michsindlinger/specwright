@@ -1,12 +1,12 @@
 ---
 intent_id: "INT-2026-016"  
 titel: "UI: Vorhaben-Status, Glocke und angedocktes Terminal stimmen wieder"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.0.1"  
 autor: "Michael Sindlinger (Feedback aus dem Gebrauch, 17.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-17"  
-geaendert: "2026-09-17"  
+geaendert: "2026-09-18"  
 risikoklasse: "niedrig"  
 groesse: "M"  
 bypass: "ja"  
@@ -133,4 +133,5 @@ Keine. Drei Rückfragen am 17.09. entschieden (PO): Gruppenregel → AK-01 · Au
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-18 | Umgesetzt: drei PRs gemerged am 17.09. — PR #73 `da806cd` (Liste und Glocke, AK-01–AK-04), PR #74 `250c6c5` (Terminal und Zuordnung, AK-05–AK-09), PR #75 `ad70b5c` (Bildschirm-Probe, AK-10, AK-11); CI `verify` grün je Merge; Abweichungen in `plan.md` §14 (7 Zeilen, u. a. Schritt-0-Befund zu den Plan-Dialog-Hooks) | alle | PO, 2026-09-18 (Chat: Karte nach Erledigt) |
 | 1.0.0 | 2026-09-17 | Kern-Absicht aus dem Plan Mode; Bypass ja (vier Fehlerberichte, kein Datenmodell); Plan in zwei externen Review-Runden geprüft | alle | PO, 17.09. |

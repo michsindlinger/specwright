@@ -70,12 +70,12 @@ Wo definiert im Code: `ui/frontend/src/` (Lit `css` und globale Variablen in `in
 |---|---|---|
 | 2026-09-14 | Erstfassung (INT-2026-002) | folgt |
 | 2026-09-15 | §7: Abweichung „Story-Kanban-Sicht" erledigt — die Web-UI zeigt Vorhaben (INT-2026-004, Stufe 1–3) | PR #46 |
-| 2026-09-16 | §1 Prinzip 5 (Rahmen = Kopfzeile), §3 Beispiele und Light-DOM-Regel, §4 Muster Glocke und Projekt-Seite, §5 Dokument über Gespräch unter 1024 px, Handy-Terminal (INT-2026-010, Stufe 1) | PR folgt |
+| 2026-09-16 | §1 Prinzip 5 (Rahmen = Kopfzeile), §3 Beispiele und Light-DOM-Regel, §4 Muster Glocke und Projekt-Seite, §5 Dokument über Gespräch unter 1024 px, Handy-Terminal (INT-2026-010, Stufe 1) | PR #57 |
 | 2026-09-17 | §4 Muster „Dokument mit Leser-Teil und Agenten-Teil" (INT-2026-010 Stufe 3) | PR #63 |
 | 2026-09-17 | §4 Muster „Sitzung neben dem Dokument" (angedocktes Terminal, Kennungen als Verweise), §5 Vorhaben-Seite ab 1024 px angedockt statt „Dokument über dem Gespräch" (INT-2026-011, Stufe 1 PR #65, Stufe 2) | PR #66 |
 | 2026-09-17 | §5 volle Breite für Liste, Vorhaben-Seite und Dokument; angedockt immer ein Fenster, gespeicherte Aufteilung nur schwebend (INT-2026-013, Nachbesserung nach PR #66) | PR #68 |
 | 2026-09-17 | §4 Stapelordnung angedockt: Spalte unter der Kopfzeile, Glocken-Liste davor (INT-2026-014) | PR #69 |
 | 2026-09-17 | §5 Terminal schließt beim Verlassen einer angedockten Seite; Cmd+← zur Übersicht (INT-2026-015) | PR #71 |
 | 2026-09-17 | §4 Glocke aus dem Backend-Stand: Dialog oder Marke „fertig, unbeantwortet", Vorhaben-Titel und -Zustand, bleibt bis zur Antwort; Übersicht gruppiert nach Sitzungszustand vor Phase (INT-2026-016, PR 1) | PR #73 |
-| 2026-09-17 | §5 angedockte Spalte zeigt das Seiten-Projekt; neuer oder angeklickter Claude-Tab gehört dem Vorhaben; Fußzeilen-Hinweis (INT-2026-016, PR 2) | PR folgt |
+| 2026-09-17 | §5 angedockte Spalte zeigt das Seiten-Projekt; neuer oder angeklickter Claude-Tab gehört dem Vorhaben; Fußzeilen-Hinweis (INT-2026-016, PR 2) | PR #74 |
 | 2026-09-18 | §5 Vorhaben-Seite: Wiederaufnahme beim Öffnen (Toast, Andocken am Mac, Hinweis am Handy), Meta-Zeile „fortgesetzt nach Neustart, Stand HH:MM", Grund-Zeile „Wiederaufnahme nicht möglich: …" (INT-2026-019) | PR #77 |

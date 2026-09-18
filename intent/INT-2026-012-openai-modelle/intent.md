@@ -1,12 +1,12 @@
 ---
 intent_id: "INT-2026-012"  
 titel: "OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI"  
-status: "angenommen"  
-version: "1.0.3"  
+status: "umgesetzt"  
+version: "1.0.4"  
 autor: "Michael Sindlinger (Gespräch mit Claude, 16.09.2026)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-16"  
-geaendert: "2026-09-17"  
+geaendert: "2026-09-18"  
 risikoklasse: "niedrig"  
 groesse: "S"  
 bypass: "ja"  
@@ -141,6 +141,7 @@ Der Terminal-Start der UI verträgt eine fremde CLI schon: Claude-Hooks bekommen
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.4 | 2026-09-18 | Umgesetzt: PR #62 gemerged (`7e9edcd`, 17.09., Version 4.1.1); AK-01–AK-10 laut `plan.md` §8/§13 belegt (verify-Run 35213855956). Offen bleiben die Nutzer-Schritte `plan.md` §10 Nr. 7 (Backend am Mac neu starten) und Nr. 10 (Sichtprobe auf dem Droplet nach dem Auto-Deploy) — Michael, außerhalb des Repos | alle | PO, 2026-09-18 (Chat: Karte nach Erledigt) |
 | 1.0.3 | 2026-09-17 | Bau abgeschlossen (PR folgt): OF-03-Befund — das ChatGPT-Konto bietet Astra und Sol nicht (`400 … not supported when using Codex with a ChatGPT account`), Modelle sind GPT-5.6 Terra, GPT-5.6 Luna, GPT-5.5 (Entscheidung PO 17.09.); AK-02 gilt für Terra. Nachweise in `plan.md` §14 und `design/e2e-protokoll.txt` | AK-01, AK-02, AK-05 | PO, 17.09. |
 | 1.0.2 | 2026-09-17 | Kennung INT-2026-011 → INT-2026-012 (Ordner, `intent_id`, alle Verweise in Code, Tests, Docs, Branch, Commit-Messages): INT-2026-011 war am 16.09. abends parallel für „Terminal statt Gespräch“ (PR #61, auf `origin`) vergeben | — | PO, 17.09. (Chat) |
 | 1.0.1 | 2026-09-16 | `bezuege.plan` gesetzt; Plan freigegeben (D1–D4 wie vorgeschlagen, externer Review E1–E17 eingearbeitet) | — | PO, 16.09. |
