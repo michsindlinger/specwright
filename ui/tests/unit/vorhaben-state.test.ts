@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, readdirSync, writeFileSync, readFileSync, statSync } from 'fs';
+import { mkdtempSync, rmSync, readdirSync, writeFileSync, readFileSync, statSync, mkdirSync, symlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -264,5 +264,65 @@ describe('VorhabenStateStore stage 2 (FA-21/22/26/32/40)', () => {
     await again.flush();
     const raw = JSON.parse(readFileSync(file, 'utf-8')) as { state: { firstInputs: Record<string, unknown> } };
     expect(raw.state.firstInputs).toEqual({});
+  });
+  it('INT-2026-019 (AK-01): setSessionContext writes the Claude session id into every assignment of the session, commits only on change, survives load()', async () => {
+    const store = new VorhabenStateStore(file, { port: 3111 });
+    await store.load();
+    store.setAssignment('p1', 'INT-2026-004', { sessionId: 's1', step: 'spec', model: 'opus', cwd: '/a', at: '2026-09-17T10:00:00Z', provider: 'anthropic' });
+    store.setAssignment('p1', 'INT-2026-005', { sessionId: 's1', step: 'plan', model: 'opus', cwd: '/a', at: '2026-09-17T10:01:00Z' });
+    store.setAssignment('p1', 'INT-2026-006', { sessionId: 's2', step: 'build', model: 'opus', cwd: '/b', at: '2026-09-17T10:02:00Z' });
+    expect(store.assignmentsWithoutContext().map(([k]) => k)).toEqual(['p1::INT-2026-004', 'p1::INT-2026-005', 'p1::INT-2026-006']);
+    expect(store.setSessionContext('s1', { claudeSessionId: 'a208d3a5-1da0-4f76-88fd-80493778110e' })).toBe(2);
+    expect(store.setSessionContext('s1', { claudeSessionId: 'a208d3a5-1da0-4f76-88fd-80493778110e' })).toBe(0);
+    expect(store.setSessionContext('nope', { claudeSessionId: 'a208d3a5-1da0-4f76-88fd-80493778110e' })).toBe(0);
+    expect(store.getAssignment('p1', 'INT-2026-006')?.claudeSessionId).toBeUndefined();
+    expect(store.assignmentsWithoutContext().map(([k]) => k)).toEqual(['p1::INT-2026-006']);
+    // A `/clear` brings a new id — the newest one wins.
+    expect(store.setSessionContext('s1', { claudeSessionId: '11111111-2222-4333-8444-555555555555' })).toBe(2);
+    store.setAssignment('p1', 'INT-2026-007', {
+      sessionId: 's3', step: 'build', model: 'opus', cwd: '/c', at: '2026-09-18T06:00:00Z', provider: 'anthropic', claudeSessionId: '11111111-2222-4333-8444-555555555555',
+      resumed: { at: '2026-09-18T06:00:00Z', von: 's1', stand: '2026-09-18T05:42:00Z' },
+    });
+    await store.flush();
+    const again = new VorhabenStateStore(file, { port: 3111 });
+    await again.load();
+    expect(again.getAssignment('p1', 'INT-2026-004')).toMatchObject({ provider: 'anthropic', claudeSessionId: '11111111-2222-4333-8444-555555555555' });
+    expect(again.getAssignment('p1', 'INT-2026-007')).toMatchObject({ resumed: { at: '2026-09-18T06:00:00Z', von: 's1', stand: '2026-09-18T05:42:00Z' } });
+    // Ended assignments never need a backfill.
+    again.markSessionEnded('s2');
+    expect(again.assignmentsWithoutContext()).toEqual([]);
+    await again.flush();
+  });
+
+  it('INT-2026-019 (AK-07): hasOpenAssignmentIn — true while a not-ended assignment lives in the directory, false after its session ended, keyed by realpath', async () => {
+    const store = new VorhabenStateStore(file, { port: 3111 });
+    await store.load();
+    const wt = join(dir, 'worktrees', 'session-x');
+    mkdirSync(wt, { recursive: true });
+    const link = join(dir, 'link-to-x');
+    symlinkSync(wt, link);
+    expect(store.hasOpenAssignmentIn(wt)).toBe(false);
+    store.setAssignment('p1', 'INT-2026-004', { sessionId: 's1', step: 'build', model: 'opus', cwd: wt, at: '2026-09-17T10:00:00Z' });
+    expect(store.hasOpenAssignmentIn(wt)).toBe(true);
+    expect(store.hasOpenAssignmentIn(wt + '/')).toBe(true);
+    expect(store.hasOpenAssignmentIn(link)).toBe(true);
+    expect(store.hasOpenAssignmentIn(join(dir, 'worktrees'))).toBe(false);
+    expect(store.hasOpenAssignmentIn(join(dir, 'worktrees', 'session-y'))).toBe(false);
+    // AK-05 (Stillstand): the exit file marks the session ended → the reaper may remove the worktree.
+    expect(store.markSessionEnded('s1')).toBe(1);
+    expect(store.hasOpenAssignmentIn(wt)).toBe(false);
+    await store.flush();
+  });
+
+  it('INT-2026-019: assignments and pending intents without the new fields load unchanged', async () => {
+    const store = new VorhabenStateStore(file, { port: 3111 });
+    await store.load();
+    store.setAssignment('p1', 'INT-2026-004', { sessionId: 's1', step: 'spec', model: 'opus', cwd: '/a', at: '2026-09-17T10:00:00Z' });
+    store.setPendingIntent('s9', { projectId: 'p1', cwd: '/a', step: 'intent', model: 'opus', since: '2026-09-15T10:00:00Z', provider: 'openai' });
+    await store.flush();
+    const again = new VorhabenStateStore(file, { port: 3111 });
+    await again.load();
+    expect(again.getAssignment('p1', 'INT-2026-004')).toEqual({ sessionId: 's1', step: 'spec', model: 'opus', cwd: '/a', at: '2026-09-17T10:00:00Z' });
+    expect(again.getPendingIntents()).toEqual([['s9', { projectId: 'p1', cwd: '/a', step: 'intent', model: 'opus', since: '2026-09-15T10:00:00Z', provider: 'openai' }]]);
   });
 });

@@ -86,7 +86,42 @@ export interface VorhabenSessionRef {
    * Only the flag is broadcast, never the text.
    */
   firstInputPending?: boolean;
+  /**
+   * INT-2026-019 (OF-02): this session resumed a lost one — `von` is the lost
+   * session's id, `stand` the last write to the resumed conversation (ISO).
+   * The page shows „fortgesetzt nach Neustart · Stand HH:MM".
+   */
+  resumed?: { at: string; von: string; stand?: string };
+  /**
+   * INT-2026-018: step the assignment was made for (a pending `/intent`
+   * session: `intent`). Absent (old client, fixture) counts as „same phase"
+   * for `deriveNextStepSperre` — locked.
+   */
+  step?: VorhabenStep;
+  /** INT-2026-018: provider of `model` (assignments before INT-2026-019 have none → `anthropic`). */
+  provider?: string;
+  /**
+   * INT-2026-018 (AK-04/AK-05): where the session runs, as the picker names
+   * it — `main` or `existing-worktree` (`safeKey` against the project path,
+   * like `doResume`). Only on a live session.
+   */
+  target?: CloudTerminalSessionTarget;
 }
+
+/**
+ * INT-2026-018 (AK-01–AK-03): why „Nächster Schritt" is locked; absent =
+ * usable. `deriveNextStepSperre` checks in this order.
+ */
+export type VorhabenNextStepSperre = 'arbeitet' | 'dialog' | 'unbekannt' | 'erste_eingabe' | 'freigabe_offen' | 'gleiche_phase';
+
+export const NEXT_STEP_SPERRE_TEXT: Record<VorhabenNextStepSperre, string> = {
+  arbeitet: 'Sitzung arbeitet — erst danach kann der nächste Schritt starten',
+  dialog: 'Sitzung zeigt einen Dialog — im Terminal antworten, dann kann der nächste Schritt starten',
+  unbekannt: 'Zustand der Sitzung unbekannt — im Terminal nachsehen; sobald sie ruhig wartet, ist der Knopf frei',
+  erste_eingabe: 'Sitzung startet — die erste Eingabe wird noch übergeben',
+  freigabe_offen: 'ein Dokument wartet auf deine Freigabe — erst freigeben, dann kann der nächste Schritt starten',
+  gleiche_phase: 'die Sitzung gehört schon zu diesem Schritt — im Terminal fortsetzen oder freigeben',
+};
 
 export interface VorhabenNextStep {
   step: VorhabenStep;
@@ -94,6 +129,15 @@ export interface VorhabenNextStep {
   command: string;
   /** Button label, e.g. "Plan erstellen". */
   label: string;
+  /** INT-2026-018: why the button is locked; absent = usable. `VorhabenRow.sessionBusy` is `!!sperre`. */
+  sperre?: VorhabenNextStepSperre;
+  /**
+   * INT-2026-018 (AK-04, AK-05, AK-07): the live session the click continues
+   * in when model and target match (`/clear`, then the command) — else a new
+   * session starts and this one is closed. Absent: a new session starts and a
+   * live one stays (none, or „Bau fortsetzen", NZ-04).
+   */
+  sitzung?: { id: string; name: string; model: ModelSelection; target: CloudTerminalSessionTarget };
 }
 
 export interface VorhabenRow {
@@ -134,9 +178,9 @@ export interface VorhabenRow {
    */
   nextStep?: VorhabenNextStep;
   /**
-   * INT-2026-010 (FA-21): a live session of this Vorhaben works or waits
-   * (any state but `keine_sitzung` / `sitzung_beendet`) — the next step must
-   * not start a second session then.
+   * INT-2026-010 (FA-21): the next step must not start now. INT-2026-018:
+   * `= !!nextStep?.sperre` — the reason travels in `nextStep.sperre`; a live
+   * session that finished an earlier phase and waits quietly is not busy.
    */
   sessionBusy: boolean;
   docs: VorhabenDocInfo[];
@@ -460,6 +504,34 @@ export interface VorhabenStartStepMessage {
 }
 
 /**
+ * INT-2026-020 (AK-01): an image pasted into the „Neue Absicht" text field
+ * before any session exists. The backend validates it with the Cloud
+ * Terminal's allowlist and size limit (`CLOUD_TERMINAL_CONFIG`, RB-04),
+ * writes it under `<runtime>/intent-paste/` and answers with the absolute
+ * path, which the browser inserts into the text (` <path> `) — the path then
+ * travels with `firstInput` into the session (AK-05). Request/reply via
+ * `requestId`; errors arrive as `vorhaben:error`.
+ */
+export interface VorhabenAbsichtBildMessage {
+  type: 'vorhaben:absicht-bild';
+  requestId?: string;
+  /** Must be an open project (RB-01). */
+  projectId: string;
+  /** Raw image bytes, base64 (no data-URL prefix). */
+  base64: string;
+  /** One of `CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME`. */
+  mimeType: string;
+}
+
+/** Reply to `vorhaben:absicht-bild` (INT-2026-020). */
+export interface VorhabenAbsichtBildSavedMessage {
+  type: 'vorhaben:absicht-bild-saved';
+  requestId?: string;
+  /** Absolute host path of the stored image (`<runtime>/intent-paste/img-<uuid>.<ext>`). */
+  absolutePath: string;
+}
+
+/**
  * INT-2026-010 (FA-03, FA-12): sets the shared view state. `filterProjectId`
  * must be an open project or null; `phase.doc` one of VORHABEN_PHASE_DOCS.
  * Answer is the next `vorhaben:state` broadcast.
@@ -486,6 +558,22 @@ export interface VorhabenSessionAssignMessage {
   sessionId: string;
 }
 
+/**
+ * INT-2026-019 (AK-01): „Vorhaben-Seite geöffnet" — sent when the page of a
+ * Vorhaben is entered and after a reconnect (once the state has loaded). The
+ * backend alone decides whether the row's session is lost (assignment not
+ * ended, session unknown to the manager) and resumes it with
+ * `claude --resume` in the old worktree; the client computes nothing (RB-01).
+ * Answer: `vorhaben:session-resumed` or `vorhaben:error` (RESUME_FAILED,
+ * WORKTREE_MISSING, RESUME_RUNNING, …) with the same `requestId`.
+ */
+export interface VorhabenSessionResumeMessage {
+  type: 'vorhaben:session.resume';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+}
+
 // ---- Server → Client ----
 
 export interface VorhabenSessionAssignedMessage {
@@ -494,6 +582,21 @@ export interface VorhabenSessionAssignedMessage {
   projectId: string;
   intentId: string;
   sessionId: string;
+}
+
+/** Why no session was started although the page was opened (INT-2026-019, AK-05/AK-06). */
+export type VorhabenResumeGrund = 'lebt' | 'beendet' | 'keine_zuordnung' | 'fremde_cli' | 'umgesetzt';
+
+export interface VorhabenSessionResumedMessage {
+  type: 'vorhaben:session-resumed';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+  ergebnis: 'gestartet' | 'nicht_noetig';
+  /** Set for `gestartet`: the new session; the row follows in the next `vorhaben:state`. */
+  sessionId?: string;
+  /** Set for `nicht_noetig`. */
+  grund?: VorhabenResumeGrund;
 }
 
 export interface VorhabenSentMessage {
@@ -518,6 +621,10 @@ export interface VorhabenStepStartedMessage {
   projectId: string;
   intentId?: string;
   step: VorhabenStep;
+  /** INT-2026-018: `in_sitzung` = `/clear` + command in the row's live session (AK-04); `neu` = a new session started. */
+  modus: 'neu' | 'in_sitzung';
+  /** INT-2026-018 (AK-05): id of the live session that was closed for the new one. */
+  geschlossen?: string;
 }
 
 export interface VorhabenStateMessage {
@@ -601,7 +708,27 @@ export type VorhabenErrorCode =
   /** The row already has a live session. */
   | 'ROW_HAS_SESSION'
   /** The session is the live session of another row (`message` names it) — a click never moves. */
-  | 'SESSION_ASSIGNED_ELSEWHERE';
+  | 'SESSION_ASSIGNED_ELSEWHERE'
+  // INT-2026-019: refusals of `vorhaben:session.resume` (the page shows `message`, AK-08/AK-09).
+  /** The lost session's worktree is gone — `message` names the path; „Nächster Schritt" stays usable. */
+  | 'WORKTREE_MISSING'
+  /** Resume did not start (`message` = reason: cap reached, transcript not found, spawn failed, backend still booting). */
+  | 'RESUME_FAILED'
+  /** A resume for this row is in flight — `start-step`/`session.assign` refused for the moment (AK-04). */
+  | 'RESUME_RUNNING'
+  // INT-2026-020 (AK-04): refusals of `vorhaben:absicht-bild` — same strings as
+  // CLOUD_TERMINAL_ERROR_CODES so the browser shows the Terminal's messages.
+  /** Decoded image is empty, or the write failed. */
+  | 'PASTE_IMAGE_FAILED'
+  /** Larger than `CLOUD_TERMINAL_CONFIG.MAX_PASTE_IMAGE_BYTES`. */
+  | 'PASTE_IMAGE_TOO_LARGE'
+  /** MIME type not in `CLOUD_TERMINAL_CONFIG.ALLOWED_PASTE_IMAGE_MIME`. */
+  | 'PASTE_IMAGE_UNSUPPORTED_TYPE'
+  // INT-2026-018: refusals of `vorhaben:start-step` with a live session of the row.
+  /** The rule refused (`message` = `NEXT_STEP_SPERRE_TEXT[sperre]`) — the page was stale or a second device was faster. */
+  | 'SESSION_BUSY'
+  /** AK-08: `/clear` or the command was not written into the session (`message` = reason); nothing else happened. */
+  | 'SESSION_WRITE_FAILED';
 
 export const ANMERKUNG_MAX_CHARS = 4000;
 

@@ -47,6 +47,30 @@ export function findDialogCue(screen: string): DialogCue | null {
 
 export const hasDialogCue = (screen: string): boolean => findDialogCue(screen) !== null;
 
+/** The empty prompt line Claude Code draws while it waits — and (since 2.1.276) also while it works. */
+const IDLE_PROMPT_RE = /^\s*❯\s*$/;
+/**
+ * A running turn: the spinner line `✻ Enchanting… (4s · ↓ 204 tokens · thinking)`,
+ * `⎿  Running… (3s)` (a tool), or the older `esc to interrupt` hint. The
+ * finished marks `✻ Churned for 10s · done 8:38` carry no `…(` and do not match.
+ * Recorded on 2.1.276 (INT-2026-018, fixtures `prompt-working.txt`).
+ */
+const BUSY_CUE = /…\s*\([^)]*\b\d+s\b|esc to interrupt/;
+
+/**
+ * INT-2026-018 (AK-08, review E14/E15): does the screen show a session that
+ * waits for input — an empty prompt line, no spinner, no dialog cue? Only
+ * then may `/clear` be pasted: a `/clear` that lands in a running turn is
+ * buffered by Claude Code and executed minutes later, without our command
+ * (plan §9 R10). Pure; the caller reads a stable screen first.
+ */
+export function isIdlePrompt(screen: string): boolean {
+  const lines = stripScreen(screen);
+  if (!lines.some((l) => IDLE_PROMPT_RE.test(l))) return false;
+  if (lines.some((l) => BUSY_CUE.test(l))) return false;
+  return findDialogCue(screen) === null;
+}
+
 /** INT-2026-016 (AK-10): the block kind the dialog probe reports for a cue (trust dialogs have no kind of their own). */
 export function cueToBlockKind(kind: DialogCueKind): BlockKind {
   switch (kind) {

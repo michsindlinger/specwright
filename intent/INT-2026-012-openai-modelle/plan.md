@@ -1,7 +1,7 @@
 # Plan: OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI
 
 > **Intent:** `intent.md` (INT-2026-012) · **Spec:** entfällt (bypass: Größe S — zwei Provider-Einträge, eine Sperre in der Prüfer-Auswahl mit Test, eine Doc-Zeile; Rest ist Einrichtung außerhalb des Repos)
-> **Status:** umgesetzt (Merge steht aus)
+> **Status:** umgesetzt — Merge PR #62 (`7e9edcd`), 2026-09-17
 > **Erstellt:** 2026-09-16 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-16 — „Alle vier ok, Freigabe" (D1–D4 wie vorgeschlagen)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand `d0d8b8c`), `CLAUDE.md`, `docs/security.md`
 
@@ -313,7 +313,7 @@ Entfällt.
 | 5. Wrapper `~/bin/claude-codex` nach Vorlage §3, `chmod +x`; Probe: `claude-codex -p "Antworte nur mit OK"` → `OK`; Gegenprobe AK-08: `start-proxy.sh --stop` → Meldung und Exit 1; `--start` | Michael | nach 4 | [x] 2026-09-17; OK; beide Fehlwege belegt (Protokoll) |
 | 6. Codex-CLI: `cp ~/.codex/auth.json ~/.codex/auth.json.bak-2026-09-16`; `npm install -g @openai/codex@latest` → `codex --version` = 0.154.0; `codex login` (ChatGPT); `codex login status` → „Logged in using ChatGPT"; OF-03: `codex --help` (Flags `--model`, `--dangerously-bypass-approvals-and-sandbox`) und Probelauf `codex --model gpt-6-astra` — bei anderen IDs Abweichung in §14, Eintrag `codex-cli` anpassen | Michael | nach 3 | [x] 2026-09-17; 0.154.0; OF-03: Astra/Sol nicht im Konto → §14 |
 | 7. Backend am Mac neu starten nach Merge/Pull (Config-Cache `model-config.ts:103`; Neustart beendet offene UI-Terminals, Memory `project_cloud_autodeploy_gate`) | Michael | nach Merge | [ ] |
-| 8. Merge nach `main` ist Michaels Schritt; löst den Auto-Deploy der UI auf dem Droplet aus (dort unverändert nutzbar, neue Provider scheitern sichtbar, R3). Kein weiterer Deploy-Schritt; Hook `production-gate` nicht betroffen | Michael | — | [ ] |
+| 8. Merge nach `main` ist Michaels Schritt; löst den Auto-Deploy der UI auf dem Droplet aus (dort unverändert nutzbar, neue Provider scheitern sichtbar, R3). Kein weiterer Deploy-Schritt; Hook `production-gate` nicht betroffen | Michael | — | [x] 2026-09-17, PR #62 `7e9edcd` |
 | 9. Nur bei D2 = B: `git add ui/config/model-config.json && git commit -m "feat(ui): OpenAI-Provider codex und codex-cli (INT-2026-012)"` in Michaels Terminal (Hook gilt nur für Claude); künftig bei jeder Änderung an dieser Datei | Michael | vor PR | [–] entfällt (D2 = A″) |
 | 10. R3/E17-Sichtprobe auf dem Droplet nach dem Auto-Deploy: OpenAI wählen → Fehlertext nennt `claude-codex` und den Provider (kein npm-Hinweis); kein Deploy-Befehl, nur Lesen | Michael | nach Deploy | [ ] |
 
@@ -385,7 +385,7 @@ Code, Tests, Docs: 4–6 h (S; nach E1–E17 eine Stunde mehr für `providersFor
 - [x] Manuelle Schritte (Abschnitt 10) 1–6 erledigt; 7, 8, 10 offen (nach Merge), im PR markiert.
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (insbesondere OF-03-Befund).
 - [x] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR (Kandidat: `no-secrets` vs. versionierte Config — erstes Vorkommen, nur notieren).
-- [x] `intent.md`: `bezuege.plan` gesetzt, Protokoll 1.0.3; `status: umgesetzt` nach Merge; Memory `reference_ui_model_provider_mechanism` ergänzt.
+- [x] `intent.md`: `bezuege.plan` gesetzt, Protokoll 1.0.3; `status: umgesetzt` nach Merge (Abschluss-PR, 18.09., Protokoll 1.0.4); Memory `reference_ui_model_provider_mechanism` ergänzt.
 - [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte „neu: OpenAI-Modelle (GPT-6 Astra, Codex) in der Web-UI", Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-012-openai-modelle/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung

@@ -10,12 +10,16 @@
  * `/intent` sessions waiting for their folder. INT-2026-010 adds the shared
  * view state (`ansicht`: project chip, phase document per Vorhaben — AR-05)
  * and the first input per started session (`firstInputs`, handed over at the
- * session's first Stop). The file format stayed the same (`version: 1`);
- * every map is optional on load.
+ * session's first Stop). INT-2026-019 adds three optional fields to the
+ * assignment — `provider`, `claudeSessionId`, `resumed` — so a session lost to
+ * a crash can be resumed (`claude --resume`) and the reaper can tell whether a
+ * worktree is the home of an open Vorhaben (`hasOpenAssignmentIn`). The file
+ * format stayed the same (`version: 1`); every map is optional on load.
  */
 
 import * as fs from 'fs';
 import { dirname } from 'path';
+import { pathKey } from '../utils/git-worktree-list.js';
 import {
   assignmentKey,
   draftKey,
@@ -40,6 +44,12 @@ export interface VorhabenAssignment {
   cwd: string;
   at: string;
   ended?: boolean;
+  /** INT-2026-019: Provider des Modells, damit die Wiederaufnahme dieselbe CLI baut (fehlt bei Zuordnungen vor 019 → 'anthropic'). */
+  provider?: string;
+  /** INT-2026-019: Claude-Gesprächskennung (UUID) aus dem SessionStart-Hook; nur als `--resume`-Argument und Dateiname der Existenzprüfung genutzt. */
+  claudeSessionId?: string;
+  /** INT-2026-019 (OF-02): gesetzt, wenn diese Sitzung eine verlorene fortsetzt. */
+  resumed?: { at: string; von: string; stand?: string };
 }
 
 /** `/intent` without id: the first new folder under `cwd/intent/` after `since` claims it (FA-21). */
@@ -49,6 +59,8 @@ export interface PendingIntent {
   step: VorhabenStep;
   model: string;
   since: string;
+  /** INT-2026-019: provider of the model (carried into the assignment once the folder appears). */
+  provider?: string;
 }
 
 export interface VorhabenStateData {
@@ -267,6 +279,39 @@ export class VorhabenStateStore {
     }
     if (n > 0) this.commit();
     return n;
+  }
+
+  /**
+   * INT-2026-019 (AK-01): the Claude session id a hook reported for the
+   * session — written into every assignment of that session; one commit,
+   * only when something changed. Returns the number of assignments touched.
+   */
+  public setSessionContext(sessionId: string, ctx: { claudeSessionId: string }): number {
+    let n = 0;
+    for (const a of Object.values(this.state.assignments)) {
+      if (a.sessionId === sessionId && a.claudeSessionId !== ctx.claudeSessionId) {
+        a.claudeSessionId = ctx.claudeSessionId;
+        n++;
+      }
+    }
+    if (n > 0) this.commit();
+    return n;
+  }
+
+  /**
+   * INT-2026-019 (AK-07): is `cwd` the home of an open Vorhaben — some
+   * assignment that is not ended and whose `cwd` names the same directory?
+   * Keys through `pathKey` (realpath with fallback, never throws), so a
+   * symlinked worktree matches the stored, already normalised `cwd`.
+   */
+  public hasOpenAssignmentIn(cwd: string): boolean {
+    const key = pathKey(cwd);
+    return Object.values(this.state.assignments).some((a) => !a.ended && pathKey(a.cwd) === key);
+  }
+
+  /** INT-2026-019 (backfill in `VorhabenService.start`): open assignments that carry no Claude session id yet. */
+  public assignmentsWithoutContext(): Array<[string, VorhabenAssignment]> {
+    return Object.entries(this.state.assignments).filter(([, a]) => !a.ended && !a.claudeSessionId);
   }
 
   // ---- pending /intent (FA-21) ----

@@ -171,11 +171,17 @@ describe('VorhabenService stage 2', () => {
     ]);
     expect(setSessionName).toHaveBeenCalledWith(sessionId, 'spec INT-2026-004');
     await service.rescan();
-    expect(row().session).toEqual({ id: sessionId, name: 'spec INT-2026-004', model: 'glm-5.2', agentStatus: 'unknown' });
+    // INT-2026-018: the reference carries step, provider and target of the assignment (AK-03, AK-07)
+    expect(row().session).toEqual({ id: sessionId, name: 'spec INT-2026-004', model: 'glm-5.2', agentStatus: 'unknown', step: 'spec', provider: 'glm', target: { kind: 'main' } });
     // INT-2026-010 (FA-21): the step stays on the row, the page greys it out via sessionBusy
     expect(row().nextStep?.step).toBe('spec');
     expect(row().sessionBusy).toBe(true);
     expect(lastState().lastModel['pa::INT-2026-004::spec']).toEqual({ providerId: 'glm', modelId: 'glm-5.2' });
+    // INT-2026-018 (AK-02): the button is locked while the first session lives (status unknown) — end it before the next start
+    await expect(service.startStep('pa', 'INT-2026-004', 'spec', { providerId: 'anthropic', modelId: 'opus' }, { kind: 'new-worktree', name: 'spec-4' })).rejects.toMatchObject({ code: 'SESSION_BUSY' });
+    manager.sessions.delete(sessionId);
+    manager.emit('session.closed', sessionId, 0);
+    await service.rescan();
     // explicit worktree target is passed through
     await service.startStep('pa', 'INT-2026-004', 'spec', { providerId: 'anthropic', modelId: 'opus' }, { kind: 'new-worktree', name: 'spec-4' });
     expect((manager.created[1] as unknown[])[8]).toEqual({ sessionTarget: { target: { kind: 'new-worktree', name: 'spec-4' }, explicit: true } });
@@ -496,9 +502,18 @@ describe('VorhabenService stage 2', () => {
     handler.handle({ type: 'vorhaben:draft.delete', projectId: 'pa', intentId: 'INT-2026-004', doc: 'spec', id: 'a' }, reply);
     expect(reply).not.toHaveBeenCalled();
 
+    // INT-2026-018: s1 waits with spec.md awaiting approval → the rule refuses (freigabe_offen); ended → a new session starts (AK-10, modus neu)
     handler.handle({ type: 'vorhaben:start-step', requestId: 'r3', projectId: 'pa', intentId: 'INT-2026-004', step: 'plan', model: { providerId: 'anthropic', modelId: 'opus' } }, reply);
     await vi.waitFor(() => expect(reply).toHaveBeenCalled());
-    expect(reply.mock.calls[0][0]).toMatchObject({ type: 'vorhaben:step-started', requestId: 'r3', step: 'plan', intentId: 'INT-2026-004' });
+    expect(reply.mock.calls[0][0]).toMatchObject({ type: 'vorhaben:error', code: 'SESSION_BUSY', requestId: 'r3' });
+    reply.mockClear();
+    manager.sessions.delete('s1');
+    manager.emit('session.closed', 's1', 0);
+    await service.rescan();
+    handler.handle({ type: 'vorhaben:start-step', requestId: 'r3', projectId: 'pa', intentId: 'INT-2026-004', step: 'plan', model: { providerId: 'anthropic', modelId: 'opus' } }, reply);
+    await vi.waitFor(() => expect(reply).toHaveBeenCalled());
+    expect(reply.mock.calls[0][0]).toMatchObject({ type: 'vorhaben:step-started', requestId: 'r3', step: 'plan', intentId: 'INT-2026-004', modus: 'neu' });
+    expect((reply.mock.calls[0][0] as { geschlossen?: string }).geschlossen).toBeUndefined();
     reply.mockClear();
     handler.handle({ type: 'vorhaben:start-step', projectId: 'pa', step: 'plan', model: { providerId: 'anthropic', modelId: 'opus' } }, reply);
     expect(reply.mock.calls[0][0]).toMatchObject({ type: 'vorhaben:error', code: 'INVALID_MESSAGE' });

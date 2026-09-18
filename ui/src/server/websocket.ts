@@ -41,7 +41,8 @@ import { setupService, type StepOutput, type StepComplete } from './services/set
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 import { WorkspaceStateStore } from './services/workspace-state.js';
 import { WorkspaceHandler } from './services/workspace-handler.js';
-import { getWorkspaceStatePath, getVorhabenStatePath } from './utils/runtime-paths.js';
+import { getWorkspaceStatePath, getVorhabenStatePath, getIntentPasteImageRoot } from './utils/runtime-paths.js';
+import { INTENT_PASTE_MAX_AGE_MS, pruneOldImages } from './utils/paste-image.js';
 import { VorhabenStateStore } from './services/vorhaben-state.js';
 import { VorhabenService } from './services/vorhaben-service.js';
 import { VorhabenHandler } from './services/vorhaben-handler.js';
@@ -93,10 +94,10 @@ export class WebSocketHandler {
   private workspaceStore: WorkspaceStateStore;
   private workspaceHandler: WorkspaceHandler;
   private vorhabenStore: VorhabenStateStore;
+  /** INT-2026-019: the one `load()` of the Vorhaben store — the reaper's guards and `bootWorkspace` wait for it. */
+  private vorhabenLoaded: Promise<{ existed: boolean; healthy: boolean }>;
   private vorhabenService: VorhabenService;
   private vorhabenHandler: VorhabenHandler;
-  /** Sessions the user closed via cloud-terminal:close — their `closed` event carries closedBy:'user'. */
-  private userClosedSessionIds = new Set<string>();
   /** Sessions created through a WS create handler (they broadcast their own `created`). */
   private wsCreatedSessionIds = new Set<string>();
 
@@ -105,14 +106,29 @@ export class WebSocketHandler {
     this.projectManager = new ProjectManager();
     this.workflowExecutor = new WorkflowExecutor();
     this.fileHandler = fileHandler;
-    this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager());
+    // INT-2026-019 (AK-05, AK-07; AN-03): the store exists before the manager,
+    // whose boot-reap asks it whether a session worktree is the home of an open
+    // Vorhaben and reports sessions that ended while the backend was down. The
+    // guards only wait for this one file read (milliseconds); the boot order
+    // `whenReady()` → `vorhabenService.start()` in bootWorkspace is unchanged.
+    this.vorhabenStore = new VorhabenStateStore(getVorhabenStatePath());
+    this.vorhabenLoaded = this.vorhabenStore.load();
+    this.cloudTerminalManager = new CloudTerminalManager(this.workflowExecutor.getTerminalManager(), undefined, undefined, {}, {
+      keepWorktree: async (worktreePath): Promise<boolean> => {
+        await this.vorhabenLoaded;
+        return this.vorhabenStore.hasOpenAssignmentIn(worktreePath);
+      },
+      sessionEnded: async (sessionId): Promise<void> => {
+        await this.vorhabenLoaded;
+        this.vorhabenStore.markSessionEnded(sessionId);
+      },
+    });
     this.planReviewOrchestrator = new PlanReviewOrchestrator(this.cloudTerminalManager);
     this.previewWatcher = new PreviewWatcher();
     this.previewWatcher.init();
     this.workspaceStore = new WorkspaceStateStore(getWorkspaceStatePath(), { pathKey, pathExists: (p: string): boolean => existsSync(p) });
     this.workspaceHandler = new WorkspaceHandler(this.workspaceStore, (m) => this.broadcast(m as WebSocketMessage));
     // INT-2026-004: Vorhaben view — reads intent/ of the open projects, broadcasts vorhaben:state.
-    this.vorhabenStore = new VorhabenStateStore(getVorhabenStatePath());
     this.vorhabenService = new VorhabenService({
       workspace: this.workspaceStore,
       store: this.vorhabenStore,
@@ -123,7 +139,8 @@ export class WebSocketHandler {
       // INT-2026-010 (FA-22): „Freigeben" without a session starts the step with the settings' step default.
       defaultModel: (step) => getStepDefault(step),
     });
-    this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage));
+    // INT-2026-020: images pasted on „Neue Absicht" land under <runtime>/intent-paste (ADR-0005).
+    this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage), { bildRoot: getIntentPasteImageRoot() });
     this.bootWorkspace();
     this.setupConnectionHandler();
     this.startHeartbeat();
@@ -149,8 +166,11 @@ export class WebSocketHandler {
       }
       const pruned = this.workspaceStore.pruneSessionNames(new Set(live.map((s) => s.sessionId)));
       if (pruned > 0) console.log(`[WebSocket] workspace: pruned ${pruned} stale tab name(s)`);
-      const vh = await this.vorhabenStore.load();
+      const vh = await this.vorhabenLoaded;
       if (!vh.healthy) console.warn('[WebSocket] vorhaben state was unreadable — started empty (backup kept)');
+      // INT-2026-020 (AK-08): images pasted on „Neue Absicht" belong to no session — prune after 7 days.
+      const prunedImages = await pruneOldImages(getIntentPasteImageRoot(), INTENT_PASTE_MAX_AGE_MS);
+      if (prunedImages > 0) console.log(`[WebSocket] intent-paste: pruned ${prunedImages} image(s) older than 7 days`);
       const t0 = Date.now();
       await this.vorhabenService.start();
       console.log(`[WebSocket] vorhaben: first scan in ${Date.now() - t0} ms (${this.vorhabenService.getState().rows.length} rows)`);
@@ -360,6 +380,8 @@ export class WebSocketHandler {
         case 'vorhaben:start-step':
         case 'vorhaben:ansicht.set':
         case 'vorhaben:session.assign':
+        case 'vorhaben:session.resume':
+        case 'vorhaben:absicht-bild':
         case 'project-docs:list':
         case 'project-docs:read':
         case 'project-docs:write':
@@ -2023,16 +2045,16 @@ export class WebSocketHandler {
     // to include the requestId for correlation
 
     // Session closed
-    this.cloudTerminalManager.on('session.closed', (sessionId: CloudTerminalSessionId, exitCode?: number) => {
+    this.cloudTerminalManager.on('session.closed', (sessionId: CloudTerminalSessionId, exitCode?: number, closedBy?: 'user') => {
       // closedBy:'user' lets every client drop the tab; a plain process exit
       // keeps the tab with its "Prozess beendet" message (today's UX).
-      const closedByUser = this.userClosedSessionIds.delete(sessionId);
+      // INT-2026-018: the manager says who closed (`closeSession(id, { closedBy: 'user' })`).
       this.wsCreatedSessionIds.delete(sessionId);
       const message: WebSocketMessage = {
         type: 'cloud-terminal:closed',
         sessionId,
         exitCode,
-        ...(closedByUser ? { closedBy: 'user' } : {}),
+        ...(closedBy === 'user' ? { closedBy: 'user' } : {}),
         timestamp: new Date().toISOString()
       };
       this.broadcast(message);
@@ -2557,10 +2579,7 @@ export class WebSocketHandler {
       return;
     }
 
-    // Mark BEFORE the close: the session.closed listener reads the set synchronously.
-    this.userClosedSessionIds.add(sessionId);
-    const closed = this.cloudTerminalManager.closeSession(sessionId);
-    if (!closed) this.userClosedSessionIds.delete(sessionId);
+    const closed = this.cloudTerminalManager.closeSession(sessionId, { closedBy: 'user' });
 
     if (!closed) {
       const errorResponse: WebSocketMessage = {

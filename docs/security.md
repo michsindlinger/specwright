@@ -19,13 +19,14 @@
 | Vorhaben, Projekt-Docs von Specwright | öffentlich | Repo | — |
 | Memory-Store des MCP | intern | `~/.specwright/memory.db` | Nutzer entscheidet |
 | Sicherungskopien des Updaters | wie Original | `specwright/backups/<Zeitstempel>/` im Projekt | Nutzer löscht den Ordner |
+| Bilder aus „Neue Absicht" (Screenshots aus der Zwischenablage, vor der Sitzung; INT-2026-020, ADR-0005) | intern (Inhalt = Projektinhalte des jeweiligen Projekts) | `<runtime>/intent-paste/img-<uuid>.<ext>`, `0600`, Ordner `0700` | 7 Tage; Aufräumen beim Backend-Start |
 
 ## 2. Zugriffsmodell
 
 - **Anmeldung:** keine im Framework. Die Web-UI hat keine eigene Nutzerverwaltung; Zugriff wird auf Netzebene begrenzt (Tailscale/tailnet-only lokal; Cloud-Host hinter eigenem Zugang, Details außerhalb des Repos).
 - **Rollen:** ein Nutzer. „Product Owner", „Tech Lead" sind Hüte in den Dokumenten, keine Rechte.
 - **Mandanten:** keine.
-- **Vertrauensannahme (INT-2026-007):** genau ein Nutzer, dessen Claude-Code-Prozesse auf dem Host vertrauenswürdig sind. Die Hook-Route der UI vertraut dem Token, nicht dem Absender; was ein Hook meldet (Zustand, Blockart, Kontext: Transkriptpfad und Claude-Session-ID), gilt als Aussage dieses Nutzers über seine eigene Sitzung. Dialoginhalte und Turn-Texte liest die UI seit INT-2026-011 nicht mehr aus den Hooks; die Sitzung wird im Terminal gezeigt (ADR-0004).
+- **Vertrauensannahme (INT-2026-007):** genau ein Nutzer, dessen Claude-Code-Prozesse auf dem Host vertrauenswürdig sind. Die Hook-Route der UI vertraut dem Token, nicht dem Absender; was ein Hook meldet (Zustand, Blockart, Kontext: Transkriptpfad und Claude-Session-ID), gilt als Aussage dieses Nutzers über seine eigene Sitzung. Dialoginhalte und Turn-Texte liest die UI seit INT-2026-011 nicht mehr aus den Hooks; die Sitzung wird im Terminal gezeigt (ADR-0004). Seit INT-2026-019 speichert das Backend die Claude-Session-ID in der Zuordnung Sitzung↔Vorhaben und nutzt sie als `--resume`-Argument sowie als Dateiname einer Existenzprüfung (`projects/<slug>/<id>.jsonl` unter `~/.claude`, `CLAUDE_CONFIG_DIR` des Backends, `~/.claude-<providerId>`); vor Speicherung und Nutzung muss sie die UUID-Form haben — die Homes sind Backend-Wissen, nie ein Pfad vom Client, und es gibt weiterhin keinen Transkript-Leser.
 - **Wer sieht was:**
 
 | Rolle | darf sehen | darf ändern | darf nie |
@@ -98,5 +99,7 @@
 | 2026-09-17 | §2 Vertrauensannahme: Hooks liefern Zustand, Blockart, Kontext — keine Dialoge und Beiträge mehr; §6 Transkript-Zeile: derzeit ohne Leser, Regel bleibt (INT-2026-011, Stufe 2) | PR #66 |
 | 2026-09-16 | §3: Sprachdienst-Zugänge ergänzt, Vorfall versionierte `voice-config.json` (INT-2026-007 PR 0); Datei aus dem Index, `.gitignore`, Guard in `verify.sh` | PR 0 |
 | 2026-09-15 | §7: T-06 verweist auf ein eigenes Vorhaben statt auf den Gesamtplan Phase 5 (INT-2026-004, Stufe 3); §4 Stand unverändert offen | PR #46 |
-| 2026-09-16 | §3: Sprachdienst-Zeile auf „entfernt" — Anruf-Modus, Sprachdienste, Chat-Handler und Bild-Upload (`/api/images`) aus der UI gelöscht; Guard und `.gitignore`-Eintrag bleiben (INT-2026-010, Stufe 1); kein neuer Endpunkt | PR folgt |
-| 2026-09-16 | §1: `ui/config/model-config.json` von „intern" nach „öffentlich" (versioniert seit Monaten; Namen, keine Zugänge), „vertraulich" um `~/.claude-<id>/settings.json`, Proxy-OAuth und `~/.codex/auth.json`; §3 Zeile OpenAI/ChatGPT-Zugang mit Ausfallverhalten (INT-2026-012); Hook `no-secrets` liest `.claude/no-secrets-allow.txt` (nur Dateinamen-Regel) und die Inhaltsregel greift jetzt auch mit BSD-grep (leere Alternative behoben) | PR folgt |
+| 2026-09-16 | §3: Sprachdienst-Zeile auf „entfernt" — Anruf-Modus, Sprachdienste, Chat-Handler und Bild-Upload (`/api/images`) aus der UI gelöscht; Guard und `.gitignore`-Eintrag bleiben (INT-2026-010, Stufe 1); kein neuer Endpunkt | PR #57 |
+| 2026-09-16 | §1: `ui/config/model-config.json` von „intern" nach „öffentlich" (versioniert seit Monaten; Namen, keine Zugänge), „vertraulich" um `~/.claude-<id>/settings.json`, Proxy-OAuth und `~/.codex/auth.json`; §3 Zeile OpenAI/ChatGPT-Zugang mit Ausfallverhalten (INT-2026-012); Hook `no-secrets` liest `.claude/no-secrets-allow.txt` (nur Dateinamen-Regel) und die Inhaltsregel greift jetzt auch mit BSD-grep (leere Alternative behoben) | PR #62 |
+| 2026-09-18 | §2: Claude-Session-ID wird in der Zuordnung gespeichert und als `--resume`-Argument und für eine Existenzprüfung genutzt (UUID-geprüft, Homes sind Backend-Wissen, kein Leser); kein neuer HTTP-Endpunkt (WebSocket-Nachricht `vorhaben:session.resume` mit Validierung wie `session.assign`) (INT-2026-019) | PR #77 |
+| 2026-09-18 | §1: Datenobjekt „Bilder aus „Neue Absicht"" (intern, `<runtime>/intent-paste/`, 7 Tage). Neuer Eingang ist die WebSocket-Nachricht `vorhaben:absicht-bild` (kein HTTP-Endpunkt): Projekt muss offen sein, MIME gegen die Terminal-Allowlist, Endung aus der Map, nie vom Client; leer und > 10 MB abgelehnt; Antwort = Host-Pfad unter dem Laufzeitordner, intern (INT-2026-020, §6 Zeile 1 erfüllt) | ADR-0005, PR #79 |

@@ -19,6 +19,7 @@ import {
   type ProjectDocsDocMessage,
   type ProjectDocsListResultMessage,
   type ProjectDocsWrittenMessage,
+  type VorhabenAbsichtBildSavedMessage,
   type VorhabenDesignMessage,
   type VorhabenDocKey,
   type VorhabenDocMessage,
@@ -29,6 +30,7 @@ import {
   type VorhabenSentMessage,
   type VorhabenStep,
   type VorhabenSessionAssignedMessage,
+  type VorhabenSessionResumedMessage,
   type VorhabenStepStartedMessage,
   FREITEXT_MAX_CHARS,
 } from '../../shared/types/vorhaben.protocol.js';
@@ -37,6 +39,8 @@ import { INTENT_ID_RE } from './vorhaben-reader.js';
 import { SendRejectedError, VorhabenError, type VorhabenService } from './vorhaben-service.js';
 import { ProjectDocNotFoundError, ProjectDocTooLargeError, type ProjectDocsService } from './project-docs.service.js';
 import type { VorhabenStateStore } from './vorhaben-state.js';
+import { PasteImageError, persistPastedImage } from '../utils/paste-image.js';
+import { getIntentPasteImageRoot } from '../utils/runtime-paths.js';
 
 export type OutboundMessage = { type: string };
 export type Reply = (message: OutboundMessage) => void;
@@ -51,6 +55,8 @@ export const VORHABEN_MESSAGE_TYPES = new Set([
   'vorhaben:start-step',
   'vorhaben:ansicht.set',
   'vorhaben:session.assign',
+  'vorhaben:session.resume',
+  'vorhaben:absicht-bild',
   'project-docs:list',
   'project-docs:read',
   'project-docs:write',
@@ -95,12 +101,18 @@ function parseModel(v: unknown): ModelSelection | null {
 }
 
 export class VorhabenHandler {
+  /** INT-2026-020: where `vorhaben:absicht-bild` images are written (flat, no session subdirs). */
+  private readonly bildRoot: string;
+
   constructor(
     private readonly service: VorhabenService,
     private readonly docs: ProjectDocsService,
     private readonly store: VorhabenStateStore,
-    private readonly broadcast: (message: OutboundMessage) => void
-  ) {}
+    private readonly broadcast: (message: OutboundMessage) => void,
+    opts: { bildRoot?: string } = {}
+  ) {
+    this.bildRoot = opts.bildRoot ?? getIntentPasteImageRoot();
+  }
 
   /** Returns false when the message type is not ours. Async work replies later. */
   public handle(message: Record<string, unknown>, reply: Reply): boolean {
@@ -220,8 +232,9 @@ export class VorhabenHandler {
         const sessionTarget = message.sessionTarget as CloudTerminalSessionTarget | undefined;
         void this.service
           .startStep(project.id, intentId, step, model, sessionTarget, firstInput)
-          .then(({ sessionId }) =>
-            reply({ type: 'vorhaben:step-started', ...(requestId ? { requestId } : {}), sessionId, projectId: project.id, ...(intentId ? { intentId } : {}), step } as VorhabenStepStartedMessage)
+          .then(({ sessionId, modus, geschlossen }) =>
+            // INT-2026-018: `modus` says whether the click continued in the live session; `geschlossen` names a closed one (AK-04/AK-05).
+            reply({ type: 'vorhaben:step-started', ...(requestId ? { requestId } : {}), sessionId, projectId: project.id, ...(intentId ? { intentId } : {}), step, modus, ...(geschlossen ? { geschlossen } : {}) } as VorhabenStepStartedMessage)
           )
           .catch((err) => reply(this.fromError(err, requestId)));
         return true;
@@ -240,6 +253,51 @@ export class VorhabenHandler {
         void this.service
           .assignSession(project.id, intentId, sessionId)
           .then(() => reply({ type: 'vorhaben:session-assigned', ...(requestId ? { requestId } : {}), projectId: project.id, intentId, sessionId } as VorhabenSessionAssignedMessage))
+          .catch((err) => reply(this.fromError(err, requestId)));
+        return true;
+      }
+
+      case 'vorhaben:session.resume': {
+        // INT-2026-019 (AK-01): „Seite geöffnet" — the service decides; request/reply, the row follows in the broadcast.
+        const project = this.project(message, reply, requestId);
+        if (!project) return true;
+        const intentId = str(message.intentId);
+        if (!intentId || !INTENT_ID_RE.test(intentId)) {
+          reply(this.error('INVALID_MESSAGE', 'intentId (INT-JJJJ-NNN) ist erforderlich', requestId));
+          return true;
+        }
+        void this.service
+          .resumeIfLost(project.id, intentId)
+          .then((result) =>
+            reply({
+              type: 'vorhaben:session-resumed',
+              ...(requestId ? { requestId } : {}),
+              projectId: project.id,
+              intentId,
+              ergebnis: result.ergebnis,
+              ...(result.ergebnis === 'gestartet' ? { sessionId: result.sessionId } : { grund: result.grund }),
+            } as VorhabenSessionResumedMessage)
+          )
+          .catch((err) => reply(this.fromError(err, requestId)));
+        return true;
+      }
+
+      case 'vorhaben:absicht-bild': {
+        // INT-2026-020 (AK-01, AK-04, RB-01): image pasted before a session exists.
+        // Project must be open; MIME/size/empty checks and the write are the
+        // Terminal's (utils/paste-image.ts); the extension never comes from the client.
+        const project = this.project(message, reply, requestId);
+        if (!project) return true;
+        const base64 = str(message.base64);
+        const mimeType = str(message.mimeType);
+        if (base64 === undefined || mimeType === undefined) {
+          reply(this.error('INVALID_MESSAGE', 'base64 und mimeType sind erforderlich', requestId));
+          return true;
+        }
+        void persistPastedImage(this.bildRoot, base64, mimeType)
+          .then((absolutePath) =>
+            reply({ type: 'vorhaben:absicht-bild-saved', ...(requestId ? { requestId } : {}), absolutePath } as VorhabenAbsichtBildSavedMessage)
+          )
           .catch((err) => reply(this.fromError(err, requestId)));
         return true;
       }
@@ -386,6 +444,8 @@ export class VorhabenHandler {
 
   private fromError(err: unknown, requestId?: string): VorhabenErrorMessage {
     if (err instanceof VorhabenError) return this.error(err.code, err.message, requestId);
+    // INT-2026-020: the Terminal's paste codes are part of VorhabenErrorCode (same strings).
+    if (err instanceof PasteImageError) return this.error(err.code as VorhabenErrorCode, err.message, requestId);
     if (err instanceof ProjectDocNotFoundError) return this.error('NOT_FOUND', err.message, requestId);
     if (err instanceof ProjectDocTooLargeError) return this.error('TOO_LARGE', err.message, requestId);
     return this.error('IO_ERROR', (err as Error)?.message ?? String(err), requestId);

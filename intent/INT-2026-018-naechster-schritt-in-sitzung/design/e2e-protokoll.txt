@@ -1,0 +1,68 @@
+E2E INT-2026-018 — „Nächster Schritt startet in der fertigen Sitzung"
+Datum 2026-09-18 · Claude Code 2.1.276 · Branch-Backend Port 3111 (SPECWRIGHT_TMUX=on, eigenes Runtime-Verzeichnis)
+Scratch-Projekt /private/tmp/scratch-int018 mit drei Vorhaben (intent angenommen, bypass nein) · Modell Haiku
+Skript e2e-018.mjs (Phasen setup | sperre | insession | neu | fehler) im Sitzungs-Scratchpad, nicht im Repo
+
+--- Schritt 0 (b): Probe, ob ein gepastetes /clear wie ein getipptes läuft (vor dem ersten Code) ---
+[06:36:51.585] claudeSessionId vor dem Paste: 2d722405-73ee-4140-bfb0-877dda267316
+[06:36:51.840] Messwert 1 — Kennung nach /clear gewechselt: JA → 7067d332-8f82-4dbd-abcc-f55b937653b2
+[06:36:51.840] Messwert 2 — Enter → Änderung in sessions-3111.json: 104 ms (Plan rechnete mit < 500 ms, Deckel 5000 ms)
+[06:36:53.358] Bildschirm nach /clear: leer, Eingabezeile sichtbar, alte Antwort weg
+[06:36:53.358] Hook-Ereignisse nach Enter: agent-event stop (+84 ms), agent-event session-start (+99 ms)
+[06:36:53.811] Gepastetes /specwright:plan INT-2026-001 → UserPromptSubmit nach 302 ms, Zeile „arbeitet"
+             0 × „agent-event rejected" im Backend-Log → Plan A bleibt, Plan B (session.cleared) entfällt
+             Nebenbefund: 2.1.276 zeigt die leere Eingabezeile ❯ AUCH während eines Turns → isIdlePrompt prüft
+             zusätzlich auf die Spinner-Zeile („✻ Enchanting… (4s · ↓ 204 tokens)"), Fixtures 2.1.276/prompt-idle|working.txt
+
+--- (1) Zeile in Phase spec, Sitzung gehört zum Schritt spec → gesperrt (Screenshot A) ---
+[07:00:51.985] Zeile INT-2026-001: phase=spec, nextStep.sperre=gleiche_phase, sessionBusy=true
+[07:00:54.211] Kasten: Knopf disabled=true, Hinweis und title = „die Sitzung gehört schon zu diesem Schritt — im Terminal fortsetzen oder freigeben"
+[07:00:54.267] Klick von einer veralteten Seite (ws vorhaben:start-step) → vorhaben:error SESSION_BUSY,
+             message identisch mit dem Hinweis im Kasten (eine Regel, ein Text — Review E6)
+             Screenshot A: e2e-018-A-gesperrt.png
+
+--- (2) spec.md freigegeben → Phase plan, Sitzung gehört zu spec → Kasten frei (Screenshots B, B') ---
+[07:01:00.591] Zeile: phase=plan, sperre=null, nextStep.sitzung={id: cloud-…-1, name: "spec INT-2026-001",
+             model: {anthropic, haiku}, target: {kind: main}}
+[07:01:02.582] Kasten (1440 px): „startet in der laufenden Sitzung ‚spec INT-2026-001': /clear, dann /specwright:plan INT-2026-001",
+             Vorbelegung Modell haiku (aus der Sitzung, O1), Arbeitskopie „Im Projekt", Knopf frei
+[07:01:04.603] Kasten (390 px, Handy): gleicher Satz, gleiche Vorbelegung
+             Screenshots B: e2e-018-B-frei-mac.png, e2e-018-B-frei-handy.png
+
+--- (3) Klick → /clear, dann der Befehl in derselben Sitzung (Screenshot C) ---
+[07:01:05.397] 764 ms vom Klick bis vorhaben:state mit session.step=plan (AK-06 verlangt < 2 s)
+[07:01:05.397] Sitzung: id unverändert (cloud-…-1), Tab-Name „plan INT-2026-001", zustand=arbeitet, sperre=arbeitet
+[07:01:05.397] Registry: 3 Einträge vorher, 3 danach — keine zweite Sitzung
+[07:01:05.397] claudeSessionId d9d0cdc3-… → 4be3adac-… (neues Gespräch)
+[07:01:05.398] Toast: „Nächster Schritt in der laufenden Sitzung gestartet"
+[07:01:07.908] Terminal zeigt nacheinander „❯ /clear" und „❯ /specwright:plan INT-2026-001" (Skill geladen, Turn läuft)
+             Screenshot C: e2e-018-C-terminal.png
+
+--- (4) anderes Modell → neue Sitzung, die alte wird wie per ✕ geschlossen (Screenshot D) ---
+[07:01:20.340] Kasten vor der Änderung: „startet in der laufenden Sitzung ‚spec INT-2026-002' …"
+[07:01:20.746] nach Wahl von Sonnet: „startet eine neue Sitzung mit /specwright:plan INT-2026-002 — die laufende ‚spec INT-2026-002' wird geschlossen"
+[07:01:21.038] Klick → neue Sitzung cloud-…-4 (model sonnet, step plan, Tab „plan INT-2026-002")
+[07:01:21.038] WebSocket-Rahmen in dieser Reihenfolge: cloud-terminal:closed {id: cloud-…-2, closedBy: "user"},
+             cloud-terminal:created {id: cloud-…-4} → jedes Gerät lässt den alten Tab fallen (Z-02)
+[07:01:21.038] alte Sitzung in der Registry: nein · Sidebar-Tabs enthalten die alte Kennung nicht
+[07:01:21.039] Toast: „Sitzung gestartet — die vorige wurde geschlossen"
+             Screenshot D: e2e-018-D-neue-sitzung.png
+
+--- (5) AK-08: Bestätigung des Leerens bleibt aus → fail closed (Screenshot E) ---
+Aufbau: Hook-Secret (<runtime>/cloud-terminal/hook-secret) rotiert und Backend neu gestartet; die per tmux
+wieder angebundene Sitzung sendet weiter das alte Token → die Hook-Route antwortet 403 („agent-event rejected"),
+also kommt nach /clear keine neue Gesprächskennung an. (Ein bloßes Ändern der Hook-Settings-Datei genügt nicht:
+Claude Code liest sie beim Sitzungsstart und merkt sich den Befehl — separat geprüft.)
+[07:03:22.325] Kasten vor dem Klick: „startet in der laufenden Sitzung ‚spec INT-2026-003' …", Knopf frei
+[07:03:31.344] ~5 s nach dem Klick: roter Hinweis „Leeren der Sitzung nicht bestätigt — erneut versuchen oder
+             /clear im Terminal tippen"; Knopf wieder frei (disabled=false)
+[07:03:31.595] Zeile unverändert: session.step=spec, Tab-Name „spec INT-2026-003", zustand=wartet
+[07:03:31.595] claudeSessionId unverändert (45e51541-…)
+             Terminal: nur „❯ /clear" — der Phasen-Befehl wurde NICHT hinterhergeschickt (fail closed)
+             Screenshot E: e2e-018-E-fehler.png
+[07:03:41.832] Secret zurückgesetzt, Backend neu gestartet, Seite neu geladen
+[07:04:11.984] zweiter Klick geht durch: Terminal zeigt „❯ /clear" und „❯ /specwright:plan INT-2026-003",
+             Zuordnung auf plan, Kasten wieder gesperrt mit „die Sitzung gehört schon zu diesem Schritt …"
+
+--- Endstand ---
+Alle drei Zeilen stehen auf Schritt plan, jede mit genau einer Sitzung; kein Vorhaben hat zwei Sitzungen bekommen.
