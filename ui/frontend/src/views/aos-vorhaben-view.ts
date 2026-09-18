@@ -23,6 +23,13 @@
  * (`vorhaben-page-session` on `document`, Mac only) and feeds the document's
  * Kennungen to `kennungenService` so the terminal can link them; a click on
  * such a link comes back as `kennung-open` and the page jumps to the block.
+ *
+ * INT-2026-019: entering a Vorhaben page (and every reconnect on one) tells
+ * the backend „Seite geöffnet" once — `vorhabenService.resumeSession` —
+ * which resumes a session lost to a crash (AK-01). One trigger path only
+ * (review E31): the entry points set `resume`, `maybeFire` sends as soon as a
+ * loaded state is there; a refusal is shown as a line on the page and not
+ * retried until the page is opened again (AK-09).
  */
 
 import { LitElement, html } from 'lit';
@@ -72,6 +79,15 @@ export class AosVorhabenView extends LitElement {
   private pendingSeen = false;
   /** Navigation to the claimed row was requested; the memory is kept until the route changed (no flash, review 15). */
   private pendingNavigated = false;
+  /**
+   * INT-2026-019: the pending „Seite geöffnet" of the shown Vorhaben page
+   * (`key` = `assignmentKey`). `wartet` until a loaded state is there, then
+   * `gesendet` — once per opening. `freshOnly` after a reconnect: the state
+   * in hand is stale, only the next one from the backend counts.
+   */
+  private resume: { key: string; phase: 'wartet' | 'gesendet'; freshOnly: boolean } | null = null;
+  /** INT-2026-019 (AK-08/AK-09): why the resume was refused — shown on the page until the route changes or the row has a live session. */
+  @state() private resumeHinweis: { key: string; text: string } | null = null;
 
   private forgetPending(): void {
     this.pendingIntentSessionId = null;
@@ -100,10 +116,23 @@ export class AosVorhabenView extends LitElement {
       if (route.view === 'vorhaben' && this.pendingNavigated) this.forgetPending();
       this.route = route.view as VorhabenRoute;
       this.segments = route.segments;
+      // INT-2026-019: a newly entered Vorhaben page asks once; another route forgets everything.
+      const key = this.pageKey();
+      if (!key) {
+        this.resume = null;
+        this.resumeHinweis = null;
+      } else if (this.resume?.key !== key) {
+        this.resume = { key, phase: 'wartet', freshOnly: false };
+        this.resumeHinweis = null;
+        this.maybeFire(this.vorhabenState, false);
+      }
     }
   };
   private readonly onConnected = (): void => {
     this.connected = true;
+    // INT-2026-019: after a reconnect the page asks again — against the next state, not the stale one.
+    const key = this.pageKey();
+    if (key) this.resume = { key, phase: 'wartet', freshOnly: true };
     vorhabenService.refresh();
   };
   private readonly onDisconnected = (): void => {
@@ -120,6 +149,8 @@ export class AosVorhabenView extends LitElement {
       this.vorhabenState = s;
       this.notePendingIntent(s);
       this.followStartedIntent(s);
+      this.maybeFire(s, true);
+      this.clearHinweisIfLive(s);
     });
     routerService.on('route-changed', this.onRoute);
     const current = routerService.getCurrentRoute();
@@ -158,6 +189,48 @@ export class AosVorhabenView extends LitElement {
       }
     }
     if (!this.querySelector('aos-vorhaben-seite')) kennungenService.clear();
+  }
+
+  // ---- INT-2026-019: resume on opening ----
+
+  /** `assignmentKey` of the shown Vorhaben page, null on every other route. */
+  private pageKey(): string | null {
+    if (this.route !== 'vorhaben') return null;
+    const [pid, intentId] = this.segments;
+    if (!pid || !intentId || !INTENT_ID_RE.test(intentId)) return null;
+    return assignmentKey(safeDecode(pid), intentId);
+  }
+
+  /** The one trigger path: sends „Seite geöffnet" once a loaded state is there (`fresh` = this state just arrived from the backend). */
+  private maybeFire(s: VorhabenState | null, fresh: boolean): void {
+    const r = this.resume;
+    if (!r || r.phase !== 'wartet' || !s || s.loading) return;
+    if (r.freshOnly && !fresh) return;
+    r.phase = 'gesendet';
+    void this.sendResume(r.key);
+  }
+
+  private async sendResume(key: string): Promise<void> {
+    const [projectId, intentId] = key.split('::');
+    try {
+      const result = await vorhabenService.resumeSession(projectId, intentId);
+      if (result.ergebnis === 'gestartet') {
+        // The Mac docks the terminal as soon as the row carries the session (`updated()`); the phone keeps „Im Terminal öffnen" (O1).
+        this.dispatchEvent(new CustomEvent('show-toast', { bubbles: true, composed: true, detail: { message: 'Sitzung nach Neustart fortgesetzt', type: 'success' } }));
+      }
+    } catch (err) {
+      // Only for the page that asked; a route change in between already forgot it.
+      if (this.resume?.key === key) this.resumeHinweis = { key, text: (err as Error).message };
+    }
+  }
+
+  /** The hint goes as soon as the row has a live session again — „Nächster Schritt", a click, a typed command (review E15). */
+  private clearHinweisIfLive(s: VorhabenState | null): void {
+    const h = this.resumeHinweis;
+    if (!h || !s) return;
+    const [projectId, intentId] = h.key.split('::');
+    const row = s.rows.find((r) => r.projectId === projectId && r.intentId === intentId);
+    if (row?.session && !row.session.ended) this.resumeHinweis = null;
   }
 
   /** The live session of the shown page: the row's (not ended) on `vorhaben`, the pending or just claimed `/intent` session on `neu`. */
@@ -360,6 +433,7 @@ export class AosVorhabenView extends LitElement {
         .drafts=${drafts}
         .protocol=${protocol}
         .lastModel=${state?.lastModel ?? {}}
+        .resumeHinweis=${this.resumeHinweis?.key === assignmentKey(row.projectId, row.intentId) ? this.resumeHinweis.text : null}
         @vorhaben-back=${() => this.go('vorhaben')}
         @doc-change=${this.onDocChange}
         @vorhaben-session-started=${this.onSessionStarted}

@@ -29,6 +29,7 @@ import {
   type VorhabenSentMessage,
   type VorhabenStep,
   type VorhabenSessionAssignedMessage,
+  type VorhabenSessionResumedMessage,
   type VorhabenStepStartedMessage,
   FREITEXT_MAX_CHARS,
 } from '../../shared/types/vorhaben.protocol.js';
@@ -51,6 +52,7 @@ export const VORHABEN_MESSAGE_TYPES = new Set([
   'vorhaben:start-step',
   'vorhaben:ansicht.set',
   'vorhaben:session.assign',
+  'vorhaben:session.resume',
   'project-docs:list',
   'project-docs:read',
   'project-docs:write',
@@ -240,6 +242,31 @@ export class VorhabenHandler {
         void this.service
           .assignSession(project.id, intentId, sessionId)
           .then(() => reply({ type: 'vorhaben:session-assigned', ...(requestId ? { requestId } : {}), projectId: project.id, intentId, sessionId } as VorhabenSessionAssignedMessage))
+          .catch((err) => reply(this.fromError(err, requestId)));
+        return true;
+      }
+
+      case 'vorhaben:session.resume': {
+        // INT-2026-019 (AK-01): „Seite geöffnet" — the service decides; request/reply, the row follows in the broadcast.
+        const project = this.project(message, reply, requestId);
+        if (!project) return true;
+        const intentId = str(message.intentId);
+        if (!intentId || !INTENT_ID_RE.test(intentId)) {
+          reply(this.error('INVALID_MESSAGE', 'intentId (INT-JJJJ-NNN) ist erforderlich', requestId));
+          return true;
+        }
+        void this.service
+          .resumeIfLost(project.id, intentId)
+          .then((result) =>
+            reply({
+              type: 'vorhaben:session-resumed',
+              ...(requestId ? { requestId } : {}),
+              projectId: project.id,
+              intentId,
+              ergebnis: result.ergebnis,
+              ...(result.ergebnis === 'gestartet' ? { sessionId: result.sessionId } : { grund: result.grund }),
+            } as VorhabenSessionResumedMessage)
+          )
           .catch((err) => reply(this.fromError(err, requestId)));
         return true;
       }

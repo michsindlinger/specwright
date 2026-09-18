@@ -86,6 +86,12 @@ export interface VorhabenSessionRef {
    * Only the flag is broadcast, never the text.
    */
   firstInputPending?: boolean;
+  /**
+   * INT-2026-019 (OF-02): this session resumed a lost one — `von` is the lost
+   * session's id, `stand` the last write to the resumed conversation (ISO).
+   * The page shows „fortgesetzt nach Neustart · Stand HH:MM".
+   */
+  resumed?: { at: string; von: string; stand?: string };
 }
 
 export interface VorhabenNextStep {
@@ -486,6 +492,22 @@ export interface VorhabenSessionAssignMessage {
   sessionId: string;
 }
 
+/**
+ * INT-2026-019 (AK-01): „Vorhaben-Seite geöffnet" — sent when the page of a
+ * Vorhaben is entered and after a reconnect (once the state has loaded). The
+ * backend alone decides whether the row's session is lost (assignment not
+ * ended, session unknown to the manager) and resumes it with
+ * `claude --resume` in the old worktree; the client computes nothing (RB-01).
+ * Answer: `vorhaben:session-resumed` or `vorhaben:error` (RESUME_FAILED,
+ * WORKTREE_MISSING, RESUME_RUNNING, …) with the same `requestId`.
+ */
+export interface VorhabenSessionResumeMessage {
+  type: 'vorhaben:session.resume';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+}
+
 // ---- Server → Client ----
 
 export interface VorhabenSessionAssignedMessage {
@@ -494,6 +516,21 @@ export interface VorhabenSessionAssignedMessage {
   projectId: string;
   intentId: string;
   sessionId: string;
+}
+
+/** Why no session was started although the page was opened (INT-2026-019, AK-05/AK-06). */
+export type VorhabenResumeGrund = 'lebt' | 'beendet' | 'keine_zuordnung' | 'fremde_cli' | 'umgesetzt';
+
+export interface VorhabenSessionResumedMessage {
+  type: 'vorhaben:session-resumed';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+  ergebnis: 'gestartet' | 'nicht_noetig';
+  /** Set for `gestartet`: the new session; the row follows in the next `vorhaben:state`. */
+  sessionId?: string;
+  /** Set for `nicht_noetig`. */
+  grund?: VorhabenResumeGrund;
 }
 
 export interface VorhabenSentMessage {
@@ -601,7 +638,14 @@ export type VorhabenErrorCode =
   /** The row already has a live session. */
   | 'ROW_HAS_SESSION'
   /** The session is the live session of another row (`message` names it) — a click never moves. */
-  | 'SESSION_ASSIGNED_ELSEWHERE';
+  | 'SESSION_ASSIGNED_ELSEWHERE'
+  // INT-2026-019: refusals of `vorhaben:session.resume` (the page shows `message`, AK-08/AK-09).
+  /** The lost session's worktree is gone — `message` names the path; „Nächster Schritt" stays usable. */
+  | 'WORKTREE_MISSING'
+  /** Resume did not start (`message` = reason: cap reached, transcript not found, spawn failed, backend still booting). */
+  | 'RESUME_FAILED'
+  /** A resume for this row is in flight — `start-step`/`session.assign` refused for the moment (AK-04). */
+  | 'RESUME_RUNNING';
 
 export const ANMERKUNG_MAX_CHARS = 4000;
 
