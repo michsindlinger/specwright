@@ -1,7 +1,7 @@
 # Plan: Der Knopf „Nächster Schritt" darf am Autovorschlag der Sitzung nicht scheitern
 
 > **Intent:** `intent.md` (INT-2026-023) · **Spec:** entfällt (bypass: Bugfix unter einem Tag)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-19 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-19
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand d735810), `CLAUDE.md`, `docs/security.md`
 
@@ -300,6 +300,16 @@ Vier Produktionsdateien in einer Aufrufkette (§5, sieben Verbindungen), zusamme
 - **Bugfix:** Test zuerst (§6 Schritt 2), Fehlschlag bestätigt, dann Fix ohne Änderung am Test. Hook `protect-tests` aktiv.
 - **UI:** keine sichtbare Änderung, kein Mock, kein Screenshot nötig.
 
+**E2E-Protokoll (19.09.2026, Zweig-Backend Port 3111, eigene tmux-Socket `specwright-3111.sock`, Wegwerf-Projekt `/private/tmp/e2e-023`):**
+
+1. Projekt mit einer Absicht `INT-2026-900` (Status `angenommen`, `bypass: ja`) angelegt, im Backend geöffnet.
+2. Über den Kasten „Nächster Schritt" eine Sitzung mit `/specwright:plan INT-2026-900` gestartet (Modell Haiku); Vertrauensdialog und Rückfrage im Terminal beantwortet, Plan wurde geschrieben und committet.
+3. Die Sitzung zeichnete danach den Vorschlag `❯ /build INT-2026-900` in die leere Eingabezeile; `tmux display-message '#{cursor_x} #{cursor_y}'` meldete `2 12` — Cursor direkt hinter dem Eingabezeichen, Zeile also leer.
+4. Klick auf „Bau starten". Ergebnis: Toast „Nächster Schritt in der laufenden Sitzung gestartet", Tab umbenannt auf `build INT-2026-900`, Zuordnung auf `build`.
+5. Im Terminal kamen **genau zwei** Eingaben an — `❯ /clear` und `❯ /specwright:build INT-2026-900`. Eine Suche im Verlauf nach verschmolzenen Formen (`/build INT-2026-900/clear`, `/clear/build`, `…build INT-2026-900/build`) blieb ohne Treffer. **Damit ist R1 widerlegt:** Der Vorschlag ist nur gezeichnet, das Einfügen ersetzt ihn.
+6. **R6 (Laufzeit):** der kombinierte tmux-Aufruf, fünfmal gemessen, jeweils unter 10 ms (`real 0,00`). Der Klick wird davon nicht spürbar langsamer.
+7. Danach: Zweig-Backend über seine PIDs aus dem Worktree-Pfad beendet (kein pauschales `pkill`), tmux-Server der Socket 3111 beendet, Wegwerf-Projekt gelöscht; das Backend auf Port 3001 lief durchgehend weiter.
+
 ### 9. Risiken
 
 <!-- leser: mensch -->
@@ -322,9 +332,9 @@ Vier Produktionsdateien in einer Aufrufkette (§5, sieben Verbindungen), zusamme
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| Zwei Bildschirm-Aufzeichnungen erstellen und vor dem Commit auf Hostnamen, Pfade, Nutzer, Ports sichten (`docs/security.md` §5); Weg: Wegwerf-Verzeichnis + `tmux -S <socket> capture-pane -p -t '=<name>:' ';' display-message -p -t '=<name>:' '#{cursor_x} #{cursor_y}'` | Claude in der Bausitzung, Sichtung durch Michael im PR-Diff | vor Umsetzung (§6 Schritt 1) | [ ] |
+| Zwei Bildschirm-Aufzeichnungen erstellen und vor dem Commit auf Hostnamen, Pfade, Nutzer, Ports sichten (`docs/security.md` §5); Weg: Wegwerf-Verzeichnis + `tmux -S <socket> capture-pane -p -t '=<name>:' ';' display-message -p -t '=<name>:' '#{cursor_x} #{cursor_y}'` | Claude in der Bausitzung, Sichtung durch Michael im PR-Diff | vor Umsetzung (§6 Schritt 1) | [x] erledigt 19.09.: Aufnahme in `/private/tmp/cw-023`, Sitzung danach beendet und Verzeichnis gelöscht; geprüft auf Nutzernamen, `/Users/`-Pfade, Hostnamen, URLs, Ports und Token-Muster — ohne Treffer. Sichtung durch Michael steht im PR-Diff noch aus |
 | **AK-05 Messung:** In einer Sitzung mit sichtbarem Vorschlag auf „Nächster Schritt" klicken; die Phase muss starten und im Terminal dürfen nur `/clear` und der Phasenbefehl stehen | Michael | vor Merge | [ ] |
-| E2E-Lauf gegen ein Zweig-Backend auf Port 3111 mit eigener tmux-Socket und Wegwerf-Projekt; Weg: `cd ui && PORT=3111 npm run dev:backend` (Live-Backend auf 3001 bleibt unberührt, keine pauschalen `pkill`) | Claude in der Bausitzung | vor Merge | [ ] |
+| E2E-Lauf gegen ein Zweig-Backend auf Port 3111 mit eigener tmux-Socket und Wegwerf-Projekt; Weg: `cd ui && PORT=3111 npm run dev:backend` (Live-Backend auf 3001 bleibt unberührt, keine pauschalen `pkill`) | Claude in der Bausitzung | vor Merge | [x] erledigt 19.09., Protokoll in §8 |
 | Merge des PR nach `main` (löst den Auto-Deploy der UI aus) | Michael | nach grünem CI | [ ] |
 
 Kein Deploy-Befehl, keine Freigabedatei `RELEASE_APPROVAL`, kein Zugriff auf den Cloud-Host in diesem Vorhaben.
@@ -363,15 +373,15 @@ Kein Deploy-Befehl, keine Freigabedatei `RELEASE_APPROVAL`, kein Zugriff auf den
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle sieben Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8, Backend auf 3111).
-- [ ] `bash scripts/verify.sh` endet mit `verify: OK`, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` §2 und `docs/design.md` §4 angepasst (Abschnitt 3: Beschreibung, keine AR-Änderung).
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert; AK-05 vor dem Merge gemessen.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
-- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board".
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (67 Tests in den drei Dateien, darunter 6 gegen einen echten tmux-Server).
+- [x] Alle sieben Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8, Backend auf 3111) — Protokoll in §8.
+- [x] `bash scripts/verify.sh` endet mit `verify: OK`, Ausgabe im PR — PR-Checks grün steht noch aus (CI ist die Wahrheit).
+- [x] `docs/architecture.md` §2 und `docs/design.md` §4 angepasst (Abschnitt 3: Beschreibung, keine AR-Änderung).
+- [x] Manuelle Schritte (Abschnitt 10): Aufzeichnungen und E2E erledigt; **AK-05 (Messung durch Michael) offen bis zum Merge**.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
+- [x] 2x-Regel-Check: kein Fehler aus der Liste wiederholt (siehe PR).
+- [x] Abschlussbericht nach R3, endet mit dem Block „Für das Board".
 
 ### 14. Abweichungen bei der Umsetzung
 
@@ -379,4 +389,7 @@ Kein Deploy-Befehl, keine Freigabedatei `RELEASE_APPROVAL`, kein Zugriff auf den
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-19 | Die zwei Aufzeichnungen liegen unter `ui/tests/fixtures/tui/**2.1.278**/`, nicht unter `2.1.277` | Die installierte Fassung ist Claude Code 2.1.278; eine Aufnahme unter einem fremden Versionsordner wäre falsch beschriftet. Der Ordner ist neu und enthält nur die beiden `cursor-*.txt` | §4 Zeile 8, §8 |
+| 2026-09-19 | Die Dateinamen-Filter der bestehenden Fixture-Schleifen in `dialog-driver.test.ts` wurden **nicht** enger gefasst (R8 war als „nötigenfalls" geplant) | Geprüft: die drei Präfix-Schleifen (`plan-dialog`, `askuserquestion`, `permission`, `idle`) greifen die neuen Dateien nicht, und die Gleichwertigkeits-Schleife (`isIdlePrompt` == `promptZustand`) hält für sie. Statt eines Filters sichert ein eigener Test diesen Befund ab | §8 letzter Testpunkt, §9 R8 |
+| 2026-09-19 | Test (10e) prüft zusätzlich eine Quelle **ohne** die Methode (`delete manager.readCursorProbe`), nicht nur `null` | §12 Finding 6 wollte AK-03 an einem Fake ohne die Methode beweisen; da `FakeManager` sie laut §4 Zeile 7 bekommt, deckt (10e) beide Lagen ab | §8 AK-03 |
+| 2026-09-19 | Im E2E-Lauf war der Autovorschlag nicht auf Zuruf zu bekommen: Er erschien erst, nachdem die Sitzung den Plan-Modus verlassen hatte (`⏵⏵ bypass permissions on`), und zeigte den **nächsten** Befehl (`/build INT-2026-900`), nicht den zuletzt getippten | Befund aus dem Lauf, keine Planänderung. Er stützt den Plan: Der gemalte Text ist nicht einmal Verlauf, sondern ein Vorschlag von Claude Code — genau deshalb darf er nicht als Eingabe zählen | §8 E2E-Pfad, §9 R1 |

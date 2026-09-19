@@ -16,6 +16,7 @@ import { tmpdir } from 'os';
 import { CLEAR_WAIT_MS, PASTE_END, PASTE_START, VorhabenError, VorhabenService, type VorhabenSessionInfo } from '../../src/server/services/vorhaben-service.js';
 import { VorhabenStateStore } from '../../src/server/services/vorhaben-state.js';
 import { VorhabenWatcher } from '../../src/server/services/vorhaben-watcher.js';
+import type { CursorProbe } from '../../src/server/services/dialog-driver.js';
 import type { OutboundMessage } from '../../src/server/services/vorhaben-handler.js';
 import type { ParsedTarget } from '../../src/server/utils/session-target.js';
 import { NEXT_STEP_SPERRE_TEXT, type VorhabenNextStepSperre, type VorhabenStateMessage } from '../../src/shared/types/vorhaben.protocol.js';
@@ -76,6 +77,14 @@ class FakeManager extends EventEmitter {
     this.duringRead = null;
     f?.();
     return { text: this.screen, live: this.live };
+  }
+  /** INT-2026-023: what the cursor probe answers — `null` is a session without tmux (AK-03). */
+  public cursor: CursorProbe | null = null;
+  /** How often the probe was asked; test (10f) needs it to stay at 0. */
+  public cursorCalls = 0;
+  async readCursorProbe(): Promise<CursorProbe | null> {
+    this.cursorCalls++;
+    return this.cursor;
   }
   async waitForIdle(): Promise<void> {}
   async withMachineWrite<T>(id: string, fn: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; grund: 'beschaeftigt' | 'nicht_aktiv' }> {
@@ -496,6 +505,69 @@ describe('VorhabenService „Nächster Schritt" in der Sitzung (INT-2026-018)', 
       expect(manager.writes(id)).toEqual([CLEAR, '\r']);
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('nach /clear steht Text in der Eingabezeile'));
       warn.mockRestore();
+    });
+
+    /** INT-2026-023: a probe whose box line sits at index 1, with `verlauf` lines above it. */
+    const probe = (box: string, x: number, verlauf: string[] = []): CursorProbe => {
+      const zeilen = [...verlauf, '────', box, '────'];
+      return { zeilen, x, y: zeilen.length - 2 };
+    };
+
+    it('(10c) INT-2026-023: the box only shows Claude Codes suggestion (cursor at 2) → the step starts (AK-01)', async () => {
+      const id = await liveSession('intent');
+      manager.screen = TEXT_SCREEN; // drawn text — INT-2026-021 alone would refuse
+      manager.cursor = probe('❯\u00a0npm run verify', 2);
+      expect((await service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).modus).toBe('in_sitzung');
+      expect(manager.writes(id)).toEqual([CLEAR, '\r', CMD, '\r']);
+      expect(assignment()).toMatchObject({ step: 'plan' });
+    });
+
+    it('(10d) INT-2026-023: the cursor sits behind typed text → PROMPT_NOT_EMPTY naming it, no writes (AK-02)', async () => {
+      const id = await liveSession('intent');
+      manager.screen = TEXT_SCREEN;
+      manager.cursor = probe('❯\u00a0npm run verify', 17);
+      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({
+        code: 'PROMPT_NOT_EMPTY',
+        message: 'in der Eingabezeile der Sitzung steht noch Text: „npm run verify" — im Terminal abschicken oder löschen, dann erneut klicken',
+      });
+      expect(manager.writes(id)).toEqual([]);
+      expect(assignment()).toMatchObject({ step: 'intent' });
+    });
+
+    it('(10e) INT-2026-023: no probe — null, and a source without the method at all → refusal as today (AK-03)', async () => {
+      const id = await liveSession('intent');
+      manager.screen = TEXT_SCREEN;
+      manager.cursor = null;
+      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({ code: 'PROMPT_NOT_EMPTY' });
+      expect(manager.cursorCalls).toBe(1);
+      const ohne = manager as unknown as { readCursorProbe?: unknown };
+      delete ohne.readCursorProbe;
+      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({ code: 'PROMPT_NOT_EMPTY' });
+      expect(manager.writes(id)).toEqual([]);
+      expect(assignment()).toMatchObject({ step: 'intent' });
+    });
+
+    it('(10f) INT-2026-023: spinner and dialog are judged before the input line — the probe is not even asked (AK-04)', async () => {
+      const id = await liveSession('intent');
+      manager.cursor = probe('❯\u00a0npm run verify', 2); // would say „empty" if it were asked
+      manager.screen = WORKING_SCREEN;
+      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({ code: 'SESSION_WRITE_FAILED', message: 'Sitzung arbeitet — warten' });
+      manager.screen = PLAN_DIALOG_SCREEN;
+      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({ code: 'SESSION_WRITE_FAILED', message: expect.stringMatching(/Dialog/) });
+      expect(manager.cursorCalls).toBe(0);
+      expect(manager.writes(id)).toEqual([]);
+      expect(assignment()).toMatchObject({ step: 'intent' });
+    });
+
+    it('(10g) INT-2026-023: the probe itself shows a spinner or a dialog (sent between the two reads) → refusal, no writes (R5)', async () => {
+      const id = await liveSession('intent');
+      manager.screen = TEXT_SCREEN;
+      manager.cursor = probe('❯\u00a0npm run verify', 2, ['✳ Enchanting… (4s · ↓ 204 tokens · thinking)']);
+      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({ code: 'PROMPT_NOT_EMPTY' });
+      manager.cursor = probe('❯\u00a0npm run verify', 2, ['  Do you want to proceed?']);
+      await expect(service.startStep('pa', 'INT-2026-001', 'plan', HAIKU, { kind: 'main' })).rejects.toMatchObject({ code: 'PROMPT_NOT_EMPTY' });
+      expect(manager.writes(id)).toEqual([]);
+      expect(assignment()).toMatchObject({ step: 'intent' });
     });
 
     it('(3) the machine-write lock is busy → beschaeftigt text, no writes', async () => {
