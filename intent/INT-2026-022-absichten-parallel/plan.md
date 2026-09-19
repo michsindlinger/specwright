@@ -1,7 +1,7 @@
 # Plan: UI: Mehrere Absichten parallel — Formular bleibt, Übersicht zeigt sie sofort, jede im eigenen Worktree
 
 > **Intent:** `intent.md` (INT-2026-022) · **Spec:** `spec.md`
-> **Status:** in_umsetzung
+> **Status:** umgesetzt (PR #87 offen, Merge steht aus)
 > **Erstellt:** 2026-09-19 im Plan Mode · **Freigabe:** PO (Michael Sindlinger), 2026-09-19 — im Chat „freigabe" nach zwei externen Review-Runden (E1–E42, Antworten in §12); O1 nach Standard (Ist-Screenshots), D1/D2 wie im Plan entschieden
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 4dbeeec), `CLAUDE.md`, `docs/security.md`, `docs/design.md`
 
@@ -301,7 +301,7 @@ Entfällt.
 | D1 **im Plan entschieden** (Review E41): Kennungsregel als Skript `specwright/scripts/next-intent-id.sh` mit Reservierung und Test in `verify`, weil FA-21 „Review + Test" verlangt und Spec §4 die Kollision beim Push als Restfall benennt — Einspruch bei der Freigabe möglich, dann Rückfall Workflow-Text (§6 Schritt 6) | PO (Michael), Widerspruch | vor Umsetzung | [x] kein Einspruch (19.09.) |
 | D2 **im Plan entschieden** (Review E17, E42): Glocke führt bei einer Absicht-Sitzung auf `neu/<projekt>/<sitzung>` — Spec §8 „Glocke bleibt unverändert (Arbeitstitel dort ist Folge-Kleinkram)" betrifft die Benennung; Einspruch bei der Freigabe möglich, dann entfällt #11 | PO (Michael), Widerspruch | vor Umsetzung | [x] kein Einspruch (19.09.) |
 | Plan freigeben (`Status: freigegeben`, `intent.bezuege.plan`, Commit `plan(INT-2026-022)`) | PO (Michael) | vor Umsetzung | [x] 2026-09-19 |
-| PR-Review und Merge nach `main` (löst Auto-Deploy der UI aus, `docs/architecture.md` §5; laufende Sitzungen überleben in tmux, der Sweep läuft nach dem Boot-Restore) | Michael | nach CI grün | [ ] |
+| PR-Review und Merge nach `main` (löst Auto-Deploy der UI aus, `docs/architecture.md` §5; laufende Sitzungen überleben in tmux, der Sweep läuft nach dem Boot-Restore) — PR #87 (https://github.com/michsindlinger/specwright/pull/87), 19.09.2026 | Michael | nach CI grün | [ ] |
 | Projekte auf den neuen Stand bringen, damit `/intent` dort die neue Kennungsregel nutzt: je Projekt `bash update-specwright.sh` im Projekt (Weg: `update-specwright.sh` im Root, Manifest-gesteuert, AR-01); betrifft Kreis Lippe, Applai, Compass, SBS Cockpit u. a. — nie ohne Freigabe auf fremdem `main` | Michael | nach Merge, vor der nächsten Absicht dort | [ ] |
 | Alte Absichten im Hauptcheckout (NZ-04) bleiben; keine Datenläufe | — | — | entfällt |
 
