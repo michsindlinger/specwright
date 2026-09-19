@@ -65,6 +65,7 @@ import {
   type VorhabenStateMessage,
   type VorhabenStep,
   FREITEXT_GRUND_TEXT,
+  eingabeNichtLeerText,
   FREITEXT_MAX_CHARS,
   FREITEXT_QUEUE_MAX,
   NEXT_STEP_SPERRE_TEXT,
@@ -73,7 +74,7 @@ import {
 } from '../../shared/types/vorhaben.protocol.js';
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
 import type { BlockKind } from '../../shared/types/hook-events.protocol.js';
-import { findDialogCue, isIdlePrompt, readStableScreen } from './dialog-driver.js';
+import { eingabeText, findDialogCue, promptZustand, readStableScreen } from './dialog-driver.js';
 
 export interface VorhabenWorkspaceSource {
   getState(): { openProjects: Array<{ id: string; path: string; name: string }>; sessionNames?: Record<string, string> };
@@ -697,10 +698,18 @@ export class VorhabenService {
    * `pasteLocked`, behaviour of `waiting`/`working` unchanged). `strict` (only
    * for `/clear` and the phase command, AK-08, review E14/E15): the session
    * must be seen waiting — live and stable screen, no dialog cue, the empty
-   * prompt line visible and no spinner (`isIdlePrompt`). A `/clear` that hits a
-   * running turn is buffered by Claude Code and executed minutes later (§9 R10).
+   * input box and no spinner (`promptZustand === 'wartet'`). A `/clear` that
+   * hits a running turn is buffered by Claude Code and executed minutes later
+   * (§9 R10); one that hits a filled input box would be appended to the text
+   * standing there — INT-2026-021 gives that its own reason instead of calling
+   * it „arbeitet", and writes the text into `befund` for the message.
    */
-  private async screenCheck(sessions: VorhabenSessionSource, sessionId: string, mode: 'waiting' | 'working' | 'strict'): Promise<true | FreitextGrund> {
+  private async screenCheck(
+    sessions: VorhabenSessionSource,
+    sessionId: string,
+    mode: 'waiting' | 'working' | 'strict',
+    befund?: { eingabe?: string }
+  ): Promise<true | FreitextGrund> {
     if (!sessions.readScreen) return mode === 'waiting' ? true : 'kein_bildschirm';
     const screen = await readStableScreen(
       { readScreen: (id, o) => sessions.readScreen!(id, o), waitForIdle: (id, ms) => sessions.waitForIdle?.(id, ms) ?? Promise.resolve() },
@@ -709,8 +718,20 @@ export class VorhabenService {
     if (screen === 'unstable') return mode === 'waiting' ? true : 'kein_bildschirm';
     if (!screen.live) return mode === 'waiting' ? true : 'kein_bildschirm';
     if (findDialogCue(screen.text)) return 'dialog_offen';
-    if (mode === 'strict' && !isIdlePrompt(screen.text)) return 'arbeitet';
-    return true;
+    // `waiting`/`working` stay as permissive as they were (INT-2026-007) — only
+    // the two machine pastes of INT-2026-018 look this closely.
+    if (mode !== 'strict') return true;
+    switch (promptZustand(screen.text)) {
+      case 'wartet':
+        return true;
+      case 'eingabe_nicht_leer':
+        if (befund) befund.eingabe = eingabeText(screen.text);
+        return 'eingabe_nicht_leer';
+      case 'dialog':
+        return 'dialog_offen';
+      case 'arbeitet':
+        return 'arbeitet';
+    }
   }
 
   /** Settle pause after a paste block, then Enter (`\r`). The awaiting caller keeps the machine-write lock until then. */
@@ -898,7 +919,9 @@ export class VorhabenService {
       const a = this.deps.store.getAssignment(projectId, intentId);
       return !!a && a.sessionId === id && a.step === reuse.a.step && !a.ended;
     };
-    const written = await this.clearAndPaste(sessions, id, command, istNoch);
+    const befund: { eingabe?: string } = {};
+    const written = await this.clearAndPaste(sessions, id, command, istNoch, befund);
+    if (written === 'eingabe_nicht_leer') throw new VorhabenError('PROMPT_NOT_EMPTY', eingabeNichtLeerText(befund.eingabe));
     if (written !== true) throw new VorhabenError('SESSION_WRITE_FAILED', this.grundText(written));
     // (a) tab name, (b) assignment — no `await` between them (AK-06 order; then the hook, then `onPromptText`).
     const at = this.now().toISOString();
@@ -919,9 +942,15 @@ export class VorhabenService {
    * `/clear` paste a synchronous re-check of status and assignment (E15) — no
    * `await` from there to the paste, so nothing can interleave (E13).
    */
-  private async clearAndPaste(sessions: VorhabenSessionSource, sessionId: string, command: string, istNoch: () => boolean): Promise<true | StartInSessionGrund> {
+  private async clearAndPaste(
+    sessions: VorhabenSessionSource,
+    sessionId: string,
+    command: string,
+    istNoch: () => boolean,
+    befund?: { eingabe?: string }
+  ): Promise<true | StartInSessionGrund> {
     const run = async (): Promise<true | StartInSessionGrund> => {
-      const s1 = await this.screenCheck(sessions, sessionId, 'strict');
+      const s1 = await this.screenCheck(sessions, sessionId, 'strict', befund);
       if (s1 !== true) return s1;
       const live = sessions.getSession(sessionId);
       if (!live || live.status !== 'active') return 'beendet';
@@ -940,8 +969,13 @@ export class VorhabenService {
         console.warn(`[vorhaben] ${sessionId}: Leeren nicht bestätigt — keine neue Gesprächskennung binnen ${CLEAR_WAIT_MS} ms`);
         return 'leeren_nicht_bestaetigt';
       }
-      const s2 = await this.screenCheck(sessions, sessionId, 'strict');
-      if (s2 !== true) return s2;
+      const s2 = await this.screenCheck(sessions, sessionId, 'strict', befund);
+      if (s2 !== true) {
+        // INT-2026-021: after `/clear` the box is empty, so text here was typed
+        // between the two pastes — same message, but worth a line in the log.
+        if (s2 === 'eingabe_nicht_leer') console.warn(`[vorhaben] ${sessionId}: nach /clear steht Text in der Eingabezeile — Befehl nicht gepastet`);
+        return s2;
+      }
       if (!sessions.sendInput(sessionId, PASTE_START + command + PASTE_END, { inferUnblock: false })) return 'senden_fehlgeschlagen';
       await this.settleEnter(sessions, sessionId);
       return true;

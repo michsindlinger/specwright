@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
-import { cueToBlockKind, findDialogCue, isIdlePrompt } from '../../src/server/services/dialog-driver.js';
+import { cueToBlockKind, eingabeText, findDialogCue, isIdlePrompt, promptZustand } from '../../src/server/services/dialog-driver.js';
 
 const FIXTURES = resolve(process.cwd(), 'tests', 'fixtures', 'tui');
 const versions = readdirSync(FIXTURES).filter((v) => /^\d+\.\d+\.\d+$/.test(v));
@@ -81,6 +81,57 @@ ${line}
       }
     }
     expect(isIdlePrompt('⏺ Fertig.\n  ⏵⏵ bypass permissions on\n')).toBe(false);
+  });
+});
+
+describe('INT-2026-021 (AK-01, AK-03, AK-04): promptZustand names what the screen shows', () => {
+  const rahmen = (box: string, verlauf = '❯ Frage\n⏺ Antwort.\n✻ Churned for 10s · done 8:38\n'): string =>
+    `${verlauf}────\n${box}\n────\n  ⏵⏵ bypass permissions on (shift+tab to cycle)\n`;
+
+  it('2.1.277/prompt-eingabe-text.txt → eingabe_nicht_leer (real capture: the box holds „npm run verify", U+00A0 after ❯)', () => {
+    const screen = read('2.1.277', 'prompt-eingabe-text.txt');
+    expect(screen).toMatch(/❯\u00a0npm run verify/);
+    expect(promptZustand(screen)).toBe('eingabe_nicht_leer');
+    expect(eingabeText(screen)).toBe('npm run verify');
+    expect(isIdlePrompt(screen)).toBe(false);
+  });
+
+  it('the recorded idle, working and dialog screens keep their meaning', () => {
+    expect(promptZustand(read('2.1.276', 'prompt-idle.txt'))).toBe('wartet');
+    expect(promptZustand(read('2.1.276', 'prompt-working.txt'))).toBe('arbeitet');
+    expect(promptZustand(read('2.1.273', 'plan-dialog.txt'))).toBe('dialog');
+  });
+
+  it('a lone NBSP is an empty box, NBSP plus text is not (2.1.277 draws the live box with U+00A0)', () => {
+    expect(promptZustand(rahmen('❯\u00a0'))).toBe('wartet');
+    expect(promptZustand(rahmen('❯\u00a0npm run verify'))).toBe('eingabe_nicht_leer');
+    expect(eingabeText(rahmen('❯\u00a0npm run verify'))).toBe('npm run verify');
+    expect(eingabeText(rahmen('❯\u00a0'))).toBeUndefined();
+  });
+
+  it('the LAST prompt line decides — the transcript above keeps the earlier prompts', () => {
+    expect(promptZustand(rahmen('❯ '))).toBe('wartet');
+    expect(promptZustand(rahmen('❯ ja, leg den Entwurf an'))).toBe('eingabe_nicht_leer');
+    // the regression this fixes: an empty line in the transcript used to be enough for „idle"
+    expect(promptZustand(rahmen('❯ ja, leg den Entwurf an', '❯ \n⏺ Antwort.\n'))).toBe('eingabe_nicht_leer');
+  });
+
+  it('a dialog outranks a spinner, and a spinner outranks a filled box', () => {
+    expect(promptZustand('  Do you want to proceed?\n✳ Enchanting… (4s · ↓ 204 tokens)\n❯ 1. Yes\n')).toBe('dialog');
+    expect(promptZustand(rahmen('❯ npm run verify', '✳ Enchanting… (4s · ↓ 204 tokens)\n'))).toBe('arbeitet');
+  });
+
+  it('no prompt line at all → arbeitet (fail closed, unchanged)', () => {
+    expect(promptZustand('⏺ Fertig.\n  ⏵⏵ bypass permissions on\n')).toBe('arbeitet');
+  });
+
+  it('isIdlePrompt stays the thin wrapper for every recorded screen (equivalence guard)', () => {
+    for (const v of versions) {
+      for (const f of readdirSync(resolve(FIXTURES, v))) {
+        const screen = read(v, f);
+        expect(isIdlePrompt(screen), `${v}/${f}`).toBe(promptZustand(screen) === 'wartet');
+      }
+    }
   });
 });
 
