@@ -386,7 +386,7 @@ Kein Deploy-Befehl, kein Secret, keine Migration; Hook `production-gate` wird ni
 - [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (Unit: 11 Backend-Dateien 208 Tests, 10 Frontend-Dateien 111 Tests am 19.09.; Bash: `test-next-intent-id` T1–T7; E2E: 40 Prüfungen im Protokoll).
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert; ersetzte Testdateien im PR gesondert genannt (Review E18).
 - [x] E2E-Pfad läuft (Abschnitt 8); Protokoll `design/e2e-protokoll.txt`, Screenshots `design/ist/01…04`.
-- [x] `verify` lokal grün (19.09., 45 s, Ausgabe im PR) — PR-Checks: offen bis CI (CI ist die Wahrheit).
+- [x] `verify` lokal grün (19.09., 45 s, Ausgabe im PR) und PR-Check grün (CI-Run 35469752684, 1 min 31 s, auf 84bfedc/c52641a).
 - [x] `docs/architecture.md`, `security.md`, `design.md`, `product-brief.md` angepasst (Abschnitt 3 „Nein", Doku-Pflicht FA-26).
 - [x] Manuelle Schritte (Abschnitt 10): Merge und Projekt-Updates bleiben offen (Michael), im PR markiert.
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (9 Zeilen).
