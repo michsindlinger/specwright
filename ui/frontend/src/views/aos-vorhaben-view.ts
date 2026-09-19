@@ -12,10 +12,19 @@
  * (`state.ansicht`, INT-2026-010 FA-03/FA-12, AR-05) — a third URL segment of
  * old links is ignored.
  *
- * Route `neu` (INT-2026-010 stage 2, AK-08/AK-09): `aos-neue-absicht` — text,
- * model, „Starten"; while a `/intent` session of the project is pending the
- * card shows that session and the follow logic opens the Vorhaben page once a
- * folder claims the session.
+ * Route `neu[/<projectId>[/<sessionId>]]` (INT-2026-010 stage 2; INT-2026-022):
+ * `aos-neue-absicht` — text, model, „Starten", and under it the list of the
+ * project's pending `/intent` sessions. WHICH session the page shows (docked
+ * terminal, highlight) is ONE memory `pendingIntentSessionId` with an origin:
+ * `start` after „Starten" here (no navigation — the address stays, the model
+ * choice survives, review E30), `adresse` after a click from the overview, the
+ * bell or a reload with the session in the URL. The memory has precedence
+ * over the address segment (the segment is only a way to set it, review E40);
+ * without one the newest pending session is shown (AN-S07). The follow logic
+ * opens the Vorhaben page once a folder claims the REMEMBERED session and the
+ * page is still `neu` (FA-10); other sessions only leave the list (FA-11). A
+ * dead session from the address gets one toast and the segment is dropped
+ * (origin `adresse` only, review E26).
  *
  * INT-2026-011: the session itself stands next to the document — the cloud
  * terminal sidebar docked as the right column (app.ts sets `docked` from the
@@ -75,6 +84,8 @@ export class AosVorhabenView extends LitElement {
    * always comes from the state.
    */
   @state() private pendingIntentSessionId: string | null = null;
+  /** INT-2026-022: where the memory came from — `start` („Starten" here) or `adresse` (segment: click, bell, reload). */
+  private merkerHerkunft: 'start' | 'adresse' | null = null;
   /** The memory's session was seen in `state.pendingIntents` at least once — only then a missing session means "aborted". */
   private pendingSeen = false;
   /** Navigation to the claimed row was requested; the memory is kept until the route changed (no flash, review 15). */
@@ -91,6 +102,7 @@ export class AosVorhabenView extends LitElement {
 
   private forgetPending(): void {
     this.pendingIntentSessionId = null;
+    this.merkerHerkunft = null;
     this.pendingSeen = false;
     this.pendingNavigated = false;
   }
@@ -116,6 +128,18 @@ export class AosVorhabenView extends LitElement {
       if (route.view === 'vorhaben' && this.pendingNavigated) this.forgetPending();
       this.route = route.view as VorhabenRoute;
       this.segments = route.segments;
+      // INT-2026-022 (FA-15, plan §3 Punkt 7 b): a session in the address sets the memory — click from the
+      // overview, bell, reload. The same segment again changes nothing; the overview keeps the memory (c).
+      if (route.view === 'neu') {
+        const sid = route.segments[1];
+        if (sid && sid !== this.pendingIntentSessionId) {
+          this.forgetPending();
+          this.pendingIntentSessionId = sid;
+          this.merkerHerkunft = 'adresse';
+        }
+        // Back on `neu` after a detour: a row may already carry the remembered session (FA-10).
+        this.followStartedIntent(this.vorhabenState);
+      }
       // INT-2026-019: a newly entered Vorhaben page asks once; another route forgets everything.
       const key = this.pageKey();
       if (!key) {
@@ -327,8 +351,11 @@ export class AosVorhabenView extends LitElement {
     e.stopPropagation();
     const neueAbsicht = e.detail.step === 'intent' && !e.detail.intentId;
     if (neueAbsicht) {
+      // INT-2026-022 (FA-05/FA-06, review E30): the memory alone selects terminal and highlight — no navigate, the
+      // address (and with it the page node and the model choice) stays as it is; origin `start` (review E26).
       this.forgetPending();
       this.pendingIntentSessionId = e.detail.sessionId;
+      this.merkerHerkunft = 'start';
     }
     // INT-2026-018 (AK-04/AK-05): the click continued in the live session, or closed it for a new one.
     const message = neueAbsicht
@@ -347,37 +374,32 @@ export class AosVorhabenView extends LitElement {
     }
   }
 
-  /** Oldest pending `/intent` session of a project — the one `onDirAdded` claims next (INT-2026-008, R-3). */
-  private pendingOf(state: VorhabenState | null, projectId: string | null): VorhabenPendingIntent | undefined {
-    if (!state || !projectId) return undefined;
-    return state.pendingIntents.filter((p) => p.projectId === projectId).sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0))[0];
+  /** Pending `/intent` sessions of a project, oldest first (the order `onDirAdded` claims in; the list shows it). */
+  private pendingsOf(state: VorhabenState | null, projectId: string | null): VorhabenPendingIntent[] {
+    if (!state || !projectId) return [];
+    return state.pendingIntents.filter((p) => p.projectId === projectId).sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0));
   }
 
   /**
-   * On the `neu` page a pending session from the state (typed by hand, or
-   * after a reload) is followed like one started here (AK-07); a memory whose
-   * session shows up as pending is marked as seen.
+   * INT-2026-022 (plan §3 Punkt 7 d): the memory is set by „Starten" or the address only — never by the state.
+   * A memory whose session shows up as pending is marked as seen (then a missing session means „aborted").
    */
   private notePendingIntent(state: VorhabenState | null): void {
     if (!state) return;
     const memory = this.pendingIntentSessionId;
-    if (memory) {
-      if (state.pendingIntents.some((p) => p.sessionId === memory)) this.pendingSeen = true;
-      return;
-    }
-    if (this.route !== 'neu') return;
-    const pending = this.pendingOf(state, this.currentProjectId());
-    if (pending) {
-      this.pendingIntentSessionId = pending.sessionId;
-      this.pendingSeen = true;
-    }
+    if (memory && state.pendingIntents.some((p) => p.sessionId === memory)) this.pendingSeen = true;
   }
 
   /**
    * First `vorhaben:state` whose row carries the remembered intent session →
-   * open that Vorhaben (FA-22). The same broadcast drops the session from
-   * `pendingIntents` (review 14). A session that is neither pending nor on a
-   * row any more was aborted: forget it.
+   * open that Vorhaben (FA-10) — but only while the page is still `neu`
+   * (spec Ablauf B.3, INT-2026-022 e); on another route the memory waits.
+   * The same broadcast drops the session from `pendingIntents` (review 14).
+   * A session that was seen pending and is neither pending nor on a row any
+   * more was aborted: forget it (e). A session from the ADDRESS that a loaded
+   * state does not know at all (dead link, ended before the click) gets one
+   * toast, the segment is dropped and the memory forgotten (f, review E26);
+   * a `start` memory is never toasted — its entry arrives with the next broadcast.
    */
   private followStartedIntent(state: VorhabenState | null): void {
     const pending = this.pendingIntentSessionId;
@@ -385,28 +407,52 @@ export class AosVorhabenView extends LitElement {
     const row = state.rows.find((r) => r.session?.id === pending);
     if (row) {
       // Memory stays until the route changed (onRoute): the `neu` page keeps announcing the claimed row's session meanwhile (FA-19).
-      if (this.pendingNavigated) return;
+      if (this.pendingNavigated || this.route !== 'neu') return;
       this.pendingNavigated = true;
       this.openRow(row);
       return;
     }
-    if (this.pendingSeen && !state.pendingIntents.some((p) => p.sessionId === pending)) this.forgetPending();
+    const stillPending = state.pendingIntents.some((p) => p.sessionId === pending);
+    if (stillPending) return;
+    if (this.pendingSeen) {
+      this.forgetPending();
+      return;
+    }
+    if (this.merkerHerkunft === 'adresse' && !state.loading) {
+      const pid = this.route === 'neu' ? this.segments[0] : null;
+      this.forgetPending();
+      this.dispatchEvent(new CustomEvent('show-toast', { bubbles: true, composed: true, detail: { message: 'Sitzung ist beendet', type: 'warning' } }));
+      if (pid && this.segments[1]) this.go('neu', [pid]);
+    }
   }
 
   /**
-   * Session of the `neu` page (INT-2026-008, AK-01): the oldest pending
-   * `/intent` session; right after the claim — pending gone, row there, route
-   * not yet switched — the claimed row's session (same id → the docked
-   * terminal keeps its tab, FA-19).
+   * Session of the `neu` page (INT-2026-022, plan §3 Punkt 7): the remembered
+   * session when it is pending, else the NEWEST pending one of the project
+   * (AN-S07); right after the claim — pending gone, row there, route not yet
+   * switched — the claimed row's session (same id → the docked terminal keeps
+   * its tab, FA-19).
    */
   private neuSitzung(): { pending?: VorhabenPendingIntent; claimedRow?: VorhabenRow } {
     const pid = this.currentProjectId();
     const state = this.vorhabenState;
-    const pending = this.pendingOf(state, pid);
-    if (pending) return { pending };
+    const pendings = this.pendingsOf(state, pid);
     const memory = this.pendingIntentSessionId;
+    const remembered = memory ? pendings.find((p) => p.sessionId === memory) : undefined;
+    const pending = remembered ?? pendings[pendings.length - 1];
+    if (pending) return { pending };
     const claimedRow = memory && state && pid ? state.rows.find((r) => r.projectId === pid && r.session?.id === memory) : undefined;
     return claimedRow ? { claimedRow } : {};
+  }
+
+  /** INT-2026-022 (FA-15, AK-07): click on an entry without a folder — Mac: „Neue Absicht" with this session in the address; phone: the terminal. */
+  private onAbsichtOpen(e: CustomEvent<{ pending: VorhabenPendingIntent }>): void {
+    const p = e.detail.pending;
+    if (this.breakpoint.isMobile) {
+      document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId: p.sessionId } }));
+      return;
+    }
+    this.go('neu', [encodeURIComponent(p.projectId), p.sessionId]);
   }
 
   private onDocSelect(e: CustomEvent<{ key: ProjectDocKey | null }>): void {
@@ -459,6 +505,7 @@ export class AosVorhabenView extends LitElement {
       .connected=${this.connected}
       @filter-change=${this.onFilterChange}
       @vorhaben-open=${this.onVorhabenOpen}
+      @absicht-open=${this.onAbsichtOpen}
       @vorhaben-new=${this.onVorhabenNew}
     ></aos-vorhaben-uebersicht>`;
   }
@@ -479,7 +526,7 @@ export class AosVorhabenView extends LitElement {
     ></aos-projekt-seite>`;
   }
 
-  /** Route `neu` (FA-10/FA-11): title, project, then `aos-neue-absicht` (form, or the pending session's card). */
+  /** Route `neu` (FA-10/FA-11; INT-2026-022): title, project, then `aos-neue-absicht` (form plus the list of pending sessions). */
   private renderNeu() {
     const pid = this.currentProjectId();
     const project = pid ? this.vorhabenState?.projects.find((p) => p.id === pid) ?? null : null;
@@ -491,7 +538,7 @@ export class AosVorhabenView extends LitElement {
     }
     const { pending } = this.neuSitzung();
     const mobile = this.breakpoint.isMobile;
-    // The card of a pending session; its terminal is the docked sidebar (FA-18), the phone shows a hint only (AK-06).
+    // The list shows every pending session of the project (oldest first); the selected one is the page's session (docked terminal, FA-06/FA-15).
     return html`<div class="neue-absicht">
       <h1>Neue Absicht</h1>
       <div class="sub">${project ? project.name : ''}</div>
@@ -500,7 +547,8 @@ export class AosVorhabenView extends LitElement {
             .projectId=${project.id}
             .projectPath=${project.path}
             .projectName=${project.name}
-            .pending=${pending ?? null}
+            .pendings=${this.pendingsOf(this.vorhabenState, project.id)}
+            .selectedSessionId=${pending?.sessionId ?? null}
             .mobile=${mobile}
             @vorhaben-session-started=${this.onSessionStarted}
           ></aos-neue-absicht>`

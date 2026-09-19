@@ -988,3 +988,12 @@ describe('app.ts — leaving a docked page closes the terminal, Cmd+← (INT-202
     el.remove();
   });
 });
+
+describe('INT-2026-022: pageOfRoute with the session as second segment of neu', () => {
+  it('neu/<projekt>/<sitzung> → the project, no intentId (the segment is the session, not a Kennung)', async () => {
+    const { pageOfRoute } = await import('../../frontend/src/app.js');
+    expect(pageOfRoute({ view: 'neu', segments: ['p%20a', 'cloud-1-7'] })).toEqual({ projectId: 'p a', intentId: null });
+    expect(pageOfRoute({ view: 'neu', segments: ['p'] })).toEqual({ projectId: 'p', intentId: null });
+    expect(pageOfRoute({ view: 'neu', segments: [] })).toEqual({ projectId: null, intentId: null });
+  });
+});

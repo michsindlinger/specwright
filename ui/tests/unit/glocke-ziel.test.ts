@@ -45,9 +45,12 @@ describe('glockeZiel()', () => {
     expect(glockeZiel('cloud-1', s)).toEqual({ route: 'vorhaben', segments: ['p', 'INT-2026-001'] });
   });
 
-  it('pending `/intent` session without a folder → „Neue Absicht" of its project', () => {
-    const s = state([], [{ sessionId: 'cloud-7', projectId: 'q', cwd: '/q', arbeitskopie: 'main', since: '', session: session('cloud-7') }]);
-    expect(glockeZiel('cloud-7', s)).toEqual({ route: 'neu', segments: ['q'] });
+  it('pending `/intent` session without a folder → „Neue Absicht" of its project WITH the session (INT-2026-022, D2)', () => {
+    const pend = (sessionId: string, since: string): VorhabenState['pendingIntents'][number] => ({ sessionId, projectId: 'q', projectName: 'Q', cwd: '/q', arbeitskopie: 'main', since, session: session(sessionId), zustand: 'wartet', zustandDetail: '' });
+    const s = state([], [pend('cloud-7', '2026-09-19T08:00:00Z'), pend('cloud-8', '2026-09-19T09:00:00Z')]);
+    expect(glockeZiel('cloud-7', s)).toEqual({ route: 'neu', segments: ['q', 'cloud-7'] });
+    // the older one is not the newest — the bell still lands on the tapped session, not on the page default
+    expect(glockeZiel('cloud-8', s)).toEqual({ route: 'neu', segments: ['q', 'cloud-8'] });
   });
 
   it('unknown session, empty id or no state → terminal', () => {

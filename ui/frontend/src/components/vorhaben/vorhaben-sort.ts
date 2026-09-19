@@ -12,7 +12,7 @@
  * row without a live session is filed by its phase.
  */
 
-import type { VorhabenPhase, VorhabenRow, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
+import type { VorhabenPendingIntent, VorhabenPhase, VorhabenRow, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
 
 export type VorhabenGroupKey = 'wartet_auf_dich' | 'wartet' | 'laeuft' | 'umgesetzt';
 
@@ -20,6 +20,8 @@ export interface VorhabenGroup {
   key: VorhabenGroupKey;
   label: string;
   rows: VorhabenRow[];
+  /** INT-2026-022 (FA-12/FA-13): pending `/intent` sessions without a folder, newest first, rendered before the rows. */
+  pendings: VorhabenPendingIntent[];
 }
 
 export const GROUP_LABELS: Record<VorhabenGroupKey, string> = {
@@ -41,6 +43,11 @@ export function groupOf(row: VorhabenRow): VorhabenGroupKey {
   return 'laeuft';
 }
 
+/** INT-2026-022 (FA-13): an entry without a folder has no phase — its session state alone decides; never „umgesetzt". */
+export function pendingGroupOf(p: Pick<VorhabenPendingIntent, 'zustand'>): VorhabenGroupKey {
+  return isWaitingZustand(p.zustand) ? 'wartet_auf_dich' : 'laeuft';
+}
+
 const GROUP_ORDER: VorhabenGroupKey[] = ['wartet_auf_dich', 'laeuft', 'umgesetzt'];
 
 /** Sorted copy: group order, then newest change first (FA-02). */
@@ -53,13 +60,22 @@ export function sortRows(rows: VorhabenRow[]): VorhabenRow[] {
   });
 }
 
-/** Filter by project (null = all), then group in fixed order; empty groups are dropped. */
-export function groupRows(rows: VorhabenRow[], projectId: string | null): VorhabenGroup[] {
+/**
+ * Filter by project (null = all), then group in fixed order; empty groups are dropped.
+ * INT-2026-022 (FA-12/FA-13/FA-16): pending intents join their group (newest start first, before the rows);
+ * an entry whose session already carries a row is left out — entry and row of one session never stand together.
+ */
+export function groupRows(rows: VorhabenRow[], projectId: string | null, pendings: VorhabenPendingIntent[] = []): VorhabenGroup[] {
   const filtered = projectId ? rows.filter((r) => r.projectId === projectId) : rows;
   const sorted = sortRows(filtered);
-  const groups: VorhabenGroup[] = GROUP_ORDER.map((key) => ({ key, label: GROUP_LABELS[key], rows: [] }));
+  const groups: VorhabenGroup[] = GROUP_ORDER.map((key) => ({ key, label: GROUP_LABELS[key], rows: [], pendings: [] }));
   for (const row of sorted) groups.find((g) => g.key === groupOf(row))!.rows.push(row);
-  return groups.filter((g) => g.rows.length > 0);
+  const claimed = new Set(rows.filter((r) => r.session && !r.session.ended).map((r) => r.session!.id));
+  const shown = pendings
+    .filter((p) => (!projectId || p.projectId === projectId) && !claimed.has(p.sessionId))
+    .sort((a, b) => (a.since > b.since ? -1 : a.since < b.since ? 1 : 0));
+  for (const p of shown) groups.find((g) => g.key === pendingGroupOf(p))!.pendings.push(p);
+  return groups.filter((g) => g.rows.length > 0 || g.pendings.length > 0);
 }
 
 export function countWaitingForMe(rows: VorhabenRow[]): number {

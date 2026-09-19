@@ -2,12 +2,13 @@
 /**
  * INT-2026-010 stage 2 (plan §4 #67): the page „Neue Absicht" has exactly
  * three elements (FA-10), „Starten" calls start-step intent with the text as
- * firstInput and emits vorhaben-session-started (FA-11); while a `/intent`
- * session of the project is pending the card replaces the form — Mac points
- * to the docked terminal (INT-2026-011), phone to the terminal (AK-06) — and names the pending
- * first input until it is delivered. Also: the `gesperrt` state of
- * aos-naechster-schritt (FA-21) and the shared model preselection helper.
- * INT-2026-020: image paste into the field (AK-01…AK-06) — see the last block.
+ * firstInput and emits vorhaben-session-started (FA-11). Also: the `gesperrt`
+ * state of aos-naechster-schritt (FA-21) and the shared model preselection helper.
+ * INT-2026-020: image paste into the field (AK-01…AK-06) — see the paste block.
+ * INT-2026-022 (AK-01…AK-04, AK-11): the form stays while sessions are pending,
+ * the list under it names every pending session with its own terminal button,
+ * sessions sharing a copy get the NZ-01 sentence, „Starten" asks for a new
+ * worktree and a refusal stands under the button — the card is gone (AN-S13).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { VorhabenPendingIntent } from '../../src/shared/types/vorhaben.protocol.js';
@@ -48,19 +49,21 @@ const settle = async (el: HTMLElement & { updateComplete: Promise<boolean> }): P
 };
 
 const pendingOf = (o: Partial<VorhabenPendingIntent> = {}, session: Partial<VorhabenPendingIntent['session']> = {}): VorhabenPendingIntent => ({
-  sessionId: 'cloud-1-7', projectId: 'p', cwd: '/p', arbeitskopie: 'main', since: '2026-09-16T09:00:00.000Z',
+  sessionId: 'cloud-1-7', projectId: 'p', projectName: 'P', cwd: '/p', arbeitskopie: 'main', since: '2026-09-16T09:00:00.000Z',
   session: { id: 'cloud-1-7', name: 'intent', model: 'haiku', agentStatus: 'working', ...session },
+  zustand: 'arbeitet', zustandDetail: 'haiku',
   ...o,
 });
 
-async function neu(mobile = false, pending: VorhabenPendingIntent | null = null) {
+async function neu(mobile = false, pendings: VorhabenPendingIntent[] = [], selectedSessionId: string | null = null) {
   await import('../../frontend/src/components/vorhaben/aos-neue-absicht.js');
   const el = document.createElement('aos-neue-absicht');
   el.projectId = 'p';
   el.projectPath = '/p';
   el.projectName = 'P';
   el.mobile = mobile;
-  el.pending = pending;
+  el.pendings = pendings;
+  el.selectedSessionId = selectedSessionId;
   document.body.appendChild(el);
   await settle(el);
   return el;
@@ -87,7 +90,7 @@ describe('aos-neue-absicht (FA-10, FA-11)', () => {
     el.remove();
   });
 
-  it('„Starten" calls start-step intent in the main project with the trimmed text as firstInput and emits vorhaben-session-started; the field is cleared', async () => {
+  it('„Starten" calls start-step intent with a NEW worktree (INT-2026-022 FA-07) and the trimmed text as firstInput, emits vorhaben-session-started; the field is cleared, the model choice stays (FA-05)', async () => {
     const el = await neu();
     const sr = el.shadowRoot!;
     const ta = sr.querySelector('textarea')!;
@@ -103,9 +106,12 @@ describe('aos-neue-absicht (FA-10, FA-11)', () => {
     el.addEventListener('vorhaben-session-started', (e) => started.push((e as CustomEvent).detail));
     start.click();
     await settle(el);
-    expect(startStep).toHaveBeenCalledWith('p', undefined, 'intent', { providerId: 'glm', modelId: 'glm-5.2' }, { kind: 'main' }, { firstInput: 'Die Liste sortiert falsch, seit gestern.' });
+    expect(startStep).toHaveBeenCalledWith('p', undefined, 'intent', { providerId: 'glm', modelId: 'glm-5.2' }, { kind: 'new-worktree' }, { firstInput: 'Die Liste sortiert falsch, seit gestern.' });
     expect(started).toEqual([{ sessionId: 'cs-9', step: 'intent' }]);
     expect(sr.querySelector('textarea')!.value).toBe('');
+    // FA-05: the model choice survives the start; the form is still there (FA-01)
+    expect(sr.querySelector('aos-model-selector')!.externalSelectedModelId).toBe('glm-5.2');
+    expect(sr.querySelector('textarea')).not.toBeNull();
     el.remove();
   });
 
@@ -129,35 +135,94 @@ describe('aos-neue-absicht (FA-10, FA-11)', () => {
     el.remove();
   });
 
-  it('pending session: the card replaces the form — Mac „Terminal rechts", phone „im Terminal antworten" with a terminal button; the pending first input is named until delivered (AK-06, plan §3)', async () => {
+  it('INT-2026-022 AK-01/FA-01, FA-03: the form stays with 0, 1 and 3 pending sessions; without sessions there is no list block at all', async () => {
+    for (const n of [0, 1, 3]) {
+      const pendings = Array.from({ length: n }, (_, i) => pendingOf({ sessionId: `s${i}`, since: `2026-09-19T0${i}:00:00Z`, session: { id: `s${i}`, name: `intent ${i}`, model: 'haiku', agentStatus: 'working' } }));
+      const el = await neu(false, pendings);
+      const sr = el.shadowRoot!;
+      expect(sr.querySelector('textarea')).not.toBeNull();
+      expect(sr.querySelector('aos-model-selector')).not.toBeNull();
+      expect(sr.querySelector('button.start')?.textContent?.trim()).toBe('Starten');
+      expect(sr.querySelector('.karte')).toBeNull();
+      if (n === 0) expect(sr.querySelector('.sitzungen')).toBeNull();
+      else expect(sr.querySelector('.sitzungen h2')?.textContent?.trim()).toBe(`Laufende Absicht-Sitzungen · ${n}`);
+      expect(sr.querySelectorAll('.eintrag').length).toBe(n);
+      el.remove();
+    }
+  });
+
+  it('AK-02/FA-02, FA-08: each entry names session, copy label, state text and „Im Terminal öffnen" for ITS session (not the oldest), oldest first; the pending first input is named until delivered; the selected one is highlighted', async () => {
     const seen: string[] = [];
     const onOpen = (e: Event): void => {
       seen.push((e as CustomEvent<{ sessionId: string }>).detail.sessionId);
     };
     document.addEventListener('open-terminal-session', onOpen);
-    const el = await neu(false, pendingOf({}, { firstInputPending: true }));
+    const alt = pendingOf({ sessionId: 'alt', cwd: '/p-worktrees/session-alt', arbeitskopie: 'session/alt', since: '2026-09-19T08:00:00Z', session: { id: 'alt', name: 'intent', model: 'haiku', agentStatus: 'blocked', blockKind: 'rueckfrage' }, zustand: 'wartet_rueckfrage', zustandDetail: 'Rückfrage' });
+    const neuS = pendingOf({ sessionId: 'neu', cwd: '/p-worktrees/session-neu', arbeitskopie: 'session/neu', since: '2026-09-19T09:00:00Z', session: { id: 'neu', name: 'intent', model: 'haiku', agentStatus: 'working', firstInputPending: true } });
+    const el = await neu(false, [alt, neuS], 'neu');
     const sr = el.shadowRoot!;
-    expect(sr.querySelector('textarea')).toBeNull();
-    expect(sr.textContent).toContain('Absicht-Sitzung „intent" läuft — Vorhaben entsteht');
-    expect(sr.textContent).toContain('Terminal rechts');
-    expect(sr.textContent).toContain('Dein Text wird nach der ersten Frage übergeben.');
-    (sr.querySelector('button.terminal') as HTMLButtonElement).click();
-    expect(seen).toEqual(['cloud-1-7']);
-    // delivered → the hint is gone
-    el.pending = pendingOf();
+    const eintraege = [...sr.querySelectorAll('.eintrag')];
+    expect(eintraege.map((e) => e.getAttribute('data-session'))).toEqual(['alt', 'neu']);
+    expect(eintraege[0].textContent?.replace(/\s+/g, ' ')).toContain('intent · session/alt · wartet · Rückfrage · Rückfrage');
+    expect(eintraege[0].querySelector('.dot')?.classList.contains('wartet_rueckfrage')).toBe(true);
+    expect(eintraege[1].textContent?.replace(/\s+/g, ' ')).toContain('intent · session/neu · arbeitet · haiku');
+    expect(eintraege[1].textContent).toContain('Dein Text wird nach der ersten Frage übergeben');
+    expect(eintraege[0].textContent).not.toContain('Dein Text wird');
+    expect(eintraege[1].classList.contains('gewaehlt')).toBe(true);
+    expect(eintraege[0].classList.contains('gewaehlt')).toBe(false);
+    expect(sr.textContent).not.toContain('/p-worktrees'); // label, never a host path (FA-08)
+    (eintraege[1].querySelector('button.terminal') as HTMLButtonElement).click();
+    (eintraege[0].querySelector('button.terminal') as HTMLButtonElement).click();
+    expect(seen).toEqual(['neu', 'alt']);
+    // delivered → the hint is gone; highlight follows the property
+    el.pendings = [alt, pendingOf({ ...neuS, session: { ...neuS.session, firstInputPending: undefined } })];
+    el.selectedSessionId = 'alt';
     await settle(el);
-    expect(sr.textContent).not.toContain('Dein Text wird nach der ersten Frage übergeben.');
-    // the session is gone → the form is back
-    el.pending = null;
-    await settle(el);
-    expect(sr.querySelector('textarea')).not.toBeNull();
-    el.remove();
-    const m = await neu(true, pendingOf());
-    expect(m.shadowRoot!.textContent).toContain('im Terminal antworten');
-    (m.shadowRoot!.querySelector('button.terminal') as HTMLButtonElement).click();
-    expect(seen).toEqual(['cloud-1-7', 'cloud-1-7']);
+    expect(sr.textContent).not.toContain('Dein Text wird nach der ersten Frage übergeben');
+    expect([...sr.querySelectorAll('.eintrag')].map((e) => e.classList.contains('gewaehlt'))).toEqual([true, false]);
+    // no group hint: different copies
+    expect(sr.querySelector('.gruppe-hinweis')).toBeNull();
     document.removeEventListener('open-terminal-session', onOpen);
+    el.remove();
+    // phone: same list, the button opens the terminal
+    const m = await neu(true, [alt]);
+    expect(m.shadowRoot!.querySelector('textarea')).not.toBeNull();
+    expect(m.shadowRoot!.querySelectorAll('.eintrag').length).toBe(1);
     m.remove();
+  });
+
+  it('AK-03/FA-04: two sessions in the same copy → one grey sentence under the last of them naming the OLDER one; three → „3 Sitzungen … ältesten"', async () => {
+    const a = pendingOf({ sessionId: 'a', since: '2026-09-19T08:00:00Z', session: { id: 'a', name: 'qwen3.8-flash-next:iq3', model: 'haiku', agentStatus: 'working' } });
+    const b = pendingOf({ sessionId: 'b', since: '2026-09-19T09:00:00Z', session: { id: 'b', name: 'Absicht 2', model: 'haiku', agentStatus: 'working' } });
+    const c = pendingOf({ sessionId: 'c', cwd: '/p-worktrees/session-c', arbeitskopie: 'session/c', since: '2026-09-19T08:30:00Z', session: { id: 'c', name: 'Absicht 3', model: 'haiku', agentStatus: 'working' } });
+    const el = await neu(false, [a, c, b]);
+    const sr = el.shadowRoot!;
+    const hints = [...sr.querySelectorAll('.gruppe-hinweis')];
+    expect(hints).toHaveLength(1);
+    expect(hints[0].textContent?.replace(/\s+/g, ' ').trim()).toBe('Beide laufen in ‚main\' — der nächste Ordner wird der älteren Sitzung ‚qwen3.8-flash-next:iq3\' zugeordnet.');
+    // the sentence stands right after the LAST entry of the group (b), not after a or c
+    expect(hints[0].previousElementSibling?.getAttribute('data-session')).toBe('b');
+    el.pendings = [a, b, pendingOf({ sessionId: 'd', since: '2026-09-19T10:00:00Z', session: { id: 'd', name: 'Absicht 4', model: 'haiku', agentStatus: 'working' } })];
+    await settle(el);
+    expect(sr.querySelector('.gruppe-hinweis')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('3 Sitzungen laufen in ‚main\' — der nächste Ordner wird der ältesten Sitzung ‚qwen3.8-flash-next:iq3\' zugeordnet.');
+    el.remove();
+  });
+
+  it('AK-11/FA-09: a refusal (kein Git-Repository, Isolation aus) stands under the button with the backend\'s text; the text stays in the field; no card', async () => {
+    startStep.mockRejectedValueOnce(new Error('Keine Arbeitskopie möglich: Worktree-Isolation ist für dieses Projekt abgeschaltet — in Projekt › Einstellungen einschalten oder die Absicht im Terminal starten.'));
+    const el = await neu();
+    const sr = el.shadowRoot!;
+    const ta = sr.querySelector('textarea')!;
+    ta.value = 'Mein Text bleibt';
+    ta.dispatchEvent(new Event('input'));
+    await settle(el);
+    (sr.querySelector('button.start') as HTMLButtonElement).click();
+    await settle(el);
+    expect(startStep).toHaveBeenCalledWith('p', undefined, 'intent', { providerId: 'anthropic', modelId: 'haiku' }, { kind: 'new-worktree' }, { firstInput: 'Mein Text bleibt' });
+    expect(sr.querySelector('.fehler')?.textContent).toBe('Keine Arbeitskopie möglich: Worktree-Isolation ist für dieses Projekt abgeschaltet — in Projekt › Einstellungen einschalten oder die Absicht im Terminal starten.');
+    expect(ta.value).toBe('Mein Text bleibt');
+    expect(sr.querySelector('.karte')).toBeNull();
+    el.remove();
   });
 });
 
@@ -348,7 +413,7 @@ describe('INT-2026-020 Bild einfügen (AK-01…AK-06)', () => {
     expect(ta.value).toBe('Bitte ansehen: /rt/intent-paste/img-1.png  danke');
     (sr.querySelector('button.start') as HTMLButtonElement).click();
     await settle(el);
-    expect(startStep).toHaveBeenCalledWith('p', undefined, 'intent', { providerId: 'anthropic', modelId: 'haiku' }, { kind: 'main' }, { firstInput: 'Bitte ansehen: /rt/intent-paste/img-1.png  danke' });
+    expect(startStep).toHaveBeenCalledWith('p', undefined, 'intent', { providerId: 'anthropic', modelId: 'haiku' }, { kind: 'new-worktree' }, { firstInput: 'Bitte ansehen: /rt/intent-paste/img-1.png  danke' });
     el.remove();
   });
 

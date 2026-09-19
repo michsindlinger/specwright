@@ -86,8 +86,9 @@ const row = (o: Partial<VorhabenRow> = {}): VorhabenRow => ({
 });
 
 const pendingOf = (o: Partial<VorhabenPendingIntent> = {}): VorhabenPendingIntent => ({
-  sessionId: 'cloud-1-7', projectId: 'p', cwd: '/p', arbeitskopie: 'main', since: '2026-09-16T09:00:00.000Z',
+  sessionId: 'cloud-1-7', projectId: 'p', projectName: 'P', cwd: '/p', arbeitskopie: 'main', since: '2026-09-16T09:00:00.000Z',
   session: { id: 'cloud-1-7', name: 'intent', model: 'opus', agentStatus: 'done' },
+  zustand: 'wartet', zustandDetail: '',
   ...o,
 });
 
@@ -258,7 +259,7 @@ describe('aos-vorhaben-view — started step stays on the page (FA-22, AN-S03)',
     el.remove();
   });
 
-  it('„Starten" on the route neu: the pending session from the state is announced for the docked terminal (FA-18); navigation to the new Vorhaben once a row carries the session — same broadcast that drops the pending entry, same session id → same tab (AK-01, AK-03, FA-19)', async () => {
+  it('„Starten" on the route neu: the started session is announced for the docked terminal once its entry arrives (FA-18); navigation to the new Vorhaben once a row carries the session — same broadcast that drops the pending entry, same session id → same tab (AK-01, AK-03, FA-19; INT-2026-022: form and list instead of a card)', async () => {
     route = { view: 'neu', segments: ['p'] };
     const el = await view('neu');
     stateListener!(state([]));
@@ -268,7 +269,7 @@ describe('aos-vorhaben-view — started step stays on the page (FA-22, AN-S03)',
     const neu = block.querySelector('aos-neue-absicht')!;
     expect(neu).not.toBeNull();
     expect(neu.projectId).toBe('p');
-    expect(neu.pending).toBeNull();
+    expect(neu.pendings).toEqual([]);
     expect(block.querySelector('aos-naechster-schritt')).toBeNull();
     expect(el.querySelector('aos-projekt-seite')).toBeNull();
     expect(el.querySelector('.vorhaben-split, aos-gespraech')).toBeNull();
@@ -281,13 +282,14 @@ describe('aos-vorhaben-view — started step stays on the page (FA-22, AN-S03)',
     await settle(el);
     expect(navigate).not.toHaveBeenCalled();
     expect(pageSessions).toEqual([]);
-    // the backend lists the pending session → the card, and the page announces that session (the terminal docks on its tab)
+    // the backend lists the pending session → the list shows it, the form stays, and the page announces that session (the terminal docks on its tab)
     stateListener!(state([], [pendingOf()]));
     await settle(el);
     expect(el.querySelector('.vorhaben-view')!.classList.contains('split')).toBe(false);
-    expect(el.querySelector('.vorhaben-split, aos-gespraech')).toBeNull();
-    const card = el.querySelector('.neue-absicht aos-neue-absicht')!;
-    expect(card.pending?.sessionId).toBe('cloud-1-7'); // the card replaces the form (AK-04)
+    const form = el.querySelector('.neue-absicht aos-neue-absicht')!;
+    expect(form.pendings.map((p) => p.sessionId)).toEqual(['cloud-1-7']);
+    expect(form.selectedSessionId).toBe('cloud-1-7');
+    expect(form.shadowRoot!.querySelector('textarea')).not.toBeNull();
     expect(pageSessions).toEqual(['cloud-1-7']);
     expect(navigate).not.toHaveBeenCalled();
     // ONE broadcast: pending gone, the new row carries the session → navigate; the same session id is not announced again (FA-19: same tab, no replay)
@@ -298,39 +300,30 @@ describe('aos-vorhaben-view — started step stays on the page (FA-22, AN-S03)',
     el.remove();
   });
 
-  it('a pending session typed by hand or seen after a reload is followed too; an aborted one is forgotten (AK-07, AK-03)', async () => {
+  it('INT-2026-022 (AN-S07): without a memory the page shows the NEWEST pending session; a hand-typed session that vanishes only leaves the list — no navigation, the form stays', async () => {
     route = { view: 'neu', segments: ['p'] };
     const el = await view('neu');
-    stateListener!(state([], [pendingOf({ sessionId: 'cloud-2-2', session: { id: 'cloud-2-2', name: 'intent', model: 'opus', agentStatus: 'working' } })]));
+    stateListener!(state([], [pendingOf({ sessionId: 'cloud-3-1', since: '2026-09-16T09:00:00.000Z' }), pendingOf({ sessionId: 'cloud-3-2', since: '2026-09-16T10:00:00.000Z' })]));
     await settle(el);
-    expect(el.querySelector('.neue-absicht aos-neue-absicht')?.pending?.sessionId).toBe('cloud-2-2');
-    expect(pageSessions).toEqual(['cloud-2-2']);
-    // aborted: neither pending nor a row → no navigation, the form is back
-    stateListener!(state([]));
+    const form = el.querySelector('.neue-absicht aos-neue-absicht')!;
+    expect(form.pendings.map((p) => p.sessionId)).toEqual(['cloud-3-1', 'cloud-3-2']); // list oldest first
+    expect(form.selectedSessionId).toBe('cloud-3-2'); // page session newest
+    expect(pageSessions).toEqual(['cloud-3-2']);
+    // the newest ends without a folder → the older one is shown; nothing navigates
+    stateListener!(state([], [pendingOf({ sessionId: 'cloud-3-1', since: '2026-09-16T09:00:00.000Z' })]));
     await settle(el);
     expect(navigate).not.toHaveBeenCalled();
-    expect(el.querySelector('.neue-absicht aos-neue-absicht')?.pending).toBeNull();
-    // seen again later → followed
-    stateListener!(state([], [pendingOf({ sessionId: 'cloud-2-3', session: { id: 'cloud-2-3', name: 'intent', model: 'opus', agentStatus: 'done' } })]));
+    expect(el.querySelector('.neue-absicht aos-neue-absicht')!.selectedSessionId).toBe('cloud-3-1');
+    expect(pageSessions).toEqual(['cloud-3-2', 'cloud-3-1']);
+    // all gone → form without list, page without session
+    stateListener!(state([]));
     await settle(el);
-    stateListener!(state([row({ intentId: 'INT-2026-010', session: { id: 'cloud-2-3', name: 'intent', model: 'opus', agentStatus: 'working' } })]));
-    await settle(el);
-    expect(navigate).toHaveBeenCalledWith('vorhaben', ['p', 'INT-2026-010']);
-    expect(pageSessions).toEqual(['cloud-2-2', null, 'cloud-2-3']);
+    expect(el.querySelector('.neue-absicht aos-neue-absicht')!.pendings).toEqual([]);
+    expect(pageSessions).toEqual(['cloud-3-2', 'cloud-3-1', null]);
     el.remove();
   });
 
-  it('two pending sessions: the oldest is shown (the one the next folder claims, R-3)', async () => {
-    route = { view: 'neu', segments: ['p'] };
-    const el = await view('neu');
-    stateListener!(state([], [pendingOf({ sessionId: 'cloud-3-2', since: '2026-09-16T10:00:00.000Z' }), pendingOf({ sessionId: 'cloud-3-1', since: '2026-09-16T09:00:00.000Z' })]));
-    await settle(el);
-    expect(el.querySelector('.neue-absicht aos-neue-absicht')?.pending?.sessionId).toBe('cloud-3-1');
-    expect(pageSessions).toEqual(['cloud-3-1']);
-    el.remove();
-  });
-
-  it('neu page card: „Im Terminal öffnen" dispatches open-terminal-session with the session id, Mac says „Terminal rechts"; on the phone nothing is announced (AK-04, AK-06)', async () => {
+  it('neu page list: „Im Terminal öffnen" dispatches open-terminal-session with the entry\'s session id; on the phone nothing is announced (AK-04, AK-06; INT-2026-022 AK-02)', async () => {
     route = { view: 'neu', segments: ['p'] };
     const seen: string[] = [];
     const onOpen = (e: Event): void => {
@@ -340,12 +333,12 @@ describe('aos-vorhaben-view — started step stays on the page (FA-22, AN-S03)',
     const el = await view('neu');
     stateListener!(state([], [pendingOf()]));
     await settle(el);
-    const card = el.querySelector('.neue-absicht aos-neue-absicht')!;
-    await card.updateComplete;
-    (card.shadowRoot!.querySelector('button.terminal') as HTMLButtonElement).click();
+    const form = el.querySelector('.neue-absicht aos-neue-absicht')!;
+    await form.updateComplete;
+    (form.shadowRoot!.querySelector('.eintrag button.terminal') as HTMLButtonElement).click();
     expect(seen).toEqual(['cloud-1-7']);
-    expect(card.shadowRoot!.textContent).toContain('Terminal rechts');
-    expect(card.shadowRoot!.textContent).not.toContain('Gespräch');
+    expect(form.shadowRoot!.textContent).not.toContain('Gespräch');
+    expect(form.shadowRoot!.querySelector('.karte')).toBeNull();
     el.remove();
     pageSessions = [];
     mobile = true;
@@ -356,9 +349,8 @@ describe('aos-vorhaben-view — started step stays on the page (FA-22, AN-S03)',
     const mb = m.querySelector('.neue-absicht aos-neue-absicht')!;
     await mb.updateComplete;
     expect(mb.mobile).toBe(true);
-    expect(mb.shadowRoot!.querySelector('textarea')).toBeNull();
-    expect(mb.shadowRoot!.textContent).toContain('im Terminal antworten');
-    (mb.shadowRoot!.querySelector('button.terminal') as HTMLButtonElement).click();
+    expect(mb.shadowRoot!.querySelector('textarea')).not.toBeNull();
+    (mb.shadowRoot!.querySelector('.eintrag button.terminal') as HTMLButtonElement).click();
     expect(seen).toEqual(['cloud-1-7', 'cloud-1-7']);
     document.removeEventListener('open-terminal-session', onOpen);
     m.remove();

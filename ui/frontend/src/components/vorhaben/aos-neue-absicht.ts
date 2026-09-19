@@ -4,12 +4,19 @@
  * wann?"), the model choice (preselected like every step, `model-wahl.ts`)
  * and „Starten". Start = `vorhaben:start-step intent` with the text as
  * `firstInput`; the backend hands it to the session at its first Stop, so it
- * appears as Michael's first input in the terminal. While a `/intent`
- * session of the project is still pending (no folder yet), the page shows
- * that session instead of the form: on the Mac the docked terminal stands
- * right of this card (app.ts docks it, INT-2026-011 FA-18), on the phone the
- * card offers the terminal (AK-06). The view follows the session to its
- * Vorhaben page once a folder claims it (`followStartedIntent`).
+ * appears as Michael's first input in the terminal.
+ *
+ * INT-2026-022 (AK-01…AK-04, AK-11; FA-01…FA-09, FA-15): the form is ALWAYS
+ * there. Below it, only while the project has pending `/intent` sessions
+ * (no folder yet), the list „Laufende Absicht-Sitzungen · n": per session a
+ * dot in the state colour, the session name, the copy label, the state text
+ * and „Im Terminal öffnen ↗" for exactly that session; the session the docked
+ * terminal shows (`selectedSessionId`, the view decides) is highlighted.
+ * Sessions sharing a copy get a grey sentence naming the oldest one — that is
+ * the session the next folder there is assigned to (NZ-01). „Starten" always
+ * asks for a NEW worktree; a refusal (no git repo, isolation off, worktree
+ * creation failed) stands under the button with the next step, the text stays.
+ * The card „Absicht-Sitzung läuft — Vorhaben entsteht …" is gone (AN-S13).
  *
  * INT-2026-020 (AK-01…AK-06): Cmd+V with an image on the clipboard uploads it
  * (`vorhaben:absicht-bild`, Terminal rules for type and size) and inserts the
@@ -25,6 +32,7 @@ import { ladeModelle, vorauswahl } from './model-wahl.js';
 import { blobToBase64, findClipboardImage } from '../../utils/clipboard-image.js';
 import type { ModelSelection, VorhabenPendingIntent } from '../../../../src/shared/types/vorhaben.protocol.js';
 import { CLOUD_TERMINAL_CONFIG } from '../../../../src/shared/types/cloud-terminal.protocol.js';
+import { ZUSTAND_LABELS } from './vorhaben-sort.js';
 import '../model-selector.js';
 
 export const NEUE_ABSICHT_PLACEHOLDER = 'Was stört, wen, seit wann?';
@@ -37,8 +45,10 @@ export class AosNeueAbsicht extends LitElement {
   /** Last model chosen for `intent` in this project, when the caller knows one. */
   @property({ attribute: false }) lastModel: ModelSelection | undefined = undefined;
   @property({ type: Boolean, reflect: true }) mobile = false;
-  /** The pending `/intent` session of the project (oldest first) — shown instead of the form. */
-  @property({ attribute: false }) pending: VorhabenPendingIntent | null = null;
+  /** INT-2026-022 (FA-02): pending `/intent` sessions of the project, oldest first — the list under the form. */
+  @property({ attribute: false }) pendings: VorhabenPendingIntent[] = [];
+  /** INT-2026-022 (FA-06, FA-15): the session the docked terminal shows — highlighted in the list. */
+  @property({ attribute: false }) selectedSessionId: string | null = null;
 
   @state() private text = '';
   @state() private models: ModelListInfo | null = null;
@@ -124,43 +134,93 @@ export class AosNeueAbsicht extends LitElement {
     :host([mobile]) .zeile aos-model-selector {
       margin-left: 0;
     }
-    /* pending session (moved from the S1 interim block) */
-    .karte {
+    /* INT-2026-022: list of pending sessions under the form */
+    .sitzungen {
+      margin-top: var(--spacing-lg);
+      max-width: 720px;
       display: flex;
       flex-direction: column;
       gap: var(--spacing-xs);
-      padding: var(--spacing-sm) var(--spacing-md);
-      border: 1px solid var(--color-accent-primary);
-      border-radius: var(--radius-md);
-      background: rgba(var(--color-accent-primary-rgb, 0, 212, 255), 0.06);
-      max-width: 720px;
     }
-    .karte .status,
-    .karte .uebergabe {
-      color: var(--color-text-secondary);
-      font-size: var(--font-size-xs);
-    }
-    .karte .uebergabe {
+    .sitzungen h2 {
+      margin: 0 0 var(--spacing-xs);
+      font-size: var(--font-size-sm);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       color: var(--color-text-muted);
+      font-weight: var(--font-weight-semibold);
     }
-    .karte .dot {
-      display: inline-block;
+    .eintrag {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-xs) var(--spacing-sm);
+      border: 1px solid var(--color-border);
+      border-left-width: 3px;
+      border-radius: var(--radius-md);
+      background: var(--color-bg-secondary);
+      min-width: 0;
+    }
+    .eintrag.gewaehlt {
+      border-color: var(--color-accent-primary);
+      background: rgba(var(--color-accent-primary-rgb, 0, 212, 255), 0.06);
+    }
+    .eintrag .dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--color-accent-success);
-      margin-right: 6px;
+      background: var(--color-text-muted);
+      flex: none;
     }
-    .karte button.terminal {
-      align-self: flex-start;
+    .eintrag .dot.wartet_auf_dich {
+      background: var(--color-accent-primary);
+    }
+    .eintrag .dot.wartet,
+    .eintrag .dot.wartet_rueckfrage,
+    .eintrag .dot.wartet_plan,
+    .eintrag .dot.wartet_berechtigung {
+      background: var(--color-accent-warning);
+    }
+    .eintrag .dot.arbeitet {
+      background: var(--color-accent-success);
+    }
+    .eintrag .name {
+      font-weight: var(--font-weight-semibold);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .eintrag .kopie,
+    .eintrag .zustand {
+      color: var(--color-text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .eintrag .uebergabe {
+      color: var(--color-text-muted);
+      font-size: var(--font-size-xs);
+      white-space: nowrap;
+    }
+    .eintrag button.terminal {
+      margin-left: auto;
       font: inherit;
       font-size: var(--font-size-sm);
-      padding: 6px 12px;
+      padding: 4px 10px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--color-border);
       background: transparent;
       color: var(--color-text-primary);
       cursor: pointer;
+      white-space: nowrap;
+    }
+    .gruppe-hinweis {
+      color: var(--color-text-muted);
+      font-size: var(--font-size-xs);
+      padding: 0 var(--spacing-sm) var(--spacing-xs);
+    }
+    :host([mobile]) .eintrag {
+      flex-wrap: wrap;
     }
   `;
 
@@ -264,7 +324,8 @@ export class AosNeueAbsicht extends LitElement {
     this.starting = true;
     this.error = '';
     try {
-      const { sessionId } = await vorhabenService.startStep(this.projectId, undefined, 'intent', this.selected, { kind: 'main' }, { firstInput: text });
+      // INT-2026-022 (FA-07): always a NEW worktree — the backend refuses when none is possible (FA-09), the text stays.
+      const { sessionId } = await vorhabenService.startStep(this.projectId, undefined, 'intent', this.selected, { kind: 'new-worktree' }, { firstInput: text });
       this.text = '';
       this.dispatchEvent(
         new CustomEvent<{ sessionId: string; step: 'intent' }>('vorhaben-session-started', { bubbles: true, composed: true, detail: { sessionId, step: 'intent' } })
@@ -276,13 +337,16 @@ export class AosNeueAbsicht extends LitElement {
     }
   }
 
-  private toTerminal(): void {
-    const id = this.pending?.sessionId;
-    if (id) document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId: id } }));
+  /** „Im Terminal öffnen" of ONE list entry — its own session, never the oldest (FA-02). */
+  private toTerminal(sessionId: string): void {
+    document.dispatchEvent(new CustomEvent('open-terminal-session', { bubbles: true, composed: true, detail: { sessionId } }));
   }
 
   override render() {
-    if (this.pending) return this.renderPending(this.pending);
+    return html`${this.renderFormular()}${this.pendings.length > 0 ? this.renderListe() : nothing}`;
+  }
+
+  private renderFormular() {
     return html`<div class="formular">
       <textarea
         aria-label="Absicht"
@@ -311,13 +375,43 @@ export class AosNeueAbsicht extends LitElement {
     </div>`;
   }
 
-  private renderPending(p: VorhabenPendingIntent) {
-    return html`<div class="karte gestartet">
-      <span><span class="dot"></span>Absicht-Sitzung „${p.session.name}" läuft — Vorhaben entsteht …</span>
-      <span class="status">${this.mobile ? 'im Terminal antworten' : 'Terminal rechts'} — die Vorhaben-Seite öffnet sich, sobald der Ordner da ist</span>
-      ${p.session.firstInputPending ? html`<span class="uebergabe">Dein Text wird nach der ersten Frage übergeben.</span>` : nothing}
-      <button type="button" class="terminal" @click=${this.toTerminal}>Im Terminal öffnen ↗</button>
+  /**
+   * INT-2026-022 (FA-02, FA-03, FA-04): the list of pending sessions, oldest first. Sessions in the same copy
+   * (`cwd`) get one grey sentence after the last of them naming the oldest — the next folder there is hers.
+   */
+  private renderListe() {
+    const list = this.pendings;
+    const byCwd = new Map<string, VorhabenPendingIntent[]>();
+    for (const p of list) byCwd.set(p.cwd, [...(byCwd.get(p.cwd) ?? []), p]);
+    return html`<section class="sitzungen" aria-label="Laufende Absicht-Sitzungen">
+      <h2>Laufende Absicht-Sitzungen · ${list.length}</h2>
+      ${list.map((p) => {
+        const group = byCwd.get(p.cwd)!;
+        const last = group[group.length - 1] === p;
+        return html`${this.renderEintrag(p)}${last && group.length > 1 ? this.renderGruppenHinweis(group) : nothing}`;
+      })}
+    </section>`;
+  }
+
+  private renderEintrag(p: VorhabenPendingIntent) {
+    const detail = p.zustandDetail ? ` · ${p.zustandDetail}` : '';
+    return html`<div class="eintrag ${p.sessionId === this.selectedSessionId ? 'gewaehlt' : ''}" data-session=${p.sessionId} aria-current=${p.sessionId === this.selectedSessionId ? 'true' : 'false'}>
+      <span class="dot ${p.zustand}"></span>
+      <span class="name">${p.session.name}</span>
+      ${p.arbeitskopie ? html`<span class="kopie">· ${p.arbeitskopie}</span>` : nothing}
+      <span class="zustand">· ${ZUSTAND_LABELS[p.zustand]}${detail}</span>
+      ${p.session.firstInputPending ? html`<span class="uebergabe">Dein Text wird nach der ersten Frage übergeben</span>` : nothing}
+      <button type="button" class="terminal" @click=${() => this.toTerminal(p.sessionId)}>Im Terminal öffnen ↗</button>
     </div>`;
+  }
+
+  /** FA-04: two → „Beide laufen in …"; more → „n Sitzungen laufen in …"; the oldest by `since` gets the next folder (NZ-01). */
+  private renderGruppenHinweis(group: VorhabenPendingIntent[]) {
+    const oldest = [...group].sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0))[0];
+    const label = group[0].arbeitskopie || 'dieser Arbeitskopie';
+    const wer = group.length === 2 ? 'Beide laufen' : `${group.length} Sitzungen laufen`;
+    const wem = group.length === 2 ? 'älteren' : 'ältesten';
+    return html`<div class="gruppe-hinweis">${wer} in ‚${label}' — der nächste Ordner wird der ${wem} Sitzung ‚${oldest.session.name}' zugeordnet.</div>`;
   }
 }
 
