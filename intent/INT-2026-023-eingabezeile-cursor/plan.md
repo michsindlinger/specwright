@@ -1,7 +1,7 @@
 # Plan: Der Knopf „Nächster Schritt" darf am Autovorschlag der Sitzung nicht scheitern
 
 > **Intent:** `intent.md` (INT-2026-023) · **Spec:** entfällt (bypass: Bugfix unter einem Tag)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt
 > **Erstellt:** 2026-09-19 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-19
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand d735810), `CLAUDE.md`, `docs/security.md`
 
