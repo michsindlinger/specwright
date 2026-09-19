@@ -1,7 +1,7 @@
 # Plan: UI: Mehrere Absichten parallel — Formular bleibt, Übersicht zeigt sie sofort, jede im eigenen Worktree
 
 > **Intent:** `intent.md` (INT-2026-022) · **Spec:** `spec.md`
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-19 im Plan Mode · **Freigabe:** PO (Michael Sindlinger), 2026-09-19 — im Chat „freigabe" nach zwei externen Review-Runden (E1–E42, Antworten in §12); O1 nach Standard (Ist-Screenshots), D1/D2 wie im Plan entschieden
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 4dbeeec), `CLAUDE.md`, `docs/security.md`, `docs/design.md`
 
@@ -383,15 +383,15 @@ Kein Deploy-Befehl, kein Secret, keine Migration; Hook `production-gate` wird ni
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert; die Diffs der ersetzten Testdateien (§4 #19) im PR gesondert genannt (Review E18).
-- [ ] E2E-Pfad läuft (Abschnitt 8); Protokoll und Screenshots unter `design/`.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md`, `security.md`, `design.md`, `product-brief.md` angepasst (Abschnitt 3 „Nein", Doku-Pflicht FA-26).
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert (Projekt-Updates bleiben offen bis Michael sie fährt).
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR (Kandidat: „Cache-TTL vor dem Scan invalidieren, wenn der Code selbst eine Kopie anlegt").
-- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-022-absichten-parallel/`; Folge-Karte „Session-Worktrees aufräumen", R4); Nachziehen in eigener Sitzung.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (Unit: 11 Backend-Dateien 208 Tests, 10 Frontend-Dateien 111 Tests am 19.09.; Bash: `test-next-intent-id` T1–T7; E2E: 40 Prüfungen im Protokoll).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert; ersetzte Testdateien im PR gesondert genannt (Review E18).
+- [x] E2E-Pfad läuft (Abschnitt 8); Protokoll `design/e2e-protokoll.txt`, Screenshots `design/ist/01…04`.
+- [x] `verify` lokal grün (19.09., 45 s, Ausgabe im PR) — PR-Checks: offen bis CI (CI ist die Wahrheit).
+- [x] `docs/architecture.md`, `security.md`, `design.md`, `product-brief.md` angepasst (Abschnitt 3 „Nein", Doku-Pflicht FA-26).
+- [x] Manuelle Schritte (Abschnitt 10): Merge und Projekt-Updates bleiben offen (Michael), im PR markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (9 Zeilen).
+- [x] 2x-Regel-Check: kein Fehler aus der Zweimal-Liste wiederholt; der Kandidat „Cache-TTL vor dem Scan invalidieren, wenn der Code selbst eine Kopie anlegt" ist in dieser Umsetzung zum ersten Mal aufgetreten (Planung, nicht Bau) → kein `CLAUDE.md`-Eintrag, Vorschlag im PR als Beobachtung; neue Lehre „`mkdir` ohne `-p` schützt nur vor demselben Namen" ins Auto-Memory.
+- [x] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-022-absichten-parallel/`; Folge-Karte „Session-Worktrees aufräumen", R4); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
 
@@ -399,4 +399,12 @@ Kein Deploy-Befehl, kein Secret, keine Migration; Hook `production-gate` wird ni
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-19 | Reservierung: `mkdir` ohne `-p` schützt nur vor demselben **Ordnernamen**; zwei Sitzungen mit verschiedenen Kurznamen bekämen dieselbe Nummer, ohne dass `mkdir` scheitert. Das Skript prüft deshalb nach dem `mkdir` das eigene `intent/` auf einen zweiten Ordner mit dieser Nummer; gibt es einen, behält ihn der alphabetisch erste, der andere gibt seinen Ordner zurück (`rmdir`) und bestimmt neu — deterministisch, kein Livelock. Der Kollisionstest (T5) belegt darum einen anderen Kurznamen mit derselben Nummer über eine Testnaht `SPECWRIGHT_INTENT_ID_BEFORE_MKDIR` (Befehl vor jedem `mkdir`, `$dir` sichtbar) statt denselben Ordner | Beim Schreiben des Tests aufgefallen: die im Plan angenommene `mkdir`-Atomarität deckt den Fall „gleiche Nummer, anderer Name" nicht | §3 Punkt 11, §8 AK-12, §9 R11 |
+| 2026-09-19 | Dep `resolveMainPath` (Default `resolveMainWorktreePath`) zusätzlich zu `worktreeEnabled` am Service | `resolveMainWorktreePath` ruft `git` per `execSync`; die Vorprüfung auf dem Hauptpfad (Review E5) ist nur mit injizierbarer Auflösung im Unit-Test belegbar (Fake: Sub-Worktree-Pfad → Hauptpfad) | §3 Punkt 1, §4 #4/#5 |
+| 2026-09-19 | Handler-Text bei `INVALID_MESSAGE` deutsch („Eine Absicht startet immer in einer neuen Arbeitskopie: …") statt englisch | Alle bestehenden Form-Fehler des Handlers sind deutsch (`vorhaben-handler.ts:217`); der Plan-Satz „englischer Protokolltext" stimmte nicht mit dem Code überein | §3 Punkt 1 |
+| 2026-09-19 | `pageOfRoute('neu', [p, s])`-Test neu in `app-terminal-dock.test.ts` — es gab dort keinen `pageOfRoute`-Test zu ersetzen | §2 nannte `app-terminal-dock.test.ts (pageOfRoute)` als bestehend; die Funktion war ungetestet | §4 #19, §8 AK-07 |
+| 2026-09-19 | Sweep läuft nicht ohne `sessions`-Dep (Stufe-1-Fakes ohne Manager) und nur zu Beginn von `runScan` | Ohne Manager gibt es keine Aussage über lebende Sitzungen; Stufe-1-Tests setzen anhängige Einträge ohne Manager | §3 Punkt 4 |
+| 2026-09-19 | Bestandstests angepasst (Fakes, keine Bezugsliste): `vorhaben-service-stage2/-stage4` melden `isGitRepo: true` (Absicht-Start verlangt es, FA-09); `-stage3` erwartet nach getipptem `/intent` den Rescan statt „kein Rescan" (FA-19) und das erweiterte Eintrags-Objekt (FA-13) | Geplante Verhaltensänderungen, die alte Zusicherungen umkehren | §6 Schritt 3, §8 FA-19 |
+| 2026-09-19 | E2E (§8): Port 3112 statt 3111; Schritt (2) prüft „Adresse unverändert" statt „Adresse `neu/<p>/<sidA>`" (der E2E-Text in §8 stammte von vor Review E30 — nach dem Start bleibt die Adresse absichtlich stehen, Punkt 7 a); Schritt (5): der Ordner in Kopie B wurde per Shell angelegt, nicht von der Sitzung per tmux (die Claude-Sitzungen blieben im Trust-Dialog, kein Modellaufruf; Watcher- und Claim-Pfad sind dieselben); Screenshot 01 auf die linke Spalte beschnitten, weil das angedockte Terminal den Host-Pfad der Kopie im Trust-Dialog zeigte (security.md §5) — „Terminal auf B" ist im Protokoll über den aktiven Tab belegt | Aufwand/Determinismus; Datenklasse öffentlich | §8 E2E (2), (5), Screenshots |
+| 2026-09-19 | Nach dem ersten E2E-Lauf CSS der Listeneinträge nachgezogen: Sitzungsname und Zustand `flex: none`, Label mit `min-width: 8ch`, der Übergabe-Hinweis gibt zuerst nach — bei angedocktem Terminal (~690 px) waren Name, Label und Zustand abgeschnitten; Lauf (1)–(6) mit frischem Scratch wiederholt | Screenshot 01 (erste Fassung) zeigte „int…", „wa…" | §3 Punkt 6, Screenshot 01 |
+| 2026-09-19 | Schritt 0: Konsumenten von `VorhabenPendingIntent`/`pendingIntents` sind 14 Dateien (zusätzlich `vorhaben-state.ts`, `vorhaben.protocol.ts`, Tests `-resume`, `-naechster-schritt`, `-stage3`, `-stage4`); Port 3111 war durch das Backend des Worktrees INT-2026-023 belegt → E2E auf Port 3112; `~/.specwright/scripts/` enthält nur `mcp/` → Hybrid-Fallback im Workflow-Text mit Notregel ohne Skript | Lesende Vorprüfung | §6 Schritt 0, §8 E2E |

@@ -184,25 +184,36 @@ export class AosNeueAbsicht extends LitElement {
     .eintrag .dot.arbeitet {
       background: var(--color-accent-success);
     }
+    /* Name, Label und Zustand bleiben lesbar; der Übergabe-Hinweis gibt zuerst nach (angedockt sind es ~690 px). */
     .eintrag .name {
       font-weight: var(--font-weight-semibold);
       white-space: nowrap;
+      flex: none;
+    }
+    .eintrag .kopie {
+      color: var(--color-text-secondary);
+      white-space: nowrap;
+      flex: 0 1 auto;
+      min-width: 8ch;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .eintrag .kopie,
     .eintrag .zustand {
       color: var(--color-text-secondary);
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      flex: none;
     }
     .eintrag .uebergabe {
       color: var(--color-text-muted);
       font-size: var(--font-size-xs);
       white-space: nowrap;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .eintrag button.terminal {
+      flex: none;
       margin-left: auto;
       font: inherit;
       font-size: var(--font-size-sm);
