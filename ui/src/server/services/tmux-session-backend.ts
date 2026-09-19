@@ -32,6 +32,7 @@ import {
   getTmuxSocketPath,
 } from '../utils/runtime-paths.js';
 import type { CloudTerminalSessionId } from '../../shared/types/cloud-terminal.protocol.js';
+import type { CursorProbe } from './dialog-driver.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -91,6 +92,22 @@ export function renderRunScript(spec: RunScriptSpec, exitCodePath: string): stri
   lines.push(`printf '%s' "$code" > ${sq(exitCodePath)}`);
   lines.push('exit "$code"');
   return lines.join('\n') + '\n';
+}
+
+/**
+ * INT-2026-023: split the combined output of {@link TmuxSessionBackend.captureCursorProbe}
+ * into pane rows and cursor position. The last non-empty line is
+ * `"<cursor_x> <cursor_y>"` (tmux closes with a newline); anything else means
+ * the call did not deliver a position → `null`, and the caller stays with the
+ * behaviour of today. Pure, so vitest can check it without a tmux server.
+ */
+export function parseCursorProbe(stdout: string): CursorProbe | null {
+  const zeilen = stdout.split('\n');
+  while (zeilen.length > 0 && zeilen[zeilen.length - 1] === '') zeilen.pop();
+  const letzte = zeilen.pop();
+  const treffer = /^(\d+) (\d+)$/.exec(letzte ?? '');
+  if (treffer === null) return null;
+  return { zeilen, x: Number(treffer[1]), y: Number(treffer[2]) };
 }
 
 export class TmuxSessionBackend {
@@ -368,6 +385,30 @@ export class TmuxSessionBackend {
     if (scrollbackLines > 0) args.push('-S', `-${scrollbackLines}`);
     const res = await this.tmux(args, TMUX_CAPTURE_TIMEOUT_MS);
     return res.ok && res.stdout.length > 0 ? res.stdout : null;
+  }
+
+  /**
+   * INT-2026-023: the unfolded pane AND the cursor position of a session, from
+   * ONE tmux call — `capture-pane` and `display-message` separated by an own
+   * argv element `';'`. One call, one moment: the two answers cannot drift
+   * apart, which is what {@link eingabeLeerLautCursor} relies on when it
+   * re-checks spinner and dialog on this very probe.
+   *
+   * Unlike {@link captureScreen} this capture runs WITHOUT `-J`: soft-wrapped
+   * rows must stay separate, otherwise the row index no longer matches
+   * `cursor_y`. Returns null when the call fails (unknown session, dead
+   * server, timeout) — the caller then behaves as before (fail closed, AR-08).
+   */
+  public async captureCursorProbe(name: string): Promise<CursorProbe | null> {
+    const res = await this.tmux(
+      [
+        'capture-pane', '-p', '-t', `=${name}:`,
+        ';',
+        'display-message', '-p', '-t', `=${name}:`, '#{cursor_x} #{cursor_y}',
+      ],
+      TMUX_CAPTURE_TIMEOUT_MS
+    );
+    return res.ok ? parseCursorProbe(res.stdout) : null;
   }
 
   /** Inner command's exit code from the run script's exit file, if present. */
