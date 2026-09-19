@@ -14,7 +14,7 @@ bypass_grund: "Bugfix unter einem Tag: die Bildschirmprüfung bekommt ein zweite
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: ""  
