@@ -230,6 +230,15 @@ export class VorhabenHandler {
           }
         }
         const sessionTarget = message.sessionTarget as CloudTerminalSessionTarget | undefined;
+        // INT-2026-022 (FA-07, review E4/E24): the FORM of an intent start — no target, or `new-worktree` without a
+        // name. Anything else is a client bug (INVALID_MESSAGE); the service decides the substance (WORKTREE_UNAVAILABLE).
+        if (step === 'intent' && !intentId && sessionTarget !== undefined) {
+          const t = sessionTarget as { kind?: unknown; name?: unknown } | null;
+          if (t === null || typeof t !== 'object' || t.kind !== 'new-worktree' || (t.name !== undefined && t.name !== null && t.name !== '')) {
+            reply(this.error('INVALID_MESSAGE', 'Eine Absicht startet immer in einer neuen Arbeitskopie: sessionTarget weglassen oder { kind: "new-worktree" } ohne name', requestId));
+            return true;
+          }
+        }
         void this.service
           .startStep(project.id, intentId, step, model, sessionTarget, firstInput)
           .then(({ sessionId, modus, geschlossen }) =>

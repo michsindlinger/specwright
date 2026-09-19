@@ -838,8 +838,15 @@ export class CloudTerminalManager extends EventEmitter {
               session.worktreeCleanup = owned;
             } catch (err) {
               if (err instanceof NotAGitRepoError) {
-                // Graceful degrade: isolation impossible, run in the main project dir
-                // and make the reason visible in the UI rather than hard-failing.
+                if (target.explicit) {
+                  // INT-2026-022 (FA-09, review E6): the caller asked for isolation — a silent
+                  // start in the project dir would be exactly what „Neue Absicht" must never do.
+                  const error = new Error('Kein Git-Repository — eine neue Arbeitskopie ist hier nicht möglich');
+                  (error as Error & { code: string }).code = CLOUD_TERMINAL_ERROR_CODES.WORKTREE_NOT_A_GIT_REPO;
+                  throw error;
+                }
+                // Graceful degrade for legacy callers without a target: isolation impossible,
+                // run in the main project dir and make the reason visible in the UI.
                 console.warn(
                   `[CloudTerminalManager] session ${sessionId}: ${err.message} — starting without worktree`
                 );

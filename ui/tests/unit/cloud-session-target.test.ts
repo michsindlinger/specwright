@@ -127,6 +127,30 @@ describe('Cloud Terminal session targets', () => {
     expect(fake.lastSpawn?.cwd).toBe(repo.projectPath);
   });
 
+  // ── INT-2026-022 (FA-09, review E6): no git repository ─────────────────────
+
+  it('explicit new-worktree in a directory without git → WORKTREE_NOT_A_GIT_REPO, nothing spawned; a legacy caller without a target degrades to the project dir with a notice', async () => {
+    const plain = join(repo.base, 'plain');
+    await fs.mkdir(plain, { recursive: true });
+    await expect(
+      mgr.createSession(
+        plain, 'claude-code', { model: 'x' },
+        undefined, undefined, undefined, undefined, undefined,
+        { sessionTarget: { target: { kind: 'new-worktree' }, explicit: true } }
+      )
+    ).rejects.toMatchObject({ code: 'WORKTREE_NOT_A_GIT_REPO', message: expect.stringContaining('Kein Git-Repository') });
+    expect(fake.spawns).toHaveLength(0);
+    expect(mgr.getAllSessions()).toHaveLength(0);
+    // legacy: no target at all (`explicit: false`) — the pre-picker behaviour stays
+    const session = await mgr.createSession(
+      plain, 'claude-code', { model: 'x' },
+      undefined, undefined, undefined, undefined, undefined,
+      { sessionTarget: { target: { kind: 'new-worktree' }, explicit: false } }
+    );
+    expect(fake.lastSpawn?.cwd).toBe(plain);
+    expect(session.effectiveCwd).toBe(pathKey(plain));
+  });
+
   // ── kind: 'main' ───────────────────────────────────────────────────────────
 
   it('main → spawns in the project dir and creates no worktree', async () => {

@@ -350,8 +350,9 @@ describe('VorhabenService.sendTextToSession + pendingIntents (INT-2026-008)', ()
     const pending = lastState().pendingIntents;
     expect(pending.map((p) => p.sessionId)).toEqual(['s8', 's9']);
     expect(pending[1]).toEqual({
-      sessionId: 's9', projectId: 'pa', cwd: projA, arbeitskopie: 'main', since: '2026-09-16T09:01:00.000Z',
+      sessionId: 's9', projectId: 'pa', projectName: 'A', cwd: projA, arbeitskopie: 'main', since: '2026-09-16T09:01:00.000Z',
       session: { id: 's9', name: 'intent', model: 'opus', agentStatus: 'working', step: 'intent' }, // INT-2026-018: a pending `/intent` session names its step
+      zustand: 'arbeitet', zustandDetail: 'opus', // INT-2026-022 (FA-13): the row rule for the entry
     });
     // no live session (restart, closed) → ended; unknown name → 'intent'; worktree cwd → its directory name
     expect(pending[0]).toMatchObject({ arbeitskopie: 'feat-x', session: { id: 's8', name: 'intent', model: 'sonnet', agentStatus: 'unknown', ended: true } });
@@ -360,7 +361,7 @@ describe('VorhabenService.sendTextToSession + pendingIntents (INT-2026-008)', ()
     expect(lastState().pendingIntents[1].session).toMatchObject({ agentStatus: 'blocked', blockKind: 'rueckfrage' });
   });
 
-  it('status changes of a pending session broadcast the state without a rescan; a typed /intent registers and broadcasts (AK-05, AK-07)', async () => {
+  it('status changes of a pending session broadcast the state without a rescan; a typed /intent registers and rescans (AK-05, AK-07; INT-2026-022 FA-19)', async () => {
     const rescan = vi.spyOn(service, 'scheduleRescan');
     pend('s9', 'working');
     const before = states().length;
@@ -370,11 +371,12 @@ describe('VorhabenService.sendTextToSession + pendingIntents (INT-2026-008)', ()
     // unknown session: nothing
     manager.emit('session.agent-event', 'zz', 'stop', { status: 'done' });
     expect(states().length).toBe(before + 1);
-    // typed by hand in a terminal of project A
+    // typed by hand in a terminal of project A → INT-2026-022 (FA-19): rescan, not a bare broadcast (label, watcher)
     manager.add('s7', projA, 'working');
     manager.emit('session.prompt-text', 's7', '/specwright:intent');
+    expect(rescan).toHaveBeenCalledWith(0);
+    await service.rescan();
     expect(lastState().pendingIntents.map((p) => p.sessionId)).toEqual(['s9', 's7']);
-    expect(rescan).not.toHaveBeenCalled();
   });
 
   it('waiting pending session: paste + Enter under the lock, entry without intentId, confirmed by the prompt; working → eingereiht (AK-02)', async () => {
