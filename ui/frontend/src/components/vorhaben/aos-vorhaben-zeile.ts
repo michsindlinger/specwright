@@ -4,16 +4,25 @@
  * not a board: no drag, no status controls (FA-08). The phase column is
  * bounded (INT-2026-013, AK-01): the note is clipped with an ellipsis
  * before the title gives up any width.
+ *
+ * INT-2026-022 (FA-12, spec §7, design.md §1 Prinzip 4): a second mode „ohne
+ * Ordner" — `pending` set instead of `row` renders a begun intent with the
+ * same grid: badge „Absicht · entsteht" in the id column, the working title
+ * (else the session name), session name and copy label in the phase column,
+ * the session's state, the start time. A click emits `absicht-open` (the view
+ * opens the session on „Neue Absicht" on the Mac, in the terminal on the phone).
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import type { VorhabenRow } from '../../../../src/shared/types/vorhaben.protocol.js';
-import { PHASE_LABELS, ZUSTAND_LABELS, STEP_LABELS, groupOf, relativeTime } from './vorhaben-sort.js';
+import type { VorhabenPendingIntent, VorhabenRow } from '../../../../src/shared/types/vorhaben.protocol.js';
+import { PHASE_LABELS, ZUSTAND_LABELS, STEP_LABELS, groupOf, pendingGroupOf, relativeTime } from './vorhaben-sort.js';
 
 @customElement('aos-vorhaben-zeile')
 export class AosVorhabenZeile extends LitElement {
   @property({ attribute: false }) row!: VorhabenRow;
+  /** INT-2026-022: a begun intent without a folder — rendered instead of `row` when set. */
+  @property({ attribute: false }) pending: VorhabenPendingIntent | null = null;
 
   static override styles = css`
     :host {
@@ -59,6 +68,20 @@ export class AosVorhabenZeile extends LitElement {
       font-family: var(--font-family-mono);
       font-size: var(--font-size-sm);
       color: var(--color-text-secondary);
+    }
+    /* INT-2026-022: the id column of an entry without a folder carries the badge instead of a Kennung. */
+    .id .badge.entsteht {
+      font-family: var(--font-family);
+      color: var(--color-accent-primary);
+      background: rgba(var(--color-accent-primary-rgb, 0, 212, 255), 0.1);
+      white-space: nowrap;
+    }
+    .sitzung {
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-sm);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .titel {
       font-weight: var(--font-weight-semibold);
@@ -169,7 +192,35 @@ export class AosVorhabenZeile extends LitElement {
     this.dispatchEvent(new CustomEvent<{ row: VorhabenRow }>('vorhaben-open', { bubbles: true, composed: true, detail: { row: this.row } }));
   }
 
+  private openPending(): void {
+    if (!this.pending) return;
+    this.dispatchEvent(new CustomEvent<{ pending: VorhabenPendingIntent }>('absicht-open', { bubbles: true, composed: true, detail: { pending: this.pending } }));
+  }
+
+  /** INT-2026-022 (FA-12): the entry of a begun intent — same grid, badge instead of Kennung, session and copy instead of the phase. */
+  private renderPending(p: VorhabenPendingIntent) {
+    const titel = p.arbeitstitel ?? p.session.name;
+    const detail = p.session.firstInputPending ? [p.zustandDetail, 'Text wird übergeben'].filter(Boolean).join(' · ') : p.zustandDetail;
+    return html`
+      <button type="button" class="zeile g-${pendingGroupOf(p)}" aria-label="${p.projectName} Absicht entsteht ${titel}" @click=${this.openPending}>
+        <span class="kopf">
+          <span class="projekt">${p.projectName}</span>
+          <span class="id"><span class="badge entsteht">Absicht · entsteht</span></span>
+        </span>
+        <span class="titel">${titel}</span>
+        <span class="phase"><span class="sitzung">${p.session.name}${p.arbeitskopie ? html` · ${p.arbeitskopie}` : nothing}</span></span>
+        <span class="zustand">
+          <span class="dot ${p.zustand}"></span>
+          <strong>${ZUSTAND_LABELS[p.zustand]}</strong>
+          ${detail ? html`<span class="detail">· ${detail}</span>` : nothing}
+        </span>
+        <span class="zeit">${relativeTime(Date.parse(p.since))}</span>
+      </button>
+    `;
+  }
+
   override render() {
+    if (this.pending) return this.renderPending(this.pending);
     const r = this.row;
     const group = groupOf(r);
     const detail = r.zustand === 'wartet_auf_dich' && r.step ? `${STEP_LABELS[r.step]} · ${r.zustandDetail}` : r.zustandDetail;

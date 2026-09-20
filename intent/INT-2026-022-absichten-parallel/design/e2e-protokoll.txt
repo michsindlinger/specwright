@@ -1,0 +1,61 @@
+# E2E-Protokoll INT-2026-022 — 2026-09-19 21:07 UTC, Branch-Backend 127.0.0.1:3112 (SPECWRIGHT_TMUX=off, eigenes Runtime), Scratch-Projekt <scratch>/scratch-int022 (git, main, intent/INT-2026-001 committet), headless Chrome 1440×900 / 390×844
+# Plan §8 „Angeschlossen" (1)–(8); Host-Pfade zu <scratch> gekürzt (security.md §5). Abweichung: Port 3112 statt 3111 (3111 belegt), Ordner in (5) per Shell in der Kopie B angelegt (Claim-Pfad ist derselbe wie bei Claude).
+
+Projekt geöffnet: id=<scratch>/scratch-int022
+✅ (1) AK-01: Formular sichtbar, keine Liste ohne Sitzungen (Modell vorbelegt: opus)
+✅ (2) Backend listet A nach 229 ms
+✅ (2) FA-14: Arbeitstitel = erste Zeile („Absicht A: Übersicht zeigt begonnene Absichten sofort")
+✅ (2) FA-08/FA-27: Eintrag A trägt Label session/cloud-1789852072685-1, cwd ≠ Hauptcheckout
+✅ (2) AK-04/FA-05: Seite bleibt, Feld leer, Modellwahl steht (haiku)
+✅ (2) FA-02: Liste „Laufende Absicht-Sitzungen · 1", Eintrag A hervorgehoben: „intent · session/cloud-1789852072685-1 · wartet Dein Text wird nach der ersten Frage übergeben Im Terminal öffnen ↗"
+✅ (2) Adresse unverändert nach Start (kein navigate, Review E30): #/neu/<scratch-enc>%2Fscratch-int022
+✅ (2) FA-06: angedocktes Terminal zeigt A (cloud-1789852072685-1)
+✅ (3) Backend listet B nach 158 ms
+✅ (3) FA-02: Liste älteste zuerst [A, B], B hervorgehoben
+✅ (3) FA-04: kein Gruppen-Hinweis (verschiedene Arbeitskopien)
+✅ (3) AK-04: Terminal springt auf die gerade gestartete B (cloud-1789852088177-2)
+✅ (3) AK-10: Hauptcheckout unverändert (git status leer)
+✅ (3) AK-10: Hauptcheckout bleibt auf main
+✅ (3) FA-27: Arbeitskopien session-cloud-1789852072685-1, session-cloud-1789852088177-2
+Screenshot 01-formular-mit-liste.png (Mac, Formular + Liste + angedocktes Terminal auf B)
+# Ergebnis phase1: alle Prüfungen grün
+
+✅ (8) AK-02 Handy: Formular und Liste über die volle Breite (361 px von 390), kein offenes Terminal daneben (open=false)
+Screenshot 03-neue-absicht-handy.png (390 px, Formular + Liste)
+✅ (8) AK-07 Handy: „Im Terminal öffnen" öffnet das Vollbild-Terminal mit A (cloud-1789852072685-1)
+✅ (4) AK-06: zwei Einträge „Absicht · entsteht" binnen 6 ms
+✅ (4) FA-12/FA-08: Eintrag A „Absicht A: Übersicht zeigt begonnene Absichten sofort" · intent · session/cloud-1789852072685-1 · wartet · Text wird übergeben (Gruppe Wartet auf dich)
+✅ (4) Eintrag B „Absicht B: zweite Absicht parallel" · intent · session/cloud-1789852088177-2 · wartet · Text wird übergeben (Gruppe Wartet auf dich)
+✅ (4) Bestandszeile INT-2026-001 weiterhin da
+Screenshot 02-uebersicht-eintraege.png (Übersicht mit zwei Einträgen)
+✅ (4) AK-07/FA-15: Klick auf A → Adresse #/neu/<scratch-enc>%2Fscratch-int022/cloud-1789852072685-1
+✅ (4) FA-15: A in der Liste hervorgehoben, B nicht
+✅ (4) FA-15: Terminal auf A (cloud-1789852072685-1)
+✅ (5) AK-08: Ordner in Kopie B → Zeile INT-2026-002 mit Sitzung B nach 630 ms, Eintrag B weg (Watcher kennt die neue Kopie, R1)
+✅ (5) FA-08: Zeile trägt Label session/cloud-1789852088177-2
+✅ (5) Eintrag A bleibt anhängig
+✅ (5) FA-11: Seite bleibt auf A, Liste ohne B
+✅ (5) FA-16: Übersicht zeigt B nur als Zeile, nie Eintrag und Zeile
+✅ (5) AK-05: neu/<p>/<sidB> springt auf #/vorhaben/<scratch-enc>%2Fscratch-int022/INT-2026-002
+✅ (6) AK-09: Eintrag A nach dem Schließen weg (62 ms)
+(6) FA-17: Listenblock weg nach 66 ms
+✅ (6) FA-24: saubere Kopie session-cloud-1789852072685-1 entfernt
+✅ (6) FA-24: Kopie session-cloud-1789852088177-2 mit uncommittetem Ordner bleibt (dirty)
+✅ (6) FA-24: nach dem Schließen von B bleibt ihre Kopie mit dem Vorhaben
+# Ergebnis phase1b: alle Prüfungen grün
+
+
+✅ (7) AK-11/FA-25: „Keine Arbeitskopie möglich: Worktree-Isolation ist für dieses Projekt abgeschaltet — in Projekt › Einstellungen einschalten oder die Absicht im Terminal starten."
+✅ (7) FA-09: Text bleibt im Feld
+✅ (7) keine Sitzung gestartet (0 Einträge)
+✅ (7) AK-11: Hauptcheckout unverändert
+Screenshot 04-fehler-isolation-aus.png
+✅ (7) AK-11/FA-09: „Keine Arbeitskopie möglich: kein Git-Repository — Absicht im Terminal starten."
+✅ (7) FA-09: Text bleibt im Feld
+# Ergebnis phase2: alle Prüfungen grün
+
+# Hinweise zum Lauf
+# - Lauf (1)–(6) wurde nach einem CSS-Fix an den Listeneinträgen (Sitzungsname/Label wurden bei angedocktem Terminal abgeschnitten) mit frischem Scratch wiederholt; die erste Fassung scheiterte zweimal an einer falschen Test-Assertion für (8) (Sidebar-Breite), nicht am Produkt.
+# - Screenshot 01 ist auf die linke Spalte (720 px) beschnitten: das angedockte Terminal zeigte Claudes Trust-Dialog mit dem Host-Pfad der Kopie (security.md §5); „Terminal auf B" ist in Zeile (3) über den aktiven Tab belegt.
+# - Phase 2 (7) lief gegen ein Backend mit cloudSessionWorktree: false für das Scratch-Projekt (ui/config/general-config.json, danach entfernt) und ein zweites Scratch-Projekt ohne Git.
+# - Die Claude-Sitzungen blieben im Trust-Dialog (kein Modellaufruf); für den Claim in (5) wurde der Ordner per Shell in der Kopie B angelegt — derselbe Watcher-/Claim-Pfad, den eine Sitzung auslöst.

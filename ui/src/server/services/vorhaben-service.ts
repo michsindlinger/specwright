@@ -24,14 +24,17 @@ import * as fs from 'fs';
 import { basename, join } from 'path';
 import { listRepoWorktrees, pathKey, type RepoWorktreeInfo } from '../utils/git-worktree-list.js';
 import { parseSessionTarget, SessionTargetError, type ParsedTarget } from '../utils/session-target.js';
+import { resolveMainWorktreePath } from '../utils/worktree-detect.js';
+import { getCloudSessionWorktreeEnabled } from '../general-config.js';
 import { getProvider, isClaudeSessionModel } from '../model-config.js';
 import { isClaudeCli } from '../../shared/provider-cli.js';
 import { claudeHomes, findTranscript as findTranscriptOnDisk, isClaudeSessionId, type TranscriptHit } from '../utils/claude-transcript.js';
-import { buildAenderungenText, buildFreigabeText, formatStandLabel, normalizeAnmerkungText } from '../../shared/vorhaben-text.js';
+import { arbeitstitelAus, buildAenderungenText, buildFreigabeText, formatStandLabel, normalizeAnmerkungText } from '../../shared/vorhaben-text.js';
 import {
   designDirOf,
   docPathOf,
   deriveNextStepSperre,
+  derivePendingZustand,
   mergeCandidates,
   nodeReaderFs,
   scanCopy,
@@ -165,6 +168,14 @@ export interface VorhabenServiceDeps {
   findTranscript?: (providerId: string, claudeSessionId: string) => TranscriptHit | undefined;
   /** INT-2026-019: how long `resumeIfLost` waits for the first scan (default READY_WAIT_MS). */
   readyWaitMs?: number;
+  /**
+   * INT-2026-022 (FA-25): is worktree isolation on for the project's MAIN path? Default = general-config
+   * `getCloudSessionWorktreeEnabled`. Checked before an intent start so „Neue Absicht" never starts silently in
+   * the main checkout (FA-09); the manager checks again itself.
+   */
+  worktreeEnabled?: (mainProjectPath: string) => boolean;
+  /** INT-2026-022 (review E5): the same resolution the manager uses (`resolveMainWorktreePath`) — a registered sub-worktree counts to its main repo. */
+  resolveMainPath?: (projectPath: string) => string;
   now?: () => Date;
   /** Worktree list cache TTL. */
   worktreeTtlMs?: number;
@@ -302,6 +313,8 @@ export class VorhabenService {
   private readonly resolveModel: (sel: ModelSelection) => boolean;
   private readonly isClaudeProvider: (providerId: string) => boolean;
   private readonly findTranscript: (providerId: string, claudeSessionId: string) => TranscriptHit | undefined;
+  private readonly worktreeEnabled: (mainProjectPath: string) => boolean;
+  private readonly resolveMainPath: (projectPath: string) => string;
   private readonly readyWaitMs: number;
   /** INT-2026-019: resolves after the first scan (`start()`); `resumeIfLost` waits for it. */
   private readonly ready: Promise<void>;
@@ -341,6 +354,8 @@ export class VorhabenService {
       });
     this.findTranscript = deps.findTranscript ?? ((providerId, id): TranscriptHit | undefined => findTranscriptOnDisk(claudeHomes(providerId), id));
     this.readyWaitMs = deps.readyWaitMs ?? READY_WAIT_MS;
+    this.worktreeEnabled = deps.worktreeEnabled ?? getCloudSessionWorktreeEnabled;
+    this.resolveMainPath = deps.resolveMainPath ?? resolveMainWorktreePath;
     this.ready = new Promise<void>((resolve) => {
       this.resolveReady = resolve;
     });
@@ -827,11 +842,29 @@ export class VorhabenService {
     } else if (!this.resolveModel(model)) {
       throw new VorhabenError('INVALID_MESSAGE', `Modell nicht konfiguriert oder keine Claude-Sitzung: ${model.providerId}/${model.modelId}`);
     }
+    const neueAbsicht = step === 'intent' && !intentId;
     let target: ParsedTarget;
-    try {
-      target = parseSessionTarget(sessionTargetRaw ?? { kind: 'main' });
-    } catch (err) {
-      throw new VorhabenError('INVALID_MESSAGE', err instanceof SessionTargetError ? err.message : 'ungültiges Sitzungsziel');
+    if (neueAbsicht) {
+      // INT-2026-022 (FA-07, FA-09, FA-25): an intent always starts in a NEW worktree. The handler already
+      // refuses other targets; this is the second check for direct callers. The pre-checks run on the main
+      // path with the manager's resolution (review E5) and refuse BEFORE a session exists — never a silent
+      // start in the main checkout. The manager stays the last barrier (WORKTREE_NOT_A_GIT_REPO, review E6).
+      const raw = sessionTargetRaw as { kind?: unknown; name?: unknown } | undefined;
+      if (raw !== undefined && (raw === null || typeof raw !== 'object' || raw.kind !== 'new-worktree' || (raw.name !== undefined && raw.name !== null && raw.name !== ''))) {
+        throw new VorhabenError('INVALID_MESSAGE', 'Eine Absicht startet immer in einer neuen Arbeitskopie (sessionTarget new-worktree ohne Namen oder weglassen)');
+      }
+      target = { target: { kind: 'new-worktree' }, explicit: true };
+      const wt = await this.worktreesOf(project.path);
+      if (!wt.isGitRepo) throw new VorhabenError('WORKTREE_UNAVAILABLE', 'Keine Arbeitskopie möglich: kein Git-Repository — Absicht im Terminal starten.');
+      if (!this.worktreeEnabled(this.resolveMainPath(project.path))) {
+        throw new VorhabenError('WORKTREE_UNAVAILABLE', 'Keine Arbeitskopie möglich: Worktree-Isolation ist für dieses Projekt abgeschaltet — in Projekt › Einstellungen einschalten oder die Absicht im Terminal starten.');
+      }
+    } else {
+      try {
+        target = parseSessionTarget(sessionTargetRaw ?? { kind: 'main' });
+      } catch (err) {
+        throw new VorhabenError('INVALID_MESSAGE', err instanceof SessionTargetError ? err.message : 'ungültiges Sitzungsziel');
+      }
     }
     const command = stepCommand(step, intentId);
     // INT-2026-018: a live session of the row decides the way (AK-04, AK-05, AK-10; NZ-04).
@@ -853,7 +886,9 @@ export class VorhabenService {
         { sessionTarget: target }
       );
     } catch (err) {
-      throw new VorhabenError('START_FAILED', (err as Error).message);
+      // Manager codes (WORKTREE_NOT_A_GIT_REPO, WORKTREE_CREATION_DISABLED, WORKTREE_NAME_TAKEN, git) reach Michael
+      // only through this text (review E24); the worktree's rollback lies in createCloudSessionWorktree.
+      throw new VorhabenError('START_FAILED', neueAbsicht ? `Keine Arbeitskopie möglich: ${(err as Error).message}` : (err as Error).message);
     }
     const at = this.now().toISOString();
     this.deps.setSessionName?.(created.sessionId, step === 'intent' ? 'intent' : `${step} ${intentId}`);
@@ -863,7 +898,12 @@ export class VorhabenService {
       this.deps.store.setAssignment(projectId, intentId, { sessionId: created.sessionId, step, model: model.modelId, cwd: created.effectiveCwd, at, ...ctx });
       this.deps.store.setLastModel(projectId, intentId, step, model);
     } else {
-      this.deps.store.setPendingIntent(created.sessionId, { projectId, cwd: created.effectiveCwd, step: 'intent', model: model.modelId, since: at, provider: model.providerId });
+      // INT-2026-022 (FA-14): the working title is the only excerpt of the text that reaches the snapshot.
+      const arbeitstitel = firstInput !== undefined ? arbeitstitelAus(firstInput) : '';
+      this.deps.store.setPendingIntent(created.sessionId, {
+        projectId, cwd: created.effectiveCwd, step: 'intent', model: model.modelId, since: at, provider: model.providerId,
+        ...(arbeitstitel ? { arbeitstitel } : {}),
+      });
     }
     // The text waits for the first Stop (a paste right after the start would hit the startup screen, plan §3 Alternativen).
     if (firstInput !== undefined) this.deps.store.setFirstInput(created.sessionId, { text: firstInput, versuche: 0 });
@@ -873,6 +913,11 @@ export class VorhabenService {
       if (sessions.closeSession?.(reuse.a.sessionId, { closedBy: 'user' })) geschlossen = reuse.a.sessionId;
       else console.warn(`[vorhaben] ${intentId}: alte Sitzung ${reuse.a.sessionId} ließ sich nicht schließen`);
     }
+    // INT-2026-022 (R1): the new worktree is not in the 5-s worktree cache yet. The delete is the cheap
+    // shortcut; the safety net is `runScan`, which re-reads the list when a pending session's cwd is not among
+    // the copies. ORDER IS PART OF THE CONTRACT (review E22/E32): `setPendingIntent` above, THEN `scheduleRescan`
+    // — a scan already running sets `scanDirty` and the follow-up scan sees the entry.
+    if (neueAbsicht) this.worktreeCache.delete(project.path);
     this.scheduleRescan(0);
     return { sessionId: created.sessionId, modus: 'neu', ...(geschlossen ? { geschlossen } : {}) };
   }
@@ -1088,10 +1133,36 @@ export class VorhabenService {
     const out: VorhabenPendingIntent[] = [];
     for (const [sessionId, p] of this.deps.store.getPendingIntents()) {
       const info = this.projects.find((x) => x.id === p.projectId);
-      const arbeitskopie = info && safeKey(info.path) === safeKey(p.cwd) ? info.arbeitskopie : basename(p.cwd);
-      out.push({ sessionId, projectId: p.projectId, cwd: p.cwd, arbeitskopie, since: p.since, session: this.sessionRefOf(sessionId, this.pendingName(sessionId), p.model, undefined, undefined, { step: 'intent', provider: p.provider }) });
+      const session = this.sessionRefOf(sessionId, this.pendingName(sessionId), p.model, undefined, undefined, { step: 'intent', provider: p.provider });
+      // INT-2026-022 (FA-13): the row's rule for the state; the overview groups the entry by it.
+      const { zustand, detail } = derivePendingZustand(session);
+      out.push({
+        sessionId,
+        projectId: p.projectId,
+        projectName: info?.name ?? this.findProject(p.projectId)?.name ?? p.projectId,
+        cwd: p.cwd,
+        arbeitskopie: this.copyLabel(info, p.cwd),
+        since: p.since,
+        session,
+        ...(p.arbeitstitel ? { arbeitstitel: p.arbeitstitel } : {}),
+        zustand,
+        zustandDetail: detail,
+      });
     }
     return out.sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0));
+  }
+
+  /**
+   * INT-2026-022 (FA-08): label of a copy with the row's rule — the main path's branch from the project info, a
+   * worktree's branch from the cached `git worktree list` (`session/<id>`, not the directory name), else the
+   * directory name (the milliseconds between a start and the first scan that knows the new copy).
+   */
+  private copyLabel(info: VorhabenProjectInfo | undefined, cwd: string): string {
+    if (!info) return basename(cwd);
+    const key = safeKey(cwd);
+    if (safeKey(info.path) === key) return info.arbeitskopie;
+    const entry = this.worktreeCache.get(info.path)?.info.entries.find((e) => safeKey(e.path) === key);
+    return entry?.branch ?? basename(cwd);
   }
 
   private onAgentEvent(sessionId: string, event: string): void {
@@ -1163,11 +1234,13 @@ export class VorhabenService {
       this.scheduleRescan(0);
     } else if (cmd.step === 'intent') {
       // INT-2026-016 (AK-08): a new intent is something new — the session leaves its rows.
-      const dropped = this.deps.store.clearAssignmentsOfSession(sessionId);
+      this.deps.store.clearAssignmentsOfSession(sessionId);
       const { provider } = this.sessionContext(sessionId);
       this.deps.store.setPendingIntent(sessionId, { projectId: project.id, cwd: session.effectiveCwd, step: 'intent', model, since: this.now().toISOString(), ...(provider ? { provider } : {}) });
-      if (dropped > 0) this.scheduleRescan(0);
-      else this.broadcastState();
+      // INT-2026-022 (FA-19): a hand-typed `/intent` in a fresh worktree has the same cache gap as a start —
+      // rescan (label from the worktree list, copy watched) instead of a bare broadcast; dropped rows are covered too.
+      this.worktreeCache.delete(project.path);
+      this.scheduleRescan(0);
     }
   }
 
@@ -1511,7 +1584,32 @@ export class VorhabenService {
     return info;
   }
 
+  /**
+   * INT-2026-022 (FA-17/FA-18, reviews E2/E9/E37): pending `/intent` entries whose session died while the
+   * backend was down (with or without exit file). An entry goes ONLY when the manager reports the session
+   * `closed`, or does not know it AND the boot restore is `complete` — `undefined` during `pending`/`timeout`
+   * may still mean „not restored yet" (R3: its first input must not be lost). `timeout` flips to `complete`
+   * by itself after the late restores; the next scan (at the latest `vorhaben:get`) sweeps then. A source
+   * without `restoreOutcome` (test fakes) counts as complete. In normal operation `onSessionClosed` cleans up.
+   */
+  private sweepDeadPending(): void {
+    const sessions = this.deps.sessions;
+    if (!sessions) return;
+    const outcome = sessions.restoreOutcome?.() ?? 'complete';
+    for (const [sessionId] of this.deps.store.getPendingIntents()) {
+      const live = sessions.getSession(sessionId);
+      const dead = live ? live.status === 'closed' : outcome === 'complete';
+      if (!dead) continue;
+      this.deps.store.clearPendingIntent(sessionId);
+      this.deps.store.clearFirstInput(sessionId);
+      this.deps.store.dropUnclaimedProtocol(sessionId);
+      this.promptTextSeq.delete(sessionId);
+      console.log(`[vorhaben] anhängige Absicht-Sitzung ${sessionId} ist beendet — Eintrag geräumt`);
+    }
+  }
+
   private async runScan(): Promise<void> {
+    this.sweepDeadPending();
     const projects = this.deps.workspace.getState().openProjects;
     const rows: VorhabenRow[] = [];
     const infos: VorhabenProjectInfo[] = [];
@@ -1530,8 +1628,19 @@ export class VorhabenService {
         };
         const copies: ScanCopy[] = [];
         try {
-          const wt = await this.worktreesOf(project.path);
+          let wt = await this.worktreesOf(project.path);
           const ownKey = safeKey(project.path);
+          // INT-2026-022 (R1, reviews E1/E22): a pending `/intent` session whose cwd is not among the copies runs
+          // in a worktree the cache does not know yet (start from the UI, hand-typed in a fresh worktree) — read
+          // the list past the cache, else the folder it creates is never watched. Read HERE, in the scan.
+          if (wt.isGitRepo) {
+            const known = new Set([ownKey, ...wt.entries.map((e) => safeKey(e.path))]);
+            const unknown = this.deps.store.getPendingIntents().some(([, p]) => p.projectId === project.id && !known.has(safeKey(p.cwd)));
+            if (unknown) {
+              wt = await this.listWorktrees(project.path);
+              this.worktreeCache.set(project.path, { at: Date.now(), info: wt });
+            }
+          }
           const own = wt.entries.find((e) => safeKey(e.path) === ownKey);
           info.arbeitskopie = own?.branch ?? '';
           copies.push({ cwd: project.path, arbeitskopie: info.arbeitskopie, main: true });

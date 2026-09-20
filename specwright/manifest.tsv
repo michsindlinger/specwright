@@ -96,6 +96,7 @@ repo-only	project	specwright/templates/agents/dev-team/po-template.md	specwright
 repo-only	project	specwright/templates/agents/dev-team/qa-specialist-template.md	specwright/templates/agents/dev-team/qa-specialist-template.md
 repo-only	project	specwright/templates/agents/product-manager-agent.md	specwright/templates/agents/product-manager-agent.md
 script	project	specwright/scripts/auto-execute.sh	specwright/scripts/auto-execute.sh
+script	project	specwright/scripts/next-intent-id.sh	specwright/scripts/next-intent-id.sh
 skill	project	.claude/skills/review-implementation-plan/SKILL.md	.claude/skills/review-implementation-plan/SKILL.md
 skill	project	specwright/templates/skills/atomicity-validator/SKILL.md	.claude/skills/atomicity-validator/SKILL.md
 standard	both	specwright/standards/atomicity-guidelines.md	specwright/standards/atomicity-guidelines.md

@@ -803,4 +803,9 @@ export const CLOUD_TERMINAL_ERROR_CODES = {
   INVALID_WORKTREE_NAME: 'INVALID_WORKTREE_NAME',
   /** A worktree directory or `session/<name>` branch with that name already exists */
   WORKTREE_NAME_TAKEN: 'WORKTREE_NAME_TAKEN',
+  /**
+   * INT-2026-022 (FA-09): explicit 'new-worktree' request in a directory that is no git repository.
+   * Only a legacy caller without a target degrades to the project dir with a notice.
+   */
+  WORKTREE_NOT_A_GIT_REPO: 'WORKTREE_NOT_A_GIT_REPO',
 } as const;

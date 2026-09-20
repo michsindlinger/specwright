@@ -61,6 +61,8 @@ export interface PendingIntent {
   since: string;
   /** INT-2026-019: provider of the model (carried into the assignment once the folder appears). */
   provider?: string;
+  /** INT-2026-022 (FA-14): working title from the first line of the „Neue Absicht" text (≤ 80 chars); absent for hand-typed `/intent`. */
+  arbeitstitel?: string;
 }
 
 export interface VorhabenStateData {

@@ -364,14 +364,28 @@ export const assignmentKey = (projectId: string, intentId: string): string => `$
 export interface VorhabenPendingIntent {
   sessionId: string;
   projectId: string;
+  /** INT-2026-022 (FA-12): project name, so the overview entry has the row's shape. */
+  projectName: string;
   /** Directory the session runs in (project or worktree). */
   cwd: string;
-  /** Branch/label of that copy; '' when unknown or not a git repo. */
+  /** Branch/label of that copy (same rule as a row's `arbeitskopie`, FA-08); '' when unknown or not a git repo. */
   arbeitskopie: string;
   /** ISO timestamp of the start; the oldest pending session claims the next folder. */
   since: string;
   session: VorhabenSessionRef;
+  /**
+   * INT-2026-022 (FA-14): working title — first non-empty line of the text typed on „Neue Absicht",
+   * at most ARBEITSTITEL_MAX_CHARS, formed once at the start. The only excerpt of a first input in
+   * the snapshot (architecture.md §3); absent for sessions typed by hand → the UI shows `session.name`.
+   */
+  arbeitstitel?: string;
+  /** INT-2026-022 (FA-13): state of the session with the row's rule (`derivePendingZustand`), so the overview groups it. */
+  zustand: VorhabenZustand;
+  zustandDetail: string;
 }
+
+/** INT-2026-022 (FA-14): upper bound of `VorhabenPendingIntent.arbeitstitel` in characters. */
+export const ARBEITSTITEL_MAX_CHARS = 80;
 
 /** Document (or the design folder) a Phasen-Chip of the Vorhaben page shows (INT-2026-010, FA-12). */
 export type VorhabenPhaseDoc = VorhabenDocKey | 'design';
@@ -743,6 +757,12 @@ export type VorhabenErrorCode =
   // INT-2026-019: refusals of `vorhaben:session.resume` (the page shows `message`, AK-08/AK-09).
   /** The lost session's worktree is gone — `message` names the path; „Nächster Schritt" stays usable. */
   | 'WORKTREE_MISSING'
+  /**
+   * INT-2026-022 (FA-09, FA-25): an intent start needs a new worktree and none is possible here — no git
+   * repository, or `cloudSessionWorktree: false` for the project. `message` names the reason and the next step;
+   * nothing was started (never a silent start in the main checkout).
+   */
+  | 'WORKTREE_UNAVAILABLE'
   /** Resume did not start (`message` = reason: cap reached, transcript not found, spawn failed, backend still booting). */
   | 'RESUME_FAILED'
   /** A resume for this row is in flight — `start-step`/`session.assign` refused for the moment (AK-04). */

@@ -6,6 +6,12 @@
  * error states, and a fixed bar at the bottom with „Neue Absicht" (AN-S02).
  * The head line „n Projekte · m warten" is gone — the bell counts. Pure
  * sorting/grouping lives in vorhaben-sort.ts (FA-02).
+ *
+ * INT-2026-022 (FA-12, FA-13, FA-16): begun intents without a folder
+ * (`state.pendingIntents`) stand in „Wartet auf dich" or „Läuft" as entries
+ * of `aos-vorhaben-zeile` in its mode „ohne Ordner", before the rows; an
+ * entry whose session already carries a row is never rendered (belt for a
+ * stale client). A project with only entries is not „empty".
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -176,9 +182,10 @@ export class AosVorhabenUebersicht extends LitElement {
     }
     const projects = st.projects;
     const rows: VorhabenRow[] = st.rows;
-    const groups = groupRows(rows, this.filterProjectId);
+    const pendings = st.pendingIntents ?? [];
+    const groups = groupRows(rows, this.filterProjectId, pendings);
     const visibleProjects = this.filterProjectId ? projects.filter((p) => p.id === this.filterProjectId) : projects;
-    const emptyProjects = visibleProjects.filter((p) => !p.error && !rows.some((r) => r.projectId === p.id));
+    const emptyProjects = visibleProjects.filter((p) => !p.error && !rows.some((r) => r.projectId === p.id) && !pendings.some((q) => q.projectId === p.id));
     const errorProjects = visibleProjects.filter((p) => p.error);
 
     return html`
@@ -207,8 +214,11 @@ export class AosVorhabenUebersicht extends LitElement {
               ${this.umgesetztOpen ? html`<div class="liste" style="margin-top: var(--spacing-sm)">${g.rows.map((r) => html`<aos-vorhaben-zeile .row=${r}></aos-vorhaben-zeile>`)}</div>` : nothing}
             </div>`
           : html`<section class="gruppe" aria-label=${g.label}>
-              <h2 class="gruppe-titel">${g.label} · ${g.rows.length}</h2>
-              <div class="liste">${g.rows.map((r) => html`<aos-vorhaben-zeile .row=${r}></aos-vorhaben-zeile>`)}</div>
+              <h2 class="gruppe-titel">${g.label} · ${g.rows.length + g.pendings.length}</h2>
+              <div class="liste">
+                ${g.pendings.map((p) => html`<aos-vorhaben-zeile .pending=${p}></aos-vorhaben-zeile>`)}
+                ${g.rows.map((r) => html`<aos-vorhaben-zeile .row=${r}></aos-vorhaben-zeile>`)}
+              </div>
             </section>`
       )}
       ${emptyProjects.map(

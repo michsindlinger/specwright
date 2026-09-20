@@ -147,7 +147,8 @@ describe('VorhabenService stage 2', () => {
       setSessionName,
       resolveModel: (sel) => sel.providerId === 'anthropic' || sel.providerId === 'glm',
       timeZone: 'UTC',
-      listWorktrees: async () => ({ isGitRepo: false, mainWorktreePath: null, entries: [] }),
+      // INT-2026-022 (FA-09): an intent start refuses without a git repo — the fake reports the main copy as one.
+      listWorktrees: async () => ({ isGitRepo: true, mainWorktreePath: projA, entries: [{ path: projA, branch: 'main', head: 'x', bare: false, detached: false, locked: false, prunable: false }] }),
     });
     handler = new VorhabenHandler(service, new ProjectDocsService({ gitDirty: async () => null }), store, broadcast);
     await service.start();

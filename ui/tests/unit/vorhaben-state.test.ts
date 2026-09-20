@@ -325,4 +325,18 @@ describe('VorhabenStateStore stage 2 (FA-21/22/26/32/40)', () => {
     expect(again.getAssignment('p1', 'INT-2026-004')).toEqual({ sessionId: 's1', step: 'spec', model: 'opus', cwd: '/a', at: '2026-09-17T10:00:00Z' });
     expect(again.getPendingIntents()).toEqual([['s9', { projectId: 'p1', cwd: '/a', step: 'intent', model: 'opus', since: '2026-09-15T10:00:00Z', provider: 'openai' }]]);
   });
+  it('INT-2026-022 (FA-14, FA-18): a pending intent carries its optional arbeitstitel across load(); entries without it load unchanged', async () => {
+    const store = new VorhabenStateStore(file, { port: 3111 });
+    await store.load();
+    store.setPendingIntent('sT', { projectId: 'p1', cwd: '/a-worktrees/session-sT', step: 'intent', model: 'opus', since: '2026-09-19T09:00:00Z', provider: 'anthropic', arbeitstitel: 'Die Liste sortiert falsch' });
+    store.setPendingIntent('sH', { projectId: 'p1', cwd: '/a', step: 'intent', model: 'opus', since: '2026-09-19T09:01:00Z' });
+    await store.flush();
+    const again = new VorhabenStateStore(file, { port: 3111 });
+    await again.load();
+    expect(again.getPendingIntents()).toEqual([
+      ['sT', { projectId: 'p1', cwd: '/a-worktrees/session-sT', step: 'intent', model: 'opus', since: '2026-09-19T09:00:00Z', provider: 'anthropic', arbeitstitel: 'Die Liste sortiert falsch' }],
+      ['sH', { projectId: 'p1', cwd: '/a', step: 'intent', model: 'opus', since: '2026-09-19T09:01:00Z' }],
+    ]);
+    expect(again.getPendingIntents()[1][1]).not.toHaveProperty('arbeitstitel');
+  });
 });

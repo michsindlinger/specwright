@@ -278,6 +278,15 @@ export function deriveZustand(
   }
 }
 
+/**
+ * INT-2026-022 (FA-13, review E16): state of a pending `/intent` session — a
+ * Vorhaben without a folder is in phase „absicht", has no build-stand and no
+ * review document; everything else is the row's rule.
+ */
+export function derivePendingZustand(session: VorhabenSessionRef): ZustandResult {
+  return deriveZustand('absicht', false, session, undefined);
+}
+
 // ---- Scan ----
 
 export interface ReaderFs {
