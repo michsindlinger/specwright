@@ -34,9 +34,7 @@ LOAD (hybrid, Projekt vor global):
   - `docs/product-brief.md` (Nutzer, Nicht-Ziele des Produkts, Domänenbegriffe)
   - `CLAUDE.md` (Arbeitsweise, Bypass-Regel, Verify-Befehl)
 
-DETERMINE next id:
-  - Ordner `intent/` anlegen, falls fehlt
-  - höchste vorhandene `INT-JJJJ-NNN` des laufenden Jahres + 1, sonst `INT-JJJJ-001`
+PREPARE: Ordner `intent/` anlegen, falls fehlt. Die Kennung wird **nicht** hier bestimmt, sondern erst in Step 4 beim Schreiben — zusammen mit dem Anlegen des Ordners (Reservierung). Zwei Sitzungen, die kurz nacheinander beginnen, bekämen sonst dieselbe Nummer (INT-2026-022, AK-12).
 
 IF Argument fehlt: ASK „Beschreibe das Vorhaben in zwei bis drei Sätzen: Was stört, wen, seit wann?"
 
@@ -77,7 +75,14 @@ IF die Ursache größer ist als das Symptom: Risikoklasse und Größe anheben, P
 
 ### Step 4: intent.md schreiben
 
-WRITE `intent/INT-JJJJ-NNN-kurzname/intent.md` nach Vorlage:
+RESERVE Kennung und Ordner in einem Lauf (INT-2026-022, AK-12/FA-21):
+  - Kurzname aus dem Gespräch bilden: kleinbuchstaben-mit-bindestrich, zwei bis vier Wörter
+  - `bash specwright/scripts/next-intent-id.sh --reserve <kurzname>` (hybrid: fehlt das Skript im Projekt, `~/.specwright/scripts/next-intent-id.sh`) → stdout ist die Kennung `INT-JJJJ-NNN`; das Skript holt den entfernten Stand nach (Fetch, nur lesen, Deckel 10 s), zählt `intent/` der eigenen Kopie, aller Arbeitskopien und aller lokalen und entfernten Zweige, und legt `intent/INT-JJJJ-NNN-<kurzname>/intent.md` als Platzhalter an
+  - Steht auf stderr `hinweis: ohne entfernten Stand vergeben (JJJJ-MM-TT)`: Kopf-Feld `kennung_hinweis: "ohne entfernten Stand vergeben (JJJJ-MM-TT)"` setzen und die Person beim Vorlegen darauf hinweisen (Kollision beim Push möglich)
+  - Ohne Netz oder auf Wunsch: `--no-fetch` oder Umgebung `SPECWRIGHT_INTENT_FETCH=off` (dann immer mit Hinweis)
+  - Fallback, wenn das Skript in beiden Orten fehlt: höchste vorhandene `INT-JJJJ-NNN` des laufenden Jahres über `ls intent/`, `git worktree list --porcelain` (je Kopie `ls <w>/intent`) und `git for-each-ref refs/heads refs/remotes` (je Ref `git ls-tree --name-only <ref> intent/`) + 1, sonst `INT-JJJJ-001`; Ordner sofort per `mkdir` (ohne `-p`) anlegen, bei Fehler neu bestimmen; Kopf-Feld `kennung_hinweis: "Fallback ohne Skript (JJJJ-MM-TT)"`
+
+WRITE `intent/INT-JJJJ-NNN-kurzname/intent.md` nach Vorlage — über die Platzhalter-Datei der Reservierung:
   - Frontmatter: jede Zeile mit zwei Leerzeichen abschließen, Leerzeile vor dem schließenden `---` (MacDown)
   - `status: entwurf`, `version: 0.1.0`, `bypass` nach Regel: `ja` nur bei Bugfix oder Größe S, mit Grund
   - Kern: drei Sätze, Problem und Anlass, Betroffene, Ziele, Nicht-Ziele, Abnahmekriterien (EARS, ein Modalverb, Ziel, Prüfart), Randbedingungen mit Herkunft (Projekt-Docs zitieren), offene Fragen mit Übergangsregel

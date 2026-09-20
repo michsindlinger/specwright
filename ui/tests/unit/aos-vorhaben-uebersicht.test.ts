@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
-import type { VorhabenRow, VorhabenState } from '../../src/shared/types/vorhaben.protocol.js';
+import type { VorhabenPendingIntent, VorhabenRow, VorhabenState } from '../../src/shared/types/vorhaben.protocol.js';
 
 vi.mock('../../frontend/src/gateway.js', () => ({
   gateway: { send: vi.fn(), on: vi.fn(), off: vi.fn(), getConnectionStatus: () => false, isConnecting: () => false, getProjectPath: vi.fn() },
@@ -12,8 +12,9 @@ const row = (o: Partial<VorhabenRow> & { intentId: string; projectId: string }):
   lastChangedAt: '', lastChangedMs: 0, ...o,
 });
 
-const state = (rows: VorhabenRow[]): VorhabenState => ({
+const state = (rows: VorhabenRow[], pendingIntents: VorhabenPendingIntent[] = []): VorhabenState => ({
   rows,
+  pendingIntents,
   projects: [
     { id: 'a', path: '/a', name: 'A', arbeitskopie: 'main', worktrees: [], hasIntentDir: true },
     { id: 'b', path: '/b', name: 'B', arbeitskopie: '', worktrees: [], hasIntentDir: false },
@@ -135,6 +136,44 @@ describe('aos-vorhaben-uebersicht (FA-03, FA-05, FA-08; INT-2026-010 FA-02, FA-0
     await el.updateComplete;
     expect(sr.querySelectorAll('aos-vorhaben-zeile').length).toBe(0);
     expect(sr.querySelector('.aufklappen')?.textContent).toContain('Umgesetzt · 1');
+    el.remove();
+  });
+  it('INT-2026-022 (FA-12, FA-13, FA-16): begun intents stand as entries in „Wartet auf dich"/„Läuft" before the rows; a project with only entries is not empty; the filter applies; an entry whose session carries a row is not rendered', async () => {
+    await import('../../frontend/src/components/vorhaben/aos-vorhaben-uebersicht.js');
+    const pend = (o: Partial<VorhabenPendingIntent> & { sessionId: string; projectId: string }): VorhabenPendingIntent => ({
+      projectName: o.projectId.toUpperCase(), cwd: '/' + o.projectId + '-worktrees/session-' + o.sessionId, arbeitskopie: 'session/' + o.sessionId, since: '2026-09-19T08:00:00Z',
+      session: { id: o.sessionId, name: 'intent', model: 'opus', agentStatus: 'working', step: 'intent' }, zustand: 'arbeitet', zustandDetail: 'opus', arbeitstitel: 'Titel ' + o.sessionId, ...o,
+    });
+    const el = document.createElement('aos-vorhaben-uebersicht');
+    el.vorhabenState = state(
+      [row({ intentId: 'INT-2026-001', projectId: 'a', zustand: 'arbeitet', session: { id: 'claimed', name: 'intent', model: 'opus', agentStatus: 'working' } })],
+      [
+        pend({ sessionId: 'x', projectId: 'a' }),
+        pend({ sessionId: 'y', projectId: 'b', zustand: 'wartet_rueckfrage', zustandDetail: 'Rückfrage', since: '2026-09-19T09:00:00Z' }),
+        pend({ sessionId: 'claimed', projectId: 'a' }), // stale client: the same session already carries INT-2026-001 → never both (FA-16)
+      ]
+    );
+    document.body.appendChild(el);
+    await el.updateComplete;
+    await tick();
+    const sr = el.shadowRoot!;
+    expect([...sr.querySelectorAll('.gruppe-titel')].map((t) => t.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Wartet auf dich · 1', 'Läuft · 2']);
+    const zeilen = [...sr.querySelectorAll('aos-vorhaben-zeile')] as Array<HTMLElement & { row?: VorhabenRow; pending: VorhabenPendingIntent | null }>;
+    expect(zeilen.map((z) => z.pending?.sessionId ?? z.row?.intentId)).toEqual(['y', 'x', 'INT-2026-001']);
+    expect(zeilen.filter((z) => z.pending?.sessionId === 'claimed')).toHaveLength(0);
+    // B has no row but an entry → not „leer"
+    expect(sr.querySelector('.leer')).toBeNull();
+    // filter B → only the entry of B
+    ([...sr.querySelectorAll('.chip')].find((c) => c.textContent?.trim() === 'B') as HTMLButtonElement).click();
+    await el.updateComplete;
+    const nurB = [...sr.querySelectorAll('aos-vorhaben-zeile')] as Array<HTMLElement & { pending: VorhabenPendingIntent | null }>;
+    expect(nurB.map((z) => z.pending?.sessionId)).toEqual(['y']);
+    // a click on the entry bubbles absicht-open out of the overview
+    const seen: string[] = [];
+    el.addEventListener('absicht-open', (e) => seen.push((e as CustomEvent<{ pending: VorhabenPendingIntent }>).detail.pending.sessionId));
+    await nurB[0].updateComplete;
+    (nurB[0].shadowRoot!.querySelector('.zeile') as HTMLButtonElement).click();
+    expect(seen).toEqual(['y']);
     el.remove();
   });
 });

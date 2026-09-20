@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { ZUSTAND_LABELS, sortRows, groupRows, groupOf, countWaitingForMe, relativeTime, formatStand } from '../../frontend/src/components/vorhaben/vorhaben-sort.js';
-import type { VorhabenRow } from '../../src/shared/types/vorhaben.protocol.js';
+import { ZUSTAND_LABELS, sortRows, groupRows, groupOf, pendingGroupOf, countWaitingForMe, relativeTime, formatStand } from '../../frontend/src/components/vorhaben/vorhaben-sort.js';
+import type { VorhabenPendingIntent, VorhabenRow } from '../../src/shared/types/vorhaben.protocol.js';
 
 const row = (o: Partial<VorhabenRow> & { intentId: string }): VorhabenRow => ({
   projectId: 'p', projectPath: '/p', projectName: 'P', dirName: o.intentId, cwd: '/p', arbeitskopie: 'main', titel: o.intentId,
@@ -83,5 +83,46 @@ describe('vorhaben-sort (FA-02, FA-03, FA-05)', () => {
     expect(relativeTime(now - 3 * 3600000, now)).toBe('vor 3 h');
     expect(relativeTime(now - 26 * 3600000, now)).toBe('gestern');
     expect(formatStand(now)).toBe('15.09. 16:42');
+  });
+});
+
+describe('INT-2026-022 (FA-12, FA-13, FA-16): pending intents in the groups', () => {
+  const pend = (o: Partial<VorhabenPendingIntent> & { sessionId: string }): VorhabenPendingIntent => ({
+    projectId: 'p', projectName: 'P', cwd: '/p-worktrees/session-' + o.sessionId, arbeitskopie: 'session/' + o.sessionId, since: '2026-09-19T08:00:00Z',
+    session: { id: o.sessionId, name: 'intent', model: 'opus', agentStatus: 'working', step: 'intent' }, zustand: 'arbeitet', zustandDetail: 'opus', ...o,
+  });
+
+  it('pendingGroupOf: every waiting state → „Wartet auf dich", everything else → „Läuft", never umgesetzt', () => {
+    for (const z of ['wartet_auf_dich', 'wartet', 'wartet_rueckfrage', 'wartet_plan', 'wartet_berechtigung'] as const) expect(pendingGroupOf({ zustand: z })).toBe('wartet_auf_dich');
+    for (const z of ['arbeitet', 'keine_sitzung', 'sitzung_beendet', 'bau_unterbrochen'] as const) expect(pendingGroupOf({ zustand: z })).toBe('laeuft');
+  });
+
+  it('groupRows places entries before the rows of their group, newest start first, follows the project filter, keeps a group with entries only', () => {
+    const rows = [row({ intentId: 'INT-2026-001', zustand: 'keine_sitzung', lastChangedMs: 100 })];
+    const pendings = [
+      pend({ sessionId: 'a', since: '2026-09-19T08:00:00Z' }),
+      pend({ sessionId: 'b', since: '2026-09-19T09:00:00Z' }),
+      pend({ sessionId: 'c', since: '2026-09-19T08:30:00Z', zustand: 'wartet_rueckfrage', zustandDetail: 'Rückfrage' }),
+      pend({ sessionId: 'q', projectId: 'q', projectName: 'Q', since: '2026-09-19T08:15:00Z' }),
+    ];
+    const groups = groupRows(rows, null, pendings);
+    expect(groups.map((g) => [g.key, g.pendings.map((p) => p.sessionId), g.rows.map((r) => r.intentId)])).toEqual([
+      ['wartet_auf_dich', ['c'], []],
+      ['laeuft', ['b', 'q', 'a'], ['INT-2026-001']],
+    ]);
+    expect(groupRows(rows, 'q', pendings).map((g) => [g.key, g.pendings.map((p) => p.sessionId), g.rows.length])).toEqual([['laeuft', ['q'], 0]]);
+    // no pendings → the old shape
+    expect(groupRows(rows, null).map((g) => g.pendings)).toEqual([[]]);
+  });
+
+  it('FA-16: an entry whose session already carries a live row is not listed — never entry and row at once', () => {
+    const rows = [row({ intentId: 'INT-2026-002', zustand: 'arbeitet', session: { id: 'b', name: 'intent', model: 'opus', agentStatus: 'working' } })];
+    const pendings = [pend({ sessionId: 'a' }), pend({ sessionId: 'b', since: '2026-09-19T09:00:00Z' })];
+    const [g] = groupRows(rows, null, pendings);
+    expect(g.pendings.map((p) => p.sessionId)).toEqual(['a']);
+    expect(g.rows.map((r) => r.intentId)).toEqual(['INT-2026-002']);
+    // an ENDED row of the same session does not hide a new pending entry of that session (it typed /intent again)
+    const ended = [row({ intentId: 'INT-2026-002', zustand: 'sitzung_beendet', session: { id: 'b', name: 'intent', model: 'opus', agentStatus: 'unknown', ended: true } })];
+    expect(groupRows(ended, null, pendings).flatMap((x) => x.pendings.map((p) => p.sessionId))).toEqual(['b', 'a']);
   });
 });

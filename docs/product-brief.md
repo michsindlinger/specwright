@@ -37,7 +37,7 @@ Ohne festen Ablauf zerfällt Softwarearbeit mit einem Agenten in Chat-Sitzungen:
 | Hooks `protect-tests`, `no-secrets`, `production-gate` | jedes Projekt | live |
 | Installer (`install.sh`, `setup*.sh`, `update-specwright.sh`) aus einem Manifest, Update räumt Entferntes auf | Entwickler | in Arbeit (INT-2026-002) |
 | Alt-Befehle für Produktplanung, Story-Specs, Bugs, Skills, Changelog (`/plan-product`, `/create-spec`, `/add-bug`, …) | Entwickler (Terminal) | live, Umbau je Befehl später |
-| Web-UI: Vorhaben-Übersicht, Dokument-Leser, Review-Kanal, Terminal angedockt neben dem Dokument mit Kennungen als Verweisen (INT-2026-011), Projekt-Seite, Cloud-Terminal, Shared Workspace | Entwickler (Mac, Handy, Droplet) | live (INT-2026-004; angedocktes Terminal INT-2026-011 Stufe 1) |
+| Web-UI: Vorhaben-Übersicht (auch begonnene Absichten ohne Ordner, INT-2026-022), Dokument-Leser, Review-Kanal, Terminal angedockt neben dem Dokument mit Kennungen als Verweisen (INT-2026-011), Absicht-Start aus der UI je in eigener Arbeitskopie mit Liste laufender Absicht-Sitzungen (INT-2026-022), Projekt-Seite, Cloud-Terminal, Shared Workspace | Entwickler (Mac, Handy, Droplet) | live (INT-2026-004; angedocktes Terminal INT-2026-011 Stufe 1; parallele Absichten INT-2026-022) |
 | Kanban-MCP-Server mit Memory-Store | Alt-Befehle in Sitzungen | live; Abbau als eigenes Vorhaben |
 
 ## 6. Erfolgsmaße
@@ -62,6 +62,7 @@ Ohne festen Ablauf zerfällt Softwarearbeit mit einem Agenten in Chat-Sitzungen:
 |---|---|---|
 | Vorhaben | Eine abgeschlossene Änderung mit `intent/INT-JJJJ-NNN-kurzname/` und den drei Dokumenten | Story (v3-Einheit; aus der Web-UI entfernt in INT-2026-004) |
 | Absicht (`intent.md`) | Was und warum, fachlich, mit Belegen; ab Risikoklasse mittel mit Vertragsschicht | Product-Brief (Produktebene) |
+| Begonnene Absicht (INT-2026-022) | Eine `/intent`-Sitzung, deren Ordner `intent/INT-…/` noch nicht existiert; in der Übersicht als Eintrag „Absicht · entsteht" mit Arbeitstitel, Sitzung und Arbeitskopie sichtbar, bis der Ordner entsteht (dann Vorhaben) oder die Sitzung ohne Ordner endet | Vorhaben (hat einen Ordner) |
 | Plan (`plan.md`) | Technischer Plan aus dem Plan Mode, Einheit der Ausführung | Roadmap |
 | Projekt-Docs | `docs/{product-brief,architecture,security,design}.md` — Soll und Grenzen eines Projekts | Firmen-Repo (Mission, Marke) |
 | Manifest | `specwright/manifest.tsv`: Art, Geltung, Quelle, Ziel jeder ausgelieferten Datei | `removed.tsv` (Entferntes) |

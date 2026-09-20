@@ -12,6 +12,7 @@ import {
   derivePhase,
   deriveReviewDoc,
   deriveZustand,
+  derivePendingZustand,
   deriveNextStep,
   deriveNextStepSperre,
   mergeCandidates,
@@ -167,6 +168,24 @@ describe('deriveZustand (FA-13, one case per value; FA-14 decay)', () => {
     expect(deriveZustand('spec', false, undefined, 'spec').zustand).toBe('keine_sitzung');
     expect(deriveZustand('spec', false, s('done', true), 'spec').zustand).toBe('sitzung_beendet');
     expect(deriveZustand('spec', false, s('error'), 'spec')).toMatchObject({ zustand: 'sitzung_beendet', detail: 'Fehler' });
+  });
+});
+
+describe('INT-2026-022 (FA-13, review E16): derivePendingZustand — a pending `/intent` session with the row\'s rule', () => {
+  const s = (agentStatus: VorhabenSessionRef['agentStatus'], ended?: boolean): VorhabenSessionRef => ({ id: 's1', name: 'intent', model: 'opus', agentStatus, ...(ended ? { ended } : {}) });
+  const blocked = (blockKind: VorhabenSessionRef['blockKind']): VorhabenSessionRef => ({ ...s('blocked'), blockKind });
+
+  it('working → arbeitet; blocked → the dialog kind; idle/done → wartet (no review doc, no build-stand); ended → sitzung_beendet', () => {
+    expect(derivePendingZustand(s('working'))).toEqual({ zustand: 'arbeitet', detail: 'opus' });
+    expect(derivePendingZustand(blocked('rueckfrage'))).toEqual({ zustand: 'wartet_rueckfrage', detail: 'Rückfrage' });
+    expect(derivePendingZustand(blocked('plan'))).toEqual({ zustand: 'wartet_plan', detail: 'Plan-Entscheidung' });
+    expect(derivePendingZustand(blocked('berechtigung'))).toEqual({ zustand: 'wartet_berechtigung', detail: 'Berechtigung' });
+    expect(derivePendingZustand(s('done'))).toEqual({ zustand: 'wartet', detail: '' });
+    expect(derivePendingZustand(s('idle'))).toEqual({ zustand: 'wartet', detail: '' });
+    expect(derivePendingZustand(s('unknown', true))).toEqual({ zustand: 'sitzung_beendet', detail: '' });
+    expect(derivePendingZustand(s('error'))).toEqual({ zustand: 'sitzung_beendet', detail: 'Fehler' });
+    // never a review doc: the same as the row rule with phase absicht and no document
+    expect(derivePendingZustand(s('done'))).toEqual(deriveZustand('absicht', false, s('done'), undefined));
   });
 });
 
@@ -455,5 +474,15 @@ describe('scanCopy / toRow on a temp dir', () => {
     mk(root, 'INT-2026-014-kaputt', { 'intent.md': '---\nintent_id: "INT-2026-014"\n' });
     const broken = scanCopy({ cwd: root, arbeitskopie: 'main', main: true }, nodeReaderFs, cache).find((c) => c.intentId === 'INT-2026-014')!;
     expect(broken.fingerprint).toMatch(/intent:[0-9a-f]{64}/);
+  });
+  it('INT-2026-022 (FA-21, review E29): the placeholder intent.md of next-intent-id.sh --reserve reads as phase absicht with title [TITEL] and version 0.0.0', () => {
+    mk(root, 'INT-2026-024-neu', {
+      'intent.md': '---\nintent_id: "INT-2026-024"  \ntitel: "[TITEL]"  \nstatus: "entwurf"  \nversion: "0.0.0"  \n---\n\n# Absicht: [TITEL]\n\nPlatzhalter — reserviert am 2026-09-19 durch `specwright/scripts/next-intent-id.sh --reserve neu`.\n',
+    });
+    const [c] = scanCopy({ cwd: root, arbeitskopie: 'session/cs-1' }, nodeReaderFs, cache);
+    expect(c.intentId).toBe('INT-2026-024');
+    const row = toRow(project, c, undefined)!;
+    expect(row).toMatchObject({ phase: 'absicht', titel: '[TITEL]', arbeitskopie: 'session/cs-1', freigabeDoc: 'intent' });
+    expect(row.docs.find((d) => d.key === 'intent')?.version).toBe('0.0.0');
   });
 });

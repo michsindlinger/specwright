@@ -32,6 +32,7 @@ LINES=$(wc -l < CLAUDE.md | tr -d ' '); if [[ $LINES -le 90 ]]; then ok "CLAUDE.
 
 echo "[3/6] Installer-Test"
 [[ -f scripts/test-installers.sh ]] && run "test-installers" bash scripts/test-installers.sh || echo "  (noch kein scripts/test-installers.sh)"
+[[ -f scripts/test-next-intent-id.sh ]] && run "test-next-intent-id" bash scripts/test-next-intent-id.sh
 
 echo "[4/6] UI Lint + Builds"
 run "ui lint" npm --prefix ui run lint

@@ -138,6 +138,9 @@ export class WebSocketHandler {
       setSessionName: (sessionId, name) => this.workspaceHandler.setSessionName(sessionId, name),
       // INT-2026-010 (FA-22): „Freigeben" without a session starts the step with the settings' step default.
       defaultModel: (step) => getStepDefault(step),
+      // INT-2026-022 (FA-09, FA-25): an intent start needs a new worktree — pre-checked on the main path like the manager does.
+      worktreeEnabled: getCloudSessionWorktreeEnabled,
+      resolveMainPath: resolveMainWorktreePath,
     });
     // INT-2026-020: images pasted on „Neue Absicht" land under <runtime>/intent-paste (ADR-0005).
     this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage), { bildRoot: getIntentPasteImageRoot() });

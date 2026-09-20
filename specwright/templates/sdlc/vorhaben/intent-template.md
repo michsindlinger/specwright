@@ -42,6 +42,7 @@ schlagworte: []
 | `bypass` | `ja` bei Bugfix oder Größe S: direkt zu `plan.md`, keine `spec.md`; Grund in `bypass_grund` | `ja` · `nein` |
 | `bezuege` | Pfade zu Produkt, Spec, Plan, ADRs; `board_karte` = Boardname und Kartentitel; `ersetzt` = Vorgänger-Intent | — |
 | `schlagworte` | kleinbuchstaben-mit-bindestrich | — |
+| `kennung_hinweis` | optional (INT-2026-022): steht nur, wenn `next-intent-id.sh` die Kennung ohne entfernten Stand vergeben hat (kein Netz, Fetch gescheitert oder abgeschaltet) — beim Push auf Kollision prüfen | `"ohne entfernten Stand vergeben (JJJJ-MM-TT)"` |
 
 <!-- Zwei Schichten.
      Kern (Pflicht, für Menschen, etwa 3 Minuten, höchstens ~450 Wörter bis einschließlich Nicht-Ziele): drei Sätze bis Abnahmekriterien.

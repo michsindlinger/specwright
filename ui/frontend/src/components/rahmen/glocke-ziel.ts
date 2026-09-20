@@ -12,7 +12,8 @@
  *      altogether, INT-2026-016 AK-08), among several the one with the newest
  *      `lastChangedMs`;
  *   2. otherwise a pending `/intent` session → the „Neue Absicht" page of its
- *      project;
+ *      project WITH the session as second segment (INT-2026-022, D2: with
+ *      several pending sessions the page would otherwise show the newest);
  *   3. otherwise the terminal (a session without a Vorhaben).
  */
 
@@ -20,7 +21,7 @@ import type { VorhabenState } from '../../../../src/shared/types/vorhaben.protoc
 
 export type GlockeZiel =
   | { route: 'vorhaben'; segments: [projectId: string, intentId: string] }
-  | { route: 'neu'; segments: [projectId: string] }
+  | { route: 'neu'; segments: [projectId: string, sessionId: string] }
   | { route: 'terminal' };
 
 export function glockeZiel(terminalSessionId: string, state: VorhabenState | null | undefined): GlockeZiel {
@@ -33,6 +34,6 @@ export function glockeZiel(terminalSessionId: string, state: VorhabenState | nul
     return { route: 'vorhaben', segments: [best.projectId, best.intentId] };
   }
   const pending = state.pendingIntents.find((p) => p.sessionId === terminalSessionId);
-  if (pending) return { route: 'neu', segments: [pending.projectId] };
+  if (pending) return { route: 'neu', segments: [pending.projectId, pending.sessionId] };
   return { route: 'terminal' };
 }

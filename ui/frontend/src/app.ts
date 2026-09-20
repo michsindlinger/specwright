@@ -506,7 +506,8 @@ export class AosApp extends LitElement {
       return;
     }
     if (ziel.route === 'neu') {
-      routerService.navigate('neu', [encodeURIComponent(ziel.segments[0])]);
+      // INT-2026-022 (D2): the session travels as second segment — the page shows exactly this one.
+      routerService.navigate('neu', [encodeURIComponent(ziel.segments[0]), ziel.segments[1]]);
       return;
     }
     if (terminalSessionId) this._openSessionInTerminal(terminalSessionId);

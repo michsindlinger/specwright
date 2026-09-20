@@ -5,7 +5,7 @@
  * session receives. Pure string functions, no IO.
  */
 
-import { ANMERKUNG_MAX_CHARS, VORHABEN_DOC_FILES, type Anmerkung, type VorhabenDocKey } from './types/vorhaben.protocol.js';
+import { ANMERKUNG_MAX_CHARS, ARBEITSTITEL_MAX_CHARS, VORHABEN_DOC_FILES, type Anmerkung, type VorhabenDocKey } from './types/vorhaben.protocol.js';
 
 // Typed into the TUI, CR is Enter and ESC starts key sequences (same set as sanitizeInjectText).
 // eslint-disable-next-line no-control-regex
@@ -17,6 +17,23 @@ const UNSAFE_INPUT = /[\x00-\x08\x0b-\x1f\x7f]/g;
  */
 export function normalizeAnmerkungText(text: string): string {
   return text.replace(/\r\n?/g, '\n').replace(/\t/g, '  ').replace(UNSAFE_INPUT, '').replace(/\s+/g, ' ').trim().slice(0, ANMERKUNG_MAX_CHARS);
+}
+
+/**
+ * INT-2026-022 (FA-14): working title of a pending intent from the text typed on „Neue Absicht" —
+ * first non-empty line, trimmed, runs of whitespace → one space, control characters out, cut to
+ * ARBEITSTITEL_MAX_CHARS (79 + „…"). Only whitespace → '' (the caller stores nothing, the UI
+ * falls back to the session name; review E13). Pure, shared with the frontend tests.
+ */
+export function arbeitstitelAus(text: string): string {
+  const line = text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((l) => l.replace(/\t/g, ' ').replace(UNSAFE_INPUT, '').replace(/\s+/g, ' ').trim())
+    .find((l) => l.length > 0);
+  if (!line) return '';
+  const chars = [...line];
+  return chars.length > ARBEITSTITEL_MAX_CHARS ? `${chars.slice(0, ARBEITSTITEL_MAX_CHARS - 1).join('')}…` : line;
 }
 
 /** `Änderungen zu spec.md (Stand 2026-09-15 16:42):` + `n. [Bezug] Text` per Anmerkung (FA-27). */
