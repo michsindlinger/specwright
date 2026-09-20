@@ -1,12 +1,12 @@
 ---
 intent_id: "INT-2026-022"  
 titel: "UI: Mehrere Absichten parallel — Formular bleibt, Übersicht zeigt sie sofort, jede im eigenen Worktree"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.0.1"  
 autor: "Michael Sindlinger (Beobachtung aus dem Gebrauch, 19.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-19"  
-geaendert: "2026-09-19"  
+geaendert: "2026-09-20"  
 risikoklasse: "niedrig"  
 groesse: "M"  
 bypass: "nein"  
@@ -139,5 +139,6 @@ Nebenbefund: Der Workflow bestimmt die nächste Kennung nur aus dem lokalen Ordn
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.0.1 | 2026-09-20 | Umgesetzt: PR #87 nach `main` gemerged (5fca87b, CI-Run 35469752684 grün); Abweichungen in `plan.md` §14, Belege `plan.md` §13, E2E-Protokoll unter `design/`. Offen bleibt §10 A2 (Projekt-Updates per `update-specwright.sh`) | — | Merge: Michael, 20.09. |
 | 1.0.0 | 2026-09-19 | Freigabe ohne Änderung am Entwurf; OF-01 bis OF-03 bleiben offen, ihre Übergangsregeln gelten bis zur Spec. Abgleich Mensch/Agent: ohne Befund | — | Product Owner, 19.09. |
 | 0.1.0 | 2026-09-19 | Entwurf nach Gespräch: Formular immer (Frage 1), Zuordnungsregel bleibt (Frage 2), Seite bleibt nach Start (Frage 3); Ergänzung Michael: Übersicht sofort, Worktree je Absicht | alle | — |
