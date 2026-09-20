@@ -93,6 +93,11 @@ export type PromptZustand = 'wartet' | 'arbeitet' | 'eingabe_nicht_leer' | 'dial
  * `dialog` — a cue is on screen; checked FIRST so the precedence stays the one
  * the caller has today (`screenCheck` asks `findDialogCue` before the prompt).
  * Pure; the caller reads a stable screen first.
+ *
+ * INT-2026-023: `eingabe_nicht_leer` is only HALF the rule. Claude Code draws
+ * the last command as a dim suggestion into the EMPTY box, and this function
+ * cannot tell it from typed text — the drawn text never can. The caller asks
+ * {@link eingabeLeerLautCursor} with a cursor probe before it refuses.
  */
 export function promptZustand(screen: string): PromptZustand {
   if (findDialogCue(screen) !== null) return 'dialog';
@@ -101,6 +106,56 @@ export function promptZustand(screen: string): PromptZustand {
   const eingabe = lines.filter((l) => PROMPT_LINE_RE.test(l)).at(-1);
   if (eingabe === undefined) return 'arbeitet';
   return IDLE_PROMPT_RE.test(eingabe) ? 'wartet' : 'eingabe_nicht_leer';
+}
+
+/**
+ * INT-2026-023: the unfolded pane of a session together with its cursor
+ * position, both from ONE tmux call (`TmuxSessionBackend.captureCursorProbe`).
+ * `zeilen` holds one entry per terminal row, so `zeilen[y]` is the row the
+ * cursor sits in; `x` counts terminal CELLS from the left edge.
+ */
+export interface CursorProbe {
+  zeilen: string[];
+  x: number;
+  y: number;
+}
+
+/**
+ * INT-2026-023 (AK-01 bis AK-04): may the UI write into this session although
+ * `promptZustand` called the box `eingabe_nicht_leer`?
+ *
+ * Claude Code draws the last command as a suggestion RIGHT OF the cursor into
+ * the empty box after every finished turn — the drawn text therefore cannot
+ * decide, the cursor can. Decided on ONE probe (pane + cursor from one tmux
+ * call) that is YOUNGER than the caller's stable screen read:
+ *
+ * 1. A dialog cue or a spinner ON THIS probe → no. That also closes the case
+ *    where the user submitted between the two reads and a `/clear` would land
+ *    in a running turn (INT-2026-018 §9 R10).
+ * 2. The cursor must sit in a row that carries the prompt sign — a multi-line
+ *    entry puts it on a follow-up row (AN-02).
+ * 3. Between prompt sign and cursor there may only be whitespace. No column
+ *    arithmetic: `cursor_x` counts cells, a JS string counts code points. With
+ *    wide characters (CJK) the slice reaches too far right and reports „not
+ *    empty" — the safe direction.
+ *
+ * Known limit: whoever types text and then jumps to the start of the line with
+ * Ctrl-A/Pos1 has nothing left of the cursor either and looks empty to this
+ * rule (plan §9 R2). The cursor position alone cannot tell the two apart.
+ *
+ * Pure.
+ */
+export function eingabeLeerLautCursor(probe: CursorProbe): boolean {
+  const { zeilen, x, y } = probe;
+  if (findDialogCue(zeilen.join('\n')) !== null) return false;
+  if (zeilen.some((l) => BUSY_CUE.test(l))) return false;
+  const zeile = zeilen[y];
+  if (zeile === undefined) return false;
+  const treffer = PROMPT_LINE_RE.exec(zeile);
+  if (treffer === null) return false;
+  const zeichen = [...zeile]; // code points, not UTF-16 units
+  if (x > zeichen.length) return false; // cursor beyond what the capture holds
+  return zeichen.slice([...treffer[0]].length, x).join('').trim() === '';
 }
 
 /**

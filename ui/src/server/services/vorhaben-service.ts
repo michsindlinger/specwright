@@ -77,7 +77,7 @@ import {
 } from '../../shared/types/vorhaben.protocol.js';
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
 import type { BlockKind } from '../../shared/types/hook-events.protocol.js';
-import { eingabeText, findDialogCue, promptZustand, readStableScreen } from './dialog-driver.js';
+import { eingabeLeerLautCursor, eingabeText, findDialogCue, promptZustand, readStableScreen, type CursorProbe } from './dialog-driver.js';
 
 export interface VorhabenWorkspaceSource {
   getState(): { openProjects: Array<{ id: string; path: string; name: string }>; sessionNames?: Record<string, string> };
@@ -112,6 +112,12 @@ export interface VorhabenSessionSource {
    */
   withMachineWrite?<T>(sessionId: string, fn: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; grund: 'beschaeftigt' | 'nicht_aktiv' }>;
   readScreen?(sessionId: string, opts?: { scrollback?: number }): Promise<{ text: string; live: boolean }>;
+  /**
+   * INT-2026-023: unfolded pane plus cursor position from one tmux call;
+   * `null` without tmux or on error. Optional like `withMachineWrite`, so a
+   * source without it keeps the behaviour of INT-2026-021 (AK-03).
+   */
+  readCursorProbe?(sessionId: string): Promise<CursorProbe | null>;
   waitForIdle?(sessionId: string, idleMs: number): Promise<void>;
   createSession(
     projectPath: string,
@@ -718,6 +724,12 @@ export class VorhabenService {
    * (§9 R10); one that hits a filled input box would be appended to the text
    * standing there — INT-2026-021 gives that its own reason instead of calling
    * it „arbeitet", and writes the text into `befund` for the message.
+   *
+   * INT-2026-023: `eingabe_nicht_leer` is no longer decided by the drawn text
+   * alone — Claude Code paints the last command as a suggestion into the empty
+   * box. A cursor probe (`readCursorProbe`, one tmux call) gets the last word;
+   * `befund.eingabe` is only filled once that probe has refused, so the message
+   * never quotes a text the probe called empty.
    */
   private async screenCheck(
     sessions: VorhabenSessionSource,
@@ -739,9 +751,17 @@ export class VorhabenService {
     switch (promptZustand(screen.text)) {
       case 'wartet':
         return true;
-      case 'eingabe_nicht_leer':
+      case 'eingabe_nicht_leer': {
+        // INT-2026-023: the drawn text may be Claude Code's suggestion for the
+        // EMPTY box — only the cursor tells it apart from typed input. The
+        // probe is asked lazily, so a waiting session, a spinner and a dialog
+        // cost no extra tmux call (AK-04, RB-03). Without a probe it stays the
+        // refusal of today (AK-03, fail closed).
+        const probe = (await sessions.readCursorProbe?.(sessionId)) ?? null;
+        if (probe !== null && eingabeLeerLautCursor(probe)) return true;
         if (befund) befund.eingabe = eingabeText(screen.text);
         return 'eingabe_nicht_leer';
+      }
       case 'dialog':
         return 'dialog_offen';
       case 'arbeitet':

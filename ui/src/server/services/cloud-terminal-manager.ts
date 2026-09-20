@@ -68,7 +68,7 @@ import {
 import { getPasteImageRoot, getSessionRegistryPath } from '../utils/runtime-paths.js';
 import { sanitizeSessionEnv } from '../utils/session-env.js';
 import type { BlockKind, HookContext } from '../../shared/types/hook-events.protocol.js';
-import { cueToBlockKind, findDialogCue } from './dialog-driver.js';
+import { cueToBlockKind, findDialogCue, type CursorProbe } from './dialog-driver.js';
 import { isClaudeCli } from '../../shared/provider-cli.js';
 import { persistPastedImage, PasteImageError } from '../utils/paste-image.js';
 
@@ -1822,6 +1822,19 @@ export class CloudTerminalManager extends EventEmitter {
       if (screen !== null) return { text: screen, live: true };
     }
     return { text: bufferTail(session.buffer, SCREEN_TAIL_CHARS), live: false };
+  }
+
+  /**
+   * INT-2026-023: the unfolded pane and the cursor position of a session, from
+   * one tmux call. `null` when the session is unknown or has no tmux session —
+   * unlike {@link readScreen} there is NO fallback to the PTY buffer, because a
+   * cursor position cannot be derived from it. The caller then stays with what
+   * the drawn text says (fail closed, AR-08).
+   */
+  public async readCursorProbe(sessionId: CloudTerminalSessionId): Promise<CursorProbe | null> {
+    const session = this.sessions.get(sessionId);
+    if (!session?.tmuxSessionName) return null;
+    return this.tmux.captureCursorProbe(session.tmuxSessionName);
   }
 
   /**

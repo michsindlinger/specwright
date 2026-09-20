@@ -1,0 +1,25 @@
+
+❯ sag nur: ok
+
+⏺ ok
+
+✻ Baked for 2s · done 21:49
+
+❯ sag nur: ok
+
+⏺ ok
+
+✻ Cooked for 4s · done 21:50
+
+❯ sag nur: fertig
+
+⏺ fertig
+
+✻ Cooked for 2s · done 21:51
+
+────────────────────────────────────────────────────────────────────────────────
+❯ sag nur: ok
+────────────────────────────────────────────────────────────────────────────────
+  [CAVEMAN]  > cw-023  |  Fable 5.1  |  oooooooooo 60k/1000k (6%)
+  ⏵⏵ auto mode on (shift+tab to cycle) · ← 2 agents
+2 20

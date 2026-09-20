@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
-import { cueToBlockKind, eingabeText, findDialogCue, isIdlePrompt, promptZustand } from '../../src/server/services/dialog-driver.js';
+import { cueToBlockKind, eingabeLeerLautCursor, eingabeText, findDialogCue, isIdlePrompt, promptZustand, type CursorProbe } from '../../src/server/services/dialog-driver.js';
 
 const FIXTURES = resolve(process.cwd(), 'tests', 'fixtures', 'tui');
 const versions = readdirSync(FIXTURES).filter((v) => /^\d+\.\d+\.\d+$/.test(v));
@@ -131,6 +131,70 @@ describe('INT-2026-021 (AK-01, AK-03, AK-04): promptZustand names what the scree
         const screen = read(v, f);
         expect(isIdlePrompt(screen), `${v}/${f}`).toBe(promptZustand(screen) === 'wartet');
       }
+    }
+  });
+});
+
+describe('INT-2026-023 (AK-01 bis AK-04, AN-02): eingabeLeerLautCursor decides on the cursor, not on the drawn text', () => {
+  /**
+   * A recorded frame: transcript, the box line between two rules, the hint
+   * line. `y` is the index of the box line, as `cursor_y` reports it.
+   */
+  const mitBox = (box: string, verlauf: string[] = ['❯ Frage', '⏺ Antwort.', '✻ Churned for 10s · done 8:38']): { zeilen: string[]; y: number } => {
+    const zeilen = [...verlauf, '────', box, '────', '  ⏵⏵ bypass permissions on (shift+tab to cycle)'];
+    return { zeilen, y: zeilen.length - 3 };
+  };
+  const probe = (box: string, x: number, verlauf?: string[]): CursorProbe => {
+    const { zeilen, y } = mitBox(box, verlauf);
+    return { zeilen, x, y };
+  };
+
+  it('AK-01: the cursor right behind the prompt sign means empty — whatever is drawn to its right', () => {
+    // Claude Code draws the last command as a suggestion; `cursor_x` stays 2.
+    expect(eingabeLeerLautCursor(probe('❯\u00a0npm run verify', 2))).toBe(true);
+    expect(eingabeLeerLautCursor(probe('❯ ja, leg den Entwurf an', 2))).toBe(true);
+    expect(eingabeLeerLautCursor(probe('❯\u00a0', 2))).toBe(true);
+  });
+
+  it('AK-01: an indented prompt line is measured from its own prompt sign, not from column 0', () => {
+    expect(eingabeLeerLautCursor(probe('  ❯ npm run verify', 4))).toBe(true);
+    expect(eingabeLeerLautCursor(probe('  ❯ npm run verify', 5))).toBe(false);
+  });
+
+  it('AK-02: a cursor further right means typed text — the refusal of INT-2026-021 stands', () => {
+    expect(eingabeLeerLautCursor(probe('❯ /', 3))).toBe(false);
+    expect(eingabeLeerLautCursor(probe('❯\u00a0npm run verify', 17))).toBe(false);
+    expect(eingabeLeerLautCursor(probe('❯ ja', 4))).toBe(false);
+  });
+
+  it('AK-02/R9: wide characters count cells, not code points — the slice runs past the line and refuses', () => {
+    // `cursor_x` counts terminal cells (日 and 本 are two each), a JS string counts code points.
+    expect(eingabeLeerLautCursor(probe('❯ 日本', 6))).toBe(false);
+  });
+
+  it('AN-02: a multi-line entry puts the cursor on a follow-up line without the prompt sign → not empty', () => {
+    const zeilen = ['────', '❯ erste Zeile', '  zweite Zeile', '────'];
+    expect(eingabeLeerLautCursor({ zeilen, x: 2, y: 2 })).toBe(false);
+  });
+
+  it('AK-04/R5: a spinner or a dialog cue ON THE PROBE refuses, although the cursor says empty', () => {
+    expect(eingabeLeerLautCursor(probe('❯\u00a0npm run verify', 2, ['✳ Enchanting… (4s · ↓ 204 tokens · thinking)']))).toBe(false);
+    expect(eingabeLeerLautCursor(probe('❯\u00a0npm run verify', 2, ['  Do you want to proceed?']))).toBe(false);
+    expect(eingabeLeerLautCursor(probe('❯\u00a0npm run verify', 2, ['  Thinking… (esc to interrupt)']))).toBe(false);
+  });
+
+  it('AK-03: a cursor row outside the capture, or a negative/absent row, refuses (fail closed)', () => {
+    const { zeilen } = mitBox('❯\u00a0npm run verify');
+    expect(eingabeLeerLautCursor({ zeilen, x: 2, y: zeilen.length })).toBe(false);
+    expect(eingabeLeerLautCursor({ zeilen, x: 2, y: 99 })).toBe(false);
+    expect(eingabeLeerLautCursor({ zeilen: [], x: 2, y: 0 })).toBe(false);
+  });
+
+  it('R8: the 2.1.278 cursor recordings are ordinary files for the fixture loops — as drawn text they read „eingabe_nicht_leer"', () => {
+    for (const f of ['cursor-vorschlag.txt', 'cursor-getippt.txt']) {
+      const screen = read('2.1.278', f);
+      expect(promptZustand(screen), f).toBe('eingabe_nicht_leer');
+      expect(isIdlePrompt(screen), f).toBe(false);
     }
   });
 });
