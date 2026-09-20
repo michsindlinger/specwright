@@ -1,12 +1,12 @@
 ---
 intent_id: "INT-2026-023"  
 titel: "Der Knopf „Nächster Schritt" darf am Autovorschlag der Sitzung nicht scheitern"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.0.1"  
 autor: "Michael Sindlinger (aus dem Gebrauch, 19.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-19"  
-geaendert: "2026-09-19"  
+geaendert: "2026-09-20"  
 risikoklasse: "niedrig"  
 groesse: "S"  
 bypass: "ja"  
@@ -132,3 +132,4 @@ Das Problem besteht seit INT-2026-018 und ist durch INT-2026-021 nur sichtbar ge
 |---|---|---|---|
 | 0.1.0 | 2026-09-19 | Claude (Gespräch mit Michael) | Erstfassung nach Messung der Cursorposition an zehn laufenden Sitzungen |
 | 1.0.0 | 2026-09-19 | Claude (Freigabe Michael) | Freigabe „intent.md 0.1.0"; OF-01 und OF-02 wie vorgeschlagen entschieden. Abgleich Mensch/Agent (R4): ohne Befund — Kopf (Größe S, Risiko niedrig, Bypass ja) deckt sich mit Kern und Abnahmekriterien, keine Vertragsschicht nötig. |
+| 1.0.1 | 2026-09-20 | Claude (nach Merge) | Umgesetzt: PR #86 nach `main` gemerged (1a074f2, CI-Run 35492667656 grün). AK-01 bis AK-04 durch 67 Tests belegt (`plan.md` §8), AK-05 im E2E-Lauf vorgeführt und von Michael im Betrieb zu bestätigen. Abweichungen in `plan.md` §14, Belege in §13. |
