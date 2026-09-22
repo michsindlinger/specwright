@@ -1,12 +1,12 @@
 ---
 intent_id: "INT-2026-021"  
 titel: "UI: Text in der Eingabezeile meldet nicht mehr „Sitzung arbeitet""  
-status: "in Arbeit"  
-version: "0.1.0"  
+status: "umgesetzt"  
+version: "0.1.1"  
 autor: "Michael Sindlinger (Fehlermeldung aus dem Gebrauch, 18.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-18"  
-geaendert: "2026-09-18"  
+geaendert: "2026-09-22"  
 risikoklasse: "niedrig"  
 groesse: "S"  
 bypass: "ja"  
@@ -115,3 +115,4 @@ Zweiter, bisher unbemerkter Fehler derselben Funktion: Sie sucht mit `lines.some
 | Version | Datum | Autor | Änderung |
 |---|---|---|---|
 | 0.1.0 | 2026-09-18 | Claude (Gespräch mit Michael) | Erstfassung nach Messung an zehn Sitzungen und externem Plan-Review |
+| 0.1.1 | 2026-09-22 | Michael Sindlinger (UI) | Umgesetzt: abgeschlossen aus der UI durch Michael Sindlinger; Belege in `plan.md` §13; Bau-PR #85 |
