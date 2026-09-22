@@ -1,12 +1,12 @@
 ---
 intent_id: "INT-2026-024"  
 titel: "UI: Vorhaben per Knopf abschließen — deterministisch, ohne Sitzung"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.0.1"  
 autor: "Michael Sindlinger (Beobachtung aus dem Gebrauch, 21.09.2026, Gespräch mit Claude)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-21"  
-geaendert: "2026-09-21"  
+geaendert: "2026-09-22"  
 risikoklasse: "niedrig"  
 groesse: "M"  
 bypass: "nein"  
@@ -149,3 +149,4 @@ Die Bausteine sind da: Das Backend kann Zweige anlegen, committen, pushen und ü
 |---|---|---|---|---|
 | 1.0.0 | 2026-09-21 | Freigabe „intent.md 0.1.0"; OF-01 bis OF-05 wie vorgeschlagen entschieden und eingearbeitet: AK-03 (Wortlaut Protokollzeile), AK-11 neu (Abschluss zurücknehmen), NZ-08 neu (Plan und Spec unverändert). Abgleich Mensch/Agent (R4): ohne Befund — Kopf (Größe M, Risiko niedrig, Bypass nein) deckt sich mit Kern; jedes Ziel hat mindestens ein AK (Z-01: AK-01/02/09/10, Z-02: AK-03, Z-03: AK-06/07/08/11, Z-04: AK-04/05); keine Vertragsschicht nötig | AK-03, AK-11, NZ-08, OF-01–OF-05 | Product Owner, 21.09. |
 | 0.1.0 | 2026-09-21 | Entwurf nach Gespräch: PR-Weg wie heute (Frage 1), Knopf in jeder Phase mit Bestätigung (Frage 2), abgeschlossene Zeile immer unter „Umgesetzt" (Frage 3), kein Terminal-Weg (Frage 4), Mac und Droplet (Frage 5); Befund Sitzungskopie/Statuswörter aus kreis-lippe-audit | alle | — |
+| 1.0.1 | 2026-09-22 | Umgesetzt: abgeschlossen aus der UI durch Michael Sindlinger; Belege in `plan.md` §13; Bau-PR #90 | — | Product Owner (Klick in der UI) |
