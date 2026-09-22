@@ -1127,8 +1127,9 @@ export class GitService {
    * Push a branch to remote with upstream tracking
    * @param projectPath - Project directory
    * @param branchName - Branch to push
+   * @param opts.timeoutMs - INT-2026-024 (FA-19): the Abschluss runs on a 60-s budget and passes 10 s; default stays the network timeout
    */
-  async pushBranch(projectPath: string, branchName: string): Promise<GitPushBranchResult> {
+  async pushBranch(projectPath: string, branchName: string, opts?: { timeoutMs?: number }): Promise<GitPushBranchResult> {
     await this.ensureGitRepo(projectPath, 'pushBranch');
 
     try {
@@ -1139,7 +1140,7 @@ export class GitService {
         {
           env: auth?.env,
           extraGitArgs: auth?.extraGitArgs,
-          timeoutMs: GIT_CONFIG.NETWORK_OPERATION_TIMEOUT_MS,
+          timeoutMs: opts?.timeoutMs ?? GIT_CONFIG.NETWORK_OPERATION_TIMEOUT_MS,
         },
       );
       const combined = stdout + stderr;
@@ -1271,6 +1272,87 @@ export class GitService {
         warning: err.stderr || err.message || 'PR creation failed. Create manually.',
       };
     }
+  }
+
+  /**
+   * INT-2026-024 (FA-07, FA-17; review E16): the strict PR path of the
+   * Vorhaben-Abschluss. Unlike `createPullRequest` it names the head branch,
+   * passes `env` (GH_TOKEN from the settings' PAT, GH_PROMPT_DISABLED) and
+   * THROWS on every failure — a missing `gh`, a missing login, a rejected PR —
+   * because the caller must roll back, never report „success with warning".
+   * stdout/stderr are redacted before they reach a message.
+   */
+  async createPullRequestStrict(
+    projectPath: string,
+    head: string,
+    title: string,
+    body: string,
+    base: string,
+    opts: { timeoutMs?: number; env?: Record<string, string> } = {},
+  ): Promise<{ prUrl?: string; prNumber?: number; stdout: string }> {
+    await this.ensureGitRepo(projectPath, 'createPullRequestStrict');
+    const args = ['pr', 'create', '--head', head, '--base', base, '--title', title, '--body', body];
+    let stdout: string;
+    try {
+      const result = await execFileAsync('gh', args, {
+        cwd: projectPath,
+        timeout: opts.timeoutMs ?? GIT_CONFIG.OPERATION_TIMEOUT_MS,
+        maxBuffer: 1024 * 1024,
+        encoding: 'utf-8',
+        env: { ...process.env, ...opts.env },
+      });
+      stdout = typeof result.stdout === 'string' ? result.stdout : String(result.stdout);
+    } catch (error) {
+      throw this.ghError(error, 'createPullRequestStrict');
+    }
+    stdout = redactGithubTokens(stdout);
+    const urlMatch = stdout.match(/(https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/(\d+))/);
+    if (urlMatch) return { prUrl: urlMatch[1], prNumber: parseInt(urlMatch[2], 10), stdout };
+    return { stdout };
+  }
+
+  /**
+   * INT-2026-024 (review E5): open PRs whose head is `head` — asked once when
+   * `gh pr create` failed or returned no number, so a PR GitHub did create is
+   * found instead of rolled back. Throws a GitError when `gh` itself fails.
+   */
+  async listOpenPullRequestsForHead(
+    projectPath: string,
+    head: string,
+    opts: { timeoutMs?: number; env?: Record<string, string> } = {},
+  ): Promise<Array<{ number: number; url: string }>> {
+    await this.ensureGitRepo(projectPath, 'listOpenPullRequestsForHead');
+    let stdout: string;
+    try {
+      const result = await execFileAsync('gh', ['pr', 'list', '--head', head, '--state', 'open', '--json', 'number,url'], {
+        cwd: projectPath,
+        timeout: opts.timeoutMs ?? GIT_CONFIG.OPERATION_TIMEOUT_MS,
+        maxBuffer: 1024 * 1024,
+        encoding: 'utf-8',
+        env: { ...process.env, ...opts.env },
+      });
+      stdout = typeof result.stdout === 'string' ? result.stdout : String(result.stdout);
+    } catch (error) {
+      throw this.ghError(error, 'listOpenPullRequestsForHead');
+    }
+    try {
+      const parsed = JSON.parse(stdout || '[]') as unknown;
+      if (!Array.isArray(parsed)) throw new Error('kein Array');
+      return parsed
+        .filter((e): e is { number: number; url: string } => !!e && typeof e === 'object' && typeof (e as { number?: unknown }).number === 'number' && typeof (e as { url?: unknown }).url === 'string')
+        .map((e) => ({ number: e.number, url: e.url }));
+    } catch (err) {
+      throw new GitError(`gh pr list: Antwort nicht lesbar (${(err as Error).message})`, GIT_ERROR_CODES.OPERATION_FAILED, 'listOpenPullRequestsForHead');
+    }
+  }
+
+  /** Maps an execFile failure of `gh` to a GitError with a redacted message (ENOENT = not installed, killed = timeout). */
+  private ghError(error: unknown, operation: string): GitError {
+    const err = error as Error & { code?: string | number; stderr?: string; killed?: boolean };
+    if (err.code === 'ENOENT') return new GitError('gh ist nicht installiert', GIT_ERROR_CODES.OPERATION_FAILED, operation);
+    if (err.killed) return new GitError('gh hat nicht rechtzeitig geantwortet', GIT_ERROR_CODES.TIMEOUT, operation);
+    const text = redactGithubTokens((err.stderr || err.message || '').trim());
+    return new GitError(text || 'gh ist fehlgeschlagen', GIT_ERROR_CODES.OPERATION_FAILED, operation);
   }
 }
 
