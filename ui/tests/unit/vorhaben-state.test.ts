@@ -339,4 +339,52 @@ describe('VorhabenStateStore stage 2 (FA-21/22/26/32/40)', () => {
     ]);
     expect(again.getPendingIntents()[1][1]).not.toHaveProperty('arbeitstitel');
   });
+
+  it('INT-2026-024 (FA-10, FA-12, AN-S16): abschluesse — mark and failure per Vorhaben survive load(), an old file without the map loads, prune drops dead keys, tolerant read', async () => {
+    const store = new VorhabenStateStore(file, { port: 3111 });
+    await store.load();
+    expect(store.getAbschluss('p1', 'INT-2026-024')).toBeUndefined();
+    store.setAbschlussFehler('p1', 'INT-2026-024', { message: 'Nicht abgeschlossen: a — b', at: '2026-09-22T10:00:00Z' });
+    expect(store.getAbschluss('p1', 'INT-2026-024')).toEqual({ fehler: { message: 'Nicht abgeschlossen: a — b', at: '2026-09-22T10:00:00Z' } });
+    expect(store.clearAbschlussFehler('p1', 'INT-2026-024')).toBe(true);
+    expect(store.getAbschluss('p1', 'INT-2026-024')).toBeUndefined();
+    expect(store.clearAbschlussFehler('p1', 'INT-2026-024')).toBe(false);
+    const marke = { prNumber: 91, prUrl: 'https://github.com/x/y/pull/91', zweig: 'chore/INT-2026-024-abschluss', at: '2026-09-22T10:01:00Z' };
+    store.setAbschlussFehler('p1', 'INT-2026-024', { message: 'alt', at: 't' });
+    store.setAbschlussMarke('p1', 'INT-2026-024', marke);
+    // the mark drops the failure
+    expect(store.getAbschluss('p1', 'INT-2026-024')).toEqual({ marke });
+    // a later failure keeps the mark; clearing the failure keeps the mark
+    store.setAbschlussFehler('p1', 'INT-2026-024', { message: 'neu', at: 't2' });
+    expect(store.getAbschluss('p1', 'INT-2026-024')).toEqual({ marke, fehler: { message: 'neu', at: 't2' } });
+    expect(store.clearAbschlussFehler('p1', 'INT-2026-024')).toBe(true);
+    expect(store.getAbschluss('p1', 'INT-2026-024')).toEqual({ marke });
+    store.setAbschlussMarke('p1', 'INT-2026-099', { ...marke, prNumber: 99 });
+    await store.flush();
+    const again = new VorhabenStateStore(file, { port: 3111 });
+    await again.load();
+    expect(again.getAbschluss('p1', 'INT-2026-024')).toEqual({ marke });
+    expect(again.getAbschluss('p1', 'INT-2026-099')?.marke.prNumber).toBe(99);
+    // prune: only live keys stay
+    expect(again.prune(new Set(['p1::INT-2026-024']))).toBe(1);
+    expect(again.getAbschluss('p1', 'INT-2026-099')).toBeUndefined();
+    expect(again.getAbschluss('p1', 'INT-2026-024')).toEqual({ marke });
+    expect(again.clearAbschlussMarke('p1', 'INT-2026-024')).toBe(true);
+    expect(again.clearAbschlussMarke('p1', 'INT-2026-024')).toBe(false);
+    await again.flush();
+    // an old file without the map, and a broken entry
+    const raw = JSON.parse(readFileSync(file, 'utf-8')) as { state: Record<string, unknown> };
+    delete raw.state.abschluesse;
+    writeFileSync(file, JSON.stringify(raw));
+    const alt = new VorhabenStateStore(file, { port: 3111 });
+    expect((await alt.load()).healthy).toBe(true);
+    expect(alt.getAbschluss('p1', 'INT-2026-024')).toBeUndefined();
+    raw.state.abschluesse = { 'p1::INT-2026-001': { marke: { prNumber: 'x' } }, 'p1::INT-2026-002': { marke, extra: 1 }, 'p1::INT-2026-003': 'kaputt' };
+    writeFileSync(file, JSON.stringify(raw));
+    const tolerant = new VorhabenStateStore(file, { port: 3111 });
+    expect((await tolerant.load()).healthy).toBe(true);
+    expect(tolerant.getAbschluss('p1', 'INT-2026-001')).toBeUndefined();
+    expect(tolerant.getAbschluss('p1', 'INT-2026-002')).toEqual({ marke });
+    expect(tolerant.getAbschluss('p1', 'INT-2026-003')).toBeUndefined();
+  });
 });

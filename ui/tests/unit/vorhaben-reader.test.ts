@@ -485,4 +485,80 @@ describe('scanCopy / toRow on a temp dir', () => {
     expect(row).toMatchObject({ phase: 'absicht', titel: '[TITEL]', arbeitskopie: 'session/cs-1', freigabeDoc: 'intent' });
     expect(row.docs.find((d) => d.key === 'intent')?.version).toBe('0.0.0');
   });
+
+  // ---- INT-2026-024 ----
+
+  it('INT-2026-024 (AK-07, FA-13): the main checkout wins as soon as it reads umgesetzt — over the assigned session copy, over a newer copy with a foreign word', () => {
+    const wt = join(root, 'wt');
+    const wt2 = join(root, 'wt2');
+    mk(root, 'INT-2026-030-fertig', { 'intent.md': intentText('umgesetzt') });
+    mk(wt, 'INT-2026-030-fertig', { 'intent.md': intentText('angenommen'), 'plan.md': statusDoc('umgesetzt') });
+    mk(wt2, 'INT-2026-030-fertig', { 'intent.md': intentText('abgeschlossen') });
+    const old = new Date(Date.now() - 60_000);
+    utimesSync(join(root, 'intent', 'INT-2026-030-fertig', 'intent.md'), old, old);
+    utimesSync(join(root, 'intent', 'INT-2026-030-fertig'), old, old);
+    const cands = [
+      ...scanCopy({ cwd: root, arbeitskopie: 'main', main: true }, nodeReaderFs, cache),
+      ...scanCopy({ cwd: wt, arbeitskopie: 'session/x' }, nodeReaderFs, cache),
+      ...scanCopy({ cwd: wt2, arbeitskopie: 'session/y' }, nodeReaderFs, cache),
+    ];
+    // assigned copy is newer and „angenommen" → main still wins
+    expect(mergeCandidates(cands, new Map([['INT-2026-030', wt]]))[0].arbeitskopie).toBe('main');
+    // newer copy with a foreign word → main wins
+    expect(mergeCandidates(cands, new Map())[0].arbeitskopie).toBe('main');
+    // order of candidates does not matter
+    expect(mergeCandidates([cands[1], cands[2], cands[0]], new Map([['INT-2026-030', wt2]]))[0].arbeitskopie).toBe('main');
+    expect(toRow(project, mergeCandidates(cands, new Map([['INT-2026-030', wt]]))[0], undefined)?.phase).toBe('umgesetzt');
+  });
+
+  it('INT-2026-024 (FA-13, spec §4): main checkout NOT umgesetzt → the rules of today (assigned copy, else newest); two umgesetzt copies do not outrank an angenommen main', () => {
+    const wt = join(root, 'wt');
+    const wt2 = join(root, 'wt2');
+    mk(root, 'INT-2026-031-offen', { 'intent.md': intentText('angenommen') });
+    mk(wt, 'INT-2026-031-offen', { 'intent.md': intentText('umgesetzt') });
+    mk(wt2, 'INT-2026-031-offen', { 'intent.md': intentText('umgesetzt') + '\nmehr\n' });
+    const old = new Date(Date.now() - 60_000);
+    utimesSync(join(root, 'intent', 'INT-2026-031-offen', 'intent.md'), old, old);
+    utimesSync(join(root, 'intent', 'INT-2026-031-offen'), old, old);
+    const cands = [
+      ...scanCopy({ cwd: root, arbeitskopie: 'main', main: true }, nodeReaderFs, cache),
+      ...scanCopy({ cwd: wt, arbeitskopie: 'session/x' }, nodeReaderFs, cache),
+      ...scanCopy({ cwd: wt2, arbeitskopie: 'session/y' }, nodeReaderFs, cache),
+    ];
+    // assigned copy wins as today (even though another copy says umgesetzt)
+    expect(mergeCandidates(cands, new Map([['INT-2026-031', wt]]))[0].arbeitskopie).toBe('session/x');
+    expect(mergeCandidates(cands, new Map([['INT-2026-031', root]]))[0].arbeitskopie).toBe('main');
+    // no assignment → newest (a worktree copy), never „main because umgesetzt somewhere"
+    expect(mergeCandidates(cands, new Map())[0].arbeitskopie).not.toBe('main');
+    // folder only in copies (no main candidate) → today's rule
+    const copiesOnly = cands.filter((c) => !c.main);
+    expect(mergeCandidates(copiesOnly, new Map([['INT-2026-031', wt]]))[0].arbeitskopie).toBe('session/x');
+  });
+
+  it('INT-2026-024 (AK-06, FA-11): toRow with a mark — phase umgesetzt, phaseNote „Abschluss-PR #n", no nextStep, no freigabeDoc, field abschluss on the row', () => {
+    mk(root, 'INT-2026-032-pr', { 'intent.md': intentText('angenommen'), 'plan.md': statusDoc('umgesetzt', '— PR #12 offen') });
+    const [c] = scanCopy({ cwd: root, arbeitskopie: 'main', main: true }, nodeReaderFs, cache);
+    const ohne = toRow(project, c, undefined)!;
+    expect(ohne.phase).toBe('pr');
+    expect(ohne.phaseNote).toBe('— PR #12 offen'.replace(/^[·—–\-:|\s]+/, ''));
+    expect(ohne.nextStep).toBeUndefined();
+    expect(ohne.abschluss).toBeUndefined();
+    const marke = { prNumber: 90, prUrl: 'https://github.com/x/y/pull/90', zweig: 'chore/INT-2026-032-abschluss', at: '2026-09-22T10:00:00Z' };
+    const mit = toRow(project, c, { id: 's', name: 'S', model: 'opus', agentStatus: 'idle', ended: false } as VorhabenSessionRef, { marke })!;
+    expect(mit.phase).toBe('umgesetzt');
+    expect(mit.phaseNote).toBe('Abschluss-PR #90');
+    expect(mit.nextStep).toBeUndefined();
+    expect(mit.freigabeDoc).toBeUndefined();
+    expect(mit.reviewDoc).toBeUndefined();
+    expect(mit.zustand).toBe('wartet');
+    expect(mit.abschluss).toEqual({ marke });
+    // a mark on a row whose file already reads umgesetzt changes nothing but the note
+    mk(root, 'INT-2026-033-fertig', { 'intent.md': intentText('umgesetzt') });
+    const [d] = scanCopy({ cwd: root, arbeitskopie: 'main', main: true }, nodeReaderFs, cache).filter((x) => x.intentId === 'INT-2026-033');
+    expect(toRow(project, d, undefined, { marke })?.phaseNote).toBe('Abschluss-PR #90');
+    // „läuft" and a failure travel too, without touching the phase
+    const spec = toRow(project, c, undefined, { laeuft: true, fehler: { message: 'Nicht abgeschlossen: x — y', at: 't' } })!;
+    expect(spec.phase).toBe('pr');
+    expect(spec.abschluss).toEqual({ laeuft: true, fehler: { message: 'Nicht abgeschlossen: x — y', at: 't' } });
+  });
 });

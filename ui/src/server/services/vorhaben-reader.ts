@@ -12,6 +12,7 @@ import { join } from 'path';
 import {
   VORHABEN_DOC_FILES,
   VORHABEN_DOC_ORDER,
+  type VorhabenAbschlussStand,
   type VorhabenDocInfo,
   type VorhabenDocKey,
   type VorhabenNextStep,
@@ -485,6 +486,10 @@ function safeParse<T>(fn: () => T | null): T | null {
  * session wins, otherwise the newest `lastChangedMs`. INT-2026-016 (AK-09):
  * between byte-identical copies the main checkout wins — `git worktree add`
  * restamps every file, so a fresh worktree looked "newest" without any change.
+ * INT-2026-024 (FA-13): first rule — the MAIN checkout wins as soon as it
+ * reads `umgesetzt`, whatever a session's copy or a newer copy says; exactly
+ * one copy per project is `main`, so at most one candidate per id can be
+ * `done`. For every other id the rules below are unchanged.
  */
 export function mergeCandidates(candidates: VorhabenCandidate[], preferredCwd: Map<string, string>): VorhabenCandidate[] {
   const byId = new Map<string, VorhabenCandidate>();
@@ -492,12 +497,18 @@ export function mergeCandidates(candidates: VorhabenCandidate[], preferredCwd: M
     if (c.fingerprint === prev.fingerprint && c.main !== prev.main) return c.main;
     return c.lastChangedMs > prev.lastChangedMs;
   };
+  const done = (x: VorhabenCandidate): boolean => x.main && x.heads.intent?.status === 'umgesetzt';
   for (const c of candidates) {
     const prev = byId.get(c.intentId);
     if (!prev) {
       byId.set(c.intentId, c);
       continue;
     }
+    if (done(c)) {
+      byId.set(c.intentId, c);
+      continue;
+    }
+    if (done(prev)) continue;
     const wanted = preferredCwd.get(c.intentId);
     if (wanted) {
       if (c.cwd === wanted) byId.set(c.intentId, c);
@@ -510,11 +521,15 @@ export function mergeCandidates(candidates: VorhabenCandidate[], preferredCwd: M
   return [...byId.values()];
 }
 
-/** Turns a merged candidate into the broadcast row; null when hidden (abgeloest/verworfen). */
-export function toRow(project: ScanProject, c: VorhabenCandidate, session: VorhabenSessionRef | undefined): VorhabenRow | null {
+/**
+ * Turns a merged candidate into the broadcast row; null when hidden (abgeloest/verworfen).
+ * INT-2026-024 (FA-11): with a mark „Abschluss angestoßen" the phase is `umgesetzt` BEFORE
+ * review document, state and next step are derived — no „Freigeben", no „Nächster Schritt".
+ */
+export function toRow(project: ScanProject, c: VorhabenCandidate, session: VorhabenSessionRef | undefined, abschluss?: VorhabenAbschlussStand): VorhabenRow | null {
   const phaseOrHidden = derivePhase(c.heads);
   if (phaseOrHidden === 'hidden') return null;
-  const phase = phaseOrHidden;
+  const phase: VorhabenPhase = abschluss?.marke && phaseOrHidden !== 'umgesetzt' ? 'umgesetzt' : phaseOrHidden;
   const intent = c.heads.intent;
   const reviewDocCandidate = deriveReviewDoc(phase, c.heads);
   const z = deriveZustand(phase, c.hasBuildStand, session, reviewDocCandidate);
@@ -532,7 +547,7 @@ export function toRow(project: ScanProject, c: VorhabenCandidate, session: Vorha
   const nextStep = nextStepBase ? { ...nextStepBase, ...(sperre ? { sperre } : {}), ...(sitzung ? { sitzung } : {}) } : undefined;
   const sessionBusy = !!sperre;
   const planNote = c.heads.plan?.note ?? '';
-  const phaseNote = phase === 'pr' ? planNote : intent?.bypass ? 'Spec entfällt' : '';
+  const phaseNote = abschluss?.marke ? `Abschluss-PR #${abschluss.marke.prNumber}` : phase === 'pr' ? planNote : intent?.bypass ? 'Spec entfällt' : '';
   return {
     projectId: project.id,
     projectPath: project.path,
@@ -559,6 +574,7 @@ export function toRow(project: ScanProject, c: VorhabenCandidate, session: Vorha
     lastChangedAt: new Date(c.lastChangedMs).toISOString(),
     lastChangedMs: c.lastChangedMs,
     ...(intent?.herkunft ? { herkunft: intent.herkunft } : {}),
+    ...(abschluss ? { abschluss } : {}),
   };
 }
 
