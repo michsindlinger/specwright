@@ -1,7 +1,7 @@
 # Plan: UI: Vorhaben per Knopf abschließen — deterministisch, ohne Sitzung
 
 > **Intent:** `intent.md` (INT-2026-024) · **Spec:** `spec.md`
-> **Status:** umgesetzt (Merge steht aus) — PR offen, `verify: OK` lokal (dritter Lauf), CI-Check ausstehend
+> **Status:** umgesetzt (Merge steht aus) — PR #90 offen, `verify: OK` lokal (dritter Lauf), CI-Check ausstehend
 > **Erstellt:** 2026-09-21 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-22 („Freigabe: plan.md (Stand 2026-09-22 05:37)", Chat; D1 damit angenommen)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 9c22c38), `CLAUDE.md`, `docs/security.md`
 
