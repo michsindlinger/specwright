@@ -104,11 +104,12 @@ describe('aos-vorhaben-uebersicht (FA-03, FA-05, FA-08; INT-2026-010 FA-02, FA-0
     el.remove();
   });
 
-  it('INT-2026-016 (AK-01): an umgesetzt row whose session waits stands visible under „Wartet auf dich" with the chip „Umgesetzt"; the idle one stays collapsed', async () => {
+  it('INT-2026-016 (AK-01), narrowed by INT-2026-024 (FA-14): an umgesetzt row whose session shows a DIALOG stands visible under „Wartet auf dich" with the chip „Umgesetzt"; one whose session merely waits collapses like the idle one', async () => {
     await import('../../frontend/src/components/vorhaben/aos-vorhaben-uebersicht.js');
     const el = document.createElement('aos-vorhaben-uebersicht');
     el.vorhabenState = state([
-      row({ intentId: 'INT-2026-004', projectId: 'a', phase: 'umgesetzt', zustand: 'wartet', session: { id: 's4', name: 'build', model: 'opus', agentStatus: 'done' } }),
+      row({ intentId: 'INT-2026-004', projectId: 'a', phase: 'umgesetzt', zustand: 'wartet_rueckfrage', session: { id: 's4', name: 'build', model: 'opus', agentStatus: 'blocked' } }),
+      row({ intentId: 'INT-2026-005', projectId: 'a', phase: 'umgesetzt', zustand: 'wartet', session: { id: 's5', name: 'build', model: 'opus', agentStatus: 'done' } }),
       row({ intentId: 'INT-2026-003', projectId: 'a', phase: 'umgesetzt' }),
     ]);
     document.body.appendChild(el);
@@ -119,7 +120,7 @@ describe('aos-vorhaben-uebersicht (FA-03, FA-05, FA-08; INT-2026-010 FA-02, FA-0
     const zeilen = [...sr.querySelectorAll('aos-vorhaben-zeile')] as Array<HTMLElement & { row: VorhabenRow }>;
     expect(zeilen.map((z) => z.row.intentId)).toEqual(['INT-2026-004']);
     expect(zeilen[0].row.phase).toBe('umgesetzt');
-    expect(sr.querySelector('.aufklappen')?.textContent).toContain('Umgesetzt · 1');
+    expect(sr.querySelector('.aufklappen')?.textContent).toContain('Umgesetzt · 2');
     el.remove();
   });
 
