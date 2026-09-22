@@ -356,9 +356,16 @@ export class AosVorhabenSeite extends LitElement {
       margin-bottom: var(--spacing-sm);
       word-break: break-word;
     }
-    .dialog .zeilen code {
+    .dialog .zeilen code,
+    .dialog .zeilen a {
       font-family: var(--font-family-mono);
       color: var(--color-accent-primary);
+    }
+    .dialog .zeilen a {
+      text-decoration: none;
+    }
+    .dialog .zeilen a:hover {
+      text-decoration: underline;
     }
     .dialog .nicht {
       color: var(--color-text-muted);
