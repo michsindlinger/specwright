@@ -1,12 +1,12 @@
 ---
 intent_id: "INT-2026-008"  
 titel: "Gespräch ab Sitzungsstart: das Absicht-Interview auf der Projekt-Seite"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.0.1"  
 autor: "Michael Sindlinger (Fehlerbericht und Gespräch mit Claude, 16.09.2026)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-16"  
-geaendert: "2026-09-16"  
+geaendert: "2026-09-22"  
 risikoklasse: "niedrig"  
 groesse: "S"  
 bypass: "ja"  
@@ -93,3 +93,4 @@ Keine.
 |---|---|---|---|---|
 | 1.0.0 | 2026-09-16 | Kern aus dem Fehlerbericht; angenommen mit „eigene PR" und Plan-Freigabe (Fassung 2 nach externem Review) | alle | Product Owner, 2026-09-16 |
 | 0.1.0 | 2026-09-16 | Entwurf | alle | — |
+| 1.0.1 | 2026-09-22 | Umgesetzt: abgeschlossen aus der UI durch Michael Sindlinger; Belege in `plan.md` §13; Bau-PR #54 | — | Product Owner (Klick in der UI) |
