@@ -57,3 +57,15 @@ Dateiformat (Version 1): `assignments`, `drafts`, `protocol`, `lastModel`, `docD
 - Umsetzung: `ui/src/server/services/vorhaben-state.ts`, Test `ui/tests/unit/vorhaben-state.test.ts` (Laden, Backup bei Unlesbarkeit, `0600`, atomar).
 - Pfad: `ui/src/server/utils/runtime-paths.ts` → `getVorhabenStatePath()`.
 - Spec: `intent/INT-2026-004-ui-vorhaben-sicht/spec.md` §5 (Daten, fachlich), Plan §3 „Architektur-Auswirkung".
+
+---
+
+## Erweiterungen
+
+Optionale Felder, die spätere Vorhaben der Datei hinzugefügt haben. Das Format bleibt `version: 1`; jedes Feld ist beim Laden optional, ältere Dateien laden unverändert. Neue Textfelder aus Nutzereingaben brauchen weiterhin ein eigenes ADR (`architecture.md` §3).
+
+| Datum | Vorhaben | Feld | Beleg |
+|---|---|---|---|
+| 2026-09-18 | INT-2026-019 | Zuordnung: `provider`, `claudeSessionId` (UUID-geprüft, nur `--resume`-Argument und Dateiname der Existenzprüfung), `resumed` (Wiederaufnahme-Marke) | PR #77 |
+| 2026-09-19 | INT-2026-022 | anhängige Absicht-Sitzung: `arbeitstitel` (≤ 80 Zeichen, beim Start einmal gebildet — die einzige Ausnahme der Flag-Regel) | PR #87 |
+| 2026-09-22 | INT-2026-024 | `abschluesse` je Vorhaben: Marke „Abschluss angestoßen" (PR-Nummer, PR-Link, Zweig, Zeitpunkt) und letzter Fehlgrund; verfällt beim Scan, sobald der Hauptcheckout `umgesetzt` trägt, durch „Abschluss zurücknehmen" oder mit dem Ordner (`prune`); „läuft" nur im Speicher | PR offen |

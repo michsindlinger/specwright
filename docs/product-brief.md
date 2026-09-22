@@ -37,7 +37,7 @@ Ohne festen Ablauf zerfällt Softwarearbeit mit einem Agenten in Chat-Sitzungen:
 | Hooks `protect-tests`, `no-secrets`, `production-gate` | jedes Projekt | live |
 | Installer (`install.sh`, `setup*.sh`, `update-specwright.sh`) aus einem Manifest, Update räumt Entferntes auf | Entwickler | in Arbeit (INT-2026-002) |
 | Alt-Befehle für Produktplanung, Story-Specs, Bugs, Skills, Changelog (`/plan-product`, `/create-spec`, `/add-bug`, …) | Entwickler (Terminal) | live, Umbau je Befehl später |
-| Web-UI: Vorhaben-Übersicht (auch begonnene Absichten ohne Ordner, INT-2026-022), Dokument-Leser, Review-Kanal, Terminal angedockt neben dem Dokument mit Kennungen als Verweisen (INT-2026-011), Absicht-Start aus der UI je in eigener Arbeitskopie mit Liste laufender Absicht-Sitzungen (INT-2026-022), Projekt-Seite, Cloud-Terminal, Shared Workspace | Entwickler (Mac, Handy, Droplet) | live (INT-2026-004; angedocktes Terminal INT-2026-011 Stufe 1; parallele Absichten INT-2026-022) |
+| Web-UI: Vorhaben-Übersicht (auch begonnene Absichten ohne Ordner, INT-2026-022), Dokument-Leser, Review-Kanal, Terminal angedockt neben dem Dokument mit Kennungen als Verweisen (INT-2026-011), Absicht-Start aus der UI je in eigener Arbeitskopie mit Liste laufender Absicht-Sitzungen (INT-2026-022), Abschluss per Knopf — deterministisch, ohne Sitzung, als PR gegen den Hauptzweig (INT-2026-024), Projekt-Seite, Cloud-Terminal, Shared Workspace | Entwickler (Mac, Handy, Droplet) | live (INT-2026-004; angedocktes Terminal INT-2026-011 Stufe 1; parallele Absichten INT-2026-022; Abschluss per Knopf INT-2026-024) |
 | Kanban-MCP-Server mit Memory-Store | Alt-Befehle in Sitzungen | live; Abbau als eigenes Vorhaben |
 
 ## 6. Erfolgsmaße
