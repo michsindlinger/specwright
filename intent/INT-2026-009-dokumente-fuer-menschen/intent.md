@@ -1,12 +1,12 @@
 ---
 intent_id: "INT-2026-009"  
 titel: "Dokumente für Menschen: Leser-Teil und Agenten-Teil in Vorhaben-Dokumenten, Rückfragen mit Kontext"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.0.1"  
 autor: "Michael Sindlinger (Gespräch mit Claude, 16.09.2026, Skill ux-less-is-more)"  
 verantwortlich: "Product Owner (Michael Sindlinger)"  
 erstellt: "2026-09-16"  
-geaendert: "2026-09-16"  
+geaendert: "2026-09-22"  
 risikoklasse: "niedrig"  
 groesse: "S"  
 bypass: "ja"  
@@ -97,3 +97,4 @@ Michael muss bei offenen Fragen und Annahmen „immer wieder hin- und herscrolle
 |---|---|---|---|---|
 | 1.0.0 | 2026-09-16 | Angenommen; OF-01 bleibt offen mit Übergangsregel | alle | PO, 16.09. |
 | 0.1.0 | 2026-09-16 | Entwurf aus dem Gespräch vom 16.09. | alle | — |
+| 1.0.1 | 2026-09-22 | Umgesetzt: abgeschlossen aus der UI durch Michael Sindlinger; Belege in `plan.md` §13 | — | Product Owner (Klick in der UI) |
