@@ -32,10 +32,13 @@ describe('vorhaben-sort (FA-02, FA-03, FA-05)', () => {
     expect(groupOf(row({ zustand: 'arbeitet' }))).toBe('laeuft');
   });
 
-  it('INT-2026-016 (AK-01): the session state decides the group before the phase — umgesetzt hides only rows without a live session', () => {
+  it('INT-2026-016 (AK-01), narrowed by INT-2026-024 (FA-14): a working or dialog session decides the group before the phase; a merely waiting one no longer holds an umgesetzt row', () => {
     expect(groupOf(row({ phase: 'umgesetzt', zustand: 'arbeitet' }))).toBe('laeuft');
-    for (const z of ['wartet_auf_dich', 'wartet', 'wartet_rueckfrage', 'wartet_plan', 'wartet_berechtigung'] as const) {
+    for (const z of ['wartet_rueckfrage', 'wartet_plan', 'wartet_berechtigung'] as const) {
       expect(groupOf(row({ phase: 'umgesetzt', zustand: z }))).toBe('wartet_auf_dich');
+    }
+    for (const z of ['wartet_auf_dich', 'wartet'] as const) {
+      expect(groupOf(row({ phase: 'umgesetzt', zustand: z }))).toBe('umgesetzt');
     }
     expect(groupOf(row({ phase: 'umgesetzt', zustand: 'keine_sitzung' }))).toBe('umgesetzt');
     expect(groupOf(row({ phase: 'umgesetzt', zustand: 'sitzung_beendet' }))).toBe('umgesetzt');
@@ -44,17 +47,41 @@ describe('vorhaben-sort (FA-02, FA-03, FA-05)', () => {
     expect(groupOf(row({ phase: 'pr', zustand: 'keine_sitzung' }))).toBe('laeuft');
   });
 
-  it('INT-2026-016 (AK-01): an umgesetzt row with a waiting session sorts with the waiting rows, not into the collapsed group', () => {
+  it('INT-2026-016 (AK-01) / INT-2026-024 (FA-14): an umgesetzt row with a DIALOG session sorts with the waiting rows; one with a merely waiting session collapses', () => {
     const mixed = [
-      row({ intentId: 'INT-2026-010', phase: 'umgesetzt', zustand: 'wartet', lastChangedMs: 500 }),
+      row({ intentId: 'INT-2026-010', phase: 'umgesetzt', zustand: 'wartet_rueckfrage', lastChangedMs: 500 }),
       row({ intentId: 'INT-2026-011', phase: 'umgesetzt', zustand: 'keine_sitzung', lastChangedMs: 600 }),
       row({ intentId: 'INT-2026-012', phase: 'bau', zustand: 'arbeitet', lastChangedMs: 400 }),
+      row({ intentId: 'INT-2026-013', phase: 'umgesetzt', zustand: 'wartet', lastChangedMs: 700 }),
     ];
     expect(groupRows(mixed, null).map((g) => [g.key, g.rows.map((r) => r.intentId)])).toEqual([
       ['wartet_auf_dich', ['INT-2026-010']],
       ['laeuft', ['INT-2026-012']],
-      ['umgesetzt', ['INT-2026-011']],
+      ['umgesetzt', ['INT-2026-013', 'INT-2026-011']],
     ]);
+  });
+
+  it('INT-2026-024 (AK-08, FA-14): the five cases of spec §4 — and non-umgesetzt rows keep the old chain; countWaitingForMe follows', () => {
+    // umgesetzt + wartet / keine_sitzung / sitzung_beendet / bau_unterbrochen → Umgesetzt
+    for (const z of ['wartet', 'wartet_auf_dich', 'keine_sitzung', 'sitzung_beendet', 'bau_unterbrochen'] as const) {
+      expect(groupOf(row({ phase: 'umgesetzt', zustand: z }))).toBe('umgesetzt');
+    }
+    // umgesetzt + arbeitet → Läuft
+    expect(groupOf(row({ phase: 'umgesetzt', zustand: 'arbeitet' }))).toBe('laeuft');
+    // umgesetzt + Dialog → Wartet auf dich
+    for (const z of ['wartet_rueckfrage', 'wartet_plan', 'wartet_berechtigung'] as const) {
+      expect(groupOf(row({ phase: 'umgesetzt', zustand: z }))).toBe('wartet_auf_dich');
+    }
+    // not umgesetzt + wartet → Wartet auf dich (unchanged)
+    for (const phase of ['spec', 'plan', 'bau', 'pr', 'unbekannt', 'absicht'] as const) {
+      expect(groupOf(row({ phase, zustand: 'wartet' }))).toBe('wartet_auf_dich');
+    }
+    const rowsFa14 = [
+      row({ intentId: 'INT-2026-001', phase: 'umgesetzt', zustand: 'wartet' }),
+      row({ intentId: 'INT-2026-002', phase: 'umgesetzt', zustand: 'wartet_plan' }),
+      row({ intentId: 'INT-2026-003', phase: 'pr', zustand: 'wartet' }),
+    ];
+    expect(countWaitingForMe(rowsFa14)).toBe(2);
   });
 
   it('orders: wartet auf dich (newest change first) → läuft by change desc → umgesetzt', () => {

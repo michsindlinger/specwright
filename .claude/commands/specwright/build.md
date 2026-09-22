@@ -12,7 +12,7 @@ Refer to the instructions located in specwright/workflows/core/build.md
 - Verify-Befehl aus `CLAUDE.md`, Nachweise aus §5 ausführen und zitieren, E2E-Pfad aus §8
 - 2x-Regel-Check → Vorschlag für `CLAUDE.md` im PR; Auto-Memory für projektübergreifende Lehren
 - Kontextdeckel ~200k: Stand in §14 + `build-stand.md`, WIP-Commit, STOP — Fortsetzen in neuer Sitzung mit `/build INT-JJJJ-NNN`
-- PR über Skill/Agent `git-workflow`; `plan.md` auf `umgesetzt`, `intent.md` auf `umgesetzt` nach Merge
+- PR über Skill/Agent `git-workflow`; `plan.md` auf `umgesetzt`; `intent.md` bleibt `angenommen` — der Abschluss nach dem Merge ist der Knopf „Abschließen" auf der Vorhaben-Seite der Web-UI (INT-2026-024), nicht die Sitzung; ohne Web-UI Kopf von Hand (Status, PATCH-Version, Datum, Protokollzeile)
 - Board und Fahrplan **nicht in dieser Sitzung**: Abschlussbericht endet mit dem Block „Für das Board"; Nachziehen in eigener kurzer Sitzung nach `/clear`
 
 **Nächster Schritt:** Review und Merge durch den Menschen; manuelle Schritte aus §10

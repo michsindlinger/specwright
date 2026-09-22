@@ -19,6 +19,9 @@ import {
   type ProjectDocsDocMessage,
   type ProjectDocsListResultMessage,
   type ProjectDocsWrittenMessage,
+  type VorhabenAbschlussErgebnisMessage,
+  type VorhabenAbschlussVorschauReplyMessage,
+  type VorhabenAbschlussZurueckgenommenMessage,
   type VorhabenAbsichtBildSavedMessage,
   type VorhabenDesignMessage,
   type VorhabenDocKey,
@@ -57,6 +60,9 @@ export const VORHABEN_MESSAGE_TYPES = new Set([
   'vorhaben:session.assign',
   'vorhaben:session.resume',
   'vorhaben:absicht-bild',
+  'vorhaben:abschluss.vorschau',
+  'vorhaben:abschluss.starten',
+  'vorhaben:abschluss.zuruecknehmen',
   'project-docs:list',
   'project-docs:read',
   'project-docs:write',
@@ -71,6 +77,8 @@ const isProjectDocKey = (v: unknown): v is ProjectDocKey => typeof v === 'string
 const STEPS: readonly string[] = ['intent', 'spec', 'plan', 'build'];
 const isStep = (v: unknown): v is VorhabenStep => typeof v === 'string' && STEPS.includes(v);
 const ANMERKUNG_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+/** INT-2026-024: the base commit the dialog showed — a full SHA-1, nothing else reaches git. */
+const BASE_SHA_RE = /^[0-9a-f]{40}$/;
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS = /[\x00-\x08\x0b-\x1f\x7f]/g;
 const cleanText = (v: string, max: number): string => v.replace(/\r\n?/g, '\n').replace(CONTROL_CHARS, '').slice(0, max);
@@ -287,6 +295,55 @@ export class VorhabenHandler {
               ...(result.ergebnis === 'gestartet' ? { sessionId: result.sessionId } : { grund: result.grund }),
             } as VorhabenSessionResumedMessage)
           )
+          .catch((err) => reply(this.fromError(err, requestId)));
+        return true;
+      }
+
+      case 'vorhaben:abschluss.vorschau': {
+        // INT-2026-024 (FA-02): request/reply like session.assign; nothing is written.
+        const project = this.project(message, reply, requestId);
+        if (!project) return true;
+        const intentId = str(message.intentId);
+        if (!intentId || !INTENT_ID_RE.test(intentId)) {
+          reply(this.error('INVALID_MESSAGE', 'intentId (INT-JJJJ-NNN) ist erforderlich', requestId));
+          return true;
+        }
+        void this.service
+          .abschlussVorschau(project.id, intentId)
+          .then((vorschau) => reply({ type: 'vorhaben:abschluss-vorschau', ...(requestId ? { requestId } : {}), projectId: project.id, intentId, vorschau } as VorhabenAbschlussVorschauReplyMessage))
+          .catch((err) => reply(this.fromError(err, requestId)));
+        return true;
+      }
+
+      case 'vorhaben:abschluss.starten': {
+        // INT-2026-024 (FA-06–FA-08, FA-16–FA-19): the dialog was confirmed; `baseSha` must be a full SHA.
+        const project = this.project(message, reply, requestId);
+        if (!project) return true;
+        const intentId = str(message.intentId);
+        const baseSha = str(message.baseSha);
+        if (!intentId || !INTENT_ID_RE.test(intentId) || !baseSha || !BASE_SHA_RE.test(baseSha)) {
+          reply(this.error('INVALID_MESSAGE', 'intentId (INT-JJJJ-NNN) und baseSha (40 Hex) sind erforderlich', requestId));
+          return true;
+        }
+        void this.service
+          .abschliessen(project.id, intentId, baseSha)
+          .then((r) => reply({ type: 'vorhaben:abschluss-ergebnis', ...(requestId ? { requestId } : {}), projectId: project.id, intentId, prNumber: r.prNumber, prUrl: r.prUrl, zweig: r.zweig } as VorhabenAbschlussErgebnisMessage))
+          .catch((err) => reply(this.fromError(err, requestId)));
+        return true;
+      }
+
+      case 'vorhaben:abschluss.zuruecknehmen': {
+        // INT-2026-024 (FA-15): drops the mark; the row follows in the broadcast.
+        const project = this.project(message, reply, requestId);
+        if (!project) return true;
+        const intentId = str(message.intentId);
+        if (!intentId || !INTENT_ID_RE.test(intentId)) {
+          reply(this.error('INVALID_MESSAGE', 'intentId (INT-JJJJ-NNN) ist erforderlich', requestId));
+          return true;
+        }
+        void this.service
+          .abschlussZuruecknehmen(project.id, intentId)
+          .then(() => reply({ type: 'vorhaben:abschluss-zurueckgenommen', ...(requestId ? { requestId } : {}), projectId: project.id, intentId } as VorhabenAbschlussZurueckgenommenMessage))
           .catch((err) => reply(this.fromError(err, requestId)));
         return true;
       }

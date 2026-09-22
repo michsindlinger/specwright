@@ -140,6 +140,50 @@ export interface VorhabenNextStep {
   sitzung?: { id: string; name: string; model: ModelSelection; target: CloudTerminalSessionTarget };
 }
 
+/** INT-2026-024 (FA-10): the mark „Abschluss angestoßen" — set once the PR exists, dropped when the main checkout reads `umgesetzt` or by „Abschluss zurücknehmen". */
+export interface VorhabenAbschlussMarke {
+  prNumber: number;
+  prUrl: string;
+  zweig: string;
+  /** ISO timestamp. */
+  at: string;
+}
+
+/**
+ * INT-2026-024: what the row carries about its Abschluss — the mark, „läuft"
+ * (in memory only, FA-19) and the last failure (kept until the next attempt,
+ * FA-18/AN-S16). Absent when none of the three applies.
+ */
+export interface VorhabenAbschlussStand {
+  marke?: VorhabenAbschlussMarke;
+  laeuft?: true;
+  fehler?: { message: string; at: string };
+}
+
+/** INT-2026-024 (FA-02): what the confirmation dialog shows — read from the remote base branch, nothing written. */
+export interface VorhabenAbschlussVorschau {
+  intentId: string;
+  titel: string;
+  datei: 'intent.md';
+  /** Configured base branch (default `main`). */
+  base: string;
+  /** Commit of `origin/<base>` the preview was built from; the start compares it (ABSCHLUSS_STALE). */
+  baseSha: string;
+  zweig: string;
+  statusAlt: string;
+  versionAlt: string;
+  versionNeu: string;
+  datum: string;
+  /** The protocol row cells in header order, and the header cells. */
+  zeile: string[];
+  spalten: string[];
+  bauPrs: number[];
+  commitTitel: string;
+}
+
+/** INT-2026-024 (FA-19, review E8): the browser waits longer than the backend's 60-s budget. */
+export const ABSCHLUSS_CLIENT_TIMEOUT_MS = 75_000;
+
 export interface VorhabenRow {
   /** Workspace project id (server-side identity). */
   projectId: string;
@@ -193,6 +237,8 @@ export interface VorhabenRow {
   lastChangedMs: number;
   /** Reserved (FA-48): who created the Vorhaben; not shown yet. */
   herkunft?: 'michael' | 'automatisch';
+  /** INT-2026-024: mark, „läuft" or last failure of the Abschluss; absent when none. With a mark the phase is `umgesetzt` and `phaseNote` „Abschluss-PR #n" (FA-11). */
+  abschluss?: VorhabenAbschlussStand;
 }
 
 export interface VorhabenProjectInfo {
@@ -619,6 +665,43 @@ export interface VorhabenSessionResumeMessage {
   intentId: string;
 }
 
+/**
+ * INT-2026-024 (FA-02): „Abschließen" clicked — the backend reads the intent
+ * of the remote base branch and answers `vorhaben:abschluss-vorschau` (or
+ * `vorhaben:error` ABSCHLUSS_PRECHECK); nothing is written, no mark, no
+ * stored failure.
+ */
+export interface VorhabenAbschlussVorschauMessage {
+  type: 'vorhaben:abschluss.vorschau';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+}
+
+/**
+ * INT-2026-024 (FA-06–FA-08, FA-16–FA-19): the dialog was confirmed. `baseSha`
+ * is the commit the dialog showed; the backend fetches the base branch again
+ * and refuses with ABSCHLUSS_STALE when it moved. Answer:
+ * `vorhaben:abschluss-ergebnis` or `vorhaben:error` (ABSCHLUSS_RUNNING,
+ * ABSCHLUSS_PRECHECK, ABSCHLUSS_STALE, ABSCHLUSS_FAILED, ABSCHLUSS_MARKE); the
+ * row follows in the next `vorhaben:state`.
+ */
+export interface VorhabenAbschlussStartenMessage {
+  type: 'vorhaben:abschluss.starten';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+  baseSha: string;
+}
+
+/** INT-2026-024 (FA-15): drops the mark; branch and PR stay. Answer: `vorhaben:abschluss-zurueckgenommen` or `vorhaben:error`. */
+export interface VorhabenAbschlussZuruecknehmenMessage {
+  type: 'vorhaben:abschluss.zuruecknehmen';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+}
+
 // ---- Server → Client ----
 
 export interface VorhabenSessionAssignedMessage {
@@ -642,6 +725,31 @@ export interface VorhabenSessionResumedMessage {
   sessionId?: string;
   /** Set for `nicht_noetig`. */
   grund?: VorhabenResumeGrund;
+}
+
+export interface VorhabenAbschlussVorschauReplyMessage {
+  type: 'vorhaben:abschluss-vorschau';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+  vorschau: VorhabenAbschlussVorschau;
+}
+
+export interface VorhabenAbschlussErgebnisMessage {
+  type: 'vorhaben:abschluss-ergebnis';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
+  prNumber: number;
+  prUrl: string;
+  zweig: string;
+}
+
+export interface VorhabenAbschlussZurueckgenommenMessage {
+  type: 'vorhaben:abschluss-zurueckgenommen';
+  requestId?: string;
+  projectId: string;
+  intentId: string;
 }
 
 export interface VorhabenSentMessage {
@@ -782,7 +890,18 @@ export type VorhabenErrorCode =
   | 'SESSION_WRITE_FAILED'
   // INT-2026-021 (AK-01/AK-06): its own code so the page can offer the way out; `message` names the text in the box.
   /** The session waits, but text stands in its input box — nothing was written. */
-  | 'PROMPT_NOT_EMPTY';
+  | 'PROMPT_NOT_EMPTY'
+  // INT-2026-024: refusals of the Abschluss (`message` = „Nicht abgeschlossen: Ursache — nächster Schritt", FA-18).
+  /** An Abschluss of this row is running — start and „zurücknehmen" refused („Abschluss läuft schon", FA-19). */
+  | 'ABSCHLUSS_RUNNING'
+  /** Preview or pre-check refused (FA-16): nothing written, no branch, no mark. */
+  | 'ABSCHLUSS_PRECHECK'
+  /** `origin/<base>` moved since the preview — open the dialog again (FA-02). */
+  | 'ABSCHLUSS_STALE'
+  /** Writing or publishing failed after the first change; rolled back as far as possible (FA-17). */
+  | 'ABSCHLUSS_FAILED'
+  /** A mark exists (start refused) or none exists (zurücknehmen refused). */
+  | 'ABSCHLUSS_MARKE';
 
 export const ANMERKUNG_MAX_CHARS = 4000;
 

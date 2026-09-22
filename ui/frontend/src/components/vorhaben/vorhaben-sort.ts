@@ -10,6 +10,12 @@
  * session state is the state of whoever works on it right now; a row whose
  * session works or waits is never collapsed, whatever the file says. Only a
  * row without a live session is filed by its phase.
+ *
+ * INT-2026-024 (FA-14, AK-08): one exception before that chain — a row that
+ * is `umgesetzt` (file or mark) is filed under „Umgesetzt" unless its session
+ * WORKS or shows a DIALOG (Rückfrage, Plan, Berechtigung). A session that only
+ * waits (done, quiet, ended) no longer holds a finished Vorhaben under „Wartet
+ * auf dich".
  */
 
 import type { VorhabenPendingIntent, VorhabenPhase, VorhabenRow, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
@@ -36,7 +42,13 @@ export function isWaitingZustand(z: VorhabenZustand): boolean {
   return z === 'wartet_auf_dich' || z === 'wartet' || z === 'wartet_rueckfrage' || z === 'wartet_plan' || z === 'wartet_berechtigung';
 }
 
+/** The three dialog states of INT-2026-007 — the session shows something Michael must answer in the terminal. */
+export function isDialogZustand(z: VorhabenZustand): boolean {
+  return z === 'wartet_rueckfrage' || z === 'wartet_plan' || z === 'wartet_berechtigung';
+}
+
 export function groupOf(row: VorhabenRow): VorhabenGroupKey {
+  if (row.phase === 'umgesetzt' && row.zustand !== 'arbeitet' && !isDialogZustand(row.zustand)) return 'umgesetzt';
   if (isWaitingZustand(row.zustand)) return 'wartet_auf_dich';
   if (row.zustand === 'arbeitet') return 'laeuft';
   if (row.phase === 'umgesetzt') return 'umgesetzt';

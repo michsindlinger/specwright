@@ -101,7 +101,7 @@ REMOVE `.claude/fix-mode`, falls gesetzt.
 
 COMMIT(s) mit Conventional Commits, Bezug `INT-JJJJ-NNN`.
 PR über Agent `git-workflow`: Titel mit Intent-ID; Body: Kurzfassung aus `plan.md` §1, Verify-Ausgabe, Nachweise §5, E2E-Protokoll/Screenshots, §14 Abweichungen, offene manuelle Schritte §10, `CLAUDE.md`-Vorschlag aus der 2x-Regel.
-SET `plan.md` `Status: umgesetzt` (Merge steht aus), `intent.md` bleibt `angenommen` bis Merge; nach Merge `umgesetzt`.
+SET `plan.md` `Status: umgesetzt` (Merge steht aus); `intent.md` bleibt `angenommen`. Der Abschluss nach dem Merge ist ein Klick auf „Abschließen" auf der Vorhaben-Seite der Web-UI (INT-2026-024) — die Sitzung schreibt ihn nicht. Ohne Web-UI: Kopf von Hand — `status: "umgesetzt"`, nächste PATCH-Version, `geaendert` = Tagesdatum, eine Zeile im Änderungsprotokoll nach Vorlage; kein Skript, kein Befehl (NZ-01).
 REMOVE `build-stand.md`, falls vorhanden (der PR ist jetzt der Stand).
 RULE: Abschlussbericht nach R3 (`specwright/workflows/meta/leser-und-rueckfragen.md`): plan §1 Kurzfassung, offene §10, §14 Abweichungen, Nachweise als Verweis auf PR und Dateien; Verify-Ausgabe und Nachweis-Befehle stehen im PR, nicht im Chat.
 BOARD und FAHRPLAN: **nicht in dieser Sitzung.** Der Abschlussbericht endet mit dem Block „Für das Board": Projekt, Karte (Titel oder „neu"), Zielspalte, Beleg (PR-Link), Stand-Zeile, Verweis auf `intent/INT-JJJJ-NNN-*/`, bei Kreis Lippe die Fahrplan-Station. Das Nachziehen läuft danach in einer eigenen kurzen Sitzung nach `/clear` (Skill `obsidian-po-board`; bei Kreis Lippe danach `fahrplan-sync`) mit diesem Block als Input.

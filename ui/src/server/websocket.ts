@@ -385,6 +385,9 @@ export class WebSocketHandler {
         case 'vorhaben:session.assign':
         case 'vorhaben:session.resume':
         case 'vorhaben:absicht-bild':
+        case 'vorhaben:abschluss.vorschau':
+        case 'vorhaben:abschluss.starten':
+        case 'vorhaben:abschluss.zuruecknehmen':
         case 'project-docs:list':
         case 'project-docs:read':
         case 'project-docs:write':

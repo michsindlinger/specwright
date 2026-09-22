@@ -15,6 +15,10 @@
  * a crash can be resumed (`claude --resume`) and the reaper can tell whether a
  * worktree is the home of an open Vorhaben (`hasOpenAssignmentIn`). The file
  * format stayed the same (`version: 1`); every map is optional on load.
+ * INT-2026-024 adds `abschluesse`: per Vorhaben the mark „Abschluss angestoßen"
+ * (PR number, link, branch, time) and the last failure of an Abschluss —
+ * dropped by the scan once the main checkout reads `umgesetzt`, by
+ * „Abschluss zurücknehmen", or by `prune` when the folder is gone.
  */
 
 import * as fs from 'fs';
@@ -29,6 +33,7 @@ import {
   type ProjectDocDraft,
   type ProjectDocKey,
   type ProtokollEintrag,
+  type VorhabenAbschlussMarke,
   type VorhabenAnsicht,
   type VorhabenDocKey,
   type VorhabenPhaseDoc,
@@ -65,6 +70,12 @@ export interface PendingIntent {
   arbeitstitel?: string;
 }
 
+/** INT-2026-024 (FA-10, AN-S16): mark and/or last failure of a Vorhaben's Abschluss; „läuft" is never stored. */
+export interface VorhabenAbschlussEintrag {
+  marke?: VorhabenAbschlussMarke;
+  fehler?: { message: string; at: string };
+}
+
 export interface VorhabenStateData {
   /** `assignmentKey(projectId, intentId)` → session assignment. */
   assignments: Record<string, VorhabenAssignment>;
@@ -82,6 +93,8 @@ export interface VorhabenStateData {
   ansicht: VorhabenAnsicht;
   /** INT-2026-010: sessionId → first input waiting for the session's first Stop (AK-09, FA-22). */
   firstInputs: Record<string, FirstInput>;
+  /** INT-2026-024: `assignmentKey(projectId, intentId)` → mark / last failure of the Abschluss. */
+  abschluesse: Record<string, VorhabenAbschlussEintrag>;
 }
 
 /** Text handed to a started session at its first Stop; `versuche` counts refused deliveries (max 3, plan §3). */
@@ -117,7 +130,7 @@ export function docDraftKey(projectId: string, key: ProjectDocKey): string {
 export const PROTOCOL_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 function emptyState(): VorhabenStateData {
-  return { assignments: {}, drafts: {}, protocol: [], lastModel: {}, docDrafts: {}, pendingIntents: {}, ansicht: emptyAnsicht(), firstInputs: {} };
+  return { assignments: {}, drafts: {}, protocol: [], lastModel: {}, docDrafts: {}, pendingIntents: {}, ansicht: emptyAnsicht(), firstInputs: {}, abschluesse: {} };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -142,6 +155,24 @@ function readFirstInputs(v: unknown): Record<string, FirstInput> {
   if (!isRecord(v)) return out;
   for (const [k, e] of Object.entries(v)) {
     if (isRecord(e) && typeof e.text === 'string') out[k] = { text: e.text, versuche: typeof e.versuche === 'number' ? e.versuche : 0 };
+  }
+  return out;
+}
+
+/** INT-2026-024: tolerant read — only entries with a well-formed mark and/or failure survive. */
+function readAbschluesse(v: unknown): Record<string, VorhabenAbschlussEintrag> {
+  const out: Record<string, VorhabenAbschlussEintrag> = {};
+  if (!isRecord(v)) return out;
+  for (const [k, e] of Object.entries(v)) {
+    if (!isRecord(e)) continue;
+    const entry: VorhabenAbschlussEintrag = {};
+    const m = e.marke;
+    if (isRecord(m) && typeof m.prNumber === 'number' && typeof m.prUrl === 'string' && typeof m.zweig === 'string' && typeof m.at === 'string') {
+      entry.marke = { prNumber: m.prNumber, prUrl: m.prUrl, zweig: m.zweig, at: m.at };
+    }
+    const f = e.fehler;
+    if (isRecord(f) && typeof f.message === 'string' && typeof f.at === 'string') entry.fehler = { message: f.message, at: f.at };
+    if (entry.marke || entry.fehler) out[k] = entry;
   }
   return out;
 }
@@ -183,6 +214,7 @@ export class VorhabenStateStore {
         pendingIntents: isRecord(s.pendingIntents) ? (s.pendingIntents as VorhabenStateData['pendingIntents']) : {},
         ansicht: readAnsicht(s.ansicht),
         firstInputs: readFirstInputs(s.firstInputs),
+        abschluesse: readAbschluesse(s.abschluesse),
       };
       this.updatedAt = parsed.updatedAt ?? this.updatedAt;
       return { existed: true, healthy: true };
@@ -537,14 +569,53 @@ export class VorhabenStateStore {
     return true;
   }
 
+  // ---- Abschluss (INT-2026-024, FA-10, FA-12, FA-15, AN-S16) ----
+
+  public getAbschluss(projectId: string, intentId: string): VorhabenAbschlussEintrag | undefined {
+    return this.state.abschluesse[assignmentKey(projectId, intentId)];
+  }
+
+  /** Sets the mark and drops a stored failure (the PR exists — the attempt succeeded). */
+  public setAbschlussMarke(projectId: string, intentId: string, marke: VorhabenAbschlussMarke): void {
+    this.state.abschluesse[assignmentKey(projectId, intentId)] = { marke };
+    this.commit();
+  }
+
+  /** Drops the whole entry (mark and failure); true when something was removed. */
+  public clearAbschlussMarke(projectId: string, intentId: string): boolean {
+    const k = assignmentKey(projectId, intentId);
+    if (!(k in this.state.abschluesse)) return false;
+    delete this.state.abschluesse[k];
+    this.commit();
+    return true;
+  }
+
+  /** Keeps a mark if one exists; stores the failure until the next attempt clears it. */
+  public setAbschlussFehler(projectId: string, intentId: string, fehler: { message: string; at: string }): void {
+    const k = assignmentKey(projectId, intentId);
+    this.state.abschluesse[k] = { ...(this.state.abschluesse[k] ?? {}), fehler };
+    this.commit();
+  }
+
+  public clearAbschlussFehler(projectId: string, intentId: string): boolean {
+    const k = assignmentKey(projectId, intentId);
+    const e = this.state.abschluesse[k];
+    if (!e?.fehler) return false;
+    if (e.marke) this.state.abschluesse[k] = { marke: e.marke };
+    else delete this.state.abschluesse[k];
+    this.commit();
+    return true;
+  }
+
   // ---- prune ----
 
   /**
    * FA-32: protocol entries are dropped only when they are older than 30 days
    * AND their Vorhaben is no longer in the list (`liveKeys` = `projectId::intentId`).
    * INT-2026-010 (review E14): chosen phase documents of Vorhaben that are no
-   * longer in the list go at once. Returns the number of removed entries
-   * (protocol plus phase entries).
+   * longer in the list go at once; INT-2026-024 (review E13): so do Abschluss
+   * entries (a deleted folder takes its mark with the next scan). Returns the
+   * number of removed entries (protocol plus phase plus Abschluss entries).
    */
   public prune(liveKeys: Set<string>): number {
     const cutoff = this.now().getTime() - PROTOCOL_RETENTION_MS;
@@ -558,6 +629,12 @@ export class VorhabenStateStore {
     for (const key of Object.keys(this.state.ansicht.phase)) {
       if (!liveKeys.has(key)) {
         delete this.state.ansicht.phase[key];
+        removed++;
+      }
+    }
+    for (const key of Object.keys(this.state.abschluesse)) {
+      if (!liveKeys.has(key)) {
+        delete this.state.abschluesse[key];
         removed++;
       }
     }
