@@ -1,7 +1,7 @@
 # Plan: UI: Vorhaben per Knopf abschließen — deterministisch, ohne Sitzung
 
 > **Intent:** `intent.md` (INT-2026-024) · **Spec:** `spec.md`
-> **Status:** umgesetzt (Merge steht aus) — PR #90 offen, `verify: OK` lokal (dritter Lauf), CI-Check ausstehend
+> **Status:** umgesetzt (Merge steht aus) — PR #90 offen, `verify: OK` lokal (dritter Lauf), CI-Check `verify` grün (Run 35697061805)
 > **Erstellt:** 2026-09-21 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-22 („Freigabe: plan.md (Stand 2026-09-22 05:37)", Chat; D1 damit angenommen)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 9c22c38), `CLAUDE.md`, `docs/security.md`
 
@@ -437,7 +437,7 @@ Kein Deploy-Schritt mit `production-gate`: der Deploy läuft automatisch beim Me
 - [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (2026-09-22: 23 Textfunktion, 15 Runner mit Fake-exec, 8 echtes Git, 8 Service/Handler/Store, 9 Seite, dazu Reader 3, Sort 2, State 1 neu; Stichproben AK-04/AK-10 = §10).
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert (Schritt 0 und 7, 2026-09-22).
 - [x] E2E-Pfad läuft (Abschnitt 8); neun Screenshots unter `design/ist/` (Übersicht vorher, Seite mit Knopf, Dialog, Seite nach Abschluss, Übersicht mit Marke, Übersicht nach Merge, Zurücknehmen-Dialog, Fehlerzeile, Handy).
-- [x] `verify` grün, Ausgabe im PR (dritter Lauf; Stufe 5 auf dem Mac wie bekannt flaky, rote Datei je Lauf anders, einzeln grün) — [ ] PR-Checks grün (CI ist die Wahrheit).
+- [x] `verify` grün, Ausgabe im PR (dritter Lauf; Stufe 5 auf dem Mac wie bekannt flaky, rote Datei je Lauf anders, einzeln grün) — [x] PR-Check `verify` grün (Run 35697061805, 2026-09-22).
 - [x] `docs/architecture.md` angepasst (Abschnitt 3 „Ja"): AR-03, §2 (inkl. Hook-Eigenschaft), §3, §5, Änderungsprotokoll; `security.md`, `design.md`, `product-brief.md`, ADR-0002 „Erweiterungen" nachgezogen.
 - [x] Spec-Zeilen zu D1 geändert (D1 mit der Plan-Freigabe angenommen): FA-08 Satz 2, §5, §7, §10.
 - [x] Manuelle Schritte (Abschnitt 10) im PR als offen markiert (Stichproben AK-04/AK-10, Droplet-Voraussetzungen, Board-Karte).
