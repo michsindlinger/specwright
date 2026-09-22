@@ -1,7 +1,7 @@
 # Plan: UI: Vorhaben per Knopf abschließen — deterministisch, ohne Sitzung
 
 > **Intent:** `intent.md` (INT-2026-024) · **Spec:** `spec.md`
-> **Status:** in_umsetzung
+> **Status:** umgesetzt (Merge steht aus) — PR offen, `verify: OK` lokal (dritter Lauf), CI-Check ausstehend
 > **Erstellt:** 2026-09-21 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-22 („Freigabe: plan.md (Stand 2026-09-22 05:37)", Chat; D1 damit angenommen)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 9c22c38), `CLAUDE.md`, `docs/security.md`
 
@@ -434,15 +434,15 @@ Kein Deploy-Schritt mit `production-gate`: der Deploy läuft automatisch beim Me
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8); Screenshots unter `design/ist/`.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` angepasst (Abschnitt 3 „Ja"): AR-03, §2 (inkl. Hook-Eigenschaft), §3, §5, Änderungsprotokoll; `security.md`, `design.md`, `product-brief.md`, ADR-0002 „Erweiterungen" nachgezogen.
-- [ ] Spec-Zeilen zu D1 nur geändert, wenn D1 bei der Plan-Freigabe angenommen wurde (sonst Rückfallweg umgesetzt).
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (2026-09-22: 23 Textfunktion, 15 Runner mit Fake-exec, 8 echtes Git, 8 Service/Handler/Store, 9 Seite, dazu Reader 3, Sort 2, State 1 neu; Stichproben AK-04/AK-10 = §10).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert (Schritt 0 und 7, 2026-09-22).
+- [x] E2E-Pfad läuft (Abschnitt 8); neun Screenshots unter `design/ist/` (Übersicht vorher, Seite mit Knopf, Dialog, Seite nach Abschluss, Übersicht mit Marke, Übersicht nach Merge, Zurücknehmen-Dialog, Fehlerzeile, Handy).
+- [x] `verify` grün, Ausgabe im PR (dritter Lauf; Stufe 5 auf dem Mac wie bekannt flaky, rote Datei je Lauf anders, einzeln grün) — [ ] PR-Checks grün (CI ist die Wahrheit).
+- [x] `docs/architecture.md` angepasst (Abschnitt 3 „Ja"): AR-03, §2 (inkl. Hook-Eigenschaft), §3, §5, Änderungsprotokoll; `security.md`, `design.md`, `product-brief.md`, ADR-0002 „Erweiterungen" nachgezogen.
+- [x] Spec-Zeilen zu D1 geändert (D1 mit der Plan-Freigabe angenommen): FA-08 Satz 2, §5, §7, §10.
+- [x] Manuelle Schritte (Abschnitt 10) im PR als offen markiert (Stichproben AK-04/AK-10, Droplet-Voraussetzungen, Board-Karte).
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen (sieben Zeilen).
+- [x] 2x-Regel-Check: kein Fehler, der zum zweiten Mal vorkam; der flaky Verify-Lauf ist im Memory schon hinterlegt.
 - [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-024-vorhaben-abschliessen/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
@@ -453,4 +453,10 @@ Kein Deploy-Schritt mit `production-gate`: der Deploy läuft automatisch beim Me
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-22 | #26, Spec zu D1: zusätzlich zu §5, §7, §10 auch FA-08 Satz 2 umformuliert („außerhalb des Hauptcheckouts, kein Rückstand" statt „kurzlebige Arbeitskopie") | FA-08 verlangte die Arbeitskopie wörtlich; das Ziel (AK-05) ist unverändert, die Technik ist D1 | §4 #26, §13 |
+| 2026-09-22 | #2, Runner-Deps: zusätzlich `git` (Slice `pushBranch`/`createPullRequestStrict`/`listOpenPullRequestsForHead`, Standard `gitService`) und `ghEnv` (Zusatz-Umgebung für `gh`) injizierbar | der Fake-exec-Test muss `GH_TOKEN` auch an `gh pr create`/`pr list` prüfen, der Echt-Git-Test ein Fake-`gh` vor das echte in den `PATH` stellen; ohne die zwei Deps wäre beides nur mit Modul-Mocks möglich | §3 Punkt 2, §4 #14/#15 |
+| 2026-09-22 | AN-S06, `gh pr create` mit Exit 0 ohne PR-Nummer und leerer `gh pr list`: **kein** Rückbau, Meldung nach Spec („PR eröffnet, Nummer unbekannt — auf GitHub prüfen und danach ‚Abschließen' nicht erneut drücken"), Grund `pr_ohne_nummer` | §3 Punkt 2 las sich, als würde auch dieser Fall zurückgebaut; §8 FA-17 und Spec §4 sagen „Rückbau nicht mehr sinnvoll (PR existiert)" — die Spec gilt; Rückbau nur bei Exit ≠ 0 | §3 Punkt 2, §8 FA-17 |
+| 2026-09-22 | §5 Nachweis Handler → Service: grep-Muster `service\.abschluss` trifft nicht, weil der Handler wie `session.assign` `void this.service` und `.abschlussVorschau(` auf zwei Zeilen schreibt; Nachweis mit `grep -n -B1 "^\s*\.abschlussVorschau(\|…"` geführt | Stil der bestehenden Fälle übernommen (Prettier bricht die Kette) | §5 |
+| 2026-09-22 | #18 erweitert: neben `vorhaben-sort.test.ts` auch `aos-vorhaben-uebersicht.test.ts` (INT-2026-016-Test „umgesetzt + wartet → Wartet auf dich") auf die FA-14-Regel eingegrenzt (Dialog hält fest, bloßes Warten nicht) | der alte Test prüfte die Regel, die FA-14 bewusst einschränkt; kein Fix-Modus, Feature-Änderung | §4 #18, §8 FA-14 |
+| 2026-09-22 | §8 E2E: interaktiver Lauf über Playwright-MCP (Bilder nur inline, keine Dateien); die Screenshots für `design/ist/` entstanden mit einem Skript auf der Playwright-Bibliothek aus dem npx-Cache (`chromium 1200`), das denselben Pfad ein zweites Mal fährt; Fake-`gh` im `PATH` des Branch-Backends, Protokoll im PR | der MCP-Server speichert keine Dateien | §8 |
+| 2026-09-22 | Frontend: Link-Farbe im Zurücknehmen-Dialog (`.dialog .zeilen a`) ergänzt — im ersten Screenshot war „#42" auf dunklem Grund kaum lesbar | Befund aus dem E2E-Lauf | §3 Punkt 9 |
