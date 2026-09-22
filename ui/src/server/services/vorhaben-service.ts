@@ -15,6 +15,14 @@
  * the normal `createSession` path with `--resume <id>` and no input — single
  * flight per row, pre-checked against the transcript and the worktree.
  *
+ * INT-2026-024: „Abschließen" — `abschlussVorschau` reads the intent of the
+ * remote base branch, `abschliessen` runs the deterministic runner (plumbing
+ * commit, push, PR) with the local write under `withMainProjectLock`, keeps
+ * „läuft" in memory and the mark / last failure in the store; the scan lifts
+ * the row to `umgesetzt` while the mark stands and drops the mark once the
+ * main checkout reads `umgesetzt` (FA-10–FA-12, FA-15, FA-19). The runner never
+ * touches store or broadcast — this service is the only writer (RB-05, AR-05).
+ *
  * Project identity is the workspace store (server side); client-supplied
  * paths are never read directly (security.md §6). Prompt text from the hook
  * is compared in memory only and never persisted or broadcast.
@@ -25,6 +33,8 @@ import { basename, join } from 'path';
 import { listRepoWorktrees, pathKey, type RepoWorktreeInfo } from '../utils/git-worktree-list.js';
 import { parseSessionTarget, SessionTargetError, type ParsedTarget } from '../utils/session-target.js';
 import { resolveMainWorktreePath } from '../utils/worktree-detect.js';
+import { withMainProjectLock } from '../utils/main-project-mutex.js';
+import { AbschlussError, VorhabenAbschlussRunner } from './vorhaben-abschluss.js';
 import { getCloudSessionWorktreeEnabled } from '../general-config.js';
 import { getProvider, isClaudeSessionModel } from '../model-config.js';
 import { isClaudeCli } from '../../shared/provider-cli.js';
@@ -54,6 +64,8 @@ import {
   type Anmerkung,
   type ModelSelection,
   type ProtokollArt,
+  type VorhabenAbschlussStand,
+  type VorhabenAbschlussVorschau,
   type ProtokollEintrag,
   type SendeGrund,
   type VorhabenDocKey,
@@ -176,6 +188,8 @@ export interface VorhabenServiceDeps {
   worktreeEnabled?: (mainProjectPath: string) => boolean;
   /** INT-2026-022 (review E5): the same resolution the manager uses (`resolveMainWorktreePath`) — a registered sub-worktree counts to its main repo. */
   resolveMainPath?: (projectPath: string) => string;
+  /** INT-2026-024: the git side of „Abschließen"; default = a runner on the real git and `gh`. Tests pass a fake. */
+  abschluss?: Pick<VorhabenAbschlussRunner, 'vorschau' | 'abschliessen'>;
   now?: () => Date;
   /** Worktree list cache TTL. */
   worktreeTtlMs?: number;
@@ -321,6 +335,9 @@ export class VorhabenService {
   private resolveReady: () => void = () => {};
   /** INT-2026-019 (AK-04): resumes in flight, keyed by `assignmentKey(projectId, intentId)`. */
   private readonly resuming = new Map<string, Promise<ResumeResult>>();
+  /** INT-2026-024 (FA-19): Abschlüsse in flight („läuft" lives here only, never in the store), keyed like `resuming`. */
+  private readonly abschlussLaufend = new Set<string>();
+  private readonly abschlussRunner: Pick<VorhabenAbschlussRunner, 'vorschau' | 'abschliessen'>;
   private scanTimer: NodeJS.Timeout | null = null;
   private scanning: Promise<void> | null = null;
   private scanDirty = false;
@@ -356,6 +373,7 @@ export class VorhabenService {
     this.readyWaitMs = deps.readyWaitMs ?? READY_WAIT_MS;
     this.worktreeEnabled = deps.worktreeEnabled ?? getCloudSessionWorktreeEnabled;
     this.resolveMainPath = deps.resolveMainPath ?? resolveMainWorktreePath;
+    this.abschlussRunner = deps.abschluss ?? new VorhabenAbschlussRunner({ timeZone: this.timeZone, now: this.now });
     this.ready = new Promise<void>((resolve) => {
       this.resolveReady = resolve;
     });
@@ -1284,6 +1302,83 @@ export class VorhabenService {
     this.scheduleRescan(0);
   }
 
+  // ---- Abschluss (INT-2026-024) ----
+
+  /** FA-02: what the dialog shows — read from `origin/<base>`, nothing written, no mark, no stored failure (review S11). */
+  public async abschlussVorschau(projectId: string, intentId: string): Promise<VorhabenAbschlussVorschau> {
+    const project = this.findProject(projectId);
+    if (!project) throw new VorhabenError('UNKNOWN_PROJECT', 'Projekt ist nicht geöffnet');
+    const row = this.requireRow(projectId, intentId);
+    try {
+      return await this.abschlussRunner.vorschau({ projectPath: project.path, dirName: row.dirName, intentId });
+    } catch (err) {
+      if (err instanceof AbschlussError) throw new VorhabenError('ABSCHLUSS_PRECHECK', err.message);
+      throw err;
+    }
+  }
+
+  /**
+   * FA-06–FA-08, FA-10, FA-16–FA-19: the dialog was confirmed. Single flight per
+   * row (a second device gets ABSCHLUSS_RUNNING); the row shows „läuft" through
+   * a rescan; on success the mark is stored, on failure the reason — both
+   * survive a restart and travel with the row (AN-S16). The local write runs
+   * under the main-project lock, network steps outside it (AR-03).
+   */
+  public async abschliessen(projectId: string, intentId: string, baseSha: string): Promise<{ prNumber: number; prUrl: string; zweig: string }> {
+    const project = this.findProject(projectId);
+    if (!project) throw new VorhabenError('UNKNOWN_PROJECT', 'Projekt ist nicht geöffnet');
+    const row = this.requireRow(projectId, intentId);
+    const key = assignmentKey(projectId, intentId);
+    if (this.deps.store.getAbschluss(projectId, intentId)?.marke) throw new VorhabenError('ABSCHLUSS_MARKE', `${intentId}: Abschluss schon angestoßen — erst „Abschluss zurücknehmen"`);
+    if (this.abschlussLaufend.has(key)) throw new VorhabenError('ABSCHLUSS_RUNNING', 'Abschluss läuft schon');
+    this.abschlussLaufend.add(key);
+    this.deps.store.clearAbschlussFehler(projectId, intentId);
+    await this.rescan();
+    const mainPath = this.resolveMainPath(project.path);
+    try {
+      const r = await this.abschlussRunner.abschliessen({
+        projectPath: project.path,
+        mainPath,
+        dirName: row.dirName,
+        intentId,
+        baseSha,
+        lock: (fn) => withMainProjectLock(mainPath, 'vorhaben-abschluss', fn),
+      });
+      this.deps.store.setAbschlussMarke(projectId, intentId, { prNumber: r.prNumber, prUrl: r.prUrl, zweig: r.zweig, at: r.at });
+      console.log(`[vorhaben] ${intentId}: Abschluss-PR #${r.prNumber} eröffnet (${r.zweig})`);
+      return { prNumber: r.prNumber, prUrl: r.prUrl, zweig: r.zweig };
+    } catch (err) {
+      const message = err instanceof AbschlussError ? err.message : `Nicht abgeschlossen: ${(err as Error)?.message ?? String(err)} — erneut versuchen`;
+      this.deps.store.setAbschlussFehler(projectId, intentId, { message, at: this.now().toISOString() });
+      console.warn(`[vorhaben] ${intentId}: ${message}`);
+      if (err instanceof AbschlussError) {
+        const code: VorhabenErrorCode = err.grund === 'stand_veraltet' ? 'ABSCHLUSS_STALE' : err.phase === 'vorpruefung' ? 'ABSCHLUSS_PRECHECK' : 'ABSCHLUSS_FAILED';
+        throw new VorhabenError(code, message);
+      }
+      throw new VorhabenError('ABSCHLUSS_FAILED', message);
+    } finally {
+      this.abschlussLaufend.delete(key);
+      await this.rescan();
+    }
+  }
+
+  /** FA-15 (review E12): drops the mark (and a stored failure); refused while an Abschluss of the row runs. Branch and PR stay. */
+  public async abschlussZuruecknehmen(projectId: string, intentId: string): Promise<void> {
+    this.requireRow(projectId, intentId);
+    if (this.abschlussLaufend.has(assignmentKey(projectId, intentId))) throw new VorhabenError('ABSCHLUSS_RUNNING', 'Abschluss läuft — zurücknehmen erst danach');
+    if (!this.deps.store.getAbschluss(projectId, intentId)?.marke) throw new VorhabenError('ABSCHLUSS_MARKE', `${intentId}: kein angestoßener Abschluss`);
+    this.deps.store.clearAbschlussMarke(projectId, intentId);
+    await this.rescan();
+  }
+
+  /** What the row carries: stored mark/failure plus „läuft" from memory; undefined when nothing applies. */
+  private abschlussStand(projectId: string, intentId: string): VorhabenAbschlussStand | undefined {
+    const stored = this.deps.store.getAbschluss(projectId, intentId);
+    const laeuft = this.abschlussLaufend.has(assignmentKey(projectId, intentId));
+    if (!stored && !laeuft) return undefined;
+    return { ...(stored?.marke ? { marke: stored.marke } : {}), ...(laeuft ? { laeuft: true as const } : {}), ...(stored?.fehler ? { fehler: stored.fehler } : {}) };
+  }
+
   /**
    * INT-2026-019 (AK-01–AK-06, AK-08, AK-09): „Vorhaben-Seite geöffnet". The
    * backend decides whether the row's session is lost — assignment not ended,
@@ -1667,7 +1762,14 @@ export class VorhabenService {
         }
         for (const c of candidates) for (const d of c.docs) livePaths.add(docPathOf(c, d.key));
         for (const c of mergeCandidates(candidates, this.preferredCwdFor(project.id))) {
-          const row = toRow(project, c, this.sessionFor(project.id, c.intentId));
+          // INT-2026-024 (FA-12): the file in the MAIN checkout reads umgesetzt → the mark has done its job.
+          if (c.main && c.heads.intent?.status === 'umgesetzt') {
+            const hatteMarke = !!this.deps.store.getAbschluss(project.id, c.intentId)?.marke;
+            if (this.deps.store.clearAbschlussMarke(project.id, c.intentId) && hatteMarke) {
+              console.log(`[vorhaben] ${c.intentId}: Hauptcheckout trägt umgesetzt — Abschluss-Marke verfallen`);
+            }
+          }
+          const row = toRow(project, c, this.sessionFor(project.id, c.intentId), this.abschlussStand(project.id, c.intentId));
           if (row) rows.push(row);
         }
         infos.push(info);
