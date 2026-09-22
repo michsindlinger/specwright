@@ -16,15 +16,22 @@
  * shown comes from the shared view state (`state.ansicht.phase`, AR-05); this
  * component only sends `doc-change`. Drafts and protocol come from
  * `vorhaben:state`; this component only sends messages.
+ *
+ * INT-2026-024: „Abschließen" in the action bar (phases spec, plan, bau, pr,
+ * unbekannt) opens a confirmation built from the backend's preview of the
+ * remote base branch (FA-02); after the PR exists the row carries a mark — the
+ * page shows the hint with the PR link and „Abschluss zurücknehmen" instead
+ * (FA-11, FA-15). Failures stand under the button until the next attempt
+ * (FA-18); „läuft" locks the buttons (FA-19).
  */
 
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { Anmerkung, ModelSelection, ProtokollEintrag, VorhabenDocInfo, VorhabenPhase, VorhabenRow, VorhabenStep, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
+import type { Anmerkung, ModelSelection, ProtokollEintrag, VorhabenAbschlussVorschau, VorhabenDocInfo, VorhabenPhase, VorhabenRow, VorhabenStep, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
 import { VORHABEN_DOC_FILES, lastModelKey, stepCommand } from '../../../../src/shared/types/vorhaben.protocol.js';
 import type { CloudTerminalSessionTarget } from '../../../../src/shared/types/cloud-terminal.protocol.js';
 import { buildAenderungenText, buildFreigabeText, formatStandLabel } from '../../../../src/shared/vorhaben-text.js';
-import { vorhabenService, type ModelListInfo, type SendResult } from '../../services/vorhaben.service.js';
+import { vorhabenService, VorhabenRequestError, type ModelListInfo, type SendResult } from '../../services/vorhaben.service.js';
 import { ladeModelle, vorauswahl } from './model-wahl.js';
 import { STEP_LABELS, ZUSTAND_LABELS, formatClock, formatStand } from './vorhaben-sort.js';
 import { dialogZielText, leisteGrund, ZUORDNUNG_HINWEIS } from './aos-sende-leiste.js';
@@ -90,6 +97,14 @@ export function defaultDoc(row: VorhabenRow): LeserDoc {
   return newest?.key ?? (row.designFiles.length ? 'design' : 'intent');
 }
 
+/** INT-2026-024 (FA-01): phases in which „Abschließen" is offered — not „Absicht", not „Umgesetzt", never with a mark. */
+export const ABSCHLUSS_PHASEN: ReadonlyArray<VorhabenPhase> = ['spec', 'plan', 'bau', 'pr', 'unbekannt'];
+export function abschlussMoeglich(row: Pick<VorhabenRow, 'phase' | 'abschluss'>): boolean {
+  return !row.abschluss?.marke && ABSCHLUSS_PHASEN.includes(row.phase);
+}
+/** FA-19 (review E8): what the page says when the browser gave up before the backend — the row carries the true state. */
+export const ABSCHLUSS_TIMEOUT_TEXT = 'Keine Antwort vom Backend binnen 75 s — der Stand folgt aus der Zeile';
+
 /** A live session that works or sits in a dialog — the Freigabe cannot go anywhere right now. */
 export function freigabeGesperrtDurchSitzung(zustand: VorhabenZustand): boolean {
   return zustand === 'arbeitet' || zustand === 'wartet_rueckfrage' || zustand === 'wartet_plan' || zustand === 'wartet_berechtigung';
@@ -132,6 +147,13 @@ export class AosVorhabenSeite extends LitElement {
   @state() private models: ModelListInfo | null = null;
   /** mtimeMs of the document as the reader loaded it (the "Stand" Michael read). */
   @state() private readStand = 0;
+  // INT-2026-024: „Abschließen" — preview in flight, the dialog with it, a local failure (TIMEOUT or a refused start), „zurücknehmen" dialog.
+  @state() private abschlussVorschau: VorhabenAbschlussVorschau | null = null;
+  @state() private vorschauLaedt = false;
+  @state() private abschlussOpen = false;
+  @state() private abschlussFehlerLokal = '';
+  @state() private zuruecknehmenOpen = false;
+  @state() private zuruecknehmenLaeuft = false;
 
   static override styles = css`
     :host {
@@ -314,10 +336,33 @@ export class AosVorhabenSeite extends LitElement {
       opacity: 0.5;
       cursor: default;
     }
-    .send-fehler {
+    .send-fehler,
+    .abschluss-fehler {
       color: var(--color-accent-error);
       font-size: var(--font-size-sm);
       margin: var(--spacing-xs) 0;
+    }
+    /* INT-2026-024: the mark's hint (neutral, like the resume line) and the dialog rows */
+    .hinweis.abschluss a {
+      color: var(--color-accent-primary);
+      text-decoration: none;
+    }
+    .hinweis.abschluss a:hover {
+      text-decoration: underline;
+    }
+    .dialog .zeilen {
+      display: grid;
+      gap: 4px;
+      margin-bottom: var(--spacing-sm);
+      word-break: break-word;
+    }
+    .dialog .zeilen code {
+      font-family: var(--font-family-mono);
+      color: var(--color-accent-primary);
+    }
+    .dialog .nicht {
+      color: var(--color-text-muted);
+      margin-bottom: var(--spacing-sm);
     }
     /* Freigabe confirmation (mock 06) — above the terminal sidebar */
     .schleier {
@@ -402,6 +447,9 @@ export class AosVorhabenSeite extends LitElement {
     if (changed.has('doc') || (changed.has('row') && (changed.get('row') as VorhabenRow | undefined)?.intentId !== this.row?.intentId)) {
       this.readStand = 0;
       this.sendError = '';
+      this.abschlussFehlerLokal = '';
+      this.abschlussOpen = false;
+      this.zuruecknehmenOpen = false;
       this.lost = [];
       // Another document: no Kennungen until its reader reported them (FA-16/FA-17) — the design view and „Kein Dokument" never do.
       this.emitKennungen(new Map());
@@ -608,6 +656,120 @@ export class AosVorhabenSeite extends LitElement {
     }
   }
 
+  // ---- Abschließen (INT-2026-024) ----
+
+  private toast(message: string, type: 'success' | 'error' = 'success'): void {
+    this.dispatchEvent(new CustomEvent('show-toast', { bubbles: true, composed: true, detail: { message, type } }));
+  }
+
+  /** FA-02: the backend reads the remote base branch and returns what the dialog shows; a refusal stands under the button. */
+  private async openAbschluss(): Promise<void> {
+    const r = this.row;
+    if (this.vorschauLaedt || r.abschluss?.laeuft) return;
+    this.vorschauLaedt = true;
+    this.abschlussFehlerLokal = '';
+    try {
+      this.abschlussVorschau = await vorhabenService.abschlussVorschau(r.projectId, r.intentId);
+      this.abschlussOpen = true;
+    } catch (err) {
+      this.abschlussFehlerLokal = (err as Error).message || 'Vorschau fehlgeschlagen';
+    } finally {
+      this.vorschauLaedt = false;
+    }
+  }
+
+  /** The dialog was confirmed: the backend gets the shown `baseSha`; the row shows „läuft", then mark or failure. */
+  private async startAbschluss(): Promise<void> {
+    const v = this.abschlussVorschau;
+    const r = this.row;
+    this.abschlussOpen = false;
+    if (!v) return;
+    this.abschlussFehlerLokal = '';
+    try {
+      const { prNumber } = await vorhabenService.abschliessen(r.projectId, r.intentId, v.baseSha);
+      this.toast(`Abschluss-PR #${prNumber} eröffnet`);
+    } catch (err) {
+      const e = err as VorhabenRequestError;
+      this.abschlussFehlerLokal = e instanceof VorhabenRequestError && e.code === 'TIMEOUT' ? ABSCHLUSS_TIMEOUT_TEXT : e.message || 'Abschluss fehlgeschlagen';
+    }
+  }
+
+  /** FA-15: drops the mark; branch and PR stay. */
+  private async zuruecknehmen(): Promise<void> {
+    const r = this.row;
+    this.zuruecknehmenOpen = false;
+    if (this.zuruecknehmenLaeuft) return;
+    this.zuruecknehmenLaeuft = true;
+    this.abschlussFehlerLokal = '';
+    try {
+      await vorhabenService.abschlussZuruecknehmen(r.projectId, r.intentId);
+      this.toast('Abschluss zurückgenommen');
+    } catch (err) {
+      this.abschlussFehlerLokal = (err as Error).message || 'Zurücknehmen fehlgeschlagen';
+    } finally {
+      this.zuruecknehmenLaeuft = false;
+    }
+  }
+
+  /**
+   * The failure line under the button: the backend's stored reason wins; a mark or „läuft" on the row
+   * supersedes a local text (the TIMEOUT case — the row carries the true state, review E8).
+   */
+  private abschlussFehlerText(): string {
+    const a = this.row.abschluss;
+    if (a?.fehler) return a.fehler.message;
+    if (a?.marke || a?.laeuft) return '';
+    return this.abschlussFehlerLokal;
+  }
+
+  /** Spec §6 „Bestätigungsdialog Vorhaben abschließen". */
+  private renderAbschlussDialog() {
+    const v = this.abschlussVorschau;
+    const r = this.row;
+    if (!v) return nothing;
+    const close = (): void => {
+      this.abschlussOpen = false;
+    };
+    return html`<div class="schleier" @click=${close}>
+      <div class="dialog abschluss" role="dialog" aria-modal="true" aria-label="Vorhaben abschließen" @click=${(e: Event) => e.stopPropagation()}>
+        <h2>Vorhaben abschließen</h2>
+        <div class="zeilen">
+          <div><code>${v.intentId}</code> · ${v.titel || r.titel}</div>
+          <div>Absichtsdatei: <code>${v.datei}</code> im Ordner des Vorhabens</div>
+          <div>Auf dem Hauptzweig (<code>${v.base}</code>): Status <strong>${v.statusAlt}</strong>, Version ${v.versionAlt} → <strong>${v.versionNeu}</strong></div>
+          <div>Protokollzeile: ${v.zeile.filter((z) => z).join(' · ')}</div>
+          <div>Zweig <code>${v.zweig}</code> · Pull Request gegen <code>${v.base}</code>${v.bauPrs.length ? html` · Bau-PR ${v.bauPrs.map((n) => `#${n}`).join(', ')}` : nothing}</div>
+        </div>
+        <div class="nicht">Nicht: mergen · spec.md/plan.md ändern · Sitzung oder Arbeitskopie beenden · Board-Karte anlegen</div>
+        <div class="aktionen-dialog">
+          <button type="button" class="abbrechen" @click=${close}>Abbrechen</button>
+          <button type="button" class="primary bestaetigen" @click=${() => void this.startAbschluss()}>Abschließen und PR eröffnen</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /** Spec Ablauf C step 3. */
+  private renderZuruecknehmenDialog() {
+    const marke = this.row.abschluss?.marke;
+    const close = (): void => {
+      this.zuruecknehmenOpen = false;
+    };
+    return html`<div class="schleier" @click=${close}>
+      <div class="dialog zuruecknehmen" role="dialog" aria-modal="true" aria-label="Abschluss zurücknehmen" @click=${(e: Event) => e.stopPropagation()}>
+        <h2>Abschluss zurücknehmen</h2>
+        <div class="zeilen">
+          <div>Die Zeile steht wieder in ihrer Phase.</div>
+          <div>Zweig${marke ? html` <code>${marke.zweig}</code>` : nothing} und Pull Request${marke ? html` <a href=${marke.prUrl} target="_blank" rel="noopener">#${marke.prNumber}</a>` : nothing} bleiben bestehen — den PR auf GitHub schließen, wenn er nicht gelten soll.</div>
+        </div>
+        <div class="aktionen-dialog">
+          <button type="button" class="abbrechen" @click=${close}>Abbrechen</button>
+          <button type="button" class="primary bestaetigen" @click=${() => void this.zuruecknehmen()}>Zurücknehmen</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   /** Mac and phone alike (INT-2026-010, FA-20): app.ts owns the phone branch (active session + open sidebar). */
   private toTerminal(sessionId?: string): void {
     const id = sessionId ?? this.row.session?.id;
@@ -704,6 +866,8 @@ export class AosVorhabenSeite extends LitElement {
         @anmerkung-delete=${this.onAnmerkungDelete}
       ></aos-anmerkungen-sammel>
       ${this.freigabeOpen ? this.renderFreigabeDialog() : nothing}
+      ${this.abschlussOpen ? this.renderAbschlussDialog() : nothing}
+      ${this.zuruecknehmenOpen ? this.renderZuruecknehmenDialog() : nothing}
     `;
   }
 
@@ -725,20 +889,36 @@ export class AosVorhabenSeite extends LitElement {
     </div>`;
   }
 
-  /** FA-12/FA-21/FA-22: next step (always, greyed out while busy), „Freigeben" for the document awaiting approval, phone: the terminal. */
+  /**
+   * FA-12/FA-21/FA-22: next step (always, greyed out while busy), „Freigeben" for the document awaiting approval, phone: the terminal.
+   * INT-2026-024 (FA-01, FA-15, FA-18, FA-19): „Abschließen" (or „Abschluss zurücknehmen" with a mark), locked while one runs; the failure line below.
+   */
   private renderAktionen() {
     const r = this.row;
     const live = this.liveSession();
     const freigabe = this.freigabeMoeglich();
     const sperre = freigabe ? this.freigabeSperre() : '';
-    if (!r.nextStep && !freigabe && !(this.mobile && live)) return nothing;
+    const abschluss = abschlussMoeglich(r);
+    const marke = r.abschluss?.marke;
+    const laeuft = !!r.abschluss?.laeuft;
+    const fehler = this.abschlussFehlerText();
+    if (!r.nextStep && !freigabe && !(this.mobile && live) && !abschluss && !marke) return nothing;
     return html`<div class="aktionen">
-      ${this.renderNextStep()}
-      ${freigabe
-        ? html`<button type="button" class="seite-knopf primary freigeben" ?disabled=${!!sperre} title=${sperre} @click=${this.openFreigabe}>Freigeben</button>`
-        : nothing}
-      ${this.mobile && live ? html`<button type="button" class="seite-knopf terminal" @click=${() => this.toTerminal(live.id)}>Im Terminal öffnen ↗</button>` : nothing}
-    </div>`;
+        ${this.renderNextStep()}
+        ${freigabe
+          ? html`<button type="button" class="seite-knopf primary freigeben" ?disabled=${!!sperre} title=${sperre} @click=${this.openFreigabe}>Freigeben</button>`
+          : nothing}
+        ${abschluss
+          ? html`<button type="button" class="seite-knopf abschliessen" ?disabled=${laeuft || this.vorschauLaedt} @click=${() => void this.openAbschluss()}>
+              ${laeuft ? 'Abschluss läuft …' : this.vorschauLaedt ? 'Vorschau …' : 'Abschließen'}
+            </button>`
+          : nothing}
+        ${marke
+          ? html`<button type="button" class="seite-knopf zuruecknehmen" ?disabled=${laeuft || this.zuruecknehmenLaeuft} @click=${() => (this.zuruecknehmenOpen = true)}>Abschluss zurücknehmen</button>`
+          : nothing}
+        ${this.mobile && live ? html`<button type="button" class="seite-knopf terminal" @click=${() => this.toTerminal(live.id)}>Im Terminal öffnen ↗</button>` : nothing}
+      </div>
+      ${fehler ? html`<div class="abschluss-fehler" role="alert">${fehler}</div>` : nothing}`;
   }
 
   /** Mock 06 "Freigeben · Bestätigung": document + stand, target (session, or the session to start), hint on unsent Anmerkungen (FA-29). */
@@ -773,8 +953,13 @@ export class AosVorhabenSeite extends LitElement {
   }
 
   private renderHinweis() {
+    // INT-2026-024 (FA-11): the mark's hint first — neutral, with the PR link and the one thing Michael still does.
+    const marke = this.row.abschluss?.marke;
+    const abschluss = marke
+      ? html`<div class="hinweis abschluss"><span>Abschluss angestoßen · <a href=${marke.prUrl} target="_blank" rel="noopener">PR #${marke.prNumber} ↗</a> — nach dem Merge den Hauptcheckout aktualisieren</span></div>`
+      : nothing;
     // INT-2026-019 (AK-08/AK-09): the reason comes first; the state hint below stays (e.g. „Nächster Schritt" remains the way).
-    return html`${this.resumeHinweis ? html`<div class="hinweis resume"><span>Wiederaufnahme nicht möglich: ${this.resumeHinweis}</span></div>` : nothing}${this.renderZustandHinweis()}`;
+    return html`${abschluss}${this.resumeHinweis ? html`<div class="hinweis resume"><span>Wiederaufnahme nicht möglich: ${this.resumeHinweis}</span></div>` : nothing}${this.renderZustandHinweis()}`;
   }
 
   private renderZustandHinweis() {

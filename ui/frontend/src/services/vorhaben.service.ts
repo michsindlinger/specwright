@@ -5,8 +5,10 @@
  */
 
 import { gateway, type WebSocketMessage } from '../gateway.js';
+import { ABSCHLUSS_CLIENT_TIMEOUT_MS } from '../../../src/shared/types/vorhaben.protocol.js';
 import type {
   Anmerkung,
+  VorhabenAbschlussVorschau,
   ModelSelection,
   ProjectDocEntry,
   ProjectDocKey,
@@ -43,6 +45,8 @@ export class VorhabenRequestError extends Error {
 const REQUEST_TIMEOUT_MS = 15000;
 /** INT-2026-020: image upload from „Neue Absicht" — 10 MB over a phone link needs more than 15 s (R2). */
 const ABSICHT_BILD_TIMEOUT_MS = 60000;
+/** INT-2026-024: the preview fetches the base branch once (8 s budget) — 30 s leaves room for a slow link. */
+const ABSCHLUSS_VORSCHAU_TIMEOUT_MS = 30000;
 
 export class VorhabenClientService {
   private _state: VorhabenState | null = null;
@@ -218,6 +222,30 @@ export class VorhabenClientService {
    */
   resumeSession(projectId: string, intentId: string): Promise<VorhabenSessionResumedMessage> {
     return this.request<VorhabenSessionResumedMessage>('vorhaben:session-resumed', { type: 'vorhaben:session.resume', projectId, intentId });
+  }
+
+  /**
+   * INT-2026-024 (FA-02): „Abschließen" clicked — the backend reads the intent
+   * of the remote base branch and answers what the dialog shows. Nothing is
+   * written. Rejects with ABSCHLUSS_PRECHECK (`message` = cause and next step).
+   */
+  abschlussVorschau(projectId: string, intentId: string): Promise<VorhabenAbschlussVorschau> {
+    return this.request<{ vorschau: VorhabenAbschlussVorschau }>('vorhaben:abschluss-vorschau', { type: 'vorhaben:abschluss.vorschau', projectId, intentId }, 'vorhaben:error', ABSCHLUSS_VORSCHAU_TIMEOUT_MS).then((m) => m.vorschau);
+  }
+
+  /**
+   * INT-2026-024 (FA-06–FA-08, FA-16–FA-19): the dialog was confirmed; `baseSha`
+   * is the commit it showed. Resolves with the PR; rejects with the server's
+   * code (ABSCHLUSS_RUNNING, _PRECHECK, _STALE, _FAILED, _MARKE) or TIMEOUT
+   * after 75 s (review E8) — the row carries the true state either way.
+   */
+  abschliessen(projectId: string, intentId: string, baseSha: string): Promise<{ prNumber: number; prUrl: string; zweig: string }> {
+    return this.request<{ prNumber: number; prUrl: string; zweig: string }>('vorhaben:abschluss-ergebnis', { type: 'vorhaben:abschluss.starten', projectId, intentId, baseSha }, 'vorhaben:error', ABSCHLUSS_CLIENT_TIMEOUT_MS);
+  }
+
+  /** INT-2026-024 (FA-15): drops the mark; branch and PR stay. */
+  abschlussZuruecknehmen(projectId: string, intentId: string): Promise<void> {
+    return this.request('vorhaben:abschluss-zurueckgenommen', { type: 'vorhaben:abschluss.zuruecknehmen', projectId, intentId }).then(() => undefined);
   }
 
   /**
