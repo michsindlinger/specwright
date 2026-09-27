@@ -14,7 +14,7 @@ bypass_grund: ""
 bezuege:  
   product: "docs/product-brief.md"  
   spec: "spec.md"  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: ""  
