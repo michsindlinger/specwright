@@ -42,7 +42,7 @@ import {
 } from '../../shared/types/anruf.protocol.js';
 import type { MachineWriteResult } from './cloud-terminal-manager.js';
 import { eingabeText, findDialogCue, promptZustand, pruefeEingabeWartet, readStableScreen, type CursorProbe } from './dialog-driver.js';
-import { injectProbe, optionLineHas, parsePlanDialog, sanitizeInjectText, type PlanDialogState } from '../utils/plan-dialog-state.js';
+import { injectProbe, optionLineHas, parsePlanDialog, planOptionVoll, sanitizeInjectText, type PlanDialogState } from '../utils/plan-dialog-state.js';
 import { parseRueckfrageDialog, type RueckfrageDialog } from '../utils/rueckfrage-dialog-state.js';
 
 // ---------------------------------------------------------------------------
@@ -206,8 +206,8 @@ export class AnrufSender {
     try {
       if (this.planReview?.isReviewRunning(sessionId)) throw abbruch('plan_review_laeuft');
       this.pruefeStatus(sessionId, 'plan');
-      const dialog = await this.liesPlan(sessionId);
-      return { wortlaut: this.jaWortlaut(dialog) };
+      const { dialog, bild } = await this.liesPlanBild(sessionId);
+      return { wortlaut: this.jaWortlaut(dialog, bild) };
     } catch (e) {
       if (e instanceof SendeAbbruch) return falsch(e.grund);
       return falsch('bildschirm_unpassend');
@@ -282,8 +282,8 @@ export class AnrufSender {
     v.grenze = 1;
     if (this.planReview?.isReviewRunning(v.id)) throw abbruch('plan_review_laeuft');
     this.pruefeStatus(v.id, 'plan');
-    const dialog = await this.liesPlan(v.id);
-    this.jaWortlaut(dialog);
+    const { dialog, bild } = await this.liesPlanBild(v.id);
+    this.jaWortlaut(dialog, bild);
     this.pruefePlanVorzustand(dialog);
     const ab = v.ereignisse.length;
     await this.taste(v, '1');
@@ -506,9 +506,9 @@ export class AnrufSender {
     if (d.focused === d.target) throw abbruch('bildschirm_unpassend');
   }
 
-  /** Review F8: Option 1 steht wörtlich in der Ja-Liste, sonst `unbekannte_freigabe`. */
-  private jaWortlaut(d: PlanDialogState): string {
-    const wortlaut = zusammen(d.lines[1] ?? '');
+  /** Review F8: Option 1 steht wörtlich in der Ja-Liste, sonst `unbekannte_freigabe`; umbrochene Beschriftung zusammengesetzt. */
+  private jaWortlaut(d: PlanDialogState, bild: string): string {
+    const wortlaut = planOptionVoll(bild, 1) ?? zusammen(d.lines[1] ?? '');
     if (CLEAR_CONTEXT.test(wortlaut) || !ANRUF_JA_LISTE.includes(wortlaut)) throw abbruch('unbekannte_freigabe');
     return wortlaut;
   }
@@ -522,12 +522,16 @@ export class AnrufSender {
   }
 
   private async liesPlan(sessionId: string): Promise<PlanDialogState> {
+    return (await this.liesPlanBild(sessionId)).dialog;
+  }
+
+  private async liesPlanBild(sessionId: string): Promise<{ dialog: PlanDialogState; bild: string }> {
     const bild = await this.lies(sessionId);
     const cue = findDialogCue(bild);
     if (cue && cue.kind !== 'plan') throw abbruch('anderer_dialog');
     const dialog = parsePlanDialog(bild);
     if (!dialog) throw abbruch('bildschirm_unpassend');
-    return dialog;
+    return { dialog, bild };
   }
 
   /** Dieselbe Frage wie erwartet, noch nicht weitergesprungen. */

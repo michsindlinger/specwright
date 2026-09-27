@@ -217,7 +217,9 @@ describe('aos-anruf', () => {
     w.gw.emit(state({ zustand: 'freigabe_nachfrage', eigener: true, meldung: meldungPlan, freigabeWortlaut: 'Yes, and switch to BYPASS PERMISSIONS' }));
     await zeige(el);
     expect(el.querySelector('.anruf-text')?.textContent).toContain('Plan für Sitzung „int-025-plan“ wirklich freigeben?');
-    expect(el.querySelector('.anruf-als')?.textContent).toBe('Freigabe wählt im Plan-Dialog „Yes, and switch to BYPASS PERMISSIONS“.');
+    expect(el.querySelector('.anruf-als')?.textContent).toBe(
+      'Freigabe wählt im Plan-Dialog „Yes, and switch to BYPASS PERMISSIONS“ — danach keine weiteren Rückfragen zu Berechtigungen in dieser Sitzung.'
+    );
     expect(knoepfe(el)).toEqual(['Freigeben', 'Nein']);
     knopf(el, 'Nein').click();
     await zeige(el);

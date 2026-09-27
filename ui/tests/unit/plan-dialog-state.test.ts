@@ -6,6 +6,7 @@ import {
   sameDialogState,
   sanitizeInjectText,
   stripScreen,
+  planOptionVoll,
 } from '../../src/server/utils/plan-dialog-state.js';
 
 const ptr = (on: boolean): string => (on ? '❯' : ' ');
@@ -183,5 +184,33 @@ describe('injectProbe() / optionLineHas()', () => {
 describe('sanitizeInjectText()', () => {
   it('turns CR into LF, tabs into spaces, and strips ESC and other controls that act as keys', () => {
     expect(sanitizeInjectText('a\r\nb\rc\x1b[Ad\te\x07f\n')).toBe('a\nb\nc[Ad  ef\n');
+  });
+});
+
+describe('planOptionVoll (INT-2026-025)', () => {
+  const dialog = [
+    ' Would you like to proceed?',
+    '',
+    ' ❯ 1. Yes, and switch to BYPASS PERMISSIONS (no further',
+    '      prompts) for this session',
+    '   2. Yes, manually approve edits',
+    '   3. Tell Claude what to change',
+    '      shift+tab to approve with this feedback',
+    '',
+  ].join('\n');
+
+  it('joins a wrapped label up to the next option', () => {
+    expect(planOptionVoll(dialog, 1)).toBe('Yes, and switch to BYPASS PERMISSIONS (no further prompts) for this session');
+    expect(planOptionVoll(dialog, 2)).toBe('Yes, manually approve edits');
+  });
+
+  it('stops at a blank line and at a less indented line', () => {
+    expect(planOptionVoll(dialog, 3)).toBe('Tell Claude what to change shift+tab to approve with this feedback');
+    expect(planOptionVoll(dialog.replace('      prompts)', ' prompts)'), 1)).toBe('Yes, and switch to BYPASS PERMISSIONS (no further');
+  });
+
+  it('null without dialog or option', () => {
+    expect(planOptionVoll('❯ 1. Yes\n  2. No', 1)).toBeNull();
+    expect(planOptionVoll(dialog, 7)).toBeNull();
   });
 });

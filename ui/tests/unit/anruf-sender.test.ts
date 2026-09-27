@@ -371,6 +371,21 @@ describe('AnrufSender — Plan', () => {
     expect(q.tasten).toEqual([]);
   });
 
+  it('schmales Terminal (55 Spalten, E2E): umbrochene Option 1 wird zusammengesetzt und freigegeben', async () => {
+    const schmal = fx('plan-dialog-schmal');
+    expect(await sender(new FakeQuelle(schmal, 'blocked', 'plan')).freigabeWortlaut(ID)).toEqual({ wortlaut: BYPASS });
+    const q = new FakeQuelle(schmal, 'blocked', 'plan').bei(schmal, '1', { bild: ERLEDIGT });
+    expect(await sender(q).sende({ sessionId: ID, art: 'plan', antwort: { art: 'freigeben' } })).toEqual({ ok: true });
+    expect(q.tasten).toEqual(['1']);
+  });
+
+  it('schmales Terminal mit fremder Folgezeile unter Option 1 → unbekannte_freigabe, keine Taste', async () => {
+    const bild = fx('plan-dialog-schmal').replace('prompts) for this session', 'prompts) and clear context');
+    const q = new FakeQuelle(bild, 'blocked', 'plan');
+    expect(await sender(q).sende({ sessionId: ID, art: 'plan', antwort: { art: 'freigeben' } })).toMatchObject({ ok: false, grund: 'unbekannte_freigabe' });
+    expect(q.tasten).toEqual([]);
+  });
+
   it('freigeben: Taste 1, Bestätigung = Cue weg', async () => {
     const q = new FakeQuelle(fx('plan-dialog'), 'blocked', 'plan').bei(fx('plan-dialog'), '1', { bild: ERLEDIGT });
     expect(await sender(q).sende({ sessionId: ID, art: 'plan', antwort: { art: 'freigeben' } })).toEqual({ ok: true });

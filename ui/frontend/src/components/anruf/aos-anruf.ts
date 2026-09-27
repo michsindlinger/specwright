@@ -175,7 +175,9 @@ export class AosAnruf extends LitElement {
         return html`
           <div class="anruf-text"><b>Plan für Sitzung „${m.sitzungName}“ wirklich freigeben?</b><br />Sag ja oder nein.</div>
           ${a.freigabeWortlaut
-            ? html`<div class="anruf-als">Freigabe wählt im Plan-Dialog „${a.freigabeWortlaut}“.</div>`
+            ? html`<div class="anruf-als">Freigabe wählt im Plan-Dialog „${a.freigabeWortlaut}“${/BYPASS PERMISSIONS/i.test(a.freigabeWortlaut)
+                ? ' — danach keine weiteren Rückfragen zu Berechtigungen in dieser Sitzung'
+                : ''}.</div>`
             : nothing}
           ${this.renderHinweis(a)}
           <div class="anruf-knoepfe">
@@ -196,7 +198,7 @@ export class AosAnruf extends LitElement {
     const frage = m.art === 'rueckfrage' ? m.fragen?.[a.frageIndex] : undefined;
     if (frage) {
       const anzahl = m.fragen?.length ?? 1;
-      return html`<div class="anruf-text">
+      return html`<div class="anruf-text anruf-frage">
         ${anzahl > 1 ? html`<div class="anruf-sub">Frage ${a.frageIndex + 1} von ${anzahl}</div>` : nothing}
         <div>Frage: ${frage.frage}</div>
         ${frage.optionen.map((o, i) => html`<div class="anruf-opt"><b>${i + 1}</b>${o}</div>`)}

@@ -6394,6 +6394,11 @@ aos-app .anruf-text {
   overflow-wrap: anywhere;
 }
 
+/* Frage-Block ist aus Elementen gebaut: pre-line würde die Template-Umbrüche als Leerzeilen zeigen. */
+aos-app .anruf-text.anruf-frage {
+  white-space: normal;
+}
+
 aos-app .anruf-opt {
   margin: 3px 0;
 }
