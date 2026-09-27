@@ -13,7 +13,7 @@ bypass: "nein"
 bypass_grund: ""  
 bezuege:  
   product: "docs/product-brief.md"  
-  spec: ""  
+  spec: "spec.md"  
   plan: ""  
   board_karte: ""  
   adr: []  
