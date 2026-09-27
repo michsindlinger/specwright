@@ -3,7 +3,7 @@
 <!-- Ablage: intent/INT-2026-025-agenten-anrufe/plan.md -->
 
 > **Intent:** `intent.md` (INT-2026-025) · **Spec:** `spec.md` (freigegeben 2026-09-27)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt
 > **Erstellt:** 2026-09-27 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-27 — im Chat „freigabe"; O1–O4 wie vorgeschlagen
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand f14299f), `CLAUDE.md`, `docs/security.md`, `docs/design.md`, `docs/adr/0004-sitzung-zeigen-statt-nachlesen.md`
 
@@ -505,14 +505,14 @@ Backend-Dienst, Protokoll, Frontend-Kasten und Sender greifen über eine gemeins
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Protokoll mit EK-02/EK-04 und FA-27-Nachweis im PR.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (EK-01/EK-03/AK-16 als Messung in §10 offen).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert (PR #95).
+- [x] E2E-Pfad läuft (Abschnitt 8), Protokoll mit EK-02/EK-04 und FA-27-Nachweis im PR (`e2e-protokoll.md`).
 - [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md`, `security.md`, `design.md`, `product-brief.md`, ADR-0006 angepasst.
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
+- [x] `docs/architecture.md`, `security.md`, `design.md`, `product-brief.md`, ADR-0006 angepasst.
+- [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
+- [x] 2x-Regel-Check: kein wiederholter Fehler, kein Vorschlag.
 - [ ] Abschlussbericht nach R3, endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-025-agenten-anrufe/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung

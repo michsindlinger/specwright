@@ -3,7 +3,7 @@
 > Status: Angenommen — ergänzt ADR-0004
 > Datum: 2026-09-27
 > Betrifft: Web-UI (`ui/src/server/services/claude-hooks.ts`, `anruf-service.ts`, `anruf-zustand.ts`, `anruf-warteschlange.ts`, `anruf-sender.ts`, `sprach-erkennung.ts`, `ui/src/server/routes/cloud-terminal.routes.ts`, `ui/src/server/utils/lokal-verbindung.ts`, `ui/src/shared/types/anruf.protocol.ts`, `ui/frontend/src/components/anruf/aos-anruf.ts`), Vorhaben INT-2026-025
-> Umgesetzt in: Branch `feat/INT-2026-025-agenten-anrufe` (PR offen)
+> Umgesetzt in: Branch `feat/INT-2026-025-agenten-anrufe` (PR #95)
 
 ---
 
