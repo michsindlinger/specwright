@@ -5,7 +5,7 @@
  * bell, the project symbol and — on the phone — the terminal symbol. Nothing
  * else: EK-02 counts the controls. Light DOM, styles in theme.css `.kopfzeile*`.
  *
- * Events: `glocke-open`, `glocke-sound` (bubbling from `aos-glocke`),
+ * Events: `glocke-open`, `glocke-sound`, `glocke-anrufen` (bubbling from `aos-glocke`),
  * `terminal-toggle` (phone). The project symbol navigates itself.
  */
 
@@ -26,6 +26,9 @@ export class AosKopfzeile extends LitElement {
   @property({ attribute: false }) glockeRows: BellRow[] = [];
   @property({ attribute: false }) glockeSessions: GlockeSession[] = [];
   @property({ attribute: false }) projectNames: Record<string, string> = {};
+  /** INT-2026-025: passed to the bell („Anrufen"). */
+  @property({ type: Boolean }) anrufModus = false;
+  @property({ type: Boolean }) anrufLaeuft = false;
 
   protected override createRenderRoot(): HTMLElement {
     return this;
@@ -46,7 +49,13 @@ export class AosKopfzeile extends LitElement {
         <span class="kopfzeile-titel">${this.titel}</span>
         <div class="kopfzeile-rechts">
           ${this.reconnecting ? html`<span class="kopfzeile-verbindung" role="status">Verbindung …</span>` : nothing}
-          <aos-glocke .rows=${this.glockeRows} .sessions=${this.glockeSessions} .projectNames=${this.projectNames}></aos-glocke>
+          <aos-glocke
+            .rows=${this.glockeRows}
+            .sessions=${this.glockeSessions}
+            .projectNames=${this.projectNames}
+            .anrufModus=${this.anrufModus}
+            .anrufLaeuft=${this.anrufLaeuft}
+          ></aos-glocke>
           <button
             type="button"
             class="kopfzeile-btn kopfzeile-projekt ${projektAktiv ? 'aktiv' : ''}"

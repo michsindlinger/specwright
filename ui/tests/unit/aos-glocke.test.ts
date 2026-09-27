@@ -134,4 +134,70 @@ describe('aos-glocke', () => {
     expect(el.querySelector('.glocke-dropdown')).not.toBeNull();
     el.remove();
   });
+
+  describe('INT-2026-025 (FA-05, FA-12): „Anrufen"', () => {
+    const anrufRows: BellRow[] = [
+      { sessionId: 's-rf', terminalSessionId: 'cloud-rf', kind: 'blocked', at: 5000, preview: 'Welches Modell?', blockKind: 'rueckfrage' },
+      { sessionId: 's-plan', terminalSessionId: 'cloud-plan', kind: 'blocked', at: 4000, preview: 'ExitPlanMode', blockKind: 'plan' },
+      { sessionId: 's-perm', terminalSessionId: 'cloud-perm', kind: 'blocked', at: 3000, preview: 'Berechtigung: Bash', blockKind: 'berechtigung' },
+      { sessionId: 's-unb', terminalSessionId: 'cloud-unb', kind: 'blocked', at: 2500, preview: 'Dialog', blockKind: 'unbekannt' },
+      { sessionId: 's-done', terminalSessionId: 'cloud-done', kind: 'done', at: 2000, preview: 'Fertig.' },
+    ];
+
+    async function offen(modus: boolean, laeuft = false) {
+      const el = await glocke(anrufRows);
+      el.anrufModus = modus;
+      el.anrufLaeuft = laeuft;
+      await el.updateComplete;
+      (el.querySelector('.glocke-btn') as HTMLButtonElement).click();
+      await el.updateComplete;
+      return el;
+    }
+
+    const anrufenJeZeile = (el: Element): boolean[] => [...el.querySelectorAll('.glocke-row')].map((r) => r.querySelector('.glocke-anrufen') !== null);
+
+    it('mode off: no button anywhere', async () => {
+      const el = await offen(false);
+      expect(anrufenJeZeile(el)).toEqual([false, false, false, false, false]);
+      el.remove();
+    });
+
+    it('mode on: question, plan and finished get „Anrufen"; permission and unknown do not', async () => {
+      const el = await offen(true);
+      expect(anrufenJeZeile(el)).toEqual([true, true, false, false, true]);
+      el.remove();
+    });
+
+    it('click emits glocke-anrufen with the backend id, not glocke-open, and closes the list', async () => {
+      const el = await offen(true);
+      const anrufe: unknown[] = [];
+      const oeffnen: unknown[] = [];
+      el.addEventListener('glocke-anrufen', (e) => anrufe.push((e as CustomEvent).detail));
+      el.addEventListener('glocke-open', (e) => oeffnen.push((e as CustomEvent).detail));
+      const btn = el.querySelector('.glocke-row .glocke-anrufen') as HTMLButtonElement;
+      expect(btn.textContent?.trim()).toBe('Anrufen');
+      expect(btn.getAttribute('aria-label')).toBe('Anrufen: s-rf'); // no session known → id
+      btn.click();
+      await el.updateComplete;
+      expect(anrufe).toEqual([{ sessionId: 'cloud-rf' }]);
+      expect(oeffnen).toEqual([]);
+      expect(el.querySelector('.glocke-dropdown')).toBeNull();
+      el.remove();
+    });
+
+    it('locked with the reason while a call is taken', async () => {
+      const el = await offen(true, true);
+      const anrufe: unknown[] = [];
+      el.addEventListener('glocke-anrufen', (e) => anrufe.push((e as CustomEvent).detail));
+      const btns = [...el.querySelectorAll<HTMLButtonElement>('.glocke-anrufen')];
+      expect(btns).toHaveLength(3);
+      for (const b of btns) {
+        expect(b.disabled).toBe(true);
+        expect(b.getAttribute('title')).toBe('Erst den laufenden Anruf beenden');
+      }
+      btns[0]!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(anrufe).toEqual([]);
+      el.remove();
+    });
+  });
 });

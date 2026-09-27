@@ -85,3 +85,35 @@ export function playAgentDoneChime(force = false): void {
     osc.stop(t1 + 0.02);
   }
 }
+
+/**
+ * INT-2026-025 (FA-03, D6): ring tone of the call mode — three rising notes
+ * (E5 → G5 → C6) with a pause, clearly not the two-note bell chime. Plays
+ * once per call; the caller repeats it (3× every 4 s). Ignores the bell's mute
+ * toggle: the call mode has its own switch.
+ */
+const ANRUF_NOTES: ReadonlyArray<{ freq: number; start: number; duration: number }> = [
+  { freq: 659.3, start: 0, duration: 0.16 },
+  { freq: 784.0, start: 0.2, duration: 0.16 },
+  { freq: 1046.5, start: 0.4, duration: 0.3 },
+];
+
+export function playAnrufKlingeln(): void {
+  const audio = audioContext();
+  if (!audio || audio.state !== 'running') return;
+  const now = audio.currentTime;
+  for (const note of ANRUF_NOTES) {
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = note.freq;
+    const t0 = now + note.start;
+    const t1 = t0 + note.duration;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(PEAK_GAIN, t0 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t1);
+    osc.connect(gain).connect(audio.destination);
+    osc.start(t0);
+    osc.stop(t1 + 0.02);
+  }
+}

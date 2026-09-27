@@ -131,6 +131,23 @@ describe('buildBellRows() — INT-2026-016 (AK-02, AK-03): one source, the backe
     ...o,
   });
 
+  it('INT-2026-025 (FA-12): blockKind travels with a blocked row only', () => {
+    const rows = buildBellRows(
+      [
+        s('a', { agentStatus: 'blocked', agentStatusAt: 3, blockKind: 'rueckfrage' }),
+        s('b', { agentStatus: 'blocked', agentStatusAt: 2, blockKind: 'berechtigung' }),
+        s('c', { agentStatus: 'idle', agentDoneAt: 1, blockKind: 'plan' }),
+      ],
+      [],
+      null
+    );
+    expect(rows.map((r) => [r.sessionId, r.blockKind])).toEqual([
+      ['a', 'rueckfrage'],
+      ['b', 'berechtigung'],
+      ['c', undefined],
+    ]);
+  });
+
   it('lists a session while it shows a dialog (blocked) or carries the „fertig, unbeantwortet" mark; nothing else', () => {
     const sessions = [
       s('blk', { agentStatus: 'blocked', agentStatusAt: 5, agentStatusReason: 'Berechtigung: Bash' }),

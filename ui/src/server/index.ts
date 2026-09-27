@@ -37,7 +37,7 @@ app.use('/api/version', versionRouter);
 app.use('/api/team', teamRouter);
 // Stop-hook callback (agent-finished bell). Resolves wsHandler lazily — it does
 // not exist until server.listen (same reason /health reads it lazily).
-app.use('/api/cloud-terminal', createCloudTerminalRouter(() => wsHandler?.getCloudTerminalManager()));
+app.use('/api/cloud-terminal', createCloudTerminalRouter(() => wsHandler?.getCloudTerminalManager(), () => wsHandler?.getAnrufService()));
 
 // Health check endpoint
 app.get('/health', (_req: Request, res: Response) => {

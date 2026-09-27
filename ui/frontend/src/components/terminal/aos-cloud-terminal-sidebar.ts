@@ -22,6 +22,7 @@ import '../mobile/aos-mobile-terminal-keys.js';
 import '../mobile/aos-mobile-input-bar-idle.js';
 import '../aos-claude-log-panel.js';
 import type { CloudTerminalAgentStatus } from '../../../../src/shared/types/cloud-terminal.protocol.js';
+import type { BlockKind } from '../../../../src/shared/types/hook-events.protocol.js';
 
 export interface TerminalSession {
   id: string;
@@ -70,6 +71,8 @@ export interface TerminalSession {
   agentDoneAt?: number;
   /** Excerpt of the last assistant message that came with the Stop — only while this browser saw the event. */
   agentDonePreview?: string;
+  /** INT-2026-025: blocked only — kind of dialog (backend `blockKind`); the bell's „Anrufen" and the call tone need it. */
+  blockKind?: BlockKind;
 }
 
 export interface LoadingState {

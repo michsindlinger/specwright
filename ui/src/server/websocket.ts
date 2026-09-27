@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket, RawData } from 'ws';
-import { Server } from 'http';
+import { Server, IncomingMessage } from 'http';
 import { randomUUID } from 'crypto';
 import { resolveCommandDir } from './utils/project-dirs.js';
 import { ProjectManager } from './projects.js';
@@ -41,7 +41,13 @@ import { setupService, type StepOutput, type StepComplete } from './services/set
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 import { WorkspaceStateStore } from './services/workspace-state.js';
 import { WorkspaceHandler } from './services/workspace-handler.js';
-import { getWorkspaceStatePath, getVorhabenStatePath, getIntentPasteImageRoot } from './utils/runtime-paths.js';
+import { getWorkspaceStatePath, getVorhabenStatePath, getIntentPasteImageRoot, getAnrufStatePath, getAnrufKontextDir, backendPort } from './utils/runtime-paths.js';
+import { AnrufService } from './services/anruf-service.js';
+import { AnrufHandler } from './services/anruf-handler.js';
+import { SprachErkennung } from './services/sprach-erkennung.js';
+import { AnrufSender } from './services/anruf-sender.js';
+import { anrufAbgeschaltet } from './services/claude-hooks.js';
+import { istLokalerBrowser } from './utils/lokal-verbindung.js';
 import { INTENT_PASTE_MAX_AGE_MS, pruneOldImages } from './utils/paste-image.js';
 import { VorhabenStateStore } from './services/vorhaben-state.js';
 import { VorhabenService } from './services/vorhaben-service.js';
@@ -68,6 +74,8 @@ interface WebSocketClient extends WebSocket {
   clientId: string;
   isAlive: boolean;
   projectId?: string; // MPRO-005: Track which project this client is associated with
+  /** INT-2026-025 (D9): Browser am Mac des Backends (Loopback, Host, Origin, keine Weiterleitung). */
+  anrufLokal: boolean;
 }
 
 interface WebSocketMessage {
@@ -100,6 +108,10 @@ export class WebSocketHandler {
   private vorhabenHandler: VorhabenHandler;
   /** Sessions created through a WS create handler (they broadcast their own `created`). */
   private wsCreatedSessionIds = new Set<string>();
+  /** INT-2026-025: Anrufmodus — Dienst, Handler und lokale Spracherkennung. */
+  private sprachErkennung: SprachErkennung;
+  private anrufService: AnrufService;
+  private anrufHandler: AnrufHandler;
 
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server });
@@ -144,6 +156,23 @@ export class WebSocketHandler {
     });
     // INT-2026-020: images pasted on „Neue Absicht" land under <runtime>/intent-paste (ADR-0005).
     this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage), { bildRoot: getIntentPasteImageRoot() });
+    // INT-2026-025 (D1–D10): Anrufmodus. Inhalte nur im Speicher; start() nach der Wiederherstellung der Sitzungen.
+    this.sprachErkennung = new SprachErkennung();
+    this.anrufService = new AnrufService({
+      quelle: this.cloudTerminalManager,
+      erkennung: this.sprachErkennung,
+      sender: new AnrufSender({ quelle: this.cloudTerminalManager, planReview: this.planReviewOrchestrator }),
+      statePath: getAnrufStatePath(),
+      kontextDir: getAnrufKontextDir(),
+      abgeschaltet: anrufAbgeschaltet(),
+      sitzungInfo: (s): { sitzungName: string; projektName?: string } => {
+        const name = this.workspaceStore.getState().sessionNames[s.sessionId];
+        const projektName = s.projectPath.split('/').filter(Boolean).pop();
+        const ordner = (s.effectiveCwd ?? s.projectPath).split('/').filter(Boolean).pop();
+        return { sitzungName: name ?? ordner ?? s.sessionId, ...(projektName ? { projektName } : {}) };
+      },
+    });
+    this.anrufHandler = new AnrufHandler(this.anrufService);
     this.bootWorkspace();
     this.setupConnectionHandler();
     this.startHeartbeat();
@@ -161,6 +190,8 @@ export class WebSocketHandler {
    */
   private bootWorkspace(): void {
     void this.cloudTerminalManager.whenReady().then(async () => {
+      // INT-2026-025: verwaiste aus-*-Dateien aufräumen, bei Modus an Kontext-Datei + Erkennung.
+      this.anrufService.start();
       const { existed } = await this.workspaceStore.load();
       const live = this.cloudTerminalManager.getAllSessions();
       if (!existed) {
@@ -208,11 +239,13 @@ export class WebSocketHandler {
   }
 
   private setupConnectionHandler(): void {
-    this.wss.on('connection', (ws: WebSocket) => {
+    this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       const client = ws as WebSocketClient;
       client.clientId = randomUUID();
       client.isAlive = true;
       client.projectId = undefined; // MPRO-005: Will be set when project.select or project.switch is called
+      // INT-2026-025 (D9): Vite-Dev verbindet direkt auf den Backend-Port, Origin ist dann :5173.
+      client.anrufLokal = istLokalerBrowser(req, { port: backendPort(), devPorts: [5173] });
 
       this.clients.set(client.clientId, client);
 
@@ -233,6 +266,11 @@ export class WebSocketHandler {
 
       console.log(`Client connected: ${client.clientId}`);
 
+      // INT-2026-025: anruf:verfuegbarkeit an jeden, anruf:state nur an lokale Clients.
+      this.anrufService.clientDa(client.clientId, client.anrufLokal, (m) => {
+        if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(m));
+      });
+
       // Handle pong responses for heartbeat
       client.on('pong', () => {
         client.isAlive = true;
@@ -247,6 +285,8 @@ export class WebSocketHandler {
       client.on('close', () => {
         console.log(`Client disconnected: ${client.clientId}`);
         this.clients.delete(client.clientId);
+        // INT-2026-025 (AN-S08): laufender Anruf dieses Fensters endet ohne Senden.
+        this.anrufService.clientWeg(client.clientId);
       });
 
       // Handle errors
@@ -395,6 +435,23 @@ export class WebSocketHandler {
         case 'project-docs:draft.clear':
           this.gateOnCloudTerminalRestore(() => {
             this.vorhabenHandler.handle(message as Record<string, unknown>, (m) => client.send(JSON.stringify(m)));
+          });
+          break;
+        case 'anruf:modus.set':
+        case 'anruf:faehig':
+        case 'anruf:annehmen':
+        case 'anruf:ablehnen':
+        case 'anruf:spaeter':
+        case 'anruf:auflegen':
+        case 'anruf:anrufen':
+        case 'anruf:erkennen':
+        case 'anruf:freigeben.anfragen':
+        case 'anruf:senden':
+          // INT-2026-025 (#16): Validierung und Lokal-Prüfung im Handler; Inhalte nie loggen.
+          this.gateOnCloudTerminalRestore(() => {
+            this.anrufHandler.handle(message as Record<string, unknown>, { clientId: client.clientId, lokal: client.anrufLokal }, (m) => {
+              if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(m));
+            });
           });
           break;
         case 'settings.general.update':
@@ -557,7 +614,9 @@ export class WebSocketHandler {
         }
       }
     } catch (error) {
-      console.error('Failed to parse message:', error);
+      // INT-2026-025 (Review F19): nur Name und Meldung, nie den Nachrichteninhalt.
+      const err = error as Error;
+      console.error('Failed to parse message:', err?.name ?? 'Error', err?.message ?? '');
     }
   }
 
@@ -989,6 +1048,11 @@ export class WebSocketHandler {
     return this.cloudTerminalManager;
   }
 
+  /** INT-2026-025 (D1): the hook route hands the hook body to the Anruf service. */
+  public getAnrufService(): AnrufService {
+    return this.anrufService;
+  }
+
   /** Expose the Vorhaben service for the deploy-readiness gate (FA-34). */
   public getVorhabenService(): VorhabenService {
     return this.vorhabenService;
@@ -1007,6 +1071,8 @@ export class WebSocketHandler {
     // DPP-002: Clean up PreviewWatcher
     this.previewWatcher.stop();
     this.vorhabenService.stop();
+    // INT-2026-025 (#18): Anruf-Dienst abmelden; sein stop() ruft sprachErkennung.stop() (whisper-server: SIGTERM, nach 2 s SIGKILL).
+    void this.anrufService.stop().catch(() => undefined);
     // MPRO-005: Clean up WebSocketManager
     webSocketManager.shutdown();
   }
