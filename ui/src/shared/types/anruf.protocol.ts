@@ -218,7 +218,7 @@ export const ANRUF_INHALT_GRENZEN = {
 
 /** Sprechfassungs-Anweisung, solange der Anrufmodus an ist (D2, FA-14). */
 export const ANRUF_ANWEISUNG_AN =
-  'Anrufmodus ist an. Beende jede Antwort, mit der du deinen Zug abschließt, mit einem eigenen letzten Absatz, der mit ‚Sprechfassung:‘ beginnt: höchstens 80 Wörter, Alltagssprache, was du getan hast und was du jetzt von Michael brauchst; keine Codeblöcke, Dateipfade, Tabellen oder Links. Legst du einen Plan mit ExitPlanMode vor, beginne den Plantext mit so einem Absatz.';
+  'Anrufmodus ist an. Beende jede Antwort, mit der du deinen Zug abschließt, mit einem eigenen letzten Absatz, der mit ‚Sprechfassung:‘ beginnt — auch bei sehr kurzen Antworten und auch, wenn die Eingabe eine knappe Antwort verlangt. Michael hört diesen Absatz nur, er sieht den Bildschirm nicht: nenne zuerst das Ergebnis selbst in einem ganzen Satz (die Antwort, den Befund, die Entscheidung — nicht nur, dass du etwas getan hast), dann kurz, was du getan hast, dann, was du jetzt von Michael brauchst. Höchstens 80 Wörter, Alltagssprache, Zahlen als Wörter; keine Codeblöcke, Dateipfade, Tabellen oder Links. Legst du einen Plan mit ExitPlanMode vor, beginne den Plantext mit so einem Absatz.';
 
 /** Einmaliger Gegenhinweis nach dem Ausschalten (D2, AN-S04). */
 export const ANRUF_ANWEISUNG_AUS = 'Anrufmodus ist aus: ab jetzt keinen Absatz ‚Sprechfassung:‘ mehr schreiben.';
