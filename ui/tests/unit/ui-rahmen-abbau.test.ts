@@ -59,7 +59,7 @@ describe('frame teardown (INT-2026-010, FA-19, AK-16)', () => {
     expect(existsSync(join(UI, 'frontend/src/components/voice'))).toBe(false);
   });
 
-  it('the removed backend files are gone; the voice protocol type stays (team-view imports it)', () => {
+  it('the removed backend files are gone; the voice protocol type is gone too (INT-2026-025, D13)', () => {
     const gone = [
       'src/server/claude-handler.ts',
       'src/server/image-storage.ts',
@@ -71,7 +71,7 @@ describe('frame teardown (INT-2026-010, FA-19, AK-16)', () => {
       'src/server/voice-config.ts',
     ];
     for (const rel of gone) expect(existsSync(join(UI, rel)), rel).toBe(false);
-    expect(existsSync(join(UI, 'src/shared/types/voice.protocol.ts'))).toBe(true);
+    expect(existsSync(join(UI, 'src/shared/types/voice.protocol.ts'))).toBe(false);
   });
 
   it('no source mentions the removed tags', () => {
@@ -79,11 +79,11 @@ describe('frame teardown (INT-2026-010, FA-19, AK-16)', () => {
   });
 
   it('no sender or handler for the chat, voice-call, voice-settings and image-upload messages is left', () => {
-    // `settings.voice.get` in team-view.ts is tolerated (NZ-03, review F19: the default branch acks unknown types).
+    // INT-2026-025 D13: team-view.ts no longer sends `settings.voice.get`.
     expect(hits(files, /chat\.send|chat\.history|chat\.clear|chat\.settings/)).toEqual([]);
     expect(hits(files, /voice:call:|voice:audio:|voice:tts:|voice:agent:response/)).toEqual([]);
-    // the message-type union in voice.protocol.ts stays (team-view imports the file, NZ-03)
-    expect(hits(files, /settings\.voice\.update/).filter((f) => f !== 'src/shared/types/voice.protocol.ts')).toEqual([]);
+    // voice.protocol.ts is deleted (INT-2026-025, D13): no voice settings message is left anywhere
+    expect(hits(files, /settings\.voice\.update|settings\.voice\.get/)).toEqual([]);
     expect(hits(files, /\/api\/images/)).toEqual([]);
     expect(hits(files, /sendChatWithImages|sendModelSettings|sendVoiceCallStart|sendVoiceAudioChunk/)).toEqual([]);
   });

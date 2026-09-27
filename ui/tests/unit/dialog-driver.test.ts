@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
-import { cueToBlockKind, eingabeLeerLautCursor, eingabeText, findDialogCue, isIdlePrompt, promptZustand, type CursorProbe } from '../../src/server/services/dialog-driver.js';
+import { cueToBlockKind, eingabeLeerLautCursor, eingabeText, findDialogCue, isIdlePrompt, promptZustand, pruefeEingabeWartet, type CursorProbe } from '../../src/server/services/dialog-driver.js';
 
 const FIXTURES = resolve(process.cwd(), 'tests', 'fixtures', 'tui');
 const versions = readdirSync(FIXTURES).filter((v) => /^\d+\.\d+\.\d+$/.test(v));
@@ -205,5 +205,30 @@ describe('cueToBlockKind', () => {
     expect(cueToBlockKind('rueckfrage')).toBe('rueckfrage');
     expect(cueToBlockKind('berechtigung')).toBe('berechtigung');
     expect(cueToBlockKind('trust')).toBe('unbekannt');
+  });
+});
+
+describe('INT-2026-025: pruefeEingabeWartet is the lock-free strict check', () => {
+  const screen = (box: string) => ['❯ Frage', '⏺ Antwort.', '✻ Churned for 10s · done 8:38', '────', box, '────', '  ⏵⏵ bypass permissions on (shift+tab to cycle)'].join('\n');
+  const probeAt = (box: string, x: number): CursorProbe => ({ zeilen: screen(box).split('\n'), x, y: 4 });
+
+  it('an empty box waits without asking the probe', async () => {
+    let gefragt = 0;
+    const src = { readCursorProbe: async () => { gefragt++; return null; } };
+    expect(await pruefeEingabeWartet(src, 's', screen('❯ '))).toBe('wartet');
+    expect(gefragt).toBe(0);
+  });
+
+  it('a drawn suggestion with the cursor behind the prompt counts as waiting', async () => {
+    const src = { readCursorProbe: async () => probeAt('❯ npm run verify', 2) };
+    expect(await pruefeEingabeWartet(src, 's', screen('❯ npm run verify'))).toBe('wartet');
+  });
+
+  it('typed text refuses and names the text; without probe it fails closed', async () => {
+    const befund: { eingabe?: string } = {};
+    const src = { readCursorProbe: async () => probeAt('❯ ja bitte', 10) };
+    expect(await pruefeEingabeWartet(src, 's', screen('❯ ja bitte'), befund)).toBe('eingabe_nicht_leer');
+    expect(befund.eingabe).toBe('ja bitte');
+    expect(await pruefeEingabeWartet({}, 's', screen('❯ ja bitte'))).toBe('eingabe_nicht_leer');
   });
 });

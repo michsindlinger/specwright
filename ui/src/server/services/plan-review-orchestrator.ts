@@ -170,6 +170,15 @@ export class PlanReviewOrchestrator extends EventEmitter {
     this.cloudTerminalManager.setPlanReviewEnabled(sessionId, config.enabled);
   }
 
+  /**
+   * INT-2026-025 (FA-22): true while a review for this session is running
+   * (lock held). Read-only — the Anruf sender refuses a voice approval then,
+   * so it never races the review text into the plan dialog.
+   */
+  public isReviewRunning(sessionId: CloudTerminalSessionId): boolean {
+    return this.sessions.get(sessionId)?.locked === true;
+  }
+
   /** Delegate manual trigger to CloudTerminalManager which emits session.plan-detected. */
   public triggerManualReview(sessionId: CloudTerminalSessionId): void {
     this.cloudTerminalManager.triggerManualReview(sessionId);

@@ -22,6 +22,11 @@ import {
 } from '../services/claude-hooks.js';
 import type { CloudTerminalSessionId } from '../../shared/types/cloud-terminal.protocol.js';
 
+/** INT-2026-025 (D1): receiver of the hook body; keeps content only while the Anrufmodus is on. */
+export interface AnrufHookEmpfaenger {
+  hookInhalt(sessionId: CloudTerminalSessionId, body: Record<string, unknown>): void;
+}
+
 /** Constant-time comparison that also hides length differences. */
 export function tokenMatches(presented: unknown, expected: string): boolean {
   if (typeof presented !== 'string') return false;
@@ -36,7 +41,8 @@ export function tokenMatches(presented: unknown, expected: string): boolean {
  * after `server.listen`, so routes resolve it lazily per request.
  */
 export function createCloudTerminalRouter(
-  getManager: () => CloudTerminalManager | undefined
+  getManager: () => CloudTerminalManager | undefined,
+  getAnruf: () => AnrufHookEmpfaenger | undefined = () => undefined
 ): Router {
   const router = Router();
 
@@ -83,6 +89,10 @@ export function createCloudTerminalRouter(
       reject(404, 'session not active');
       return;
     }
+    // INT-2026-025 (D1, Review F1): the content must be stored BEFORE the
+    // status — `reportAgentEvent` emits synchronously and the Anruf service
+    // turns that emit into a Meldung that reads the content.
+    getAnruf()?.hookInhalt(id, body);
     const accepted = manager.reportAgentEvent(id, mapped.event, mapped.detail);
     if (!accepted) {
       reject(404, 'session not active');

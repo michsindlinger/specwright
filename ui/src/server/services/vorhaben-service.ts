@@ -89,7 +89,7 @@ import {
 } from '../../shared/types/vorhaben.protocol.js';
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
 import type { BlockKind } from '../../shared/types/hook-events.protocol.js';
-import { eingabeLeerLautCursor, eingabeText, findDialogCue, promptZustand, readStableScreen, type CursorProbe } from './dialog-driver.js';
+import { findDialogCue, pruefeEingabeWartet, readStableScreen, type CursorProbe } from './dialog-driver.js';
 
 export interface VorhabenWorkspaceSource {
   getState(): { openProjects: Array<{ id: string; path: string; name: string }>; sessionNames?: Record<string, string> };
@@ -766,20 +766,12 @@ export class VorhabenService {
     // `waiting`/`working` stay as permissive as they were (INT-2026-007) — only
     // the two machine pastes of INT-2026-018 look this closely.
     if (mode !== 'strict') return true;
-    switch (promptZustand(screen.text)) {
+    // INT-2026-025: the strict branch lives lock-free in dialog-driver.
+    switch (await pruefeEingabeWartet(sessions, sessionId, screen.text, befund)) {
       case 'wartet':
         return true;
-      case 'eingabe_nicht_leer': {
-        // INT-2026-023: the drawn text may be Claude Code's suggestion for the
-        // EMPTY box — only the cursor tells it apart from typed input. The
-        // probe is asked lazily, so a waiting session, a spinner and a dialog
-        // cost no extra tmux call (AK-04, RB-03). Without a probe it stays the
-        // refusal of today (AK-03, fail closed).
-        const probe = (await sessions.readCursorProbe?.(sessionId)) ?? null;
-        if (probe !== null && eingabeLeerLautCursor(probe)) return true;
-        if (befund) befund.eingabe = eingabeText(screen.text);
+      case 'eingabe_nicht_leer':
         return 'eingabe_nicht_leer';
-      }
       case 'dialog':
         return 'dialog_offen';
       case 'arbeitet':

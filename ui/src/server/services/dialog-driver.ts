@@ -170,6 +170,27 @@ export function eingabeText(screen: string): string | undefined {
   return eingabe?.replace(PROMPT_LINE_RE, '').replace(/\s+/g, ' ').trim() || undefined;
 }
 
+/**
+ * INT-2026-025: the strict prompt check of `vorhaben-service` `screenCheck`,
+ * lock-free so a caller that already holds the machine-write lock (the Anruf
+ * sender) can use it without nesting. Reads nothing but the cursor probe, and
+ * only when the drawn box is not empty (suggestion vs. typed text).
+ * `befund.eingabe` is filled only once the probe has refused.
+ */
+export async function pruefeEingabeWartet(
+  source: { readCursorProbe?(sessionId: string): Promise<CursorProbe | null> },
+  sessionId: string,
+  screenText: string,
+  befund?: { eingabe?: string }
+): Promise<PromptZustand> {
+  const zustand = promptZustand(screenText);
+  if (zustand !== 'eingabe_nicht_leer') return zustand;
+  const probe = (await source.readCursorProbe?.(sessionId)) ?? null;
+  if (probe !== null && eingabeLeerLautCursor(probe)) return 'wartet';
+  if (befund) befund.eingabe = eingabeText(screenText);
+  return 'eingabe_nicht_leer';
+}
+
 /** INT-2026-016 (AK-10): the block kind the dialog probe reports for a cue (trust dialogs have no kind of their own). */
 export function cueToBlockKind(kind: DialogCueKind): BlockKind {
   switch (kind) {
