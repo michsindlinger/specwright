@@ -3,7 +3,7 @@
 <!-- Ablage: intent/INT-2026-025-agenten-anrufe/plan.md -->
 
 > **Intent:** `intent.md` (INT-2026-025) · **Spec:** `spec.md` (freigegeben 2026-09-27)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-27 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-27 — im Chat „freigabe"; O1–O4 wie vorgeschlagen
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand f14299f), `CLAUDE.md`, `docs/security.md`, `docs/design.md`, `docs/adr/0004-sitzung-zeigen-statt-nachlesen.md`
 
@@ -521,4 +521,5 @@ Backend-Dienst, Protokoll, Frontend-Kasten und Sender greifen über eine gemeins
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-27 | Schritt 1 gemessen (2.1.283): Mehrfachauswahl mit eigener Antwort — Ziffer der Zeile „Type something" setzt nur den Haken, fokussiert **nicht**; Fokus per `Down` bis zur Zeile, dann Paste. Danach springt `Tab` auf die Zeile „Submit" der Frage (nicht zur nächsten Frage); `Enter` dort geht weiter (Prüfseite). Ohne eigene Antwort springt `Tab` direkt weiter. Eigene Antwort in einer Einzelfrage: `Enter` springt zur nächsten Frage. | D8 nahm „eigene Antwort → Ziffer fokussiert" für alle Fragen an | D8: Primitive je Art; Sender liest nach jeder Taste nach |
+| 2026-09-27 | `PreToolUse ExitPlanMode` trägt den Plantext (`tool_input.plan`) → Stopp-Punkt D1 entfällt. Nach „Tell Claude what to change" kommt **kein** `PostToolUse`; der nächste `PreToolUse ExitPlanMode` folgt direkt | Messung | D5a (Wechsel innerhalb `blocked` ersetzt Inhalt) |

@@ -1,0 +1,15 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000000",
+  "transcript_path": "/anonym/transcript_path",
+  "cwd": "/anonym/cwd",
+  "scratchpad_dir": "/anonym/scratchpad_dir",
+  "prompt_id": "00000000-0000-4000-8000-000000000000",
+  "permission_mode": "plan",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "ExitPlanMode",
+  "tool_input": {
+    "plan": "## In einfachen Worten\n\nEs geht darum, eine neue Testdatei namens `hello.txt` anzulegen, die als Inhalt nur das Wort „hi\" enthält. Das ist eine reine Neuerstellung — es wird keine bestehende Datei überschrieben oder verändert. Danach steht die Datei im aktuellen Arbeitsverzeichnis und kann jederzeit gelesen oder wieder gelöscht werden. Nichts kann dabei kaputtgehen: Es gibt keine Abhängigkeiten zu anderem Code, keine Nebenwirkungen. Es ist nichts zu entscheiden, Freigabe reicht.\n\n## Details\n\n- Write-Tool erstellt `hello.txt` im aktuellen Arbeitsverzeichnis mit exaktem Inhalt `hi`\n- Keine weiteren Dateien betroffen, keine Abhängigkeiten\n- Verifikation: `cat hello.txt` zeigt `hi`\n",
+    "planFilePath": "/Users/anonym/.claude/plans/write-a-tiny-plan-vast-sundae.md"
+  },
+  "tool_use_id": "00000000-0000-4000-8000-000000000000"
+}

@@ -1,0 +1,66 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000000",
+  "transcript_path": "/anonym/transcript_path",
+  "cwd": "/anonym/cwd",
+  "scratchpad_dir": "/anonym/scratchpad_dir",
+  "prompt_id": "00000000-0000-4000-8000-000000000000",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "AskUserQuestion",
+  "tool_input": {
+    "questions": [
+      {
+        "question": "Welche Farbe soll der Knopf haben?",
+        "header": "Farbe",
+        "options": [
+          {
+            "label": "Rot",
+            "description": "Warm und auffällig"
+          },
+          {
+            "label": "Blau",
+            "description": "Ruhig und vertrauenswürdig"
+          },
+          {
+            "label": "Gruen",
+            "description": "Natur und Erfolg"
+          }
+        ],
+        "multiSelect": false
+      }
+    ],
+    "answers": {
+      "Welche Farbe soll der Knopf haben?": "Blau"
+    },
+    "annotations": {}
+  },
+  "tool_response": {
+    "questions": [
+      {
+        "question": "Welche Farbe soll der Knopf haben?",
+        "header": "Farbe",
+        "options": [
+          {
+            "label": "Rot",
+            "description": "Warm und auffällig"
+          },
+          {
+            "label": "Blau",
+            "description": "Ruhig und vertrauenswürdig"
+          },
+          {
+            "label": "Gruen",
+            "description": "Natur und Erfolg"
+          }
+        ],
+        "multiSelect": false
+      }
+    ],
+    "answers": {
+      "Welche Farbe soll der Knopf haben?": "Blau"
+    },
+    "annotations": {}
+  },
+  "tool_use_id": "00000000-0000-4000-8000-000000000000",
+  "duration_ms": 1
+}

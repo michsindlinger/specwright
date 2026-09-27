@@ -1,0 +1,50 @@
+
+ ▐▛███▛█   Claude Code v2.1.283
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   /…/probe
+
+
+❯ Call the AskUserQuestion tool exactly once with ONE question: question "Welche Farben magst du?", header "Farben", multiSelect true,
+  options Rot, Blau, Gruen (each with a short description). Do nothing else.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☒ Farben  ✔ Submit  →
+
+Welche Farben magst du?
+
+❯ 1. [✔] Rot
+         Warme, kräftige Farbe mit viel Energie
+  2. [ ] Blau
+         Ruhige, kühle Farbe wie der Himmel
+  3. [✔] Gruen
+         Natürliche Farbe der Natur und des Wachstums
+  4. [ ] Type something
+     Submit
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

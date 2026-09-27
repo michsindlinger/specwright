@@ -1,0 +1,52 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000000",
+  "transcript_path": "/anonym/transcript_path",
+  "cwd": "/anonym/cwd",
+  "scratchpad_dir": "/anonym/scratchpad_dir",
+  "prompt_id": "00000000-0000-4000-8000-000000000000",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "PermissionRequest",
+  "tool_name": "AskUserQuestion",
+  "tool_input": {
+    "questions": [
+      {
+        "question": "Welche Farbe?",
+        "header": "Farbe",
+        "options": [
+          {
+            "label": "Rot",
+            "description": "Warm und energisch"
+          },
+          {
+            "label": "Blau",
+            "description": "Ruhig und klar"
+          },
+          {
+            "label": "Gruen",
+            "description": "Natürlich und frisch"
+          }
+        ],
+        "multiSelect": false
+      },
+      {
+        "question": "Welche Tiere?",
+        "header": "Tiere",
+        "options": [
+          {
+            "label": "Hund",
+            "description": "Treuer Begleiter"
+          },
+          {
+            "label": "Katze",
+            "description": "Unabhängig und elegant"
+          },
+          {
+            "label": "Maus",
+            "description": "Klein und flink"
+          }
+        ],
+        "multiSelect": true
+      }
+    ]
+  }
+}
