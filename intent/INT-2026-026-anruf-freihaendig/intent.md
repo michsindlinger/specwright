@@ -14,7 +14,7 @@ bypass_grund: ""
 bezuege:  
   product: "docs/product-brief.md"  
   spec: "spec.md"  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: "INT-2026-025 teilweise: AK-12, NZ-03 (eingeengt); spec.md FA-19, FA-20; plan.md O3"  
