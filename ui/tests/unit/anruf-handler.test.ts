@@ -125,6 +125,19 @@ describe('AnrufHandler', () => {
     expect(service.erkennen).toHaveBeenCalledTimes(1);
   });
 
+  it('erkennen: abschnitt ganze Zahl 0…100000 wird durchgereicht, sonst INVALID_MESSAGE (INT-2026-026, D5)', () => {
+    const audio = int16ZuBase64(new Int16Array([1, 2]));
+    handler.handle({ type: 'anruf:erkennen', meldungId: 'm1', audio, abschnitt: 7 }, LOKAL, reply);
+    handler.handle({ type: 'anruf:erkennen', meldungId: 'm1', audio }, LOKAL, reply);
+    expect(service.erkennen.mock.calls[0][3]).toBe(7);
+    expect(service.erkennen.mock.calls[1][3]).toBeUndefined();
+    for (const abschnitt of [-1, 1.5, '3', 100_001, null, Number.NaN]) {
+      handler.handle({ type: 'anruf:erkennen', meldungId: 'm1', audio, abschnitt }, LOKAL, reply);
+    }
+    expect(codes()).toEqual(Array(6).fill('INVALID_MESSAGE'));
+    expect(service.erkennen).toHaveBeenCalledTimes(2);
+  });
+
   it('senden: Antwort-Union wird geprüft', () => {
     handler.handle({ type: 'anruf:senden', meldungId: 'm1', antwort: { art: 'freigeben' } }, LOKAL, reply);
     handler.handle({ type: 'anruf:senden', meldungId: 'm1', antwort: { art: 'loeschen' } }, LOKAL, reply);

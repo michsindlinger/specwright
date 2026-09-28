@@ -9,6 +9,7 @@
  */
 
 import {
+  ANRUF_ABSCHNITT_MAX,
   ANRUF_AUDIO_MAX_BASE64,
   ANRUF_CLIENT_TYPES,
   ANRUF_INHALT_GRENZEN,
@@ -31,7 +32,7 @@ export interface AnrufServiceBefehle {
   spaeter(clientId: string, meldungId: string): AnrufErrorMessage | undefined;
   auflegen(clientId: string, meldungId: string): AnrufErrorMessage | undefined;
   anrufen(clientId: string, sessionId: string): AnrufErrorMessage | undefined;
-  erkennen(clientId: string, meldungId: string, pcm: Int16Array): Promise<AnrufErrorMessage | undefined>;
+  erkennen(clientId: string, meldungId: string, pcm: Int16Array, abschnitt?: number): Promise<AnrufErrorMessage | undefined>;
   freigebenAnfragen(clientId: string, meldungId: string): Promise<AnrufErrorMessage | undefined>;
   senden(clientId: string, meldungId: string, antwort: AnrufAntwort): AnrufErrorMessage | undefined;
 }
@@ -205,7 +206,12 @@ export class AnrufHandler {
           reply(fehler('INVALID_MESSAGE', `audio muss gültiges Base64 (≤ ${ANRUF_AUDIO_MAX_BASE64} Zeichen) sein`));
           return true;
         }
-        void this.service.erkennen(clientId, id, pcm).then(antworte, scheitert);
+        const abschnitt = message.abschnitt;
+        if (abschnitt !== undefined && !(Number.isInteger(abschnitt) && typeof abschnitt === 'number' && abschnitt >= 0 && abschnitt <= ANRUF_ABSCHNITT_MAX)) {
+          reply(fehler('INVALID_MESSAGE', `abschnitt muss eine ganze Zahl 0…${ANRUF_ABSCHNITT_MAX} sein`));
+          return true;
+        }
+        void this.service.erkennen(clientId, id, pcm, abschnitt).then(antworte, scheitert);
         return true;
       }
       case 'anruf:senden': {
