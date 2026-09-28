@@ -6476,8 +6476,40 @@ aos-app .anruf-knoepfe button:focus-visible {
   outline-offset: 2px;
 }
 
-aos-app .anruf-tipp {
-  margin-top: 8px;
+aos-app .anruf-knoepfe button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Freihändig (INT-2026-026, Mock design/anruf-freihaendig-mock.html) */
+aos-app .anruf-vorlesen {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+
+aos-app .anruf-diktat {
+  background: var(--color-bg-primary);
+  border-left: 3px solid var(--color-accent-primary);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin: 10px 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+aos-app .anruf-noch {
+  color: var(--color-text-secondary);
+}
+
+aos-app .anruf-schluss {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  margin: -4px 0 10px;
+}
+
+aos-app .anruf-schluss b {
+  color: var(--color-accent-primary);
 }
 
 aos-app .anruf-hoeren {
@@ -6493,6 +6525,27 @@ aos-app .anruf-punkt {
   border-radius: 50%;
   background: var(--color-accent-error);
   box-shadow: 0 0 0 6px rgba(var(--color-accent-error-rgb), 0.2);
+}
+
+aos-app .anruf-punkt.puls {
+  animation: anruf-puls 1.2s ease-in-out infinite;
+}
+
+aos-app .anruf-punkt.aus {
+  background: var(--color-text-muted);
+  box-shadow: none;
+}
+
+@keyframes anruf-puls {
+  50% {
+    box-shadow: 0 0 0 10px rgba(var(--color-accent-error-rgb), 0.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  aos-app .anruf-punkt.puls {
+    animation: none;
+  }
 }
 
 aos-app .anruf-andere {

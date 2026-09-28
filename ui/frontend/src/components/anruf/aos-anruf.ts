@@ -1,14 +1,14 @@
 /**
- * aos-anruf — the call box of the call mode (INT-2026-025, D11, Mock
- * `intent/INT-2026-025-agenten-anrufe/design/anruf-mock.html` §2).
+ * aos-anruf — the call box of the call mode (INT-2026-025, D11; INT-2026-026,
+ * Mock `intent/INT-2026-026-anruf-freihaendig/design/anruf-freihaendig-mock.html`).
  *
- * A view over {@link AnrufClientService}: ringing, reading, listening,
- * confirming, plan confirmation, result; another window owning the call shows
- * only a hint. Keyboard (FA-29): every control is a labelled button; holding
- * the space bar while focus is inside the box records (O3) — keydown/keyup are
- * `preventDefault`ed so releasing space never clicks the focused button
- * (Review F18). Ringing never takes the focus; after a click inside the box the
- * focus moves to the primary button of the next state.
+ * A view over {@link AnrufClientService}: ringing, reading, listening
+ * hands-free (text so far, „Wird gesendet als", closing-phrase hint),
+ * microphone closed, plan confirmation, result; another window owning the
+ * call shows only a hint. Keyboard (FA-20): every control is a labelled
+ * button, no space-bar recording any more (AN-S04). Ringing never takes the
+ * focus; with the focus inside the box it moves to the first enabled primary
+ * button of the next state.
  *
  * Light DOM (host `aos-app` is Light DOM, `app.ts` createRenderRoot) — styles
  * in theme.css under `aos-app .anruf*`.
@@ -20,6 +20,7 @@
 import { LitElement, html, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ANRUF_ART_LABEL, ANRUF_TEXT, anrufService, type AnrufAnsicht, type AnrufClientService } from '../../services/anruf.service.js';
+import type { AnrufMeldung } from '../../../../src/shared/types/anruf.protocol.js';
 import type { GlockeOpenDetail } from '../rahmen/aos-glocke.js';
 
 const ART_KLASSE = { rueckfrage: 'r', plan: 'p', fertig: 'f' } as const;
@@ -31,7 +32,6 @@ export class AosAnruf extends LitElement {
 
   @state() private a: AnrufAnsicht | null = null;
   private abmelden: (() => void) | null = null;
-  private leertasteGedrueckt = false;
   private letztePhase: AnrufAnsicht['phase'] | undefined;
   /** Focus is (or was, before a re-render removed its button) inside the box. */
   private fokusImKasten = false;
@@ -73,7 +73,10 @@ export class AosAnruf extends LitElement {
     }
     const box = this.querySelector('.anruf');
     if (!box || !this.fokusImKasten || phase === 'klingelt') return;
-    const ziel = box.querySelector<HTMLElement>('button.pri, button.gef') ?? box.querySelector<HTMLElement>('button') ?? (box as HTMLElement);
+    const ziel =
+      box.querySelector<HTMLElement>('button.pri:not([disabled]), button.gef:not([disabled])') ??
+      box.querySelector<HTMLElement>('button:not([disabled])') ??
+      (box as HTMLElement);
     ziel.focus();
   }
 
@@ -90,8 +93,6 @@ export class AosAnruf extends LitElement {
         aria-label="Anruf"
         aria-live="polite"
         tabindex="-1"
-        @keydown=${this.onKeydown}
-        @keyup=${this.onKeyup}
         @focusin=${this.onFocusin}
         @focusout=${this.onFocusout}
       >
@@ -133,59 +134,45 @@ export class AosAnruf extends LitElement {
           `;
         }
         return html`
-          ${this.renderText(a)} ${this.renderHinweis(a)}
+          ${this.renderText(a)}
+          <div class="anruf-hoeren"><span class="anruf-punkt aus" aria-hidden="true"></span><span class="anruf-sub">liest vor … danach hört der Anruf zu</span></div>
+          ${this.renderDiktat(a)} ${this.renderHinweis(a)}
           <div class="anruf-knoepfe">
             <button type="button" @click=${() => this.dienst.nochmal()}>Nochmal</button>
-            <button type="button" class="pri" @click=${() => void this.dienst.sprechenStart()}>Sprechen</button>
             ${m.art === 'plan' ? html`<button type="button" @click=${() => this.dienst.freigebenAnfragen()}>Freigeben …</button>` : nothing}
-            <button type="button" @click=${() => this.dienst.auflegen()}>Auflegen</button>
-          </div>
-          <div class="anruf-sub anruf-tipp">Leertaste halten = sprechen${m.art === 'plan' ? ' · „freigeben" sagen gibt frei (mit Nachfrage)' : ''}</div>
-        `;
-      case 'hoeren':
-        return html`
-          ${this.renderText(a)}
-          <div class="anruf-hoeren"><span class="anruf-punkt" aria-hidden="true"></span><b>Ich höre zu …</b></div>
-          <div class="anruf-knoepfe">
-            <button type="button" class="pri" @click=${() => this.dienst.sprechenEnde()}>Fertig</button>
-          </div>
-        `;
-      case 'erkennen':
-        return html`
-          ${this.renderText(a)}
-          <div class="anruf-hoeren"><b>Wird erkannt …</b></div>
-          <div class="anruf-knoepfe">
+            <button type="button" @click=${this.imTerminal}>Im Terminal öffnen</button>
             <button type="button" @click=${() => this.dienst.auflegen()}>Auflegen</button>
           </div>
         `;
-      case 'bestaetigen':
+      case 'zuhoeren':
+        if (a.hoertInNachfrage) {
+          return html`
+            ${this.renderNachfrage(a)}
+            <div class="anruf-hoeren"><span class="anruf-punkt puls" aria-hidden="true"></span><b>Ich höre zu</b><span class="anruf-sub">— „ja“ oder „nein“</span></div>
+            ${this.renderHinweis(a)} ${this.renderNachfrageKnoepfe()}
+          `;
+        }
         return html`
-          <div class="anruf-text anruf-erkannt">„${a.erkannt ?? ''}“</div>
-          <div class="anruf-als">Wird gesendet als: <b>${a.als ?? ''}</b></div>
-          ${this.renderHinweis(a)}
-          <div class="anruf-knoepfe">
-            <button type="button" class="pri" @click=${() => this.dienst.absenden()}>${a.weiter ? 'Weiter' : 'Senden'}</button>
-            <button type="button" @click=${() => this.dienst.nochmalSprechen()}>Nochmal sprechen</button>
-            <button type="button" @click=${() => this.dienst.verwerfen()}>Verwerfen</button>
-            <button type="button" @click=${() => this.dienst.auflegen()}>Auflegen</button>
-          </div>
-          <div class="anruf-sub anruf-tipp">oder „senden“ / „verwerfen“ sagen (Leertaste halten)${a.weiter ? ' — gesendet wird nach der letzten Frage' : ''}</div>
+          ${m.art === 'rueckfrage' ? this.renderText(a) : a.text || a.erkenntNoch ? nothing : html`<div class="anruf-vorlesen">${a.anzeige ?? ''}</div>`}
+          <div class="anruf-hoeren"><span class="anruf-punkt puls" aria-hidden="true"></span><b>Ich höre zu</b></div>
+          ${this.renderDiktat(a)} ${this.renderHinweis(a)}
+          ${a.hinweis === ANRUF_TEXT.schlussHinweis || a.gehalten ? nothing : html`<div class="anruf-schluss">${this.schlussText(a, m)}</div>`}
+          ${this.renderAntwortKnoepfe(a, m, false)}
         `;
-      case 'nachfrage':
+      case 'mikrofon_zu': {
+        const geraet = a.hinweis === ANRUF_TEXT.mikrofonWeg || a.hinweis === ANRUF_TEXT.mikrofonVerweigert;
         return html`
-          <div class="anruf-text"><b>Plan für Sitzung „${m.sitzungName}“ wirklich freigeben?</b><br />Sag ja oder nein.</div>
-          ${a.freigabeWortlaut
-            ? html`<div class="anruf-als">Freigabe wählt im Plan-Dialog „${a.freigabeWortlaut}“${/BYPASS PERMISSIONS/i.test(a.freigabeWortlaut)
-                ? ' — danach keine weiteren Rückfragen zu Berechtigungen in dieser Sitzung'
-                : ''}.</div>`
+          ${a.hoertInNachfrage ? this.renderNachfrage(a) : nothing}
+          <div class="anruf-hoeren"><span class="anruf-punkt aus" aria-hidden="true"></span><b>${geraet ? a.hinweis : 'Mikrofon aus'}</b></div>
+          ${geraet
+            ? html`<div class="anruf-sub">Mikrofon anschließen oder freigeben, dann „Zuhören“. Senden, Freigeben und Auflegen gehen per Knopf.</div>`
             : nothing}
-          ${this.renderHinweis(a)}
-          <div class="anruf-knoepfe">
-            <button type="button" class="gef" @click=${() => this.dienst.freigeben()}>Freigeben</button>
-            <button type="button" @click=${() => this.dienst.nein()}>Nein</button>
-          </div>
-          <div class="anruf-sub anruf-tipp">Leertaste halten und „ja“ oder „nein“ sagen</div>
+          ${this.renderDiktat(a)} ${geraet ? nothing : this.renderHinweis(a)}
+          ${a.hoertInNachfrage ? this.renderNachfrageKnoepfe(true) : this.renderAntwortKnoepfe(a, m, true)}
         `;
+      }
+      case 'nachfrage':
+        return html`${this.renderNachfrage(a)} ${this.renderHinweis(a)} ${this.renderNachfrageKnoepfe()}`;
       case 'sendet':
         return html`<div class="anruf-hoeren"><b>Wird gesendet …</b></div>`;
       default:
@@ -212,6 +199,61 @@ export class AosAnruf extends LitElement {
     return a.hinweis ? html`<div class="anruf-hinweis" role="status">${a.hinweis}</div>` : nothing;
   }
 
+  private renderDiktat(a: AnrufAnsicht) {
+    if (!a.text && !a.erkenntNoch) return nothing;
+    return html`<div class="anruf-diktat">${a.text ?? ''}${a.erkenntNoch ? html` <span class="anruf-noch">… wird erkannt</span>` : nothing}</div>
+      ${a.als ? html`<div class="anruf-als">Wird gesendet als: <b>${a.als}</b></div>` : nothing}`;
+  }
+
+  private schlussText(a: AnrufAnsicht, m: AnrufMeldung) {
+    if (m.art === 'plan') {
+      return html`<b>„freigeben“</b> gibt frei (mit Nachfrage) · ein Wunsch mit <b>„Antwort senden“</b> geht als Überarbeitung`;
+    }
+    if (a.weiter) return html`<b>„Antwort senden“</b> führt zur nächsten Frage — gesendet wird nach der letzten`;
+    return html`Zum Senden: <b>„Antwort senden“</b>${a.text ? nothing : ' · 20 s Stille legen auf'}`;
+  }
+
+  /** Buttons while listening or with the microphone closed (FA-20, FA-21). */
+  private renderAntwortKnoepfe(a: AnrufAnsicht, m: AnrufMeldung, zu: boolean) {
+    const hatText = !!a.text;
+    return html`
+      <div class="anruf-knoepfe">
+        ${zu ? html`<button type="button" class="pri" @click=${() => this.dienst.zuhoeren()}>Zuhören</button>` : nothing}
+        <button type="button" class=${hatText && !zu ? 'pri' : ''} ?disabled=${!hatText} @click=${() => this.dienst.senden()}>
+          ${a.weiter ? 'Weiter' : 'Senden'}
+        </button>
+        ${hatText ? html`<button type="button" @click=${() => this.dienst.verwerfen()}>Verwerfen</button>` : nothing}
+        ${zu ? nothing : html`<button type="button" @click=${() => this.dienst.nochmal()}>Nochmal</button>`}
+        ${m.art === 'plan' ? html`<button type="button" @click=${() => this.dienst.freigebenAnfragen()}>Freigeben …</button>` : nothing}
+        <button type="button" @click=${this.imTerminal}>Im Terminal öffnen</button>
+        <button type="button" @click=${() => this.dienst.auflegen()}>Auflegen</button>
+      </div>
+    `;
+  }
+
+  private renderNachfrage(a: AnrufAnsicht) {
+    const m = a.meldung!;
+    return html`
+      <div class="anruf-text"><b>Plan für Sitzung „${m.sitzungName}“ wirklich freigeben?</b><br />Sag ja oder nein.</div>
+      ${a.freigabeWortlaut
+        ? html`<div class="anruf-als">Freigabe wählt im Plan-Dialog „${a.freigabeWortlaut}“${/BYPASS PERMISSIONS/i.test(a.freigabeWortlaut)
+            ? ' — danach keine weiteren Rückfragen zu Berechtigungen in dieser Sitzung'
+            : ''}.</div>`
+        : nothing}
+    `;
+  }
+
+  private renderNachfrageKnoepfe(zu = false) {
+    return html`
+      <div class="anruf-knoepfe">
+        ${zu ? html`<button type="button" class="pri" @click=${() => this.dienst.zuhoeren()}>Zuhören</button>` : nothing}
+        <button type="button" class="gef" @click=${() => this.dienst.freigeben()}>Freigeben</button>
+        <button type="button" @click=${() => this.dienst.nein()}>Nein</button>
+        <button type="button" @click=${() => this.dienst.auflegen()}>Auflegen</button>
+      </div>
+    `;
+  }
+
   private renderWarten(a: AnrufAnsicht) {
     if (a.wartend <= 0) return nothing;
     return html`<div class="anruf-warten">noch ${a.wartend} ${a.wartend === 1 ? 'wartet' : 'warten'}</div>`;
@@ -222,7 +264,8 @@ export class AosAnruf extends LitElement {
     if (!e) return nothing;
     return html`
       <div class="anruf anruf-ergebnis-box" role="status" aria-live="polite">
-        <div class="anruf-ergebnis ${e.ok ? 'ok' : 'no'}">${e.ok ? html`✓ ${e.text}` : html`Nicht gesendet: ${e.text}`}</div>
+        <div class="anruf-ergebnis ${e.ok ? 'ok' : 'no'}">${e.ok ? html`✓ ${e.text}` : e.glocke ? e.text : html`Nicht gesendet: ${e.text}`}</div>
+        ${e.glocke ? html`<div class="anruf-sub">Meldung bleibt in der Glocke</div>` : nothing}
         ${e.ok && a.wartend > 0 ? html`<div class="anruf-sub">nächster Anruf in Kürze · ${this.renderWartenText(a.wartend)}</div>` : nothing}
       </div>
     `;
@@ -248,26 +291,6 @@ export class AosAnruf extends LitElement {
   private onFocusout = (e: FocusEvent): void => {
     const nach = e.relatedTarget;
     if (nach instanceof Node && !this.contains(nach)) this.fokusImKasten = false;
-  };
-
-  /** Space held inside the box = speak (O3); never clicks the focused button (Review F18). */
-  private onKeydown = (e: KeyboardEvent): void => {
-    if (e.key !== ' ' && e.code !== 'Space') return;
-    const phase = this.a?.phase;
-    if (phase !== 'vorlesen' && phase !== 'bestaetigen' && phase !== 'nachfrage' && phase !== 'hoeren') return;
-    if (this.a?.nurTerminal) return;
-    e.preventDefault();
-    if (e.repeat || this.leertasteGedrueckt) return;
-    this.leertasteGedrueckt = true;
-    if (phase !== 'hoeren') void this.dienst.sprechenStart();
-  };
-
-  private onKeyup = (e: KeyboardEvent): void => {
-    if (e.key !== ' ' && e.code !== 'Space') return;
-    if (!this.leertasteGedrueckt) return;
-    e.preventDefault();
-    this.leertasteGedrueckt = false;
-    this.dienst.sprechenEnde();
   };
 }
 

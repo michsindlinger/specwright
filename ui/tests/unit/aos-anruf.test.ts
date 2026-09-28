@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 /**
- * INT-2026-025 (FA-03, FA-04, FA-12, FA-18, FA-20, FA-22, FA-26, FA-29, D11
- * Review F18, Spec §4): the call box — states after the mock, buttons,
- * space bar held inside the box, plan confirmation, only-terminal messages,
- * another window, no focus theft while ringing, the ring tone differs from
- * the bell chime.
+ * INT-2026-025 (FA-03, FA-04, FA-12, FA-22, FA-26, D11, Spec §4) and
+ * INT-2026-026 (FA-19, FA-20, FA-21, AN-S04, Mock anruf-freihaendig-mock):
+ * the call box — ringing, reading, listening with the text so far and the
+ * closing-phrase hint, microphone closed with „Zuhören", plan confirmation,
+ * only-terminal messages, another window, no space bar, no focus theft while
+ * ringing, the ring tone differs from the bell chime.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -47,17 +48,20 @@ async function laeuft(w: AnrufWelt, el: AosAnruf, meldung: AnrufMeldung): Promis
   await zeige(el);
 }
 
-async function sprichPerLeertaste(w: AnrufWelt, el: AosAnruf, text: string, meldungId: string): Promise<{ down: KeyboardEvent; up: KeyboardEvent }> {
-  const kasten = el.querySelector('.anruf')!;
-  const down = new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true, cancelable: true });
-  kasten.dispatchEvent(down);
-  await ruhe();
-  w.mikro.letzter.liefere(1);
-  const up = new KeyboardEvent('keyup', { key: ' ', code: 'Space', bubbles: true, cancelable: true });
-  kasten.dispatchEvent(up);
-  w.gw.emit({ type: 'anruf:erkannt', meldungId, text });
+/** Reading ends → the box listens. */
+async function hoert(w: AnrufWelt, el: AosAnruf): Promise<void> {
+  w.sprache.fertig();
   await zeige(el);
-  return { down, up };
+  w.mikro.letzter.stille(0.3);
+}
+
+/** One spoken piece with its recognised text. */
+async function sage(w: AnrufWelt, el: AosAnruf, text: string, meldungId: string, erkennen = true): Promise<number> {
+  w.mikro.letzter.sprich(1);
+  const nr = w.gw.ofType('anruf:erkennen').at(-1)!.abschnitt as number;
+  if (erkennen) w.gw.emit({ type: 'anruf:erkannt', meldungId, abschnitt: nr, text });
+  await zeige(el);
+  return nr;
 }
 
 describe('aos-anruf', () => {
@@ -142,13 +146,14 @@ describe('aos-anruf', () => {
     expect(w.sprache.gesprochen).toEqual([]);
   });
 
-  it('reading (FA-13, FA-18): text with (gekürzt); Nochmal cancels and reads again; Rückfrage shows all options', async () => {
+  it('reading (FA-02): text with (gekürzt), microphone off; Nochmal, Im Terminal öffnen, Auflegen; Rückfrage shows all options', async () => {
     const w = anrufWelt();
     const el = await box(w);
     await laeuft(w, el, meldungFertig);
     expect(el.querySelector('.anruf-text')?.textContent).toContain('Ich habe das Matching umgebaut.');
     expect(el.querySelector('.anruf-gekuerzt')?.textContent).toBe('(gekürzt)');
-    expect(knoepfe(el)).toEqual(['Nochmal', 'Sprechen', 'Auflegen']);
+    expect(el.querySelector('.anruf-hoeren')?.textContent).toContain('liest vor … danach hört der Anruf zu');
+    expect(knoepfe(el)).toEqual(['Nochmal', 'Im Terminal öffnen', 'Auflegen']);
     const n = w.sprache.gesprochen.length;
     const c = w.sprache.cancels;
     knopf(el, 'Nochmal').click();
@@ -161,57 +166,79 @@ describe('aos-anruf', () => {
     expect([...el2.querySelectorAll('.anruf-opt')].map((o) => o.textContent?.trim())).toEqual(['1Whisper large-v3', '2Whisper large-v3-turbo', '3Whisper small', 'oder eine eigene Antwort']);
   });
 
-  it('space held inside the box records; keydown/keyup prevented so the focused button is not clicked (FA-29, Review F18)', async () => {
+  it('listening, nothing said (FA-19): „Ich höre zu", hint with 20 s, Senden disabled; no space bar (AN-S04)', async () => {
     const w = anrufWelt();
     const el = await box(w);
     await laeuft(w, el, meldungFertig);
-    const sprechen = knopf(el, 'Sprechen');
-    const klicks = vi.fn();
-    sprechen.addEventListener('click', klicks);
-    sprechen.focus();
-    const { down, up } = await sprichPerLeertaste(w, el, 'Mach weiter', 'm-fertig');
-    expect(down.defaultPrevented).toBe(true);
-    expect(up.defaultPrevented).toBe(true);
-    expect(klicks).not.toHaveBeenCalled();
+    await hoert(w, el);
+    expect(el.querySelector('.anruf-hoeren')?.textContent).toContain('Ich höre zu');
+    expect(el.querySelector('.anruf-punkt.puls')).not.toBeNull();
+    expect(el.querySelector('.anruf-vorlesen')?.textContent).toContain('Ich habe das Matching umgebaut.');
+    expect(el.querySelector('.anruf-schluss')?.textContent).toBe('Zum Senden: „Antwort senden“ · 20 s Stille legen auf');
+    expect(knoepfe(el)).toEqual(['Senden', 'Nochmal', 'Im Terminal öffnen', 'Auflegen']);
+    expect(knopf(el, 'Senden').disabled).toBe(true);
+    const down = new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true, cancelable: true });
+    el.querySelector('.anruf')!.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(false);
     expect(w.mikro.oeffnungen).toBe(1);
-    expect(w.mikro.letzter.gestoppt).toBe(true);
-    expect(w.gw.ofType('anruf:erkennen')).toHaveLength(1);
-    // focus followed into the next state (it was inside the box)
-    expect(document.activeElement?.textContent?.trim()).toBe('Senden');
   });
 
-  it('confirm (FA-20): „Wird gesendet als"; Senden, Verwerfen, Nochmal sprechen by button; „senden" by voice', async () => {
+  it('listening with text (FA-19, AK-08): text so far, „… wird erkannt", „Wird gesendet als"; Senden sends, Verwerfen clears (FA-20)', async () => {
+    const w = anrufWelt();
+    const el = await box(w);
+    await laeuft(w, el, meldungFertig);
+    await hoert(w, el);
+    await sage(w, el, 'Mach bitte noch die Tests.', 'm-fertig');
+    const nr = await sage(w, el, '', 'm-fertig', false);
+    expect(el.querySelector('.anruf-diktat')?.textContent?.trim()).toBe('Mach bitte noch die Tests. … wird erkannt');
+    expect(el.querySelector('.anruf-als')?.textContent).toBe('Wird gesendet als: Neue Eingabe an Sitzung „build-matching“');
+    expect(el.querySelector('.anruf-schluss')?.textContent).toBe('Zum Senden: „Antwort senden“');
+    expect(knoepfe(el)).toEqual(['Senden', 'Verwerfen', 'Nochmal', 'Im Terminal öffnen', 'Auflegen']);
+    expect(knopf(el, 'Senden').className).toBe('pri');
+    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-fertig', abschnitt: nr, text: 'Und den PR.' });
+    await zeige(el);
+    knopf(el, 'Verwerfen').click();
+    await zeige(el);
+    expect(el.querySelector('.anruf-diktat')).toBeNull();
+    expect(el.querySelector('.anruf-hoeren')?.textContent).toContain('Ich höre zu');
+    await sage(w, el, 'Neu.', 'm-fertig');
+    knopf(el, 'Senden').click();
+    expect(w.gw.ofType('anruf:senden')).toEqual([{ type: 'anruf:senden', meldungId: 'm-fertig', antwort: { art: 'text', text: 'Neu.' } }]);
+  });
+
+  it('„senden" without „Antwort": the hint replaces the closing-phrase line (FA-07)', async () => {
+    const w = anrufWelt();
+    const el = await box(w);
+    await laeuft(w, el, meldungFertig);
+    await hoert(w, el);
+    await sage(w, el, 'Mach den PR auf und dann senden', 'm-fertig');
+    expect(el.querySelector('.anruf-hinweis')?.textContent).toBe('Zum Senden: „Antwort senden“');
+    expect(el.querySelector('.anruf-schluss')).toBeNull();
+  });
+
+  it('Rückfrage listening: question block, „Weiter", phrase leads to the next question (AK-07)', async () => {
     const w = anrufWelt();
     const el = await box(w);
     await laeuft(w, el, meldungRueckfrage);
-    await sprichPerLeertaste(w, el, 'zwei', 'm-rf');
-    expect(el.querySelector('.anruf-erkannt')?.textContent).toBe('„zwei“');
+    await hoert(w, el);
+    await sage(w, el, 'Die zweite.', 'm-rf');
+    expect(el.querySelector('.anruf-text')?.textContent).toContain('Frage 1 von 2');
     expect(el.querySelector('.anruf-als')?.textContent).toBe('Wird gesendet als: Möglichkeit 2 — Whisper large-v3-turbo (Frage 1 von 2)');
-    expect(knoepfe(el)).toEqual(['Weiter', 'Nochmal sprechen', 'Verwerfen', 'Auflegen']);
-    knopf(el, 'Verwerfen').click();
-    await zeige(el);
-    expect(el.querySelector('.anruf-erkannt')).toBeNull();
-    knopf(el, 'Sprechen').click();
-    await ruhe();
-    await zeige(el);
-    expect(knoepfe(el)).toEqual(['Fertig']);
-    w.mikro.letzter.liefere(1);
-    knopf(el, 'Fertig').click();
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-rf', text: 'eins' });
-    await zeige(el);
+    expect(el.querySelector('.anruf-schluss')?.textContent).toBe('„Antwort senden“ führt zur nächsten Frage — gesendet wird nach der letzten');
+    expect(knoepfe(el)[0]).toBe('Weiter');
     knopf(el, 'Weiter').click();
     await zeige(el);
     expect(el.querySelector('.anruf-text')?.textContent).toContain('Welche Stimme?');
-    await sprichPerLeertaste(w, el, 'Anna', 'm-rf');
-    expect(knoepfe(el)[0]).toBe('Senden');
-    await sprichPerLeertaste(w, el, 'senden', 'm-rf');
-    expect(w.gw.ofType('anruf:senden')).toEqual([{ type: 'anruf:senden', meldungId: 'm-rf', antwort: { art: 'rueckfrage', antworten: [{ nummern: [1] }, { nummern: [1] }] } }]);
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
   });
 
-  it('plan (FA-22): „Freigeben …" asks; confirmation quotes the option; Nein goes back; Freigeben sends', async () => {
+  it('plan (FA-14): listening hint, „Freigeben …" asks; confirmation listens for ja/nein; Nein goes back; Freigeben sends', async () => {
     const w = anrufWelt();
     const el = await box(w);
     await laeuft(w, el, meldungPlan);
+    await hoert(w, el);
+    expect(el.querySelector('.anruf-schluss')?.textContent).toBe('„freigeben“ gibt frei (mit Nachfrage) · ein Wunsch mit „Antwort senden“ geht als Überarbeitung');
+    expect(knoepfe(el)).toEqual(['Senden', 'Nochmal', 'Freigeben …', 'Im Terminal öffnen', 'Auflegen']);
     knopf(el, 'Freigeben …').click();
     expect(w.gw.ofType('anruf:freigeben.anfragen')).toHaveLength(1);
     w.gw.emit(state({ zustand: 'freigabe_nachfrage', eigener: true, meldung: meldungPlan, freigabeWortlaut: 'Yes, and switch to BYPASS PERMISSIONS' }));
@@ -220,17 +247,16 @@ describe('aos-anruf', () => {
     expect(el.querySelector('.anruf-als')?.textContent).toBe(
       'Freigabe wählt im Plan-Dialog „Yes, and switch to BYPASS PERMISSIONS“ — danach keine weiteren Rückfragen zu Berechtigungen in dieser Sitzung.'
     );
-    expect(knoepfe(el)).toEqual(['Freigeben', 'Nein']);
+    expect(knoepfe(el)).toEqual(['Freigeben', 'Nein', 'Auflegen']);
+    await hoert(w, el);
+    expect(el.querySelector('.anruf-hoeren')?.textContent).toContain('„ja“ oder „nein“');
+    expect(knoepfe(el)).toEqual(['Freigeben', 'Nein', 'Auflegen']);
     knopf(el, 'Nein').click();
     await zeige(el);
-    expect(knoepfe(el)).toContain('Sprechen');
+    expect(knoepfe(el)).toContain('Freigeben …');
     expect(w.gw.ofType('anruf:senden')).toEqual([]);
     knopf(el, 'Freigeben …').click();
     await zeige(el);
-    // „ja, aber …" by voice is no yes
-    await sprichPerLeertaste(w, el, 'ja, aber später', 'm-plan');
-    expect(w.gw.ofType('anruf:senden')).toEqual([]);
-    expect(knoepfe(el)).toEqual(['Freigeben', 'Nein']);
     knopf(el, 'Freigeben').click();
     expect(w.gw.ofType('anruf:senden')).toEqual([{ type: 'anruf:senden', meldungId: 'm-plan', antwort: { art: 'freigeben' } }]);
   });
@@ -248,25 +274,27 @@ describe('aos-anruf', () => {
     document.body.addEventListener('glocke-open', (e) => seen.push((e as CustomEvent).detail));
     knopf(el, 'Im Terminal öffnen').click();
     expect(seen).toEqual([{ sessionId: 'cloud-2', terminalSessionId: 'cloud-2' }]);
-    // space does nothing here
-    const down = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
-    el.querySelector('.anruf')!.dispatchEvent(down);
-    expect(down.defaultPrevented).toBe(false);
+    w.sprache.fertig();
+    await zeige(el);
     expect(w.mikro.oeffnungen).toBe(0);
   });
 
-  it('every button has a label and is focusable (FA-29)', async () => {
+  it('every button has a label and is focusable, reading and listening (FA-20)', async () => {
     const w = anrufWelt();
     const el = await box(w);
     for (const m of [meldungFertig, meldungPlan, meldungRueckfrage]) {
       w.gw.emit(state({ zustand: 'klingelt', meldung: m }));
       await zeige(el);
       await laeuft(w, el, m);
-      for (const b of el.querySelectorAll<HTMLButtonElement>('.anruf button')) {
-        expect(b.textContent?.trim().length).toBeGreaterThan(0);
-        expect(b.tabIndex).toBeGreaterThanOrEqual(0);
-        expect(b.disabled).toBe(false);
-        expect(b.getAttribute('type')).toBe('button');
+      for (const phase of ['vorlesen', 'zuhoeren']) {
+        if (phase === 'zuhoeren') await hoert(w, el);
+        expect(el.querySelector('.anruf')?.className).toContain(`anruf-phase-${phase}`);
+        for (const b of el.querySelectorAll<HTMLButtonElement>('.anruf button')) {
+          expect(b.textContent?.trim().length).toBeGreaterThan(0);
+          expect(b.tabIndex).toBeGreaterThanOrEqual(0);
+          expect(b.disabled).toBe(b.textContent?.trim() === 'Senden' || b.textContent?.trim() === 'Weiter');
+          expect(b.getAttribute('type')).toBe('button');
+        }
       }
       w.gw.emit(state({ zustand: 'ruhe' }));
       await zeige(el);
@@ -291,20 +319,35 @@ describe('aos-anruf', () => {
     expect(el2.querySelector('.anruf-ergebnis.no')?.textContent?.trim()).toBe('Nicht gesendet: In der Sitzung schon beantwortet.');
   });
 
-  it('microphone unplugged: announce, call ends without sending (Spec §4)', async () => {
+  it('„Keine Antwort, aufgelegt": no „Nicht gesendet" prefix, message stays in the bell (FA-09, Mock i)', async () => {
     const w = anrufWelt();
     const el = await box(w);
     await laeuft(w, el, meldungFertig);
-    knopf(el, 'Sprechen').click();
-    await ruhe();
+    await hoert(w, el);
+    w.mikro.letzter.stille(20);
+    await zeige(el);
+    expect(el.querySelector('.anruf-ergebnis.no')?.textContent?.trim()).toBe('Keine Antwort, aufgelegt');
+    expect(el.querySelector('.anruf-ergebnis-box .anruf-sub')?.textContent).toBe('Meldung bleibt in der Glocke');
+  });
+
+  it('microphone unplugged (FA-21): reason, „Zuhören", the call stays; Zuhören opens again; focus follows inside the box', async () => {
+    const w = anrufWelt();
+    const el = await box(w);
+    await laeuft(w, el, meldungFertig);
+    await hoert(w, el);
+    await sage(w, el, 'Mach die Tests.', 'm-fertig');
+    knopf(el, 'Nochmal').focus();
     w.mikro.letzter.endeVonAussen();
     await zeige(el);
-    // the backend still says laeuft until it processed anruf:auflegen — the box already shows the reason
-    expect(el.querySelector('.anruf-ergebnis')?.textContent?.trim()).toBe('Nicht gesendet: Mikrofon nicht verfügbar');
-    w.gw.emit(state({ zustand: 'ruhe' }));
-    await zeige(el);
-    expect(w.gw.ofType('anruf:auflegen')).toHaveLength(1);
+    expect(el.querySelector('.anruf-hoeren')?.textContent).toContain('Mikrofon nicht verfügbar');
+    expect(el.querySelector('.anruf-diktat')?.textContent?.trim()).toBe('Mach die Tests.');
+    expect(knoepfe(el)).toEqual(['Zuhören', 'Senden', 'Verwerfen', 'Im Terminal öffnen', 'Auflegen']);
+    expect(document.activeElement?.textContent?.trim()).toBe('Zuhören');
+    expect(w.gw.ofType('anruf:auflegen')).toEqual([]);
     expect(w.gw.ofType('anruf:senden')).toEqual([]);
-    expect(el.querySelector('.anruf-ergebnis')?.textContent?.trim()).toBe('Nicht gesendet: Mikrofon nicht verfügbar');
+    knopf(el, 'Zuhören').click();
+    await zeige(el);
+    expect(w.mikro.oeffnungen).toBe(2);
+    expect(el.querySelector('.anruf-hoeren')?.textContent).toContain('Ich höre zu');
   });
 });

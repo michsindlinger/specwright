@@ -18,6 +18,7 @@ export class Diktat {
   private bis = 0;
   private epoche = 0;
   private readonly stuecke = new Map<number, Stueck>();
+  private vorMarke = '';
 
   /** Recognised text so far (the held text while {@link gehalten}). */
   text = '';
@@ -68,14 +69,22 @@ export class Diktat {
   /** Microphone opened: new sample clock, single words count from here. */
   markiere(): void {
     this.epoche++;
+    this.vorMarke = this.text;
     this.neu = '';
     this.letzteSpracheSek = undefined;
+  }
+
+  /** Drops what was said since the mark (a single-word command is no text, D7). */
+  verwirfNeu(): void {
+    if (!this.gehalten) this.text = this.vorMarke;
+    this.neu = '';
   }
 
   /** Forget everything (send, next question, „Antwort verwerfen", ambiguity, hang-up). */
   leeren(): void {
     this.text = '';
     this.neu = '';
+    this.vorMarke = '';
     this.sekunden = 0;
     this.gehalten = false;
     this.bis = this.naechste;
