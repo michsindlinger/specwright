@@ -358,8 +358,8 @@ Dienst, Kasten, Fakes und Tests greifen über die Ansicht und die Phasen ineinan
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
 | Mock ansehen: `intent/INT-2026-026-anruf-freihaendig/design/anruf-freihaendig-mock.png` (entsteht nach dem Plan Mode zusammen mit `plan.md`, Weg: Playwright-Screenshot des HTML-Mocks wie INT-2026-025) | Michael | vor Plan-Freigabe | [x] mit der Plan-Freigabe 2026-09-28 |
-| Messung EK-01–EK-04 mit eigener Stimme am Mac, Branch-Backend `http://localhost:3111` (Start: `cd ui && PORT=3111 npm run start:backend` im Worktree, Weg wie INT-2026-025 E2E): 20 Antworten mit Schlusswort, 20 Sätze mit „senden"/„Antwort senden" in der Mitte (+ Kontrollfall am Ende), 10 Antworten mit Pausen 3–5 s, 10 Zeiten Schlusswort→Eingabe; zusätzlich einmal mit Tab im Hintergrund (AN-02) und einmal mit Lüfter/leiser Musik (AN-03). Satzliste und Auswertung liefert die Build-Sitzung in `e2e-protokoll.md` | Michael + Build-Sitzung | vor Merge | [ ] Satzliste und Tabelle stehen in `e2e-protokoll.md`, Messung offen |
-| Verfehlte Kennzahl → Entscheidung nach ER-03 (Schwellen anpassen innerhalb ER-01 oder Rückfrage) | Michael | vor Merge | [ ] |
+| Messung EK-01–EK-04 mit eigener Stimme am Mac, Branch-Backend `http://localhost:3111` (Start: `cd ui && PORT=3111 npm run start:backend` im Worktree, Weg wie INT-2026-025 E2E): 20 Antworten mit Schlusswort, 20 Sätze mit „senden"/„Antwort senden" in der Mitte (+ Kontrollfall am Ende), 10 Antworten mit Pausen 3–5 s, 10 Zeiten Schlusswort→Eingabe; zusätzlich einmal mit Tab im Hintergrund (AN-02) und einmal mit Lüfter/leiser Musik (AN-03). Satzliste und Auswertung liefert die Build-Sitzung in `e2e-protokoll.md` | Michael + Build-Sitzung | vor Merge | [x] 2026-09-28, frei getestet, Befunde in `e2e-protokoll.md` (Zähllisten nicht einzeln abgearbeitet) |
+| Verfehlte Kennzahl → Entscheidung nach ER-03 (Schwellen anpassen innerhalb ER-01 oder Rückfrage) | Michael | vor Merge | [x] keine Anpassung; Merge freigegeben 2026-09-28 |
 | Merge der PR (löst Auto-Deploy der UI aus; ER-07) | Michael | nach CI grün | [ ] |
 
 ### 11. Schätzung

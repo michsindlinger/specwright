@@ -95,6 +95,20 @@ Am Mac, Branch-Backend `cd ui && PORT=3111 npm run start:backend` im Worktree (v
 
 **Zusätzlich:** einmal mit Tab im Hintergrund (Vorlesen endet, Mikrofon öffnet? — AN-02, R11) und einmal mit Lüfter oder leiser Musik (legt nach 20 s auf, hält nicht offen — AN-03, FA-10).
 
+## Messung mit Michaels Stimme (2026-09-28, 13:37–14:20)
+
+Michael hat im Browser am Mac (Backend 3111, Messprojekt `messung026`) frei getestet und die Messung als fertig gemeldet; die Zähllisten oben wurden nicht einzeln abgearbeitet. Ausgewertet aus dem Gesprächsverlauf der Sitzung und dem Backend-Log: 11 angenommene Anrufe, 7 gesendete Antworten, 4 Mal aufgelegt.
+
+| Befund | Beleg |
+|---|---|
+| Kurze Antworten und Fragen kamen wörtlich an („Mach bitte noch die Tests für den Randfall mit leerem Namen.", „Das war nur ein Test ob deine Sprachein- und Ausgabe funktioniert") | Verlauf 14:17:53, 14:19:03 |
+| Whisper erkannte das Schlusswort einmal als „Antwort send in" — kein Schlusswort, der Text ging erst mit einem späteren „Antwort senden" raus und enthielt „Antwort send in" (EK-02: ein Fehlschlag) | Verlauf 13:39:52 |
+| Ein „Antwort senden" mitten im Gesprochenen blieb Teil des Texts, gesendet wurde erst mit dem Schlusswort am Ende (FA-06 wie gewollt): „… wie ich das am besten machen kann. Antwort senden. und die Karte." | Verlauf 14:19:44 |
+| Chrome-Sprachausgabe hing in einem Browser (`speaking: true`, kein Ton, auch außerhalb des Anrufs); in einem anderen Browser lief das Vorlesen. Der Code fing es ab: Nach der Höchstdauer öffnete das Mikrofon trotzdem | Konsole bei Michael, 15:5x |
+| Wunsch aus der Messung: Leitung nach „Gesendet" 2 min offen halten → eigenes Vorhaben (Entscheidung D1) | diese Sitzung |
+
+Die Kennzahlen EK-01–EK-04 sind laut Absicht kein Gate; Einzelwerte liegen nicht vor. Beobachten im Betrieb: Schreibweisen des Schlussworts, die Whisper liefert („send in"), gehören bei Häufung als eigene Karte ins Board (ER-03).
+
 | Messung | Ziel | Ergebnis | Datum |
 |---|---|---|---|
 | EK-02 Schlusswort erkannt | ≥ 19 von 20 | | |
