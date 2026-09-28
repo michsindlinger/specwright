@@ -1,7 +1,7 @@
 # Produkt: Specwright
 
 > **Firma:** Sindlinger Business Solutions — Auftrag, Werte, Marke: Firmen-Repo (`mission.md`, `brand.md`; entsteht in Phase 3 des SDLC-Umbaus)
-> **Stand:** 2026-09-27 · **Verantwortlich:** Product Owner (Michael Sindlinger)
+> **Stand:** 2026-09-28 · **Verantwortlich:** Product Owner (Michael Sindlinger)
 > **Gilt für:** jede `intent.md` (Feld `bezuege.product`), jede Spec (Bedenken-Prüfung), Plan Mode
 
 ## 1. In einem Satz
@@ -37,7 +37,7 @@ Ohne festen Ablauf zerfällt Softwarearbeit mit einem Agenten in Chat-Sitzungen:
 | Hooks `protect-tests`, `no-secrets`, `production-gate` | jedes Projekt | live |
 | Installer (`install.sh`, `setup*.sh`, `update-specwright.sh`) aus einem Manifest, Update räumt Entferntes auf | Entwickler | in Arbeit (INT-2026-002) |
 | Alt-Befehle für Produktplanung, Story-Specs, Bugs, Skills, Changelog (`/plan-product`, `/create-spec`, `/add-bug`, …) | Entwickler (Terminal) | live, Umbau je Befehl später |
-| Web-UI: Vorhaben-Übersicht (auch begonnene Absichten ohne Ordner, INT-2026-022), Dokument-Leser, Review-Kanal, Terminal angedockt neben dem Dokument mit Kennungen als Verweisen (INT-2026-011), Absicht-Start aus der UI je in eigener Arbeitskopie mit Liste laufender Absicht-Sitzungen (INT-2026-022), Abschluss per Knopf — deterministisch, ohne Sitzung, als PR gegen den Hauptzweig (INT-2026-024), Projekt-Seite, Cloud-Terminal, Shared Workspace, Anrufmodus: die UI klingelt bei Rückfrage, Plan und „fertig", liest eine kurze Sprechfassung vor und nimmt die Antwort per Stimme entgegen, lokal ohne Bezahldienst (INT-2026-025; nur im Browser am Mac, nicht auf dem Cloud-Host und nicht am Handy) | Entwickler (Mac, Handy, Droplet; Anrufmodus nur Mac) | live (INT-2026-004; angedocktes Terminal INT-2026-011 Stufe 1; parallele Absichten INT-2026-022; Abschluss per Knopf INT-2026-024); Anrufmodus in Arbeit (INT-2026-025) |
+| Web-UI: Vorhaben-Übersicht (auch begonnene Absichten ohne Ordner, INT-2026-022), Dokument-Leser, Review-Kanal, Terminal angedockt neben dem Dokument mit Kennungen als Verweisen (INT-2026-011), Absicht-Start aus der UI je in eigener Arbeitskopie mit Liste laufender Absicht-Sitzungen (INT-2026-022), Abschluss per Knopf — deterministisch, ohne Sitzung, als PR gegen den Hauptzweig (INT-2026-024), Projekt-Seite, Cloud-Terminal, Shared Workspace, Anrufmodus: die UI klingelt bei Rückfrage, Plan und „fertig", liest eine kurze Sprechfassung vor und nimmt die Antwort per Stimme entgegen — seit INT-2026-026 freihändig: nach dem Vorlesen hört sie von selbst zu, „Antwort senden" am Ende schickt ab —, lokal ohne Bezahldienst (INT-2026-025; nur im Browser am Mac, nicht auf dem Cloud-Host und nicht am Handy) | Entwickler (Mac, Handy, Droplet; Anrufmodus nur Mac) | live (INT-2026-004; angedocktes Terminal INT-2026-011 Stufe 1; parallele Absichten INT-2026-022; Abschluss per Knopf INT-2026-024); Anrufmodus in Arbeit (INT-2026-025) |
 | Kanban-MCP-Server mit Memory-Store | Alt-Befehle in Sitzungen | live; Abbau als eigenes Vorhaben |
 
 ## 6. Erfolgsmaße

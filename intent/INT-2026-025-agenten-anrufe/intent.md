@@ -88,7 +88,7 @@ Einen Anruf-Modus gab es schon: mit Deepgram und ElevenLabs (kostenpflichtig), a
 
 - **NZ-01:** Handy und Cloud-Host. Nur die UI am Mac; der Cloud-Host hat zu wenig Speicher für lokale Modelle, der Handy-Browser ist zu schwach.
 - **NZ-02:** Sitzungen außerhalb der UI (Claude im normalen Terminal) — nur UI-Sitzungen melden sich per Hook.
-- **NZ-03:** Weckwort oder dauernd offenes Mikrofon. Gesprochen wird per Taste oder Knopf.
+- **NZ-03:** Weckwort oder dauernd offenes Mikrofon. Gesprochen wird per Taste oder Knopf. *(geändert durch INT-2026-026: Mikrofon öffnet nach dem Vorlesen von selbst, Senden per Schlusswort „Antwort senden" ohne Bestätigung, keine Sprechtaste)*
 - **NZ-04:** Berechtigungsfragen (Befehl ausführen, Datei schreiben) per Stimme beantworten; sie klingeln nicht und bleiben in der Glocke.
 - **NZ-05:** Mitschnitt: Audio und Gesprächsverlauf werden nicht gespeichert.
 - **NZ-06:** Kostenpflichtige Sprachdienste und die alte Anruf-Ansicht wiederbeleben.
@@ -111,7 +111,7 @@ Einen Anruf-Modus gab es schon: mit Deepgram und ElevenLabs (kostenpflichtig), a
 | AK-09 | Nach Annahme MUSS die UI eine Sprechfassung vorlesen: bei „fertig" das Ergebnis, bei einer Rückfrage die Frage und ihre Antwortmöglichkeiten, bei einer Plan-Freigabe den Kern des Plans. | Z-02 | Stichprobe |
 | AK-10 | Die vorgelesene Sprechfassung MUSS höchstens 80 Wörter umfassen, ohne Codeblöcke, Dateipfade, Tabellen oder Links. | Z-02 | Test |
 | AK-11 | Falls eine Meldung keine Sprechfassung mitbringt, dann MUSS die UI das ansagen und höchstens die ersten zwei Sätze der letzten Antwort vorlesen, bereinigt nach AK-10. | Z-02 | Test |
-| AK-12 | Wenn Michael spricht, MUSS die UI den erkannten Text anzeigen und ihn erst nach Bestätigung „senden" in die Sitzung geben, alternativ verwerfen. | Z-03 | Test |
+| AK-12 | Wenn Michael spricht, MUSS die UI den erkannten Text anzeigen und ihn erst nach Bestätigung „senden" in die Sitzung geben, alternativ verwerfen. *(geändert durch INT-2026-026: Mikrofon öffnet nach dem Vorlesen von selbst, Senden per Schlusswort „Antwort senden" ohne Bestätigung, keine Sprechtaste)* | Z-03 | Test |
 | AK-13 | Wenn Michael eine Rückfrage mit Antwortmöglichkeiten per Stimme beantwortet, MUSS die Sitzung bei Nummer oder Wortlaut einer Möglichkeit genau diese erhalten, sonst den Text als freie Antwort. | Z-03 | Test |
 | AK-14 | Wenn Michael einen Plan per Stimme freigibt, MUSS die UI einmal ausdrücklich nachfragen und nur nach bestätigender Antwort freigeben. | Z-03 | Test |
 | AK-15 | Berechtigungsfragen DÜRFEN KEINEN Anruf auslösen. | Z-03 | Test |
