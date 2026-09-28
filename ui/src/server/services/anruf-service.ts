@@ -40,7 +40,16 @@ import {
 import { vorlesetextFuer } from '../../shared/anruf-text.js';
 import { ANRUF_RATE } from '../../shared/anruf-audio.js';
 import { AnrufWarteschlange, type AnrufEintrag } from './anruf-warteschlange.js';
-import { anrufUebergang, type AnrufEreignis, type AnrufUebergangErgebnis, type AnrufZustand, type ZustandMeldung } from './anruf-zustand.js';
+import {
+  anrufUebergang,
+  hatBesitzer,
+  hatMeldung,
+  istOffen,
+  type AnrufEreignis,
+  type AnrufUebergangErgebnis,
+  type AnrufZustand,
+  type ZustandMeldung,
+} from './anruf-zustand.js';
 import { CLOUD_SESSION_ID_RE, extractAnrufInhalt } from './claude-hooks.js';
 
 // ---------------------------------------------------------------------------
@@ -147,10 +156,6 @@ function fehlerNachricht(code: AnrufErrorCode, message: string): AnrufErrorMessa
   return { type: 'anruf:error', code, message };
 }
 
-function hatBesitzer(z: AnrufZustand): z is Extract<AnrufZustand, { besitzer: string }> {
-  return z.name === 'laeuft' || z.name === 'freigabe_nachfrage' || z.name === 'sendet';
-}
-
 function standardSitzungInfo(s: AnrufSitzung): { sitzungName: string; projektName?: string } {
   const projektName = path.basename(s.projectPath);
   const cwd = s.effectiveCwd ?? s.projectPath;
@@ -192,6 +197,8 @@ export class AnrufService {
   private letzterFaehigerWeg: number | undefined;
   private kulanzTimer: NodeJS.Timeout | null = null;
   private naechsteTimer: NodeJS.Timeout | null = null;
+  /** Frist der offenen Leitung (INT-2026-027); folgt dem Zustand, siehe `synchronisiereLeitungTimer`. */
+  private leitungTimer: { timer: NodeJS.Timeout; leitungId: string; bis: number } | null = null;
   private endeGrund: { text: string; fuer: string } | null = null;
   private ausstehendeAntwort: AnrufAntwort | null = null;
   /** Audio-Sekunden des laufenden Anrufs (INT-2026-026, D5); neu je Meldung. */
@@ -314,7 +321,7 @@ export class AnrufService {
     const alt = this.inhalte.get(sessionId) ?? {};
     this.inhalte.set(sessionId, { ...alt, ...neu });
     // D5a: eine Probe-Meldung bekommt ihren Inhalt nachträglich.
-    if ('meldung' in this.zustand && this.zustand.meldung.sessionId === sessionId) this.broadcastState();
+    if (hatMeldung(this.zustand) && this.zustand.meldung.sessionId === sessionId) this.broadcastState();
   }
 
   // -------------------------------------------------------------------------
@@ -549,6 +556,7 @@ export class AnrufService {
     const ergebnis = anrufUebergang(vorher, ereignis, this.uhr());
     if (ergebnis.fehler) return ergebnis;
     this.zustand = ergebnis.zustand;
+    this.synchronisiereLeitungTimer();
     if (ergebnis.endeGrund && hatBesitzer(vorher)) this.endeGrund = { text: ergebnis.endeGrund, fuer: vorher.besitzer };
 
     let broadcast = false;
@@ -674,7 +682,37 @@ export class AnrufService {
       this.sendeSicher(client.send, res.ok ? { type: 'anruf:ergebnis', meldungId, ok: true } : { type: 'anruf:ergebnis', meldungId, ok: false, grund: res.grund, text: res.text });
     }
     if (this.gestoppt) return;
-    this.anwenden(res.ok ? { art: 'senden.ok', meldungId } : { art: 'senden.fehler', meldungId, grund: res.grund });
+    if (!res.ok) {
+      this.anwenden({ art: 'senden.fehler', meldungId, grund: res.grund });
+      return;
+    }
+    // AK-04: Hat sich dieselbe Sitzung schon während des Sendens neu gemeldet, steht sie in der Schlange.
+    // Lesen und Übergang ohne `await` dazwischen — ein `meldung.neu` kommt davor oder danach, nie dazwischen.
+    const eintrag = rec ? this.schlange.eintragFuerSitzung(rec.sessionId) : undefined;
+    const wartendRec = eintrag ? this.meldungen.get(eintrag.id) : undefined;
+    this.anwenden({ art: 'senden.ok', meldungId, ...(wartendRec ? { wartend: this.zm(wartendRec) } : {}) });
+  }
+
+  /**
+   * Leitungs-Timer aus dem Zustand ableiten (INT-2026-027, AK-06): läuft genau
+   * dann, wenn der Zustand `offen` ist, und zielt auf dessen `bis`. Wird nur aus
+   * `anwenden` direkt nach der Zustandszuweisung gerufen.
+   */
+  private synchronisiereLeitungTimer(): void {
+    const z = this.zustand;
+    if (!istOffen(z)) {
+      this.stoppeLeitungTimer();
+      return;
+    }
+    if (this.leitungTimer && this.leitungTimer.leitungId === z.leitungId && this.leitungTimer.bis === z.bis) return;
+    this.stoppeLeitungTimer();
+    const { leitungId, bis } = z;
+    const timer = setTimeout(() => {
+      this.leitungTimer = null;
+      if (!this.gestoppt) this.anwenden({ art: 'leitung.frist', leitungId });
+    }, Math.max(0, bis - this.uhr()));
+    timer.unref?.();
+    this.leitungTimer = { timer, leitungId, bis };
   }
 
   // -------------------------------------------------------------------------
@@ -692,10 +730,22 @@ export class AnrufService {
       eigener,
       wartend: this.schlange.groesse(),
     };
-    if (z.name !== 'ruhe') {
+    if (hatMeldung(z)) {
       const rec = this.meldungen.get(z.meldung.id);
       // Inhalt nur für den Besitzer des laufenden Anrufs (Review F15); klingelnd nur Kopfdaten.
       if (rec) msg.meldung = this.meldungFuerClient(rec, eigener);
+    }
+    if (istOffen(z) && eigener) {
+      // INT-2026-027: Leitung nur für den Besitzer; andere Fenster sehen nur `offen`.
+      const s = this.quelle.getSession(z.sessionId);
+      const info = s ? this.sitzungInfo(s) : { sitzungName: z.sessionId };
+      msg.leitung = {
+        leitungId: z.leitungId,
+        sessionId: z.sessionId,
+        sitzungName: info.sitzungName,
+        ...(info.projektName ? { projektName: info.projektName } : {}),
+        bis: new Date(z.bis).toISOString(),
+      };
     }
     if (z.name === 'freigabe_nachfrage' && eigener) msg.freigabeWortlaut = z.wortlaut;
     if (this.endeGrund && this.endeGrund.fuer === clientId) msg.endeGrund = this.endeGrund.text;
@@ -775,7 +825,7 @@ export class AnrufService {
   }
 
   private artDerSitzung(sessionId: string): AnrufArt | undefined {
-    if (this.zustand.name !== 'ruhe' && this.zustand.meldung.sessionId === sessionId) return this.zustand.meldung.art;
+    if (hatMeldung(this.zustand) && this.zustand.meldung.sessionId === sessionId) return this.zustand.meldung.art;
     return this.schlange.eintragFuerSitzung(sessionId)?.art;
   }
 
@@ -816,9 +866,15 @@ export class AnrufService {
     this.naechsteTimer = null;
   }
 
+  private stoppeLeitungTimer(): void {
+    if (this.leitungTimer) clearTimeout(this.leitungTimer.timer);
+    this.leitungTimer = null;
+  }
+
   private stoppeTimer(): void {
     this.stoppeKulanzTimer();
     this.stoppeNaechsteTimer();
+    this.stoppeLeitungTimer();
   }
 
   private starteErkennung(): void {

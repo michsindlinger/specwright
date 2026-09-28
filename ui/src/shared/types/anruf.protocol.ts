@@ -56,7 +56,18 @@ export interface AnrufMeldung {
   fragen?: AnrufFrage[];
 }
 
-export type AnrufZustandName = 'ruhe' | 'klingelt' | 'laeuft' | 'freigabe_nachfrage' | 'sendet';
+export type AnrufZustandName = 'ruhe' | 'klingelt' | 'laeuft' | 'freigabe_nachfrage' | 'sendet' | 'offen';
+
+/** Offene Leitung nach erfolgreichem Senden (INT-2026-027): nur für den Besitzer. */
+export interface AnrufLeitung {
+  /** ID der zuletzt gesendeten Meldung; `anruf:auflegen` nennt sie. */
+  leitungId: string;
+  sessionId: string;
+  sitzungName: string;
+  projektName?: string;
+  /** Ende der Frist (ISO). */
+  bis: string;
+}
 
 export type AnrufNichtVerfuegbarGrund =
   | 'abgeschaltet'
@@ -167,6 +178,8 @@ export interface AnrufStateMessage {
   freigabeWortlaut?: string;
   /** Grund, mit dem ein Anruf zuletzt ohne Senden endete (Ansage). */
   endeGrund?: string;
+  /** Zustand `offen`: Leitung für den Besitzer (INT-2026-027). */
+  leitung?: AnrufLeitung;
 }
 
 /** An alle Clients: für den Grund im Schalter. */
@@ -221,6 +234,8 @@ export const ANRUF_CLIENT_KULANZ_MS = 30 * 1000;
 /** Klingelton: dreimal im Abstand von 4 s, danach stiller Kasten (D6). */
 export const ANRUF_KLINGEL_WIEDERHOLUNGEN = 3;
 export const ANRUF_KLINGEL_ABSTAND_MS = 4000;
+/** Leitung bleibt nach erfolgreichem Senden so lange offen für dieselbe Sitzung (INT-2026-027, AK-06). */
+export const ANRUF_LEITUNG_OFFEN_MS = 120_000;
 /** Grenzen des Hook-Inhalts (D1). */
 export const ANRUF_INHALT_GRENZEN = {
   letzteAntwort: 20_000,

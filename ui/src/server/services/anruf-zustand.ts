@@ -7,13 +7,19 @@
  * Sender starten, nächste Meldung klingeln lassen, an Clients senden).
  *
  * Zustände: `ruhe` → `klingelt(m)` → `laeuft(m, besitzer)` →
- * [`freigabe_nachfrage(m, besitzer)`] → `sendet(m, besitzer)` → `ruhe`.
+ * [`freigabe_nachfrage(m, besitzer)`] → `sendet(m, besitzer)` → `offen(sitzung, besitzer)`.
+ *
+ * `offen` (INT-2026-027): Nach erfolgreichem Senden bleibt die Leitung bis `bis`
+ * für dieselbe Sitzung offen. Eine neue Meldung dieser Sitzung geht ohne Klingeln
+ * nach `laeuft`; andere Meldungen werden nur eingereiht (`naechste` wirkt nur in
+ * `ruhe`). Auflegen, Frist (`leitung.frist`), Fenster weg oder Modus aus → `ruhe`.
+ * `offen` hat einen Besitzer, aber keine Meldung.
  *
  * Unerlaubte Paare (falscher Zustand, fremde Meldung, fremder Besitzer)
  * lassen den Zustand unverändert und tragen einen Fehler mit Code und Grund.
  */
 
-import type { AnrufArt, AnrufAntwort, AnrufErrorCode, AnrufSendeGrund } from '../../shared/types/anruf.protocol.js';
+import { ANRUF_LEITUNG_OFFEN_MS, type AnrufArt, type AnrufAntwort, type AnrufErrorCode, type AnrufSendeGrund } from '../../shared/types/anruf.protocol.js';
 
 /** Was der Zustand von einer Meldung wissen muss. */
 export interface ZustandMeldung {
@@ -27,7 +33,9 @@ export type AnrufZustand =
   | { name: 'klingelt'; meldung: ZustandMeldung; seit: number }
   | { name: 'laeuft'; meldung: ZustandMeldung; besitzer: string; seit: number }
   | { name: 'freigabe_nachfrage'; meldung: ZustandMeldung; besitzer: string; seit: number; wortlaut: string }
-  | { name: 'sendet'; meldung: ZustandMeldung; besitzer: string; seit: number };
+  | { name: 'sendet'; meldung: ZustandMeldung; besitzer: string; seit: number }
+  /** `leitungId`: ID der zuletzt gesendeten Meldung (für `auflegen` und `leitung.frist`). */
+  | { name: 'offen'; sessionId: string; besitzer: string; leitungId: string; seit: number; bis: number };
 
 export type AnrufEreignis =
   /** Eine neue Meldung ist entstanden (D5a). */
@@ -46,10 +54,13 @@ export type AnrufEreignis =
   | { art: 'modus.aus' }
   | { art: 'freigeben.anfragen'; meldungId: string; clientId: string; nurBildschirm: boolean; wortlaut: string }
   | { art: 'senden'; meldungId: string; clientId: string; antwort: AnrufAntwort['art']; nurBildschirm: boolean }
-  | { art: 'senden.ok'; meldungId: string }
+  /** `wartend`: Meldung derselben Sitzung, die schon in der Schlange steht (AK-04). */
+  | { art: 'senden.ok'; meldungId: string; wartend?: ZustandMeldung }
   | { art: 'senden.fehler'; meldungId: string; grund: AnrufSendeGrund }
   /** Glocke „Anrufen" (FA-12): Anruf beginnt ohne Klingeln. */
-  | { art: 'anrufen'; meldung: ZustandMeldung; clientId: string };
+  | { art: 'anrufen'; meldung: ZustandMeldung; clientId: string }
+  /** Frist der offenen Leitung abgelaufen (INT-2026-027, AK-06). */
+  | { art: 'leitung.frist'; leitungId: string };
 
 export type AnrufEffekt =
   /** Meldung in die Schlange (bzw. dort die der Sitzung ersetzen, FA-08). */
@@ -89,6 +100,7 @@ export interface AnrufUebergangErgebnis {
 export const ENDE_SCHON_BEANTWORTET = 'In der Sitzung schon beantwortet.';
 export const ENDE_MODUS_AUS = 'Anrufmodus ausgeschaltet.';
 export const ENDE_FENSTER_WEG = 'Das Fenster des Anrufs ist weg.';
+export const ENDE_LEITUNG_FRIST = 'Leitung geschlossen.';
 
 /** Gründe, bei denen nach gescheitertem Senden nichts mehr zu beantworten ist. */
 const SENDE_GRUND_ENDE: ReadonlySet<AnrufSendeGrund> = new Set<AnrufSendeGrund>(['schon_beantwortet', 'sitzung_weg']);
@@ -106,15 +118,22 @@ function unveraendert(zustand: AnrufZustand, code: AnrufErrorCode, grund: string
   return { zustand, effekte: [], fehler: { code, grund } };
 }
 
-type MitMeldung = Exclude<AnrufZustand, { name: 'ruhe' }>;
-type MitBesitzer = Exclude<AnrufZustand, { name: 'ruhe' } | { name: 'klingelt' }>;
+export type MitMeldung = Extract<AnrufZustand, { meldung: ZustandMeldung }>;
+export type MitBesitzer = Extract<AnrufZustand, { besitzer: string }>;
+export type Offen = Extract<AnrufZustand, { name: 'offen' }>;
+/** Angenommener Anruf mit Meldung: `laeuft`, `freigabe_nachfrage`, `sendet`. */
+type Angenommen = Extract<MitMeldung, { besitzer: string }>;
 
-function hatMeldung(z: AnrufZustand): z is MitMeldung {
-  return z.name !== 'ruhe';
+export function hatMeldung(z: AnrufZustand): z is MitMeldung {
+  return 'meldung' in z;
 }
 
-function hatBesitzer(z: AnrufZustand): z is MitBesitzer {
-  return z.name === 'laeuft' || z.name === 'freigabe_nachfrage' || z.name === 'sendet';
+export function hatBesitzer(z: AnrufZustand): z is MitBesitzer {
+  return 'besitzer' in z;
+}
+
+export function istOffen(z: AnrufZustand): z is Offen {
+  return z.name === 'offen';
 }
 
 /**
@@ -132,6 +151,13 @@ export function anrufUebergang(zustand: AnrufZustand, ereignis: AnrufEreignis, j
   switch (ereignis.art) {
     case 'meldung.neu': {
       const m = ereignis.meldung;
+      if (istOffen(zustand) && zustand.sessionId === m.sessionId) {
+        // AK-03: dieselbe Sitzung meldet sich in der offenen Leitung — ohne Klingeln weiter.
+        return {
+          zustand: { name: 'laeuft', meldung: m, besitzer: zustand.besitzer, seit: jetzt },
+          effekte: [{ art: 'entnehmen', meldungId: m.id }, { art: 'broadcast' }],
+        };
+      }
       if (hatMeldung(zustand) && zustand.meldung.sessionId === m.sessionId) {
         // Dieselbe Sitzung meldet neu (FA-08, D5a Wechsel rueckfrage↔plan).
         if (zustand.name === 'sendet') {
@@ -205,6 +231,12 @@ export function anrufUebergang(zustand: AnrufZustand, ereignis: AnrufEreignis, j
     }
 
     case 'auflegen': {
+      if (istOffen(zustand)) {
+        if (zustand.leitungId !== ereignis.meldungId) return unveraendert(zustand, 'MELDUNG_WEG', 'Diese Leitung ist nicht (mehr) offen.');
+        if (zustand.besitzer !== ereignis.clientId) return unveraendert(zustand, 'INVALID_MESSAGE', 'Die Leitung ist in einem anderen Fenster offen.');
+        // AK-07, AK-10: Knopf „Auflegen" — ohne Ansage, die nächste wartende Meldung klingelt.
+        return { zustand: RUHE, effekte: [{ art: 'naechste' }, { art: 'broadcast' }] };
+      }
       const fehler = pruefeBesitz(zustand, ereignis.meldungId, ereignis.clientId);
       if (fehler) return unveraendert(zustand, fehler.code, fehler.grund);
       if (zustand.name === 'sendet') return unveraendert(zustand, 'INVALID_MESSAGE', 'Die Antwort wird gerade gesendet.');
@@ -214,6 +246,11 @@ export function anrufUebergang(zustand: AnrufZustand, ereignis: AnrufEreignis, j
     }
 
     case 'client.weg': {
+      if (istOffen(zustand)) {
+        // AK-08: Fenster der offenen Leitung weg — ohne Meldung gibt es nichts zurückzulegen.
+        if (zustand.besitzer !== ereignis.clientId) return { zustand, effekte: [] };
+        return { zustand: RUHE, effekte: [{ art: 'naechste' }, { art: 'broadcast' }] };
+      }
       if (!hatBesitzer(zustand) || zustand.besitzer !== ereignis.clientId || zustand.name === 'sendet') {
         return { zustand, effekte: [] };
       }
@@ -243,7 +280,7 @@ export function anrufUebergang(zustand: AnrufZustand, ereignis: AnrufEreignis, j
     case 'freigeben.anfragen': {
       const fehler = pruefeBesitz(zustand, ereignis.meldungId, ereignis.clientId);
       if (fehler) return unveraendert(zustand, fehler.code, fehler.grund);
-      const z = zustand as MitBesitzer;
+      const z = zustand as Angenommen;
       if (z.name === 'sendet') return unveraendert(zustand, 'INVALID_MESSAGE', 'Die Antwort wird gerade gesendet.');
       if (z.meldung.art !== 'plan' || ereignis.nurBildschirm) {
         return unveraendert(zustand, 'INVALID_MESSAGE', 'Freigeben geht nur bei einer Plan-Freigabe mit Inhalt.');
@@ -257,7 +294,7 @@ export function anrufUebergang(zustand: AnrufZustand, ereignis: AnrufEreignis, j
     case 'senden': {
       const fehler = pruefeBesitz(zustand, ereignis.meldungId, ereignis.clientId);
       if (fehler) return unveraendert(zustand, fehler.code, fehler.grund);
-      const z = zustand as MitBesitzer;
+      const z = zustand as Angenommen;
       if (z.name === 'sendet') return unveraendert(zustand, 'INVALID_MESSAGE', 'Die Antwort wird gerade gesendet.');
       if (!ANTWORT_FUER_ART[z.meldung.art].includes(ereignis.antwort)) {
         return unveraendert(zustand, 'INVALID_MESSAGE', 'Diese Antwort passt nicht zur Art der Meldung.');
@@ -279,9 +316,19 @@ export function anrufUebergang(zustand: AnrufZustand, ereignis: AnrufEreignis, j
       if (zustand.name !== 'sendet' || zustand.meldung.id !== ereignis.meldungId) {
         return unveraendert(zustand, 'INVALID_MESSAGE', 'Es wird gerade nichts gesendet.');
       }
+      const alt = zustand.meldung;
+      const w = ereignis.wartend;
+      if (w && w.sessionId === alt.sessionId) {
+        // AK-04: dieselbe Sitzung hat sich schon während des Sendens neu gemeldet — direkt durchstellen.
+        return {
+          zustand: { name: 'laeuft', meldung: w, besitzer: zustand.besitzer, seit: jetzt },
+          effekte: [{ art: 'verwerfen', meldungId: alt.id }, { art: 'entnehmen', meldungId: w.id }, { art: 'broadcast' }],
+        };
+      }
+      // AK-01, AK-05, AK-09: Leitung bleibt offen; kein `naechste`, andere Sitzungen warten.
       return {
-        zustand: RUHE,
-        effekte: [{ art: 'verwerfen', meldungId: zustand.meldung.id }, { art: 'naechste' }, { art: 'broadcast' }],
+        zustand: { name: 'offen', sessionId: alt.sessionId, besitzer: zustand.besitzer, leitungId: alt.id, seit: jetzt, bis: jetzt + ANRUF_LEITUNG_OFFEN_MS },
+        effekte: [{ art: 'verwerfen', meldungId: alt.id }, { art: 'broadcast' }],
       };
     }
 
@@ -316,6 +363,12 @@ export function anrufUebergang(zustand: AnrufZustand, ereignis: AnrufEreignis, j
       }
       effekte.push({ art: 'entnehmen', meldungId: m.id }, { art: 'broadcast' });
       return { zustand: { name: 'laeuft', meldung: m, besitzer: ereignis.clientId, seit: jetzt }, effekte };
+    }
+
+    case 'leitung.frist': {
+      // Ein veralteter Timer ist normal (R6): ohne passende offene Leitung ändert sich nichts.
+      if (!istOffen(zustand) || zustand.leitungId !== ereignis.leitungId) return { zustand, effekte: [] };
+      return { zustand: RUHE, effekte: [{ art: 'naechste' }, { art: 'broadcast' }], endeGrund: ENDE_LEITUNG_FRIST };
     }
   }
 }

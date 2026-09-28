@@ -1,7 +1,7 @@
 # Plan: UI: Anruf — Leitung bleibt nach dem Senden offen
 
 > **Intent:** `intent.md` (INT-2026-027) · **Spec:** entfällt (bypass: Größe S)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-28 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-28 — „Freigabe: plan.md (Stand 2026-09-28 17:27)"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 5ab5bc9), `CLAUDE.md`, `docs/security.md`
 
@@ -298,4 +298,9 @@ Entfällt.
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-28 | Bestehender Service-Test „Senden ok → … nächste klingelt" (`anruf-service.test.ts`, FA-25) erwartet jetzt `offen` und das Klingeln der anderen Sitzung erst nach „Auflegen" | Der Test hielt das Verhalten aus INT-2026-026 FA-18 fest, das dieses Vorhaben laut `intent.md` `ersetzt` ablöst; kein Fix-Modus | §8 |
+| 2026-09-28 | Hinweiston auch beim Übergang `sendet → laeuft` mit neuer Meldung (AK-04), nicht nur aus `offen` | Für Michael derselbe Fall: eine Folgemeldung kommt ohne Klingeln; ohne Ton begänne die Stimme unangekündigt (Zweck von AK-11, R5) | §3 Frontend-Dienst |
+| 2026-09-28 | `AnrufErgebnis.leitung` neu; der Kasten zeigt das Ende aus `offen` ohne Präfix „Nicht gesendet:" | Der bestehende Ergebnis-Kasten hätte „Nicht gesendet: Leitung geschlossen." gezeigt, obwohl nichts ausstand | §3 Kasten |
+| 2026-09-28 | Kasten: eigener Zweig `renderLeitung` vor der Meldungsprüfung in `render()`; zusätzlich „noch n warten" in der offenen Leitung | `render()` gab ohne `meldung` nichts aus — `offen` hat keine Meldung, Leitung und zweites Fenster wären unsichtbar geblieben; die Zahl zeigt, dass andere warten (AK-05) | §3 Kasten, §4 #6 |
+| 2026-09-28 | `niemand_da` in `offen` lässt die Leitung stehen (wie in `laeuft`) | Plan nannte das Ereignis für `offen` nicht; Matrix-Test hält das Verhalten fest | §3 Zustand |
+| 2026-09-28 | `theme.css`: eine Regel `aos-app .anruf-leitung-ergebnis` (Abstand, Schriftgröße); `notification-sound.ts`: Notenschleife als gemeinsame Hilfe für Klingelton und Hinweiston | §4 #7 „falls nötig" trat ein; keine doppelte Oszillator-Schleife | §4 #4, #7 |

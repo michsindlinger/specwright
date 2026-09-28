@@ -6,6 +6,7 @@
  * closing-phrase hint, microphone closed with „Zuhören", plan confirmation,
  * only-terminal messages, another window, no space bar, no focus theft while
  * ringing, the ring tone differs from the bell chime.
+ * INT-2026-027: the open line after „Gesendet" (AK-01, AK-10).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -13,7 +14,7 @@ vi.mock('../../frontend/src/gateway.js', () => ({
   gateway: { send: vi.fn(), on: vi.fn(), off: vi.fn(), getConnectionStatus: () => false },
 }));
 
-import { anrufWelt, meldungFertig, meldungPlan, meldungRueckfrage, ruhe, state, verfuegbarkeitLokal, type AnrufWelt } from './anruf-fakes.js';
+import { anrufWelt, leitungFertig, meldungFertig, meldungPlan, meldungRueckfrage, ruhe, state, verfuegbarkeitLokal, type AnrufWelt } from './anruf-fakes.js';
 import type { AosAnruf } from '../../frontend/src/components/anruf/aos-anruf.js';
 import type { AnrufMeldung } from '../../src/shared/types/anruf.protocol.js';
 
@@ -349,5 +350,47 @@ describe('aos-anruf', () => {
     await zeige(el);
     expect(w.mikro.oeffnungen).toBe(2);
     expect(el.querySelector('.anruf-hoeren')?.textContent).toContain('Ich höre zu');
+  });
+
+  it('open line (INT-2026-027, AK-01): „Leitung offen — wartet auf …", project, microphone off, „Gesendet", only „Auflegen"', async () => {
+    const w = anrufWelt();
+    const el = await box(w);
+    await laeuft(w, el, meldungFertig);
+    w.gw.emit({ type: 'anruf:ergebnis', meldungId: 'm-fertig', ok: true });
+    w.gw.emit(state({ zustand: 'offen', eigener: true, wartend: 1, leitung: leitungFertig }));
+    await zeige(el);
+    expect(el.querySelector('.anruf')?.className).toContain('anruf-phase-leitung');
+    expect(el.querySelector('.anruf-titel')?.textContent).toBe('Leitung offen — wartet auf „build-matching“ …');
+    expect(el.querySelector('.anruf-sub')?.textContent).toBe('Specwright');
+    expect(el.querySelector('.anruf-leitung-ergebnis')?.textContent?.trim()).toBe('✓ Gesendet');
+    expect(el.querySelector('.anruf-hoeren')?.textContent).toContain('Mikrofon aus');
+    expect(el.querySelector('.anruf-punkt.puls')).toBeNull();
+    expect(el.querySelector('.anruf-warten')?.textContent).toBe('noch 1 wartet');
+    expect(knoepfe(el)).toEqual(['Auflegen']);
+    const b = knopf(el, 'Auflegen');
+    expect(b.getAttribute('type')).toBe('button');
+    expect(b.tabIndex).toBeGreaterThanOrEqual(0);
+    b.click();
+    expect(w.gw.ofType('anruf:auflegen')).toEqual([{ type: 'anruf:auflegen', meldungId: 'm-fertig' }]);
+  });
+
+  it('open line in another window: hint without buttons (INT-2026-027)', async () => {
+    const w = anrufWelt();
+    const el = await box(w);
+    w.gw.emit(state({ zustand: 'offen', eigener: false }));
+    await zeige(el);
+    expect(el.querySelector('.anruf-andere')?.textContent).toBe('Leitung offen in einem anderen Fenster');
+    expect(knoepfe(el)).toEqual([]);
+  });
+
+  it('open line closed by the deadline: „Leitung geschlossen." without „Nicht gesendet" (INT-2026-027, AK-10)', async () => {
+    const w = anrufWelt();
+    const el = await box(w);
+    await laeuft(w, el, meldungFertig);
+    w.gw.emit({ type: 'anruf:ergebnis', meldungId: 'm-fertig', ok: true });
+    w.gw.emit(state({ zustand: 'offen', eigener: true, leitung: leitungFertig }));
+    w.gw.emit(state({ zustand: 'ruhe', endeGrund: 'Leitung geschlossen.' }));
+    await zeige(el);
+    expect(el.querySelector('.anruf-ergebnis.no')?.textContent?.trim()).toBe('Leitung geschlossen.');
   });
 });

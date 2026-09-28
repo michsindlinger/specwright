@@ -1877,7 +1877,7 @@ export class AosApp extends LitElement {
         .glockeSessions=${this.glockeSessions}
         .projectNames=${this.terminalProjectNames}
         .anrufModus=${this.anruf ? anrufAktiv(this.anruf.modus) : false}
-        .anrufLaeuft=${this.anruf ? this.anruf.zustand === 'laeuft' || this.anruf.zustand === 'freigabe_nachfrage' || this.anruf.zustand === 'sendet' : false}
+        .anrufLaeuft=${this.anruf ? this.anruf.zustand === 'laeuft' || this.anruf.zustand === 'freigabe_nachfrage' || this.anruf.zustand === 'sendet' || this.anruf.zustand === 'offen' : false}
         @glocke-open=${this._handleGlockeOpen}
         @glocke-anrufen=${this._handleGlockeAnrufen}
         @terminal-toggle=${this._handleTerminalToggle}

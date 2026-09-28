@@ -84,6 +84,7 @@ export class AosAnruf extends LitElement {
     const a = this.a;
     if (!a || a.phase === 'ruhe') return nothing;
     if (a.phase === 'ergebnis') return this.renderErgebnis(a);
+    if (a.zustand === 'offen') return this.renderLeitung(a);
     const m = a.meldung;
     if (!m) return nothing;
     return html`
@@ -254,6 +255,27 @@ export class AosAnruf extends LitElement {
     `;
   }
 
+  /** INT-2026-027: open line after „Gesendet" — microphone off, only „Auflegen" (AK-01). */
+  private renderLeitung(a: AnrufAnsicht) {
+    const l = a.leitung;
+    return html`
+      <div class="anruf anruf-phase-${a.phase}" role="region" aria-label="Anruf" aria-live="polite" tabindex="-1" @focusin=${this.onFocusin} @focusout=${this.onFocusout}>
+        ${a.phase !== 'leitung' || !l
+          ? html`<div class="anruf-text anruf-andere">${ANRUF_TEXT.leitungAndereFenster}</div>`
+          : html`
+              <div class="anruf-titel">Leitung offen — wartet auf „${l.sitzungName}“ …</div>
+              ${l.projektName ? html`<div class="anruf-sub">${l.projektName}</div>` : nothing}
+              ${a.ergebnis?.ok ? html`<div class="anruf-ergebnis ok anruf-leitung-ergebnis">✓ ${a.ergebnis.text}</div>` : nothing}
+              <div class="anruf-hoeren"><span class="anruf-punkt aus" aria-hidden="true"></span><span class="anruf-sub">Mikrofon aus</span></div>
+              ${this.renderWarten(a)}
+              <div class="anruf-knoepfe">
+                <button type="button" @click=${() => this.dienst.auflegen()}>Auflegen</button>
+              </div>
+            `}
+      </div>
+    `;
+  }
+
   private renderWarten(a: AnrufAnsicht) {
     if (a.wartend <= 0) return nothing;
     return html`<div class="anruf-warten">noch ${a.wartend} ${a.wartend === 1 ? 'wartet' : 'warten'}</div>`;
@@ -264,7 +286,7 @@ export class AosAnruf extends LitElement {
     if (!e) return nothing;
     return html`
       <div class="anruf anruf-ergebnis-box" role="status" aria-live="polite">
-        <div class="anruf-ergebnis ${e.ok ? 'ok' : 'no'}">${e.ok ? html`✓ ${e.text}` : e.glocke ? e.text : html`Nicht gesendet: ${e.text}`}</div>
+        <div class="anruf-ergebnis ${e.ok ? 'ok' : 'no'}">${e.ok ? html`✓ ${e.text}` : e.glocke || e.leitung ? e.text : html`Nicht gesendet: ${e.text}`}</div>
         ${e.glocke ? html`<div class="anruf-sub">Meldung bleibt in der Glocke</div>` : nothing}
         ${e.ok && a.wartend > 0 ? html`<div class="anruf-sub">nächster Anruf in Kürze · ${this.renderWartenText(a.wartend)}</div>` : nothing}
       </div>
