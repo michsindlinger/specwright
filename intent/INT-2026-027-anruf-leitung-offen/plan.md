@@ -285,7 +285,7 @@ Entfällt.
 - [x] Jede AK aus Abschnitt 8 hat einen grünen Test.
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
 - [x] E2E-Pfad läuft (Abschnitt 8), Protokoll mit Screenshot (`e2e.md`, `design/ist/`).
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün. (lokal `verify: OK`; PR-Check steht aus)
+- [x] `verify` grün, Ausgabe im PR — und PR-Checks grün (PR #97, Check `verify` pass).
 - [x] `docs/architecture.md` und `docs/design.md` nachgezogen (§4 #13, #14).
 - [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
 - [x] Abweichungen in Abschnitt 14.
