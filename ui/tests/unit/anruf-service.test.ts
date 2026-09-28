@@ -20,6 +20,7 @@ import {
   ANRUF_ANWEISUNG_AN,
   ANRUF_ANWEISUNG_AUS,
   ANRUF_CLIENT_KULANZ_MS,
+  ANRUF_LEITUNG_OFFEN_MS,
   type AnrufServerMessage,
   type AnrufStateMessage,
   type AnrufVerfuegbarkeit,
@@ -492,7 +493,7 @@ describe('FA-12 Anrufen aus der Glocke', () => {
 });
 
 describe('FA-25 Senden und Auflegen', () => {
-  it('Senden ok → „Gesendet" an den Besitzer, Anruf endet, nächste klingelt', async () => {
+  it('Senden ok → „Gesendet" an den Besitzer, Leitung offen, nächste klingelt erst nach dem Auflegen (INT-2026-027)', async () => {
     const service = baue();
     const inbox = client(service, 'c1');
     await service.setModus('c1', true);
@@ -506,6 +507,8 @@ describe('FA-25 Senden und Auflegen', () => {
     expect(sender.auftraege[0]).toMatchObject({ sessionId: S1, art: 'rueckfrage', antwort: { art: 'rueckfrage' } });
     expect(sender.auftraege[0].fragen?.[0].frage).toBe('Welche Farbe?');
     expect(inbox).toContainEqual({ type: 'anruf:ergebnis', meldungId: id, ok: true });
+    expect(letzterState(inbox)).toMatchObject({ zustand: 'offen', eigener: true, wartend: 1 });
+    expect(service.auflegen('c1', id)).toBeUndefined();
     expect(letzterState(inbox).meldung?.sessionId).toBe(S2);
   });
 
@@ -674,5 +677,194 @@ describe('FA-27 keine Inhalte auf Platte oder im Log', () => {
     expect(writes.length).toBeGreaterThan(0);
     expect(writes.join('\n')).not.toContain(GEHEIM);
     expect(logs.join('\n')).not.toContain(GEHEIM);
+  });
+});
+
+describe('INT-2026-027 Leitung bleibt nach dem Senden offen', () => {
+  /** Rückfrage von S1 annehmen und erfolgreich beantworten → Leitung offen. */
+  async function offeneLeitung(service: AnrufService, inbox: AnrufServerMessage[], besitzer = 'c1'): Promise<string> {
+    rueckfrageHook(service, S1);
+    const id = letzterState(inbox).meldung!.id;
+    service.annehmen(besitzer, id);
+    service.senden(besitzer, id, { art: 'rueckfrage', antworten: [{ nummern: [1] }] });
+    await flush();
+    return id;
+  }
+
+  function statesAb(inbox: AnrufServerMessage[], ab: number): AnrufStateMessage[] {
+    return inbox.slice(ab).filter((m): m is AnrufStateMessage => m.type === 'anruf:state');
+  }
+
+  it('AK-01: nach „Gesendet" Zustand offen, Leitung nur für den Besitzer, Frist 120 s', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    const id = await offeneLeitung(service, inbox);
+    const st = letzterState(inbox);
+    expect(st).toMatchObject({ zustand: 'offen', eigener: true });
+    expect(st.meldung).toBeUndefined();
+    expect(st.leitung).toEqual({
+      leitungId: id,
+      sessionId: S1,
+      sitzungName: 'cloud-1-1-wt',
+      projektName: 'specwright',
+      bis: new Date(Date.now() + ANRUF_LEITUNG_OFFEN_MS).toISOString(),
+    });
+  });
+
+  it('AK-02: Audio in der offenen Leitung wird abgelehnt', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    const id = await offeneLeitung(service, inbox);
+    const err = await service.erkennen('c1', id, new Int16Array(1600));
+    expect(err?.code).toBe('INVALID_MESSAGE');
+  });
+
+  it('AK-06, AK-10: 119 s offen, 120 s → ruhe mit Ansage; Arbeit der Sitzung dazwischen ändert nichts', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    await offeneLeitung(service, inbox);
+    quelle.event(S1, 'prompt-submit', { status: 'working' });
+    vi.advanceTimersByTime(ANRUF_LEITUNG_OFFEN_MS - 1000);
+    expect(service.zustandName()).toBe('offen');
+    vi.advanceTimersByTime(1000);
+    expect(service.zustandName()).toBe('ruhe');
+    expect(letzterState(inbox)).toMatchObject({ zustand: 'ruhe', endeGrund: 'Leitung geschlossen.' });
+  });
+
+  it('AK-03: dieselbe Sitzung meldet sich → laeuft ohne Klingeln, Inhalt für den Besitzer', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    await offeneLeitung(service, inbox);
+    const ab = inbox.length;
+    stopHook(service, S1);
+    const states = statesAb(inbox, ab);
+    expect(states.some((m) => m.zustand === 'klingelt')).toBe(false);
+    expect(letzterState(inbox)).toMatchObject({ zustand: 'laeuft', eigener: true, meldung: { sessionId: S1, art: 'fertig' } });
+    expect(letzterState(inbox).meldung?.text).toBeDefined();
+    // Frist ist mit dem Zustandswechsel weg.
+    vi.advanceTimersByTime(ANRUF_LEITUNG_OFFEN_MS * 2);
+    expect(service.zustandName()).toBe('laeuft');
+  });
+
+  it('AK-04: Meldung derselben Sitzung während des Sendens → nach „Gesendet" direkt laeuft, Schlange leer', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    rueckfrageHook(service, S1);
+    const id = letzterState(inbox).meldung!.id;
+    service.annehmen('c1', id);
+    service.senden('c1', id, { art: 'rueckfrage', antworten: [{ nummern: [1] }] });
+    expect(service.zustandName()).toBe('sendet');
+    stopHook(service, S1);
+    expect(service.wartend()).toBe(1);
+    const ab = inbox.length;
+    await flush();
+    expect(statesAb(inbox, ab).some((m) => m.zustand === 'klingelt' || m.zustand === 'offen')).toBe(false);
+    expect(letzterState(inbox)).toMatchObject({ zustand: 'laeuft', eigener: true, wartend: 0, meldung: { sessionId: S1, art: 'fertig' } });
+  });
+
+  it('AK-05, AK-07: andere Sitzung klingelt nicht, steht in der Schlange; nach Auflegen klingelt sie', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    const id = await offeneLeitung(service, inbox);
+    const ab = inbox.length;
+    stopHook(service, S2);
+    expect(service.zustandName()).toBe('offen');
+    expect(letzterState(inbox).wartend).toBe(1);
+    expect(statesAb(inbox, ab).some((m) => m.zustand === 'klingelt')).toBe(false);
+    expect(service.auflegen('c1', id)).toBeUndefined();
+    const st = letzterState(inbox);
+    expect(st).toMatchObject({ zustand: 'klingelt', meldung: { sessionId: S2 } });
+    expect(st.endeGrund).toBeUndefined();
+  });
+
+  it('AK-07: nach Ablauf der Frist klingelt die wartende andere Meldung', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    await offeneLeitung(service, inbox);
+    stopHook(service, S2);
+    vi.advanceTimersByTime(ANRUF_LEITUNG_OFFEN_MS);
+    expect(letzterState(inbox)).toMatchObject({ zustand: 'klingelt', meldung: { sessionId: S2 } });
+  });
+
+  it('AK-09: drei Runden, Frist jeweils neu, keine andere Sitzung klingelt dazwischen', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    await offeneLeitung(service, inbox);
+    const ab = inbox.length;
+    stopHook(service, S2);
+    for (let runde = 0; runde < 3; runde++) {
+      vi.advanceTimersByTime(ANRUF_LEITUNG_OFFEN_MS - 10_000);
+      expect(service.zustandName()).toBe('offen');
+      stopHook(service, S1);
+      const st = letzterState(inbox);
+      expect(st).toMatchObject({ zustand: 'laeuft', meldung: { sessionId: S1 } });
+      service.senden('c1', st.meldung!.id, { art: 'text', text: `Runde ${runde}` });
+      await flush();
+      expect(letzterState(inbox)).toMatchObject({ zustand: 'offen', leitung: { leitungId: st.meldung!.id } });
+    }
+    expect(statesAb(inbox, ab).some((m) => m.zustand === 'klingelt')).toBe(false);
+    // Insgesamt weit über 120 s; erst jetzt läuft die Frist der letzten Runde ab.
+    vi.advanceTimersByTime(ANRUF_LEITUNG_OFFEN_MS);
+    expect(letzterState(inbox)).toMatchObject({ zustand: 'klingelt', meldung: { sessionId: S2 } });
+  });
+
+  it('R6: Auflegen nach abgelaufener Frist → MELDUNG_WEG; nach Auflegen feuert die Frist nicht mehr', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    const id = await offeneLeitung(service, inbox);
+    vi.advanceTimersByTime(ANRUF_LEITUNG_OFFEN_MS);
+    expect(service.auflegen('c1', id)?.code).toBe('MELDUNG_WEG');
+
+    quelle.event(S1, 'prompt-submit', { status: 'working' });
+    const id2 = await offeneLeitung(service, inbox);
+    expect(service.auflegen('c1', id2)).toBeUndefined();
+    const ab = inbox.length;
+    vi.advanceTimersByTime(ANRUF_LEITUNG_OFFEN_MS * 2);
+    expect(inbox.length).toBe(ab);
+  });
+
+  it('AK-05: zweites Fenster sieht offen ohne Leitung und ohne Meldung', async () => {
+    const service = baue();
+    const a = client(service, 'c1');
+    const b = client(service, 'c2');
+    await service.setModus('c1', true);
+    await offeneLeitung(service, a);
+    const st = letzterState(b);
+    expect(st).toMatchObject({ zustand: 'offen', eigener: false });
+    expect(st.leitung).toBeUndefined();
+    expect(st.meldung).toBeUndefined();
+  });
+
+  it('AK-08: Besitzer trennt sich in der offenen Leitung → ruhe, wartende andere Meldung klingelt', async () => {
+    const service = baue();
+    const a = client(service, 'c1');
+    client(service, 'c2');
+    await service.setModus('c1', true);
+    await offeneLeitung(service, a, 'c2');
+    stopHook(service, S2);
+    expect(service.zustandName()).toBe('offen');
+    service.clientWeg('c2');
+    expect(letzterState(a)).toMatchObject({ zustand: 'klingelt', meldung: { sessionId: S2 } });
+  });
+
+  it('AK-08: Modus aus in der offenen Leitung → ruhe, Frist feuert nicht mehr', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    await offeneLeitung(service, inbox);
+    await service.setModus('c1', false);
+    expect(service.zustandName()).toBe('ruhe');
+    const ab = inbox.length;
+    vi.advanceTimersByTime(ANRUF_LEITUNG_OFFEN_MS * 2);
+    expect(inbox.length).toBe(ab);
   });
 });

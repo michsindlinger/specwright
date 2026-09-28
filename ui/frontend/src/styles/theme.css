@@ -6567,6 +6567,12 @@ aos-app .anruf-ergebnis.no {
   color: var(--color-accent-warning);
 }
 
+/* INT-2026-027: „Gesendet" im Kasten der offenen Leitung. */
+aos-app .anruf-leitung-ergebnis {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
 @media (max-width: 767px) {
   aos-app .anruf {
     right: 8px;

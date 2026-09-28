@@ -99,10 +99,24 @@ const ANRUF_NOTES: ReadonlyArray<{ freq: number; start: number; duration: number
 ];
 
 export function playAnrufKlingeln(): void {
+  spieleAnrufNoten(ANRUF_NOTES);
+}
+
+/**
+ * INT-2026-027 (AK-11): one short note before reading a message that arrives
+ * in an open line — same timbre and volume as the ring tone, but a single note.
+ */
+const ANRUF_HINWEIS_NOTE: ReadonlyArray<{ freq: number; start: number; duration: number }> = [{ freq: 784.0, start: 0, duration: 0.15 }];
+
+export function playAnrufHinweis(): void {
+  spieleAnrufNoten(ANRUF_HINWEIS_NOTE);
+}
+
+function spieleAnrufNoten(notes: ReadonlyArray<{ freq: number; start: number; duration: number }>): void {
   const audio = audioContext();
   if (!audio || audio.state !== 'running') return;
   const now = audio.currentTime;
-  for (const note of ANRUF_NOTES) {
+  for (const note of notes) {
     const osc = audio.createOscillator();
     const gain = audio.createGain();
     osc.type = 'triangle';

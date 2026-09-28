@@ -12,10 +12,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('../../frontend/src/gateway.js', () => ({
   gateway: { send: vi.fn(), on: vi.fn(), off: vi.fn(), getConnectionStatus: () => false },
 }));
-vi.mock('../../frontend/src/components/terminal/notification-sound.js', () => ({ playAnrufKlingeln: vi.fn() }));
+vi.mock('../../frontend/src/components/terminal/notification-sound.js', () => ({ playAnrufKlingeln: vi.fn(), playAnrufHinweis: vi.fn() }));
 
-import { anrufWelt, meldungFertig, meldungPlan, meldungRueckfrage, ruhe, state, verfuegbarkeitLokal, type AnrufWelt } from './anruf-fakes.js';
-import { schalterSperrgrund, waehleStimme, saetze, anrufAktiv, vorleseFristMs, ANRUF_TEXT } from '../../frontend/src/services/anruf.service.js';
+import { anrufWelt, leitungFertig, meldungFertig, meldungPlan, meldungRueckfrage, ruhe, state, verfuegbarkeitLokal, type AnrufWelt } from './anruf-fakes.js';
+import { schalterSperrgrund, waehleStimme, saetze, anrufAktiv, vorleseFristMs, ANRUF_HINWEIS_VORLAUF_MS, ANRUF_TEXT } from '../../frontend/src/services/anruf.service.js';
 import { base64ZuInt16 } from '../../src/shared/anruf-audio.js';
 import { ANRUF_NICHT_VERFUEGBAR_TEXT } from '../../src/shared/types/anruf.protocol.js';
 
@@ -828,5 +828,103 @@ describe('anruf.service — results and failures (FA-17, FA-18, FA-21, D9, Findi
     w.dienst.auflegen();
     w.gw.emit(state({ zustand: 'laeuft', eigener: true, meldung: meldungFertig }));
     expect(w.dienst.ansicht.text).toBeUndefined();
+  });
+});
+
+describe('anruf.service — open line after „Gesendet" (INT-2026-027)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  /** Call answered and sent; the backend keeps the line open. */
+  async function offeneLeitung(w: AnrufWelt): Promise<void> {
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'weiter. Antwort senden.');
+    w.gw.emit({ type: 'anruf:ergebnis', meldungId: 'm-fertig', ok: true });
+    w.gw.emit(state({ zustand: 'offen', eigener: true, leitung: leitungFertig }));
+  }
+
+  it('AK-01, AK-02: phase leitung with the session, „Gesendet" shown, microphone stays closed', async () => {
+    const w = anrufWelt();
+    await offeneLeitung(w);
+    expect(w.dienst.ansicht).toMatchObject({
+      phase: 'leitung',
+      zustand: 'offen',
+      leitung: { sitzungName: 'build-matching', projektName: 'Specwright' },
+      ergebnis: { ok: true, text: 'Gesendet' },
+    });
+    expect(w.sprache.texte.at(-1)).toBe('Gesendet.');
+    w.sprache.fertig();
+    await ruhe();
+    vi.advanceTimersByTime(60_000);
+    await ruhe();
+    expect(w.mikro.oeffnungen).toBe(1);
+    expect(w.dienst.ansicht.phase).toBe('leitung');
+  });
+
+  it('AK-03, AK-11: same session reports again → one note, then reading, then listening; no ring', async () => {
+    const w = anrufWelt();
+    await offeneLeitung(w);
+    const vorher = w.sprache.texte.length;
+    w.gw.emit(state({ zustand: 'laeuft', eigener: true, meldung: { ...meldungFertig, id: 'm-fertig-2' } }));
+    expect(w.hinweis.n).toBe(1);
+    expect(w.klingeln.n).toBe(0);
+    expect(w.sprache.texte.length).toBe(vorher);
+    expect(w.dienst.ansicht.ergebnis).toBeUndefined();
+    vi.advanceTimersByTime(ANRUF_HINWEIS_VORLAUF_MS);
+    expect(w.hinweis.beiTexten).toEqual([vorher]);
+    expect(w.sprache.texte.slice(vorher)).toEqual(['Ich habe das Matching umgebaut.', 'Jetzt brauche ich deine Freigabe.', 'Gekürzt.']);
+    w.sprache.fertig();
+    await ruhe();
+    expect(w.dienst.ansicht.phase).toBe('zuhoeren');
+    expect(w.mikro.oeffnungen).toBe(2);
+  });
+
+  it('AK-04: new message right after sending (no offen in between) → note and reading as well', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'weiter. Antwort senden.');
+    w.gw.emit(state({ zustand: 'sendet', eigener: true, meldung: meldungFertig }));
+    w.gw.emit({ type: 'anruf:ergebnis', meldungId: 'm-fertig', ok: true });
+    w.gw.emit(state({ zustand: 'laeuft', eigener: true, meldung: { ...meldungFertig, id: 'm-fertig-2' } }));
+    expect(w.hinweis.n).toBe(1);
+    vi.advanceTimersByTime(ANRUF_HINWEIS_VORLAUF_MS);
+    expect(w.sprache.texte.at(-3)).toBe('Ich habe das Matching umgebaut.');
+  });
+
+  it('AK-10: deadline → „Leitung geschlossen." spoken and shown without „Nicht gesendet"', async () => {
+    const w = anrufWelt();
+    await offeneLeitung(w);
+    w.gw.emit(state({ zustand: 'ruhe', endeGrund: 'Leitung geschlossen.' }));
+    expect(w.sprache.texte.at(-1)).toBe('Leitung geschlossen.');
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'ergebnis', ergebnis: { ok: false, text: 'Leitung geschlossen.', leitung: true } });
+    expect(w.hinweis.n).toBe(0);
+  });
+
+  it('AK-10: button „Auflegen" sends the leitungId and says nothing', async () => {
+    const w = anrufWelt();
+    await offeneLeitung(w);
+    const vorher = w.sprache.texte.length;
+    w.dienst.auflegen();
+    expect(w.gw.ofType('anruf:auflegen')).toEqual([{ type: 'anruf:auflegen', meldungId: 'm-fertig' }]);
+    expect(w.dienst.ansicht.phase).not.toBe('leitung');
+    w.gw.emit(state({ zustand: 'ruhe' }));
+    vi.advanceTimersByTime(3000);
+    expect(w.sprache.texte.length).toBe(vorher);
+    expect(w.dienst.ansicht.phase).toBe('ruhe');
+  });
+
+  it('another window holds the open line: phase fremd, nothing spoken, no microphone', async () => {
+    const w = anrufWelt();
+    w.dienst.subscribe(() => {});
+    w.gw.emit(verfuegbarkeitLokal);
+    await ruhe();
+    w.gw.emit(state({ zustand: 'offen', eigener: false }));
+    expect(w.dienst.ansicht.phase).toBe('fremd');
+    expect(w.dienst.ansicht.leitung).toBeUndefined();
+    w.gw.emit(state({ zustand: 'ruhe', endeGrund: 'Leitung geschlossen.' }));
+    expect(w.sprache.texte).toEqual([]);
+    expect(w.mikro.oeffnungen).toBe(0);
   });
 });

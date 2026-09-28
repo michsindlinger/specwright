@@ -12,7 +12,7 @@ import {
   type AnrufMikrofonStrom,
   type AnrufStimme,
 } from '../../frontend/src/services/anruf.service.js';
-import type { AnrufMeldung, AnrufStateMessage } from '../../src/shared/types/anruf.protocol.js';
+import type { AnrufLeitung, AnrufMeldung, AnrufStateMessage } from '../../src/shared/types/anruf.protocol.js';
 
 type Handler = (m: WebSocketMessage) => void;
 
@@ -194,6 +194,8 @@ export interface AnrufWelt {
   mikro: FakeMikrofon;
   mitteilung: FakeMitteilung;
   klingeln: { n: number };
+  /** INT-2026-027: note before reading from the open line; `beiTexten` = spoken utterances at that moment. */
+  hinweis: { n: number; beiTexten: number[] };
   versteckt: { v: boolean };
 }
 
@@ -203,6 +205,7 @@ export function anrufWelt(): AnrufWelt {
   const mikro = new FakeMikrofon();
   const mitteilung = new FakeMitteilung();
   const klingeln = { n: 0 };
+  const hinweis = { n: 0, beiTexten: [] as number[] };
   const versteckt = { v: false };
   const deps: AnrufDeps = {
     gateway: gw,
@@ -213,8 +216,12 @@ export function anrufWelt(): AnrufWelt {
     klingeln: () => {
       klingeln.n++;
     },
+    hinweiston: () => {
+      hinweis.n++;
+      hinweis.beiTexten.push(sprache.texte.length);
+    },
   };
-  return { dienst: new AnrufClientService(deps), gw, sprache, mikro, mitteilung, klingeln, versteckt };
+  return { dienst: new AnrufClientService(deps), gw, sprache, mikro, mitteilung, klingeln, hinweis, versteckt };
 }
 
 export const meldungFertig: AnrufMeldung = {
@@ -273,3 +280,12 @@ export const verfuegbarkeitLokal: WebSocketMessage = { type: 'anruf:verfuegbarke
 export async function ruhe(): Promise<void> {
   for (let i = 0; i < 10; i++) await Promise.resolve();
 }
+
+/** INT-2026-027: open line for {@link meldungFertig} after „Gesendet". */
+export const leitungFertig: AnrufLeitung = {
+  leitungId: 'm-fertig',
+  sessionId: 'cloud-1',
+  sitzungName: 'build-matching',
+  projektName: 'Specwright',
+  bis: '2026-09-28T12:02:00.000Z',
+};

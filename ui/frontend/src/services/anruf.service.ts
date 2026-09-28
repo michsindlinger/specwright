@@ -13,7 +13,7 @@
  */
 
 import { gateway, type WebSocketMessage } from '../gateway.js';
-import { playAnrufKlingeln } from '../components/terminal/notification-sound.js';
+import { playAnrufHinweis, playAnrufKlingeln } from '../components/terminal/notification-sound.js';
 import {
   ANRUF_ANTWORT_MAX_S,
   ANRUF_AUDIO_MAX_S,
@@ -111,6 +111,8 @@ export interface AnrufDeps {
   mitteilung: AnrufMitteilungApi;
   istVersteckt(): boolean;
   klingeln(): void;
+  /** One short note before a message that arrives in the open line (INT-2026-027, AK-11). */
+  hinweiston(): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,7 +128,9 @@ export type AnrufPhase =
   | 'mikrofon_zu'
   | 'nachfrage'
   | 'sendet'
-  | 'ergebnis';
+  | 'ergebnis'
+  /** Line stays open after „Gesendet", microphone off (INT-2026-027). */
+  | 'leitung';
 
 export interface AnrufModusAnsicht {
   /** Mode switched on (backend). */
@@ -149,6 +153,8 @@ export interface AnrufErgebnis {
   text: string;
   /** Hung up without sending, the message stays in the bell (FA-09). */
   glocke?: boolean;
+  /** The open line ended (INT-2026-027): nothing was pending, shown without „Nicht gesendet". */
+  leitung?: boolean;
 }
 
 export interface AnrufAnsicht {
@@ -179,6 +185,8 @@ export interface AnrufAnsicht {
   hinweis?: string;
   freigabeWortlaut?: string;
   ergebnis?: AnrufErgebnis;
+  /** Phase `leitung`: the session the open line waits for. */
+  leitung?: { sitzungName: string; projektName?: string };
 }
 
 export type AnrufListener = (ansicht: AnrufAnsicht) => void;
@@ -194,6 +202,8 @@ export const ANRUF_ERGEBNIS_MS = 3000;
 export const ANRUF_ERKENNUNG_FRIST_MS = 15_000;
 /** Fallback check for the end of reading (D4). */
 export const ANRUF_VORLESE_PRUEF_MS = 500;
+/** Pause between the note and reading a message from the open line (AK-11). */
+export const ANRUF_HINWEIS_VORLAUF_MS = 400;
 /** Hard limit for reading: 3 s + 90 ms per character (D4, R11). */
 export function vorleseFristMs(text: string): number {
   return 3000 + text.length * 90;
@@ -209,6 +219,7 @@ export const ANRUF_TEXT = {
   keineSprechfassungTerminal: 'Keine Sprechfassung — die Antwort steht nur im Terminal.',
   gesendet: 'Gesendet',
   andereFenster: 'Anruf läuft in einem anderen Fenster',
+  leitungAndereFenster: 'Leitung offen in einem anderen Fenster',
   besetzt: 'Erst den laufenden Anruf beenden',
   nichtFreigegeben: 'Nicht freigegeben.',
   jaOderNein: 'Sag ja oder nein.',
@@ -359,6 +370,8 @@ export class AnrufClientService {
   /** Hung up here; ignore `laeuft` for it until the backend confirms the end. */
   private aufgelegtId: string | null = null;
   private beendetIds = new Set<string>();
+  /** Note played, reading follows (AK-11). */
+  private hinweisTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(deps?: AnrufDeps | (() => AnrufDeps)) {
     this.deps = typeof deps === 'object' ? deps : null;
@@ -431,12 +444,21 @@ export class AnrufClientService {
       ...(e?.hinweis ? { hinweis: e.hinweis } : {}),
       ...(s?.freigabeWortlaut ? { freigabeWortlaut: s.freigabeWortlaut } : {}),
       ...(this.ergebnis ? { ergebnis: this.ergebnis } : {}),
+      ...(phase === 'leitung' && s?.leitung
+        ? { leitung: { sitzungName: s.leitung.sitzungName, ...(s.leitung.projektName ? { projektName: s.leitung.projektName } : {}) } }
+        : {}),
     };
   }
 
   private phase(): AnrufPhase {
     const s = this.server;
     if (s?.zustand === 'klingelt' && s.meldung) return 'klingelt';
+    if (s?.zustand === 'offen') {
+      // INT-2026-027: no message in the open line; only the owner gets `leitung`.
+      if (!s.eigener || !s.leitung) return 'fremd';
+      if (s.leitung.leitungId === this.aufgelegtId) return this.ergebnis ? 'ergebnis' : 'ruhe';
+      return 'leitung';
+    }
     if (s && LAEUFT.has(s.zustand) && s.meldung) {
       if (!s.eigener) return 'fremd';
       if (s.meldung.id === this.aufgelegtId) return this.ergebnis ? 'ergebnis' : 'ruhe';
@@ -508,7 +530,11 @@ export class AnrufClientService {
       this.stoppeKlingeln();
     }
 
-    if (!(LAEUFT.has(neu.zustand) && m && m.id === this.aufgelegtId)) this.aufgelegtId = null;
+    const nochAufgelegt =
+      (LAEUFT.has(neu.zustand) && m && m.id === this.aufgelegtId) || (neu.zustand === 'offen' && neu.leitung?.leitungId === this.aufgelegtId);
+    if (!nochAufgelegt) this.aufgelegtId = null;
+    // The previous state was this window's call or open line (INT-2026-027).
+    const ausLeitung = alt?.eigener === true && (alt.zustand === 'offen' || alt.zustand === 'sendet');
     const eigenLaeuft = neu.an && LAEUFT.has(neu.zustand) && neu.eigener && m !== undefined && m.id !== this.aufgelegtId;
     if (eigenLaeuft && m) {
       if (!this.eigen || this.eigen.meldungId !== m.id) {
@@ -524,7 +550,8 @@ export class AnrufClientService {
         };
         this.letzterEigenerId = m.id;
         this.setzeErgebnis(undefined);
-        this.vorlesen();
+        if (ausLeitung) this.hinweisDannVorlesen();
+        else this.vorlesen();
       } else if (neu.zustand === 'freigabe_nachfrage' && alt?.zustand !== 'freigabe_nachfrage') {
         this.eigen.nachfrageVerlassen = false;
         this.eigen.hinweis = undefined;
@@ -541,6 +568,10 @@ export class AnrufClientService {
         void this.sprich(neu.endeGrund);
       }
       if (id) this.beendetIds.add(id);
+    } else if (alt?.zustand === 'offen' && alt.eigener && neu.zustand !== 'offen' && neu.endeGrund) {
+      // Open line ended by the deadline or mode off (AK-10); the button „Auflegen" brings no endeGrund.
+      this.setzeErgebnis({ ok: false, text: neu.endeGrund, leitung: true });
+      void this.sprich(neu.endeGrund);
     }
     this.emit();
   };
@@ -721,11 +752,13 @@ export class AnrufClientService {
   }
 
   auflegen(): void {
-    const id = this.eigen?.meldungId ?? this.meldungId();
+    const s = this.server;
+    const leitungId = s?.zustand === 'offen' && s.eigener ? s.leitung?.leitungId : undefined;
+    const id = this.eigen?.meldungId ?? this.meldungId() ?? leitungId;
     if (id) this.beendetIds.add(id);
     this.beendeEigen();
     this.letzterEigenerId = null;
-    if (id && this.server?.meldung?.id === id && LAEUFT.has(this.server.zustand)) this.aufgelegtId = id;
+    if (id && ((s?.meldung?.id === id && LAEUFT.has(s.zustand)) || id === leitungId)) this.aufgelegtId = id;
     if (id) this.d.gateway.send({ type: 'anruf:auflegen', meldungId: id });
     this.emit();
   }
@@ -877,6 +910,20 @@ export class AnrufClientService {
     this.vorleseAbbruch = null;
     abbruch?.();
     this.d.sprache.cancel();
+  }
+
+  /** A message from the open line: one note, then read it like after accepting (AK-03, AK-11). */
+  private hinweisDannVorlesen(): void {
+    const e = this.eigen;
+    if (!e) return;
+    // Cuts „Gesendet." when the next message comes quickly (R5).
+    this.brichVorlesenAb();
+    e.phase = 'vorlesen';
+    this.d.hinweiston();
+    this.hinweisTimer = setTimeout(() => {
+      this.hinweisTimer = null;
+      if (this.eigen === e && e.phase === 'vorlesen') this.vorlesen();
+    }, ANRUF_HINWEIS_VORLAUF_MS);
   }
 
   /** Reads the message (or the current question); listens afterwards unless there is nothing to answer. */
@@ -1187,6 +1234,8 @@ export class AnrufClientService {
   // -- housekeeping -----------------------------------------------------------
 
   private beendeEigen(): void {
+    if (this.hinweisTimer) clearTimeout(this.hinweisTimer);
+    this.hinweisTimer = null;
     this.stoppeZuhoeren();
     for (const t of this.fristen.values()) clearTimeout(t);
     this.fristen.clear();
@@ -1332,6 +1381,7 @@ function browserDeps(): AnrufDeps {
     },
     istVersteckt: () => typeof document !== 'undefined' && document.hidden,
     klingeln: () => playAnrufKlingeln(),
+    hinweiston: () => playAnrufHinweis(),
   };
 }
 
