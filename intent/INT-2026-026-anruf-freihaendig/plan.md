@@ -3,7 +3,7 @@
 <!-- Ablage: intent/INT-2026-026-anruf-freihaendig/plan.md -->
 
 > **Intent:** `intent.md` (INT-2026-026) · **Spec:** `spec.md` (freigegeben 2026-09-28)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt
 > **Erstellt:** 2026-09-28 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-28 — im Chat „freigabe“; D6–D9 wie vorgeschlagen
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand c56ac0c), `CLAUDE.md`, `docs/security.md`, `docs/design.md`, `docs/adr/0006-anruf-liest-hook-inhalte-fluechtig.md`, `intent/INT-2026-025-agenten-anrufe/plan.md`
 
@@ -357,8 +357,8 @@ Dienst, Kasten, Fakes und Tests greifen über die Ansicht und die Phasen ineinan
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| Mock ansehen: `intent/INT-2026-026-anruf-freihaendig/design/anruf-freihaendig-mock.png` (entsteht nach dem Plan Mode zusammen mit `plan.md`, Weg: Playwright-Screenshot des HTML-Mocks wie INT-2026-025) | Michael | vor Plan-Freigabe | [ ] |
-| Messung EK-01–EK-04 mit eigener Stimme am Mac, Branch-Backend `http://localhost:3111` (Start: `cd ui && PORT=3111 npm run start:backend` im Worktree, Weg wie INT-2026-025 E2E): 20 Antworten mit Schlusswort, 20 Sätze mit „senden"/„Antwort senden" in der Mitte (+ Kontrollfall am Ende), 10 Antworten mit Pausen 3–5 s, 10 Zeiten Schlusswort→Eingabe; zusätzlich einmal mit Tab im Hintergrund (AN-02) und einmal mit Lüfter/leiser Musik (AN-03). Satzliste und Auswertung liefert die Build-Sitzung in `e2e-protokoll.md` | Michael + Build-Sitzung | vor Merge | [ ] |
+| Mock ansehen: `intent/INT-2026-026-anruf-freihaendig/design/anruf-freihaendig-mock.png` (entsteht nach dem Plan Mode zusammen mit `plan.md`, Weg: Playwright-Screenshot des HTML-Mocks wie INT-2026-025) | Michael | vor Plan-Freigabe | [x] mit der Plan-Freigabe 2026-09-28 |
+| Messung EK-01–EK-04 mit eigener Stimme am Mac, Branch-Backend `http://localhost:3111` (Start: `cd ui && PORT=3111 npm run start:backend` im Worktree, Weg wie INT-2026-025 E2E): 20 Antworten mit Schlusswort, 20 Sätze mit „senden"/„Antwort senden" in der Mitte (+ Kontrollfall am Ende), 10 Antworten mit Pausen 3–5 s, 10 Zeiten Schlusswort→Eingabe; zusätzlich einmal mit Tab im Hintergrund (AN-02) und einmal mit Lüfter/leiser Musik (AN-03). Satzliste und Auswertung liefert die Build-Sitzung in `e2e-protokoll.md` | Michael + Build-Sitzung | vor Merge | [ ] Satzliste und Tabelle stehen in `e2e-protokoll.md`, Messung offen |
 | Verfehlte Kennzahl → Entscheidung nach ER-03 (Schwellen anpassen innerhalb ER-01 oder Rückfrage) | Michael | vor Merge | [ ] |
 | Merge der PR (löst Auto-Deploy der UI aus; ER-07) | Michael | nach CI grün | [ ] |
 
@@ -414,14 +414,14 @@ Dienst, Kasten, Fakes und Tests greifen über die Ansicht und die Phasen ineinan
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Messprotokoll EK-01–EK-04.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [ ] E2E-Pfad läuft (Abschnitt 8), Messprotokoll EK-01–EK-04. — E2E mit Mac-Stimme grün (`e2e-protokoll.md`), Messung mit Michaels Stimme offen
 - [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md`, `security.md`, `design.md`, `product-brief.md`, ADR-0006 nachgezogen (Abschnitt 4 #16–#20).
+- [x] `docs/architecture.md`, `security.md`, `design.md`, `product-brief.md`, ADR-0006 nachgezogen (Abschnitt 4 #16–#20).
 - [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
+- [x] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
 - [ ] Abschlussbericht nach R3, endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-026-anruf-freihaendig/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
@@ -430,4 +430,12 @@ Dienst, Kasten, Fakes und Tests greifen über die Ansicht und die Phasen ineinan
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-09-28 | Stille-Prüfung: Während ein Stück offen ist (`sprichtGerade`), legt der Anruf erst nach 20 s + 30 s ohne erkannte Worte auf, sonst nach 20 s | D3 schloss Auflegen bei `sprichtGerade` ganz aus; bei Dauerlärm hätte der Anruf dann nie aufgelegt — R4 verspricht „bis zu 50 s" | §3 D3, §9 R4 |
+| 2026-09-28 | Diktat: `gehalten` und `gesperrt` sind ein Flag; zusätzlich `neu` (Gesprochenes seit dem Öffnen), `markiere()` je Öffnen, `verwirfNeu()` für Einzelwörter | Einzelwort-Befehle gelten nur für das seit dem Öffnen Gesprochene (FA-13), auch wenn das Diktat über „Nochmal" erhalten bleibt (D7) | §3 D3, §4 #3a |
+| 2026-09-28 | Sprechpausen: Vorlauf = 300 ms **plus** die 3 Startrahmen; Nachlauf 300 ms nach dem letzten lauten Rahmen; Mindestdauer 0,4 s gilt fürs ganze Stück, der Pegel nur für den Sprachteil; beim Kaltstart wird erst nach 300 ms Lernen entschieden | Test: sonst fehlten Silben am Anfang, und „ja" (≈ 0,3 s) wäre verworfen worden; konstantes Rauschen hätte beim Kaltstart als Sprache gezählt | §3 D2 (ER-01) |
+| 2026-09-28 | `anruf:error` beim Zuhören (Audio-Deckel): Mikrofon zu, Grund angezeigt; der Text wird **nicht** gehalten, spätere Ergebnisse werden angehängt und nach „Zuhören" normal ausgewertet | einfacher als „eintragen, aber nicht auswerten"; gesendet wird trotzdem nur mit Schlusswort oder Knopf | §3 D3 (Finding 13) |
+| 2026-09-28 | Bugfix-Anteil D10 ohne `.claude/fix-mode` und ohne Rot-zuerst-Lauf | Die alte API (`sprechenStart`/`sprechenEnde`) entfiel im selben Schritt; die alten Fakes zählten `cancel()` nur und hätten den Abbruch nicht gezeigt. Die neuen Fakes lösen bei `cancel()` das Ende-Signal aus; Tests prüfen, dass „Keine Antwort, aufgelegt", „Gesendet." und „Mikrofon nicht …" nach dem Abbruch gesprochen werden. D10 gilt auch für „Gesendet." (stand ebenfalls vor `beendeEigen`) | §8 Bugfix-Anteil |
+| 2026-09-28 | Mikrofonfehler: nur `verweigert` ändert den Fähigkeitswert (nachgemeldet nach dem Anruf); eine endende Spur (`fehlt`) meldet nichts nach — `pruefeFaehig` klärt das beim nächsten Anlass | vorübergehender Fehler darf den Modus nicht sperren (§2 Tabelle, Zeile „Fähigkeit") | §3 D9 |
+| 2026-09-28 | Kasten: „Im Terminal öffnen" auch beim Vorlesen, „Nochmal" fehlt bei „Mikrofon zu"; Ergebnis „Keine Antwort, aufgelegt" ohne „Nicht gesendet:" mit Zeile „Meldung bleibt in der Glocke" (neues Feld `ergebnis.glocke`) | Mock a, h, i | §4 #5 |
+| 2026-09-28 | E2E auf Port 3112 statt 3111; Mikrofon per ersetztem `getUserMedia` (Clip über `AudioContext`) statt `--use-file-for-fake-audio-capture` | 3111 belegt ein fremdes Test-Backend (Worktree INT-2026-025); der Clip muss beim Öffnen starten, das geht mit der Datei-Flagge nicht | §8 E2E |
+| 2026-09-28 | Screenshot „d · Rückfrage, hört zu" zeigt schon „Wird gesendet …" | Aufnahme kam nach dem Schlusswort; Zustand ist durch Unit-Test abgedeckt | §8 UI |
