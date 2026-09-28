@@ -417,7 +417,7 @@ Dienst, Kasten, Fakes und Tests greifen über die Ansicht und die Phasen ineinan
 - [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
 - [ ] E2E-Pfad läuft (Abschnitt 8), Messprotokoll EK-01–EK-04. — E2E mit Mac-Stimme grün (`e2e-protokoll.md`), Messung mit Michaels Stimme offen
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
+- [x] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit). — PR #96, CI `verify` pass
 - [x] `docs/architecture.md`, `security.md`, `design.md`, `product-brief.md`, ADR-0006 nachgezogen (Abschnitt 4 #16–#20).
 - [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
