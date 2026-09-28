@@ -36,11 +36,22 @@ const BOX = /[─-▟■-◿]/g;
 const DATEI_ENDUNG = /\w\.[a-z]{1,5}\b/;
 const ABKUERZUNG = /^(?:[a-zäöü]\.){2,}$/i;
 
-/** Ein Wort, das eine Pfad- oder Dateiangabe ist (Satzzeichen am Ende bleiben). */
+/** Platzhalter für einen Dateinamen im Vorlesetext (Entscheidung Michael, 27.09.). */
+const EINE_DATEI = 'eine Datei';
+// Nur bekannte Endungen werden „eine Datei" (`anruf.state` ist kein Dateiname); der Rest fällt weg wie bisher.
+const BEKANNTE_ENDUNG =
+  /\w\.(?:ts|tsx|js|mjs|cjs|jsx|json|md|txt|sh|py|css|scss|html|yml|yaml|toml|lock|env|sql|go|rs|java|kt|swift|rb|php|vue|svelte|png|jpe?g|svg|gif|pdf|csv|tsv|xml|log|ini|conf|docx|pptx|xlsx)$/;
+const NUR_DATEINAME = /^[\w./\\-]+$/;
+
+/**
+ * Ein Wort, das eine Pfad- oder Dateiangabe ist (Satzzeichen am Ende bleiben):
+ * Dateiname mit bekannter Endung → „eine Datei", sonstige Pfade → weg.
+ */
 function ohnePfad(token: string): string {
   const ende = /[.,;:!?)»"”]+$/.exec(token)?.[0] ?? '';
   const kern = token.slice(0, token.length - ende.length);
   if (kern.length === 0 || ABKUERZUNG.test(token)) return token;
+  if (BEKANNTE_ENDUNG.test(kern)) return EINE_DATEI + ende;
   if (kern.includes('/') || kern.includes('\\') || DATEI_ENDUNG.test(kern)) {
     // Satzende erhalten, Komma & Co. fallen mit dem Wort weg.
     return /[.!?]/.test(ende) ? ende.replace(/[^.!?]/g, '').slice(-1) : '';
@@ -48,16 +59,25 @@ function ohnePfad(token: string): string {
   return token;
 }
 
+/** Glättet die Sätze um „eine Datei": Doppelungen, Aufzählungen, Dativ nach Präposition. */
+function glaetteDatei(t: string): string {
+  return t
+    .replace(/\bDatei(?:\s+namens)?\s+eine Datei\b/g, 'Datei')
+    .replace(/\beine Datei(?:(?:,|\s+und|\s+oder)\s+eine Datei)+/g, 'mehrere Dateien')
+    .replace(/\b(in|aus|von|mit|bei|nach|zu)\s+eine Datei\b/gi, '$1 einer Datei')
+    .replace(/\b(in|aus|von|mit|bei|nach|zu)\s+mehrere Dateien\b/gi, '$1 mehreren Dateien');
+}
+
 /**
  * Für das Vorlesen bereinigen (FA-15): Codeblöcke, Inline-Code, URLs,
- * Tabellenzeilen, Pfade/Dateinamen, Emojis und Box-Zeichen weg;
+ * Tabellenzeilen, Ordnerpfade, Emojis und Box-Zeichen weg; Dateinamen → „eine Datei“;
  * Markdown-Links → Linktext; Überschriften-/Listen-/Zitatzeichen weg;
  * Whitespace auf ein Leerzeichen.
  */
 export function bereinige(text: string): string {
   let t = text.replace(/\r\n?/g, '\n');
   t = t.replace(/(^|\n)\s*(```|~~~)[^\n]*\n[\s\S]*?(?:(?<=\n)[ \t]*\2[^\n]*|$)/g, '$1');
-  t = t.replace(/`[^`\n]*`/g, '');
+  t = t.replace(/`([^`\n]*)`/g, (_m, inhalt: string) => (NUR_DATEINAME.test(inhalt) && BEKANNTE_ENDUNG.test(inhalt) ? EINE_DATEI : ''));
   t = t.replace(/!?\[([^\]\n]*)\]\([^)\n]*\)/g, '$1');
   t = t.replace(/<(?:https?:\/\/|mailto:)[^>\s]*>/gi, '');
   t = t.replace(/\b(?:https?:\/\/|www\.)\S+/gi, '');
@@ -82,6 +102,7 @@ export function bereinige(text: string): string {
     .map(ohnePfad)
     .filter((w) => w.length > 0)
     .join(' ');
+  t = glaetteDatei(t);
   t = t.replace(/\s+([.,;:!?])/g, '$1').replace(/([,;:])(?=[.!?])/g, '').replace(/\(\s*\)/g, '');
   t = t.replace(/^[.,;:!?\s]+/, '');
   return t.replace(/\s+/g, ' ').trim();

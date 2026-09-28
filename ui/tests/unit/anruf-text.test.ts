@@ -59,7 +59,7 @@ describe('bereinige (FA-15)', () => {
     const b = bereinige(text);
     expect(b).not.toMatch(/```|const a|foo\(\)|src\/|app\.ts|\||https?:|example|package\.json|🎉|##/);
     expect(b).toContain('die Doku');
-    expect(b).toBe('Ergebnis. Ich habe in geändert, siehe die Doku. Tests laufen unter grün Datei angepasst.');
+    expect(b).toBe('Ergebnis. Ich habe in einer Datei geändert, siehe die Doku. Tests laufen unter grün Datei angepasst.');
   });
 
   it('entfernt Listenzeichen, Fett und Box-Zeichen, normalisiert Whitespace', () => {
@@ -70,8 +70,22 @@ describe('bereinige (FA-15)', () => {
     expect(bereinige('Das ist z.B. Version 4.0.0 fertig.')).toBe('Das ist z.B. Version 4.0.0 fertig.');
   });
 
-  it('erhält das Satzende eines entfernten Pfads', () => {
-    expect(bereinige('Geändert in ui/src/a.ts. Weiter.')).toBe('Geändert in. Weiter.');
+  it('erhält das Satzende eines ersetzten oder entfernten Pfads', () => {
+    expect(bereinige('Geändert in ui/src/a.ts. Weiter.')).toBe('Geändert in einer Datei. Weiter.');
+    expect(bereinige('Liegt unter intent/INT-2026-025/. Weiter.')).toBe('Liegt unter. Weiter.');
+  });
+
+  it('Dateinamen werden „eine Datei" (O2, 27.09.), ohne Doppelung', () => {
+    expect(bereinige('Ich lege gleich eine Datei namens hallo.txt an.')).toBe('Ich lege gleich eine Datei an.');
+    expect(bereinige('Ich habe `hallo.txt` angelegt.')).toBe('Ich habe eine Datei angelegt.');
+    expect(bereinige('Die Datei `README.md` ist aktuell.')).toBe('Die Datei ist aktuell.');
+    expect(bereinige('Geändert: a.ts, b.ts und c.json.')).toBe('Geändert: mehrere Dateien.');
+    expect(bereinige('Fehler in a.ts und b.ts behoben.')).toBe('Fehler in mehreren Dateien behoben.');
+  });
+
+  it('kein Dateiname ohne bekannte Endung: `anruf.state` und Ordner fallen weg', () => {
+    expect(bereinige('Nachricht `anruf.state` geht raus.')).toBe('Nachricht geht raus.');
+    expect(bereinige('Nachricht anruf.state geht raus.')).toBe('Nachricht geht raus.');
   });
 });
 
@@ -98,7 +112,7 @@ describe('kuerze (FA-15)', () => {
 
 describe('ersteZweiSaetze (FA-17)', () => {
   it('zwei Sätze, bereinigt', () => {
-    expect(ersteZweiSaetze('Erster Satz in `x.ts`. Zweiter Satz! Dritter Satz.')).toBe('Erster Satz in. Zweiter Satz!');
+    expect(ersteZweiSaetze('Erster Satz in `x.ts`. Zweiter Satz! Dritter Satz.')).toBe('Erster Satz in einer Datei. Zweiter Satz!');
   });
   it('weniger als zwei Sätze → alles', () => {
     expect(ersteZweiSaetze('Nur einer')).toBe('Nur einer');

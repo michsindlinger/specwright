@@ -64,5 +64,5 @@ Screenshots je Zustand: `design/ist/01…13-*.png` neben `design/anruf-mock.png`
 - **Plan-Freigabe bei schmalem Terminal** (55 Spalten): Option 1 bricht um („… (no further" / „prompts) for this session"); der Sender las nur die erste Zeile und brach mit „unbekannter Wortlaut" ab. Behoben mit `planOptionVoll()` in `ui/src/server/utils/plan-dialog-state.ts`, Fixture `plan-dialog-schmal.txt`, Tests; `parsePlanDialog` unverändert.
 - **Frage-Block mit Leerzeilen**: `white-space: pre-line` zeigte die Umbrüche des Templates; Klasse `anruf-frage` mit `white-space: normal`.
 - **Nachfrage-Text** um die Folge von BYPASS PERMISSIONS ergänzt (wie im Mock).
-- **Bereinigung entfernt Dateinamen auch mitten im Satz** („Ich lege gleich eine Datei namens an …") — so verlangt FA-15; klingt holprig.
+- **Bereinigung entfernt Dateinamen auch mitten im Satz** („Ich lege gleich eine Datei namens an …") — so verlangt FA-15; klingt holprig. Nach Entscheidung geändert: Dateinamen werden „eine Datei" („Ich lege gleich eine Datei an …"), siehe plan.md §14.
 - **Harness-Lehre**: Den vom Backend verwalteten tmux-Server nicht von außen beenden — danach wertet Claude Code Enter als Zeilenumbruch; Backend neu starten.
