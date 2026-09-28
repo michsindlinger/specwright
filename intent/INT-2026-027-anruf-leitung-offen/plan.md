@@ -1,7 +1,7 @@
 # Plan: UI: Anruf — Leitung bleibt nach dem Senden offen
 
 > **Intent:** `intent.md` (INT-2026-027) · **Spec:** entfällt (bypass: Größe S)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt
 > **Erstellt:** 2026-09-28 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-28 — „Freigabe: plan.md (Stand 2026-09-28 17:27)"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 5ab5bc9), `CLAUDE.md`, `docs/security.md`
 
@@ -239,7 +239,7 @@ Entfällt.
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| E2E-Lauf am Mac mit Mikrofon und Stimme (§8), Protokoll prüfen | Agent in der Bausitzung, Michael liest das Protokoll | vor Merge | [ ] |
+| E2E-Lauf am Mac mit Mikrofon und Stimme (§8), Protokoll prüfen | Agent in der Bausitzung, Michael liest das Protokoll | vor Merge | [ ] Lauf mit Mac-Stimme erledigt 2026-09-28 (`e2e.md`); Protokoll lesen und Messung mit eigener Stimme offen |
 | Merge der PR (löst Auto-Deploy der UI aus, `CLAUDE.md` „Nie") | Michael | nach grünem CI | [ ] |
 | Lokales UI-Backend (Port 3001, main-Checkout) nach dem Merge neu starten, damit der Anruf den neuen Zustand kennt: laufenden Prozess per PID beenden, dann `cd ui && npm run start:backend` (`ui/package.json:8`, läuft ohne Neuladen) | Michael | nach Merge | [ ] |
 
@@ -282,14 +282,14 @@ Entfällt.
 
 <!-- leser: agent -->
 
-- [ ] Jede AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Protokoll mit Screenshot.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün.
-- [ ] `docs/architecture.md` und `docs/design.md` nachgezogen (§4 #13, #14).
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen in Abschnitt 14.
-- [ ] 2x-Regel-Check.
+- [x] Jede AK aus Abschnitt 8 hat einen grünen Test.
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8), Protokoll mit Screenshot (`e2e.md`, `design/ist/`).
+- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün. (lokal `verify: OK`; PR-Check steht aus)
+- [x] `docs/architecture.md` und `docs/design.md` nachgezogen (§4 #13, #14).
+- [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
+- [x] Abweichungen in Abschnitt 14.
+- [x] 2x-Regel-Check: keine Wiederholung eines bekannten Fehlers (node-pty-`chmod` und Trust-Dialog nach `CLAUDE.md` erledigt); kein `CLAUDE.md`-Vorschlag.
 - [ ] Abschlussbericht nach R3, endet mit „Für das Board".
 
 ### 14. Abweichungen bei der Umsetzung
@@ -303,4 +303,5 @@ Entfällt.
 | 2026-09-28 | `AnrufErgebnis.leitung` neu; der Kasten zeigt das Ende aus `offen` ohne Präfix „Nicht gesendet:" | Der bestehende Ergebnis-Kasten hätte „Nicht gesendet: Leitung geschlossen." gezeigt, obwohl nichts ausstand | §3 Kasten |
 | 2026-09-28 | Kasten: eigener Zweig `renderLeitung` vor der Meldungsprüfung in `render()`; zusätzlich „noch n warten" in der offenen Leitung | `render()` gab ohne `meldung` nichts aus — `offen` hat keine Meldung, Leitung und zweites Fenster wären unsichtbar geblieben; die Zahl zeigt, dass andere warten (AK-05) | §3 Kasten, §4 #6 |
 | 2026-09-28 | `niemand_da` in `offen` lässt die Leitung stehen (wie in `laeuft`) | Plan nannte das Ereignis für `offen` nicht; Matrix-Test hält das Verhalten fest | §3 Zustand |
+| 2026-09-28 | E2E: Frist-Probe mit Escape an die Sitzung statt einer Aufgabe über 2 Minuten; AK-04 nicht im E2E | Haiku lehnte `sleep` ab und meldete sich nach 8 s zurück; ein Abbruch per Escape erzeugt keinen Stop-Hook, also keine Meldung — für die Leitung derselbe Fall. AK-04 ist im E2E nicht erzwingbar (Bestätigung nach 0,4 s), abgedeckt durch Service- und Frontend-Test | §8 E2E-Pfad, `e2e.md` |
 | 2026-09-28 | `theme.css`: eine Regel `aos-app .anruf-leitung-ergebnis` (Abstand, Schriftgröße); `notification-sound.ts`: Notenschleife als gemeinsame Hilfe für Klingelton und Hinweiston | §4 #7 „falls nötig" trat ein; keine doppelte Oszillator-Schleife | §4 #4, #7 |
