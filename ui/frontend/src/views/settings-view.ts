@@ -6,6 +6,7 @@ import { themeService, type ThemeMode } from '../services/theme.service.js';
 import { projectContext, type ProjectContextValue } from '../context/project-context.js';
 import '../components/setup/aos-setup-wizard.js';
 import '../components/settings/aos-review-prompt-editor.js';
+import '../components/anruf/aos-anruf-schalter.js';
 import { isClaudeCli } from '../../../src/shared/provider-cli.js';
 
 interface Model {
@@ -740,8 +741,11 @@ export class AosSettingsView extends LitElement {
   }
 
   private renderGeneralSection() {
+    // INT-2026-025 (FA-01): the call-mode switch sits on top, independent of the project config.
+    const anrufSchalter = html`<aos-anruf-schalter></aos-anruf-schalter>`;
     if (!this.generalConfig) {
       return html`
+        ${anrufSchalter}
         <div class="loading-state">
           <div class="loading-spinner"></div>
           <p>Loading general settings...</p>
@@ -751,6 +755,7 @@ export class AosSettingsView extends LitElement {
 
     return html`
       <div class="general-section">
+        ${anrufSchalter}
         <div class="section-header">
           <div>
             <h3>General</h3>

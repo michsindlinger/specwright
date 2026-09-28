@@ -14,6 +14,7 @@
 import { paneShowingProject } from './pane-zoom.js';
 import { STEP_LABELS, ZUSTAND_LABELS } from '../vorhaben/vorhaben-sort.js';
 import type { CloudTerminalAgentStatus } from '../../../../src/shared/types/cloud-terminal.protocol.js';
+import type { BlockKind } from '../../../../src/shared/types/hook-events.protocol.js';
 import type { VorhabenStep, VorhabenZustand } from '../../../../src/shared/types/vorhaben.protocol.js';
 
 /** What {@link ringsForAgentEvent} needs to know about one agent-event message. */
@@ -150,6 +151,8 @@ export interface BellRow {
   label?: string;
   /** Project of the Vorhaben row (its id is the path); falls back to the session's project in the bell. */
   projectPath?: string;
+  /** INT-2026-025 (FA-05, FA-12): blocked only — kind of dialog; the bell offers „Anrufen" for rueckfrage/plan. */
+  blockKind?: BlockKind;
 }
 
 /** The session fields {@link buildBellRows} reads. */
@@ -163,6 +166,8 @@ export interface BellSession {
   agentDoneAt?: number;
   /** Excerpt of the last assistant message that came with the Stop, when this browser saw it. */
   agentDonePreview?: string;
+  /** INT-2026-025: blocked only — kind of dialog (backend `blockKind`). */
+  blockKind?: BlockKind;
 }
 
 /** The Vorhaben row fields {@link buildBellRows} reads for labels (a subset of VorhabenRow). */
@@ -224,6 +229,7 @@ export function buildBellRows(
       kind: isBlocked ? 'blocked' : 'done',
       at: isBlocked ? (s.agentStatusAt ?? 0) : (s.agentDoneAt ?? 0),
       ...(preview ? { preview } : {}),
+      ...(isBlocked && s.blockKind ? { blockKind: s.blockKind } : {}),
       ...(row ? { title: `${row.intentId} · ${row.titel}`, label: bellLabelOf(row), projectPath: row.projectId } : {}),
     };
     (isBlocked ? blocked : done).push(entry);

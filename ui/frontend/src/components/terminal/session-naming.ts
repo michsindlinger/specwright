@@ -10,6 +10,7 @@
 
 import type { TerminalSession } from './aos-cloud-terminal-sidebar.js';
 import type { CloudTerminalAgentStatus } from '../../../../src/shared/types/cloud-terminal.protocol.js';
+import type { BlockKind } from '../../../../src/shared/types/hook-events.protocol.js';
 
 export interface BackendSessionLike {
   sessionId: string;
@@ -22,6 +23,7 @@ export interface BackendSessionLike {
   agentStatusAt?: string | Date;
   agentStatusReason?: string;
   agentDoneAt?: string | Date;
+  blockKind?: BlockKind;
 }
 
 export interface WorkflowMetadataLike {
@@ -113,6 +115,7 @@ export function toRestoredTab(b: BackendSessionLike, workflow?: WorkflowMetadata
           agentStatusAt: at || undefined,
           agentStatusReason: b.agentStatusReason,
           ...(toMs(b.agentDoneAt) ? { agentDoneAt: toMs(b.agentDoneAt) } : {}),
+          ...(b.agentStatus === 'blocked' && b.blockKind ? { blockKind: b.blockKind } : {}),
         }
       : {}),
   };

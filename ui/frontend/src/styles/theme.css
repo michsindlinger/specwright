@@ -6303,3 +6303,332 @@ aos-projekt-seite .abschnitt-git aos-git-status-bar {
   margin-bottom: var(--spacing-lg);
 }
 
+
+/* ── Anrufmodus (INT-2026-025, Mock design/anruf-mock.html) ─────────
+ * aos-anruf, aos-anruf-schalter and aos-glocke are Light DOM under aos-app. */
+aos-app aos-anruf {
+  display: contents;
+}
+
+aos-app .anruf {
+  position: fixed;
+  top: calc(var(--header-height) + 8px);
+  right: 16px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - var(--header-height) - 24px);
+  overflow-y: auto;
+  z-index: 1200;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+aos-app .anruf:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+aos-app .anruf-kopf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+aos-app .anruf-art {
+  display: inline-block;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+aos-app .anruf-art.r {
+  background: rgba(var(--color-accent-warning-rgb), 0.18);
+  color: var(--color-accent-warning);
+}
+
+aos-app .anruf-art.p {
+  background: rgba(var(--color-accent-primary-rgb), 0.15);
+  color: var(--color-accent-primary);
+}
+
+aos-app .anruf-art.f {
+  background: rgba(var(--color-accent-success-rgb), 0.15);
+  color: var(--color-accent-success);
+}
+
+aos-app .anruf-sub {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+aos-app .anruf-titel {
+  font-weight: 600;
+  margin: 6px 0 2px;
+  overflow-wrap: anywhere;
+}
+
+aos-app .anruf-warten {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+aos-app .anruf-text {
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin: 10px 0;
+  font-size: 13px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* Frage-Block ist aus Elementen gebaut: pre-line würde die Template-Umbrüche als Leerzeilen zeigen. */
+aos-app .anruf-text.anruf-frage {
+  white-space: normal;
+}
+
+aos-app .anruf-opt {
+  margin: 3px 0;
+}
+
+aos-app .anruf-opt b {
+  color: var(--color-accent-primary);
+  display: inline-block;
+  width: 18px;
+}
+
+aos-app .anruf-eigene {
+  color: var(--color-text-secondary);
+}
+
+aos-app .anruf-gekuerzt {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+aos-app .anruf-als {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  margin: -4px 0 10px;
+}
+
+aos-app .anruf-als b {
+  color: var(--color-text-primary);
+}
+
+aos-app .anruf-hinweis {
+  color: var(--color-accent-warning);
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+
+aos-app .anruf-knoepfe {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+aos-app .anruf-knoepfe button {
+  font: inherit;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  min-height: 32px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+aos-app .anruf-knoepfe button:hover {
+  border-color: var(--color-border-hover);
+}
+
+aos-app .anruf-knoepfe button.pri {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  font-weight: 600;
+}
+
+aos-app .anruf-knoepfe button.gef {
+  background: var(--color-accent-success);
+  border-color: var(--color-accent-success);
+  color: var(--color-bg-primary);
+  font-weight: 600;
+}
+
+aos-app .anruf-knoepfe button:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+aos-app .anruf-tipp {
+  margin-top: 8px;
+}
+
+aos-app .anruf-hoeren {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+aos-app .anruf-punkt {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-accent-error);
+  box-shadow: 0 0 0 6px rgba(var(--color-accent-error-rgb), 0.2);
+}
+
+aos-app .anruf-andere {
+  color: var(--color-text-secondary);
+}
+
+aos-app .anruf-ergebnis {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 600;
+}
+
+aos-app .anruf-ergebnis.ok {
+  color: var(--color-accent-success);
+}
+
+aos-app .anruf-ergebnis.no {
+  color: var(--color-accent-warning);
+}
+
+@media (max-width: 767px) {
+  aos-app .anruf {
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* Glocke: „Anrufen" je Eintrag */
+aos-app .glocke-row-unten {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+aos-app .glocke-row-unten .glocke-preview {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+aos-app .glocke-anrufen {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+aos-app .glocke-anrufen:hover:not(:disabled) {
+  border-color: var(--color-accent-primary);
+}
+
+aos-app .glocke-anrufen:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+aos-app .glocke-anrufen:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Einstellungen: Schalter „Anrufmodus" */
+aos-app .anruf-schalter {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: var(--spacing-lg);
+}
+
+aos-app .anruf-schalter-zeile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+aos-app .anruf-schalter-satz {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+aos-app .anruf-schalter-knopf {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 20px;
+  border-radius: 10px;
+  border: none;
+  padding: 0;
+  background: var(--color-bg-elevated);
+  position: relative;
+  cursor: pointer;
+}
+
+aos-app .anruf-schalter-knopf::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+  transition: left var(--transition-fast);
+}
+
+aos-app .anruf-schalter-knopf.an {
+  background: var(--color-accent-primary);
+}
+
+aos-app .anruf-schalter-knopf.an::after {
+  left: 20px;
+  background: var(--color-bg-primary);
+}
+
+aos-app .anruf-schalter-knopf:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+aos-app .anruf-schalter-knopf:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+aos-app .anruf-schalter-grund {
+  color: var(--color-accent-warning);
+  font-size: 12px;
+  margin-top: 8px;
+}

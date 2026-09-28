@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Mock INT-2026-025 Anrufmodus</title>
+<style>
+:root{--bg0:#0B1929;--bg1:#0F1F33;--bg2:#162A45;--bg3:#1C3254;--el:#2D4A6F;--tx:#E8EDF2;--tx2:#94A3B8;--mu:#64748B;--ac:#00D4FF;--ok:#22c55e;--wa:#f59e0b;--er:#ef4444;--bd:#1E3A5F}
+*{box-sizing:border-box}body{margin:0;background:var(--bg0);color:var(--tx);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px}
+h1{font-size:18px;margin:0 0 4px}h2{font-size:13px;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;margin:28px 0 10px}
+.note{color:var(--mu);font-size:12px;margin:0 0 18px}
+.grid{display:grid;grid-template-columns:repeat(3,380px);gap:20px}
+.frame{background:var(--bg1);border:1px solid var(--bd);border-radius:10px;padding:14px;position:relative}
+.cap{font-size:11px;color:var(--mu);margin-bottom:8px}
+.kopf{display:flex;align-items:center;gap:10px;background:var(--bg2);border-radius:8px;padding:8px 12px;margin-bottom:10px}
+.kopf .t{flex:1;font-weight:600}.bell{position:relative;width:22px;height:22px;border-radius:50%;border:1px solid var(--bd);display:grid;place-items:center;font-size:12px}
+.badge{position:absolute;top:-6px;right:-8px;background:var(--wa);color:#111;border-radius:8px;font-size:10px;padding:0 5px;font-weight:700}
+.anruf{background:var(--bg3);border:1px solid var(--ac);border-radius:10px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.art{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;margin-right:6px}
+.art.r{background:rgba(245,158,11,.18);color:var(--wa)}.art.p{background:rgba(0,212,255,.15);color:var(--ac)}.art.f{background:rgba(34,197,94,.15);color:var(--ok)}
+.titel{font-weight:600;margin:6px 0 2px}.sub{color:var(--tx2);font-size:12px}
+.warten{color:var(--mu);font-size:12px;margin-top:6px}
+.text{background:var(--bg1);border-radius:6px;padding:10px;margin:10px 0;font-size:13px}
+.opt{margin:3px 0}.opt b{color:var(--ac);display:inline-block;width:18px}
+.als{color:var(--tx2);font-size:12px;margin-top:-4px;margin-bottom:10px}
+.knoepfe{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;border-radius:6px;padding:6px 12px;border:1px solid var(--bd);background:var(--bg2);color:var(--tx);cursor:pointer}
+button.pri{background:var(--ac);color:#0F1F33;border-color:var(--ac);font-weight:600}
+button.gef{background:var(--ok);color:#0F1F33;border-color:var(--ok);font-weight:600}
+button.fokus{outline:2px solid var(--ac);outline-offset:2px}
+button[disabled]{opacity:.45;cursor:not-allowed}
+.hoeren{display:flex;align-items:center;gap:10px;margin:12px 0}.dot{width:12px;height:12px;border-radius:50%;background:var(--er);box-shadow:0 0 0 6px rgba(239,68,68,.2)}
+.ergebnis{display:flex;gap:8px;align-items:center;font-weight:600}
+.ergebnis.ok{color:var(--ok)}.ergebnis.no{color:var(--wa)}
+.gekuerzt{font-size:11px;color:var(--mu)}
+.einst{background:var(--bg2);border-radius:8px;padding:12px}
+.zeile{display:flex;justify-content:space-between;align-items:center}
+.schalter{width:38px;height:20px;border-radius:10px;background:var(--el);position:relative}.schalter::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--tx2)}
+.schalter.an{background:var(--ac)}.schalter.an::after{left:20px;background:#0F1F33}.schalter.aus-gesperrt{opacity:.45}
+.grund{color:var(--wa);font-size:12px;margin-top:8px}
+.glist{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:6px}
+.gz{display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:6px}.gz:hover{background:var(--bg3)}
+.gz .dot2{width:8px;height:8px;border-radius:50%;margin-top:6px}.gz .body{flex:1}.gz .pv{color:var(--tx2);font-size:12px}
+.anrufen{font-size:12px;padding:3px 9px}
+</style></head><body>
+<h1>INT-2026-025 · Anrufmodus — Mock</h1>
+<p class="note">Stand 2026-09-27 · Farben aus <code>theme.css</code> (dunkel). Der Anruf-Kasten schwebt rechts oben unter der Kopfzeile über jeder Seite; die Kopfzeile bleibt unverändert. Fokus-Rahmen zeigt Tastaturbedienung (FA-29).</p>
+
+<h2>1 · Einstellungen (Projekt-Seite › Allgemein)</h2>
+<div class="grid">
+ <div class="frame"><div class="cap">verfügbar, an</div>
+  <div class="einst"><div class="zeile"><div><b>Anrufmodus</b><div class="sub">Sitzungen rufen an, wenn sie dich brauchen oder fertig sind. Gilt für alle Projekte, nur an diesem Mac.</div></div><div class="schalter an"></div></div></div></div>
+ <div class="frame"><div class="cap">nicht verfügbar — Modelle fehlen</div>
+  <div class="einst"><div class="zeile"><div><b>Anrufmodus</b><div class="sub">Sitzungen rufen an, wenn sie dich brauchen oder fertig sind.</div></div><div class="schalter aus-gesperrt"></div></div>
+  <div class="grund">Anrufmodus nicht verfügbar: Sprachmodell fehlt — einmal im Terminal <code>cd ui &amp;&amp; npm run sprache:einrichten</code> ausführen.</div></div></div>
+ <div class="frame"><div class="cap">nicht verfügbar — anderes Gerät</div>
+  <div class="einst"><div class="zeile"><div><b>Anrufmodus</b><div class="sub">Sitzungen rufen an, wenn sie dich brauchen oder fertig sind.</div></div><div class="schalter aus-gesperrt"></div></div>
+  <div class="grund">Anrufmodus nicht verfügbar: nur im Browser am Mac mit dem Backend (http://localhost:3001) — hier arbeitet die Glocke wie gewohnt.</div></div></div>
+</div>
+
+<h2>2 · Anruf-Kasten — Zustände</h2>
+<div class="grid">
+ <div class="frame"><div class="cap">a · klingelt</div>
+  <div class="kopf"><span class="t">Vorhaben</span><span class="bell">🔔<span class="badge">3</span></span></div>
+  <div class="anruf" role="dialog" aria-label="Anruf">
+   <span class="art r">Rückfrage</span><span class="sub">Specwright</span>
+   <div class="titel">INT-2026-025 · Agenten rufen an</div><div class="sub">Sitzung „plan-anruf“</div>
+   <div class="warten">noch 2 warten</div>
+   <div class="knoepfe" style="margin-top:12px"><button class="pri fokus">Annehmen</button><button>Später</button><button>Ablehnen</button></div>
+  </div></div>
+ <div class="frame"><div class="cap">b · liest vor (Rückfrage)</div>
+  <div class="anruf"><span class="art r">Rückfrage</span><span class="sub">Specwright · „plan-anruf“</span>
+   <div class="text">Frage: Welches Modell für die Spracherkennung?
+    <div class="opt"><b>1</b>Whisper large-v3</div><div class="opt"><b>2</b>Whisper large-v3-turbo</div><div class="opt"><b>3</b>Whisper small</div><div class="opt" style="color:var(--tx2)">oder eine eigene Antwort</div></div>
+   <div class="knoepfe"><button>Nochmal</button><button class="pri fokus">Sprechen</button><button>Auflegen</button></div>
+   <div class="sub" style="margin-top:8px">Leertaste halten = sprechen</div>
+  </div></div>
+ <div class="frame"><div class="cap">c · hört zu</div>
+  <div class="anruf"><span class="art f">Fertig</span><span class="sub">Applai · „build-matching“</span>
+   <div class="text">Ich habe das Matching umgebaut und alle Tests laufen grün. Jetzt brauche ich deine Freigabe für den Pull Request. <span class="gekuerzt">(gekürzt)</span></div>
+   <div class="hoeren"><span class="dot"></span><b>Ich höre zu …</b></div>
+   <div class="knoepfe"><button class="pri fokus">Fertig</button></div>
+  </div></div>
+ <div class="frame"><div class="cap">d · bestätigen</div>
+  <div class="anruf"><span class="art r">Rückfrage</span><span class="sub">Specwright · „plan-anruf“</span>
+   <div class="text">„zwei“</div>
+   <div class="als">Wird gesendet als: <b>Möglichkeit 2 — Whisper large-v3-turbo</b></div>
+   <div class="knoepfe"><button class="pri fokus">Senden</button><button>Nochmal sprechen</button><button>Verwerfen</button></div>
+   <div class="sub" style="margin-top:8px">oder „senden“ / „verwerfen“ sagen</div>
+  </div></div>
+ <div class="frame"><div class="cap">e · Plan-Nachfrage</div>
+  <div class="anruf"><span class="art p">Plan</span><span class="sub">Specwright · „int-025-plan“</span>
+   <div class="text"><b>Plan für Sitzung „int-025-plan“ wirklich freigeben?</b><br>Sag ja oder nein.</div>
+   <div class="als">Freigabe wählt im Plan-Dialog „Yes, and switch to BYPASS PERMISSIONS“ — danach keine weiteren Rückfragen zu Berechtigungen in dieser Sitzung.</div>
+   <div class="knoepfe"><button class="gef fokus">Freigeben</button><button>Nein</button></div>
+  </div></div>
+ <div class="frame"><div class="cap">f · Ergebnis (schließt nach 3 s)</div>
+  <div class="anruf"><div class="ergebnis ok">✓ Gesendet</div><div class="sub" style="margin-top:6px">nächster Anruf in Kürze · noch 1 wartet</div></div>
+  <div style="height:10px"></div>
+  <div class="anruf"><div class="ergebnis no">Nicht gesendet: In der Eingabezeile steht noch Text — im Terminal abschicken oder löschen</div></div>
+  <div style="height:10px"></div>
+  <div class="anruf"><span class="art r">Rückfrage</span><span class="sub">„build-x“ · nur am Bildschirm erkannt</span><div class="text">Rückfrage in Sitzung „build-x“ — die Frage steht nur im Terminal.</div><div class="knoepfe"><button class="pri">Im Terminal öffnen</button><button>Auflegen</button></div></div>
+ </div>
+</div>
+
+<h2>3 · Glocke mit „Anrufen“ (Anrufmodus an)</h2>
+<div class="grid">
+ <div class="frame"><div class="cap">Liste der Glocke</div>
+  <div class="glist">
+   <div class="gz"><span class="dot2" style="background:var(--wa)"></span><div class="body"><b>INT-2026-025 · Agenten rufen an</b><div class="pv">Rückfrage: Welches Modell für die Spracherkennung?</div></div><button class="anrufen">Anrufen</button></div>
+   <div class="gz"><span class="dot2" style="background:var(--wa)"></span><div class="body"><b>build-x</b><div class="pv">Berechtigung: Bash</div></div></div>
+   <div class="gz"><span class="dot2" style="background:var(--ok)"></span><div class="body"><b>Applai · build-matching</b><div class="pv">fertig · Matching umgebaut, Tests grün …</div></div><button class="anrufen">Anrufen</button></div>
+  </div>
+  <div class="sub" style="margin-top:8px">Berechtigungen ohne „Anrufen“ (FA-05). Während eines angenommenen Anrufs: Knopf gesperrt, Tooltip „Erst den laufenden Anruf beenden“.</div>
+ </div>
+ <div class="frame"><div class="cap">Terminal: Sprechfassung am Ende der Antwort</div>
+  <pre style="background:#000;color:#d4d4d4;padding:10px;border-radius:6px;font-size:12px;white-space:pre-wrap;margin:0">⏺ Tests laufen, PR #97 ist eröffnet.
+  …
+
+  Sprechfassung: Ich habe das Matching umgebaut,
+  alle Tests sind grün und der Pull Request ist
+  offen. Ich brauche jetzt deine Freigabe zum Mergen.
+
+✻ Worked for 2m 10s</pre></div>
+</div>
+</body></html>

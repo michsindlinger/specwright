@@ -9,9 +9,12 @@ import {
   CLOUD_SESSION_ID_RE,
   HOOK_EVENTS,
   HOOK_TOKEN_HEADER,
+  anrufHookOptionen,
   ensureHookSettingsFile,
+  extractAnrufInhalt,
   loadOrCreateHookSecret,
   mapHookPayload,
+  renderAnrufKontextCommand,
   renderHookSettings,
   summarizePreview,
 } from '../../src/server/services/claude-hooks.js';
@@ -330,5 +333,100 @@ describe('mapHookPayload() — hook context and block kind (INT-2026-007, reduce
 
   it('blocking Notification → blockKind unbekannt (FA-10)', () => {
     expect(ev({ hook_event_name: 'Notification', notification_type: 'elicitation_dialog', message: 'm' }).detail).toMatchObject({ blockKind: 'unbekannt' });
+  });
+});
+
+const FIX_HOOKS = join(__dirname, '../fixtures/hooks/2.1.283');
+const fixture = (name: string): Record<string, unknown> => JSON.parse(readFileSync(join(FIX_HOOKS, name), 'utf-8')) as Record<string, unknown>;
+
+describe('INT-2026-025 (D1, Review F13): extractAnrufInhalt() on real 2.1.283 payloads', () => {
+  it('Stop → last answer', () => {
+    expect(extractAnrufInhalt(fixture('stop-1.json'))).toEqual({ letzteAntwort: 'Magst Rot und Gruen. Notiert.' });
+  });
+
+  it('AskUserQuestion (PreToolUse and PermissionRequest) → all questions without descriptions', () => {
+    const zwei = extractAnrufInhalt(fixture('pre-ask-zwei.json'));
+    expect(zwei?.fragen).toHaveLength(2);
+    expect(zwei?.fragen?.[0]).toEqual({ frage: 'Welche Farbe?', kopf: 'Farbe', optionen: ['Rot', 'Blau', 'Gruen'], mehrfach: false });
+    expect(zwei?.fragen?.[1]).toMatchObject({ frage: 'Welche Tiere?', mehrfach: true });
+    expect(extractAnrufInhalt(fixture('perm-ask-mehrfach.json'))?.fragen?.[0]).toMatchObject({ frage: 'Welche Farben magst du?', mehrfach: true });
+    expect(JSON.stringify(extractAnrufInhalt(fixture('pre-ask-einzel.json')))).not.toContain('description');
+  });
+
+  it('ExitPlanMode carries the plan text (not only the path) → plan', () => {
+    const inhalt = extractAnrufInhalt(fixture('pre-exitplan.json'));
+    expect(inhalt?.plan).toMatch(/^## In einfachen Worten/);
+  });
+
+  it('PostToolUse, other tools, invalid shapes and oversize → nothing or capped', () => {
+    expect(extractAnrufInhalt(fixture('post-ask-einzel.json'))).toBeUndefined();
+    expect(extractAnrufInhalt({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: {} })).toBeUndefined();
+    expect(extractAnrufInhalt({ hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', tool_input: { questions: 'x' } })).toBeUndefined();
+    const sieben = Array.from({ length: 7 }, (_, i) => ({ label: `O${i}` }));
+    expect(extractAnrufInhalt({ hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', tool_input: { questions: [{ question: 'Q', options: sieben }] } })).toBeUndefined();
+    const lang = extractAnrufInhalt({ hook_event_name: 'Stop', last_assistant_message: 'x'.repeat(30_000) });
+    expect(lang?.letzteAntwort).toHaveLength(20_000);
+    expect(extractAnrufInhalt({ hook_event_name: 'Stop', last_assistant_message: '\x1b[31mrot\x1b[0m\nzeile' })).toEqual({ letzteAntwort: 'rot\nzeile' });
+  });
+});
+
+describe('INT-2026-025 (D2, FA-14, Review F11): synchronous context hook', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'anruf-kontext-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  const run = (env: Record<string, string>): { out: string; ms: number } => {
+    const start = process.hrtime.bigint();
+    const out = execFileSync('/bin/sh', ['-c', renderAnrufKontextCommand(dir)], { env: { PATH: '/usr/bin:/bin', ...env }, encoding: 'utf-8' });
+    return { out, ms: Number(process.hrtime.bigint() - start) / 1e6 };
+  };
+
+  it('without the option nothing changes: one async hook per event', () => {
+    const { hooks } = parse();
+    expect(hooks.UserPromptSubmit[0].hooks).toHaveLength(1);
+  });
+
+  it('with the option UserPromptSubmit carries both entries; the new one is synchronous, 1 s, without curl', () => {
+    const { hooks } = JSON.parse(renderHookSettings(3001, SECRET, { anrufKontextDir: dir })) as HookSettings;
+    const [asyncHook, kontext] = hooks.UserPromptSubmit[0].hooks;
+    expect(asyncHook.async).toBe(true);
+    expect(kontext.async).toBeUndefined();
+    expect(kontext.timeout).toBe(1);
+    expect(kontext.command).not.toContain('curl');
+    expect(kontext.command).toContain(dir);
+    expect(hooks.Stop[0].hooks).toHaveLength(1);
+  });
+
+  it('only on darwin and not with SPECWRIGHT_ANRUF=off', () => {
+    expect(anrufHookOptionen({}, 'linux')).toEqual({});
+    expect(anrufHookOptionen({ SPECWRIGHT_ANRUF: 'off' }, 'darwin')).toEqual({});
+    expect(anrufHookOptionen({}, 'darwin').anrufKontextDir).toMatch(/anruf-kontext-\d+$/);
+  });
+
+  it('prints an.json while on, the one-shot aus-<id>.json once, nothing without the session env', () => {
+    const an = '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"AN"}}';
+    const aus = '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"AUS"}}';
+    const env = { [CLOUD_SESSION_ID_ENV]: 'cloud-1-1' };
+    expect(run(env).out).toBe('');
+    writeFileSync(join(dir, 'an.json'), an);
+    expect(run(env).out).toBe(an);
+    expect(run({}).out).toBe('');
+    rmSync(join(dir, 'an.json'));
+    writeFileSync(join(dir, 'aus-cloud-1-1.json'), aus);
+    expect(run(env).out).toBe(aus);
+    expect(existsSync(join(dir, 'aus-cloud-1-1.json'))).toBe(false);
+    expect(run(env).out).toBe('');
+  });
+
+  it('runs well below 100 ms and rejects unsafe directories', () => {
+    writeFileSync(join(dir, 'an.json'), '{}');
+    // Median, not p95: under the full parallel suite a single `sh` spawn took 136 ms (verify run
+    // 2026-09-27). The p95 ≤ 20 ms threshold of D2 is measured against the real hook in the E2E.
+    const zeiten = Array.from({ length: 20 }, () => run({ [CLOUD_SESSION_ID_ENV]: 'cloud-1-1' }).ms).sort((a, b) => a - b);
+    expect(zeiten[Math.floor(zeiten.length / 2)]).toBeLessThan(100);
+    expect(() => renderAnrufKontextCommand('relativ')).toThrow();
+    expect(() => renderAnrufKontextCommand("/tmp/a'b")).toThrow();
   });
 });

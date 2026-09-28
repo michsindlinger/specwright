@@ -28,6 +28,21 @@ export interface GlockeOpenDetail {
   terminalSessionId?: string;
 }
 
+/** INT-2026-025 (FA-12): „Anrufen" on a row — `sessionId` is the backend session id. */
+export interface GlockeAnrufenDetail {
+  sessionId: string;
+}
+
+/** Tooltip of the locked „Anrufen" while a call is taken (Ablauf F). */
+export const GLOCKE_ANRUF_GESPERRT = 'Erst den laufenden Anruf beenden';
+
+/** A row can be called: question, plan or finished — never a permission or unknown dialog (FA-05). */
+export function glockeKannAnrufen(row: BellRow): boolean {
+  if (!row.terminalSessionId) return false;
+  if (row.kind === 'done') return true;
+  return row.blockKind === 'rueckfrage' || row.blockKind === 'plan';
+}
+
 @customElement('aos-glocke')
 export class AosGlocke extends LitElement {
   @property({ attribute: false }) rows: BellRow[] = [];
@@ -36,6 +51,10 @@ export class AosGlocke extends LitElement {
   @property({ attribute: false }) projectNames: Record<string, string> = {};
   /** Chime on/off; initialised from the stored preference, toggled here. */
   @property({ type: Boolean }) sound = isBellSoundEnabled();
+  /** INT-2026-025: call mode on and usable in this browser — rows get „Anrufen". */
+  @property({ type: Boolean }) anrufModus = false;
+  /** INT-2026-025: a taken call is running — „Anrufen" is locked. */
+  @property({ type: Boolean }) anrufLaeuft = false;
 
   @state() private open = false;
   private ticker: ReturnType<typeof setInterval> | null = null;
@@ -115,9 +134,35 @@ export class AosGlocke extends LitElement {
           <span class="glocke-name" title=${name}>${name}</span>
           <span class="glocke-time">${row.at > 0 ? formatRelativeTime(row.at) : ''}</span>
         </div>
-        ${preview ? html`<div class="glocke-preview" title=${preview}>${preview}</div>` : nothing}
+        ${preview || this.anrufModus
+          ? html`<div class="glocke-row-unten">
+              ${preview ? html`<div class="glocke-preview" title=${preview}>${preview}</div>` : html`<span></span>`}
+              ${this.anrufModus && glockeKannAnrufen(row) ? this.renderAnrufen(row) : nothing}
+            </div>`
+          : nothing}
       </div>
     `;
+  }
+
+  private renderAnrufen(row: BellRow) {
+    const gesperrt = this.anrufLaeuft;
+    return html`<button
+      type="button"
+      class="glocke-anrufen"
+      ?disabled=${gesperrt}
+      title=${gesperrt ? GLOCKE_ANRUF_GESPERRT : 'Diese Sitzung per Stimme anrufen'}
+      aria-label=${`Anrufen: ${row.title ?? this.sessions.find((s) => s.id === row.sessionId)?.name ?? row.sessionId}`}
+      @click=${(e: Event) => this.anrufen(e, row)}
+    >Anrufen</button>`;
+  }
+
+  private anrufen(e: Event, row: BellRow): void {
+    e.stopPropagation();
+    if (this.anrufLaeuft || !row.terminalSessionId) return;
+    this.close();
+    this.dispatchEvent(
+      new CustomEvent<GlockeAnrufenDetail>('glocke-anrufen', { bubbles: true, composed: true, detail: { sessionId: row.terminalSessionId } })
+    );
   }
 
   private renderSoundToggle() {

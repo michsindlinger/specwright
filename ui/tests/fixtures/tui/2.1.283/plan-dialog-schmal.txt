@@ -1,0 +1,28 @@
+
+───────────────────────────────────────────────────────
+ Ready to code?
+
+ Here is Claude's plan:
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Sprechfassung: Ich lege gleich eine neue Textdatei
+ an, die nur das Wort hallo enthält. Sonst passiert
+ nichts. Ich brauch von dir nur ein Okay zum Loslegen.
+
+ 1. Neue Datei anlegen, Name: hallo.txt
+ 2. Inhalt der Datei: Wort "hallo"
+ 3. Keine weiteren Änderungen
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+
+───────────────────────────────────────────────────────
+ Claude has written up a plan and is ready to execute.
+ Would you like to proceed?
+
+ ❯ 1. Yes, and switch to BYPASS PERMISSIONS (no further
+      prompts) for this session
+   2. Yes, manually approve edits
+   3. Tell Claude what to change
+      shift+tab to approve with this feedback
+
+ ctrl+g to edit in Vim ·
+ ~/.claude/plans/humble-honking-minsky.md
+

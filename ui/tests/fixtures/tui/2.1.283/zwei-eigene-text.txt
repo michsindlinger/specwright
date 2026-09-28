@@ -1,0 +1,50 @@
+
+ ▐▛███▛█   Claude Code v2.1.283
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   /…/probe
+
+
+❯ Call the AskUserQuestion tool exactly once with ONE question: question "Welche Farben magst du?", header "Farben", multiSelect true,
+  options Rot, Blau, Gruen (each with a short description). Do nothing else.
+
+⏺ User answered Claude's questions:
+  ⎿  · Welche Farben magst du? → Rot, Gruen
+
+⏺ Magst Rot und Gruen. Notiert.
+
+✻ Worked for 10s · done 17:22
+
+❯ Call the AskUserQuestion tool exactly once with TWO questions: (1) question "Welche Farbe?", header "Farbe", multiSelect false, options
+  Rot, Blau, Gruen; (2) question "Welche Tiere?", header "Tiere", multiSelect true, options Hund, Katze, Maus. Short descriptions. Do
+  nothing else.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+←  ☐ Farbe  ☐ Tiere  ✔ Submit  →
+
+Welche Farbe?
+
+  1. Rot
+     Warm und energisch
+  2. Blau
+     Ruhig und klar
+  3. Gruen
+     Natürlich und frisch
+❯ 4. Türkis, aber hell
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · ctrl+g to edit in Vim · Esc to cancel
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

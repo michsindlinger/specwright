@@ -41,6 +41,7 @@ import { buildReplayBuffer } from './cloud-terminal-replay.js';
 import {
   CLOUD_SESSION_ID_ENV,
   ensureHookSettingsFile,
+  anrufHookOptionen,
   loadOrCreateHookSecret,
 } from './claude-hooks.js';
 import { bumpsActivity, isUnblockingInput, reduceAgentStatus } from './agent-status.js';
@@ -370,7 +371,8 @@ export class CloudTerminalManager extends EventEmitter {
         this.hookSettingsPath = ensureHookSettingsFile(
           hooks.port ?? backendPort(),
           secret,
-          hooks.settingsPath
+          hooks.settingsPath,
+          anrufHookOptionen()
         );
         this.hookSecret = secret;
       } catch (err) {
@@ -509,6 +511,8 @@ export class CloudTerminalManager extends EventEmitter {
       ...detail,
       ...(session.blockKind ? { blockKind: session.blockKind } : {}),
       ...(session.agentDoneAt ? { doneAt: session.agentDoneAt } : {}),
+      // INT-2026-025 (D5a): the Anruf service tells a screen-only block (no hook content) apart.
+      ...(session.blockedBy ? { blockedBy: session.blockedBy } : {}),
       status: next,
       statusAt: session.agentStatusAt,
     });

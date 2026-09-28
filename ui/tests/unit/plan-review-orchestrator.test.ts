@@ -684,3 +684,23 @@ describe('PlanReviewOrchestrator inject into the plan dialog', () => {
     expect(typed).toContain('Line one\nLine two\nthree [A up');
   });
 });
+
+describe('INT-2026-025 (FA-22): isReviewRunning', () => {
+  it('is true while a review holds the lock and false for unknown or idle sessions', async () => {
+    const mock = buildMockCtm();
+    mock.setPlanPath('/p/lauf.md');
+    const orch = new PlanReviewOrchestrator(mock.ctm);
+    let fertig: (v: string) => void = () => {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (orch as any).externalReviewer = { reviewPlan: vi.fn(() => new Promise<string>((r) => { fertig = r; })) };
+    expect(orch.isReviewRunning('sess-x')).toBe(false);
+    orch.setTabConfig('sess-x', { enabled: true, reviewers: [{ providerId: 'mock', modelId: 'mock-1' }] });
+    expect(orch.isReviewRunning('sess-x')).toBe(false);
+    mock.emitter.emit('session.plan-detected', 'sess-x', 'plan text', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(orch.isReviewRunning('sess-x')).toBe(true);
+    fertig('findings');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(orch.isReviewRunning('sess-x')).toBe(false);
+  });
+});

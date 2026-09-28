@@ -6,6 +6,7 @@ import './views/aos-vorhaben-view.js';
 import './views/not-found-view.js';
 import './components/rahmen/aos-kopfzeile.js';
 import './components/toast-notification.js';
+import './components/anruf/aos-anruf.js';
 import './components/loading-spinner.js';
 import './components/aos-project-add-modal.js';
 import './components/aos-notepad-panel.js';
@@ -28,6 +29,9 @@ import {
   type BellRow,
 } from './components/terminal/agent-notifications.js';
 import type { CloudTerminalAgentStatus } from '../../src/shared/types/cloud-terminal.protocol.js';
+import type { BlockKind } from '../../src/shared/types/hook-events.protocol.js';
+import { anrufService, anrufAktiv, type AnrufAnsicht } from './services/anruf.service.js';
+import { glockentonUnterdrueckt } from './components/anruf/anruf-ton.js';
 import { playAgentDoneChime } from './components/terminal/notification-sound.js';
 import type { ProjectSelectedDetail } from './components/aos-project-add-modal.js';
 import type { RecentlyOpenedEntry } from './services/recently-opened.service.js';
@@ -37,7 +41,7 @@ import { assignAutoNames, isOwnCreateRequest, toRestoredTab, type BackendSession
 import { glockeZiel } from './components/rahmen/glocke-ziel.js';
 import { terminalDockedFor } from './components/terminal/terminal-dock.js';
 import { isBackToOverviewShortcut, isTypingTarget } from './utils/keyboard-shortcuts.js';
-import type { GlockeOpenDetail, GlockeSession } from './components/rahmen/aos-glocke.js';
+import type { GlockeAnrufenDetail, GlockeOpenDetail, GlockeSession } from './components/rahmen/aos-glocke.js';
 import { gitState, type GitState, type PullStrategy } from './services/git-state.service.js';
 import { vorhabenService } from './services/vorhaben.service.js';
 import { MobileBreakpointController } from './controllers/mobile-breakpoint-controller.js';
@@ -67,11 +71,19 @@ export function pageOfRoute(route: { view: string; segments: string[] }): { proj
   return { projectId: null, intentId: null };
 }
 
-function agentStatusFields(b: { agentStatus?: CloudTerminalAgentStatus; agentStatusAt?: string; agentStatusReason?: string; agentDoneAt?: string }): {
+const BLOCK_KIND_VALUES: ReadonlySet<string> = new Set(['rueckfrage', 'plan', 'berechtigung', 'unbekannt']);
+
+/** INT-2026-025: a valid blockKind from a message, else undefined. */
+function blockKindOf(v: unknown): BlockKind | undefined {
+  return typeof v === 'string' && BLOCK_KIND_VALUES.has(v) ? (v as BlockKind) : undefined;
+}
+
+function agentStatusFields(b: { agentStatus?: CloudTerminalAgentStatus; agentStatusAt?: string; agentStatusReason?: string; agentDoneAt?: string; blockKind?: BlockKind }): {
   agentStatus?: CloudTerminalAgentStatus;
   agentStatusAt?: number;
   agentStatusReason?: string;
   agentDoneAt?: number;
+  blockKind?: BlockKind;
 } {
   if (b.agentStatus === undefined) return {};
   const at = typeof b.agentStatusAt === 'string' ? Date.parse(b.agentStatusAt) : NaN;
@@ -81,6 +93,7 @@ function agentStatusFields(b: { agentStatus?: CloudTerminalAgentStatus; agentSta
     agentStatusAt: Number.isFinite(at) ? at : undefined,
     agentStatusReason: b.agentStatusReason,
     agentDoneAt: Number.isFinite(doneAt) ? doneAt : undefined,
+    blockKind: b.agentStatus === 'blocked' ? blockKindOf(b.blockKind) : undefined,
   };
 }
 import { recentlyOpenedService } from './services/recently-opened.service.js';
@@ -228,6 +241,9 @@ export class AosApp extends LitElement {
   private unsubscribeVorhaben: (() => void) | null = null;
   private unsubscribeGit: (() => void) | null = null;
   private unsubscribeGeneratedMessage: (() => void) | null = null;
+  private unsubscribeAnruf: (() => void) | null = null;
+  /** INT-2026-025: call mode as this window sees it (bell „Anrufen", chime suppression). */
+  @state() private anruf: AnrufAnsicht | null = null;
 
   private projectContextProvider = new ContextProvider(this, {
     context: projectContext,
@@ -517,6 +533,11 @@ export class AosApp extends LitElement {
     }
   }
 
+  /** INT-2026-025 (FA-12): bell „Anrufen" — the backend starts the call without ringing. */
+  private _handleGlockeAnrufen(e: CustomEvent<GlockeAnrufenDetail>): void {
+    anrufService.anrufen(e.detail.sessionId);
+  }
+
   /**
    * The session the user is looking at: the active tab of an OPEN sidebar.
    * With the sidebar closed nothing is visible, so every session may ring and
@@ -568,6 +589,9 @@ export class AosApp extends LitElement {
     this.unsubscribeGit = gitState.subscribe((g) => {
       this.git = g;
     });
+    this.unsubscribeAnruf = anrufService.subscribe((a) => {
+      this.anruf = a;
+    });
     this.unsubscribeGeneratedMessage = gitState.onGeneratedMessage((message) => {
       const dialog = this.querySelector('aos-git-commit-dialog') as import('./components/git/aos-git-commit-dialog.js').AosGitCommitDialog | null;
       dialog?.setCommitMessage(message);
@@ -612,7 +636,8 @@ export class AosApp extends LitElement {
     this.unsubscribeVorhaben?.();
     this.unsubscribeGit?.();
     this.unsubscribeGeneratedMessage?.();
-    this.unsubscribeVorhaben = this.unsubscribeGit = this.unsubscribeGeneratedMessage = null;
+    this.unsubscribeAnruf?.();
+    this.unsubscribeVorhaben = this.unsubscribeGit = this.unsubscribeGeneratedMessage = this.unsubscribeAnruf = null;
     document.removeEventListener('open-terminal-session', this._handleOpenTerminalSession as EventListener);
     document.removeEventListener('vorhaben-page-session', this._handleVorhabenPageSession as EventListener);
   }
@@ -883,6 +908,7 @@ export class AosApp extends LitElement {
     // "looking at" = active tab of an open sidebar (INT-2026-010, review E2).
     const isActive = match.id === this.sichtbareSessionId;
     let ring = false;
+    let tonUnterdrueckt = false;
 
     const status = msg.status;
     if (typeof status === 'string' && AGENT_STATUS_VALUES.has(status)) {
@@ -890,6 +916,15 @@ export class AosApp extends LitElement {
       const agentStatus = status as CloudTerminalAgentStatus;
       // Decided against the status BEFORE this message (one ring per blockade).
       ring = ringsForAgentEvent({ event, status: agentStatus, prevStatus: match.agentStatus, isActive });
+      const blockKind = agentStatus === 'blocked' ? (blockKindOf(msg.blockKind) ?? match.blockKind) : undefined;
+      // INT-2026-025 (Review F12): a call rings instead of the chime — only with the mode on in a capable local window.
+      tonUnterdrueckt = glockentonUnterdrueckt({
+        anrufAktiv: this.anruf ? anrufAktiv(this.anruf.modus) : false,
+        event,
+        status: agentStatus,
+        prevStatus: match.agentStatus,
+        blockKind,
+      });
       // Server status is authoritative: a session that is working/done/idle
       // is by definition not waiting for input, whatever the regex thought.
       const clearNeedsInput = agentStatus === 'working' || agentStatus === 'done' || agentStatus === 'idle';
@@ -908,6 +943,7 @@ export class AosApp extends LitElement {
               agentStatusReason: typeof msg.reason === 'string' ? msg.reason : undefined,
               agentDoneAt,
               agentDonePreview,
+              blockKind: agentStatus === 'blocked' ? (blockKindOf(msg.blockKind) ?? s.blockKind) : undefined,
               ...(clearNeedsInput ? { needsInput: false } : {}),
             }
           : s
@@ -915,7 +951,7 @@ export class AosApp extends LitElement {
     }
     // Same chime for finished, blocked and plan-review — obeys the bell's mute
     // toggle and rings even while the sidebar is closed, when it matters most.
-    if (ring) playAgentDoneChime();
+    if (ring && !tonUnterdrueckt) playAgentDoneChime();
   }
 
   /**
@@ -1633,8 +1669,9 @@ export class AosApp extends LitElement {
         agentStatusAt: typeof b.agentStatusAt === 'string' ? b.agentStatusAt : b.agentStatusAt?.toISOString(),
         agentStatusReason: b.agentStatusReason,
         agentDoneAt: typeof b.agentDoneAt === 'string' ? b.agentDoneAt : b.agentDoneAt?.toISOString(),
+        blockKind: b.blockKind,
       });
-      if (fields.agentStatus === s.agentStatus && fields.agentStatusAt === s.agentStatusAt && fields.agentStatusReason === s.agentStatusReason && fields.agentDoneAt === s.agentDoneAt) return s;
+      if (fields.agentStatus === s.agentStatus && fields.agentStatusAt === s.agentStatusAt && fields.agentStatusReason === s.agentStatusReason && fields.agentDoneAt === s.agentDoneAt && fields.blockKind === s.blockKind) return s;
       refreshed = true;
       return { ...s, ...fields, ...(fields.agentDoneAt ? {} : { agentDonePreview: undefined }) };
     });
@@ -1839,7 +1876,10 @@ export class AosApp extends LitElement {
         .glockeRows=${this.glockeRows}
         .glockeSessions=${this.glockeSessions}
         .projectNames=${this.terminalProjectNames}
+        .anrufModus=${this.anruf ? anrufAktiv(this.anruf.modus) : false}
+        .anrufLaeuft=${this.anruf ? this.anruf.zustand === 'laeuft' || this.anruf.zustand === 'freigabe_nachfrage' || this.anruf.zustand === 'sendet' : false}
         @glocke-open=${this._handleGlockeOpen}
+        @glocke-anrufen=${this._handleGlockeAnrufen}
         @terminal-toggle=${this._handleTerminalToggle}
       ></aos-kopfzeile>
       <main class="main-content">
@@ -1847,6 +1887,7 @@ export class AosApp extends LitElement {
         <aos-file-editor-panel .sidebarOpen=${this.isFileTreeOpen}></aos-file-editor-panel>
       </main>
       <aos-toast-notification></aos-toast-notification>
+      <aos-anruf @glocke-open=${this._handleGlockeOpen}></aos-anruf>
       <aos-git-diff-viewer></aos-git-diff-viewer>
       <aos-project-add-modal
         .open=${this.showAddProjectModal}

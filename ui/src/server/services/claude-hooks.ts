@@ -33,14 +33,21 @@
  *   ~6 s after the dialog appears and would re-flag a session the user has
  *   already answered. `PermissionRequest` fires the instant the dialog opens.
  * - `SessionStart` excludes `compact`, which fires mid-turn.
+ * - INT-2026-025 (D2): with `anrufKontextDir` a second, SYNCHRONOUS
+ *   UserPromptSubmit hook is rendered. It never touches the network — it only
+ *   `cat`s a file the backend wrote beforehand (`aus-<id>.json` once, else
+ *   `an.json`), so a hung backend cannot delay a prompt. Its stdout becomes
+ *   `additionalContext` (the Sprechfassung instruction). Rendered only on
+ *   darwin and without `SPECWRIGHT_ANRUF=off` (caller decides).
  */
 
 import { randomBytes } from 'crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
-import { getClaudeHookSettingsPath, getHookSecretPath } from '../utils/runtime-paths.js';
+import { getAnrufKontextDir, getClaudeHookSettingsPath, getHookSecretPath } from '../utils/runtime-paths.js';
 import type { CloudTerminalAgentEvent, CloudTerminalAgentEventDetail } from '../../shared/types/cloud-terminal.protocol.js';
 import type { HookContext } from '../../shared/types/hook-events.protocol.js';
+import { ANRUF_INHALT_GRENZEN, type AnrufFrage, type AnrufInhalt } from '../../shared/types/anruf.protocol.js';
 
 /** Env var the launch script exports; the hook reads it to name its session. */
 export const CLOUD_SESSION_ID_ENV = 'SPECWRIGHT_CLOUD_SESSION_ID';
@@ -85,7 +92,7 @@ const BLOCKING_NOTIFICATION_TYPES = new Set(['elicitation_dialog', 'elicitation_
  *   2. bail (exit 0) unless curl exists,
  *   3. POST stdin to this backend with the shared secret, ignore the outcome.
  */
-export function renderHookSettings(port: number, secret: string): string {
+export function renderHookSettings(port: number, secret: string, opts: { anrufKontextDir?: string } = {}): string {
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
     throw new Error(`renderHookSettings: invalid port ${port}`);
   }
@@ -99,12 +106,51 @@ export function renderHookSettings(port: number, secret: string): string {
     `curl -s --connect-timeout 0.2 -m 1 -X POST -H 'Content-Type: application/json' -H '${HOOK_TOKEN_HEADER}: ${secret}' --data-binary @- "${url}" >/dev/null 2>&1`,
   ].join(' && ') + '; exit 0';
 
-  const hook = { type: 'command', command, timeout: 2, async: true };
+  const hook: { type: string; command: string; timeout: number; async?: boolean } = { type: 'command', command, timeout: 2, async: true };
   const hooks: Record<string, Array<{ matcher?: string; hooks: Array<typeof hook> }>> = {};
   for (const { event, matcher } of HOOK_EVENTS) {
     hooks[event] = [matcher ? { matcher, hooks: [hook] } : { hooks: [hook] }];
   }
+  if (opts.anrufKontextDir !== undefined) {
+    hooks.UserPromptSubmit[0].hooks.push({ type: 'command', command: renderAnrufKontextCommand(opts.anrufKontextDir), timeout: 1 });
+  }
   return JSON.stringify({ hooks }, null, 2) + '\n';
+}
+
+/**
+ * INT-2026-025 (D2): the synchronous context hook. POSIX sh, no network, no
+ * external commands besides `cat`/`rm`: the one-shot `aus-<id>.json` wins over
+ * `an.json`; nothing present → no output. Always exits 0.
+ */
+export function renderAnrufKontextCommand(dir: string): string {
+  if (!dir.startsWith('/') || /['\n\r]/.test(dir)) {
+    throw new Error('renderAnrufKontextCommand: dir must be absolute and free of quotes/newlines');
+  }
+  return [
+    `d='${dir}'`,
+    `[ -n "$${CLOUD_SESSION_ID_ENV}" ] || exit 0`,
+    `e="$d/aus-$${CLOUD_SESSION_ID_ENV}.json"`,
+    'if [ -f "$e" ]; then cat "$e"; rm -f "$e"; elif [ -f "$d/an.json" ]; then cat "$d/an.json"; fi',
+    'exit 0',
+  ].join('; ');
+}
+
+/** INT-2026-025: kill switch for the whole Anrufmodus (hook entry and service). */
+export function anrufAbgeschaltet(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.SPECWRIGHT_ANRUF === 'off';
+}
+
+/**
+ * INT-2026-025 (D2, Review F11): options for {@link renderHookSettings} — the
+ * context hook only on darwin (the Mac of the Anrufmodus, never the cloud
+ * host) and without the kill switch.
+ */
+export function anrufHookOptionen(
+  env: NodeJS.ProcessEnv = process.env,
+  plattform: NodeJS.Platform = process.platform
+): { anrufKontextDir?: string } {
+  if (plattform !== 'darwin' || anrufAbgeschaltet(env)) return {};
+  return { anrufKontextDir: getAnrufKontextDir() };
 }
 
 /**
@@ -131,10 +177,11 @@ export function loadOrCreateHookSecret(secretPath: string = getHookSecretPath())
 export function ensureHookSettingsFile(
   port: number,
   secret: string,
-  settingsPath: string = getClaudeHookSettingsPath()
+  settingsPath: string = getClaudeHookSettingsPath(),
+  opts: { anrufKontextDir?: string } = {}
 ): string {
   mkdirSync(dirname(settingsPath), { recursive: true, mode: 0o700 });
-  writeFileSync(settingsPath, renderHookSettings(port, secret), { mode: 0o600 });
+  writeFileSync(settingsPath, renderHookSettings(port, secret, opts), { mode: 0o600 });
   return settingsPath;
 }
 
@@ -253,4 +300,60 @@ export function mapHookPayload(body: Record<string, unknown>): HookMapping {
     default:
       return { kind: 'reject', reason: `unexpected hook event ${String(name)}` };
   }
+}
+
+// eslint-disable-next-line no-control-regex
+const CONTROL_KEEP_NEWLINES = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g;
+
+/** Strips ANSI and control characters (newlines stay) and caps the length. */
+function inhaltText(v: unknown, max: number): string | undefined {
+  if (typeof v !== 'string') return undefined;
+  const t = v.replace(ANSI_OSC, '').replace(ANSI_CSI, '').replace(CONTROL_KEEP_NEWLINES, '').trim();
+  if (!t) return undefined;
+  return t.length <= max ? t : t.slice(0, max);
+}
+
+function anrufFragen(input: unknown): AnrufFrage[] | undefined {
+  const raw = (input as { questions?: unknown } | undefined)?.questions;
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > ANRUF_INHALT_GRENZEN.fragen) return undefined;
+  const fragen: AnrufFrage[] = [];
+  for (const q of raw) {
+    if (!q || typeof q !== 'object') return undefined;
+    const o = q as { question?: unknown; header?: unknown; options?: unknown; multiSelect?: unknown };
+    const frage = inhaltText(o.question, ANRUF_INHALT_GRENZEN.feld);
+    if (!frage || !Array.isArray(o.options) || o.options.length === 0 || o.options.length > ANRUF_INHALT_GRENZEN.optionen) return undefined;
+    const optionen: string[] = [];
+    for (const opt of o.options) {
+      const label = inhaltText((opt as { label?: unknown } | null)?.label, ANRUF_INHALT_GRENZEN.feld);
+      if (!label) return undefined;
+      optionen.push(label);
+    }
+    const kopf = inhaltText(o.header, ANRUF_INHALT_GRENZEN.feld);
+    fragen.push({ frage, ...(kopf ? { kopf } : {}), optionen, mehrfach: o.multiSelect === true });
+  }
+  return fragen;
+}
+
+/**
+ * INT-2026-025 (D1, ADR-0006): the content an Anruf reads aloud — Stop → last
+ * answer, AskUserQuestion → all questions, ExitPlanMode → plan text. Pure;
+ * validated and capped. Everything else → `undefined`. The caller keeps it in
+ * memory only, and only while the Anrufmodus is on.
+ */
+export function extractAnrufInhalt(body: Record<string, unknown>): AnrufInhalt | undefined {
+  const name = body.hook_event_name;
+  if (name === undefined || name === 'Stop') {
+    const letzteAntwort = inhaltText(body.last_assistant_message, ANRUF_INHALT_GRENZEN.letzteAntwort);
+    return letzteAntwort ? { letzteAntwort } : undefined;
+  }
+  if (name !== 'PreToolUse' && name !== 'PermissionRequest') return undefined;
+  if (body.tool_name === 'AskUserQuestion') {
+    const fragen = anrufFragen(body.tool_input);
+    return fragen ? { fragen } : undefined;
+  }
+  if (body.tool_name === 'ExitPlanMode') {
+    const plan = inhaltText((body.tool_input as { plan?: unknown } | undefined)?.plan, ANRUF_INHALT_GRENZEN.plan);
+    return plan ? { plan } : undefined;
+  }
+  return undefined;
 }

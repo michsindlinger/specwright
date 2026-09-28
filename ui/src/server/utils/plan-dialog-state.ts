@@ -151,6 +151,35 @@ export function parsePlanDialog(screen: string): PlanDialogState | null {
   return null;
 }
 
+/**
+ * Full label of option `n` in the dialog `parsePlanDialog` would find. A narrow
+ * terminal wraps a long label onto indented follow-up lines (Claude Code
+ * 2.1.283 at 55 columns: „… (no further" / „prompts) for this session"); they
+ * are joined up to the next option, a blank line or a line indented less than
+ * the label. `parsePlanDialog().lines` keeps only the first line on purpose —
+ * the plan review compares it between two reads. Null without dialog/option.
+ */
+export function planOptionVoll(screen: string, n: number): string | null {
+  const lines = stripScreen(screen);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (!PLAN_DIALOG_CUE.test(lines[i]) || !parseFrame(lines, i + 1)) continue;
+    let at = -1;
+    for (let j = i + 1; j < lines.length; j++) if (optionLine(lines[j])?.n === n) at = j;
+    const m = at < 0 ? null : OPTION_LINE.exec(lines[at]);
+    if (!m) return null;
+    const labelCol = lines[at].length - m[4].length;
+    const parts = [m[4].trim()];
+    for (let j = at + 1; j < lines.length; j++) {
+      const line = lines[j];
+      if (line.trim() === '' || optionLine(line)) break;
+      if (line.length - line.trimStart().length < labelCol) break;
+      parts.push(line.trim());
+    }
+    return collapse(parts.join(' '));
+  }
+  return null;
+}
+
 /** Same focus, target, option count and focused line — two reads of one settled frame. */
 export function sameDialogState(a: PlanDialogState | null, b: PlanDialogState | null): boolean {
   if (a === null || b === null) return a === b;

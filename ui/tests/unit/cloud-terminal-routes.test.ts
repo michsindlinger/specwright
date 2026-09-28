@@ -27,8 +27,8 @@ function fakeReq(sessionId: string, headers: Record<string, string> = {}, body?:
 }
 
 /** Pulls the single POST handler out of the router without spinning up express. */
-function handlerOf(getManager: () => CloudTerminalManager | undefined) {
-  const router = createCloudTerminalRouter(getManager);
+function handlerOf(getManager: () => CloudTerminalManager | undefined, getAnruf?: Parameters<typeof createCloudTerminalRouter>[1]) {
+  const router = createCloudTerminalRouter(getManager, getAnruf);
   const layer = (router as unknown as { stack: Array<{ route?: { stack: Array<{ handle: (req: Request, res: Response) => void }> } }> })
     .stack.find((l) => l.route)!;
   return layer.route!.stack[0].handle;
@@ -213,5 +213,24 @@ describe('POST /api/cloud-terminal/:sessionId/agent-event', () => {
     handlerOf(() => manager)(fakeReq('cloud-1-1', auth, { hook_event_name: 'Stop' }), res);
     expect(out.status).toBe(404);
     expect(report).not.toHaveBeenCalled();
+  });
+
+  it('INT-2026-025 (D1, Review F1): the Anruf content is stored after the context and before the status', () => {
+    const hookInhalt = vi.fn<(id: string, body: Record<string, unknown>) => void>();
+    const { res, out } = fakeRes();
+    const body = { hook_event_name: 'Stop', last_assistant_message: 'Fertig.\n\nSprechfassung: Alles erledigt.' };
+    handlerOf(() => manager, () => ({ hookInhalt }))(fakeReq('cloud-1-1', auth, body), res);
+    expect(out.status).toBe(204);
+    expect(hookInhalt).toHaveBeenCalledWith('cloud-1-1', body);
+    expect(reportContext.mock.invocationCallOrder[0]).toBeLessThan(hookInhalt.mock.invocationCallOrder[0]);
+    expect(hookInhalt.mock.invocationCallOrder[0]).toBeLessThan(report.mock.invocationCallOrder[0]);
+  });
+
+  it('INT-2026-025: no content handoff for an inactive session or a rejected token', () => {
+    const hookInhalt = vi.fn<(id: string, body: Record<string, unknown>) => void>();
+    reportContext.mockReturnValue(false);
+    handlerOf(() => manager, () => ({ hookInhalt }))(fakeReq('cloud-1-1', auth, { hook_event_name: 'Stop' }), fakeRes().res);
+    handlerOf(() => manager, () => ({ hookInhalt }))(fakeReq('cloud-1-1', {}, { hook_event_name: 'Stop' }), fakeRes().res);
+    expect(hookInhalt).not.toHaveBeenCalled();
   });
 });

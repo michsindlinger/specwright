@@ -90,6 +90,30 @@ export function getHookSecretPath(): string {
   return join(getCloudTerminalRuntimeDir(), 'hook-secret');
 }
 
+/** INT-2026-025 (D10): Anrufmodus-Schalter `{ "an": boolean }`, je Backend-Port, nicht versioniert. */
+export function getAnrufStatePath(): string {
+  return join(getRuntimeDir(), `anruf-${backendPort()}.json`);
+}
+
+/**
+ * INT-2026-025 (D2): Ordner der Kontext-Dateien, die der synchrone
+ * UserPromptSubmit-Hook liest (`an.json`, `aus-<sessionId>.json`). Enthält nur
+ * die festen Anweisungstexte.
+ */
+export function getAnrufKontextDir(): string {
+  return join(getRuntimeDir(), `anruf-kontext-${backendPort()}`);
+}
+
+/** INT-2026-025 (D3, FA-27): leerer `cwd`/`TMPDIR` des whisper-server; muss nach Anfragen leer bleiben. */
+export function getSpracheTmpDir(): string {
+  return join(getRuntimeDir(), `sprache-tmp-${backendPort()}`);
+}
+
+/** INT-2026-025 (D3): PID des whisper-server-Kindprozesses, je Backend-Port (3001 und 3111 beenden sich nicht gegenseitig). */
+export function getWhisperPidPath(): string {
+  return join(getRuntimeDir(), `whisper-server-${backendPort()}.pid`);
+}
+
 /** On-disk session registry, port-suffixed so two backends in one checkout never collide. */
 export function getSessionRegistryPath(): string {
   return join(getCloudTerminalRuntimeDir(), `sessions-${backendPort()}.json`);
