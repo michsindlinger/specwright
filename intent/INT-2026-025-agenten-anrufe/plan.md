@@ -432,7 +432,7 @@ Backend-Dienst, Protokoll, Frontend-Kasten und Sender greifen über eine gemeins
 |---|---|---|---|
 | Mock ansehen: `intent/INT-2026-025-agenten-anrufe/design/anruf-mock.png` (liegt mit dem Plan-Entwurf im Intent-Ordner) — mit dieser Plan-Freigabe | Michael | vor Umsetzung | [x] 2026-09-27 |
 | Modellwahl freigeben (ER-02): whisper.cpp (Homebrew, MIT) + `ggml-large-v3-turbo-q5_0.bin` (574 MB, MIT, `huggingface.co/ggerganov/whisper.cpp`, SHA-256 `394221709cd5…ffa7e2`); Stimme = Mac-Stimmen im Browser — mit dieser Plan-Freigabe | Michael | vor Umsetzung | [x] 2026-09-27 |
-| O2 (Meldungen ohne offenes Fenster) und O3 (Sprechtaste) entscheiden — mit dieser Plan-Freigabe | Michael | vor Umsetzung | [x] 2026-09-27 |
+| O2 (Meldungen ohne offenes Fenster) und O3 (Sprechtaste) entscheiden — mit dieser Plan-Freigabe *(geändert durch INT-2026-026: Mikrofon öffnet nach dem Vorlesen von selbst, Senden per Schlusswort „Antwort senden" ohne Bestätigung, keine Sprechtaste)* | Michael | vor Umsetzung | [x] 2026-09-27 |
 | whisper.cpp vorhanden: `whisper-server --help` (heute 1.9.1 installiert); sonst `brew install whisper-cpp` | Michael | vor Umsetzung | [x] 2026-09-27 (1.9.1, `/opt/homebrew/bin`) |
 | Modell einrichten: `cd ui && npm run sprache:einrichten` (Weg: `ui/scripts/sprache-einrichten.sh`) | Michael (oder Build-Sitzung mit `--von` aus Scratch) | vor E2E | [x] 2026-09-27 Build-Sitzung mit `--von`, Prüfsumme ok, zweiter Lauf ohne Kopie |
 | EK-01/EK-03 mit eigener Stimme: 20 vorgegebene Sätze (Liste im PR) im E2E-Branch per Anruf sprechen; Build-Sitzung wertet Median und WER aus; verfehlt → ER-03 | Michael + Build-Sitzung | vor Merge | [ ] |

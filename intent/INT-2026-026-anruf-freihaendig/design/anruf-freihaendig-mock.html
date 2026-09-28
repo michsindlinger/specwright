@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Mock INT-2026-026 Anruf freihändig</title>
+<style>
+:root{--bg0:#0B1929;--bg1:#0F1F33;--bg2:#162A45;--bg3:#1C3254;--el:#2D4A6F;--tx:#E8EDF2;--tx2:#94A3B8;--mu:#64748B;--ac:#00D4FF;--ok:#22c55e;--wa:#f59e0b;--er:#ef4444;--bd:#1E3A5F}
+*{box-sizing:border-box}body{margin:0;background:var(--bg0);color:var(--tx);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px}
+h1{font-size:18px;margin:0 0 4px}h2{font-size:13px;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;margin:28px 0 10px}
+.note{color:var(--mu);font-size:12px;margin:0 0 18px}
+.grid{display:grid;grid-template-columns:repeat(3,380px);gap:20px}
+.frame{background:var(--bg1);border:1px solid var(--bd);border-radius:10px;padding:14px;position:relative}
+.cap{font-size:11px;color:var(--mu);margin-bottom:8px}
+.kopf{display:flex;align-items:center;gap:10px;background:var(--bg2);border-radius:8px;padding:8px 12px;margin-bottom:10px}
+.kopf .t{flex:1;font-weight:600}.bell{position:relative;width:22px;height:22px;border-radius:50%;border:1px solid var(--bd);display:grid;place-items:center;font-size:12px}
+.badge{position:absolute;top:-6px;right:-8px;background:var(--wa);color:#111;border-radius:8px;font-size:10px;padding:0 5px;font-weight:700}
+.anruf{background:var(--bg3);border:1px solid var(--ac);border-radius:10px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.art{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;margin-right:6px}
+.art.r{background:rgba(245,158,11,.18);color:var(--wa)}.art.p{background:rgba(0,212,255,.15);color:var(--ac)}.art.f{background:rgba(34,197,94,.15);color:var(--ok)}
+.titel{font-weight:600;margin:6px 0 2px}.sub{color:var(--tx2);font-size:12px}
+.warten{color:var(--mu);font-size:12px;margin-top:6px}
+.text{background:var(--bg1);border-radius:6px;padding:10px;margin:10px 0;font-size:13px}
+.opt{margin:3px 0}.opt b{color:var(--ac);display:inline-block;width:18px}
+.als{color:var(--tx2);font-size:12px;margin-top:-4px;margin-bottom:10px}
+.knoepfe{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;border-radius:6px;padding:6px 12px;border:1px solid var(--bd);background:var(--bg2);color:var(--tx);cursor:pointer}
+button.pri{background:var(--ac);color:#0F1F33;border-color:var(--ac);font-weight:600}
+button.gef{background:var(--ok);color:#0F1F33;border-color:var(--ok);font-weight:600}
+button.fokus{outline:2px solid var(--ac);outline-offset:2px}
+button[disabled]{opacity:.45;cursor:not-allowed}
+.hoeren{display:flex;align-items:center;gap:10px;margin:12px 0}.dot{width:12px;height:12px;border-radius:50%;background:var(--er);box-shadow:0 0 0 6px rgba(239,68,68,.2)}
+.ergebnis{display:flex;gap:8px;align-items:center;font-weight:600}
+.ergebnis.ok{color:var(--ok)}.ergebnis.no{color:var(--wa)}
+.gekuerzt{font-size:11px;color:var(--mu)}
+.einst{background:var(--bg2);border-radius:8px;padding:12px}
+.zeile{display:flex;justify-content:space-between;align-items:center}
+.schalter{width:38px;height:20px;border-radius:10px;background:var(--el);position:relative}.schalter::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--tx2)}
+.schalter.an{background:var(--ac)}.schalter.an::after{left:20px;background:#0F1F33}.schalter.aus-gesperrt{opacity:.45}
+.grund{color:var(--wa);font-size:12px;margin-top:8px}
+.glist{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:6px}
+.gz{display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:6px}.gz:hover{background:var(--bg3)}
+.gz .dot2{width:8px;height:8px;border-radius:50%;margin-top:6px}.gz .body{flex:1}.gz .pv{color:var(--tx2);font-size:12px}
+.anrufen{font-size:12px;padding:3px 9px}
+</style>
+<style>
+.diktat{background:var(--bg1);border-left:3px solid var(--ac);border-radius:6px;padding:10px;margin:10px 0;font-size:13px}
+.diktat .noch{color:var(--mu)}
+.schluss{color:var(--tx2);font-size:12px;margin:-4px 0 10px}
+.schluss b{color:var(--ac)}
+.hinweis{color:var(--wa);font-size:12px;margin:-4px 0 10px}
+.dot.puls{animation:p 1.2s ease-in-out infinite}@keyframes p{50%{box-shadow:0 0 0 10px rgba(239,68,68,.05)}}
+.dot.aus{background:var(--mu);box-shadow:none}
+.vorlesen{color:var(--tx2);font-size:12px;margin:0 0 8px}
+</style>
+</head><body>
+<h1>INT-2026-026 · Anruf freihändig — Mock</h1>
+<p class="note">Stand 2026-09-28 · Ersetzt im Kasten „läuft" die Zustände „hört zu (Fertig)" und „bestätigen" aus <code>INT-2026-025/design/anruf-mock.png</code>. Klingeln, Nachfrage-Text, Ergebnis und Glocke bleiben wie dort. Kein „Sprechen", kein „Fertig", keine Leertaste (AN-S04). Fokus-Rahmen zeigt Tastaturbedienung (FA-20).</p>
+
+<h2>Anruf-Kasten — Zustände</h2>
+<div class="grid">
+ <div class="frame"><div class="cap">a · liest vor (Mikrofon aus, FA-02)</div>
+  <div class="anruf"><span class="art f">Fertig</span><span class="sub">Applai · „build-matching“</span>
+   <div class="text">Ich habe das Matching umgebaut und alle Tests laufen grün. Jetzt brauche ich deine Freigabe für den Pull Request.</div>
+   <div class="hoeren"><span class="dot aus"></span><span class="sub">liest vor … danach hört der Anruf zu</span></div>
+   <div class="knoepfe"><button>Nochmal</button><button class="fokus">Im Terminal öffnen</button><button>Auflegen</button></div>
+  </div></div>
+ <div class="frame"><div class="cap">b · hört zu, noch nichts gesagt (FA-01, FA-19)</div>
+  <div class="anruf"><span class="art f">Fertig</span><span class="sub">Applai · „build-matching“</span>
+   <div class="vorlesen">Ich habe das Matching umgebaut und alle Tests laufen grün. Jetzt brauche ich deine Freigabe …</div>
+   <div class="hoeren"><span class="dot puls"></span><b>Ich höre zu</b></div>
+   <div class="schluss">Zum Senden: <b>„Antwort senden“</b> · 20 s Stille legen auf</div>
+   <div class="knoepfe"><button disabled>Senden</button><button>Nochmal</button><button>Im Terminal öffnen</button><button class="fokus">Auflegen</button></div>
+  </div></div>
+ <div class="frame"><div class="cap">c · hört zu, Diktat nach zwei Pausen (FA-04, AK-08)</div>
+  <div class="anruf"><span class="art f">Fertig</span><span class="sub">Applai · „build-matching“</span>
+   <div class="hoeren"><span class="dot puls"></span><b>Ich höre zu</b></div>
+   <div class="diktat">Mach bitte noch die Tests für den Randfall mit leerem Namen. Und dann den PR aufmachen. <span class="noch">… wird erkannt</span></div>
+   <div class="als">Wird gesendet als: <b>Neue Eingabe an Sitzung „build-matching“</b></div>
+   <div class="schluss">Zum Senden: <b>„Antwort senden“</b></div>
+   <div class="knoepfe"><button class="pri fokus">Senden</button><button>Verwerfen</button><button>Nochmal</button><button>Im Terminal öffnen</button><button>Auflegen</button></div>
+  </div></div>
+ <div class="frame"><div class="cap">d · Rückfrage, hört zu (AK-07)</div>
+  <div class="anruf"><span class="art r">Rückfrage</span><span class="sub">Specwright · „plan-anruf“</span>
+   <div class="text"><div class="sub">Frage 1 von 2</div>Frage: Welches Modell für die Spracherkennung?
+    <div class="opt"><b>1</b>Whisper large-v3</div><div class="opt"><b>2</b>Whisper large-v3-turbo</div><div class="opt"><b>3</b>Whisper small</div><div class="opt" style="color:var(--tx2)">oder eine eigene Antwort</div></div>
+   <div class="hoeren"><span class="dot puls"></span><b>Ich höre zu</b></div>
+   <div class="diktat">Die zweite.</div>
+   <div class="als">Wird gesendet als: <b>Möglichkeit 2 — Whisper large-v3-turbo (Frage 1 von 2)</b></div>
+   <div class="schluss"><b>„Antwort senden“</b> führt zur nächsten Frage — gesendet wird nach der letzten</div>
+   <div class="knoepfe"><button class="pri fokus">Weiter</button><button>Verwerfen</button><button>Nochmal</button><button>Im Terminal öffnen</button><button>Auflegen</button></div>
+  </div></div>
+ <div class="frame"><div class="cap">e · Plan, hört zu (AK-06, FA-15)</div>
+  <div class="anruf"><span class="art p">Plan</span><span class="sub">Specwright · „int-026-plan“</span>
+   <div class="vorlesen">Der Plan macht den Anruf freihändig: Mikrofon nach dem Vorlesen, Senden per Schlusswort …</div>
+   <div class="hoeren"><span class="dot puls"></span><b>Ich höre zu</b></div>
+   <div class="schluss"><b>„freigeben“</b> gibt frei (mit Nachfrage) · ein Wunsch mit <b>„Antwort senden“</b> geht als Überarbeitung</div>
+   <div class="knoepfe"><button disabled>Senden</button><button class="fokus">Freigeben …</button><button>Nochmal</button><button>Im Terminal öffnen</button><button>Auflegen</button></div>
+  </div></div>
+ <div class="frame"><div class="cap">f · Plan-Nachfrage, hört zu</div>
+  <div class="anruf"><span class="art p">Plan</span><span class="sub">Specwright · „int-026-plan“</span>
+   <div class="text"><b>Plan für Sitzung „int-026-plan“ wirklich freigeben?</b><br>Sag ja oder nein.</div>
+   <div class="als">Freigabe wählt im Plan-Dialog „Yes, and switch to BYPASS PERMISSIONS“ — danach keine weiteren Rückfragen zu Berechtigungen in dieser Sitzung.</div>
+   <div class="hoeren"><span class="dot puls"></span><b>Ich höre zu</b> <span class="sub">— „ja“ oder „nein“</span></div>
+   <div class="knoepfe"><button class="gef fokus">Freigeben</button><button>Nein</button><button>Auflegen</button></div>
+  </div></div>
+ <div class="frame"><div class="cap">g · „senden“ ohne „Antwort“ (FA-07, nur angezeigt)</div>
+  <div class="anruf"><span class="art f">Fertig</span><span class="sub">Applai · „build-matching“</span>
+   <div class="hoeren"><span class="dot puls"></span><b>Ich höre zu</b></div>
+   <div class="diktat">Mach den PR auf und dann senden</div>
+   <div class="als">Wird gesendet als: <b>Neue Eingabe an Sitzung „build-matching“</b></div>
+   <div class="hinweis">Zum Senden: „Antwort senden“</div>
+   <div class="knoepfe"><button class="pri fokus">Senden</button><button>Verwerfen</button><button>Nochmal</button><button>Im Terminal öffnen</button><button>Auflegen</button></div>
+  </div></div>
+ <div class="frame"><div class="cap">h · Mikrofon zu (FA-11 zu lang, FA-17 nicht gesendet, FA-21 Fehler)</div>
+  <div class="anruf"><span class="art f">Fertig</span><span class="sub">Applai · „build-matching“</span>
+   <div class="hoeren"><span class="dot aus"></span><b>Mikrofon aus</b></div>
+   <div class="diktat">Mach bitte noch die Tests für den Randfall mit leerem Namen.</div>
+   <div class="hinweis">Nicht gesendet: In der Eingabezeile steht noch Text — im Terminal abschicken oder löschen. Text gehalten: „Antwort senden“ schickt ihn erneut.</div>
+   <div class="knoepfe"><button class="pri fokus">Zuhören</button><button>Senden</button><button>Verwerfen</button><button>Im Terminal öffnen</button><button>Auflegen</button></div>
+  </div>
+  <div style="height:10px"></div>
+  <div class="anruf"><div class="hoeren" style="margin:0 0 10px"><span class="dot aus"></span><b>Mikrofon nicht verfügbar</b></div><div class="sub">Mikrofon anschließen oder freigeben, dann „Zuhören“. Senden, Freigeben und Auflegen gehen per Knopf.</div><div class="knoepfe" style="margin-top:10px"><button class="pri">Zuhören</button><button>Auflegen</button></div></div>
+ </div>
+ <div class="frame"><div class="cap">i · Ende (schließt nach 3 s, FA-09, FA-18)</div>
+  <div class="anruf"><div class="ergebnis ok">✓ Gesendet</div></div>
+  <div style="height:10px"></div>
+  <div class="anruf"><div class="ergebnis no">Keine Antwort, aufgelegt</div><div class="sub" style="margin-top:6px">Meldung bleibt in der Glocke</div></div>
+ </div>
+</div>
+</body></html>

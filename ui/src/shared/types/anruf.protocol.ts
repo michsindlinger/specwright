@@ -114,8 +114,12 @@ export interface AnrufAblehnenMessage { type: 'anruf:ablehnen'; meldungId: strin
 export interface AnrufSpaeterMessage { type: 'anruf:spaeter'; meldungId: string }
 export interface AnrufAuflegenMessage { type: 'anruf:auflegen'; meldungId: string }
 export interface AnrufAnrufenMessage { type: 'anruf:anrufen'; sessionId: string }
-/** Audio als Base64 von 16-kHz-Int16-PCM (mono), ≤ 30 s. */
-export interface AnrufErkennenMessage { type: 'anruf:erkennen'; meldungId: string; audio: string }
+/**
+ * Audio als Base64 von 16-kHz-Int16-PCM (mono), ≤ 30 s je Nachricht.
+ * `abschnitt`: laufende Nummer des Sprechstücks im Anruf (INT-2026-026, D5),
+ * kommt in `anruf:erkannt` zurück, damit der Browser die Texte in Reihenfolge setzt.
+ */
+export interface AnrufErkennenMessage { type: 'anruf:erkennen'; meldungId: string; audio: string; abschnitt?: number }
 export interface AnrufFreigebenAnfragenMessage { type: 'anruf:freigeben.anfragen'; meldungId: string }
 export interface AnrufSendenMessage { type: 'anruf:senden'; meldungId: string; antwort: AnrufAntwort }
 
@@ -175,8 +179,8 @@ export interface AnrufVerfuegbarkeitMessage {
 }
 
 export type AnrufErkanntMessage =
-  | { type: 'anruf:erkannt'; meldungId: string; text: string }
-  | { type: 'anruf:erkannt'; meldungId: string; grund: 'nichts_verstanden' | 'erkennung_neustart' | 'erkennung_fehlt' };
+  | { type: 'anruf:erkannt'; meldungId: string; abschnitt?: number; text: string }
+  | { type: 'anruf:erkannt'; meldungId: string; abschnitt?: number; grund: 'nichts_verstanden' | 'erkennung_neustart' | 'erkennung_fehlt' };
 
 export type AnrufErgebnisMessage =
   | { type: 'anruf:ergebnis'; meldungId: string; ok: true }
@@ -202,6 +206,16 @@ export const ANRUF_SPAETER_MS = 5 * 60 * 1000;
 export const ANRUF_AUDIO_MAX_S = 30;
 /** Audio-Obergrenze als Base64 (30 s × 16 kHz × 2 Byte ≈ 960 KB → ~1,28 MB Base64). */
 export const ANRUF_AUDIO_MAX_BASE64 = 1_400_000;
+/** Größte Abschnittsnummer, die der Handler annimmt (INT-2026-026, D5). */
+export const ANRUF_ABSCHNITT_MAX = 100_000;
+/** Freihändig (INT-2026-026): Sprechpause, nach der erkannt und geprüft wird (AN-S01). */
+export const ANRUF_PAUSE_MS = 1000;
+/** Stille bis zum Auflegen, ab Öffnen des Mikrofons und neu ab jedem erkannten Wort (FA-09). */
+export const ANRUF_STILLE_S = 20;
+/** Gesprochenes je Frage, danach „Antwort zu lang" (FA-11). */
+export const ANRUF_ANTWORT_MAX_S = 120;
+/** Audio je Anruf im Backend, Schutz gegen Dauerversand (D5, security.md §2). */
+export const ANRUF_AUDIO_MAX_JE_ANRUF_S = 600;
 /** Meldungen nur, solange ein lokaler fähiger Client verbunden ist oder vor höchstens so langer Zeit war (O2). */
 export const ANRUF_CLIENT_KULANZ_MS = 30 * 1000;
 /** Klingelton: dreimal im Abstand von 4 s, danach stiller Kasten (D6). */

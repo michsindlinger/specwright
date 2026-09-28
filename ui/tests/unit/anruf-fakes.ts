@@ -1,6 +1,7 @@
 /**
- * Fakes for the call-mode frontend tests (INT-2026-025): gateway,
- * speechSynthesis, microphone, notifications. No browser API is touched.
+ * Fakes for the call-mode frontend tests (INT-2026-025, INT-2026-026): gateway,
+ * speechSynthesis (with end signal), microphone (speech, silence, noise),
+ * notifications. No browser API is touched.
  */
 import type { WebSocketMessage } from '../../frontend/src/gateway.js';
 import {
@@ -44,15 +45,36 @@ export class FakeSprache {
   ];
   gesprochen: Array<{ text: string; stimme: string }> = [];
   cancels = 0;
+  /** `speaking || pending` as the fallback check sees it. */
+  aktivWert = true;
   private cb: (() => void) | null = null;
+  private ende: ((ok: boolean) => void) | null = null;
   getVoices(): AnrufStimme[] {
     return this.voices;
   }
-  speak(text: string, stimme: AnrufStimme): void {
+  speak(text: string, stimme: AnrufStimme, beiEnde?: (ok: boolean) => void): void {
     this.gesprochen.push({ text, stimme: stimme.name });
+    if (beiEnde) this.ende = beiEnde;
   }
+  /** Like the browser: cancelling fires the pending end signal with an error. */
   cancel(): void {
     this.cancels++;
+    this.abbrechen();
+  }
+  aktiv(): boolean {
+    return this.aktivWert;
+  }
+  /** The last queued sentence was spoken to the end (`onend`). */
+  fertig(): void {
+    const e = this.ende;
+    this.ende = null;
+    e?.(true);
+  }
+  /** `onerror` with `interrupted`. */
+  abbrechen(): void {
+    const e = this.ende;
+    this.ende = null;
+    e?.(false);
   }
   onVoicesChanged(cb: () => void): void {
     this.cb = cb;
@@ -86,12 +108,28 @@ export class FakeStrom implements AnrufMikrofonStrom {
       },
     };
   }
-  /** Feeds `sekunden` of a sine at `amplitude`. */
-  liefere(sekunden: number, amplitude = 0.5): void {
+  /** Feeds `sekunden` of a sine at `amplitude` (in chunks of `stueck` seconds). */
+  liefere(sekunden: number, amplitude = 0.5, stueck = 1): void {
     const n = Math.round(this.rate * sekunden);
-    const c = new Float32Array(n);
-    for (let i = 0; i < n; i++) c[i] = amplitude * Math.sin((2 * Math.PI * 440 * i) / this.rate);
-    this.chunk?.(c);
+    const block = Math.round(this.rate * stueck);
+    for (let pos = 0; pos < n; pos += block) {
+      const len = Math.min(block, n - pos);
+      const c = new Float32Array(len);
+      for (let i = 0; i < len; i++) c[i] = amplitude * Math.sin((2 * Math.PI * 440 * (pos + i)) / this.rate);
+      this.chunk?.(c);
+    }
+  }
+  /** Silence. */
+  stille(sekunden: number): void {
+    this.liefere(sekunden, 0);
+  }
+  /** Speech-like level, then the one-second pause that closes a piece. */
+  sprich(sekunden = 1): void {
+    this.liefere(sekunden, 0.3);
+    this.stille(1.1);
+  }
+  get laeuft(): boolean {
+    return this.chunk !== null && !this.aufnahmeGestoppt;
   }
   endeVonAussen(): void {
     this.endeCb?.();

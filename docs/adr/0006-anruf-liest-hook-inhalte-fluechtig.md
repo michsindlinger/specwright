@@ -43,6 +43,7 @@ Zwei weitere Punkte sind neu: Der Agent muss lernen, die Sprechfassung zu schrei
 - Der Agent schreibt die Sprechfassung in seine Antwort. Sie steht damit auch im Terminal und im Gesprächsverlauf von Claude Code, also außerhalb der UI; das ist gewollt (FA-30).
 - `whisper-server` belegt rund 0,8 GB Arbeitsspeicher, solange der Modus an ist. Auf dem Cloud-Host und am Handy ist der Anrufmodus nicht verfügbar; die Glocke arbeitet dort wie bisher.
 - Ein neues Feld mit Inhalt aus Hooks, das auf die Platte soll, braucht ein neues ADR.
+- Seit INT-2026-026 erkennt der Anruf die Antwort abschnittsweise (je Sprechpause ein Abschnitt, nummeriert, höchstens 10 min Audio je Anruf); Audio und Text bleiben weiterhin nur im Speicher und nur lokal.
 
 ---
 

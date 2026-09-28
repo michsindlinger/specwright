@@ -20,6 +20,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import {
   ANRUF_ANWEISUNG_AN,
+  ANRUF_AUDIO_MAX_JE_ANRUF_S,
   ANRUF_ANWEISUNG_AUS,
   ANRUF_CLIENT_KULANZ_MS,
   ANRUF_NICHT_VERFUEGBAR_TEXT,
@@ -37,6 +38,7 @@ import {
   type AnrufVerfuegbarkeit,
 } from '../../shared/types/anruf.protocol.js';
 import { vorlesetextFuer } from '../../shared/anruf-text.js';
+import { ANRUF_RATE } from '../../shared/anruf-audio.js';
 import { AnrufWarteschlange, type AnrufEintrag } from './anruf-warteschlange.js';
 import { anrufUebergang, type AnrufEreignis, type AnrufUebergangErgebnis, type AnrufZustand, type ZustandMeldung } from './anruf-zustand.js';
 import { CLOUD_SESSION_ID_RE, extractAnrufInhalt } from './claude-hooks.js';
@@ -192,6 +194,8 @@ export class AnrufService {
   private naechsteTimer: NodeJS.Timeout | null = null;
   private endeGrund: { text: string; fuer: string } | null = null;
   private ausstehendeAntwort: AnrufAntwort | null = null;
+  /** Audio-Sekunden des laufenden Anrufs (INT-2026-026, D5); neu je Meldung. */
+  private audioJeAnruf: { meldungId: string; sekunden: number } | null = null;
   private gestoppt = false;
 
   constructor(deps: AnrufServiceDeps) {
@@ -395,11 +399,21 @@ export class AnrufService {
     return this.alsFehler(ergebnis);
   }
 
-  /** `anruf:erkennen`: Audio nur im Speicher, Ergebnis nur an den Besitzer (FA-27, Review F15). */
-  async erkennen(clientId: string, meldungId: string, pcm: Int16Array): Promise<AnrufErrorMessage | undefined> {
+  /**
+   * `anruf:erkennen`: Audio nur im Speicher, Ergebnis nur an den Besitzer (FA-27, Review F15).
+   * `abschnitt` kommt unverändert zurück (INT-2026-026, D5); Audio je Anruf gedeckelt (FA-22).
+   */
+  async erkennen(clientId: string, meldungId: string, pcm: Int16Array, abschnitt?: number): Promise<AnrufErrorMessage | undefined> {
     if (!this.istLaufenderAnruf(clientId, meldungId)) {
       return fehlerNachricht('INVALID_MESSAGE', 'Kein laufender Anruf dieses Fensters für diese Meldung.');
     }
+    if (this.audioJeAnruf?.meldungId !== meldungId) this.audioJeAnruf = { meldungId, sekunden: 0 };
+    const sekunden = this.audioJeAnruf.sekunden + pcm.length / ANRUF_RATE;
+    if (sekunden > ANRUF_AUDIO_MAX_JE_ANRUF_S) {
+      return fehlerNachricht('INVALID_MESSAGE', 'Zu viel Audio in diesem Anruf.');
+    }
+    this.audioJeAnruf.sekunden = sekunden;
+    const nr = abschnitt !== undefined ? { abschnitt } : {};
     let ergebnis: AnrufErkennungsErgebnis;
     if (!this.erkennung.verfuegbarkeit().verfuegbar) {
       ergebnis = { grund: 'erkennung_fehlt' };
@@ -416,7 +430,9 @@ export class AnrufService {
     if (client) {
       this.sendeSicher(
         client.send,
-        'text' in ergebnis ? { type: 'anruf:erkannt', meldungId, text: ergebnis.text } : { type: 'anruf:erkannt', meldungId, grund: ergebnis.grund }
+        'text' in ergebnis
+          ? { type: 'anruf:erkannt', meldungId, ...nr, text: ergebnis.text }
+          : { type: 'anruf:erkannt', meldungId, ...nr, grund: ergebnis.grund }
       );
     }
     return undefined;

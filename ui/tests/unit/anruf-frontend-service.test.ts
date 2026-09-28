@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 /**
- * INT-2026-025 (D4, D11; FA-03, FA-04, FA-19, FA-20, FA-21, FA-22, FA-26,
- * FA-28, Spec §4): the browser side of the call mode with fake browser APIs —
- * capability report, ringing, microphone only between „Sprechen" and
- * „Fertig", 30-s limit, silence check, microphone lost, reading sentence-wise
- * with a local voice, multi-question answers, plan confirmation.
+ * INT-2026-025 (D4, D11; FA-03, FA-04, FA-26, FA-28, Spec §4) and
+ * INT-2026-026 (D3, D4, D6–D10; FA-01–FA-24): the browser side of the call
+ * mode with fake browser APIs — capability report, ringing, reading
+ * sentence-wise with an end signal, hands-free listening after reading,
+ * pieces at speaking pauses, closing phrase „Antwort senden", 20-s silence,
+ * plan confirmation, Rückfragen, failures.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -14,7 +15,7 @@ vi.mock('../../frontend/src/gateway.js', () => ({
 vi.mock('../../frontend/src/components/terminal/notification-sound.js', () => ({ playAnrufKlingeln: vi.fn() }));
 
 import { anrufWelt, meldungFertig, meldungPlan, meldungRueckfrage, ruhe, state, verfuegbarkeitLokal, type AnrufWelt } from './anruf-fakes.js';
-import { schalterSperrgrund, waehleStimme, saetze, anrufAktiv, ANRUF_TEXT } from '../../frontend/src/services/anruf.service.js';
+import { schalterSperrgrund, waehleStimme, saetze, anrufAktiv, vorleseFristMs, ANRUF_TEXT } from '../../frontend/src/services/anruf.service.js';
 import { base64ZuInt16 } from '../../src/shared/anruf-audio.js';
 import { ANRUF_NICHT_VERFUEGBAR_TEXT } from '../../src/shared/types/anruf.protocol.js';
 
@@ -25,12 +26,29 @@ async function laufenderAnruf(w: AnrufWelt, meldung = meldungFertig): Promise<vo
   w.gw.emit(state({ zustand: 'laeuft', eigener: true, meldung }));
 }
 
-async function sprich(w: AnrufWelt, sekunden = 1, amplitude = 0.5): Promise<void> {
-  const start = w.dienst.sprechenStart();
+/** Reading ends (onend) → microphone opens; 300 ms of room noise to learn the floor. */
+async function hoert(w: AnrufWelt): Promise<void> {
+  w.sprache.fertig();
   await ruhe();
-  await start;
-  w.mikro.letzter.liefere(sekunden, amplitude);
-  w.dienst.sprechenEnde();
+  expect(w.dienst.ansicht.phase).toBe('zuhoeren');
+  w.mikro.letzter.stille(0.3);
+}
+
+/** Speaks one piece; returns its number (the recognition result is not in yet). */
+function stueck(w: AnrufWelt, sekunden = 1): number {
+  w.mikro.letzter.sprich(sekunden);
+  const nr = w.gw.ofType('anruf:erkennen').at(-1)?.abschnitt;
+  expect(typeof nr).toBe('number');
+  return nr as number;
+}
+
+function erkannt(w: AnrufWelt, nr: number, text: string, meldungId = w.dienst.ansicht.meldung?.id ?? ''): void {
+  w.gw.emit({ type: 'anruf:erkannt', meldungId, abschnitt: nr, text });
+}
+
+/** One piece with its recognised text. */
+function sage(w: AnrufWelt, text: string, sekunden = 1): void {
+  erkannt(w, stueck(w, sekunden), text);
 }
 
 describe('anruf.service — capability (FA-26, FA-28)', () => {
@@ -155,7 +173,7 @@ describe('anruf.service — ringing (FA-03, FA-04, D6)', () => {
   });
 });
 
-describe('anruf.service — reading aloud (D4, FA-18)', () => {
+describe('anruf.service — reading aloud (D4)', () => {
   it('reads sentence-wise with Anna; „gekürzt" announced; Nochmal cancels and reads again', async () => {
     expect(saetze('Eins. Zwei? Drei!')).toEqual(['Eins.', 'Zwei?', 'Drei!']);
     const w = anrufWelt();
@@ -193,159 +211,409 @@ describe('anruf.service — reading aloud (D4, FA-18)', () => {
   });
 });
 
-describe('anruf.service — recording (FA-19, FA-26, Review F14)', () => {
-  it('microphone only between Sprechen and Fertig; tracks stopped at once; 16-kHz audio sent', async () => {
+describe('anruf.service — listening after reading (FA-01, FA-02, FA-03, AK-01, AK-02)', () => {
+  it('microphone closed while reading, opens after the last sentence; „Ich höre zu" only once recording runs', async () => {
     const w = anrufWelt();
     await laufenderAnruf(w);
     expect(w.mikro.oeffnungen).toBe(0);
-    await sprich(w, 1);
-    const strom = w.mikro.letzter;
+    expect(w.dienst.ansicht.phase).toBe('vorlesen');
+    w.sprache.fertig();
+    expect(w.dienst.ansicht.phase).toBe('vorlesen');
+    await ruhe();
     expect(w.mikro.oeffnungen).toBe(1);
-    expect(strom.gestoppt).toBe(true);
-    expect(strom.aufnahmeGestoppt).toBe(true);
-    const erkennen = w.gw.ofType('anruf:erkennen');
-    expect(erkennen).toHaveLength(1);
-    expect(erkennen[0]!.meldungId).toBe('m-fertig');
-    expect(base64ZuInt16(erkennen[0]!.audio as string).length).toBe(16000);
-    expect(w.dienst.ansicht.phase).toBe('erkennen');
+    expect(w.mikro.letzter.laeuft).toBe(true);
+    expect(w.dienst.ansicht.phase).toBe('zuhoeren');
   });
 
-  it('30-s limit ends the recording on its own', async () => {
+  it('cancelled reading does not open the microphone', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    w.sprache.abbrechen();
+    await ruhe();
+    expect(w.mikro.oeffnungen).toBe(0);
+  });
+
+  it('Nochmal closes the microphone, reads again, opens afterwards (FA-02); the text stays (D7)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Mach die Tests.');
+    const strom = w.mikro.letzter;
+    w.dienst.nochmal();
+    expect(strom.gestoppt).toBe(true);
+    expect(strom.aufnahmeGestoppt).toBe(true);
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'vorlesen', text: 'Mach die Tests.' });
+    await hoert(w);
+    expect(w.mikro.oeffnungen).toBe(2);
+  });
+
+  it('fallback: aktiv() false twice → listening; onend and fallback both → one opening (D4, Finding 1)', async () => {
     vi.useFakeTimers();
     try {
       const w = anrufWelt();
       await laufenderAnruf(w);
-      const start = w.dienst.sprechenStart();
+      w.sprache.aktivWert = false;
+      vi.advanceTimersByTime(500);
       await ruhe();
-      await start;
-      w.mikro.letzter.liefere(31);
-      vi.advanceTimersByTime(30_000);
-      expect(w.mikro.letzter.gestoppt).toBe(true);
-      const audio = w.gw.ofType('anruf:erkennen')[0]!.audio as string;
-      expect(base64ZuInt16(audio).length).toBe(30 * 16000);
+      expect(w.mikro.oeffnungen).toBe(0);
+      vi.advanceTimersByTime(500);
+      w.sprache.fertig();
+      await ruhe();
+      expect(w.mikro.oeffnungen).toBe(1);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('too short or too quiet → „Nichts verstanden", nothing sent', async () => {
-    const w = anrufWelt();
-    await laufenderAnruf(w);
-    await sprich(w, 0.2);
-    expect(w.gw.ofType('anruf:erkennen')).toEqual([]);
-    expect(w.dienst.ansicht.hinweis).toBe(ANRUF_TEXT.nichtsVerstanden);
-    expect(w.dienst.ansicht.phase).toBe('vorlesen');
-    await sprich(w, 1, 0.001);
-    expect(w.gw.ofType('anruf:erkennen')).toEqual([]);
+  it('gap between two sentences (pending) is no end', async () => {
+    vi.useFakeTimers();
+    try {
+      const w = anrufWelt();
+      await laufenderAnruf(w);
+      vi.advanceTimersByTime(3000);
+      await ruhe();
+      expect(w.mikro.oeffnungen).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it('microphone unplugged during recording: announce, hang up without sending, report', async () => {
+  it('background tab: speech paused (aktiv stays true) → hard limit cancels and listens (R11)', async () => {
+    vi.useFakeTimers();
+    try {
+      const w = anrufWelt();
+      await laufenderAnruf(w);
+      const text = 'Ich habe das Matching umgebaut. Jetzt brauche ich deine Freigabe. Gekürzt.';
+      const c = w.sprache.cancels;
+      vi.advanceTimersByTime(vorleseFristMs(text) - 1);
+      await ruhe();
+      expect(w.mikro.oeffnungen).toBe(0);
+      vi.advanceTimersByTime(1);
+      await ruhe();
+      expect(w.sprache.cancels).toBe(c + 1);
+      expect(w.mikro.oeffnungen).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('no microphone while ringing, in another window, after hanging up, with mode off (FA-03, FA-24)', async () => {
     const w = anrufWelt();
-    await laufenderAnruf(w);
-    const start = w.dienst.sprechenStart();
+    w.dienst.subscribe(() => {});
+    w.gw.emit(state({ zustand: 'klingelt', meldung: meldungFertig }));
+    w.gw.emit(state({ zustand: 'laeuft', eigener: false, meldung: meldungFertig }));
+    w.sprache.fertig();
     await ruhe();
-    await start;
-    w.mikro.letzter.endeVonAussen();
-    expect(w.mikro.letzter.gestoppt).toBe(true);
-    expect(w.gw.ofType('anruf:auflegen')).toHaveLength(1);
-    expect(w.gw.ofType('anruf:senden')).toEqual([]);
-    expect(w.gw.ofType('anruf:faehig').at(-1)).toMatchObject({ mikrofon: 'fehlt' });
-    expect(w.sprache.texte.at(-1)).toBe('Mikrofon nicht verfügbar.');
-    expect(w.dienst.ansicht.ergebnis).toEqual({ ok: false, text: 'Mikrofon nicht verfügbar' });
+    expect(w.mikro.oeffnungen).toBe(0);
+
+    const w2 = anrufWelt();
+    await laufenderAnruf(w2);
+    await hoert(w2);
+    const strom = w2.mikro.letzter;
+    w2.gw.emit(state({ an: false, zustand: 'laeuft', eigener: true, meldung: meldungFertig }));
+    expect(strom.gestoppt).toBe(true);
+    expect(w2.gw.ofType('anruf:senden')).toEqual([]);
+
+    const w3 = anrufWelt();
+    await laufenderAnruf(w3);
+    await hoert(w3);
+    w3.dienst.auflegen();
+    expect(w3.mikro.letzter.gestoppt).toBe(true);
   });
 
-  it('getUserMedia denied → verweigert, call ends', async () => {
+  it('nurTerminal: after reading the microphone stays closed', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w, { ...meldungRueckfrage, fragen: [] });
+    w.sprache.fertig();
+    await ruhe();
+    expect(w.mikro.oeffnungen).toBe(0);
+    expect(w.dienst.ansicht.phase).toBe('vorlesen');
+  });
+});
+
+describe('anruf.service — pieces and the closing phrase (FA-04–FA-08, AK-03, AK-04, AK-08)', () => {
+  it('„Mach die Tests. Antwort senden." → sent without the phrase, nothing read before (AK-03, FA-05)', async () => {
     const w = anrufWelt();
     await laufenderAnruf(w);
-    w.mikro.fehler = { name: 'NotAllowedError' };
-    await w.dienst.sprechenStart();
-    expect(w.gw.ofType('anruf:faehig').at(-1)).toMatchObject({ mikrofon: 'verweigert' });
+    await hoert(w);
+    const vorher = w.sprache.texte.length;
+    sage(w, 'Mach die Tests. Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')).toEqual([{ type: 'anruf:senden', meldungId: 'm-fertig', antwort: { art: 'text', text: 'Mach die Tests.' } }]);
+    expect(w.sprache.texte.length).toBe(vorher);
+    expect(w.mikro.letzter.gestoppt).toBe(true);
+    expect(w.dienst.ansicht.phase).toBe('sendet');
+  });
+
+  it('pieces carry numbers and 16-kHz audio; results out of order → text in order (FA-04, D5)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    const a = stueck(w, 1);
+    const b = stueck(w, 1);
+    expect(b).toBe(a + 1);
+    const audio = w.gw.ofType('anruf:erkennen')[0]!.audio as string;
+    expect(base64ZuInt16(audio).length).toBeGreaterThan(16000);
+    erkannt(w, b, 'Und den PR. Antwort senden.');
+    expect(w.dienst.ansicht).toMatchObject({ erkenntNoch: true });
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    erkannt(w, a, 'Mach bitte die Tests.');
+    expect(w.gw.ofType('anruf:senden')).toEqual([
+      { type: 'anruf:senden', meldungId: 'm-fertig', antwort: { art: 'text', text: 'Mach bitte die Tests. Und den PR.' } },
+    ]);
+  });
+
+  it('after each pause the text so far and „Wird gesendet als" are shown (FA-19, AK-08)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Mach bitte noch die Tests.');
+    expect(w.dienst.ansicht).toMatchObject({
+      phase: 'zuhoeren',
+      text: 'Mach bitte noch die Tests.',
+      als: 'Neue Eingabe an Sitzung „build-matching“',
+      erkenntNoch: false,
+    });
+  });
+
+  it('phrase over two pieces: „… Antwort" + „senden." → sent (FA-05)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Mach die Tests. Antwort');
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    sage(w, 'senden.');
+    expect(w.gw.ofType('anruf:senden')[0]).toMatchObject({ antwort: { art: 'text', text: 'Mach die Tests.' } });
+  });
+
+  it('phrase in the middle → nothing, listening goes on; later phrase sends the whole text (AK-04, FA-06)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Antwort senden und dann die Doku.');
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    expect(w.dienst.ansicht.phase).toBe('zuhoeren');
+    sage(w, 'Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')[0]).toMatchObject({ antwort: { text: 'Antwort senden und dann die Doku.' } });
+  });
+
+  it('level right after the phrase piece (below the start limit) → wait for quiet (Finding 1, R6)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    const s = w.mikro.letzter;
+    s.liefere(1, 0.3);
+    s.stille(1.1);
+    const nr = w.gw.ofType('anruf:erkennen').at(-1)!.abschnitt as number;
+    s.liefere(0.05, 0.3, 0.05); // 1–2 loud frames: no piece yet
+    erkannt(w, nr, 'Mach die Tests. Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    s.stille(1.1); // onRuhe
+    expect(w.gw.ofType('anruf:senden')).toHaveLength(1);
+  });
+
+  it('speaking on while the phrase piece is recognised → only the next result decides (FA-06)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    const a = stueck(w, 1);
+    w.mikro.letzter.liefere(0.5, 0.3); // next piece open
+    erkannt(w, a, 'Mach die Tests. Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    w.mikro.letzter.stille(1.1);
+    const b = w.gw.ofType('anruf:erkennen').at(-1)!.abschnitt as number;
+    erkannt(w, b, 'und dann noch die Doku');
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+  });
+
+  it('„senden" without „Antwort" → hint shown, not spoken, nothing sent (FA-07)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    const n = w.sprache.texte.length;
+    sage(w, 'Mach den PR auf und dann senden.');
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'zuhoeren', hinweis: ANRUF_TEXT.schlussHinweis });
+    expect(w.sprache.texte.length).toBe(n);
+  });
+
+  it('only the phrase → nothing sent, „Noch keine Antwort" read, listening again (FA-08)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    expect(w.sprache.texte.at(-1)).toBe(ANRUF_TEXT.nochKeineAntwort);
+    await hoert(w);
+  });
+
+  it('„… Antwort verwerfen" clears, says „Verworfen", listens again (FA-12)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Mach das so.');
+    sage(w, 'Ach nein. Antwort verwerfen.');
+    expect(w.dienst.ansicht.text).toBeUndefined();
+    expect(w.sprache.texte.at(-1)).toBe('Verworfen.');
+    await hoert(w);
+    sage(w, 'Neu. Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')[0]).toMatchObject({ antwort: { text: 'Neu.' } });
+  });
+
+  it('single words only as everything said since opening (FA-13): „auflegen" hangs up, inside a sentence it is text', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Das war es. Auflegen.');
+    expect(w.gw.ofType('anruf:auflegen')).toEqual([]);
+    expect(w.dienst.ansicht.text).toBe('Das war es. Auflegen.');
+
+    const w2 = anrufWelt();
+    await laufenderAnruf(w2);
+    await hoert(w2);
+    sage(w2, 'Auflegen.');
+    expect(w2.gw.ofType('anruf:auflegen')).toHaveLength(1);
+    expect(w2.gw.ofType('anruf:senden')).toEqual([]);
+  });
+
+  it('„nochmal" as a word reads again and is no text', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Noch mal.');
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'vorlesen' });
+    expect(w.dienst.ansicht.text).toBeUndefined();
+    expect(w.sprache.texte.at(-1)).toBe('Gekürzt.');
+  });
+
+  it('„auflegen" after a spoken hint acts as a single word (Finding 12)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Antwort senden.');
+    await hoert(w);
+    sage(w, 'Auflegen');
     expect(w.gw.ofType('anruf:auflegen')).toHaveLength(1);
   });
 });
 
-describe('anruf.service — answers (FA-20, FA-21, FA-22)', () => {
-  it('fertig: recognised text → „Neue Eingabe an Sitzung …"; spoken „senden" sends', async () => {
+describe('anruf.service — silence and length (FA-09, FA-10, FA-11, AK-05)', () => {
+  it('20 s silence → hang up, „Keine Antwort, aufgelegt" after cancelling, nothing sent (FA-09, D10)', async () => {
     const w = anrufWelt();
     await laufenderAnruf(w);
-    await sprich(w);
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-fertig', text: 'Mach weiter mit dem Plan' });
-    expect(w.dienst.ansicht).toMatchObject({ phase: 'bestaetigen', erkannt: 'Mach weiter mit dem Plan', als: 'Neue Eingabe an Sitzung „build-matching“' });
-    await sprich(w);
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-fertig', text: 'Senden.' });
-    expect(w.gw.ofType('anruf:senden')).toEqual([{ type: 'anruf:senden', meldungId: 'm-fertig', antwort: { art: 'text', text: 'Mach weiter mit dem Plan' } }]);
-  });
-
-  it('recognition reasons are shown; nothing sent', async () => {
-    const w = anrufWelt();
-    await laufenderAnruf(w);
-    await sprich(w);
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-fertig', grund: 'erkennung_neustart' });
-    expect(w.dienst.ansicht).toMatchObject({ phase: 'vorlesen', hinweis: ANRUF_TEXT.erkennungNeustart });
-  });
-
-  it('Rückfrage with two questions: asks one after the other, sends only after the last', async () => {
-    const w = anrufWelt();
-    await laufenderAnruf(w, meldungRueckfrage);
-    await sprich(w);
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-rf', text: 'zwei' });
-    expect(w.dienst.ansicht).toMatchObject({ als: 'Möglichkeit 2 — Whisper large-v3-turbo (Frage 1 von 2)', weiter: true });
-    w.dienst.absenden();
+    await hoert(w);
+    w.mikro.letzter.stille(19.5);
+    expect(w.gw.ofType('anruf:auflegen')).toEqual([]);
+    const c = w.sprache.cancels;
+    w.mikro.letzter.stille(0.5);
+    expect(w.gw.ofType('anruf:auflegen')).toEqual([{ type: 'anruf:auflegen', meldungId: 'm-fertig' }]);
     expect(w.gw.ofType('anruf:senden')).toEqual([]);
-    expect(w.dienst.ansicht).toMatchObject({ phase: 'vorlesen', frageIndex: 1 });
-    expect(w.sprache.texte.at(-1)).toMatch(/Oder eine eigene Antwort\.$/);
-    expect(w.sprache.texte.some((t) => t.startsWith('Nächste Frage.'))).toBe(true);
-    await sprich(w);
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-rf', text: 'lieber eine Männerstimme' });
-    expect(w.dienst.ansicht).toMatchObject({ als: 'Eigene Antwort (Frage 2 von 2)', weiter: false });
-    w.dienst.absenden();
-    expect(w.gw.ofType('anruf:senden')).toEqual([
-      { type: 'anruf:senden', meldungId: 'm-rf', antwort: { art: 'rueckfrage', antworten: [{ nummern: [2] }, { nummern: [], eigene: 'lieber eine Männerstimme' }] } },
-    ]);
+    expect(w.sprache.cancels).toBeGreaterThan(c);
+    expect(w.sprache.texte.at(-1)).toBe('Keine Antwort, aufgelegt.');
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'ergebnis', ergebnis: { ok: false, text: ANRUF_TEXT.keineAntwort, glocke: true } });
+    expect(w.mikro.letzter.gestoppt).toBe(true);
   });
 
-  it('ambiguous wording: own answer with „passt auf … — Nummer sagen"', async () => {
+  it('recognised words reset the clock; a started text is not sent on silence', async () => {
     const w = anrufWelt();
-    await laufenderAnruf(w, meldungRueckfrage);
-    await sprich(w);
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-rf', text: 'eins und drei' });
-    expect(w.dienst.ansicht).toMatchObject({ als: 'Eigene Antwort (Frage 1 von 2)', hinweis: 'passt auf 1 und 3 — Nummer sagen' });
-  });
-
-  it('hang up after the first of two questions: nothing sent', async () => {
-    const w = anrufWelt();
-    await laufenderAnruf(w, meldungRueckfrage);
-    await sprich(w);
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-rf', text: 'eins' });
-    w.dienst.absenden();
-    w.dienst.auflegen();
+    await laufenderAnruf(w);
+    await hoert(w);
+    w.mikro.letzter.stille(8);
+    sage(w, 'Mach die Tests.'); // ends at ≈ 9.3 s
+    w.mikro.letzter.stille(17);
+    expect(w.gw.ofType('anruf:auflegen')).toEqual([]);
+    w.mikro.letzter.stille(2);
+    expect(w.gw.ofType('anruf:auflegen')).toHaveLength(1);
     expect(w.gw.ofType('anruf:senden')).toEqual([]);
   });
 
-  it('plan: „freigeben" → confirmation; „ja, aber …" is not a yes; „ja" releases; other text → revision', async () => {
+  it('a piece with nothing understood does not reset the clock (FA-10)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    w.mikro.letzter.stille(10);
+    const nr = stueck(w, 1);
+    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-fertig', abschnitt: nr, grund: 'nichts_verstanden' });
+    w.mikro.letzter.stille(8);
+    expect(w.gw.ofType('anruf:auflegen')).toHaveLength(1);
+  });
+
+  it('no hang-up while a recognition is open', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    w.mikro.letzter.stille(18);
+    const nr = stueck(w, 1);
+    w.mikro.letzter.stille(3);
+    expect(w.gw.ofType('anruf:auflegen')).toEqual([]);
+    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-fertig', abschnitt: nr, grund: 'nichts_verstanden' });
+    w.mikro.letzter.stille(0.1);
+    expect(w.gw.ofType('anruf:auflegen')).toHaveLength(1);
+  });
+
+  it('two minutes per question → „Antwort zu lang", microphone off, text held; then only the phrase alone sends (FA-11)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    for (let i = 0; i < 5; i++) sage(w, `Teil ${i + 1}.`, 25);
+    // 5 pieces × (25 s + lead-in/tail) ≥ 120 s
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'mikrofon_zu', hinweis: ANRUF_TEXT.zuLang, gehalten: true, text: 'Teil 1. Teil 2. Teil 3. Teil 4. Teil 5.' });
+    expect(w.sprache.texte.at(-1)).toBe('Antwort zu lang.');
+    expect(w.mikro.letzter.gestoppt).toBe(true);
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    w.dienst.zuhoeren();
+    await ruhe();
+    w.mikro.letzter.stille(0.3);
+    sage(w, 'Und noch was.');
+    expect(w.dienst.ansicht).toMatchObject({ text: 'Teil 1. Teil 2. Teil 3. Teil 4. Teil 5.', hinweis: ANRUF_TEXT.gehaltenHinweis });
+    sage(w, 'Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')[0]).toMatchObject({ antwort: { text: 'Teil 1. Teil 2. Teil 3. Teil 4. Teil 5.' } });
+  });
+});
+
+describe('anruf.service — plan and Rückfrage (FA-14, FA-15, FA-16, AK-06, AK-07)', () => {
+  it('„freigeben" → confirmation read, then listening; „ja" releases', async () => {
     const w = anrufWelt();
     await laufenderAnruf(w, meldungPlan);
-    await sprich(w);
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-plan', text: 'Frei geben' });
+    await hoert(w);
+    sage(w, 'Frei geben.');
     expect(w.gw.ofType('anruf:freigeben.anfragen')).toEqual([{ type: 'anruf:freigeben.anfragen', meldungId: 'm-plan' }]);
+    expect(w.mikro.letzter.gestoppt).toBe(true);
     w.gw.emit(state({ zustand: 'freigabe_nachfrage', eigener: true, meldung: meldungPlan, freigabeWortlaut: 'Yes, and switch to BYPASS PERMISSIONS' }));
     expect(w.dienst.ansicht).toMatchObject({ phase: 'nachfrage', freigabeWortlaut: 'Yes, and switch to BYPASS PERMISSIONS' });
     expect(w.sprache.texte.slice(-2)).toEqual(['Plan für Sitzung „int-025-plan“ wirklich freigeben?', 'Sag ja oder nein.']);
-    await sprich(w);
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-plan', text: 'ja, aber nimm das kleinere Modell' });
+    await hoert(w);
+    expect(w.dienst.ansicht.hoertInNachfrage).toBe(true);
+    sage(w, 'ja, aber nimm das kleinere Modell');
     expect(w.gw.ofType('anruf:senden')).toEqual([]);
-    expect(w.dienst.ansicht.phase).toBe('nachfrage');
-    await sprich(w);
-    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-plan', text: 'Ja.' });
+    expect(w.sprache.texte.at(-1)).toBe('Sag ja oder nein.');
+    await hoert(w);
+    sage(w, 'Ja.');
     expect(w.gw.ofType('anruf:senden')).toEqual([{ type: 'anruf:senden', meldungId: 'm-plan', antwort: { art: 'freigeben' } }]);
+  });
 
-    const w2 = anrufWelt();
-    await laufenderAnruf(w2, meldungPlan);
-    await sprich(w2);
-    w2.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-plan', text: 'Nimm das kleinere Modell' });
-    expect(w2.dienst.ansicht.als).toBe('Überarbeitungswunsch');
-    w2.dienst.absenden();
-    expect(w2.gw.ofType('anruf:senden')).toEqual([{ type: 'anruf:senden', meldungId: 'm-plan', antwort: { art: 'ueberarbeiten', text: 'Nimm das kleinere Modell' } }]);
+  it('„nein" → „Nicht freigegeben", nothing sent, listening in the answer context; 20 s silence hangs up unreleased', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w, meldungPlan);
+    await hoert(w);
+    w.dienst.freigebenAnfragen();
+    w.gw.emit(state({ zustand: 'freigabe_nachfrage', eigener: true, meldung: meldungPlan }));
+    await hoert(w);
+    sage(w, 'Nein.');
+    expect(w.sprache.texte.at(-1)).toBe('Nicht freigegeben.');
+    expect(w.dienst.ansicht.phase).toBe('vorlesen');
+    await hoert(w);
+    expect(w.dienst.ansicht.hoertInNachfrage).toBe(false);
+    w.mikro.letzter.stille(20);
+    expect(w.gw.ofType('anruf:auflegen')).toHaveLength(1);
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+  });
+
+  it('any other text with the phrase → revision, plan stays unreleased (FA-15)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w, meldungPlan);
+    await hoert(w);
+    sage(w, 'Nimm das kleinere Modell. Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')).toEqual([{ type: 'anruf:senden', meldungId: 'm-plan', antwort: { art: 'ueberarbeiten', text: 'Nimm das kleinere Modell.' } }]);
   });
 
   it('freigeben without the confirmation state sends nothing', async () => {
@@ -355,32 +623,210 @@ describe('anruf.service — answers (FA-20, FA-21, FA-22)', () => {
     expect(w.gw.ofType('anruf:senden')).toEqual([]);
   });
 
-  it('result: „Gesendet" for 3 s; failure keeps the recognised text; endeGrund announced', async () => {
+  it('Rückfrage with two questions: phrase advances, sends after the last (FA-16)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w, meldungRueckfrage);
+    await hoert(w);
+    sage(w, 'Die zweite.');
+    expect(w.dienst.ansicht).toMatchObject({ als: 'Möglichkeit 2 — Whisper large-v3-turbo (Frage 1 von 2)', weiter: true });
+    sage(w, 'Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'vorlesen', frageIndex: 1 });
+    expect(w.dienst.ansicht.text).toBeUndefined();
+    expect(w.sprache.texte.some((t) => t.startsWith('Nächste Frage.'))).toBe(true);
+    await hoert(w);
+    sage(w, 'Lieber eine Männerstimme. Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')).toEqual([
+      { type: 'anruf:senden', meldungId: 'm-rf', antwort: { art: 'rueckfrage', antworten: [{ nummern: [2] }, { nummern: [], eigene: 'Lieber eine Männerstimme.' }] } },
+    ]);
+  });
+
+  it('ambiguous → „Passt auf 1 und 3 — Nummer sagen" read, nothing sent, listening again', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w, meldungRueckfrage);
+    await hoert(w);
+    sage(w, 'eins und drei, Antwort senden');
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    expect(w.sprache.texte.at(-1)).toBe('Passt auf 1 und 3 — Nummer sagen');
+    expect(w.dienst.ansicht.text).toBeUndefined();
+    await hoert(w);
+  });
+
+  it('20 s silence after the first of two questions: nothing sent', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w, meldungRueckfrage);
+    await hoert(w);
+    sage(w, 'eins. Antwort senden.');
+    await hoert(w);
+    w.mikro.letzter.stille(20);
+    expect(w.gw.ofType('anruf:auflegen')).toHaveLength(1);
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+  });
+});
+
+describe('anruf.service — results and failures (FA-17, FA-18, FA-21, D9, Finding 9, 13, 21)', () => {
+  it('ok → „Gesendet." spoken after ending, no new opening; result 3 s (FA-18, D10)', async () => {
     vi.useFakeTimers();
     try {
       const w = anrufWelt();
       await laufenderAnruf(w);
-      await sprich(w);
-      w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-fertig', text: 'weiter' });
-      w.dienst.absenden();
-      w.gw.emit({ type: 'anruf:ergebnis', meldungId: 'm-fertig', ok: false, grund: 'eingabe_nicht_leer', text: 'In der Eingabezeile steht noch Text — im Terminal abschicken oder löschen.' });
-      expect(w.dienst.ansicht).toMatchObject({ phase: 'bestaetigen', erkannt: 'weiter' });
-      expect(w.dienst.ansicht.hinweis).toMatch(/^Nicht gesendet: In der Eingabezeile/);
-      w.dienst.absenden();
+      await hoert(w);
+      sage(w, 'weiter. Antwort senden.');
       w.gw.emit({ type: 'anruf:ergebnis', meldungId: 'm-fertig', ok: true });
+      expect(w.sprache.texte.at(-1)).toBe('Gesendet.');
+      w.sprache.fertig();
+      await ruhe();
+      expect(w.mikro.oeffnungen).toBe(1);
       w.gw.emit(state({ zustand: 'ruhe' }));
-      expect(w.dienst.ansicht.phase).toBe('ergebnis');
       expect(w.dienst.ansicht.ergebnis).toEqual({ ok: true, text: 'Gesendet' });
       vi.advanceTimersByTime(3000);
       expect(w.dienst.ansicht.phase).toBe('ruhe');
-
-      const w2 = anrufWelt();
-      await laufenderAnruf(w2);
-      w2.gw.emit(state({ zustand: 'ruhe', endeGrund: 'In der Sitzung schon beantwortet.' }));
-      expect(w2.dienst.ansicht.ergebnis).toEqual({ ok: false, text: 'In der Sitzung schon beantwortet.' });
-      expect(w2.sprache.texte.at(-1)).toBe('In der Sitzung schon beantwortet.');
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('failure → „Nicht gesendet …" read, text held, listening; more speech is not appended; phrase alone resends (FA-17, D6)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Mach die Tests. Antwort senden.');
+    const text = 'In der Eingabezeile steht noch Text — im Terminal abschicken oder löschen.';
+    w.gw.emit({ type: 'anruf:ergebnis', meldungId: 'm-fertig', ok: false, grund: 'eingabe_nicht_leer', text });
+    expect(w.sprache.texte.join(' ')).toContain('Nicht gesendet.');
+    expect(w.dienst.ansicht).toMatchObject({ gehalten: true, hinweis: `Nicht gesendet: ${text}` });
+    await hoert(w);
+    sage(w, 'Und die Doku.');
+    expect(w.dienst.ansicht.text).toBe('Mach die Tests. Antwort senden.');
+    sage(w, 'Antwort senden.');
+    expect(w.gw.ofType('anruf:senden')).toHaveLength(2);
+    expect(w.gw.ofType('anruf:senden')[1]).toMatchObject({ antwort: { art: 'text', text: 'Mach die Tests.' } });
+  });
+
+  it('failure, then „Antwort verwerfen" clears the held text', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'X. Antwort senden.');
+    w.gw.emit({ type: 'anruf:ergebnis', meldungId: 'm-fertig', ok: false, grund: 'eingabe_nicht_leer', text: 'Text in der Eingabezeile.' });
+    await hoert(w);
+    sage(w, 'Antwort verwerfen.');
+    expect(w.dienst.ansicht).toMatchObject({ gehalten: false });
+    expect(w.dienst.ansicht.text).toBeUndefined();
+  });
+
+  it('endeGrund of the backend is announced (answered elsewhere)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    w.gw.emit(state({ zustand: 'ruhe', endeGrund: 'In der Sitzung schon beantwortet.' }));
+    expect(w.dienst.ansicht.ergebnis).toEqual({ ok: false, text: 'In der Sitzung schon beantwortet.' });
+    expect(w.sprache.texte.at(-1)).toBe('In der Sitzung schon beantwortet.');
+  });
+
+  it('microphone denied: reason spoken and shown, „Zuhören", no hang-up, no faehig during the call; reported afterwards (FA-21, D9)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    const faehig = w.gw.ofType('anruf:faehig').length;
+    w.mikro.fehler = { name: 'NotAllowedError' };
+    w.sprache.fertig();
+    await ruhe();
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'mikrofon_zu', hinweis: ANRUF_TEXT.mikrofonVerweigert });
+    expect(w.sprache.texte.at(-1)).toBe('Mikrofon nicht freigegeben.');
+    expect(w.gw.ofType('anruf:auflegen')).toEqual([]);
+    expect(w.gw.ofType('anruf:faehig')).toHaveLength(faehig);
+    w.mikro.fehler = null;
+    w.dienst.zuhoeren();
+    await ruhe();
+    expect(w.dienst.ansicht.phase).toBe('zuhoeren');
+    w.dienst.auflegen();
+    expect(w.gw.ofType('anruf:faehig').at(-1)).toMatchObject({ mikrofon: 'verweigert' });
+  });
+
+  it('track ends while listening: „Mikrofon nicht verfügbar", nothing sent; button „Senden" works without microphone (FA-21)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Mach die Tests.');
+    w.mikro.letzter.endeVonAussen();
+    expect(w.mikro.letzter.gestoppt).toBe(true);
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'mikrofon_zu', hinweis: ANRUF_TEXT.mikrofonWeg, text: 'Mach die Tests.' });
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+    expect(w.gw.ofType('anruf:auflegen')).toEqual([]);
+    w.dienst.senden();
+    expect(w.gw.ofType('anruf:senden')[0]).toMatchObject({ antwort: { art: 'text', text: 'Mach die Tests.' } });
+  });
+
+  it('buttons: Senden sends the shown text without the phrase; Verwerfen clears and listening goes on (FA-20)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Mach den PR auf und dann senden');
+    w.dienst.verwerfen();
+    expect(w.dienst.ansicht.text).toBeUndefined();
+    expect(w.dienst.ansicht.phase).toBe('zuhoeren');
+    sage(w, 'Zweiter Versuch.');
+    w.dienst.senden();
+    expect(w.gw.ofType('anruf:senden')[0]).toMatchObject({ antwort: { text: 'Zweiter Versuch.' } });
+  });
+
+  it('no result for a piece within 15 s → not understood, clock runs on, late result dropped (Finding 9)', async () => {
+    vi.useFakeTimers();
+    try {
+      const w = anrufWelt();
+      await laufenderAnruf(w);
+      await hoert(w);
+      const nr = stueck(w, 1);
+      vi.advanceTimersByTime(15_000);
+      expect(w.dienst.ansicht).toMatchObject({ erkenntNoch: false, hinweis: ANRUF_TEXT.nichtsVerstanden });
+      erkannt(w, nr, 'zu spät. Antwort senden.');
+      expect(w.gw.ofType('anruf:senden')).toEqual([]);
+      expect(w.dienst.ansicht.text).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('anruf:error while listening (audio limit) → microphone off, reason shown (Finding 13)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    w.gw.emit({ type: 'anruf:error', code: 'INVALID_MESSAGE', message: 'Zu viel Audio in diesem Anruf.' });
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'mikrofon_zu', hinweis: 'Zu viel Audio in diesem Anruf.' });
+    expect(w.mikro.letzter.gestoppt).toBe(true);
+  });
+
+  it('connection lost while listening → listening stops, nothing sent (Finding 21)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Mach die Tests.');
+    w.gw.emit({ type: 'gateway.disconnected' });
+    expect(w.mikro.letzter.gestoppt).toBe(true);
+    expect(w.dienst.ansicht.ergebnis).toEqual({ ok: false, text: ANRUF_TEXT.verbindungWeg });
+    w.mikro.letzter.stille(1);
+    expect(w.gw.ofType('anruf:senden')).toEqual([]);
+  });
+
+  it('erkennung_neustart → hint read, listening again; erkennung_fehlt → microphone off', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    const nr = stueck(w, 1);
+    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-fertig', abschnitt: nr, grund: 'erkennung_neustart' });
+    expect(w.sprache.texte.at(-1)).toBe('Nicht verstanden — Spracherkennung startet neu, bitte nochmal sprechen');
+    await hoert(w);
+    const nr2 = stueck(w, 1);
+    w.gw.emit({ type: 'anruf:erkannt', meldungId: 'm-fertig', abschnitt: nr2, grund: 'erkennung_fehlt' });
+    expect(w.dienst.ansicht).toMatchObject({ phase: 'mikrofon_zu', hinweis: ANRUF_TEXT.erkennungFehlt });
+  });
+
+  it('memory: nothing kept after hanging up (FA-22)', async () => {
+    const w = anrufWelt();
+    await laufenderAnruf(w);
+    await hoert(w);
+    sage(w, 'Geheim.');
+    w.dienst.auflegen();
+    w.gw.emit(state({ zustand: 'laeuft', eigener: true, meldung: meldungFertig }));
+    expect(w.dienst.ansicht.text).toBeUndefined();
   });
 });

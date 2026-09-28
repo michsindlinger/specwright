@@ -1,12 +1,20 @@
 /**
- * Deutung gesprochener Antworten im Anrufmodus (INT-2026-025, D11; FA-20,
- * FA-21, FA-22, FA-23). Befehlswörter gelten nur, wenn der ganze Text das
- * Wort ist („ja, aber …" bleibt Text, Spec §4). Rein, ohne IO.
+ * Deutung gesprochener Antworten im Anrufmodus (INT-2026-025, D11;
+ * INT-2026-026, D1). Einzelwort-Befehle gelten nur, wenn der ganze Text das
+ * Wort ist („ja, aber …" bleibt Text); gesendet wird nur mit dem Schlusswort
+ * „Antwort senden" am Ende ({@link pruefeSchluss}). Rein, ohne IO.
  */
 
-export type AnrufBefehl = 'senden' | 'verwerfen' | 'nochmal' | 'freigeben' | 'ja' | 'nein' | 'text';
+export type AnrufBefehl = 'nochmal' | 'freigeben' | 'auflegen' | 'ja' | 'nein' | 'text';
 
 export type AnrufWahl = { nummern: number[] } | { eigene: string } | { mehrdeutig: number[] };
+
+/** Ergebnis der Schlusswort-Prüfung (INT-2026-026, FA-05–FA-08, FA-12). */
+export type AnrufSchluss =
+  | { art: 'senden'; rest: string }
+  | { art: 'verwerfen' }
+  | { art: 'nur_senden' }
+  | { art: 'offen' };
 
 /** Kleinschreibung, Umlaute als ae/oe/ue/ss, Satzzeichen weg, ein Leerzeichen. */
 export function normalisiereSprache(text: string): string {
@@ -17,32 +25,54 @@ export function normalisiereSprache(text: string): string {
     .replace(/ü/g, 'ue')
     .replace(/ß/g, 'ss')
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 }
 
-// Ohne Leerzeichen verglichen: „Frei geben", „noch mal" zählen mit.
+// Ohne Leerzeichen verglichen: „Frei geben", „noch mal", „auf legen" zählen mit.
+// „senden"/„verwerfen" als Einzelwort gibt es nicht mehr: nur das Schlusswort sendet (INT-2026-026, B-01).
 const BEFEHLE_ANTWORT: Record<string, AnrufBefehl> = {
-  senden: 'senden',
-  absenden: 'senden',
-  verwerfen: 'verwerfen',
   nochmal: 'nochmal',
   nochmals: 'nochmal',
-  nochmalsprechen: 'nochmal',
   freigeben: 'freigeben',
+  auflegen: 'auflegen',
 };
 
-const BEFEHLE_NACHFRAGE: Record<string, AnrufBefehl> = { ja: 'ja', nein: 'nein' };
+const BEFEHLE_NACHFRAGE: Record<string, AnrufBefehl> = { ja: 'ja', nein: 'nein', auflegen: 'auflegen', nochmal: 'nochmal', nochmals: 'nochmal' };
 
 /**
- * Befehl oder Text. `antwort`: senden/verwerfen/nochmal/freigeben;
- * `nachfrage` (Freigabe bestätigen, FA-22): nur ja/nein. Alles andere → text.
+ * Befehl oder Text. `antwort`: nochmal/freigeben/auflegen; `nachfrage`
+ * (Freigabe bestätigen): ja/nein/auflegen/nochmal. Alles andere → text.
  */
 export function deuteSprache(text: string, kontext: 'antwort' | 'nachfrage'): AnrufBefehl {
   const kompakt = normalisiereSprache(text).replace(/ /g, '');
   const tabelle = kontext === 'antwort' ? BEFEHLE_ANTWORT : BEFEHLE_NACHFRAGE;
   return Object.prototype.hasOwnProperty.call(tabelle, kompakt) ? (tabelle[kompakt] ?? 'text') : 'text';
+}
+
+// Satzzeichen und Leerraum zwischen und nach den Wörtern (\p{P} deckt alle Strich-Varianten).
+const SCHLUSS_SENDEN = /(^|[\s\p{P}])antwort(?:en)?[\s\p{P}]*(?:ab)?senden[\s\p{P}]*$/iu;
+const SCHLUSS_VERWERFEN = /(^|[\s\p{P}])antwort(?:en)?[\s\p{P}]*verwerfen[\s\p{P}]*$/iu;
+const NUR_SENDEN = /(^|[\s\p{P}])(?:ab)?senden[\s\p{P}]*$/iu;
+// Rechts vom Rest: Leerraum, Kommas, Doppelpunkte, Striche — der Satzpunkt bleibt.
+const REST_ENDE = /[\s,;:\u2010-\u2015\u2212-]+$/u;
+
+/**
+ * Schlusswort am Ende des bisher Gesprochenen (INT-2026-026, D1):
+ * „Antwort senden"/„Antwort absenden" (auch „Antworten", Satzzeichen und
+ * Schreibung egal) → senden mit dem Text davor; „Antwort verwerfen" →
+ * verwerfen; „senden" ohne „Antwort" → nur_senden (Hinweis, FA-07); sonst offen.
+ */
+export function pruefeSchluss(text: string): AnrufSchluss {
+  const senden = SCHLUSS_SENDEN.exec(text);
+  if (senden) {
+    const rest = text.slice(0, senden.index + (senden[1]?.length ?? 0)).replace(REST_ENDE, '').trim();
+    return { art: 'senden', rest };
+  }
+  if (SCHLUSS_VERWERFEN.test(text)) return { art: 'verwerfen' };
+  if (NUR_SENDEN.test(text)) return { art: 'nur_senden' };
+  return { art: 'offen' };
 }
 
 const GRUNDZAHLEN: Record<string, number> = {

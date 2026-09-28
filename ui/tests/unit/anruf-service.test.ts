@@ -587,6 +587,35 @@ describe('D6 Freigabe und mehrere Fenster (Review F6, F15)', () => {
     expect(a.some((m) => m.type === 'anruf:erkannt')).toBe(false);
   });
 
+  it('abschnitt kommt in anruf:erkannt zurück, auch bei Grund (INT-2026-026, D5)', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    stopHook(service, S1);
+    const id = letzterState(inbox).meldung!.id;
+    service.annehmen('c1', id);
+    await service.erkennen('c1', id, new Int16Array(10), 3);
+    expect(inbox).toContainEqual({ type: 'anruf:erkannt', meldungId: id, abschnitt: 3, text: 'zwei' });
+    erkennung.antwort = { grund: 'nichts_verstanden' };
+    await service.erkennen('c1', id, new Int16Array(10), 4);
+    expect(inbox).toContainEqual({ type: 'anruf:erkannt', meldungId: id, abschnitt: 4, grund: 'nichts_verstanden' });
+  });
+
+  it('Audio-Deckel 600 s je Anruf → INVALID_MESSAGE ohne Erkennung (INT-2026-026, D5, FA-22)', async () => {
+    const service = baue();
+    const inbox = client(service, 'c1');
+    await service.setModus('c1', true);
+    stopHook(service, S1);
+    const id = letzterState(inbox).meldung!.id;
+    service.annehmen('c1', id);
+    const dreissig = new Int16Array(16000 * 30);
+    for (let i = 0; i < 20; i++) expect(await service.erkennen('c1', id, dreissig, i)).toBeUndefined();
+    const erkannt = inbox.filter((m) => m.type === 'anruf:erkannt').length;
+    const fehler = await service.erkennen('c1', id, new Int16Array(16000), 20);
+    expect(fehler).toMatchObject({ code: 'INVALID_MESSAGE', message: 'Zu viel Audio in diesem Anruf.' });
+    expect(inbox.filter((m) => m.type === 'anruf:erkannt').length).toBe(erkannt);
+  });
+
   it('Besitzer trennt sich → Anruf endet ohne Senden, Meldung klingelt wieder (AN-S08)', async () => {
     const service = baue();
     const a = client(service, 'c1');
