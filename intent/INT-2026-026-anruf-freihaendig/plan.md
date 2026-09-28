@@ -3,7 +3,7 @@
 <!-- Ablage: intent/INT-2026-026-anruf-freihaendig/plan.md -->
 
 > **Intent:** `intent.md` (INT-2026-026) · **Spec:** `spec.md` (freigegeben 2026-09-28)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-09-28 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-09-28 — im Chat „freigabe“; D6–D9 wie vorgeschlagen
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand c56ac0c), `CLAUDE.md`, `docs/security.md`, `docs/design.md`, `docs/adr/0006-anruf-liest-hook-inhalte-fluechtig.md`, `intent/INT-2026-025-agenten-anrufe/plan.md`
 
