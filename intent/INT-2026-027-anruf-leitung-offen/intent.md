@@ -14,7 +14,7 @@ bypass_grund: "Größe S: eine Erweiterung der Anruf-Zustandstabelle und des Anr
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: "INT-2026-026 teilweise: spec.md FA-18 (Auflegen nach „Gesendet“)"  
