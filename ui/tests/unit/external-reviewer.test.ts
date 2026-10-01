@@ -4,7 +4,7 @@ vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
   query: vi.fn(),
 }));
 
-import { query as claudeQuery } from '@anthropic-ai/claude-agent-sdk';
+import { query as claudeQuery, type Options } from '@anthropic-ai/claude-agent-sdk';
 import {
   ExternalReviewer,
   REVIEWER_TOOLS,
@@ -98,6 +98,34 @@ describe('reviewPlan', () => {
     expect(opts.cwd).toBe('/tmp/p');
     expect(opts.model).toBe('opus');
     expect(opts.maxTurns).toBe(40);
+  });
+
+  // INT-2026-029: the reviewer starts its child through the shared spawner
+  // (stdin error listener). The SDK's own stderr option is dead with a custom
+  // spawner, so stderr must arrive through the spawner instead.
+  it('starts the child through spawnClaudeCodeProcess and keeps stderr in the error (AK-01, AK-04)', async () => {
+    mockedQuery.mockImplementationOnce((({ options }: { options: Options }) => {
+      async function* session() {
+        const spawnChild = options.spawnClaudeCodeProcess;
+        if (!spawnChild) throw new Error('no spawnClaudeCodeProcess passed');
+        const child = spawnChild({
+          command: process.execPath,
+          args: ['-e', 'process.stderr.write("model not found"); process.exit(1)'],
+          env: { ...process.env },
+          signal: new AbortController().signal,
+        });
+        await new Promise<void>((resolve) => child.once('exit', () => resolve()));
+        await new Promise((r) => setTimeout(r, 20));
+        throw new Error('Claude Code process exited with code 1');
+        yield { type: 'result' };
+      }
+      return session();
+    }) as never);
+
+    await expect(
+      new ExternalReviewer().reviewPlan('review this', 'anthropic', 'opus', '/tmp/p')
+    ).rejects.toThrow(/exited with code 1 — stderr: model not found/);
+    expect('stderr' in lastCallOptions()).toBe(false);
   });
 
   it('omits model when no modelId is given', async () => {

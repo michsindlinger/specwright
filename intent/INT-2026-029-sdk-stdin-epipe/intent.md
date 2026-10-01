@@ -1,7 +1,7 @@
 ---
 intent_id: "INT-2026-029"  
 titel: "Backend überlebt einen früh beendeten Claude-Helfer"  
-status: "angenommen"  
+status: "umgesetzt"  
 version: "1.0.0"  
 autor: "Claude (Opus 5.5)"  
 verantwortlich: "Michael"  

@@ -3,6 +3,7 @@ import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { mkdir, writeFile, rm } from 'fs/promises';
 import { query as claudeQuery } from '@anthropic-ai/claude-agent-sdk';
+import { createSdkSpawner } from '../utils/sdk-spawn.js';
 
 /**
  * Prompt-template image extractor.
@@ -147,6 +148,9 @@ export async function extractPromptFromImage(
           env: baseEnv,
           settingSources: ['user'],
           model: EXTRACT_MODEL,
+          // stdin error listener: a child that dies early must not kill the
+          // backend with an unhandled EPIPE (INT-2026-029).
+          spawnClaudeCodeProcess: createSdkSpawner(),
         },
       });
 

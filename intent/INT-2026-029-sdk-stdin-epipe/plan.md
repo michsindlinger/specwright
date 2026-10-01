@@ -1,7 +1,7 @@
 # Plan: Backend überlebt einen früh beendeten Claude-Helfer
 
 > **Intent:** `intent.md` (INT-2026-029) · **Spec:** entfällt (bypass: Bugfix unter 1 Tag)
-> **Status:** freigegeben
+> **Status:** umgesetzt
 > **Erstellt:** 2026-10-01 · **Freigabe:** Michael, 2026-10-01 (Chat: „ja mach A1 und A2 als bugfix")
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand d230230), `CLAUDE.md`, `docs/security.md`
 
@@ -182,13 +182,13 @@ Neuer Helfer `createSdkSpawner(onStderr?)` in `ui/src/server/utils/sdk-spawn.ts`
 
 <!-- leser: agent -->
 
-- [ ] Jede AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8).
-- [ ] `verify` grün, Ausgabe im PR, und PR-Checks grün.
-- [ ] Abweichungen in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check.
-- [ ] Abschlussbericht endet mit „Für das Board".
+- [x] Jede AK aus Abschnitt 8 hat einen grünen Test (61/61 in den vier Dateien; Gegenprobe ohne Listener: `Unhandled Errors … Error: write EPIPE`, errno -32, wie im Absturz-Log).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8, siehe §14).
+- [ ] `verify` grün, Ausgabe im PR, und PR-Checks grün (lokal `verify: OK` im zweiten Lauf; CI offen).
+- [x] Abweichungen in Abschnitt 14 eingetragen.
+- [x] 2x-Regel-Check: Der Absturz kam zweimal am selben Tag, beide Male aus derselben Ursache. Kein Fehlermuster von Claude, daher kein `CLAUDE.md`-Vorschlag.
+- [x] Abschlussbericht endet mit „Für das Board".
 
 ### 14. Abweichungen bei der Umsetzung
 
@@ -196,4 +196,7 @@ Neuer Helfer `createSdkSpawner(onStderr?)` in `ui/src/server/utils/sdk-spawn.ts`
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-10-01 | E2E ohne UI: `aggregateFindings` per `tsx`-Skript mit 2 Reviewer-Texten gegen den echten `claude`-Kindprozess (haiku) → 2 Cluster, `fallbackUsed: false`. Die Plan-Review über das Branch-Backend auf Port 3111 entfiel. | Der Skriptlauf durchläuft dieselbe Verbindung (Spawner → SDK → `claude`) ohne den UI-Aufbau; der Absturzpfad ist nur im Unit-Test mit echtem Kindprozess erzeugbar. | §8 |
+| 2026-10-01 | stderr ist immer eine Pipe; ohne `onStderr` wird sie mit `resume()` geleert, statt `'ignore'` zu setzen. | Mit bedingtem `stdio` typisiert Node `stdin` als nullable, und `ChildProcess` erfüllt `SpawnedProcess` nicht mehr (TS2322). | §3 |
+| 2026-10-01 | Test für AK-01: Das Kind schließt seine stdin und lebt weiter, statt sofort zu enden. | Ein Schreibversuch nach `exit` erzeugt in Node 22 kein `'error'`-Ereignis; nur ein noch lebendes Kind mit geschlossener Leitung liefert das echte EPIPE. | §8 |
+| 2026-10-01 | `verify` Stufe 5 im ersten Lauf rot (`tests/integration/terminal-io.test.ts`), einzeln 10/10 grün, zweiter Gesamtlauf `verify: OK`. | Bekannte Flakiness der Stufe 5 auf dem Mac; die Datei hängt nicht an diesem Diff. | — |

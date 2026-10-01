@@ -50,13 +50,12 @@ export class ExternalReviewer {
       const session = claudeQuery({
         prompt,
         options: {
-          ...buildSdkCallOptions(providerId, REVIEWER_TOOLS),
+          ...buildSdkCallOptions(providerId, REVIEWER_TOOLS, (data) => {
+            stderrBuf.push(data);
+          }),
           maxTurns: 40,
           cwd: projectPath,
           abortController: ac,
-          stderr: (data: string) => {
-            stderrBuf.push(data);
-          },
           ...(modelId ? { model: modelId } : {}),
         },
       });

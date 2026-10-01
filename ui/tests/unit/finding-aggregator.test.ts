@@ -4,7 +4,7 @@ vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
   query: vi.fn(),
 }));
 
-import { query as claudeQuery } from '@anthropic-ai/claude-agent-sdk';
+import { query as claudeQuery, type Options } from '@anthropic-ai/claude-agent-sdk';
 import {
   aggregateFindings,
   extractJson,
@@ -354,6 +354,44 @@ describe('aggregateFindings', () => {
     expect(res.fallbackUsed).toBe(true);
     expect(res.fallbackReason).toBe('llm-error');
     expect(mockedQuery).toHaveBeenCalledTimes(1);
+  });
+
+  // INT-2026-029: the SDK child dies early. The aggregator must fall back
+  // (backend survives) and log what the child wrote to stderr.
+  it('falls back with llm-error and logs child stderr when the claude child dies early (AK-02, AK-03)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockedQuery.mockImplementationOnce((({ options }: { options: Options }) => {
+      async function* session() {
+        const spawnChild = options.spawnClaudeCodeProcess;
+        if (!spawnChild) throw new Error('no spawnClaudeCodeProcess passed');
+        const child = spawnChild({
+          command: process.execPath,
+          args: [
+            '-e',
+            'require("fs").closeSync(0); process.stderr.write("OAuth token expired"); setTimeout(() => process.exit(1), 300)',
+          ],
+          env: { ...process.env },
+          signal: new AbortController().signal,
+        });
+        const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
+        // Like the SDK: prompt goes into stdin while the child is dying → EPIPE.
+        await new Promise((r) => setTimeout(r, 150));
+        child.stdin.write('x'.repeat(1024 * 1024));
+        await exited;
+        await new Promise((r) => setTimeout(r, 20));
+        throw new Error('Claude Code process exited with code 1');
+        yield { type: 'result' };
+      }
+      return session();
+    }) as never);
+
+    const res = await aggregateFindings([REV_A, REV_B], '/tmp/x');
+    expect(res.fallbackUsed).toBe(true);
+    expect(res.fallbackReason).toBe('llm-error');
+    const logged = warn.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(logged).toContain('Claude Code process exited with code 1');
+    expect(logged).toContain('stderr: OAuth token expired');
+    warn.mockRestore();
   });
 
   // ── Fallback reason taxonomy ──
