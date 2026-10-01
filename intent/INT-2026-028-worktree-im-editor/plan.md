@@ -1,7 +1,7 @@
 # Plan: Arbeitsordner einer Sitzung mit einem Klick in VS Code öffnen
 
 > **Intent:** `intent.md` (INT-2026-028) · **Spec:** entfällt (bypass: Größe S, ein Knopf an zwei Stellen, ein Link-Baustein, ein Einstellungsfeld; keine Datenhaltung im Projekt, kein HTTP-Endpunkt)
-> **Status:** in_umsetzung
+> **Status:** umgesetzt
 > **Erstellt:** 2026-10-01 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-10-01 — im Chat: „Freigabe: plan.md (Stand 2026-10-01 11:14)"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 7c85222), `CLAUDE.md`, `docs/security.md`
 
@@ -249,7 +249,7 @@ Entfällt.
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| Remote-Linkformat einmal prüfen: `! open "vscode://vscode-remote/ssh-remote+<kürzel>/<pfad>"` in dieser Sitzung (Kürzel nur im Chat) | Michael | Bausitzung, Schritt 0, vor dem ersten Code | [ ] |
+| Remote-Linkformat einmal prüfen: `! open "vscode://vscode-remote/ssh-remote+<kürzel>/<pfad>"` in dieser Sitzung (Kürzel nur im Chat) | Michael | Bausitzung, Schritt 0, vor dem ersten Code | entfällt (Michael, 2026-10-01: „remote nicht notwendig“, §14) |
 | PR prüfen und mergen (Merge löst den Auto-Deploy der Cloud-UI aus, `CLAUDE.md` „Nie") | Michael | nach grünem CI | [ ] |
 | Mac: Remote-SSH-Erweiterung vorhanden? Prüfweg: `code --list-extensions \| grep ms-vscode-remote.remote-ssh`; SSH-Kürzel des Cloud-Hosts funktioniert: `ssh <kürzel> true` | Michael | vor der Stichprobe AK-04 | [ ] |
 | Cloud-UI: Einstellungen › Allgemein › „Remote-SSH-Host für VS Code" = SSH-Kürzel eintragen (Weg: das neue Feld; Wert landet nur in `<runtime>/editor-<port>.json` auf dem Host) | Michael | nach dem Deploy | [ ] |
@@ -309,14 +309,14 @@ Entfällt.
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8).
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` angepasst, falls Abschnitt 3 „Ja".
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8).
+- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit). Lokal `verify: OK` (2026-10-01); PR-Check steht aus.
+- [x] `docs/architecture.md` angepasst, falls Abschnitt 3 „Ja".
+- [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
+- [x] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
 - [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-028-worktree-im-editor/`, Nebenbefund S7 als neue Karte mit Priorität hoch); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
