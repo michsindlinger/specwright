@@ -4,6 +4,7 @@ import type { TerminalSession } from './aos-cloud-terminal-sidebar.js';
 import { getTabTitle, getSessionLocationHint } from './tab-title.js';
 import { agentStatusClass, agentStatusTitle, needsAttention, AGENT_STATUS_LABEL } from './agent-status.js';
 import './aos-auto-review-toggle.js';
+import './aos-vscode-knopf.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 
 /**
@@ -180,6 +181,17 @@ export class AosTerminalTabs extends LitElement {
         opacity: 1;
       }
 
+      /* INT-2026-028: „In VS Code öffnen" — inside is the element's own shadow root.
+         Only on hover and then with width: with min-width 120px the name keeps
+         ~30px next to status, edit and close, a fourth fixed icon would leave it
+         ~8px. The active session has the button in the session/pane header. */
+      .tab-vscode {
+        --vscode-knopf-icon: 12px;
+      }
+      .tab:not(:hover) .tab-vscode {
+        display: none;
+      }
+
       .tab-close:hover,
       .tab-edit:hover {
         background: var(--bg-color-hover, #3c3c3c);
@@ -341,6 +353,10 @@ export class AosTerminalTabs extends LitElement {
                 }
                 ${attention
                   ? html`<span class="input-badge" title=${agentTitle || 'Eingabe erforderlich'}>!</span>`
+                  : ''
+                }
+                ${!isEditing
+                  ? html`<aos-vscode-knopf class="tab-vscode" .session=${session}></aos-vscode-knopf>`
                   : ''
                 }
                 ${!isEditing

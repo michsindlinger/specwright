@@ -42,6 +42,7 @@ import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 import { WorkspaceStateStore } from './services/workspace-state.js';
 import { WorkspaceHandler } from './services/workspace-handler.js';
 import { getWorkspaceStatePath, getVorhabenStatePath, getIntentPasteImageRoot, getAnrufStatePath, getAnrufKontextDir, backendPort } from './utils/runtime-paths.js';
+import { handleEditorSettingsMessage } from './editor-config.js';
 import { AnrufService } from './services/anruf-service.js';
 import { AnrufHandler } from './services/anruf-handler.js';
 import { SprachErkennung } from './services/sprach-erkennung.js';
@@ -477,6 +478,11 @@ export class WebSocketHandler {
           break;
         case 'settings.github.clear':
           this.handleSettingsGithubClear(client);
+          break;
+        // INT-2026-028: Remote-SSH-Host für „In VS Code öffnen"
+        case 'settings.editor.get':
+        case 'settings.editor.update':
+          handleEditorSettingsMessage(message, (m) => client.send(JSON.stringify(m)));
           break;
         // Git Messages (GIT-001)
         case 'git:status':
