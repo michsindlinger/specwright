@@ -14,7 +14,7 @@ bypass_grund: "Größe S: ein Knopf an zwei Stellen, ein Link-Baustein, ein Eins
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: ""  
