@@ -5,6 +5,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import './aos-terminal-tabs.js';
 import './aos-terminal-session.js';
 import './aos-auto-review-toggle.js';
+import './aos-vscode-knopf.js';
 import type { AosTerminalSession } from './aos-terminal-session.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
 import { hiddenRowPane, clampRowRatio } from './pane-visibility.js';
@@ -1812,6 +1813,9 @@ export class AosCloudTerminalSidebar extends LitElement {
                   title=${label || 'Kein Projekt'}
                 >${label || 'Kein Projekt'}</span>
                 ${this._renderPaneDropdown(i)}
+                ${activeSession
+                  ? html`<aos-vscode-knopf .session=${activeSession}></aos-vscode-knopf>`
+                  : nothing}
                 <button
                   class="pane-new-btn"
                   ?disabled=${!projectPath}

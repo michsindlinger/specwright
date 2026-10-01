@@ -7,6 +7,7 @@ import { projectContext, type ProjectContextValue } from '../context/project-con
 import '../components/setup/aos-setup-wizard.js';
 import '../components/settings/aos-review-prompt-editor.js';
 import '../components/anruf/aos-anruf-schalter.js';
+import '../components/settings/aos-editor-einstellung.js';
 import { isClaudeCli } from '../../../src/shared/provider-cli.js';
 
 interface Model {
@@ -742,7 +743,8 @@ export class AosSettingsView extends LitElement {
 
   private renderGeneralSection() {
     // INT-2026-025 (FA-01): the call-mode switch sits on top, independent of the project config.
-    const anrufSchalter = html`<aos-anruf-schalter></aos-anruf-schalter>`;
+    // INT-2026-028 (AK-04): Remote-SSH host for „In VS Code öffnen" — host setting, also without project config.
+    const anrufSchalter = html`<aos-anruf-schalter></aos-anruf-schalter><aos-editor-einstellung></aos-editor-einstellung>`;
     if (!this.generalConfig) {
       return html`
         ${anrufSchalter}

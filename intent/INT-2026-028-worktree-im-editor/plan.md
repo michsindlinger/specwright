@@ -1,7 +1,7 @@
 # Plan: Arbeitsordner einer Sitzung mit einem Klick in VS Code öffnen
 
 > **Intent:** `intent.md` (INT-2026-028) · **Spec:** entfällt (bypass: Größe S, ein Knopf an zwei Stellen, ein Link-Baustein, ein Einstellungsfeld; keine Datenhaltung im Projekt, kein HTTP-Endpunkt)
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-10-01 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-10-01 — im Chat: „Freigabe: plan.md (Stand 2026-10-01 11:14)"
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 7c85222), `CLAUDE.md`, `docs/security.md`
 
@@ -325,4 +325,8 @@ Entfällt.
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-10-01 | Schritt 0 remote (Michael prüft `vscode://vscode-remote/ssh-remote+…` vor dem Code) entfällt; nur lokal geprüft. | Michael im Chat: „remote nicht notwendig". | §6 Schritt 0, §8 Zeile „Linkformat remote", §10 Zeile 1 (entfällt); Remote-Format bleibt [Likely] bis zur Stichprobe AK-04 nach dem Merge (§10). |
+| 2026-10-01 | `editorLinkService` hat zusätzlich `update(host)` und `getFehler()`: ein `settings.error`, das nach einem eigenen Update eintrifft, gilt als dessen Ablehnung und erscheint im Feld. | Das Feld soll die Backend-Ablehnung zeigen; `settings.error` teilen sich alle Einstellungen, deshalb nur bei laufendem Update zugeordnet. | §3 Ansatz 5, Test `editor-link-service.test.ts`. |
+| 2026-10-01 | WS-Handler als `handleEditorSettingsMessage(message, send)` in `editor-config.ts`, `websocket.ts` delegiert nur. | In §8 als Option genannt; macht die WS-Fälle ohne `WebSocketManager` testbar. | §3 Ansatz 4. |
+| 2026-10-01 | `aos-vscode-knopf` setzt am Wirt `hidden`, solange kein Link entsteht; Symbolgröße über `--vscode-knopf-icon` (Tab: 12 px wie `.tab-edit`). | Leerer Wirt soll im Flex-Layout keinen Abstand belegen; Größe im Tab an `.tab-edit` angeglichen. | §3 Ansatz 6–7. |
+| 2026-10-01 | Eine im Laufzeitordner gespeicherte, aber ungültige Host-Angabe zählt wie eine unlesbare Datei (`lesefehler`). | Datei könnte von Hand editiert sein; ein ungültiger Host darf nie in einen Link. | §3 Ansatz 3. |

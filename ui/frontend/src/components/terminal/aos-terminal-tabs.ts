@@ -4,6 +4,7 @@ import type { TerminalSession } from './aos-cloud-terminal-sidebar.js';
 import { getTabTitle, getSessionLocationHint } from './tab-title.js';
 import { agentStatusClass, agentStatusTitle, needsAttention, AGENT_STATUS_LABEL } from './agent-status.js';
 import './aos-auto-review-toggle.js';
+import './aos-vscode-knopf.js';
 import type { AvailableProvider, ReviewerConfig } from './aos-auto-review-toggle.js';
 
 /**
@@ -176,8 +177,17 @@ export class AosTerminalTabs extends LitElement {
       .tab:hover .tab-close,
       .tab.active .tab-close,
       .tab:hover .tab-edit,
-      .tab.active .tab-edit {
+      .tab.active .tab-edit,
+      .tab:hover .tab-vscode,
+      .tab.active .tab-vscode {
         opacity: 1;
+      }
+
+      /* INT-2026-028: „In VS Code öffnen" — inside is the element's own shadow root; same hover rule as .tab-edit. */
+      .tab-vscode {
+        opacity: 0;
+        transition: opacity 0.2s;
+        --vscode-knopf-icon: 12px;
       }
 
       .tab-close:hover,
@@ -341,6 +351,10 @@ export class AosTerminalTabs extends LitElement {
                 }
                 ${attention
                   ? html`<span class="input-badge" title=${agentTitle || 'Eingabe erforderlich'}>!</span>`
+                  : ''
+                }
+                ${!isEditing
+                  ? html`<aos-vscode-knopf class="tab-vscode" .session=${session}></aos-vscode-knopf>`
                   : ''
                 }
                 ${!isEditing

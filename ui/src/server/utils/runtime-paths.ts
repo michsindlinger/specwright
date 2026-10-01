@@ -129,6 +129,14 @@ export function getWorkspaceStatePath(): string {
 }
 
 /**
+ * INT-2026-028: Remote-SSH-Host für „In VS Code öffnen" `{ "remoteSshHost": string }`,
+ * je Backend-Port, nicht versioniert (ADR-0002-Muster) — der Alias darf nie ins Repo.
+ */
+export function getEditorConfigPath(): string {
+  return join(getRuntimeDir(), `editor-${backendPort()}.json`);
+}
+
+/**
  * Vorhaben user state (session↔Vorhaben assignments, review drafts, protocol,
  * last model per step, project-doc drafts) — one per backend like the
  * workspace state (ADR-0002). Port-suffixed for the same reason.
