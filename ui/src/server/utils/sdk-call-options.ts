@@ -1,5 +1,6 @@
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import { buildProviderEnv } from './provider-env.js';
+import { createSdkSpawner } from './sdk-spawn.js';
 
 export type SdkCallOptions = Pick<
   Options,
@@ -10,6 +11,7 @@ export type SdkCallOptions = Pick<
   | 'settingSources'
   | 'permissionMode'
   | 'allowDangerouslySkipPermissions'
+  | 'spawnClaudeCodeProcess'
 >;
 
 /**
@@ -36,8 +38,17 @@ export type SdkCallOptions = Pick<
  * `settingSources: ['user']` stays: third-party providers keep their env block
  * (ANTHROPIC_BASE_URL, token) in ~/.claude-<id>/settings.json. It does not
  * affect MCP loading — MCP servers come from ~/.claude.json, not settings.json.
+ *
+ * `spawnClaudeCodeProcess` starts the child with an stdin error listener, so
+ * a child that dies early cannot take the backend down with an unhandled
+ * EPIPE (INT-2026-029). It also replaces the SDK's `stderr` option: pass
+ * `onStderr` here instead — the SDK ignores `stderr` with a custom spawner.
  */
-export function buildSdkCallOptions(providerId: string, tools: readonly string[]): SdkCallOptions {
+export function buildSdkCallOptions(
+  providerId: string,
+  tools: readonly string[],
+  onStderr?: (chunk: string) => void
+): SdkCallOptions {
   return {
     env: buildProviderEnv(providerId),
     tools: [...tools],
@@ -46,5 +57,6 @@ export function buildSdkCallOptions(providerId: string, tools: readonly string[]
     settingSources: ['user'],
     permissionMode: 'bypassPermissions',
     allowDangerouslySkipPermissions: true,
+    spawnClaudeCodeProcess: createSdkSpawner(onStderr),
   };
 }

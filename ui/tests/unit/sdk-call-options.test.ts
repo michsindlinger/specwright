@@ -48,6 +48,10 @@ describe('buildSdkCallOptions', () => {
     expect(opts.allowedTools).toEqual([]);
   });
 
+  it('starts the child through the shared spawner (INT-2026-029, AK-01)', () => {
+    expect(typeof buildSdkCallOptions('anthropic', []).spawnClaudeCodeProcess).toBe('function');
+  });
+
   it('keeps settingSources ["user"] (third-party env block lives in ~/.claude-<id>/settings.json)', () => {
     expect(buildSdkCallOptions('glm', []).settingSources).toEqual(['user']);
   });

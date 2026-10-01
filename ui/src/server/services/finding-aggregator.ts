@@ -187,12 +187,18 @@ async function callAggregatorLLM(
   timeoutMs: number = AGGREGATOR_TIMEOUT_MS
 ): Promise<string> {
   return withAggregatorTimeout(async (ac) => {
+    // stderr of the claude child — the only clue why it died (INT-2026-029).
+    const stderrBuf: string[] = [];
+    const stderrHead = (): string => stderrBuf.join('').trim().slice(0, 800);
+
     const session = claudeQuery({
       prompt,
       options: {
         // No tools, no MCP servers, provider auth — shared policy with the
         // external reviewer (INT-2026-006).
-        ...buildSdkCallOptions(AGGREGATOR_PROVIDER_ID, []),
+        ...buildSdkCallOptions(AGGREGATOR_PROVIDER_ID, [], (data) => {
+          stderrBuf.push(data);
+        }),
         maxTurns: AGGREGATOR_MAX_TURNS,
         cwd: projectPath,
         abortController: ac,
@@ -213,12 +219,22 @@ async function callAggregatorLLM(
           }
         }
       }
+    } catch (err) {
+      const stderr = stderrHead();
+      if (!stderr) throw err;
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`${msg} — stderr: ${stderr}`);
     } finally {
       try {
         await session.return?.(undefined);
       } catch {
         // ignore — generator already closed
       }
+    }
+
+    const stderr = stderrHead();
+    if (!result && stderr) {
+      console.warn(`[FindingAggregator] no result from claude child — stderr: ${stderr}`);
     }
 
     return result;
