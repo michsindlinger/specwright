@@ -177,17 +177,19 @@ export class AosTerminalTabs extends LitElement {
       .tab:hover .tab-close,
       .tab.active .tab-close,
       .tab:hover .tab-edit,
-      .tab.active .tab-edit,
-      .tab:hover .tab-vscode,
-      .tab.active .tab-vscode {
+      .tab.active .tab-edit {
         opacity: 1;
       }
 
-      /* INT-2026-028: „In VS Code öffnen" — inside is the element's own shadow root; same hover rule as .tab-edit. */
+      /* INT-2026-028: „In VS Code öffnen" — inside is the element's own shadow root.
+         Only on hover and then with width: with min-width 120px the name keeps
+         ~30px next to status, edit and close, a fourth fixed icon would leave it
+         ~8px. The active session has the button in the session/pane header. */
       .tab-vscode {
-        opacity: 0;
-        transition: opacity 0.2s;
         --vscode-knopf-icon: 12px;
+      }
+      .tab:not(:hover) .tab-vscode {
+        display: none;
       }
 
       .tab-close:hover,

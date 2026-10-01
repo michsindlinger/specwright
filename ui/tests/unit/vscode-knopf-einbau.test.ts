@@ -85,3 +85,10 @@ describe('aos-vscode-knopf einbau', () => {
     expect(row.indexOf('<aos-vscode-knopf')).toBeLessThan(row.indexOf('class="pane-new-btn"'));
   });
 });
+
+describe('aos-vscode-knopf im Tab: Platz', () => {
+  it('tabs without hover give the button no width (style rule); the active session has it in its header', () => {
+    const src = quelltext('aos-terminal-tabs.ts');
+    expect(src).toMatch(/\.tab:not\(:hover\) \.tab-vscode \{\s*display: none;/);
+  });
+});
