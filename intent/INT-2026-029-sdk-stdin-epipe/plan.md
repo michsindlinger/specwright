@@ -185,7 +185,7 @@ Neuer Helfer `createSdkSpawner(onStderr?)` in `ui/src/server/utils/sdk-spawn.ts`
 - [x] Jede AK aus Abschnitt 8 hat einen grünen Test (61/61 in den vier Dateien; Gegenprobe ohne Listener: `Unhandled Errors … Error: write EPIPE`, errno -32, wie im Absturz-Log).
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
 - [x] E2E-Pfad läuft (Abschnitt 8, siehe §14).
-- [ ] `verify` grün, Ausgabe im PR, und PR-Checks grün (lokal `verify: OK` im zweiten Lauf; CI offen).
+- [x] `verify` grün, Ausgabe im PR, und PR-Checks grün (lokal `verify: OK` im zweiten Lauf; CI im zweiten Lauf grün, siehe §14).
 - [x] Abweichungen in Abschnitt 14 eingetragen.
 - [x] 2x-Regel-Check: Der Absturz kam zweimal am selben Tag, beide Male aus derselben Ursache. Kein Fehlermuster von Claude, daher kein `CLAUDE.md`-Vorschlag.
 - [x] Abschlussbericht endet mit „Für das Board".
@@ -199,4 +199,5 @@ Neuer Helfer `createSdkSpawner(onStderr?)` in `ui/src/server/utils/sdk-spawn.ts`
 | 2026-10-01 | E2E ohne UI: `aggregateFindings` per `tsx`-Skript mit 2 Reviewer-Texten gegen den echten `claude`-Kindprozess (haiku) → 2 Cluster, `fallbackUsed: false`. Die Plan-Review über das Branch-Backend auf Port 3111 entfiel. | Der Skriptlauf durchläuft dieselbe Verbindung (Spawner → SDK → `claude`) ohne den UI-Aufbau; der Absturzpfad ist nur im Unit-Test mit echtem Kindprozess erzeugbar. | §8 |
 | 2026-10-01 | stderr ist immer eine Pipe; ohne `onStderr` wird sie mit `resume()` geleert, statt `'ignore'` zu setzen. | Mit bedingtem `stdio` typisiert Node `stdin` als nullable, und `ChildProcess` erfüllt `SpawnedProcess` nicht mehr (TS2322). | §3 |
 | 2026-10-01 | Test für AK-01: Das Kind schließt seine stdin und lebt weiter, statt sofort zu enden. | Ein Schreibversuch nach `exit` erzeugt in Node 22 kein `'error'`-Ereignis; nur ein noch lebendes Kind mit geschlossener Leitung liefert das echte EPIPE. | §8 |
+| 2026-10-01 | CI-Lauf 1 rot: `cloud-terminal-agent-event.test.ts` und `vorhaben-service-stage4.test.ts` als neu rot gemeldet. Lokal je zweimal 48/48 grün; keine der beiden Dateien importiert geänderten Code. Neulauf der fehlgeschlagenen Jobs: grün. Bezugsliste unverändert. | Flakiness außerhalb dieses Diffs. | — |
 | 2026-10-01 | `verify` Stufe 5 im ersten Lauf rot (`tests/integration/terminal-io.test.ts`), einzeln 10/10 grün, zweiter Gesamtlauf `verify: OK`. | Bekannte Flakiness der Stufe 5 auf dem Mac; die Datei hängt nicht an diesem Diff. | — |
