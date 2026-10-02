@@ -1,3 +1,5 @@
+// Zuerst: ui/.env in process.env laden, bevor ein Modul Variablen liest (ESM wertet Importe in Reihenfolge aus).
+import './utils/env-datei.js';
 import express, { Request, Response, NextFunction } from 'express';
 import { createServer, Server } from 'http';
 import { existsSync } from 'fs';
