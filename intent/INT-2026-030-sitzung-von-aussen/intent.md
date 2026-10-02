@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-030"  
 titel: "Neue Sitzung von außen starten (Eingang für hey)"  
-status: "angenommen"  
-version: "1.1.0"  
+status: "umgesetzt"  
+version: "1.1.1"  
 autor: "Michael Sindlinger (Idee), Claude (Entwurf)"  
 verantwortlich: "Product Owner"  
 erstellt: "2026-10-02"  
@@ -223,3 +223,4 @@ Zwei Befunde machen das Vorhaben größer als „einen Endpunkt freischalten":
 | 0.3.0 | 2026-10-02 | Änderung PO: Sitzung öffnet sich als Tab im Cloud-Terminal beim Projekt, ohne Markierung und Übernahme-Schritt, Fokus bleibt; Rechte wie eine UI-Sitzung (Vollzugriff) statt ohne Vollzugriff, Risiko in B-07 benannt | Z-03, Z-04, AK-01, AK-05, AK-06, B-05, B-07, ER-09, AN-01 | — |
 | 0.2.0 | 2026-10-02 | Blindprobe (frischer Agent): 1 blockierend — AK-01 widersprach AK-06 (Standard-Einstellungen enthalten Vollzugriff), behoben durch Ausnahme B-07; eingearbeitet: AK-03 zeichengleich, AK-04 Zeitgrenze 60 s, AK-07 allgemeiner Grund, AK-09/B-08 „offen“ und „Stufe 1“, AK-10 auch Absagen, neu AK-12 (Eingang standardmäßig aus), B-02 Pfadvergleich, B-03 kein Schalter, B-05 „übernehmen“, Endzustand, Beleg Tailscale korrigiert | AK-01, AK-03, AK-04, AK-07, AK-09, AK-10, AK-12, B-02, B-03, B-05, B-08 | — |
 | 0.1.0 | 2026-10-02 | Entwurf aus Michaels Beschreibung und fünf Rückfragen (Rechte, Absicherung, Arbeitskopie, Grenzen, Rückmeldung — alle Vorschläge angenommen) | alle | — |
+| 1.1.1 | 2026-10-02 | Umgesetzt: abgeschlossen aus der UI durch Michael Sindlinger; Belege in `plan.md` §13 | — | Product Owner (Klick in der UI) |
