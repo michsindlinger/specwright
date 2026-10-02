@@ -1,7 +1,7 @@
 # Plan: Neue Sitzung von außen starten (Eingang für hey)
 
 > **Intent:** `intent.md` (INT-2026-030, Version 1.1.0) · **Spec:** `spec.md` (freigegeben 2026-10-02)
-> **Status:** freigegeben
+> **Status:** umgesetzt
 > **Erstellt:** 2026-10-02 im Plan Mode · **Freigabe:** Product Owner (Michael Sindlinger), 2026-10-02
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 5990730), `CLAUDE.md`, `docs/security.md`
 
@@ -356,15 +356,15 @@ entfällt.
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), EK-01…EK-03 gemessen.
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün.
-- [ ] `docs/architecture.md`, `docs/security.md`, `docs/product-brief.md`, ADR-0007 in dieser PR.
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen in Abschnitt 14.
-- [ ] 2x-Regel-Check.
-- [ ] Abschlussbericht nach R3 mit Block „Für das Board".
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (`eingang-regeln`, `eingang-service`, `eingang-routes`, `cloud-terminal-trenner`, Ergänzungen in `lokal-verbindung`, `workspace-handler`, `app-terminal-dock`; 2026-10-02).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8), EK-01…EK-03 gemessen: 20/20 aktiv, Median 2,25 s, Kontrollfälle 8/8 mit 403 (`e2e/protokoll.md`).
+- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün. Lokal `verify: OK` (2026-10-02); PR-Check steht aus.
+- [x] `docs/architecture.md`, `docs/security.md`, `docs/product-brief.md`, ADR-0007 in dieser PR.
+- [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
+- [x] Abweichungen in Abschnitt 14.
+- [x] 2x-Regel-Check: kein Fehler aus der Liste „zweimal" wiederholt; Vertrauensdialog mit Pfeil runter + Enter bedient.
+- [x] Abschlussbericht nach R3 mit Block „Für das Board".
 
 ### 14. Abweichungen bei der Umsetzung
 
@@ -372,4 +372,11 @@ entfällt.
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-10-02 | Schritt 0: Der öffentliche Restore-Zugriff heißt `whenReady()` (`cloud-terminal-manager.ts:390`), nicht `restoreReady`. | Name im Plan ungenau | §2 Zeile „Restore", §3 D8 — Dienst nutzt `whenReady()` |
+| 2026-10-02 | D1/§4 Nr. 5: `index.ts` montiert nur den Router (`app.use('/api/eingang', createEingangRouter(…))`) ohne vorgeschalteten `express.json`; der 8-KB-Parser steht im Router hinter der Berechtigung. Dazu prüft der Router `application/json` ausdrücklich (sonst 400 „Anfrage ungültig" statt fälschlich „Satz fehlt"). | D1 verlangt Berechtigung vor dem Parsen; §4 Nr. 5 widersprach dem | §3 D1, §4 Nr. 5 |
+| 2026-10-02 | D2/§5: `istBerechtigt` ruft der Dienst (`EingangService.berechtigt(req)`, kennt Geheimnis, Schalter, Port), der Router ruft `svc.berechtigt`. Der §5-Nachweis „`istBerechtigt` in `eingang.routes.ts`" trifft deshalb `eingang-service.ts`. | Geheimnis lebt im Dienst; so verlässt es ihn nie | §5 Zeile Router → Regeln |
+| 2026-10-02 | D8: Einträge älter als 24 h werden nur entfernt, wenn ihre Sitzung geschlossen ist; ein offener Eintrag zählt weiter für die Obergrenze, die Abfrage antwortet nach 24 h trotzdem `unbekannt`. | D8 hätte eine über 24 h offene Sitzung aus der Grenze fallen lassen (FA-16, FA-22) | §3 D8, ADR-0007 |
+| 2026-10-02 | D8: Der Puffer für frühe Ereignisse nimmt nur Ereignisse auf, solange ein Start reserviert ist; sonst gehören sie UI-Sitzungen und werden nicht gemerkt. Gespeichert wird nur der Hash des Prompts. | weniger Speicher, kein Satztext fremder Sitzungen im Dienst (RB-04) | §3 D8 |
+| 2026-10-02 | Dienst vor `start()` (Workspace-Load, Restore-Abgleich) antwortet 503 „Backend startet noch"; ist der Dienst noch nicht gebaut, antwortet der Router bei Schalter aus 403, bei an 503. Zustand und Protokoll werden auch bei Schalter aus geschrieben (Abweisungen gehören ins Protokoll, FA-17); ein Geheimnis entsteht nur bei an. | Lücken in D1 | §3 D1, D3 |
+| 2026-10-02 | Router-Tests über einen echten HTTP-Server auf `127.0.0.1` statt `fakeReq`/`fakeRes`, damit `Host`, `Origin` und Weiterleitungs-Header wie im Betrieb ankommen. | `fakeReq` hätte Socket-Adresse und Header nachgebaut | §4 Nr. 14 |
+| 2026-10-02 | E2E: Kontrollfall „über Tailscale-URL" nicht über das echte Tailnet gefahren, sondern über die Header, die `tailscale serve` setzt (`tailscale-user-login`, `x-forwarded-for`, fremder `Host`) — alle 403. Der Probe-Lauf zum Vertrauensdialog (D12) lief zusätzlich echt: Projekt ohne Vertrauen → nach 60 s „Vertrauensdialog offen". | das Branch-Backend auf 3111 hängt nicht am Tailnet; Michaels Live-Backend nicht anfassen | §8 EK-03 |

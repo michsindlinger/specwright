@@ -1,0 +1,32 @@
+== EK-03 Kontrollfälle (erwartet je 403, 0 Starts)
+  ohne-token → 403 {"fehler":"nicht berechtigt"}
+  falsches-token → 403 {"fehler":"nicht berechtigt"}
+  x-forwarded-for → 403 {"fehler":"nicht berechtigt"}
+  x-forwarded-host → 403 {"fehler":"nicht berechtigt"}
+  tailscale-user-login → 403 {"fehler":"nicht berechtigt"}
+  cf-connecting-ip → 403 {"fehler":"nicht berechtigt"}
+  fremder-host → 403 {"fehler":"nicht berechtigt"}
+  origin → 403 {"fehler":"nicht berechtigt"}
+  Kontrollfälle mit 403: 8/8
+== EK-01/EK-02: 20 Anfragen
+  1 201 aktiv 2.3s
+  2 201 aktiv 2.3s
+  3 201 aktiv 2.3s
+  4 201 aktiv 2.3s
+  5 201 aktiv 2.3s
+  6 201 aktiv 2.3s
+  7 201 aktiv 2.3s
+  8 201 aktiv 2.2s
+  9 201 aktiv 2.2s
+  10 201 aktiv 1.6s
+  11 201 aktiv 2.3s
+  12 201 aktiv 1.6s
+  13 201 aktiv 2.3s
+  14 201 aktiv 1.7s
+  15 201 aktiv 2.2s
+  16 201 aktiv 2.2s
+  17 201 aktiv 4.0s
+  18 201 aktiv 1.6s
+  19 201 aktiv 1.6s
+  20 201 aktiv 2.2s
+== Ergebnis: aktiv 20/20, Median bis aktiv 2.25s
