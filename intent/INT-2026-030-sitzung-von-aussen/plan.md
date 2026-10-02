@@ -301,7 +301,7 @@ entfällt.
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
 | Probelauf AN-01/AN-02/`--` nach dem Probe-Protokoll unten; Ergebnis je Fall in §2 und §12 eintragen | Agent (Zustimmung PO 2026-10-02) | nach Plan Mode, vor Freigabe | [x] 2026-10-02: P1–P7 bestanden (§2); Befund F4 Vertrauensdialog → D12 |
-| Eingang einschalten: `SPECWRIGHT_EINGANG=on` in der Startumgebung des Mac-Backends (Michaels Startweg `cd ui && npm run start:backend`, `ui/package.json`), Backend neu starten; Token-Pfad aus dem Startlog an hey geben | Michael | nach Merge | [ ] |
+| Eingang einschalten: `SPECWRIGHT_EINGANG=on` in `ui/.env` (oder in der Startumgebung) des Mac-Backends (Michaels Startweg `cd ui && npm run start:backend`, `ui/package.json`), Backend neu starten; Token-Pfad aus dem Startlog an hey geben | Michael | nach Merge | [ ] |
 | hey anbinden (Phase 2b, hey-Repo, NZ-03) | Michael | nach Merge | [ ] |
 | EK-01/EK-02 im Betrieb: Protokoll nach 2 Wochen sichten; AN-04 (ungenutzte Arbeitskopien zählen) | Michael | 2026-10-16 | [ ] |
 | Merge nach `main` (Auto-Deploy Cloud-Host; dort bleibt der Eingang aus, weil Linux) | Michael | nach CI grün | [ ] |
@@ -380,3 +380,4 @@ entfällt.
 | 2026-10-02 | Dienst vor `start()` (Workspace-Load, Restore-Abgleich) antwortet 503 „Backend startet noch"; ist der Dienst noch nicht gebaut, antwortet der Router bei Schalter aus 403, bei an 503. Zustand und Protokoll werden auch bei Schalter aus geschrieben (Abweisungen gehören ins Protokoll, FA-17); ein Geheimnis entsteht nur bei an. | Lücken in D1 | §3 D1, D3 |
 | 2026-10-02 | Router-Tests über einen echten HTTP-Server auf `127.0.0.1` statt `fakeReq`/`fakeRes`, damit `Host`, `Origin` und Weiterleitungs-Header wie im Betrieb ankommen. | `fakeReq` hätte Socket-Adresse und Header nachgebaut | §4 Nr. 14 |
 | 2026-10-02 | E2E: Kontrollfall „über Tailscale-URL" nicht über das echte Tailnet gefahren, sondern über die Header, die `tailscale serve` setzt (`tailscale-user-login`, `x-forwarded-for`, fremder `Host`) — alle 403. Der Probe-Lauf zum Vertrauensdialog (D12) lief zusätzlich echt: Projekt ohne Vertrauen → nach 60 s „Vertrauensdialog offen". | das Branch-Backend auf 3111 hängt nicht am Tailnet; Michaels Live-Backend nicht anfassen | §8 EK-03 |
+| 2026-10-02 | Nachtrag nach Merge (PR #101): Das Backend lädt `ui/.env` beim Start (`ui/src/server/utils/env-datei.ts`, erster Import in `index.ts`, `process.loadEnvFile`), damit `SPECWRIGHT_EINGANG=on` nicht bei jedem Start mitgegeben werden muss. Fehlt die Datei, passiert nichts; Variablen der Umgebung gewinnen; `ui/.env` ist gitignored (security §1, vertraulich). | Wunsch PO nach dem Merge; §10 Schritt „Eingang einschalten" nennt jetzt `ui/.env` | §10, `ui/src/server/index.ts` |
