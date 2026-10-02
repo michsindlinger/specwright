@@ -997,3 +997,76 @@ describe('INT-2026-022: pageOfRoute with the session as second segment of neu', 
     expect(pageOfRoute({ view: 'neu', segments: [] })).toEqual({ projectId: null, intentId: null });
   });
 });
+
+describe('INT-2026-030 (FA-08…FA-10, D10): a session from outside never moves focus', () => {
+  interface WorkspaceInternals extends AppInternals {
+    workspaceReady: boolean;
+    _handleWorkspaceState(msg: Record<string, unknown>): Promise<void>;
+    _handleCloudTerminalCreatedElsewhere(msg: Record<string, unknown>): void;
+  }
+  const stateMsg = (projects: Project[]) => ({
+    type: 'workspace:state',
+    state: {
+      openProjects: projects.map((p) => ({ ...p, openedAt: '2026-10-02T10:00:00Z' })),
+      recentProjects: [],
+      sessionNames: {},
+      updatedAt: '2026-10-02T10:00:00Z',
+    },
+  });
+  const created = (sessionId: string, projectPath: string) => ({
+    type: 'cloud-terminal:created',
+    sessionId,
+    session: { sessionId, projectPath, status: 'active', terminalType: 'claude-code', createdAt: '2026-10-02T10:00:00Z' },
+  });
+  const B: Project = { id: 'pb', name: 'B', path: '/b' };
+  const C: Project = { id: 'pc', name: 'C', path: '/c' };
+
+  it('window without an active project: the opened project and its tab appear, the active project stays empty', async () => {
+    const el = (await app()) as WorkspaceInternals;
+    el.workspaceReady = true;
+    el.openProjects = [];
+    el.activeProjectId = null;
+    el.activeTerminalSessionId = null;
+    el.terminalSessions = [];
+    localStorage.clear();
+    await settle(el);
+    switchProject.mockClear();
+    await el._handleWorkspaceState(stateMsg([C]));
+    el._handleCloudTerminalCreatedElsewhere(created('cloud-1-77', '/c'));
+    await settle(el);
+    expect(el.openProjects.map((p) => p.id)).toEqual(['pc']);
+    expect(el.activeProjectId).toBeNull();
+    expect(switchProject).not.toHaveBeenCalled();
+    expect(el.terminalSessions.map((t) => t.terminalSessionId)).toEqual(['cloud-1-77']);
+    expect(el.activeTerminalSessionId).toBeNull();
+    el.remove();
+  });
+
+  it('window with an active project and tab: both stay, the new tab is only added', async () => {
+    const el = (await app()) as WorkspaceInternals;
+    el.workspaceReady = true;
+    await el._handleWorkspaceState(stateMsg([{ id: 'pa', name: 'A', path: '/a' }, B, C]));
+    el._handleCloudTerminalCreatedElsewhere(created('cloud-1-78', '/c'));
+    el._handleCloudTerminalCreatedElsewhere(created('cloud-1-79', '/a'));
+    await settle(el);
+    expect(el.activeProjectId).toBe('pa');
+    expect(el.activeTerminalSessionId).toBe('a1');
+    expect(el.terminalSessions.map((t) => t.terminalSessionId)).toContain('cloud-1-78');
+    expect(el.terminalSessions.map((t) => t.terminalSessionId)).toContain('cloud-1-79');
+    el.remove();
+  });
+
+  it('control: the first state of a window still picks the first project; a closed active project falls back to the first', async () => {
+    const el = (await app()) as WorkspaceInternals;
+    el.workspaceReady = false;
+    el.activeProjectId = null;
+    localStorage.clear();
+    await el._handleWorkspaceState(stateMsg([B, C]));
+    await settle(el);
+    expect(el.activeProjectId).toBe('pb');
+    await el._handleWorkspaceState(stateMsg([C]));
+    await settle(el);
+    expect(el.activeProjectId).toBe('pc');
+    el.remove();
+  });
+});

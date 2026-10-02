@@ -46,7 +46,13 @@ function einzelwert(wert: string | string[] | undefined): string | undefined {
   return wert;
 }
 
-export function istLokalerBrowser(req: LokalAnfrage, opts: LokalOptionen): boolean {
+/**
+ * Schritte 1–4 der Lokal-Prüfung ohne `Origin`: macOS, Loopback-Adresse,
+ * keine Weiterleitungs-Header, `Host` = Loopback-Host mit Backend-Port.
+ * Grundlage für den Browser-Fall (`istLokalerBrowser`) und für Programme
+ * am selben Mac (Eingang von außen, INT-2026-030 D2).
+ */
+export function istLokaleVerbindung(req: LokalAnfrage, opts: LokalOptionen): boolean {
   const plattform = opts.plattform ?? process.platform;
   if (plattform !== 'darwin') return false;
 
@@ -59,7 +65,11 @@ export function istLokalerBrowser(req: LokalAnfrage, opts: LokalOptionen): boole
 
   const host = einzelwert(req.headers.host)?.toLowerCase();
   const erlaubteHosts = LOOPBACK_HOSTS.map((h) => `${h}:${opts.port}`);
-  if (!host || !erlaubteHosts.includes(host)) return false;
+  return !!host && erlaubteHosts.includes(host);
+}
+
+export function istLokalerBrowser(req: LokalAnfrage, opts: LokalOptionen): boolean {
+  if (!istLokaleVerbindung(req, opts)) return false;
 
   const origin = einzelwert(req.headers.origin)?.toLowerCase();
   if (!origin) return false;

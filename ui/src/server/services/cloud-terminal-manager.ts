@@ -701,6 +701,9 @@ export class CloudTerminalManager extends EventEmitter {
    * @param options.isolateInWorktree - Legacy switch kept so callers that
    *   predate the target picker keep compiling; `true` maps to
    *   `{kind:'new-worktree', explicit:false}`.
+   * @param options.promptNachTrenner - INT-2026-030 (FA-20): put `--` before
+   *   `initialPrompt` so a prompt starting with "-" is never read as a flag.
+   *   Opt-in: only the Eingang uses it; all other callers keep their argv.
    * @returns Created session metadata
    * @throws Error if max sessions reached, the target is invalid/occupied, or spawn fails
    */
@@ -713,7 +716,7 @@ export class CloudTerminalManager extends EventEmitter {
     initialPrompt?: string,
     extraCliArgs?: string[],
     extraEnv?: Record<string, string>,
-    options?: { isolateInWorktree?: boolean; sessionTarget?: ParsedTarget }
+    options?: { isolateInWorktree?: boolean; sessionTarget?: ParsedTarget; promptNachTrenner?: boolean }
   ): Promise<CloudTerminalSession> {
     // Never race the boot-restore: restored sessions must be in the map before
     // new IDs are generated and occupancy is checked.
@@ -958,7 +961,11 @@ export class CloudTerminalManager extends EventEmitter {
           shellArgs.push('--settings', this.hookSettingsPath);
         }
         if (initialPrompt) {
-          shellArgs.push(initialPrompt);
+          if (options?.promptNachTrenner) {
+            shellArgs.push('--', initialPrompt);
+          } else {
+            shellArgs.push(initialPrompt);
+          }
         }
         shellEnv = {
           ...baseEnv,

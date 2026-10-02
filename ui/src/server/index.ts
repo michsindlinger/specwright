@@ -8,6 +8,7 @@ import projectRouter from './routes/project.routes.js';
 import versionRouter from './routes/version.routes.js';
 import teamRouter from './routes/team.routes.js';
 import { createCloudTerminalRouter } from './routes/cloud-terminal.routes.js';
+import { createEingangRouter } from './routes/eingang.routes.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -27,6 +28,10 @@ let wsHandler: WebSocketHandler;
 if (process.env.TRUST_PROXY === 'true') {
   app.set('trust proxy', true);
 }
+
+// INT-2026-030 (D1): Eingang von außen — VOR dem globalen Body-Parser, damit
+// die Berechtigung vor dem Parsen läuft und der Router sein eigenes 8-KB-Limit hat.
+app.use('/api/eingang', createEingangRouter(() => wsHandler?.getEingangService()));
 
 // Middleware
 app.use(express.json({ limit: '30mb' }));

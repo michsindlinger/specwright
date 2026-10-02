@@ -129,6 +129,16 @@ export class WorkspaceHandler {
     }
   }
 
+  /**
+   * INT-2026-030 (D5, FA-10): the Eingang opens a project from the recents. Same
+   * store call and broadcast as `workspace:open-project`, but no ack — no client
+   * asked, so no client activates it (`app.ts` activates only on its own ack).
+   */
+  public openProjectFromBackend(path: string, name: string): void {
+    this.store.openProject(path, name);
+    this.broadcast(this.stateMessage());
+  }
+
   /** Server-side rename (Vorhaben step start names its tab); broadcasts on change. */
   public setSessionName(sessionId: string, name: string | null): boolean {
     const changed = this.store.setSessionName(sessionId, name);

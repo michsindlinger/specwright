@@ -437,6 +437,19 @@ export class VorhabenService {
   }
 
   /** Coalesces rescans (watcher bursts, workspace changes) into one run. */
+  /**
+   * Voraussetzung für einen Start in einer neuen Arbeitskopie (INT-2026-022 FA-09, Schicht 2). Nimmt einen Pfad,
+   * kein offenes Projekt: der Eingang von außen (INT-2026-030, D7) prüft vor dem Öffnen eines Projekts aus den
+   * Recents. Wirft `WORKTREE_UNAVAILABLE` mit dem Text, den Michael in der UI wie im Eingang sieht (FA-13).
+   */
+  public async pruefeArbeitskopieMoeglich(projectPath: string): Promise<void> {
+    const wt = await this.worktreesOf(projectPath);
+    if (!wt.isGitRepo) throw new VorhabenError('WORKTREE_UNAVAILABLE', 'Keine Arbeitskopie möglich: kein Git-Repository — Absicht im Terminal starten.');
+    if (!this.worktreeEnabled(this.resolveMainPath(projectPath))) {
+      throw new VorhabenError('WORKTREE_UNAVAILABLE', 'Keine Arbeitskopie möglich: Worktree-Isolation ist für dieses Projekt abgeschaltet — in Projekt › Einstellungen einschalten oder die Absicht im Terminal starten.');
+    }
+  }
+
   public scheduleRescan(delayMs = 100): void {
     if (this.stopped) return;
     if (this.scanTimer) clearTimeout(this.scanTimer);
@@ -864,11 +877,7 @@ export class VorhabenService {
         throw new VorhabenError('INVALID_MESSAGE', 'Eine Absicht startet immer in einer neuen Arbeitskopie (sessionTarget new-worktree ohne Namen oder weglassen)');
       }
       target = { target: { kind: 'new-worktree' }, explicit: true };
-      const wt = await this.worktreesOf(project.path);
-      if (!wt.isGitRepo) throw new VorhabenError('WORKTREE_UNAVAILABLE', 'Keine Arbeitskopie möglich: kein Git-Repository — Absicht im Terminal starten.');
-      if (!this.worktreeEnabled(this.resolveMainPath(project.path))) {
-        throw new VorhabenError('WORKTREE_UNAVAILABLE', 'Keine Arbeitskopie möglich: Worktree-Isolation ist für dieses Projekt abgeschaltet — in Projekt › Einstellungen einschalten oder die Absicht im Terminal starten.');
-      }
+      await this.pruefeArbeitskopieMoeglich(project.path);
     } else {
       try {
         target = parseSessionTarget(sessionTargetRaw ?? { kind: 'main' });
