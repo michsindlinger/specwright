@@ -1,7 +1,7 @@
 # Produkt: Specwright
 
 > **Firma:** Sindlinger Business Solutions — Auftrag, Werte, Marke: Firmen-Repo (`mission.md`, `brand.md`; entsteht in Phase 3 des SDLC-Umbaus)
-> **Stand:** 2026-09-28 · **Verantwortlich:** Product Owner (Michael Sindlinger)
+> **Stand:** 2026-10-02 · **Verantwortlich:** Product Owner (Michael Sindlinger)
 > **Gilt für:** jede `intent.md` (Feld `bezuege.product`), jede Spec (Bedenken-Prüfung), Plan Mode
 
 ## 1. In einem Satz
@@ -63,6 +63,7 @@ Ohne festen Ablauf zerfällt Softwarearbeit mit einem Agenten in Chat-Sitzungen:
 | Vorhaben | Eine abgeschlossene Änderung mit `intent/INT-JJJJ-NNN-kurzname/` und den drei Dokumenten | Story (v3-Einheit; aus der Web-UI entfernt in INT-2026-004) |
 | Absicht (`intent.md`) | Was und warum, fachlich, mit Belegen; ab Risikoklasse mittel mit Vertragsschicht | Product-Brief (Produktebene) |
 | Begonnene Absicht (INT-2026-022) | Eine `/intent`-Sitzung, deren Ordner `intent/INT-…/` noch nicht existiert; in der Übersicht als Eintrag „Absicht · entsteht" mit Arbeitstitel, Sitzung und Arbeitskopie sichtbar, bis der Ordner entsteht (dann Vorhaben) oder die Sitzung ohne Ordner endet | Vorhaben (hat einen Ordner) |
+| Sitzung von außen / Eingang (INT-2026-030) | Eine Claude-Sitzung, die ein lokales Programm am Mac (hey) über den Eingang der UI startet: eigener Tab mit Titel aus dem Satz, eigene Arbeitskopie, Opus; Eingang standardmäßig aus (`SPECWRIGHT_EINGANG=on`), nur macOS, mit Geheimnis (ADR-0007) | Absicht-Start aus der UI (Knopf „Neue Absicht"), Anruf (Antwort in eine laufende Sitzung) |
 | Plan (`plan.md`) | Technischer Plan aus dem Plan Mode, Einheit der Ausführung | Roadmap |
 | Projekt-Docs | `docs/{product-brief,architecture,security,design}.md` — Soll und Grenzen eines Projekts | Firmen-Repo (Mission, Marke) |
 | Manifest | `specwright/manifest.tsv`: Art, Geltung, Quelle, Ziel jeder ausgelieferten Datei | `removed.tsv` (Entferntes) |
