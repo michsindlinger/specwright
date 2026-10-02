@@ -27,7 +27,8 @@ import {
   type StepKey,
   type ModelConfig,
   type Model,
-  type ModelProvider
+  type ModelProvider,
+  getModel
 } from './model-config.js';
 import { loadGeneralConfig, updateGeneralConfig, getReviewPrompt, getCloudSessionWorktreeEnabled } from './general-config.js';
 import { resolveMainWorktreePath } from './utils/worktree-detect.js';
@@ -41,7 +42,7 @@ import { setupService, type StepOutput, type StepComplete } from './services/set
 import { ProjectConcurrencyGate } from './services/project-concurrency-gate.js';
 import { WorkspaceStateStore } from './services/workspace-state.js';
 import { WorkspaceHandler } from './services/workspace-handler.js';
-import { getWorkspaceStatePath, getVorhabenStatePath, getIntentPasteImageRoot, getAnrufStatePath, getAnrufKontextDir, backendPort } from './utils/runtime-paths.js';
+import { getWorkspaceStatePath, getVorhabenStatePath, getIntentPasteImageRoot, getAnrufStatePath, getAnrufKontextDir, backendPort, getEingangTokenPath, getEingangStatePath, getEingangLogPath } from './utils/runtime-paths.js';
 import { handleEditorSettingsMessage } from './editor-config.js';
 import { AnrufService } from './services/anruf-service.js';
 import { AnrufHandler } from './services/anruf-handler.js';
@@ -49,6 +50,8 @@ import { SprachErkennung } from './services/sprach-erkennung.js';
 import { AnrufSender } from './services/anruf-sender.js';
 import { anrufAbgeschaltet } from './services/claude-hooks.js';
 import { istLokalerBrowser } from './utils/lokal-verbindung.js';
+import { EingangService } from './services/eingang-service.js';
+import type { WorkspaceState } from '../shared/types/workspace.protocol.js';
 import { INTENT_PASTE_MAX_AGE_MS, pruneOldImages } from './utils/paste-image.js';
 import { VorhabenStateStore } from './services/vorhaben-state.js';
 import { VorhabenService } from './services/vorhaben-service.js';
@@ -113,6 +116,8 @@ export class WebSocketHandler {
   private sprachErkennung: SprachErkennung;
   private anrufService: AnrufService;
   private anrufHandler: AnrufHandler;
+  /** INT-2026-030: Eingang von außen (HTTP-Router in index.ts). */
+  private eingangService: EingangService;
 
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server });
@@ -174,6 +179,22 @@ export class WebSocketHandler {
       },
     });
     this.anrufHandler = new AnrufHandler(this.anrufService);
+    // INT-2026-030 (D3–D9): Eingang von außen. Geheimnis nur bei SPECWRIGHT_EINGANG=on auf macOS;
+    // start() nach der Wiederherstellung der Sitzungen (bootWorkspace).
+    this.eingangService = new EingangService({
+      sitzungen: this.cloudTerminalManager,
+      workspace: {
+        getState: (): WorkspaceState => this.workspaceStore.getState(),
+        openProjectFromBackend: (path, name): void => this.workspaceHandler.openProjectFromBackend(path, name),
+        setSessionName: (sessionId, name): boolean => this.workspaceHandler.setSessionName(sessionId, name),
+      },
+      vorhaben: this.vorhabenService,
+      opusVerfuegbar: (): boolean => getModel('anthropic', 'opus') !== undefined,
+      resolveMainPath: resolveMainWorktreePath,
+      pfade: { token: getEingangTokenPath(), zustand: getEingangStatePath(), protokoll: getEingangLogPath() },
+      port: backendPort(),
+      schalter: process.env.SPECWRIGHT_EINGANG,
+    });
     this.bootWorkspace();
     this.setupConnectionHandler();
     this.startHeartbeat();
@@ -206,6 +227,8 @@ export class WebSocketHandler {
       // INT-2026-020 (AK-08): images pasted on „Neue Absicht" belong to no session — prune after 7 days.
       const prunedImages = await pruneOldImages(getIntentPasteImageRoot(), INTENT_PASTE_MAX_AGE_MS);
       if (prunedImages > 0) console.log(`[WebSocket] intent-paste: pruned ${prunedImages} image(s) older than 7 days`);
+      // INT-2026-030: Eingang nimmt erst nach Workspace-Load und Restore an (Protokoll aufräumen, Zustand abgleichen).
+      await this.eingangService.start();
       const t0 = Date.now();
       await this.vorhabenService.start();
       console.log(`[WebSocket] vorhaben: first scan in ${Date.now() - t0} ms (${this.vorhabenService.getState().rows.length} rows)`);
@@ -1059,6 +1082,11 @@ export class WebSocketHandler {
     return this.anrufService;
   }
 
+  /** INT-2026-030: the Eingang router resolves the service lazily. */
+  public getEingangService(): EingangService {
+    return this.eingangService;
+  }
+
   /** Expose the Vorhaben service for the deploy-readiness gate (FA-34). */
   public getVorhabenService(): VorhabenService {
     return this.vorhabenService;
@@ -1077,6 +1105,7 @@ export class WebSocketHandler {
     // DPP-002: Clean up PreviewWatcher
     this.previewWatcher.stop();
     this.vorhabenService.stop();
+    this.eingangService.dispose();
     // INT-2026-025 (#18): Anruf-Dienst abmelden; sein stop() ruft sprachErkennung.stop() (whisper-server: SIGTERM, nach 2 s SIGKILL).
     void this.anrufService.stop().catch(() => undefined);
     // MPRO-005: Clean up WebSocketManager

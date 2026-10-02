@@ -137,6 +137,24 @@ export function getEditorConfigPath(): string {
 }
 
 /**
+ * INT-2026-030 (D3): Geheimnis des Eingangs von außen (64 Hex, Datei 0600).
+ * Je Backend-Port; Inhalt nie in Log, Antwort oder Broadcast.
+ */
+export function getEingangTokenPath(): string {
+  return join(getRuntimeDir(), `eingang-${backendPort()}.token`);
+}
+
+/** INT-2026-030 (D8): Zustand der Sitzungen von außen (Stufe 1/2, Hash des Satzes, 24 h). */
+export function getEingangStatePath(): string {
+  return join(getRuntimeDir(), `eingang-${backendPort()}.json`);
+}
+
+/** INT-2026-030 (D9): Eingangsprotokoll, eine JSON-Zeile je Anfrage (30 Tage, ≤ 10 MB). */
+export function getEingangLogPath(): string {
+  return join(getRuntimeDir(), `eingang-${backendPort()}.jsonl`);
+}
+
+/**
  * Vorhaben user state (session↔Vorhaben assignments, review drafts, protocol,
  * last model per step, project-doc drafts) — one per backend like the
  * workspace state (ADR-0002). Port-suffixed for the same reason.

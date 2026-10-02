@@ -113,4 +113,13 @@ describe('WorkspaceHandler', () => {
     expect(handler.onSessionClosed('s1')).toBe(false);
     expect(broadcast).toHaveBeenCalledTimes(1);
   });
+  it('openProjectFromBackend opens and broadcasts, never acks or replies (INT-2026-030, FA-10)', () => {
+    handler.openProjectFromBackend('/b', 'B');
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    expect(last(broadcast)).toMatchObject({ type: 'workspace:state' });
+    const state = last(broadcast).state as { openProjects: Array<{ path: string; name: string }> };
+    expect(state.openProjects.map((p) => p.path)).toEqual(['/b']);
+    expect(reply).not.toHaveBeenCalled();
+    expect(broadcast.mock.calls.some(([m]) => m.type === 'workspace:ack')).toBe(false);
+  });
 });

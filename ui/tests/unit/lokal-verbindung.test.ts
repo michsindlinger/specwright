@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { IncomingHttpHeaders } from 'node:http';
-import { istLokalerBrowser } from '../../src/server/utils/lokal-verbindung.js';
+import { istLokalerBrowser, istLokaleVerbindung } from '../../src/server/utils/lokal-verbindung.js';
 
 const PORT = 3001;
 const opts = { port: PORT, plattform: 'darwin' as const };
@@ -55,5 +55,34 @@ describe('istLokalerBrowser()', () => {
     const dev = { ...LOKAL, origin: 'http://localhost:5173' };
     expect(istLokalerBrowser(req(dev), opts)).toBe(false);
     expect(istLokalerBrowser(req(dev), { ...opts, devPorts: [5173] })).toBe(true);
+  });
+});
+
+describe('istLokaleVerbindung() — Programm am selben Mac (INT-2026-030, B-01)', () => {
+  const PROGRAMM: IncomingHttpHeaders = { host: 'localhost:3001' };
+
+  it('Loopback + Host, ohne Origin → lokal', () => {
+    expect(istLokaleVerbindung(req(PROGRAMM), opts)).toBe(true);
+    expect(istLokaleVerbindung(req({ host: '127.0.0.1:3001' }, '::ffff:127.0.0.1'), opts)).toBe(true);
+    expect(istLokaleVerbindung(req({ host: '[::1]:3001' }, '::1'), opts)).toBe(true);
+  });
+
+  it('Weiterleitungs-Header → nicht lokal', () => {
+    for (const name of ['x-forwarded-for', 'x-forwarded-host', 'cf-connecting-ip', 'tailscale-user-login']) {
+      expect(istLokaleVerbindung(req({ ...PROGRAMM, [name]: 'x' }), opts)).toBe(false);
+    }
+  });
+
+  it('fremder Host, fremde Adresse, andere Plattform → nicht lokal', () => {
+    expect(istLokaleVerbindung(req({ host: 'mac.tailnet.ts.net' }), opts)).toBe(false);
+    expect(istLokaleVerbindung(req({ host: 'localhost:4000' }), opts)).toBe(false);
+    expect(istLokaleVerbindung(req({}), opts)).toBe(false);
+    expect(istLokaleVerbindung(req(PROGRAMM, '192.168.1.20'), opts)).toBe(false);
+    expect(istLokaleVerbindung(req(PROGRAMM), { port: PORT, plattform: 'linux' })).toBe(false);
+  });
+
+  it('istLokalerBrowser bleibt strenger: ohne Origin nein, mit UI-Origin ja', () => {
+    expect(istLokalerBrowser(req(PROGRAMM), opts)).toBe(false);
+    expect(istLokalerBrowser(req({ ...PROGRAMM, origin: 'http://localhost:3001' }), opts)).toBe(true);
   });
 });

@@ -1438,11 +1438,15 @@ export class AosApp extends LitElement {
     this.openProjects = projects;
 
     // Active project: keep, else remembered, else first.
+    // INT-2026-030 (D10, FA-10): "first" only on the first state or when the active
+    // project was closed elsewhere — a window without an active project stays without
+    // one when a project is added from outside (Eingang, another device).
     const remembered = this.loadActiveProjectId();
+    const darfErstesNehmen = firstState || this.activeProjectId !== null;
     const nextActive =
       (this.activeProjectId && projects.some(p => p.id === this.activeProjectId) ? this.activeProjectId : null) ??
       (remembered && projects.some(p => p.id === remembered) ? remembered : null) ??
-      (projects[0]?.id ?? null);
+      (darfErstesNehmen ? (projects[0]?.id ?? null) : null);
     const activeChanged = nextActive !== this.activeProjectId;
     // MPRO-006: when the active project changes, the backend context switch
     // (project.switch) must land BEFORE consumers see the new active project,
