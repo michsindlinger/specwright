@@ -2,7 +2,7 @@
 intent_id: "INT-2026-030"  
 titel: "Neue Sitzung von außen starten (Eingang für hey)"  
 status: "angenommen"  
-version: "1.0.0"  
+version: "1.1.0"  
 autor: "Michael Sindlinger (Idee), Claude (Entwurf)"  
 verantwortlich: "Product Owner"  
 erstellt: "2026-10-02"  
@@ -16,7 +16,7 @@ bypass: "nein"
 bypass_grund: ""  
 bezuege:  
   product: "docs/product-brief.md"  
-  spec: ""  
+  spec: "spec.md"  
   plan: ""  
   board_karte: ""  
   adr: []  
@@ -104,12 +104,12 @@ Zwei Befunde machen das Vorhaben größer als „einen Endpunkt freischalten":
 
 | ID | Kriterium | Ziel | Prüfung |
 |---|---|---|---|
-| AK-01 | Wenn eine berechtigte Anfrage (B-01) mit einem bekannten Projekt (B-02) und einem gültigen Satz (B-03) eingeht, MUSS das System eine neue Claude-Code-Sitzung in einer neu angelegten Arbeitskopie dieses Projekts starten, mit Modell und Einstellungen wie bei einem Start aus der UI ohne Auswahl, Rechte eingeschlossen (B-07). | Z-01 | Test |
+| AK-01 | Wenn eine berechtigte Anfrage (B-01) mit einem bekannten Projekt (B-02) und einem gültigen Satz (B-03) eingeht, MUSS das System eine neue Claude-Code-Sitzung in einer neu angelegten Arbeitskopie dieses Projekts starten, mit Modell Claude Opus (B-10) und sonst denselben Einstellungen wie bei einem Start aus der UI mit dieser Auswahl, Rechte eingeschlossen (B-07). | Z-01 | Test |
 | AK-02 | Wenn das System eine Sitzung nach AK-01 anlegt, MUSS es dem Absender mit der Antwort auf die Anfrage Stufe 1 (B-04) und die Sitzungs-ID melden. | Z-02 | Test |
 | AK-03 | Wenn der `UserPromptSubmit`-Hook der neuen Sitzung einen Text meldet, der mit dem bereinigten Satz (B-03) zeichengleich ist, MUSS das System für diese Sitzungs-ID Stufe 2 (B-04) melden. | Z-02 | Test |
 | AK-04 | Falls die neue Sitzung vor Stufe 2 endet, der Hook einen anderen Text meldet oder Stufe 2 nicht binnen 60 Sekunden ab Stufe 1 eintritt, dann MUSS die Statusabfrage für diese Sitzungs-ID einen Fehlerzustand mit Grund liefern statt Stufe 2. | Z-02 | Test |
 | AK-05 | Wenn eine Sitzung nach AK-01 angelegt ist, MUSS sie in jedem verbundenen UI-Client ohne Klick und ohne Neuladen als Tab mit Titel nach B-09 im Cloud-Terminal beim Projekt erscheinen, ohne den Fokus vom gerade aktiven Tab oder Eingabefeld zu nehmen; ist das Projekt dort nicht offen, wird es mit diesem Tab geöffnet. | Z-03 | Test, Stichprobe |
-| AK-06 | Die von außen gestartete Sitzung DARF NICHT mit anderen Startschaltern oder Rechten laufen als eine Sitzung, die Michael in der UI für dasselbe Modell ohne Auswahl startet. | Z-04 | Test |
+| AK-06 | Die von außen gestartete Sitzung DARF NICHT mit anderen Startschaltern oder Rechten laufen als eine Sitzung, die Michael in der UI mit der Auswahl Claude Opus startet. | Z-04 | Test |
 | AK-07 | Falls eine Anfrage nicht berechtigt ist (B-01), dann MUSS das System sie ohne Sitzung und ohne Arbeitskopie abweisen, mit einem allgemeinen Grund, der nicht verrät, welche Bedingung fehlt. | Z-04 | Test |
 | AK-08 | Falls das Projekt unbekannt ist, kein Git-Repository ist oder keine Arbeitskopie angelegt werden kann, dann MUSS das System ohne Sitzung absagen und den Grund nennen. | Z-01 | Test |
 | AK-09 | Falls bereits 3 von außen gestartete Sitzungen offen (B-08) sind oder in den letzten 60 Sekunden 5 Anfragen Stufe 1 erhalten haben, dann MUSS das System ohne Sitzung absagen und den Grund nennen. | Z-04 | Test |
@@ -161,6 +161,7 @@ Zwei Befunde machen das Vorhaben größer als „einen Endpunkt freischalten":
 - **B-07 Rechte:** die Sitzung startet mit denselben Schaltern wie eine Sitzung aus der UI, heute also mit Vollzugriff (`ui/config/model-config.json:10`). Bewusst in Kauf genommenes Risiko: Ein falsch erkannter oder falsch zugestellter Satz wird ohne Rückfrage ausgeführt, samt Push und global eingerichteten Werkzeugen, die Nachrichten senden können. Abgefedert durch eigene Arbeitskopie (B-06), Berechtigung (B-01) und Obergrenzen (B-08). *Entschieden 2026-10-02 (PO), ersetzt die Entscheidung aus Rückfrage 1 („ohne Vollzugriff").*
 - **B-08 Obergrenzen:** höchstens 3 offene von außen gestartete Sitzungen, höchstens 5 Anfragen mit Stufe 1 je gleitende 60 Sekunden; „offen” heißt: Sitzung nicht geschlossen, egal ob der Prozess noch läuft; darüber sofortige Absage, keine Wartezeit. Ungeöffnete Sitzungen bleiben offen wie jede andere. *Entschieden 2026-10-02 (PO), Rückfrage 4.*
 - **B-09 Titel des Tabs:** Schickt der Absender einen Titel mit, gilt dieser, bereinigt wie B-03 und höchstens 40 Zeichen lang; sonst die ersten Wörter des bereinigten Satzes, an einer Wortgrenze auf höchstens 40 Zeichen gekürzt und mit „…” markiert. Michael kann den Titel ändern wie jeden anderen Tab-Namen. *Entschieden 2026-10-02 (PO), Änderung zu 0.3.0.*
+- **B-10 Modell:** Claude Opus beim Anbieter Anthropic, so wie Michael es beim Start einer Sitzung in der UI auswählen würde (Eintrag `opus`, `ui/config/model-config.json:19`), unabhängig von der Standardwahl der UI (heute `sonnet`, `ui/config/model-config.json:3`). Der Absender wählt das Modell nicht (NZ-01). *Entschieden 2026-10-02 (PO), Änderung zu 1.0.0.*
 
 ## 9. Erfolgskennzahlen
 
@@ -216,6 +217,7 @@ Zwei Befunde machen das Vorhaben größer als „einen Endpunkt freischalten":
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.1.0 | 2026-10-02 | Änderung PO in der Spec-Runde: Modell fest Claude Opus statt Standardwahl der UI (neu B-10) | AK-01, AK-06, B-10 | Michael Sindlinger (PO), 2026-10-02 |
 | 1.0.0 | 2026-10-02 | Freigabe; OF-05 und B-09 bestätigt, OF-05 in AK-05 übernommen. Abgleich Mensch/Agent, Befund: AK-10/AK-12 Tabellenspalten verrutscht, RB-07 nannte die entfallene Markierung, OF-05 noch offen — formal behoben, keine inhaltliche Änderung | AK-05, AK-10, AK-12, RB-07, OF-05 | Michael Sindlinger (PO), 2026-10-02 |
 | 0.4.0 | 2026-10-02 | Änderung PO: Tab bekommt aussagekräftigen Titel (B-09, Kernaufgaben, AK-05); AK-04 (Zeitgrenze 60 s), AK-07 (allgemeiner Absagegrund) und AK-12 (Eingang standardmäßig aus) vom PO bestätigt | AK-04, AK-05, AK-07, AK-12, B-09 | — |
 | 0.3.0 | 2026-10-02 | Änderung PO: Sitzung öffnet sich als Tab im Cloud-Terminal beim Projekt, ohne Markierung und Übernahme-Schritt, Fokus bleibt; Rechte wie eine UI-Sitzung (Vollzugriff) statt ohne Vollzugriff, Risiko in B-07 benannt | Z-03, Z-04, AK-01, AK-05, AK-06, B-05, B-07, ER-09, AN-01 | — |
