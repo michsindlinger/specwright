@@ -2,7 +2,7 @@
 description: Technischer Plan im Plan Mode — Einheit der Ausführung, mit Zerlegung und Verbindungsnachweisen
 globs:
 alwaysApply: false
-version: 1.2
+version: 1.3
 encoding: UTF-8
 ---
 
@@ -121,6 +121,7 @@ RULE: Vor dem Verlassen keine Zusage über den Speicherort machen. `~/.claude/pl
 WRITE `intent/INT-JJJJ-NNN-*/plan.md` mit `Status: entwurf`, Struktur aus der Vorlage:
   - `## In einfachen Worten` (Worum geht es, was ändert sich, wie, was kann schiefgehen, was entscheiden), dann `## Details` mit `### 1.` bis `### 14.`
   - Leser-Marker der Vorlage unter jeder Überschrift übernehmen (R1)
+  - Formatangabe der verwendeten Vorlage unverändert übernehmen (Kopfzeile `> **Format:**`, INT-2026-031); nie selbst setzen oder erhöhen. Trägt die verwendete Vorlage (Hybrid-Lookup Projekt → `~/.specwright`) keine Angabe, bleibt die Zeile weg (Datei gilt als vor Format 1). Ändert der Plan eine Vorhaben-Vorlage, entscheidet er die neue Nummer nach der Regel in `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion"
   - Inhalt 1:1 aus Schritt 2–7; nichts nachträglich umformulieren, was im Plan Mode entschieden wurde.
 NO COMMIT. Kein weiterer Edit außer dieser Datei.
 PRESENT nach R3 (`specwright/workflows/meta/leser-und-rueckfragen.md`): „In einfachen Worten", §9 Risiken, §10 manuelle Schritte, §12 Review-Entscheidungen im Chat; §2–§8 und §13 nur als Verweis auf die Datei (`intent/INT-JJJJ-NNN-*/plan.md`). Unsicherheiten benennen.

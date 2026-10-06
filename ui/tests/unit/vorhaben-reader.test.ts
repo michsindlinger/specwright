@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, utimesSync } from 'fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, utimesSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { stepCommand } from '../../src/shared/types/vorhaben.protocol.js';
@@ -560,5 +560,25 @@ describe('scanCopy / toRow on a temp dir', () => {
     const spec = toRow(project, c, undefined, { laeuft: true, fehler: { message: 'Nicht abgeschlossen: x — y', at: 't' } })!;
     expect(spec.phase).toBe('pr');
     expect(spec.abschluss).toEqual({ laeuft: true, fehler: { message: 'Nicht abgeschlossen: x — y', at: 't' } });
+  });
+});
+
+// INT-2026-031 (AK-07): the format version in the template heads leaves the reader unchanged.
+describe('format version in the heads (INT-2026-031, AK-07)', () => {
+  const template = (name: string): string =>
+    readFileSync(new URL(`../../../specwright/templates/sdlc/vorhaben/${name}`, import.meta.url), 'utf8');
+
+  it('parseIntentHead: format: "1.0" changes nothing', () => {
+    expect(parseIntentHead(intentText('angenommen', 'format: "1.0"  \n'))).toEqual(parseIntentHead(intentText('angenommen')));
+  });
+  it('parseStatusLine: an extra > **Format:** line changes nothing', () => {
+    const withFormat = `${statusDoc('umgesetzt', '· PR #57')}> **Format:** 1.0\n`;
+    expect(parseStatusLine(withFormat)).toEqual(parseStatusLine(statusDoc('umgesetzt', '· PR #57')));
+    expect(parseStatusLine(withFormat)).toEqual({ status: 'umgesetzt', note: 'PR #57' });
+  });
+  it('the three real templates stay readable', () => {
+    expect(parseIntentHead(template('intent-template.md'))).toMatchObject({ status: 'entwurf', intent_id: 'INT-JJJJ-NNN' });
+    expect(parseStatusLine(template('spec-template.md'))).toMatchObject({ status: 'entwurf' });
+    expect(parseStatusLine(template('plan-template.md'))).toMatchObject({ status: 'entwurf' });
   });
 });

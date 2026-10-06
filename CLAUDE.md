@@ -13,7 +13,7 @@ Specwright ist das Framework für den AI-native SDLC: Befehle, Workflows, Vorlag
 | Alles prüfen (vor jeder Fertigmeldung) | `bash scripts/verify.sh` | `verify: OK` |
 | Schnell (ohne UI-Tests) | `bash scripts/verify.sh --fast` | `verify: OK` |
 | Lieferumfang gegen Manifest | `bash scripts/check-manifest.sh` | `✅ Manifest: …` |
-| Installer gegen lokalen Stand | `bash scripts/test-installers.sh` | `✅ Installer-Test: T1–T5 grün` |
+| Installer gegen lokalen Stand | `bash scripts/test-installers.sh` | `✅ Installer-Test: T1–T8 grün` |
 | UI-Tests gegen Bezugsliste | `cd ui && npx vitest run --reporter=json --outputFile=../vitest-results.json; cd .. && node scripts/check-vitest-baseline.mjs vitest-results.json` | `✅ Keine neue rote Testdatei.` |
 | UI lokal | `cd ui && npm run dev:backend` (3001) · `cd ui/frontend && npm run dev` (5173) | — |
 

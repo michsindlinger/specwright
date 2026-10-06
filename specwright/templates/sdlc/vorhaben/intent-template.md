@@ -1,5 +1,6 @@
 ---
 intent_id: "INT-JJJJ-NNN"  
+format: "1.0"  
 titel: "[TITEL]"  
 status: "entwurf"  
 version: "0.1.0"  
@@ -35,7 +36,8 @@ schlagworte: []
 | `intent_id` | stabile Kennung, nie wiederverwenden | `INT-JJJJ-NNN` |
 | `titel` | 5 bis 80 Zeichen | — |
 | `status` | Lebenszyklus | `entwurf` · `in_klaerung` · `angenommen` · `umgesetzt` · `abgeloest` · `verworfen` |
-| `version` | SemVer, Regeln im Änderungsprotokoll; Datum und Version immer in Anführungszeichen | `"0.1.0"` |
+| `format` | Formatversion der Vorlage, aus der die Datei entstand; nie von Hand setzen oder erhöhen; Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion" | `"1.0"` |
+| `version` | Fassung dieser Absicht, nicht der Vorlage; SemVer, Regeln im Änderungsprotokoll; Datum und Version immer in Anführungszeichen | `"0.1.0"` |
 | `verantwortlich` | Rolle, die annimmt und bei Eskalation entscheidet (Pflicht) | — |
 | `risikoklasse` | ab `mittel` gilt die Vertragsschicht (Abschnitte 8–12) | `niedrig` · `mittel` · `hoch` |
 | `groesse` | Aufwand | `S` unter 1 Tag · `M` 1–5 Tage · `L` über 5 Tage |

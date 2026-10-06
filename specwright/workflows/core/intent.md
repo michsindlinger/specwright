@@ -2,7 +2,7 @@
 description: Vorhaben als intent.md festhalten — fachlich, belegt, freigegeben
 globs:
 alwaysApply: false
-version: 1.2
+version: 1.3
 encoding: UTF-8
 ---
 
@@ -85,6 +85,7 @@ RESERVE Kennung und Ordner in einem Lauf (INT-2026-022, AK-12/FA-21):
 WRITE `intent/INT-JJJJ-NNN-kurzname/intent.md` nach Vorlage — über die Platzhalter-Datei der Reservierung:
   - Frontmatter: jede Zeile mit zwei Leerzeichen abschließen, Leerzeile vor dem schließenden `---` (MacDown)
   - `status: entwurf`, `version: 0.1.0`, `bypass` nach Regel: `ja` nur bei Bugfix oder Größe S, mit Grund
+  - Formatangabe der verwendeten Vorlage unverändert übernehmen (Kopf-Feld `format`, INT-2026-031); nie selbst setzen oder erhöhen. Trägt die verwendete Vorlage (Hybrid-Lookup Projekt → `~/.specwright`) keine Angabe, bleibt das Feld weg (Datei gilt als vor Format 1). Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion"
   - Kern: drei Sätze, Problem und Anlass, Betroffene, Ziele, Nicht-Ziele, Abnahmekriterien (EARS, ein Modalverb, Ziel, Prüfart), Randbedingungen mit Herkunft (Projekt-Docs zitieren), offene Fragen mit Übergangsregel
   - Ab Risikoklasse mittel: Begriffe, Erfolgskennzahlen, Auslieferung/Betrieb/Zeitbudget, Entscheidungsrechte (ER-00…ER-08), Annahmen mit Prüfweg
   - Änderungsprotokoll: Zeile 0.1.0

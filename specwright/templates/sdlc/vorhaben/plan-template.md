@@ -4,6 +4,7 @@
 > **Status:** entwurf | freigegeben | in_umsetzung | umgesetzt
 > **Erstellt:** JJJJ-MM-TT im Plan Mode · **Freigabe:** [Rolle], JJJJ-MM-TT
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand [sha]), `CLAUDE.md`, `docs/security.md`
+> **Format:** 1.0
 
 <!-- Der Plan ist TECHNISCH und die EINHEIT DER AUSFÜHRUNG. Eine Sitzung setzt ihn ganz um.
      Maßstab: Ein neues Teammitglied könnte allein anhand dieses Dokuments umsetzen.

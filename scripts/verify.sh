@@ -28,6 +28,7 @@ run "check-no-voice-config" bash -c '[[ -z "$(git ls-files ui/config/voice-confi
 [[ -f scripts/check-sdlc-installers.sh ]] && run "check-sdlc-installers" bash scripts/check-sdlc-installers.sh
 [[ -f scripts/check-leser-marker.sh ]] && run "check-leser-marker" bash scripts/check-leser-marker.sh
 [[ -f scripts/check-leser-marker.sh ]] && run "check-leser-marker --doc" bash scripts/check-leser-marker.sh --doc intent/*/intent.md intent/*/spec.md intent/*/plan.md
+run "check-vorlagen-format" bash scripts/check-vorlagen-format.sh
 LINES=$(wc -l < CLAUDE.md | tr -d ' '); if [[ $LINES -le 90 ]]; then ok "CLAUDE.md $LINES Zeilen (≤ 90)"; else rot "CLAUDE.md $LINES Zeilen (> 90)"; fi
 
 echo "[3/6] Installer-Test"

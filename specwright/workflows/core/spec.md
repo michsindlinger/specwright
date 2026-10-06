@@ -2,7 +2,7 @@
 description: Fachliche Spec aus intent.md — Abläufe, Anforderungen, Bedenken aus den Projekt-Docs
 globs:
 alwaysApply: false
-version: 1.1
+version: 1.2
 encoding: UTF-8
 ---
 
@@ -64,6 +64,7 @@ WRITE `intent/INT-JJJJ-NNN-*/spec.md` nach Vorlage:
   10. Freigabe-Checkliste mit AK→FA-Zuordnung
 
 RULE: Pfade nur als Herkunftsangabe in Abschnitt 7, nirgends sonst.
+RULE: Formatangabe der verwendeten Vorlage unverändert übernehmen (Kopfzeile `> **Format:**`, INT-2026-031); nie selbst setzen oder erhöhen. Trägt die verwendete Vorlage (Hybrid-Lookup Projekt → `~/.specwright`) keine Angabe, bleibt die Zeile weg (Datei gilt als vor Format 1). Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion".
 RULE: Leser-Marker nach R1 (`specwright/workflows/meta/leser-und-rueckfragen.md`): die Marker der Vorlage unter jeder Überschrift übernehmen, keinen entfernen; jeder neue Ablauf (`###`) bekommt `<!-- leser: mensch -->`.
 
 </step>

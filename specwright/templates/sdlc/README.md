@@ -39,6 +39,20 @@ Jedes Vorhaben-Dokument hat zwei Leser: den Menschen, der entscheidet, und den A
 - **Ohne Marker** gilt ein Dokument ganz als `mensch` (alle Dokumente vor 4.1.0 bleiben gültig). Teilweise markierte Dokumente lehnt der Guard ab.
 - **Rückfragen** nennen die Kennung und in einem Satz den Gegenstand, mit Vorschlag: „OF-03, Sprache je Projekt sperrbar: Vorschlag Ja, Standard aus. Ok?" Vorgelegt wird im Chat nur der Mensch-Teil; vor der Freigabe wird der Mensch-Teil gegen den Agenten-Teil gelesen und das Ergebnis im Dokument eingetragen. Regeln R1–R4: `specwright/workflows/meta/leser-und-rueckfragen.md`.
 
+## Formatversion
+
+Die drei Vorhaben-Vorlagen (`vorhaben/intent-template.md`, `spec-template.md`, `plan-template.md`) tragen eine Formatversion (INT-2026-031). Sie sagt einem maschinellen Leser wie der Software Factory, nach welcher Fassung der Vorlage ein Dokument geschrieben ist. Sie ist unabhängig von der Specwright-Version in `VERSION`, die auch bei Änderungen an Installern oder Web-UI steigt.
+
+- **Ort und Form:** in `intent.md` das Kopf-Feld `format: "X.Y"` (in Anführungszeichen, sonst liest YAML `1.10` als `1.1`), maschinell `^format:\s*"(\d+)\.(\d+)"`; in `spec.md` und `plan.md` die letzte Kopfzeile `> **Format:** X.Y`, maschinell `^>\s*\*\*Format:\*\*\s*(\d+)\.(\d+)\s*$`. Beide stehen im Kopf, vor der ersten `##`-Überschrift. Die `Status`-Zeile bleibt davon unberührt.
+- **Aktueller Stand:** `1.0`. Alle drei Vorlagen tragen immer dieselbe Nummer.
+- **Hauptnummer** steigt, wenn eine bestehende Datei nach der neuen Vorlage nicht mehr gültig wäre oder ein Leser sie anders auslesen müsste: ein Abschnitt wird entfernt oder umbenannt, ein Pflichtfeld kommt dazu, das Kennungsschema ändert sich.
+- **Nebennummer** steigt bei Ergänzungen, die ein alter Leser ignorieren kann: ein neuer optionaler Abschnitt, ein neues optionales Kopffeld.
+- **Keine Änderung der Nummer** bei reinen Formulierungen: Hinweiskommentare, Platzhaltertexte, Beispiele.
+- **Ohne Formatangabe** gilt eine Datei als „vor Format 1". Alle Vorhaben vor 4.2.0 bleiben so gültig; niemand trägt die Angabe nach.
+- **Die Nummer einer Datei bleibt**, wenn die Vorlage später steigt. Nur wer eine Datei bewusst auf die neue Fassung umschreibt, setzt die neue Nummer. Die Workflows `intent`, `spec` und `plan` übernehmen die Angabe der verwendeten Vorlage unverändert und erfinden keine.
+- **Wer eine Vorlage ändert,** stuft die Änderung nach dieser Regel ein, hebt alle drei Vorlagen gemeinsam an und schreibt einen Eintrag unter `### Format` im `CHANGELOG.md` des Release. Der Guard `scripts/check-vorlagen-format.sh` läuft in `verify` und prüft Vorhandensein, Form und Gleichheit der drei Angaben, nicht die Einstufung; die bleibt Aufgabe des Reviews.
+- **Leser** (Software Factory) legen sich auf die Hauptnummer fest und müssen nur reagieren, wenn sie steigt.
+
 ## Wahrheiten
 
 - Repo ist die Wahrheit für Vorhaben. Obsidian-Board-Karten verweisen auf `intent/INT-…`. Board-Pflege läuft in einer eigenen kurzen Sitzung, nicht am Ende von Intent-, Plan- oder Bausitzungen (Kontext ist dort am teuersten).
