@@ -18,7 +18,7 @@ bypass_grund: "Größe S: nur Vorlagen- und Workflow-Text (Plan-Vorlage §6/§7/
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: ""  
