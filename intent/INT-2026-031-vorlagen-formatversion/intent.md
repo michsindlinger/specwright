@@ -17,7 +17,7 @@ bypass_grund: "Größe S: drei Kopffelder in Vorlagen, Hinweise in drei Workflow
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   board_karte: ""  
   adr: []  
   ersetzt: ""  
