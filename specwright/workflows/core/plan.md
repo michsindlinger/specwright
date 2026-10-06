@@ -2,7 +2,7 @@
 description: Technischer Plan im Plan Mode — Einheit der Ausführung, mit Zerlegung und Verbindungsnachweisen
 globs:
 alwaysApply: false
-version: 1.3
+version: 1.4
 encoding: UTF-8
 ---
 
@@ -10,7 +10,7 @@ encoding: UTF-8
 
 ## Overview
 
-Dritter Schritt des AI-native SDLC (Specwright v4). Erarbeitet lesend den technischen Plan und committet ihn als `plan.md`, bevor Code entsteht. **Der Plan ist die Einheit der Ausführung**: eine Sitzung setzt ihn ganz um. Zerlegung nur mit Beweis der Unabhängigkeit und immer mit einer Integrationsaufgabe in der Hauptsitzung.
+Dritter Schritt des AI-native SDLC (Specwright v4). Erarbeitet lesend den technischen Plan und committet ihn als `plan.md`, bevor Code entsteht. **Der Plan ist die Einheit der Ausführung**: eine Sitzung setzt ihn ganz um, solange er ins Größenmaß passt (~120k Kontext für den Bau, Step 5). Zerlegung nur mit Beweis der Unabhängigkeit und immer mit einer Integrationsaufgabe in der Hauptsitzung.
 
 **Grundsätze (aus dem Pilot INT-2026-001):**
 - Ausgangslage im Code mit `Datei:Zeile` ist die halbe Arbeit. Erst lesen, dann entwerfen. (Pilot: Der bestehende `window.location.reload()` machte den Filterwechsel zu einer Zwei-Zeilen-Änderung.)
@@ -67,16 +67,18 @@ CHECK `security.md` §6 Pflichtprüfungen: Endpunkt? Datenobjekt? externes Syste
 
 WRITE §4: jede Datei mit Art, Was, Herkunft (FA/AK). „Nicht betroffen (ausdrücklich)" füllen.
 WRITE §5: jede neue oder geänderte Verbindung mit Nachweis-Befehl (grep, Test). Jede neue Komponente hat mindestens eine Verbindung.
-WRITE §6: Reihenfolge mit prüfbarem Zustand je Schritt; Schritt 0 ist immer eine lesende Vorprüfung auf Konsumenten, die brechen könnten.
+WRITE §6: Reihenfolge mit prüfbarem Zustand je Schritt; Schritt 0 ist immer eine lesende Vorprüfung auf Konsumenten, die brechen könnten. Schritt 1 ist die Erste Scheibe: dünn, durch alle betroffenen Schichten, allein vorführbar; danach verbreitern. Kein Schichtbau; berührt der Plan nur eine Schicht, steht das mit Grund in Schritt 1 (INT-2026-032).
 
 </step>
 
 <step number="5" name="zerlegung">
 
-### Step 5: Zerlegung — genau eine Variante
+### Step 5: Größenmaß und Zerlegung — genau eine Variante
 
+ESTIMATE Kontext für den Bau: Plan, zu lesende Dateien, Änderungen, Prüfausgaben, je in k Tokens (Zeile in §11; INT-2026-032).
+IF Summe > ~120k: STOP vor Step 6 — Teilung in mehrere Vorhaben vorschlagen (je Vorhaben eine Scheibe, Reihenfolge, was jedes allein liefert), als Rückfrage nach R2; die Person entscheidet. Bei Teilung: `/intent` je Teil, dieser Plan wird auf den ersten Teil geschnitten. Über der Grenze nie Variante B.
 DEFAULT Variante A (eine Sitzung) mit Begründung.
-Variante B nur wenn: Dateimengen disjunkt (Befehl zum Beweis), Schnittstellen vor Start festgelegt (Datei:Zeile oder Typ), und §5 die Teile zuordnet. Dann Tabelle Teil/Dateien/Schnittstelle/Worktree plus Zeile „Integration — Hauptsitzung".
+Variante B nur wenn: jeder Teil eine Scheibe ist (durchgehender Pfad durch die betroffenen Schichten, allein vorführbar), Schnittstellen vor Start festgelegt (Datei:Zeile oder Typ), und §5 die Teile zuordnet. Gleichzeitig nur bei disjunkten Dateimengen (Befehl zum Beweis); sonst nacheinander, jeder Teil auf dem gemergten Vorgänger. Dann Tabelle Teil/Scheibe/Dateien/Schnittstelle/Worktree/Start plus Zeile „Integration — Hauptsitzung".
 RULE: Zerlegung nie aus Gewohnheit. Pilot-Maßstab: „Parallelisierung brächte drei Worktrees für je 20 Minuten Arbeit und eine Integrationsaufgabe obendrauf."
 
 </step>
@@ -85,12 +87,12 @@ RULE: Zerlegung nie aus Gewohnheit. Pilot-Maßstab: „Parallelisierung brächte
 
 ### Step 6: Tests, Risiken, manuelle Schritte, Schätzung
 
-WRITE §8: je AK/FA ein Test mit Datei und Art; Verify-Befehl; E2E-Pfad, der die Verbindungen aus §5 durchläuft; Bugfix-Anteil → Test zuerst; UI → Mock/Screenshot.
+WRITE §8: je AK/FA zuerst die Nahtstelle mit Begründung (öffentliche Schnittstelle, an der das Verhalten beobachtet wird; bestehende vor neuer, die höchste mögliche, möglichst eine für alle AK), dann Test, Datei und Art; Mocks nur an Systemgrenzen (externe Dienste, Zeit, Zufall), kein Erwartungswert, der wie im Code berechnet wird; Verify-Befehl; E2E-Pfad, der die Verbindungen aus §5 durchläuft; Bugfix-Anteil → Test zuerst; UI → Mock/Screenshot.
 WRITE §9 Risiken mit „Wer merkt es".
 WRITE §10 manuelle Schritte: Freigaben, Deploys, Datenläufe je Umgebung, Hook `production-gate`.
 RULE: Jeder Schritt in §10 nennt den Weg belegt (Skript, Workflow-Datei, Befehl mit Pfad). `[Uncertain]` in §10 ist nicht freigabefähig — im Code nachsehen (`scripts/`, `.github/workflows/`, `package.json`-Skripte) oder „Weg klären“ als eigenen Schritt mit Wer und Wann eintragen. Pilot: Functions-Deploy stand als `[Uncertain]` im freigegebenen Plan und wurde erst am Deploy-Tag gefunden.
 RULE: Bestandsdaten anfassen → §10 enthält die Kette Lesemodus → Bericht → Freigabe je Umgebung → Schreiben mit Backup/Rückweg → Nachmessung = 0; §8 führt die Nachmessung als Nachweis „Messung".
-WRITE §11 Schätzung mit Spanne und Grund der Unsicherheit.
+WRITE §11 Schätzung mit Spanne und Grund der Unsicherheit, dazu die Zeile „Kontext für den Bau" aus Step 5.
 
 </step>
 

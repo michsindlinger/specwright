@@ -4,7 +4,7 @@
 > **Status:** entwurf | in_review | freigegeben
 > **Erstellt:** JJJJ-MM-TT · **Freigabe:** [Rolle], JJJJ-MM-TT
 > **Gelesene Projekt-Docs:** `docs/product-brief.md`, `docs/architecture.md`, `docs/security.md`, `docs/design.md` (Stand: Commit [sha])
-> **Format:** 1.0
+> **Format:** 2.0
 
 <!-- Die Spec ist FACHLICH. Sie beschreibt, was Nutzer erleben und was fachlich gelten muss.
      Nicht hinein gehören: Dateien, Komponenten, Datenbanktabellen, Bibliotheken, Architekturentscheidungen. Das ist plan.md.

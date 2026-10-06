@@ -52,7 +52,7 @@ Schlägt ein Test fehl: Code reparieren, nicht den Test.
 
 ## Fehler, die Claude hier schon zweimal gemacht hat
 
-<!-- 2x-Regel: zweiter Vorfall → Zeile hier. Jede Zeile prüfen: müsste das ein Hook sein? -->
+<!-- 2x-Regel: zweiter Vorfall → zuerst Hook, Lint oder Test; sonst Regel in docs/architecture.md (AR/AP); hier nur, was nicht aus dem Code ablesbar ist und für jede Aufgabe gilt. -->
 
 - […]
 

@@ -139,9 +139,9 @@ grep -v '^> \*\*Format:\*\*' specwright/templates/sdlc/vorhaben/spec-template.md
 t8b=$(FORMAT_TEMPLATE_DIR="$t8" bash scripts/check-vorlagen-format.sh 2>&1); t8rc=$?
 [[ $t8rc -ne 0 ]] && echo "$t8b" | grep -q 'spec-template\.md' && ok "T8: Guard rot bei fehlender Formatzeile, nennt spec-template.md" || err "T8: Guard bleibt grün oder nennt spec-template.md nicht (Exit $t8rc)"
 cp specwright/templates/sdlc/vorhaben/spec-template.md "$t8/"
-# (c) plan-Kopie auf andere Hauptnummer → rot
-awk '/^> \*\*Format:\*\* / {print "> **Format:** 2.0"; next} {print}' specwright/templates/sdlc/vorhaben/plan-template.md > "$t8/plan-template.md"
-FORMAT_TEMPLATE_DIR="$t8" bash scripts/check-vorlagen-format.sh >/dev/null 2>&1 && err "T8: Guard bleibt grün bei ungleicher Nummer (plan 2.0)" || ok "T8: Guard rot bei ungleicher Nummer"
+# (c) plan-Kopie auf die nächste Hauptnummer (aktuelle + 1) → rot
+awk '/^> \*\*Format:\*\* / {split($3, v, "."); print "> **Format:** " (v[1] + 1) ".0"; next} {print}' specwright/templates/sdlc/vorhaben/plan-template.md > "$t8/plan-template.md"
+FORMAT_TEMPLATE_DIR="$t8" bash scripts/check-vorlagen-format.sh >/dev/null 2>&1 && err "T8: Guard bleibt grün bei ungleicher Nummer (plan Hauptnummer + 1)" || ok "T8: Guard rot bei ungleicher Nummer"
 cp specwright/templates/sdlc/vorhaben/plan-template.md "$t8/"
 # (d) intent-Kopie mit falscher Form → rot
 awk '/^format: / {print "format: \"1\"  "; next} {print}' specwright/templates/sdlc/vorhaben/intent-template.md > "$t8/intent-template.md"

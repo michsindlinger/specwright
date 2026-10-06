@@ -7,10 +7,11 @@ Refer to the instructions located in specwright/workflows/core/build.md
 **Ablauf (Main Agent):**
 - Aufruf: `/build INT-JJJJ-NNN`; braucht `plan.md` mit `status: freigegeben`
 - Branch `feat/INT-JJJJ-NNN-kurzname`; bei Bugfix Marker `.claude/fix-mode` (Hook `protect-tests`), Test zuerst
-- Zerlegung §7: Variante A → alles hier; Variante B → je Teil ein Worktree, **Integration immer in dieser Sitzung**
+- Zerlegung §7: Variante A → alles hier; Variante B → je Scheibe ein Worktree, Teile mit überlappenden Dateien nacheinander, **Integration immer in dieser Sitzung**
 - Reihenfolge §6 Schritt für Schritt; jede Abweichung sofort in §14
 - Verify-Befehl aus `CLAUDE.md`, Nachweise aus §5 ausführen und zitieren, E2E-Pfad aus §8
-- 2x-Regel-Check → Vorschlag für `CLAUDE.md` im PR; Auto-Memory für projektübergreifende Lehren
+- Erste Scheibe (§6 Schritt 1) zuerst vorführbar; Tests an den Nahtstellen aus §8, Mocks nur an Systemgrenzen
+- 2x-Regel-Check → Vorschlag im PR: zuerst Hook/Lint/Test, sonst Regel in `docs/architecture.md`, `CLAUDE.md` nur wenn nicht aus dem Code ablesbar und für jede Aufgabe gültig; Auto-Memory für projektübergreifende Lehren
 - Kontextdeckel ~200k: Stand in §14 + `build-stand.md`, WIP-Commit, STOP — Fortsetzen in neuer Sitzung mit `/build INT-JJJJ-NNN`
 - PR über Skill/Agent `git-workflow`; `plan.md` auf `umgesetzt`; `intent.md` bleibt `angenommen` — der Abschluss nach dem Merge ist der Knopf „Abschließen" auf der Vorhaben-Seite der Web-UI (INT-2026-024), nicht die Sitzung; ohne Web-UI Kopf von Hand (Status, PATCH-Version, Datum, Protokollzeile)
 - Board und Fahrplan **nicht in dieser Sitzung**: Abschlussbericht endet mit dem Block „Für das Board"; Nachziehen in eigener kurzer Sitzung nach `/clear`
