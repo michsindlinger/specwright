@@ -2,7 +2,7 @@
 description: Vorhaben als intent.md festhalten — fachlich, belegt, freigegeben
 globs:
 alwaysApply: false
-version: 1.3
+version: 1.4
 encoding: UTF-8
 ---
 
@@ -78,6 +78,8 @@ IF die Ursache größer ist als das Symptom: Risikoklasse und Größe anheben, P
 RESERVE Kennung und Ordner in einem Lauf (INT-2026-022, AK-12/FA-21):
   - Kurzname aus dem Gespräch bilden: kleinbuchstaben-mit-bindestrich, zwei bis vier Wörter
   - `bash specwright/scripts/next-intent-id.sh --reserve <kurzname>` (hybrid: fehlt das Skript im Projekt, `~/.specwright/scripts/next-intent-id.sh`) → stdout ist die Kennung `INT-JJJJ-NNN`; das Skript holt den entfernten Stand nach (Fetch, nur lesen, Deckel 10 s), zählt `intent/` der eigenen Kopie, aller Arbeitskopien und aller lokalen und entfernten Zweige, und legt `intent/INT-JJJJ-NNN-<kurzname>/intent.md` als Platzhalter an
+  - Vorgemerkte Kennungen (INT-2026-033): das Skript zählt auch `intent/RESERVIERT` (eine Zeile je Vormerkung `INT-JJJJ-NNN <kurzname>`, `#` = Kommentar) in denselben Quellen mit. Steht der Kurzname dort in der eigenen Kopie, übernimmt `--reserve` diese Kennung und streicht die Zeile (stderr `hinweis: vorgemerkte Kennung … übernommen`). Startet die Person ein vorgemerktes Vorhaben (Roadmap, Issue nennt die Kennung), den Kurznamen aus `intent/RESERVIERT` verwenden; die gestrichene Zeile mit dem Absicht-Commit committen
+  - Nennt jemand eine Kennung vorab, ohne die Absicht jetzt zu schreiben: `next-intent-id.sh --hold <kurzname>` merkt sie vor (kein Ordner); `intent/RESERVIERT` committen und pushen, sonst sehen andere Rechner die Vormerkung nicht
   - Steht auf stderr `hinweis: ohne entfernten Stand vergeben (JJJJ-MM-TT)`: Kopf-Feld `kennung_hinweis: "ohne entfernten Stand vergeben (JJJJ-MM-TT)"` setzen und die Person beim Vorlegen darauf hinweisen (Kollision beim Push möglich)
   - Ohne Netz oder auf Wunsch: `--no-fetch` oder Umgebung `SPECWRIGHT_INTENT_FETCH=off` (dann immer mit Hinweis)
   - Fallback, wenn das Skript in beiden Orten fehlt: höchste vorhandene `INT-JJJJ-NNN` des laufenden Jahres über `ls intent/`, `git worktree list --porcelain` (je Kopie `ls <w>/intent`) und `git for-each-ref refs/heads refs/remotes` (je Ref `git ls-tree --name-only <ref> intent/`) + 1, sonst `INT-JJJJ-001`; Ordner sofort per `mkdir` (ohne `-p`) anlegen, bei Fehler neu bestimmen; Kopf-Feld `kennung_hinweis: "Fallback ohne Skript (JJJJ-MM-TT)"`
