@@ -2,6 +2,23 @@
 
 Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
 
+## 4.3.0 - 2026-10-06
+
+### Format
+
+- **Format 2.0** (Hauptnummer, INT-2026-032): `plan-template.md` bekommt neue Pflichtinhalte, Leser müssen anders auslesen.
+    - §8 „Tests und Nachweis": Tabelle hat 5 statt 4 Spalten, neu an Position 2 „Nahtstelle (warum diese)" — die öffentliche Schnittstelle, an der das Verhalten beobachtet wird; Regeln: bestehende vor neuer, die höchste mögliche, möglichst eine; Mocks nur an Systemgrenzen; kein im Code berechneter Erwartungswert.
+    - §6 „Reihenfolge der Arbeit": Schritt 1 heißt „Erste Scheibe" (dünn, durch alle betroffenen Schichten, vorführbar), Schritt 2 „Verbreitern".
+    - §7 „Zerlegung": Überschrift `#### Variante B — in Scheiben (Worktrees)`; Tabelle hat 7 statt 5 Spalten (neu „Scheibe" an Position 2 und „Start" an Position 6); Teile sind Scheiben, überlappende Dateien laufen nacheinander.
+    - §11 „Schätzung": Pflichtzeile `**Kontext für den Bau:** ~Nk Tokens`; über ~120k teilt `/plan` das Vorhaben.
+    - §13: 2x-Regel in der Reihenfolge Prüfung → Regel in `docs/architecture.md` → `CLAUDE.md`.
+    - `intent-template.md`, `spec-template.md`: nur die Nummer (`format: "2.0"`, `> **Format:** 2.0`), Inhalt unverändert. Dateien mit Format 1.0 oder ohne Angabe bleiben gültig.
+
+### Geändert
+
+- **Workflows** `plan` 1.4 (Größenmaß vor der Zerlegung in Step 5, Erste Scheibe, Nahtstellen) und `build` 1.3 (Erste Scheibe zuerst, Tests an den Nahtstellen, Variante B nach Scheiben, 2x-Regel: zuerst Hook/Lint/Test, sonst Regel in `docs/architecture.md`, `CLAUDE.md` zuletzt); Befehle `/plan`, `/build`; Kommentar in `templates/sdlc/projekt/CLAUDE-template.md`.
+- **Installer-Test T8(c)** setzt für „ungleiche Nummer" die aktuelle Hauptnummer + 1 statt fest `2.0`.
+
 ## 4.2.0 - 2026-10-06
 
 ### Format

@@ -4,7 +4,7 @@
 > **Status:** entwurf | freigegeben | in_umsetzung | umgesetzt
 > **Erstellt:** JJJJ-MM-TT im Plan Mode · **Freigabe:** [Rolle], JJJJ-MM-TT
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand [sha]), `CLAUDE.md`, `docs/security.md`
-> **Format:** 1.0
+> **Format:** 2.0
 
 <!-- Der Plan ist TECHNISCH und die EINHEIT DER AUSFÜHRUNG. Eine Sitzung setzt ihn ganz um.
      Maßstab: Ein neues Teammitglied könnte allein anhand dieses Dokuments umsetzen.
@@ -108,11 +108,13 @@
 
 <!-- leser: agent -->
 
-<!-- Schritte in Ausführungsreihenfolge. Jeder Schritt endet mit einem prüfbaren Zustand. Schritt 0 ist immer eine lesende Vorprüfung auf Konsumenten, die brechen könnten. -->
+<!-- Schritte in Ausführungsreihenfolge. Jeder Schritt endet mit einem prüfbaren Zustand. Schritt 0 ist immer eine lesende Vorprüfung auf Konsumenten, die brechen könnten.
+     Schritt 1 ist die erste Scheibe: dünn, durch alle betroffenen Schichten (z. B. Daten → Dienst → Oberfläche oder Befehl), allein vorführbar; danach verbreitern.
+     Kein Schichtbau (erst alle Daten, dann alle Endpunkte, dann die Oberfläche). Berührt der Plan nur eine Schicht, steht das mit Grund in Schritt 1. -->
 
 0. Lesende Vorprüfung: […] → prüfbar durch […]
-1. [Schritt] → prüfbar durch […]
-2. [Schritt] → prüfbar durch […]
+1. Erste Scheibe: [Pfad von Auslöser bis Ergebnis durch alle betroffenen Schichten] → vorführbar durch […]
+2. Verbreitern: [Schritt] → prüfbar durch […]
 3. Verbindungen nachweisen (Abschnitt 5)
 4. `verify` grün, E2E-Pfad (Abschnitt 8)
 
@@ -121,7 +123,9 @@
 <!-- leser: agent -->
 
 <!-- PFLICHT. Genau eine der beiden Varianten.
-     Standard ist A. B nur mit Beweis: disjunkte Dateien, Schnittstelle VOR dem Start festgelegt, und eine Integrationsaufgabe in der Hauptsitzung. -->
+     Standard ist A. Liegt der Kontext für den Bau (Abschnitt 11) über ~120k, wird nicht zerlegt, sondern das Vorhaben geteilt (`/plan` schlägt die Teilung vor).
+     B nur mit Beweis: jeder Teil ist eine Scheibe (durchgehender Pfad, allein vorführbar), Schnittstelle VOR dem Start festgelegt, Integration in der Hauptsitzung.
+     Gleichzeitig nur bei disjunkten Dateien; sonst nacheinander, jeder Teil auf dem gemergten Vorgänger. -->
 
 #### Variante A — nicht zerlegbar, eine Sitzung
 
@@ -129,26 +133,30 @@
 
 [Begründung in einem Satz, z. B. „Änderungen greifen ineinander (Abschnitt 5, 3 Verbindungen)."]
 
-#### Variante B — parallel in Worktrees
+#### Variante B — in Scheiben (Worktrees)
 
 <!-- leser: agent -->
 
-| Teil | Dateien (disjunkt) | Schnittstelle, vorab festgelegt | Worktree | Verbindungen (Abschnitt 5) |
-|---|---|---|---|---|
-| T1 | `a/…`, `b/…` | [Typ/Signatur/Contract] | `[name]-t1` | #1, #2 |
-| T2 | `c/…` | […] | `[name]-t2` | #3 |
-| **Integration** | alle | — | Hauptsitzung | alle Nachweise, E2E, `verify` |
+| Teil | Scheibe (Pfad, vorführbar durch) | Dateien | Schnittstelle, vorab festgelegt | Worktree | Start | Verbindungen (Abschnitt 5) |
+|---|---|---|---|---|---|---|
+| T1 | [Auslöser → Ergebnis durch alle Schichten; Befehl/Klickpfad] | `a/…`, `b/…` | [Typ/Signatur/Contract] | `[name]-t1` | sofort | #1, #2 |
+| T2 | […] | `b/…`, `c/…` | […] | `[name]-t2` | nach T1 (Datei `b/…` überlappt) | #3 |
+| **Integration** | alle | alle | — | Hauptsitzung | zuletzt | alle Nachweise, E2E, `verify` |
 
-**Beweis der Unabhängigkeit:** [Dateimengen überschneiden sich nicht (Befehl: `comm`/Liste); jede Schnittstelle ist vor Start in Code oder Typ festgehalten (Datei:Zeile).]
+**Beweis:** [jede Scheibe allein vorführbar (Befehl/Pfad); Dateien disjunkt → parallel (Befehl: `comm`/Liste), sonst Reihenfolge in Spalte „Start"; jede Schnittstelle vor Start in Code oder Typ festgehalten (Datei:Zeile).]
 **Integrationsaufgabe:** läuft **immer** in der Hauptsitzung mit diesem Plan im Kontext, nie in einem Teil-Worktree.
 
 ### 8. Tests und Nachweis
 
 <!-- leser: agent -->
 
-| AK / FA | Test | Datei | Art |
-|---|---|---|---|
-| AK-01 | […] | `tests/…` | Unit / Integration / E2E |
+<!-- Nahtstelle = die öffentliche Schnittstelle, an der das Verhalten beobachtet wird (Befehl, Endpunkt, exportierte Funktion, Bildschirm).
+     Vor dem ersten Test festlegen, je AK/FA mit Begründung: eine bestehende vor einer neuen; die höchste mögliche; möglichst eine für alle AK.
+     Mocks nur an Systemgrenzen (externe Dienste, Zeit, Zufall), nie um eigene Module. Kein Test, dessen Erwartungswert so berechnet wird wie im Code — feste Beispielwerte. -->
+
+| AK / FA | Nahtstelle (warum diese) | Test | Datei | Art |
+|---|---|---|---|---|
+| AK-01 | [z. B. `POST /api/x` — bestehender Endpunkt, deckt AK-01 bis AK-03] | […] | `tests/…` | Unit / Integration / E2E |
 
 - **Verify-Befehl:** `[npm run verify]` — muss grün sein, Ausgabe wird im PR zitiert. **CI ist die Wahrheit:** lokal grün zählt erst, wenn die PR-Checks grün sind. Bezugslisten bekannter roter Tests (Baselines) werden nie aufgrund eines lokalen Laufs gekürzt.
 - **Datenkorrektur (falls Bestandsdaten angefasst werden):** Werkzeug mit Lesemodus (zählt, berichtet, schreibt nichts) → Bericht an die freigebende Person → Freigabe je Umgebung/Mandant → Schreiben mit Backup und Rückweg → Nachmessung im Lesemodus muss 0 Abweichungen zeigen. Die Nachmessung ist ein Nachweis in dieser Tabelle (Art „Messung").
@@ -182,6 +190,8 @@
 
 [Zeit mit Spanne, z. B. 4–6 h. Unsicherheit und ihr Grund. Bei Größe L: Meilensteine.]
 
+**Kontext für den Bau:** ~[N]k Tokens — Plan ~[n]k, zu lesende Dateien ~[n]k, Änderungen ~[n]k, Prüfausgaben ~[n]k. Grenze ~120k: darüber teilt `/plan` das Vorhaben (Abschnitt 7).
+
 ### 12. Review des Plans
 
 <!-- leser: mensch -->
@@ -208,7 +218,7 @@
 - [ ] `docs/architecture.md` angepasst, falls Abschnitt 3 „Ja".
 - [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
 - [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
+- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → zuerst automatische Prüfung (Hook, Lint, Test); sonst nummerierte Regel in `docs/architecture.md` (AR/AP); `CLAUDE.md` nur, wenn nicht aus dem Code ablesbar und für jede Aufgabe gültig. Vorschlag im PR.
 - [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-JJJJ-NNN/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung

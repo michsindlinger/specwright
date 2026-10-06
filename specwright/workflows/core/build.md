@@ -2,7 +2,7 @@
 description: Freigegebenen Plan in einer Sitzung umsetzen — Verify, Nachweise, DoD, PR
 globs:
 alwaysApply: false
-version: 1.2
+version: 1.3
 encoding: UTF-8
 ---
 
@@ -48,8 +48,8 @@ IF `plan.md` steht bereits auf `Status: in_umsetzung` (Wiederaufnahme nach Konte
 
 IF §7 Variante A: weiter mit Step 3 in dieser Sitzung.
 IF §7 Variante B:
-  - je Teil `git worktree add ../<projekt>-worktrees/INT-JJJJ-NNN-t<n> -b feat/INT-JJJJ-NNN-t<n>`
-  - Teile getrennt umsetzen (eigene Sitzungen erlaubt), jeder Teil liefert nur seine Dateien und die Schnittstelle aus §7
+  - je Teil (Scheibe) `git worktree add ../<projekt>-worktrees/INT-JJJJ-NNN-t<n> -b feat/INT-JJJJ-NNN-t<n>`; Teile mit Start „nach Tn" (überlappende Dateien) erst, wenn Tn gemergt ist, und von diesem Stand aus
+  - Teile getrennt umsetzen (eigene Sitzungen erlaubt), jeder Teil liefert seine Scheibe vorführbar und die Schnittstelle aus §7
   - **Integration in dieser Sitzung:** Teile mergen, Verbindungen §5 nachweisen, Verify, E2E — nie in einem Teil-Worktree
 
 </step>
@@ -63,6 +63,8 @@ FOR EACH Schritt in §6:
   - umsetzen, prüfbaren Zustand herstellen (Test grün, grep-Treffer, Ausgabe)
   - Imports automatisiert einfügen: bei mehrzeiligen Import-Blöcken ans Blockende, nie in den Block (Pilot-Lehre)
   - Abweichung → §14 mit Datum, Grund, betroffenem Abschnitt
+RULE Erste Scheibe zuerst: §6 Schritt 1 bis zum vorführbaren Zustand bringen, erst dann verbreitern (INT-2026-032).
+RULE Tests an den Nahtstellen aus §8; Mocks nur an Systemgrenzen (externe Dienste, Zeit, Zufall); kein Erwartungswert, der so berechnet wird wie im Code. Passt eine Nahtstelle nicht → Abweichung §14, nicht stillschweigend tiefer testen.
 RULE: Rückfragen und Abweichungen nach R2 (`specwright/workflows/meta/leser-und-rueckfragen.md`): „AK-nn / Schritt n, Gegenstand in einem Satz: Vorschlag. Ok?" — die Person antwortet aus dem Chat, ohne den Plan aufzuschlagen.
 RULE: Nichts anfassen, was in §4 „Nicht betroffen" steht. Neue Dateien nur in den Ablageorten laut `CLAUDE.md`.
 RULE: `security.md` §5 Verbotsliste gilt; Produktionsdaten nur nach §10-Freigabe.
@@ -89,7 +91,10 @@ AFTER PR: PR-Checks abwarten; rot → Ursache im CI-Log, nicht lokal nachstellen
 
 CHECK §13 Punkt für Punkt; offene Punkte bleiben sichtbar offen (kein Abhaken ohne Nachweis).
 IF `architecture.md`-Änderung laut §3: in dieser PR enthalten; ADR angelegt, `check:adr` grün.
-2x-REGEL: Ist in dieser Umsetzung ein Fehler passiert, der schon einmal vorkam (Memory, `CLAUDE.md` „Fehler zweimal", PR-Historie)? → Vorschlag für eine `CLAUDE.md`-Zeile im PR-Text; prüfen, ob es ein Hook sein müsste.
+2x-REGEL: Ist in dieser Umsetzung ein Fehler passiert, der schon einmal vorkam (Memory, `CLAUDE.md` „Fehler zweimal", PR-Historie)? → Vorschlag im PR-Text, in dieser Reihenfolge (INT-2026-032):
+  1. Mechanisch prüfbar → automatische Prüfung (Hook, Lint, Test, Guard in `verify`).
+  2. Urteilsfrage → nummerierte Regel in `docs/architecture.md` (AR-nn mit Spalte „Prüfung" oder AP-nn), auf die ein Review verweisen kann.
+  3. `CLAUDE.md`-Zeile nur, wenn der Punkt nicht aus dem Code ablesbar ist **und** für jede Aufgabe gilt; `CLAUDE.md` lädt in jede Sitzung.
 MEMORY: projektübergreifende Lehre → Claude-Code-Auto-Memory (nicht `CLAUDE.md`).
 REMOVE `.claude/fix-mode`, falls gesetzt.
 
@@ -100,7 +105,7 @@ REMOVE `.claude/fix-mode`, falls gesetzt.
 ### Step 6: PR und Status
 
 COMMIT(s) mit Conventional Commits, Bezug `INT-JJJJ-NNN`.
-PR über Agent `git-workflow`: Titel mit Intent-ID; Body: Kurzfassung aus `plan.md` §1, Verify-Ausgabe, Nachweise §5, E2E-Protokoll/Screenshots, §14 Abweichungen, offene manuelle Schritte §10, `CLAUDE.md`-Vorschlag aus der 2x-Regel.
+PR über Agent `git-workflow`: Titel mit Intent-ID; Body: Kurzfassung aus `plan.md` §1, Verify-Ausgabe, Nachweise §5, E2E-Protokoll/Screenshots, §14 Abweichungen, offene manuelle Schritte §10, Vorschlag aus der 2x-Regel (Prüfung, Architekturregel oder `CLAUDE.md`).
 SET `plan.md` `Status: umgesetzt` (Merge steht aus); `intent.md` bleibt `angenommen`. Der Abschluss nach dem Merge ist ein Klick auf „Abschließen" auf der Vorhaben-Seite der Web-UI (INT-2026-024) — die Sitzung schreibt ihn nicht. Ohne Web-UI: Kopf von Hand — `status: "umgesetzt"`, nächste PATCH-Version, `geaendert` = Tagesdatum, eine Zeile im Änderungsprotokoll nach Vorlage; kein Skript, kein Befehl (NZ-01).
 REMOVE `build-stand.md`, falls vorhanden (der PR ist jetzt der Stand).
 RULE: Abschlussbericht nach R3 (`specwright/workflows/meta/leser-und-rueckfragen.md`): plan §1 Kurzfassung, offene §10, §14 Abweichungen, Nachweise als Verweis auf PR und Dateien; Verify-Ausgabe und Nachweis-Befehle stehen im PR, nicht im Chat.

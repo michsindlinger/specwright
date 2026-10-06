@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, utimesSync, readFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, utimesSync, readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { fileURLToPath } from 'url';
 import { stepCommand } from '../../src/shared/types/vorhaben.protocol.js';
 
 import {
@@ -580,5 +581,26 @@ describe('format version in the heads (INT-2026-031, AK-07)', () => {
     expect(parseIntentHead(template('intent-template.md'))).toMatchObject({ status: 'entwurf', intent_id: 'INT-JJJJ-NNN' });
     expect(parseStatusLine(template('spec-template.md'))).toMatchObject({ status: 'entwurf' });
     expect(parseStatusLine(template('plan-template.md'))).toMatchObject({ status: 'entwurf' });
+  });
+});
+
+// INT-2026-032 (AK-09): documents written before format 2.0 (format 1.0 or none) stay readable.
+describe('existing intent/ documents stay readable (INT-2026-032, AK-09)', () => {
+  const intentDir = new URL('../../../intent/', import.meta.url);
+  const docs = (name: string): string[] =>
+    readdirSync(intentDir)
+      .map((dir) => new URL(`${dir}/${name}`, intentDir))
+      .filter((url) => existsSync(url))
+      .map((url) => fileURLToPath(url));
+
+  it('every intent.md has a readable head', () => {
+    const files = docs('intent.md');
+    expect(files.length).toBeGreaterThan(0);
+    for (const f of files) expect(parseIntentHead(readFileSync(f, 'utf8')), f).not.toBeNull();
+  });
+  it('every spec.md and plan.md has a readable status line', () => {
+    const files = [...docs('spec.md'), ...docs('plan.md')];
+    expect(files.length).toBeGreaterThan(0);
+    for (const f of files) expect(parseStatusLine(readFileSync(f, 'utf8')), f).not.toBeNull();
   });
 });

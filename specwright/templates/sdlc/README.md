@@ -44,7 +44,7 @@ Jedes Vorhaben-Dokument hat zwei Leser: den Menschen, der entscheidet, und den A
 Die drei Vorhaben-Vorlagen (`vorhaben/intent-template.md`, `spec-template.md`, `plan-template.md`) tragen eine Formatversion (INT-2026-031). Sie sagt einem maschinellen Leser wie der Software Factory, nach welcher Fassung der Vorlage ein Dokument geschrieben ist. Sie ist unabhängig von der Specwright-Version in `VERSION`, die auch bei Änderungen an Installern oder Web-UI steigt.
 
 - **Ort und Form:** in `intent.md` das Kopf-Feld `format: "X.Y"` (in Anführungszeichen, sonst liest YAML `1.10` als `1.1`), maschinell `^format:\s*"(\d+)\.(\d+)"`; in `spec.md` und `plan.md` die letzte Kopfzeile `> **Format:** X.Y`, maschinell `^>\s*\*\*Format:\*\*\s*(\d+)\.(\d+)\s*$`. Beide stehen im Kopf, vor der ersten `##`-Überschrift. Die `Status`-Zeile bleibt davon unberührt.
-- **Aktueller Stand:** `1.0`. Alle drei Vorlagen tragen immer dieselbe Nummer.
+- **Aktueller Stand:** `2.0`. Alle drei Vorlagen tragen immer dieselbe Nummer. Verlauf: `1.0` seit 4.2.0 (INT-2026-031), `2.0` seit 4.3.0 (INT-2026-032); Einzelheiten im `CHANGELOG.md` unter `### Format`.
 - **Hauptnummer** steigt, wenn eine bestehende Datei nach der neuen Vorlage nicht mehr gültig wäre oder ein Leser sie anders auslesen müsste: ein Abschnitt wird entfernt oder umbenannt, ein Pflichtfeld kommt dazu, das Kennungsschema ändert sich.
 - **Nebennummer** steigt bei Ergänzungen, die ein alter Leser ignorieren kann: ein neuer optionaler Abschnitt, ein neues optionales Kopffeld.
 - **Keine Änderung der Nummer** bei reinen Formulierungen: Hinweiskommentare, Platzhaltertexte, Beispiele.
