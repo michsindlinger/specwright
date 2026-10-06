@@ -2,6 +2,17 @@
 
 Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
 
+## 4.3.1 - 2026-10-06
+
+### Behoben
+
+- **`next-intent-id.sh` vergab vorab genannte Kennungen doppelt** (Issue #107, INT-2026-033). Gezählt wurden nur Ordner unter `intent/`; eine Kennung, die nur in Roadmap oder Issue stand, wurde ein zweites Mal vergeben. Jetzt zählt das Skript auch `intent/RESERVIERT` (eine Zeile je Vormerkung `INT-JJJJ-NNN <kurzname>`, `#` = Kommentar, nur das erste Feld zählt) aus eigener Kopie, allen Worktrees und allen lokalen und entfernten Zweigen. Ohne die Datei unverändert.
+
+### Neu
+
+- **`next-intent-id.sh --hold <kurzname>`** merkt die nächste Kennung in `intent/RESERVIERT` vor, ohne Ordner; steht der Kurzname schon dort, gibt es die vorhandene Kennung aus. Kollisionsprüfung wie bei `--reserve`.
+- **`--reserve <kurzname>` übernimmt eine Vormerkung** der eigenen Kopie: Ordner unter der vorgemerkten Kennung, Zeile wird gestrichen. Workflow `intent` 1.4 beschreibt beides; Test `scripts/test-next-intent-id.sh` T8–T11.
+
 ## 4.3.0 - 2026-10-06
 
 ### Format

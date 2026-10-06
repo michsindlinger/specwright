@@ -1,7 +1,7 @@
 # Plan: Vorgemerkte Kennungen: next-intent-id.sh liest intent/RESERVIERT
 
 > **Intent:** `intent.md` (INT-2026-033) · **Spec:** entfällt (bypass: Bugfix Issue #107, Größe S)
-> **Status:** freigegeben
+> **Status:** umgesetzt (Merge steht aus)
 > **Erstellt:** 2026-10-06 im Plan Mode · **Freigabe:** Michael (Produktverantwortung), 2026-10-06 („freigabe", Chat)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand f242358), `CLAUDE.md`, `docs/security.md`
 > **Format:** 2.0
@@ -222,4 +222,4 @@ Ein Skript und sein Test greifen ineinander; Umfang S.
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-10-06 | verify-Stufe Vitest im ersten Lauf rot (3 Terminal-Integrationstests), einzeln 27/27 grün, zweiter voller Lauf `verify: OK` | bekannte Mac-Flakiness der Stufe 5, kein UI-Code geändert; Bezugsliste unverändert | §8 |

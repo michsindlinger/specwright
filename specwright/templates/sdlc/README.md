@@ -14,6 +14,8 @@
 | Projekt | Produkt, Architektur (Soll), Sicherheit, Design, Arbeitsregeln | `docs/product-brief.md`, `docs/architecture.md`, `docs/security.md`, `docs/design.md`, `CLAUDE.md` im Repo-Root | `projekt/` |
 | Vorhaben | Absicht, fachliche Spec, technischer Plan, optional Mock | `intent/INT-JJJJ-NNN-kurzname/{intent.md, spec.md, plan.md, design/}` | `vorhaben/` |
 
+Kennungen vergibt `specwright/scripts/next-intent-id.sh`. Eine Kennung, die vorab in Roadmap oder Issue steht, wird mit `--hold <kurzname>` in `intent/RESERVIERT` vorgemerkt (eine Zeile je Kennung, kein Ordner); `--reserve <kurzname>` übernimmt sie beim Start der Absicht und streicht die Zeile (INT-2026-033).
+
 Dazu `hooks/`: drei deterministische Leitplanken für `.claude/settings.json`.
 
 ## Ablauf je Vorhaben

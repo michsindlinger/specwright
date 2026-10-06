@@ -8,6 +8,10 @@
 #   T5  Kollision anderer Kurzname, gleiche Nummer (deterministisch über die Testnaht SPECWRIGHT_INTENT_ID_BEFORE_MKDIR) → nächste Nummer, eigener Ordner zurückgegeben
 #   T6  fünf Kollisionen               → Exit 1 mit Meldung
 #   T7  Jahr ohne Kennung → 001; kein Git-Repo → lokal + Hinweis; ungültiger Kurzname → Exit 1
+#   T8  intent/RESERVIERT der eigenen Kopie zählt; Kennungen in Kommentaren zählen nicht (INT-2026-033, AK-01/AK-02)
+#   T9  RESERVIERT in einem Worktree und auf einem entfernten Zweig zählt (AK-01)
+#   T10 --hold <kurzname> → Zeile + Ausgabe, zweiter Aufruf gleiche Kennung ohne neue Zeile, Kollision → nächste (AK-03)
+#   T11 --reserve <kurzname> mit Vormerkung → vorgemerkte Kennung, Zeile gestrichen, Rest bleibt (AK-04)
 #
 # Braucht: bash, git. Kein Netz. Temporäre Verzeichnisse, nichts im Repo wird angefasst.
 set -uo pipefail
@@ -91,4 +95,51 @@ run "$leer" bash "$SCRIPT" --no-fetch --reserve 'Groß Name'
 run "$leer" bash "$SCRIPT" --unbekannt
 [[ $RC -eq 1 ]] && ok "T7: unbekannte Option → Exit 1" || err "T7d: rc=$RC"
 
-[[ $fail -eq 0 ]] && echo "✅ next-intent-id: T1–T7 grün" || { echo "❌ next-intent-id: rot"; exit 1; }
+# --- Fixture 2 (INT-2026-033): Repo ohne Vorhaben-Ordner, Vormerkungen nur in intent/RESERVIERT ------------
+vm="$tmp/vm"; vmr="$tmp/vm-remote.git"
+mkdir -p "$vm"; git -C "$vm" init -q -b main; echo x >"$vm/README"
+git -C "$vm" add -A; git -C "$vm" commit -qm init
+git init -q --bare "$vmr"; git -C "$vm" remote add origin "$vmr"; git -C "$vm" push -q origin main
+git -C "$vm" checkout -qb feat/fern
+mkdir -p "$vm/intent"; printf 'INT-%s-005 fern\n' "$Y" >"$vm/intent/RESERVIERT"
+git -C "$vm" add -A; git -C "$vm" commit -qm fern; git -C "$vm" push -q origin feat/fern
+git -C "$vm" checkout -q main; git -C "$vm" branch -qD feat/fern; git -C "$vm" branch -qdr origin/feat/fern
+mkdir -p "$vm/intent"
+printf '# Vorgemerkte Kennungen (Kopf nennt INT-%s-009)\nINT-%s-001 motor  # vgl. INT-%s-008\n' "$Y" "$Y" "$Y" >"$vm/intent/RESERVIERT"
+
+# --- T8: eigene Kopie, Kommentare zählen nicht ------------------------------------------------------------
+run "$vm" bash "$SCRIPT" --no-fetch
+[[ $RC -eq 0 && "$OUT" == "INT-$Y-002" ]] && ok "T8: vorgemerkte INT-$Y-001 zählt, Kommentare (008, 009) nicht → INT-$Y-002" || err "T8: rc=$RC out='$OUT' err='$ERR'"
+
+# --- T9: Worktree und entfernter Zweig --------------------------------------------------------------------
+vwt="$tmp/vm-worktrees/drei"; git -C "$vm" worktree add -q "$vwt" -b session/drei main
+mkdir -p "$vwt/intent"; printf 'INT-%s-003 drei\n' "$Y" >"$vwt/intent/RESERVIERT"
+run "$vm" bash "$SCRIPT" --no-fetch
+[[ $RC -eq 0 && "$OUT" == "INT-$Y-004" ]] && ok "T9: Vormerkung im Worktree zählt → INT-$Y-004" || err "T9: rc=$RC out='$OUT' err='$ERR'"
+run "$vm" bash "$SCRIPT"
+[[ $RC -eq 0 && "$OUT" == "INT-$Y-006" ]] && ok "T9: Vormerkung auf entferntem Zweig zählt → INT-$Y-006" || err "T9b: rc=$RC out='$OUT' err='$ERR'"
+
+# --- T10: --hold -------------------------------------------------------------------------------------------
+run "$vm" bash "$SCRIPT" --no-fetch --hold neu
+[[ $RC -eq 0 && "$OUT" == "INT-$Y-006" ]] && ok "T10: --hold neu → INT-$Y-006" || err "T10: rc=$RC out='$OUT' err='$ERR'"
+grep -q "^INT-$Y-006 neu" "$vm/intent/RESERVIERT" && ok "T10: Zeile eingetragen" || err "T10: Zeile fehlt: $(cat "$vm/intent/RESERVIERT")"
+run "$vm" bash "$SCRIPT" --no-fetch --hold neu
+n=$(grep -c " neu" "$vm/intent/RESERVIERT")
+[[ $RC -eq 0 && "$OUT" == "INT-$Y-006" && $n -eq 1 ]] && ok "T10: zweites --hold neu → gleiche Kennung, keine zweite Zeile" || err "T10b: rc=$RC out='$OUT' zeilen=$n"
+run "$vm" bash "$SCRIPT" --no-fetch
+[[ "$OUT" == "INT-$Y-007" ]] && ok "T10: danach INT-$Y-007" || err "T10c: out='$OUT'"
+run "$vm" env SPECWRIGHT_INTENT_ID_BEFORE_MKDIR="printf 'INT-$Y-007 aaa\n' >>intent/RESERVIERT" bash "$SCRIPT" --no-fetch --hold zzz
+[[ $RC -eq 0 && "$OUT" == "INT-$Y-008" && "$ERR" == *"schon vergeben"* ]] && ok "T10: Kollision → INT-$Y-008" || err "T10d: rc=$RC out='$OUT' err='$ERR'"
+! grep -q "^INT-$Y-007 zzz" "$vm/intent/RESERVIERT" && grep -q "^INT-$Y-008 zzz" "$vm/intent/RESERVIERT" && ok "T10: kollidierte Zeile zurückgenommen" || err "T10e: $(cat "$vm/intent/RESERVIERT")"
+run "$vm" bash "$SCRIPT" --no-fetch --hold a --reserve b
+[[ $RC -eq 1 ]] && ok "T10: --hold mit --reserve → Exit 1" || err "T10f: rc=$RC"
+
+# --- T11: --reserve übernimmt Vormerkung ------------------------------------------------------------------
+run "$vm" bash "$SCRIPT" --no-fetch --reserve motor
+[[ $RC -eq 0 && "$OUT" == "INT-$Y-001" && -f "$vm/intent/INT-$Y-001-motor/intent.md" ]] && ok "T11: --reserve motor → vorgemerkte INT-$Y-001 mit Platzhalter" || err "T11: rc=$RC out='$OUT' err='$ERR'"
+grep -q "^intent_id: \"INT-$Y-001\"  $" "$vm/intent/INT-$Y-001-motor/intent.md" && ok "T11: Platzhalter-Kopf trägt INT-$Y-001" || err "T11b: Kopf falsch"
+! grep -q " motor" "$vm/intent/RESERVIERT" && grep -q "^# Vorgemerkte" "$vm/intent/RESERVIERT" && grep -q "^INT-$Y-006 neu" "$vm/intent/RESERVIERT" \
+  && ok "T11: Zeile motor gestrichen, Kommentar und andere Zeilen bleiben" || err "T11c: $(cat "$vm/intent/RESERVIERT")"
+[[ "$ERR" == *"vorgemerkte Kennung INT-$Y-001 übernommen"* ]] && ok "T11: Hinweis auf stderr" || err "T11d: err='$ERR'"
+
+[[ $fail -eq 0 ]] && echo "✅ next-intent-id: T1–T11 grün" || { echo "❌ next-intent-id: rot"; exit 1; }
