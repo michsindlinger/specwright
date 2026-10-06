@@ -1,5 +1,17 @@
 # Changelog
 
+Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
+
+## 4.2.0 - 2026-10-06
+
+### Format
+
+- **Format 1.0 eingeführt** (INT-2026-031). Die drei Vorhaben-Vorlagen tragen eine gemeinsame Formatversion: `intent-template.md` das Kopf-Feld `format: "1.0"`, `spec-template.md` und `plan-template.md` die letzte Kopfzeile `> **Format:** 1.0`. Hauptnummer steigt bei Änderungen, nach denen bestehende Dateien nicht mehr gültig wären oder anders gelesen werden müssten; Nebennummer bei Ergänzungen, die alte Leser ignorieren können; Formulierungen ändern nichts. Dateien ohne Angabe gelten als „vor Format 1" und bleiben gültig. Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion". Die Workflows `intent` (1.3), `spec` (1.2) und `plan` (1.3) übernehmen die Angabe der verwendeten Vorlage unverändert.
+
+### Neu
+
+- **Guard `scripts/check-vorlagen-format.sh`** in `verify` (Stufe Guards): rot, wenn eine Vorlage keine, eine mehrfache oder eine falsch geschriebene Formatangabe trägt oder die drei Nummern nicht gleich sind. Installer-Test T8 prüft ihn auf Kopien (grün, fehlende Zeile, ungleiche Nummer, falsche Form) und auf den von `install.sh` installierten Vorlagen.
+
 ## 4.1.1 - 2026-09-16
 
 ### Neu

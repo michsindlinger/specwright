@@ -12,6 +12,8 @@
 #   T6  removed-hashes.sh (INT-2026-003)                   → Guard rot, wenn eine Prüfsumme aus der Historie fehlt; Skript idempotent
 #   T7  check-leser-marker.sh (INT-2026-009)               → Guard rot bei fehlendem Marker (nennt Datei:Zeile), bei falschem Wert
 #                                                            einer Pflicht-Mensch-Überschrift und bei teilweise markiertem Dokument; grün auf Kopie
+#   T8  check-vorlagen-format.sh (INT-2026-031)            → Guard grün auf Kopien und auf den von T1 installierten Vorlagen; rot bei fehlender
+#                                                            Formatzeile (nennt Datei), ungleicher Nummer und falscher Form
 #
 # Braucht: bash, curl (nicht nötig bei file://), git (T4 stellt alte Dateien aus eecb1cd6 und der ältesten Fassung her).
 set -uo pipefail
@@ -128,6 +130,25 @@ bash scripts/check-leser-marker.sh --doc "$t7/teilweise.md" >/dev/null 2>&1 && e
 # (d) unveränderte Kopien → grün (Standard und --doc)
 LESER_TEMPLATE_DIR="$t7" bash scripts/check-leser-marker.sh >/dev/null 2>&1 && bash scripts/check-leser-marker.sh --doc "$t7/intent-template.md" "$t7/spec-template.md" >/dev/null 2>&1 && ok "T7: Guard grün auf unveränderten Kopien" || err "T7: Guard rot auf unveränderten Kopien"
 
-[[ $fail -eq 0 ]] && echo "✅ Installer-Test: T1–T7 grün" || echo "❌ Installer-Test: Fehler (Logs unter $tmp_root — wird gelöscht; erneut mit KEEP_TMP=1)"
+# --- T8 (INT-2026-031) -----------------------------------------------------------------------
+t8="$tmp_root/t8"; mkdir -p "$t8"; cp specwright/templates/sdlc/vorhaben/*-template.md "$t8/"
+# (a) unveränderte Kopien → grün
+FORMAT_TEMPLATE_DIR="$t8" bash scripts/check-vorlagen-format.sh >/dev/null 2>&1 && ok "T8: Guard grün auf unveränderten Kopien" || err "T8: Guard rot auf unveränderten Kopien"
+# (b) Formatzeile in der spec-Kopie entfernt → rot, nennt spec-template.md
+grep -v '^> \*\*Format:\*\*' specwright/templates/sdlc/vorhaben/spec-template.md > "$t8/spec-template.md"
+t8b=$(FORMAT_TEMPLATE_DIR="$t8" bash scripts/check-vorlagen-format.sh 2>&1); t8rc=$?
+[[ $t8rc -ne 0 ]] && echo "$t8b" | grep -q 'spec-template\.md' && ok "T8: Guard rot bei fehlender Formatzeile, nennt spec-template.md" || err "T8: Guard bleibt grün oder nennt spec-template.md nicht (Exit $t8rc)"
+cp specwright/templates/sdlc/vorhaben/spec-template.md "$t8/"
+# (c) plan-Kopie auf andere Hauptnummer → rot
+awk '/^> \*\*Format:\*\* / {print "> **Format:** 2.0"; next} {print}' specwright/templates/sdlc/vorhaben/plan-template.md > "$t8/plan-template.md"
+FORMAT_TEMPLATE_DIR="$t8" bash scripts/check-vorlagen-format.sh >/dev/null 2>&1 && err "T8: Guard bleibt grün bei ungleicher Nummer (plan 2.0)" || ok "T8: Guard rot bei ungleicher Nummer"
+cp specwright/templates/sdlc/vorhaben/plan-template.md "$t8/"
+# (d) intent-Kopie mit falscher Form → rot
+awk '/^format: / {print "format: \"1\"  "; next} {print}' specwright/templates/sdlc/vorhaben/intent-template.md > "$t8/intent-template.md"
+FORMAT_TEMPLATE_DIR="$t8" bash scripts/check-vorlagen-format.sh >/dev/null 2>&1 && err "T8: Guard bleibt grün bei format: \"1\"" || ok "T8: Guard rot bei falscher Form"
+# (e) Lieferweg: die von T1 installierten Vorlagen tragen die Formatangabe
+FORMAT_TEMPLATE_DIR="$t1/specwright/templates/sdlc/vorhaben" bash scripts/check-vorlagen-format.sh >/dev/null 2>&1 && ok "T8: Guard grün auf den von T1 installierten Vorlagen" || err "T8: installierte Vorlagen ohne gültige Formatangabe ($t1/specwright/templates/sdlc/vorhaben)"
+
+[[ $fail -eq 0 ]] && echo "✅ Installer-Test: T1–T8 grün" || echo "❌ Installer-Test: Fehler (Logs unter $tmp_root — wird gelöscht; erneut mit KEEP_TMP=1)"
 [[ "${KEEP_TMP:-}" == 1 ]] && trap - EXIT && echo "Logs: $tmp_root"
 exit $fail

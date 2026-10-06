@@ -1,7 +1,7 @@
 # Plan: Vorhaben-Vorlagen tragen eine Formatversion
 
 > **Intent:** `intent.md` (INT-2026-031) · **Spec:** entfällt (bypass: Größe S, drei Kopffelder, Hinweise in drei Workflows, README, CHANGELOG-Abschnitt, ein Guard)
-> **Status:** freigegeben
+> **Status:** umgesetzt (Merge steht aus)
 > **Erstellt:** 2026-10-06 im Plan Mode · **Freigabe:** Michael (Produktverantwortung), 2026-10-06 („Freigabe: plan.md (Stand 2026-10-06 13:55)", Chat)
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 568bef5), `CLAUDE.md`, `docs/security.md`
 
@@ -265,14 +265,14 @@ Rückweg: Revert der PR; Dateien, die zwischenzeitlich mit `format` entstanden, 
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8).
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8).
 - [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` angepasst, falls Abschnitt 3 „Ja" (hier: Nein).
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
+- [x] `docs/architecture.md` angepasst, falls Abschnitt 3 „Ja" (hier: Nein).
+- [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
+- [x] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → Vorschlag für `CLAUDE.md` im PR.
 - [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-2026-031-vorlagen-formatversion/`); Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
@@ -281,4 +281,5 @@ Rückweg: Revert der PR; Dateien, die zwischenzeitlich mit `format` entstanden, 
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-10-06 | Workflow `plan` Step 9a bekommt zusätzlich zum Übernahme-Satz den Halbsatz „Ändert der Plan eine Vorhaben-Vorlage, entscheidet er die neue Nummer nach der Regel im README" | §9 nennt diesen Verweis als Gegenmaßnahme zu „Vorlagenänderung ohne Nummernanhebung", §4 #7 hatte ihn nicht | §4 #7 |
+| 2026-10-06 | Worktree ohne `node_modules`: `npm ci` in `ui/` und `ui/frontend`, `chmod +x` für node-pty vor Schritt 1 | bekannte Worktree-Falle (`CLAUDE.md`, Memory), keine Planänderung | — |
