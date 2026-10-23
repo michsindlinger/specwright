@@ -3,7 +3,7 @@ intent_id: "INT-2026-035"
 format: "2.1"  
 titel: "Plan-PR, Karten anlegen und Handschritte nach dem Factory-Schnitt"  
 status: "angenommen"  
-version: "1.0.0"  
+version: "1.1.0"  
 freigabe:  
   von: "Michael (Produktverantwortung)"  
   am: "2026-10-24"  
@@ -17,7 +17,7 @@ bypass: "nein"
 bypass_grund: ""  
 bezuege:  
   product: "docs/product-brief.md"  
-  spec: ""  
+  spec: "spec.md"  
   plan: ""  
   board_karte: ""  
   adr: ["docs/adr/0008-plan-ruft-eingangspruefung.md"]  
@@ -101,7 +101,7 @@ Seit INT-2026-034 (PR #109) schneidet `/plan` Karten und Handschritte, endet abe
 | ID | Kriterium | Ziel | Prüfung |
 |---|---|---|---|
 | AK-01 | Wenn ein geschnittener Plan freigegeben ist, MUSS `/plan` vor Push, PR-Anlage, Merge und Anlegen der Karten je eine Bestätigung der Person einholen. | Z-01 | Stichprobe (E2E) |
-| AK-02 | Der Plan-PR DARF nur Dateien des eigenen Intent-Ordners enthalten und MUSS auf den Factory-Zweig zielen. | Z-01 | Stichprobe (E2E) |
+| AK-02 | Der Plan-PR DARF nur Dateien des eigenen Intent-Ordners und die neuen Entscheidungsnotizen des Vorhabens, die eine Karte nennt, enthalten und MUSS auf den Factory-Zweig zielen. | Z-01 | Stichprobe (E2E) |
 | AK-03 | Wenn der Plan-PR gemergt ist, MUSS `/plan` zuerst zeigen, welche Karten angelegt und welche ausgelassen würden, und erst nach Bestätigung anlegen. | Z-01 | Stichprobe (E2E) |
 | AK-04 | Falls Karten beim Anlegen ausgelassen werden, MUSS `/plan` je Karte die Gründe der Factory zeigen und die Wahl „neu schneiden (neuer Plan-PR)" oder „als Handschritt" anbieten. | Z-01 | Stichprobe (Kontrollfall) |
 | AK-05 | Ohne ausdrückliche Bestätigung im Lauf DARF kein Plan- oder Handschritt-PR gemergt werden. | Z-01, Z-02 | Review |
@@ -199,5 +199,6 @@ Seit INT-2026-034 (PR #109) schneidet `/plan` Karten und Handschritte, endet abe
 
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
+| 1.1.0 | 2026-10-24 | AK-02 erweitert: Plan-PR darf neue Entscheidungsnotizen enthalten, die eine Karte nennt (sonst lässt die Factory die Karte aus, Regel EP-07); Spec-Annahme AN-S01, bestätigt mit der Spec-Freigabe | AK-02 | Michael (Produktverantwortung), 2026-10-24 |
 | 1.0.0 | 2026-10-24 | Freigabe; OF-01 und OF-02 nach Vorschlag entschieden. Abgleich Mensch/Agent: ohne Befund (Z-01 bis Z-04 je durch AK gedeckt, Endzustand nennt AK-01 bis AK-12, RB-04 deckt die Einschränkung von INT-2026-024 durch AK-11) | OF-01, OF-02 | Michael (Produktverantwortung), 2026-10-24 |
 | 0.1.0 | 2026-10-24 | Entwurf aus Briefing D2–D8 und Rückfragen (umgesetzt per `/build` nach Bestätigung, UI-Abgleich Nicht-Ziel, mittel/M, Merge-Regel für alle PRs) | alle | — |
