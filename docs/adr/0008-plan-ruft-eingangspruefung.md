@@ -1,6 +1,6 @@
 # ADR-0008: Der Plan ruft die Eingangsprüfung einer Software Factory
 
-> Status: Vorgeschlagen
+> Status: Angenommen (Michael, 2026-10-23)
 > Datum: 2026-10-23
 > Betrifft: Workflow `specwright/workflows/core/plan.md` (1.5, Step 1, Step 4, Step 9c, Step 9b), Befehl `.claude/commands/specwright/plan.md`, Vorlage `specwright/templates/sdlc/vorhaben/plan-template.md` (Format 2.1), Vorhaben INT-2026-034
 > Umgesetzt in: Branch `feat/INT-2026-034-factory-karten-im-plan`

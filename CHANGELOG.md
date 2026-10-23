@@ -10,7 +10,7 @@ Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Re
 
 ### Neu
 
-- **Workflow `plan` 1.5 schneidet Karten für eine Software Factory** (ADR-0008). Ist `SPECWRIGHT_FACTORY_DIR` gesetzt und eine Betriebsdatei für das Projekt bestätigt, schreibt der neue Step 9c nach dem Entwurf `cards.yaml` in `format: 2` (Karten und Handschritte), ruft die Eingangsprüfung der Factory (`ready-check --json`) und übernimmt Einstufung, Gründe und Abdeckung wörtlich in §7. Nicht ready Karten werden höchstens zweimal neu geschnitten, danach Handschritt. Ohne Factory steht dort ein Satz, kein Schnitt. Step 1 klärt die Factory, Step 4 hält den Schnitt-Entwurf fest.
+- **Workflow `plan` 1.5 schneidet Karten für eine Software Factory** (ADR-0008, angenommen). Ist `SPECWRIGHT_FACTORY_DIR` gesetzt und eine Betriebsdatei für das Projekt bestätigt, schreibt der neue Step 9c nach dem Entwurf `cards.yaml` in `format: 2` (Karten und Handschritte), ruft die Eingangsprüfung der Factory (`ready-check --json`) und übernimmt Einstufung, Gründe und Abdeckung wörtlich in §7. Nicht ready Karten werden höchstens zweimal neu geschnitten, danach Handschritt. Ohne Factory steht dort ein Satz, kein Schnitt. Step 1 klärt die Factory, Step 4 hält den Schnitt-Entwurf fest.
 - **`/plan INT-… --karten`** schneidet einen freigegebenen Plan nachträglich, ohne ihn neu zu planen; Commit `plan(INT-…): Karten geschnitten`.
 - **Guard** `scripts/check-leser-marker.sh`: Soll-Tabelle kennt die neue Überschrift.
 
