@@ -63,6 +63,7 @@ SOLL_PLAN='## In einfachen Worten	mensch
 ### 7.	agent
 #### Variante A	agent
 #### Variante B	agent
+#### Karten für die Factory	mensch
 ### 8.	agent
 ### 9.	mensch
 ### 10.	mensch

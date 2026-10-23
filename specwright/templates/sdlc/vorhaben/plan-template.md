@@ -4,7 +4,7 @@
 > **Status:** entwurf | freigegeben | in_umsetzung | umgesetzt
 > **Erstellt:** JJJJ-MM-TT im Plan Mode · **Freigabe:** [Rolle], JJJJ-MM-TT
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand [sha]), `CLAUDE.md`, `docs/security.md`
-> **Format:** 2.0
+> **Format:** 2.1
 
 <!-- Der Plan ist TECHNISCH und die EINHEIT DER AUSFÜHRUNG. Eine Sitzung setzt ihn ganz um.
      Maßstab: Ein neues Teammitglied könnte allein anhand dieses Dokuments umsetzen.
@@ -145,6 +145,26 @@
 
 **Beweis:** [jede Scheibe allein vorführbar (Befehl/Pfad); Dateien disjunkt → parallel (Befehl: `comm`/Liste), sonst Reihenfolge in Spalte „Start"; jede Schnittstelle vor Start in Code oder Typ festgehalten (Datei:Zeile).]
 **Integrationsaufgabe:** läuft **immer** in der Hauptsitzung mit diesem Plan im Kontext, nie in einem Teil-Worktree.
+
+#### Karten für die Factory (optional)
+
+<!-- leser: mensch -->
+
+<!-- Nur wenn das Zielprojekt eine Software Factory hat (Workflow `plan`, Step 9c). Sonst steht hier ein Satz, warum nicht:
+     „Kein Schnitt: keine Software Factory eingerichtet." Fehlt der Abschnitt ganz, gilt dasselbe.
+     Einstufung, Gründe und Abdeckung stehen hier so, wie die Eingangsprüfung der Factory sie meldet; nichts davon wird selbst gerechnet.
+     Kriterien in Alltagssprache, Pfade nur in den Bereichen der Kartendatei `cards.yaml`. -->
+
+| Karte | Titel | Kriterien | Einstufung | Gründe, Hinweise |
+|---|---|---|---|---|
+| K-01 | […] | AK-01, AK-02 | factory ready | — |
+| K-02 | […] | AK-03 | nicht ready | [Grund aus der Eingangsprüfung] |
+
+| Handschritt | Was | Wer | Wann | Nachweis | Grund |
+|---|---|---|---|---|---|
+| H-01 | […] | [Rolle] | vor K-02 | […] | [manuell, z. B. nur per Stichprobe prüfbar] |
+
+**Abdeckung:** [n] von [m] Kriterien in ready Karten ([p] %)
 
 ### 8. Tests und Nachweis
 
