@@ -6,6 +6,7 @@ Refer to the instructions located in specwright/workflows/core/build.md
 
 **Ablauf (Main Agent):**
 - Aufruf: `/build INT-JJJJ-NNN`; braucht `plan.md` mit `status: freigegeben`
+- Geschnittener Plan (`cards.yaml` im Vorhaben-Ordner): Handschritte statt Plan — Überblick mit Stand vom Factory-Zweig, gewählter Handschritt in eigener Arbeitskopie (`hand/INT-JJJJ-NNN-H-nn`) mit PR, der `done` setzt; Karten baut die Factory; am Ende Abschluss-PR nach Rückfrage
 - Branch `feat/INT-JJJJ-NNN-kurzname`; bei Bugfix Marker `.claude/fix-mode` (Hook `protect-tests`), Test zuerst
 - Zerlegung §7: Variante A → alles hier; Variante B → je Scheibe ein Worktree, Teile mit überlappenden Dateien nacheinander, **Integration immer in dieser Sitzung**
 - Reihenfolge §6 Schritt für Schritt; jede Abweichung sofort in §14

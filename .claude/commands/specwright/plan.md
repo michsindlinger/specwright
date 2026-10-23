@@ -14,5 +14,6 @@ Refer to the instructions located in specwright/workflows/core/plan.md
 - Mit Software Factory im Zielprojekt (`SPECWRIGHT_FACTORY_DIR` und Betriebsdatei): nach dem Entwurf `cards.yaml` (Format 2) schreiben, jede Karte über `ready-check --json` der Factory prüfen, höchstens zwei Runden Neuschnitt, Rest als Handschritte; Ergebnis und Abdeckung in §7 „Karten für die Factory“. Ohne Factory ein Satz, kein Schnitt
 - `/plan INT-JJJJ-NNN --karten`: einen freigegebenen Plan nachträglich schneiden, ohne neu zu planen
 - Freigabe gegen die Datei im Intent-Ordner → `Status: freigegeben`, `intent.bezuege.plan` setzen, Commit
+- Geschnitten (`cards.yaml`): danach Plan-PR auf den Factory-Zweig und Karten anlegen, vier Bestätigungen (hochladen, PR, mergen, Karten anlegen), Vorschau der Factory vor dem Anlegen; nicht ready ausgelassene Karten → neu schneiden oder Handschritt. Erneutes `/plan INT-JJJJ-NNN` setzt dort fort
 
-**Nächster Schritt:** `/build INT-JJJJ-NNN`
+**Nächster Schritt:** `/build INT-JJJJ-NNN` (geschnitten: Handschritte; Karten baut die Factory)

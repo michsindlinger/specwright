@@ -1,7 +1,7 @@
 # Plan: Plan-PR, Karten anlegen und Handschritte nach dem Factory-Schnitt
 
 > **Intent:** `intent.md` (INT-2026-035) · **Spec:** `spec.md`
-> **Status:** freigegeben
+> **Status:** umgesetzt
 > **Erstellt:** 2026-10-24 im Plan Mode · **Freigabe:** Michael (Produktverantwortung), 2026-10-24
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 9762f05), `CLAUDE.md`, `docs/security.md`
 > **Format:** 2.1
@@ -241,9 +241,9 @@ Nahtstelle für alle AK: die Befehle `/plan INT-…` und `/build INT-…` in ein
 
 | Schritt | Wer | Wann | Erledigt |
 |---|---|---|---|
-| Probe-Projekt bestätigen: Betriebsdatei unter `~/.factory/` mit Factory-Zweig ≠ `main` und Übungs-Board (Vorschlag im Chat, Name nicht im Repo, RB-01); Weg: Liste `~/.factory/*/factory.yaml`, Feld `code.branch` | Michael | vor dem Bau | [ ] |
-| Freigabe für Update-Lauf und PRs/Merges am Probe-Projekt (`SPECWRIGHT_REPO_URL=file://… bash update-specwright.sh`, Weg belegt `update-specwright.sh:12`; Merges nur auf dessen Factory-Zweig, `CLAUDE.md` „Nie", ER-09) | Michael | vor dem Bau | [ ] |
-| `create-cards --apply` am Übungs-Board im E2E jeweils im Lauf bestätigen (ER-09) | Michael | während E2E | [ ] |
+| Probe-Projekt bestätigen: Betriebsdatei unter `~/.factory/` mit Factory-Zweig ≠ `main` und Übungs-Board (Vorschlag im Chat, Name nicht im Repo, RB-01); Weg: Liste `~/.factory/*/factory.yaml`, Feld `code.branch` | Michael | vor dem Bau | [x] 2026-10-24 im Chat bestätigt |
+| Freigabe für Update-Lauf und PRs/Merges am Probe-Projekt (`SPECWRIGHT_REPO_URL=file://… bash update-specwright.sh`, Weg belegt `update-specwright.sh:12`; Merges nur auf dessen Factory-Zweig, `CLAUDE.md` „Nie", ER-09) | Michael | vor dem Bau | [x] 2026-10-24 für den ganzen E2E freigegeben |
+| `create-cards --apply` am Übungs-Board im E2E jeweils im Lauf bestätigen (ER-09) | Michael | während E2E | [x] durch die Freigabe oben abgedeckt, im Lauf je Anlegen bestätigt |
 | Review und Merge des Specwright-PR nach `main` (löst Auto-Deploy der UI aus) | Michael | nach CI grün | [ ] |
 | Nachtrag zu ADR-054 (Arbeitsort Handschritte D3/D4) im Factory-Repo, getrennt (NZ-05) | Michael | nach Merge | [ ] |
 
@@ -295,14 +295,14 @@ Nahtstelle für alle AK: die Befehle `/plan INT-…` und `/build INT-…` in ein
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen Nachweis (E2E-Schritt, Kontrollfall oder Review) im Protokoll.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8), Protokoll ohne Projektnamen.
+- [x] Jede FA/AK aus Abschnitt 8 hat einen Nachweis (E2E-Schritt, Kontrollfall oder Review) im Protokoll.
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8), Protokoll ohne Projektnamen.
 - [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` §5 und ADR-0008-Nachtrag in dieser PR.
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check, Vorschlag im PR.
+- [x] `docs/architecture.md` §5 und ADR-0008-Nachtrag in dieser PR.
+- [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
+- [x] 2x-Regel-Check, Vorschlag im PR.
 - [ ] Abschlussbericht nach R3, endet mit dem Block „Für das Board"; Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
@@ -311,4 +311,9 @@ Nahtstelle für alle AK: die Befehle `/plan INT-…` und `/build INT-…` in ein
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-10-24 | §3 10a Schritt 5: `decisions[].adr` ist eine Kennung `ADR-nnn`, kein Pfad (Factory `src/core/readiness.ts:40,373`); Datei wird über Entscheidungsordner (`knowledge.decisions`, sonst `docs/decisions`) und Nummer im Dateinamen gefunden | Plan nahm Pfad an; beim Probe-Aufbau aufgefallen (EP-11 „nicht lesbar“) | §3 10a, `plan.md`-Workflow Step 10a |
+| 2026-10-24 | `plan`-Workflow 10b Schritt 7: Plan-Arbeitskopie am Ende von 10b/10c entfernen, auch wenn 10b aus `/build` 1f gestartet wird | E2E Schritt 7: Arbeitskopie `…-plan` blieb nach dem Anlegen aus `/build` stehen; §3 regelte das Entfernen nur für 10a | §3 10b |
+| 2026-10-24 | E2E über `claude -p` mit `--resume` statt interaktiver Sitzung; Specwright per `install.sh` (Probe-Repo hatte keine Installation) statt `update-specwright.sh` eingespielt, danach Updates per `update-specwright.sh` | Rückfragen werden je Runde beantwortet, Ausgaben landen in Dateien statt im Chat (R7); Trust-Dialog entfällt | §8 Probe-Aufbau |
+| 2026-10-24 | Karten-PRs von K-01/K-03 für 8b von Hand nachgestellt (`[PROBE] … simuliert`) | auf dem Übungs-Board läuft keine Factory-Engine; der Abschluss braucht gemergte Karten-PRs | §8 Schritt 8b |
+| 2026-10-24 | Kontrollfall 9 nur über `/build` (Step 1) gefahren; `/plan` ohne Schnitt per Review (Step 9b `NEXT` und Step 10 hängen an `cards.yaml` und „Kein Schnitt“) | `/plan` auf einem freigegebenen Plan ohne `cards.yaml` startet die volle Planung im Plan Mode | §8 Schritt 9 |
+| 2026-10-24 | Probe-Vorhaben K-01/K-03 mit Testart `verify`, `check: Test` | das Probe-Repo hat keine Projektdatei; eingerichtet ist nur `verify` (Eingangsprüfung EP-01) | §8 Probe-Aufbau |

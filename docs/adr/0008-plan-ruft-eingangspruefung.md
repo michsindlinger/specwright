@@ -3,7 +3,7 @@
 > Status: Angenommen (Michael, 2026-10-23)
 > Datum: 2026-10-23
 > Betrifft: Workflow `specwright/workflows/core/plan.md` (1.5, Step 1, Step 4, Step 9c, Step 9b), Befehl `.claude/commands/specwright/plan.md`, Vorlage `specwright/templates/sdlc/vorhaben/plan-template.md` (Format 2.1), Vorhaben INT-2026-034
-> Umgesetzt in: Branch `feat/INT-2026-034-factory-karten-im-plan`
+> Umgesetzt in: Branch `feat/INT-2026-034-factory-karten-im-plan`; Nachtrag 1: Branch `feat/INT-2026-035-plan-pr-handschritte`
 
 ---
 
@@ -47,3 +47,14 @@ Specwright soll diese Prüfung beim Planen nutzen, damit Planer und Factory nach
 | Abdeckung rechnet Specwright selbst | zweite Rechenstelle für dieselbe Zahl |
 | Prüfung schon im Plan Mode | Plan Mode schreibt nur in die Arbeitskopie des Plans; die Kartendatei muss im Worktree liegen, damit Planer und Factory dieselbe Datei meinen |
 | Pflichtabschnitt in der Plan-Vorlage | Hauptnummer 3.0; jedes Projekt ohne Factory hätte einen leeren Pflichtabschnitt |
+
+---
+
+## Nachtrag 1 (2026-10-24, INT-2026-035)
+
+Die Kopplung an die Factory wächst um einen zweiten Befehl, der schreibt. Der Grundsatz bleibt: nur über Befehle, keine Regel doppelt.
+
+- **`create-cards` als zweiter Befehl.** Workflow `plan` Step 10b (und `build` Step 1f, der dorthin verweist) ruft `npm --prefix "$SPECWRIGHT_FACTORY_DIR" run --silent create-cards -- "[Betriebsdatei]" INT-… --repo "[Arbeitskopie]"`, zuerst ohne `--apply` als Vorschau, deren Ausgabe unverändert gezeigt wird. Erst nach ausdrücklicher Bestätigung der Person läuft derselbe Aufruf mit `--apply`. Netz und Zugänge zum Board liegen bei der Factory; Specwright hält keine. Exit 2 (Eingabe oder Board nicht nutzbar) → Meldung zeigen, nichts weiter.
+- **Nicht ready oder wartend.** Welche ausgelassene Karte nicht ready ist, sagt allein `ready: false` aus `ready-check` auf dem Stand des Factory-Zweigs. Die Texte von `create-cards` (Auslass-Gründe) wertet Specwright nicht aus; sie werden nur gezeigt.
+- **„Karte gemergt“ nennt die Person.** Welcher PR eine Karte umgesetzt hat, steht nur am Board. Specwright fragt die PR-Nummer ab und prüft per `gh pr view`, dass dieser PR auf den Factory-Zweig gemergt ist; eine vollständige Zuordnung Karte → PR bräuchte Board-Zugang oder einen neuen lesenden Befehl der Factory.
+- **Push, PR und Merge** auf den Factory-Zweig laufen über `gh` des Rechners, jeder Schritt mit eigener Bestätigung (`specwright/workflows/meta/factory-pr.md`). Auf dem Standardzweig des Specwright-Repos selbst mergt kein Lauf.
