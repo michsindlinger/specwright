@@ -2,6 +2,18 @@
 
 Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
 
+## 4.4.0 - 2026-10-23
+
+### Format
+
+- **Format 2.1** (Nebennummer, INT-2026-034): `plan-template.md` bekommt unter §7 nach Variante B den optionalen Unterabschnitt `#### Karten für die Factory (optional)` (Marker `mensch`) mit Kartentabelle, Handschritt-Tabelle und Zeile **Abdeckung**. Alte Leser können ihn ignorieren. `intent-template.md`, `spec-template.md`: nur die Nummer (`format: "2.1"`, `> **Format:** 2.1`). Dateien mit 2.0, 1.0 oder ohne Angabe bleiben gültig.
+
+### Neu
+
+- **Workflow `plan` 1.5 schneidet Karten für eine Software Factory** (ADR-0008, angenommen). Ist `SPECWRIGHT_FACTORY_DIR` gesetzt und eine Betriebsdatei für das Projekt bestätigt, schreibt der neue Step 9c nach dem Entwurf `cards.yaml` in `format: 2` (Karten und Handschritte), ruft die Eingangsprüfung der Factory (`ready-check --json`) und übernimmt Einstufung, Gründe und Abdeckung wörtlich in §7. Nicht ready Karten werden höchstens zweimal neu geschnitten, danach Handschritt. Ohne Factory steht dort ein Satz, kein Schnitt. Step 1 klärt die Factory, Step 4 hält den Schnitt-Entwurf fest.
+- **`/plan INT-… --karten`** schneidet einen freigegebenen Plan nachträglich, ohne ihn neu zu planen; Commit `plan(INT-…): Karten geschnitten`.
+- **Guard** `scripts/check-leser-marker.sh`: Soll-Tabelle kennt die neue Überschrift.
+
 ## 4.3.1 - 2026-10-06
 
 ### Behoben
