@@ -66,4 +66,4 @@ Probe-Vorhaben INT-2026-905 (K-01 ready, wartet auf H-01; K-02 nicht ready). Gle
 | Befund 1, Fall 2 + Zugehörigkeit | von Hand: `-r2` mit geschlossenem PR #29 (Zweig bleibt), `-r3` gemergt (#30), fremder Zweig `plan/INT-2026-9059` mit offenem PR #31; neue Sitzung | jüngstes Mitglied `-r3` `MERGED` → direkt 10b; `-r2` nicht als „PR anlegen?“ angeboten, `…9059` nicht als Familienmitglied genommen ✅ |
 | Befund 2 | Probe-Prüfung mit 7 Minuten Laufzeit auf `develop` (#32); `/specwright:build INT-2026-905`, H-01 ohne Code, Hochladen und PR #33 | nach fünf Minuten „offen: Merge von PR #33 (Prüfungen laufen noch)“, kein Merge ✅ |
 | Befund 2, Fortsetzen | nach Ende der Prüfung (grün, 7m4s) neue Sitzung `/specwright:build INT-2026-905`, H-01 gewählt | erkennt offenen PR #33 über FZ-Fortsetzen, fragt neu ab und erst dann „mergen?“; gemergt. Probe-Prüfung danach per PR wieder entfernt ✅ |
-
+| Befund 3 (4.5.1) | INT-2026-905, nur H-02 offen (`after: K-01`), `/specwright:build INT-2026-905` | Überblick zeigt H-02 „wartet auf K-01“ und bietet die Wahl an; kein Ende mit „nichts zu tun“ ✅ |

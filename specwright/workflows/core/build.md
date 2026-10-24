@@ -56,7 +56,7 @@ EXECUTE: specwright/workflows/meta/factory-pr.md — Bausteine FZ-Klären und FZ
    - `done` gesetzt → „erledigt am [done]“
    - `when: { before: K-nn }` oder `afterIntent` → „frei“
    - `when: { after: K-nn }` → „wartet auf K-nn“
-4. Alle erledigt → weiter mit Step 1g. Kein Handschritt frei oder wartend-wählbar → Satz mit den Karten, auf die gewartet wird; Ende.
+4. Alle erledigt → weiter mit Step 1g. Sonst ist jeder offene Handschritt wählbar, auch ein wartender: seine Freigabe läuft über Schritt 7 (PR-Nummer der Karte). Die Wahl in Schritt 5 wird also immer angeboten, solange einer offen ist.
 5. WAIT „Welchen Handschritt jetzt, und mit Code (Dateien ändern) oder ohne Code (nur als erledigt melden)?“
 6. Gewählt ist unbekannt oder schon erledigt → Abbruch mit Grund, nichts ändern.
 7. Gewählt wartet auf K-nn → WAIT „K-nn, Voraussetzung für H-nn: Welcher PR hat K-nn umgesetzt? (Nummer steht an der Karte am Board)“
