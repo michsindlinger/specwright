@@ -65,11 +65,11 @@ EXECUTE: specwright/workflows/meta/factory-pr.md — Bausteine FZ-Klären und FZ
 
 ### Step 1c: Arbeitskopie
 
-Zweig `hand/INT-JJJJ-NNN-H-nn` auf `origin/[b]`.
+Zweigfamilie `hand/INT-JJJJ-NNN-H-nn` auf `origin/[b]`.
 
-- Läuft die Sitzung schon in einer eigenen Arbeitskopie (`git rev-parse --git-dir` ≠ `git rev-parse --git-common-dir`): `git status --porcelain` muss leer sein, sonst Abbruch mit Grund, nichts ändern. Dann `git switch -c hand/INT-JJJJ-NNN-H-nn origin/[b]`; keine zweite Arbeitskopie.
-- Sonst FZ-Arbeitskopie (`factory-pr.md`) mit Name `INT-JJJJ-NNN-H-nn`. Der Hauptcheckout bleibt unberührt.
-- Vorher FZ-Fortsetzen für den Zweig: `MERGED` → Handschritt ist erledigt, weiter mit Step 1f; `OPEN` → FZ-PR ab Zustand.
+1. FZ-Fortsetzen (`factory-pr.md`) für Präfix `hand/INT-JJJJ-NNN-H-nn`: erledigt → weiter mit Step 1f; offen → FZ-PR ab Schritt 4; hochgeladen → FZ-PR ab Schritt 2; verworfen oder neu → Zweig `[zweig]` = `hand/INT-JJJJ-NNN-H-nn` bei neu, sonst der nächste freie Zweig; weiter mit 2.
+2. Läuft die Sitzung schon in einer eigenen Arbeitskopie (`git rev-parse --git-dir` ≠ `git rev-parse --git-common-dir`): `git status --porcelain` muss leer sein, sonst Abbruch mit Grund, nichts ändern. Dann `git switch -c [zweig] origin/[b]`; keine zweite Arbeitskopie.
+3. Sonst FZ-Arbeitskopie (`factory-pr.md`) mit Name `INT-JJJJ-NNN-H-nn` und Zweig `[zweig]`. Der Hauptcheckout bleibt unberührt.
 
 ### Step 1d: Handschritt mit Code
 
@@ -98,7 +98,7 @@ Zweig `hand/INT-JJJJ-NNN-H-nn` auf `origin/[b]`.
 2. Nicht alle Handschritte auf `origin/[b]` erledigt → Überblick aus 1b zeigen; Ende.
 3. Je Karte aus `cards.yaml`: PR-Nummer erfragen und prüfen wie 1b Schritt 7. Einer nicht gemergt → Abbruch mit Grund.
 4. WAIT „Alle Karten gemergt (#…), alle Handschritte erledigt. Ist das Vorhaben INT-JJJJ-NNN umgesetzt?“ Nein → nichts ändern, Ende.
-5. Ja → Arbeitskopie wie 1c mit Name `INT-JJJJ-NNN-abschluss`, Zweig `abschluss/INT-JJJJ-NNN`. Darin: `intent.md`-Kopf `status: "umgesetzt"`, nächste PATCH-Version, `geaendert` = Tagesdatum, eine Zeile im Änderungsprotokoll nach Vorlage; `plan.md` `Status: umgesetzt`. COMMIT `chore(INT-JJJJ-NNN): Vorhaben umgesetzt` mit den Zeilen `K-nn: PR #[n]`.
+5. Ja → FZ-Fortsetzen für Präfix `abschluss/INT-JJJJ-NNN` (gleiche Verzweigung wie 1c; ein Konflikt am Abschluss-PR führt so zu `abschluss/INT-JJJJ-NNN-r1`), dann Arbeitskopie wie 1c Schritte 2–3 mit Name `INT-JJJJ-NNN-abschluss` und dem zurückgegebenen Zweig. Darin: `intent.md`-Kopf `status: "umgesetzt"`, nächste PATCH-Version, `geaendert` = Tagesdatum, eine Zeile im Änderungsprotokoll nach Vorlage; `plan.md` `Status: umgesetzt`. COMMIT `chore(INT-JJJJ-NNN): Vorhaben umgesetzt` mit den Zeilen `K-nn: PR #[n]`.
 6. FZ-PR (PR-Art „Abschluss-PR“).
 
 </step>

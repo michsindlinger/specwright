@@ -16,6 +16,7 @@ Drei Abläufe bringen Dateien eines geschnittenen Vorhabens (Kartendatei `cards.
 - Jeder Schritt, der etwas nach außen trägt (Hochladen, PR anlegen, Mergen), steht hinter einem eigenen WAIT. Ein Ja gilt für genau einen Schritt und genau einen PR.
 - Nein an jeder Stelle → Satz „offen: [Schritt]; fortsetzen mit [Befehl]" und Ende, ohne weitere Änderung.
 - Jeder Lese- und Aufsetzschritt nach FZ-Holen nutzt nur `origin/[b]`, nie einen lokalen Zweig.
+- Zweige eines Ablaufs bilden eine Familie (`[präfix]`, `[präfix]-r1`, …) mit einem Nummernkreis; FZ-Fortsetzen bestimmt Zustand und nächsten freien Zweig.
 - Fragen nach R2 (`specwright/workflows/meta/leser-und-rueckfragen.md`): PR-Art und Kennung nennen, Gegenstand in einem Satz, Frage.
 - Keine Pfade, Hosts oder Projektnamen der Factory in Dateien, die ins Repo gehen (Commit-Nachrichten, Protokolle).
 
@@ -55,9 +56,10 @@ Eingabe: Arbeitskopie `[pfad]`, Zweig `[zweig]`, PR-Art (Plan-PR, Handschritt H-
 4. Merge-Sperre (siehe unten) greift → Satz „Merge ist hier Schritt der Person: [Link]", Ende.
 5. RUN `gh pr view [n] --json mergeable,mergeStateStatus,statusCheckRollup` und den Zustand zeigen. Laufen Prüfungen noch (`PENDING`, `UNKNOWN`), bis zu fünf Minuten erneut abfragen.
    Nicht mergebar → nicht mergen, Grund und Weg weiter zeigen, Ende:
-   - `mergeable: CONFLICTING` → Weg: PR schließen (`gh pr close [n]`), FZ-Holen, neuer Zweig `[zweig]-r[n+1]` vom frischen Stand, Änderung erneut anwenden, FZ-PR.
+   - `mergeable: CONFLICTING` → Weg: PR schließen (`gh pr close [n]`), FZ-Holen, nächster freier Zweig der Familie (FZ-Fortsetzen) vom frischen Stand, Änderung erneut anwenden, FZ-PR.
    - rote Prüfung in `statusCheckRollup` → Weg: Ursache im CI-Log, beheben, erneut hochladen.
    - `mergeStateStatus: BLOCKED` (Schutzregel, fehlendes Review) → Weg: Regel erfüllen, dann `[befehl]`.
+   - Prüfungen laufen nach fünf Minuten noch (`PENDING`, `UNKNOWN` oder ein Eintrag in `statusCheckRollup` ohne Ergebnis) → „offen: Merge von PR #[n] (Prüfungen laufen noch); fortsetzen mit [befehl]“. Laufende Prüfungen sperren den Merge in jedem Lauf: Fortsetzen kommt über „offen“ wieder hierher und fragt neu ab.
 6. WAIT „[PR-Art] INT-JJJJ-NNN, PR #[n] ([Link]): mergen?"
    Nein → „offen: Merge von PR #[n]; fortsetzen mit [befehl]", Ende.
 7. RUN `gh pr merge [n] --merge`. Nie `--admin`, nie `--auto`. Ergebnis zeigen.
@@ -70,11 +72,20 @@ RULE: Ein Ja aus Schritt 6 gilt für genau diesen PR. Ein zweiter PR im selben L
 
 ## FZ-Fortsetzen — wo steht ein früherer Lauf?
 
-Vor FZ-Arbeitskopie bei jedem erneuten Aufruf:
+Vor FZ-Arbeitskopie bei jedem Aufruf. Eingabe ist ein Präfix `[präfix]` (z. B. `plan/INT-JJJJ-NNN`, `hand/INT-JJJJ-NNN-H-nn`, `abschluss/INT-JJJJ-NNN`), kein einzelner Zweig.
 
-1. RUN `gh pr list --head [zweig] --state all --json number,state,mergedAt,url` (neuester zuerst).
-   - neuester `MERGED` → dieser PR ist erledigt (auch wenn der Zweig danach gelöscht wurde); weiter mit dem nächsten Ablauf.
-   - neuester `OPEN` → FZ-PR ab Schritt 4 mit diesem PR.
-2. Nur `CLOSED` oder kein PR → `git ls-remote --heads origin [zweig]`:
-   - Zweig da → FZ-PR ab Schritt 2 (Frage „PR anlegen?").
-   - Zweig fehlt → neuer Zweig `[zweig]-r[n+1]` (n = höchste vorhandene Runde, sonst 0); FZ-Arbeitskopie, Änderung erneut anwenden, FZ-PR ab Schritt 1.
+**Zweigfamilie:** Ein Zweigname gehört genau dann dazu, wenn er dem Ausdruck `^[präfix](-r([1-9][0-9]*))?$` entspricht (Präfix wörtlich). Runde = Zahl nach `-r`, numerisch verglichen (`-r10` ist jünger als `-r9`); der Zweig ohne Anhängsel ist Runde 0. Andere Namen (`[präfix]9`, `[präfix]-r1x`, `[präfix]-r01`) gehören nicht dazu und werden übergangen. Konflikt-Versuche und Neuschnitte teilen diesen einen Nummernkreis; die Runde im Zweignamen ist kein Neuschnitt-Zähler.
+
+1. RUN `gh pr list --state all --search "head:[präfix]" --limit 100 --json number,state,headRefName,mergedAt,url` (GitHub filtert `head:` als Präfix), dann mit der Familienregel filtern. Genau 100 Einträge → STOP „PR-Liste abgeschnitten“, nicht raten.
+2. RUN `git ls-remote --heads origin "refs/heads/[präfix]*"`, dann mit derselben Regel filtern.
+3. Jüngstes Mitglied = Zweig mit der höchsten Runde aus beiden Quellen. Hat er mehrere PRs, zählt nur die höchste PR-Nummer.
+
+| Lage des jüngsten Mitglieds | Zustand | Weiter |
+|---|---|---|
+| höchste PR-Nummer `OPEN` | offen | FZ-PR ab Schritt 4 mit diesem PR |
+| höchste PR-Nummer `MERGED` | erledigt | nächster Ablauf (auch wenn der Zweig gelöscht ist) |
+| höchste PR-Nummer `CLOSED` | verworfen | nächster freier Zweig, FZ-Arbeitskopie, Änderung erneut anwenden, FZ-PR ab Schritt 1 — auch wenn der alte Zweig noch auf origin liegt |
+| kein PR, Zweig auf origin | hochgeladen | FZ-PR ab Schritt 2 („PR anlegen?“) |
+| Familie leer | neu | Zweig `[präfix]` |
+
+Rückgabe an den Aufrufer: Zustand, PR (falls vorhanden) und **nächster freier Zweig** `[präfix]-r[höchste Runde + 1]`.

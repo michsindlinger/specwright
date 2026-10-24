@@ -183,11 +183,11 @@ Fortsetzungsbefehl in allen offen-Sätzen: `/plan INT-JJJJ-NNN`.
 
 #### 10a Plan-PR
 
-Zweig `plan/INT-JJJJ-NNN` (beim Neuschnitt `plan/INT-JJJJ-NNN-r[n]`), Arbeitskopie `INT-JJJJ-NNN-plan`.
+Zweigfamilie `plan/INT-JJJJ-NNN` (Neuschnitte und Konflikt-Versuche als `-r[n]`, Nummer aus FZ-Fortsetzen), Arbeitskopie `INT-JJJJ-NNN-plan`.
 
-1. FZ-Fortsetzen (`factory-pr.md`) für den Zweig: neuester PR `MERGED` → weiter mit 10b; `OPEN` → FZ-PR ab Zustand; sonst weiter hier.
-2. `git cat-file -e origin/[b]:intent/INT-JJJJ-NNN-[kurzname]/cards.yaml` gelingt und der Lauf ist kein Neuschnitt (10c) → Plan liegt schon auf `[b]`; weiter mit 10b.
-3. FZ-Arbeitskopie `INT-JJJJ-NNN-plan`, Zweig wie oben, auf `origin/[b]`.
+1. FZ-Fortsetzen (`factory-pr.md`) für Präfix `plan/INT-JJJJ-NNN`: offen → FZ-PR ab Schritt 4, danach 10b; hochgeladen → FZ-PR ab Schritt 2, danach 10b; erledigt → Schritt 2; verworfen oder neu → Schritt 2.
+2. `git cat-file -e origin/[b]:intent/INT-JJJJ-NNN-[kurzname]/cards.yaml` gelingt → Plan liegt schon auf `[b]`; weiter mit 10b.
+3. FZ-Arbeitskopie `INT-JJJJ-NNN-plan` auf `origin/[b]`; Zweig = `plan/INT-JJJJ-NNN` bei Zustand neu, sonst der nächste freie Zweig aus Schritt 1.
 4. Planungs-Commit `[sha]` = letzter Commit mit `plan(INT-JJJJ-NNN):` im Sitzungszweig. Übernehmen: `git -C [pfad] checkout [sha] -- intent/INT-JJJJ-NNN-[kurzname]/`.
 5. Je Kennung `decisions[].adr` (`ADR-nnn`) aus `cards.yaml`: Datei im Entscheidungsordner (Feld `knowledge.decisions` der Projektdatei `factory.yaml` im Repo, ohne Feld `docs/decisions`), deren Name mit der Nummer beginnt (`ADR-nnn-…` oder `nnn-…`, führende Nullen egal). Liegt sie nicht auf `origin/[b]` (`git ls-tree --name-only origin/[b] [ordner]/`) → `git -C [pfad] checkout [sha] -- [datei]`. Fehlt sie auch im Planungs-Commit (nur vorgemerkt, nicht eingecheckt) → STOP mit Kennung und Ordner, vor dem Hochladen. Entscheidungsnotizen, die keine Karte nennt, gehen nicht mit.
 6. COMMIT in der Arbeitskopie `plan(INT-JJJJ-NNN): Plan zur Factory`.
@@ -214,8 +214,8 @@ Nur wenn die Vorschau Karten auslässt.
 1. Eingangsprüfung wie Step 9c Schritt 3, aber auf der Arbeitskopie im Stand `origin/[b]` (`[Worktree]` = `[pfad]`). Karten mit `ready: false` sind nicht ready; alle übrigen ausgelassenen warten (auf einen Handschritt oder eine Vorgänger-Karte).
 2. Wartende Karten: die Gründe stehen schon in der Ausgabe der Factory; Satz „[K-nn] kommt mit einem späteren Anlegen, sobald der Grund entfällt.“ Keine Wahl.
 3. Je nicht ready Karte: Zähler **Neuschnitt-Runden** aus `origin/[b]:intent/INT-JJJJ-NNN-[kurzname]/plan.md` §7 lesen (nach dem Plan-PR ist der Factory-Zweig der Arbeitsstand).
-   WAIT „[K-nn], von der Factory nicht angelegt (Gründe oben): neu schneiden (neuer Plan-PR) oder als Handschritt?“ — ab zwei Runden nur „als Handschritt“ anbieten.
-4. Änderung immer auf frischem `origin/[b]`, nie aus einer Kopie des Planungs-Zweigs, damit `done`-Vermerke erhalten bleiben: FZ-Holen, FZ-Arbeitskopie `INT-JJJJ-NNN-plan`, Zweig `plan/INT-JJJJ-NNN-r[Runden + 1]`.
+   WAIT „[K-nn], von der Factory nicht angelegt (Gründe oben): neu schneiden (neuer Plan-PR) oder als Handschritt?“ — ab zwei Runden nur „als Handschritt“ anbieten. Nur diese Zeile zählt Neuschnitte; die Runde im Zweignamen zählt auch Konflikt-Versuche und gilt hier nicht.
+4. Änderung immer auf frischem `origin/[b]`, nie aus einer Kopie des Planungs-Zweigs, damit `done`-Vermerke erhalten bleiben: FZ-Holen, FZ-Arbeitskopie `INT-JJJJ-NNN-plan`, Zweig = nächster freier Zweig der Familie `plan/INT-JJJJ-NNN` (FZ-Fortsetzen).
    - Neu schneiden: Karte in `cards.yaml` anpassen, Step 9c Schritte 3–5 in dieser Arbeitskopie.
    - Als Handschritt: Karte aus `cards.yaml` in `handSteps` überführen mit `reason: notReady` und den Gründen aus dem JSON als `reasonText`.
    - Beide: §7 nachziehen (Tabellen, **Neuschnitt-Runden** + 1). COMMIT `plan(INT-JJJJ-NNN): Karten neu geschnitten`.
