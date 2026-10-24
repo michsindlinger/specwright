@@ -2,7 +2,7 @@
 description: Technischer Plan im Plan Mode — Einheit der Ausführung, mit Zerlegung und Verbindungsnachweisen
 globs:
 alwaysApply: false
-version: 1.5
+version: 1.6
 encoding: UTF-8
 ---
 
@@ -19,6 +19,7 @@ Dritter Schritt des AI-native SDLC (Specwright v4). Erarbeitet lesend den techni
 - Produktionsdaten anfassen = manueller Schritt mit Freigabe je Umgebung, nie Teil der automatischen Umsetzung.
 - Datenhaltungs-Entscheidungen brauchen ein ADR, auch wenn die Änderung klein ist.
 - Hat das Zielprojekt eine Software Factory, schneidet der Plan die Arbeit in Karten für die Factory und Handschritte für Menschen (Step 9c). Was eine Karte „factory ready“ macht, sagt allein die Eingangsprüfung der Factory; Specwright schreibt keine ihrer Regeln ab (ADR-0008).
+- Ein geschnittener Plan endet nicht beim Commit: Step 10 bringt ihn per PR auf den Factory-Zweig und lässt die Factory die Karten anlegen, jeder Schritt mit eigener Bestätigung (INT-2026-035).
 
 <pre_flight_check>
   EXECUTE: specwright/workflows/meta/pre-flight.md
@@ -40,7 +41,8 @@ CLARIFY Software Factory des Zielprojekts (für Step 4 und 9c):
   - Umgebungsvariable `SPECWRIGHT_FACTORY_DIR` gesetzt, und `package.json` in diesem Ordner hat das Skript `ready-check`? Sonst: kein Schnitt.
   - Betriebsdatei der Factory für dieses Projekt: nennt die Person. Vorschlag: die Datei unter `~/.factory/*/factory.yaml`, deren `github.repo` zum `origin` des Projekts passt; die Person bestätigt. Keine passende Datei: kein Schnitt.
   - Kein Schnitt heißt: der Unterabschnitt „Karten für die Factory“ in §7 enthält nur den Satz „Kein Schnitt: [keine Software Factory eingerichtet | keine Betriebsdatei für dieses Projekt].“ Alles andere läuft wie ohne Factory.
-IF Aufruf mit `--karten` und `plan.md` hat `Status: freigegeben` (oder später): Modus „nachträglich schneiden“. Kein Plan Mode, keine Schritte 2–9b; weiter direkt bei Step 9c. Ohne Factory (siehe oben): STOP mit dem Satz „Kein Schnitt: …“.
+IF Aufruf mit `--karten` und `plan.md` hat `Status: freigegeben` (oder später): Modus „nachträglich schneiden“. Kein Plan Mode, keine Schritte 2–9b; weiter direkt bei Step 9c. Ohne Factory (siehe oben): STOP mit dem Satz „Kein Schnitt: …“. Trägt `origin/[Factory-Zweig]` die Kartendatei des Vorhabens schon (FZ-Holen, dann `git cat-file -e origin/[b]:intent/INT-JJJJ-NNN-[kurzname]/cards.yaml`) → STOP „Schon geschnitten und auf [b]; fortsetzen mit `/plan INT-JJJJ-NNN`, Neuschnitt über Step 10c.“
+IF Aufruf ohne `--karten`, `plan.md` hat `Status: freigegeben` (oder später), `cards.yaml` liegt im Vorhaben-Ordner und §7 enthält nicht „Kein Schnitt“: Wiederaufnahme. Kein Neuplanen; weiter direkt bei Step 10 (FZ-Fortsetzen).
 
 </step>
 
@@ -150,9 +152,10 @@ Nur mit geklärter Software Factory (Step 1); sonst steht im Unterabschnitt „K
    `npm --prefix "$SPECWRIGHT_FACTORY_DIR" run --silent ready-check -- "[Betriebsdatei]" "[Worktree]/intent/INT-JJJJ-NNN-[kurzname]/cards.yaml" --repo "[Worktree]" --json`
 4. Exit 2: Meldung von stderr in den Unterabschnitt, kein Schnitt, Rückfrage an die Person nach R2. Exit 0 oder 1: JSON von stdout lesen. Feld `format` ungleich `2` → STOP mit „Eingangsprüfung meldet unbekanntes Format [n]“; nicht raten.
 5. Je Karte mit `ready: false`: Karte neu schneiden (kleiner, andere Testebene, offene Frage klären), Datei anpassen, Schritt 3 wiederholen. Höchstens zwei Runden Neuschnitt je Plan. Danach wird die Arbeit der Karte ein Handschritt mit `reason: notReady` und den Gründen aus dem JSON als `reasonText`.
-6. WRITE Ergebnis in `plan.md`, §7 Unterabschnitt „Karten für die Factory“: Kartentabelle (Reihenfolge, Titel, Kriterien, Einstufung, Gründe, Hinweise aus `hints` und `codeTerms`), Handschritt-Tabelle (Kennung, was, wer, wann, Nachweis, Grund) und die Zeile Abdeckung mit den Zahlen aus `coverage` wörtlich: „[inReadyCards] von [criteria] Kriterien in ready Karten ([percent] %)“.
+6. WRITE Ergebnis in `plan.md`, §7 Unterabschnitt „Karten für die Factory“: Zeile **Factory-Zweig:** `[b]` (Feld `code.branch` der Betriebsdatei), Zeile **Neuschnitt-Runden:** [n] (Runden aus Schritt 5, beim Neuschnitt in Step 10c der Wert dort), Kartentabelle (Reihenfolge, Titel, Kriterien, Einstufung, Gründe, Hinweise aus `hints` und `codeTerms`), Handschritt-Tabelle (Kennung, was, wer, wann, Nachweis, Grund) und die Zeile Abdeckung mit den Zahlen aus `coverage` wörtlich: „[inReadyCards] von [criteria] Kriterien in ready Karten ([percent] %)“.
 
 JSON der Eingangsprüfung (`format: 2`): `cards[]` mit `id`, `title`, `ready`, `reasons[]` (`rule`, optional `criterion`, `text`), `hints[]`, `codeTerms[]`; `handSteps[]` mit `id`, einem von `before`/`after`/`afterIntent` und `done`; `coverage` mit `criteria`, `inReadyCards`, `percent`. Der Exit-Code hängt nur an den Karten.
+RULE: Beim Neuschreiben von §7 bleiben die Zeilen **Factory-Zweig:** und **Neuschnitt-Runden:** erhalten; der Zähler gilt über Sitzungen.
 RULE: Specwright schreibt keine Prüfregel der Factory ab und rechnet nichts nach. Was ready ist und wie hoch die Abdeckung ist, sagt nur das JSON (ADR-0008).
 RULE: Ein Handschritt vor einer Karte hält deren Anlegen am Board zurück, bis `done` gesetzt ist; das Board selbst kennt keine Handschritte.
 
@@ -164,7 +167,63 @@ ON Änderungswunsch: `plan.md` anpassen, erneut vorlegen. Bleibt `Status: entwur
 ON Freigabe: `Status: freigegeben`, Freigabe Rolle + Datum, `intent.md` `bezuege.plan: "plan.md"`, COMMIT `plan(INT-JJJJ-NNN): Plan freigegeben` (mit `cards.yaml`, falls geschnitten).
 IF Modus `--karten`: Status des Plans bleibt; nach Bestätigung der Person COMMIT `plan(INT-JJJJ-NNN): Karten geschnitten` mit `plan.md` und `cards.yaml`.
 
-NEXT: `/build INT-JJJJ-NNN`
+IF `cards.yaml` geschrieben und §7 enthält nicht „Kein Schnitt“: weiter mit Step 10.
+NEXT (ohne Schnitt): `/build INT-JJJJ-NNN`
+
+</step>
+
+<step number="10" name="zur_factory">
+
+### Step 10: Zur Factory bringen
+
+Nur bei geschnittenem Plan (`cards.yaml` im Vorhaben-Ordner, §7 ohne „Kein Schnitt“); sonst entfällt dieser Schritt und alles läuft wie bisher. Erreicht nach dem Commit aus 9b (auch im Modus `--karten`) oder per Wiederaufnahme (Step 1).
+
+EXECUTE: specwright/workflows/meta/factory-pr.md — Bausteine FZ-Klären und FZ-Holen; Factory-Zweig `[b]`, Betriebsdatei `[Betriebsdatei]`.
+Fortsetzungsbefehl in allen offen-Sätzen: `/plan INT-JJJJ-NNN`.
+
+#### 10a Plan-PR
+
+Zweigfamilie `plan/INT-JJJJ-NNN` (Neuschnitte und Konflikt-Versuche als `-r[n]`, Nummer aus FZ-Fortsetzen), Arbeitskopie `INT-JJJJ-NNN-plan`.
+
+1. FZ-Fortsetzen (`factory-pr.md`) für Präfix `plan/INT-JJJJ-NNN`: offen → FZ-PR ab Schritt 4, danach 10b; hochgeladen → FZ-PR ab Schritt 2, danach 10b; erledigt → Schritt 2; verworfen oder neu → Schritt 2.
+2. `git cat-file -e origin/[b]:intent/INT-JJJJ-NNN-[kurzname]/cards.yaml` gelingt → Plan liegt schon auf `[b]`; weiter mit 10b.
+3. FZ-Arbeitskopie `INT-JJJJ-NNN-plan` auf `origin/[b]`; Zweig = `plan/INT-JJJJ-NNN` bei Zustand neu, sonst der nächste freie Zweig aus Schritt 1.
+4. Planungs-Commit `[sha]` = letzter Commit mit `plan(INT-JJJJ-NNN):` im Sitzungszweig. Übernehmen: `git -C [pfad] checkout [sha] -- intent/INT-JJJJ-NNN-[kurzname]/`.
+5. Je Kennung `decisions[].adr` (`ADR-nnn`) aus `cards.yaml`: Datei im Entscheidungsordner (Feld `knowledge.decisions` der Projektdatei `factory.yaml` im Repo, ohne Feld `docs/decisions`), deren Name mit der Nummer beginnt (`ADR-nnn-…` oder `nnn-…`, führende Nullen egal). Liegt sie nicht auf `origin/[b]` (`git ls-tree --name-only origin/[b] [ordner]/`) → `git -C [pfad] checkout [sha] -- [datei]`. Fehlt sie auch im Planungs-Commit (nur vorgemerkt, nicht eingecheckt) → STOP mit Kennung und Ordner, vor dem Hochladen. Entscheidungsnotizen, die keine Karte nennt, gehen nicht mit.
+6. COMMIT in der Arbeitskopie `plan(INT-JJJJ-NNN): Plan zur Factory`.
+7. FZ-PR (PR-Art „Plan-PR“, Titel `plan(INT-JJJJ-NNN): Plan zur Factory`). Nicht gemergt → Ende.
+8. Am Ende des Laufs (gemergt, abgelehnt oder Fehler): `git worktree remove ../[projekt]-worktrees/INT-JJJJ-NNN-plan`, wenn sauber. Ein späterer Lauf baut sie aus dem entfernten Stand neu.
+
+#### 10b Karten anlegen
+
+1. FZ-Holen. Arbeitskopie für die Factory: die Plan-Arbeitskopie, sonst FZ-Arbeitskopie `INT-JJJJ-NNN-plan`; darin `git -C [pfad] switch --detach origin/[b]`.
+2. Vorschau mit absoluten Pfaden:
+   `npm --prefix "$SPECWRIGHT_FACTORY_DIR" run --silent create-cards -- "[Betriebsdatei]" INT-JJJJ-NNN --repo "[pfad]"`
+   Ausgabe unverändert zeigen (anzulegen, bestehen schon, ausgelassen mit Gründen). Nicht parsen, nicht umformulieren.
+3. Exit 2 → Meldung der Factory zeigen, Ende (Eingabe oder Board nicht nutzbar).
+4. Meldet die Vorschau nichts anzulegen → Satz „Alle anlegbaren Karten stehen am Board.“, keine Frage; weiter mit 10c.
+5. WAIT „Plan INT-JJJJ-NNN: diese [n] Karten am Board anlegen?“
+   Nein → „offen: Karten anlegen; fortsetzen mit `/plan INT-JJJJ-NNN`“, Ende.
+6. Gleicher Aufruf mit `--apply`; Ergebnis unverändert zeigen.
+7. Am Ende von 10b (und 10c): Arbeitskopie `INT-JJJJ-NNN-plan` entfernen wie 10a Schritt 8, auch wenn 10b aus `/build` gestartet wurde.
+
+#### 10c Ausgelassene Karten
+
+Nur wenn die Vorschau Karten auslässt.
+
+1. Eingangsprüfung wie Step 9c Schritt 3, aber auf der Arbeitskopie im Stand `origin/[b]` (`[Worktree]` = `[pfad]`). Karten mit `ready: false` sind nicht ready; alle übrigen ausgelassenen warten (auf einen Handschritt oder eine Vorgänger-Karte).
+2. Wartende Karten: die Gründe stehen schon in der Ausgabe der Factory; Satz „[K-nn] kommt mit einem späteren Anlegen, sobald der Grund entfällt.“ Keine Wahl.
+3. Je nicht ready Karte: Zähler **Neuschnitt-Runden** aus `origin/[b]:intent/INT-JJJJ-NNN-[kurzname]/plan.md` §7 lesen (nach dem Plan-PR ist der Factory-Zweig der Arbeitsstand).
+   WAIT „[K-nn], von der Factory nicht angelegt (Gründe oben): neu schneiden (neuer Plan-PR) oder als Handschritt?“ — ab zwei Runden nur „als Handschritt“ anbieten. Nur diese Zeile zählt Neuschnitte; die Runde im Zweignamen zählt auch Konflikt-Versuche und gilt hier nicht.
+4. Änderung immer auf frischem `origin/[b]`, nie aus einer Kopie des Planungs-Zweigs, damit `done`-Vermerke erhalten bleiben: FZ-Holen, FZ-Arbeitskopie `INT-JJJJ-NNN-plan`, Zweig = nächster freier Zweig der Familie `plan/INT-JJJJ-NNN` (FZ-Fortsetzen).
+   - Neu schneiden: Karte in `cards.yaml` anpassen, Step 9c Schritte 3–5 in dieser Arbeitskopie.
+   - Als Handschritt: Karte aus `cards.yaml` in `handSteps` überführen mit `reason: notReady` und den Gründen aus dem JSON als `reasonText`.
+   - Beide: §7 nachziehen (Tabellen, **Neuschnitt-Runden** + 1). COMMIT `plan(INT-JJJJ-NNN): Karten neu geschnitten`.
+5. FZ-PR (PR-Art „Plan-PR, Neuschnitt“), danach 10b.
+
+RULE: Specwright wertet die Texte der Factory nicht aus; nicht ready ist allein `ready: false` aus der Eingangsprüfung (ADR-0008).
+
+NEXT: Handschritte mit `/build INT-JJJJ-NNN`; Karten baut die Factory.
 
 </step>
 

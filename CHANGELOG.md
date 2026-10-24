@@ -2,6 +2,15 @@
 
 Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
 
+## 4.5.0 - 2026-10-24
+
+### Neu
+
+- **Workflow `plan` 1.6 bringt einen geschnittenen Plan zur Factory** (Step 10, INT-2026-035, ADR-0008 Nachtrag 1). Nach Freigabe oder `--karten`: Plan-PR auf den Factory-Zweig (eigener Zweig vom frisch geholten entfernten Stand, nur Vorhaben-Ordner und die Entscheidungsnotizen, die eine Karte nennt), dann Karten anlegen über `create-cards` der Factory mit Vorschau. Hochladen, PR, Merge und Anlegen je mit eigener Bestätigung. Nicht ready ausgelassene Karten (laut `ready-check`) → neu schneiden oder Handschritt, je über einen neuen Plan-PR; wartende Karten kommen mit einem späteren Anlegen. §7 trägt die Zeilen **Factory-Zweig** und **Neuschnitt-Runden**. Erneutes `/plan INT-…` setzt an der offenen Stelle fort.
+- **Workflow `build` 1.4 führt bei geschnittenem Plan durch die Handschritte** statt den Plan zu bauen: Überblick mit Stand vom Factory-Zweig, Handschritt mit oder ohne Code in eigener Arbeitskopie (`hand/INT-…-H-nn`) mit PR, der `done` setzt; nach einem Handschritt vor einer Karte das Angebot, die Karten anzulegen; am Ende Abschluss-PR nach Rückfrage. Karten baut die Factory.
+- **Gemeinsame Anleitung** `specwright/workflows/meta/factory-pr.md` (Factory-Zweig klären, frisch holen, Arbeitskopie, Push/PR/Merge mit Bestätigung, Merge-Sperre für das Specwright-Repo, Fortsetzen über die Zweigfamilie: `-r[n]` für Neuschnitt und Konflikt-Versuch in einem Nummernkreis; laufende Prüfungen sperren den Merge).
+- Ohne `cards.yaml` laufen `/plan` und `/build` wie bisher.
+
 ## 4.4.0 - 2026-10-23
 
 ### Format

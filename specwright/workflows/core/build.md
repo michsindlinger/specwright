@@ -2,7 +2,7 @@
 description: Freigegebenen Plan in einer Sitzung umsetzen — Verify, Nachweise, DoD, PR
 globs:
 alwaysApply: false
-version: 1.3
+version: 1.4
 encoding: UTF-8
 ---
 
@@ -10,13 +10,14 @@ encoding: UTF-8
 
 ## Overview
 
-Vierter Schritt des AI-native SDLC (Specwright v4). Setzt `plan.md` in **einer Sitzung** um. Kein Story-Schnitt, keine frischen Sitzungen je Aufgabe: Der Kontext des Plans bleibt bis zum PR erhalten. „Eine Sitzung" ist ein Arbeitszusammenhang, kein Chatfenster ohne Ende: Läuft der Kontext auf ~200k, wird der Stand in `plan.md` §14 und `build-stand.md` gesichert und in einer neuen Sitzung mit `/build` fortgesetzt (Step 1, Step 3). Board und Fahrplan gehören nicht in diese Sitzung (Step 6). Bei Zerlegung (Plan §7 Variante B) laufen Teile in Worktrees, die Integration läuft **hier**.
+Vierter Schritt des AI-native SDLC (Specwright v4). Setzt `plan.md` in **einer Sitzung** um. Kein Story-Schnitt, keine frischen Sitzungen je Aufgabe: Der Kontext des Plans bleibt bis zum PR erhalten. „Eine Sitzung" ist ein Arbeitszusammenhang, kein Chatfenster ohne Ende: Läuft der Kontext auf ~200k, wird der Stand in `plan.md` §14 und `build-stand.md` gesichert und in einer neuen Sitzung mit `/build` fortgesetzt (Step 1, Step 3). Board und Fahrplan gehören nicht in diese Sitzung (Step 6). Bei Zerlegung (Plan §7 Variante B) laufen Teile in Worktrees, die Integration läuft **hier**. Ist der Plan für eine Software Factory geschnitten (`cards.yaml` im Vorhaben-Ordner), baut `/build` nicht den Plan, sondern führt durch die Handschritte (Step 1b–1g, INT-2026-035).
 
 **Grundsätze:**
 - Reihenfolge §6 ist verbindlich; jeder Schritt endet mit dem dort genannten prüfbaren Zustand.
 - Abweichung vom Plan → sofort §14, nicht am Ende aus dem Gedächtnis.
 - Schlägt ein Test fehl: Code reparieren, nicht den Test, nicht die Bezugsliste (Hook `protect-tests`).
 - Fertig heißt: Definition of Done §13 komplett, nicht „Code geschrieben".
+- Karten baut die Factory. Bei geschnittenem Plan baut `/build` weder den Plan als Ganzes noch die Arbeit einer Karte; eine Bitte darum wird mit „Karten baut die Factory“ abgelehnt.
 - Kosten = Runden × Kontext. Jede Runde zahlt den ganzen bisherigen Kontext. Deshalb: Kontextdeckel (Step 3) und keine Board-, Fahrplan- oder Vault-Pflege am Ende der Bausitzung (Step 6). Gemessen 15.09.2026: 30–35 % der Tokens eines Builds gingen in Board-Runden auf vollem Kontext.
 
 <pre_flight_check>
@@ -32,6 +33,7 @@ Vierter Schritt des AI-native SDLC (Specwright v4). Setzt `plan.md` in **einer S
 
 REQUIRE `INT-JJJJ-NNN`; `plan.md` mit `Status: freigegeben` → sonst STOP „Erst /plan abschließen."
 READ `plan.md` vollständig, `CLAUDE.md` (Verify-Befehl, Konventionen, Hooks, „Nie").
+IF `intent/INT-JJJJ-NNN-*/cards.yaml` existiert und `plan.md` §7 „Karten für die Factory“ enthält nicht „Kein Schnitt“: geschnittener Plan → weiter mit Step 1b; GIT, Status `in_umsetzung` und Steps 2–6 entfallen. Sonst wie folgt.
 GIT: von der aktuellen Basis `git checkout -b feat/INT-JJJJ-NNN-kurzname` (oder Worktree laut Projektkonvention).
 IF Plan §8 nennt einen Bugfix-Anteil: `touch .claude/fix-mode` — Testdateien sind ab jetzt gesperrt; fehlschlagender Test kommt VOR dem Marker.
 SET `plan.md` `Status: in_umsetzung`.
@@ -39,6 +41,65 @@ SET `plan.md` `Status: in_umsetzung`.
 IF `plan.md` steht bereits auf `Status: in_umsetzung` (Wiederaufnahme nach Kontextdeckel oder Abbruch):
   - READ `intent/INT-JJJJ-NNN-*/build-stand.md` und `plan.md` §14; `git checkout feat/INT-JJJJ-NNN-kurzname` (kein zweiter Branch)
   - weiter beim ersten offenen Schritt in §6; `build-stand.md` bleibt bis zum PR liegen und wird bei jedem Stopp fortgeschrieben
+
+</step>
+
+<step number="1b" name="handschritte">
+
+### Step 1b: Geschnittener Plan — Überblick der Handschritte
+
+EXECUTE: specwright/workflows/meta/factory-pr.md — Bausteine FZ-Klären und FZ-Holen; Factory-Zweig `[b]`. Fortsetzungsbefehl in allen offen-Sätzen: `/build INT-JJJJ-NNN`.
+
+1. `git cat-file -e origin/[b]:intent/INT-JJJJ-NNN-[kurzname]/cards.yaml` schlägt fehl → „Plan liegt noch nicht auf [b]; fortsetzen mit `/plan INT-JJJJ-NNN`.“ Ende.
+2. Gültig ist nur der Stand auf dem Factory-Zweig: `git show origin/[b]:intent/INT-JJJJ-NNN-[kurzname]/cards.yaml` lesen (nie die lokale Datei).
+3. Je Handschritt eine Zeile `H-nn · was · wer · Stand`:
+   - `done` gesetzt → „erledigt am [done]“
+   - `when: { before: K-nn }` oder `afterIntent` → „frei“
+   - `when: { after: K-nn }` → „wartet auf K-nn“
+4. Alle erledigt → weiter mit Step 1g. Kein Handschritt frei oder wartend-wählbar → Satz mit den Karten, auf die gewartet wird; Ende.
+5. WAIT „Welchen Handschritt jetzt, und mit Code (Dateien ändern) oder ohne Code (nur als erledigt melden)?“
+6. Gewählt ist unbekannt oder schon erledigt → Abbruch mit Grund, nichts ändern.
+7. Gewählt wartet auf K-nn → WAIT „K-nn, Voraussetzung für H-nn: Welcher PR hat K-nn umgesetzt? (Nummer steht an der Karte am Board)“
+   RUN `gh pr view [n] --json state,baseRefName,mergedAt,title,url`; Titel und Link zur Kontrolle zeigen. `state` ≠ `MERGED` oder `baseRefName` ≠ `[b]` → Abbruch mit Grund, nichts ändern. Sonst gilt der Handschritt als frei; die Nummer kommt in die Commit-Nachricht (`K-nn: PR #[n]`).
+8. Bitte, eine Karte zu bauen → „Karten baut die Factory.“ Kein Bau.
+
+### Step 1c: Arbeitskopie
+
+Zweigfamilie `hand/INT-JJJJ-NNN-H-nn` auf `origin/[b]`.
+
+1. FZ-Fortsetzen (`factory-pr.md`) für Präfix `hand/INT-JJJJ-NNN-H-nn`: erledigt → weiter mit Step 1f; offen → FZ-PR ab Schritt 4; hochgeladen → FZ-PR ab Schritt 2; verworfen oder neu → Zweig `[zweig]` = `hand/INT-JJJJ-NNN-H-nn` bei neu, sonst der nächste freie Zweig; weiter mit 2.
+2. Läuft die Sitzung schon in einer eigenen Arbeitskopie (`git rev-parse --git-dir` ≠ `git rev-parse --git-common-dir`): `git status --porcelain` muss leer sein, sonst Abbruch mit Grund, nichts ändern. Dann `git switch -c [zweig] origin/[b]`; keine zweite Arbeitskopie.
+3. Sonst FZ-Arbeitskopie (`factory-pr.md`) mit Name `INT-JJJJ-NNN-H-nn` und Zweig `[zweig]`. Der Hauptcheckout bleibt unberührt.
+
+### Step 1d: Handschritt mit Code
+
+1. Arbeit nach `what` umsetzen, in der Arbeitskopie. Verify-Befehl aus `CLAUDE.md` des Projekts → grün.
+2. In `intent/INT-JJJJ-NNN-[kurzname]/cards.yaml` beim Handschritt `done: JJJJ-MM-TT` (Tagesdatum) setzen; sonst nichts an der Datei ändern.
+3. COMMIT(s) `feat|chore(INT-JJJJ-NNN): H-nn [was]`, bei 1b Schritt 7 mit Zeile `K-nn: PR #[n]`.
+4. FZ-PR (PR-Art „Handschritt H-nn“, Titel wie der Commit). Weiter mit Step 1f.
+
+### Step 1e: Handschritt ohne Code
+
+1. Nachweis (`proof`) nicht genannt → WAIT „H-nn, [was]: Was ist der Nachweis ([proof])?“
+2. Nur `done: JJJJ-MM-TT` beim Handschritt setzen.
+3. COMMIT `chore(INT-JJJJ-NNN): H-nn erledigt` mit Zeile `Nachweis: [Nachweis]` (bei 1b Schritt 7 dazu `K-nn: PR #[n]`).
+4. FZ-PR (PR-Art „Handschritt H-nn“). Weiter mit Step 1f.
+
+### Step 1f: Nach dem Merge
+
+1. Nicht gemergt → Ende (offen-Satz aus FZ-PR).
+2. Stand `when: { before: K-nn }` → WAIT „H-nn erledigt, K-nn wartete darauf: Karten jetzt anlegen (`/plan` Step 10b)?“ Ja → `plan` Step 10b ausführen (`specwright/workflows/core/plan.md`), Betriebsdatei und Factory-Zweig von hier.
+3. Pfad der Arbeitskopie und Befehl `git worktree remove [pfad]` nennen; Aufräumen macht der Lauf nicht.
+4. Weiter mit Step 1g.
+
+### Step 1g: Abschluss
+
+1. FZ-Holen. `origin/[b]:intent/INT-JJJJ-NNN-[kurzname]/intent.md` trägt schon `status: "umgesetzt"` → „Vorhaben ist schon umgesetzt.“ Ende.
+2. Nicht alle Handschritte auf `origin/[b]` erledigt → Überblick aus 1b zeigen; Ende.
+3. Je Karte aus `cards.yaml`: PR-Nummer erfragen und prüfen wie 1b Schritt 7. Einer nicht gemergt → Abbruch mit Grund.
+4. WAIT „Alle Karten gemergt (#…), alle Handschritte erledigt. Ist das Vorhaben INT-JJJJ-NNN umgesetzt?“ Nein → nichts ändern, Ende.
+5. Ja → FZ-Fortsetzen für Präfix `abschluss/INT-JJJJ-NNN` (gleiche Verzweigung wie 1c; ein Konflikt am Abschluss-PR führt so zu `abschluss/INT-JJJJ-NNN-r1`), dann Arbeitskopie wie 1c Schritte 2–3 mit Name `INT-JJJJ-NNN-abschluss` und dem zurückgegebenen Zweig. Darin: `intent.md`-Kopf `status: "umgesetzt"`, nächste PATCH-Version, `geaendert` = Tagesdatum, eine Zeile im Änderungsprotokoll nach Vorlage; `plan.md` `Status: umgesetzt`. COMMIT `chore(INT-JJJJ-NNN): Vorhaben umgesetzt` mit den Zeilen `K-nn: PR #[n]`.
+6. FZ-PR (PR-Art „Abschluss-PR“).
 
 </step>
 
