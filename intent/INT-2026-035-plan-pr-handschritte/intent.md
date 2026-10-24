@@ -2,8 +2,8 @@
 intent_id: "INT-2026-035"  
 format: "2.1"  
 titel: "Plan-PR, Karten anlegen und Handschritte nach dem Factory-Schnitt"  
-status: "angenommen"  
-version: "1.1.0"  
+status: "umgesetzt"  
+version: "1.1.1"  
 freigabe:  
   von: "Michael (Produktverantwortung)"  
   am: "2026-10-24"  
@@ -200,5 +200,6 @@ Seit INT-2026-034 (PR #109) schneidet `/plan` Karten und Handschritte, endet abe
 | Version | Datum | Änderung | IDs | Freigabe |
 |---|---|---|---|---|
 | 1.1.0 | 2026-10-24 | AK-02 erweitert: Plan-PR darf neue Entscheidungsnotizen enthalten, die eine Karte nennt (sonst lässt die Factory die Karte aus, Regel EP-07); Spec-Annahme AN-S01, bestätigt mit der Spec-Freigabe | AK-02 | Michael (Produktverantwortung), 2026-10-24 |
+| 1.1.1 | 2026-10-24 | Umgesetzt: Bau-PR #111 nach `main` gemergt (241ff7e, CI grün). Alle AK/FA im E2E am Probe-Projekt belegt (`e2e-protokoll.md`), Review-Befunde 1–4 behoben (1, 2 in #111; 3 im Abschluss-PR, 4 mit dem Fix-Commit). Abweichungen in `plan.md` §14. Abschluss ohne UI-Knopf, im Auftrag von Michael | — | Michael (Produktverantwortung), Auftrag im Chat |
 | 1.0.0 | 2026-10-24 | Freigabe; OF-01 und OF-02 nach Vorschlag entschieden. Abgleich Mensch/Agent: ohne Befund (Z-01 bis Z-04 je durch AK gedeckt, Endzustand nennt AK-01 bis AK-12, RB-04 deckt die Einschränkung von INT-2026-024 durch AK-11) | OF-01, OF-02 | Michael (Produktverantwortung), 2026-10-24 |
 | 0.1.0 | 2026-10-24 | Entwurf aus Briefing D2–D8 und Rückfragen (umgesetzt per `/build` nach Bestätigung, UI-Abgleich Nicht-Ziel, mittel/M, Merge-Regel für alle PRs) | alle | — |

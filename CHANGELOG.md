@@ -2,6 +2,12 @@
 
 Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
 
+## 4.5.1 - 2026-10-24
+
+### Behoben
+
+- **Workflow `build` Step 1b:** Sind nur noch Handschritte offen, die auf eine Karte warten, endet `/build` nicht mehr mit „nichts zu tun“. Die Wahl wird angeboten, und die Freigabe läuft über die PR-Nummer der Karte. Vorher konnte ein Vorhaben kurz vor dem Abschluss hängen bleiben (Review zu INT-2026-035).
+
 ## 4.5.0 - 2026-10-24
 
 ### Neu
