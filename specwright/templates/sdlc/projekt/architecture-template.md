@@ -86,7 +86,7 @@ flowchart LR
 
 ## 10. Bekannte Abweichungen (Ist ≠ Soll)
 
-<!-- Ehrliche Liste. Jede mit Board-Karte oder intent.md. Ohne Karte darf hier nichts stehen. -->
+<!-- Ehrliche Liste. Jede mit Tracker-Eintrag oder intent.md. Ohne Eintrag darf hier nichts stehen. -->
 
 | Abweichung | Regel | Seit | Karte / Intent | Plan |
 |---|---|---|---|---|

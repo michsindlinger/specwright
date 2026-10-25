@@ -5,7 +5,7 @@
 > **Gilt für:** jede `intent.md` (Feld `bezuege.product`), jede Spec (Bedenken-Prüfung), Plan Mode
 
 <!-- Eine Seite. Das Dokument beantwortet: Für wen ist das Produkt, welches Problem löst es, was macht es anders, was gehört nicht dazu.
-     Roadmap, Meilensteine, Backlog gehören NICHT hierher (Board). Technik gehört nach architecture.md. -->
+     Roadmap, Meilensteine, Backlog gehören NICHT hierher (Tracker). Technik gehört nach architecture.md. -->
 
 ## 1. In einem Satz
 

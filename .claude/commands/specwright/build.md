@@ -15,6 +15,6 @@ Refer to the instructions located in specwright/workflows/core/build.md
 - 2x-Regel-Check → Vorschlag im PR: zuerst Hook/Lint/Test, sonst Regel in `docs/architecture.md`, `CLAUDE.md` nur wenn nicht aus dem Code ablesbar und für jede Aufgabe gültig; Auto-Memory für projektübergreifende Lehren
 - Kontextdeckel ~200k: Stand in §14 + `build-stand.md`, WIP-Commit, STOP — Fortsetzen in neuer Sitzung mit `/build INT-JJJJ-NNN`
 - PR über Skill/Agent `git-workflow`; `plan.md` auf `umgesetzt`; `intent.md` bleibt `angenommen` — der Abschluss nach dem Merge ist der Knopf „Abschließen" auf der Vorhaben-Seite der Web-UI (INT-2026-024), nicht die Sitzung; ohne Web-UI Kopf von Hand (Status, PATCH-Version, Datum, Protokollzeile)
-- Board und Fahrplan **nicht in dieser Sitzung**: Abschlussbericht endet mit dem Block „Für das Board"; Nachziehen in eigener kurzer Sitzung nach `/clear`
+- Tracker, Board und Fahrplan **nicht in dieser Sitzung**: Abschlussbericht endet mit dem Block „Für das Board" (Projekt · Tracker-Eintrag · Zielstatus · Beleg · Stand · Verweis auf `intent/`; Board nur bei Internem); Nachziehen in eigener kurzer Sitzung nach `/clear`, Tracker zuerst
 
 **Nächster Schritt:** Review und Merge durch den Menschen; manuelle Schritte aus §10
