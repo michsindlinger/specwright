@@ -18,7 +18,7 @@ Vierter Schritt des AI-native SDLC (Specwright v4). Setzt `plan.md` in **einer S
 - Schlägt ein Test fehl: Code reparieren, nicht den Test, nicht die Bezugsliste (Hook `protect-tests`).
 - Fertig heißt: Definition of Done §13 komplett, nicht „Code geschrieben".
 - Karten baut die Factory. Bei geschnittenem Plan baut `/build` weder den Plan als Ganzes noch die Arbeit einer Karte; eine Bitte darum wird mit „Karten baut die Factory“ abgelehnt.
-- Kosten = Runden × Kontext. Jede Runde zahlt den ganzen bisherigen Kontext. Deshalb: Kontextdeckel (Step 3) und keine Board-, Fahrplan- oder Vault-Pflege am Ende der Bausitzung (Step 6). Gemessen 15.09.2026: 30–35 % der Tokens eines Builds gingen in Board-Runden auf vollem Kontext.
+- Kosten = Runden × Kontext. Jede Runde zahlt den ganzen bisherigen Kontext. Deshalb: Kontextdeckel (Step 3) und keine Tracker-, Board-, Fahrplan- oder Vault-Pflege am Ende der Bausitzung (Step 6). Gemessen 15.09.2026: 30–35 % der Tokens eines Builds gingen in Board-Runden auf vollem Kontext.
 
 <pre_flight_check>
   EXECUTE: specwright/workflows/meta/pre-flight.md
@@ -170,7 +170,7 @@ PR über Agent `git-workflow`: Titel mit Intent-ID; Body: Kurzfassung aus `plan.
 SET `plan.md` `Status: umgesetzt` (Merge steht aus); `intent.md` bleibt `angenommen`. Der Abschluss nach dem Merge ist ein Klick auf „Abschließen" auf der Vorhaben-Seite der Web-UI (INT-2026-024) — die Sitzung schreibt ihn nicht. Ohne Web-UI: Kopf von Hand — `status: "umgesetzt"`, nächste PATCH-Version, `geaendert` = Tagesdatum, eine Zeile im Änderungsprotokoll nach Vorlage; kein Skript, kein Befehl (NZ-01).
 REMOVE `build-stand.md`, falls vorhanden (der PR ist jetzt der Stand).
 RULE: Abschlussbericht nach R3 (`specwright/workflows/meta/leser-und-rueckfragen.md`): plan §1 Kurzfassung, offene §10, §14 Abweichungen, Nachweise als Verweis auf PR und Dateien; Verify-Ausgabe und Nachweis-Befehle stehen im PR, nicht im Chat.
-BOARD und FAHRPLAN: **nicht in dieser Sitzung.** Der Abschlussbericht endet mit dem Block „Für das Board": Projekt, Karte (Titel oder „neu"), Zielspalte, Beleg (PR-Link), Stand-Zeile, Verweis auf `intent/INT-JJJJ-NNN-*/`, bei Kreis Lippe die Fahrplan-Station. Das Nachziehen läuft danach in einer eigenen kurzen Sitzung nach `/clear` (Skill `obsidian-po-board`; bei Kreis Lippe danach `fahrplan-sync`) mit diesem Block als Input.
+TRACKER, BOARD und FAHRPLAN: **nicht in dieser Sitzung.** Technischer Arbeitsstand gehört in den Tracker des Projekts (Zeile `Tracker:` in der Projekt-`CLAUDE.md`: GitHub Issues oder Trello); das Obsidian-Board trägt nur Internes. Bei geschnittenem Plan stehen die Karten schon im Tracker (angelegt in `plan` Step 10b über `create-cards`); der Block verweist darauf. Der Abschlussbericht endet mit dem Block „Für das Board" in dieser Reihenfolge: Projekt · Tracker-Eintrag (`repo#nr` oder Trello-Karte, oder „neu") · Zielstatus · Beleg (PR, Commit, `datei:zeile`) · Stand-Zeile · Verweis auf `intent/INT-JJJJ-NNN-*/` · nur wenn es Internes gibt: Board-Karte und Spalte · bei Kreis Lippe: Vorhaben-Karte und Fahrplan-Station. Das Nachziehen läuft danach in einer eigenen kurzen Sitzung nach `/clear` mit diesem Block als Input: Tracker zuerst; Skill `obsidian-po-board` nur für Internes und die grobe Vorhaben-Karte; bei Kreis Lippe danach `fahrplan-sync`.
 
 NEXT: Review und Merge durch den Menschen; manuelle Schritte §10 mit Freigaben; danach Betrieb (Befunde werden neue `intent.md`).
 

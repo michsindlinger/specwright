@@ -40,7 +40,8 @@ Specwright ist das Framework für den AI-native SDLC: Befehle, Workflows, Vorlag
 - Vorhaben laufen als `intent/INT-JJJJ-NNN-kurzname/`: `/intent` → `/spec` → `/plan` → `/build` → PR. Vorlagen: `specwright/templates/sdlc/`. **Bypass:** Bugfix oder unter 1 Tag → `intent.md` (Kern) direkt zu `plan.md`.
 - `plan.md` entsteht im Plan Mode und wird vor dem ersten Code committet. Eine Sitzung setzt den ganzen Plan um; Zerlegung nur laut Plan §7, Integration in der Hauptsitzung.
 - Verschiebt ein Plan eine Architekturgrenze (AR-nn): `docs/architecture.md` in derselben PR.
-- Board `25-Sindlinger-Business-Solutions/Projekte/Specwright/Specwright — Backlog Board.md` (Vault): Karte verweist auf den `intent/`-Ordner; Stand dort nachziehen (Skill `obsidian-po-board`).
+- Tracker: GitHub Issues `michsindlinger/specwright` — **öffentlich**, nur Text, den jeder lesen darf.
+- Internes: Board `25-Sindlinger-Business-Solutions/Projekte/Specwright/Specwright — Backlog Board.md` (Vault, Regel im globalen CLAUDE.md; Skill `obsidian-po-board`).
 - Der lokale Checkout `main` gehört Michael (kann ungestaged sein): Vorhaben in Worktrees unter `../specwright-worktrees/`, Merge nur per PR.
 
 ## Konventionen
@@ -54,7 +55,7 @@ Specwright ist das Framework für den AI-native SDLC: Befehle, Workflows, Vorlag
 
 ## Definition of Done
 
-`verify: OK` und Ausgabe im PR · PR-Check grün (CI ist die Wahrheit; Bezugsliste nie nach lokalem Lauf kürzen) · jedes AK/FA hat einen Test · Verbindungen aus `plan.md` §5 nachgewiesen · E2E-Pfad läuft · bei UI: Screenshot neben Mock · `architecture.md` aktuell · Abweichungen in `plan.md` §14 · 2x-Regel geprüft · Board nachgezogen.
+`verify: OK` und Ausgabe im PR · PR-Check grün (CI ist die Wahrheit; Bezugsliste nie nach lokalem Lauf kürzen) · jedes AK/FA hat einen Test · Verbindungen aus `plan.md` §5 nachgewiesen · E2E-Pfad läuft · bei UI: Screenshot neben Mock · `architecture.md` aktuell · Abweichungen in `plan.md` §14 · 2x-Regel geprüft · Tracker nachgezogen (Board nur bei Internem).
 Schlägt ein Test fehl: Code reparieren, nicht den Test, nicht die Bezugsliste.
 
 ## Fehler, die Claude hier schon zweimal gemacht hat

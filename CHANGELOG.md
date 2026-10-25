@@ -2,6 +2,16 @@
 
 Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
 
+## 4.6.0 - 2026-10-25
+
+### Format
+
+- **Format 2.2** (Nebennummer, INT-2026-036): `intent-template.md` bekommt das optionale Kopffeld `bezuege.tracker` (`repo#nr` oder Trello-Karte). Alte Leser können es ignorieren. `spec-template.md`, `plan-template.md`: nur die Nummer (`> **Format:** 2.2`). Dateien mit 2.1 oder älter bleiben gültig.
+
+### Geändert
+
+- **Tracker für Technik, Board nur für Internes** (INT-2026-036). Technischer Arbeitsstand steht im Tracker des Projekts (GitHub Issues oder Trello, Zeile `Tracker:` in der Projekt-`CLAUDE.md`); das Obsidian-Board trägt nur noch Internes und in Projekten mit Fahrplan-Seite je Vorhaben eine grobe Karte. Workflows `build` und `intent`, die Befehls-Kurzfassungen und die SDLC-Vorlagen sind angepasst. Der Abschlussblock „Für das Board" nennt den Tracker-Eintrag direkt nach dem Projekt. Die Projektvorlage `CLAUDE-template.md` hat die Zeilen `Tracker:` und `Internes:` statt der Board-Pflicht. Bestehende Projekt-`CLAUDE.md` ändert der Updater nicht; er legt die neue Vorlage daneben.
+
 ## 4.5.1 - 2026-10-24
 
 ### Behoben

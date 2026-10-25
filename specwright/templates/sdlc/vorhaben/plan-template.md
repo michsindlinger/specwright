@@ -4,7 +4,7 @@
 > **Status:** entwurf | freigegeben | in_umsetzung | umgesetzt
 > **Erstellt:** JJJJ-MM-TT im Plan Mode · **Freigabe:** [Rolle], JJJJ-MM-TT
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand [sha]), `CLAUDE.md`, `docs/security.md`
-> **Format:** 2.1
+> **Format:** 2.2
 
 <!-- Der Plan ist TECHNISCH und die EINHEIT DER AUSFÜHRUNG. Eine Sitzung setzt ihn ganz um.
      Maßstab: Ein neues Teammitglied könnte allein anhand dieses Dokuments umsetzen.
@@ -239,7 +239,7 @@
 - [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
 - [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
 - [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → zuerst automatische Prüfung (Hook, Lint, Test); sonst nummerierte Regel in `docs/architecture.md` (AR/AP); `CLAUDE.md` nur, wenn nicht aus dem Code ablesbar und für jede Aufgabe gültig. Vorschlag im PR.
-- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Karte, Spalte, PR-Link, Stand, Verweis auf `intent/INT-JJJJ-NNN/`); Nachziehen in eigener Sitzung.
+- [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board" (Projekt, Tracker-Eintrag, Zielstatus, PR-Link, Stand, Verweis auf `intent/INT-JJJJ-NNN/`; Board-Karte nur bei Internem); Tracker nachgezogen, Board nur bei Internem; Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
 

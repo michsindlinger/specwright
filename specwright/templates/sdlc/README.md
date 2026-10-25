@@ -46,7 +46,7 @@ Jedes Vorhaben-Dokument hat zwei Leser: den Menschen, der entscheidet, und den A
 Die drei Vorhaben-Vorlagen (`vorhaben/intent-template.md`, `spec-template.md`, `plan-template.md`) tragen eine Formatversion (INT-2026-031). Sie sagt einem maschinellen Leser wie der Software Factory, nach welcher Fassung der Vorlage ein Dokument geschrieben ist. Sie ist unabhängig von der Specwright-Version in `VERSION`, die auch bei Änderungen an Installern oder Web-UI steigt.
 
 - **Ort und Form:** in `intent.md` das Kopf-Feld `format: "X.Y"` (in Anführungszeichen, sonst liest YAML `1.10` als `1.1`), maschinell `^format:\s*"(\d+)\.(\d+)"`; in `spec.md` und `plan.md` die letzte Kopfzeile `> **Format:** X.Y`, maschinell `^>\s*\*\*Format:\*\*\s*(\d+)\.(\d+)\s*$`. Beide stehen im Kopf, vor der ersten `##`-Überschrift. Die `Status`-Zeile bleibt davon unberührt.
-- **Aktueller Stand:** `2.1`. Alle drei Vorlagen tragen immer dieselbe Nummer. Verlauf: `1.0` seit 4.2.0 (INT-2026-031), `2.0` seit 4.3.0 (INT-2026-032), `2.1` seit 4.4.0 (INT-2026-034, optionaler Unterabschnitt „Karten für die Factory“ in `plan-template.md`); Einzelheiten im `CHANGELOG.md` unter `### Format`.
+- **Aktueller Stand:** `2.2`. Alle drei Vorlagen tragen immer dieselbe Nummer. Verlauf: `1.0` seit 4.2.0 (INT-2026-031), `2.0` seit 4.3.0 (INT-2026-032), `2.1` seit 4.4.0 (INT-2026-034, optionaler Unterabschnitt „Karten für die Factory“ in `plan-template.md`), `2.2` seit 4.6.0 (INT-2026-036, optionales Kopffeld `bezuege.tracker` in `intent-template.md`); Einzelheiten im `CHANGELOG.md` unter `### Format`.
 - **Hauptnummer** steigt, wenn eine bestehende Datei nach der neuen Vorlage nicht mehr gültig wäre oder ein Leser sie anders auslesen müsste: ein Abschnitt wird entfernt oder umbenannt, ein Pflichtfeld kommt dazu, das Kennungsschema ändert sich.
 - **Nebennummer** steigt bei Ergänzungen, die ein alter Leser ignorieren kann: ein neuer optionaler Abschnitt, ein neues optionales Kopffeld.
 - **Keine Änderung der Nummer** bei reinen Formulierungen: Hinweiskommentare, Platzhaltertexte, Beispiele.
@@ -57,7 +57,7 @@ Die drei Vorhaben-Vorlagen (`vorhaben/intent-template.md`, `spec-template.md`, `
 
 ## Wahrheiten
 
-- Repo ist die Wahrheit für Vorhaben. Obsidian-Board-Karten verweisen auf `intent/INT-…`. Board-Pflege läuft in einer eigenen kurzen Sitzung, nicht am Ende von Intent-, Plan- oder Bausitzungen (Kontext ist dort am teuersten).
+- Repo ist die Wahrheit für Vorhaben, der Tracker des Projekts (GitHub Issues oder Trello) für den technischen Arbeitsstand, das Obsidian-Board nur für Internes. Tracker-Einträge verweisen auf `intent/INT-…`. Tracker- und Board-Pflege läuft in einer eigenen kurzen Sitzung, nicht am Ende von Intent-, Plan- oder Bausitzungen (Kontext ist dort am teuersten).
 - `architecture.md` ist das Soll. Das Drift-Skript vergleicht das Ist (Compose, Manifeste, Traces) dagegen.
 - `CLAUDE.md` bleibt unter einer Seite und verweist auf die Projekt-Docs statt sie zu enthalten.
 - CI ist die Wahrheit für „grün". Lokale Läufe sind Vorprüfung; Bezugslisten bekannter roter Tests ändern sich nur nach einem CI-Lauf.

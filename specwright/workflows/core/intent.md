@@ -124,7 +124,7 @@ ON Freigabe:
   - Änderungsprotokoll: Zeile 1.0.0 mit Freigabe
 RULE: Vor der Freigabe Abgleich nach R4 (`specwright/workflows/meta/leser-und-rueckfragen.md`): Kern (drei Sätze bis §7) gegen Vertragsschicht und Kopf lesen; Abweichung als Rückfrage; Ergebnis in die Änderungsprotokoll-Zeile 1.0.0 eintragen („Abgleich Mensch/Agent: ohne Befund" oder „… Befund: …").
   - COMMIT: `intent(INT-JJJJ-NNN): <Titel> — angenommen` mit Kurzfassung der Entscheidungen
-  - Board: `bezuege.board_karte` eintragen, falls eine Karte existiert. Karte anlegen oder nachziehen **nicht hier**: Der Abschlussbericht endet mit dem Block „Für das Board" (Projekt, Karte, Spalte, Beleg, Stand, Verweis auf den Intent-Ordner); das Nachziehen läuft in einer eigenen kurzen Sitzung nach `/clear` (Skill `obsidian-po-board`).
+  - Tracker: `bezuege.tracker` eintragen (`repo#nr` oder Trello-Karte), falls schon ein Eintrag existiert; `bezuege.board_karte` nur bei Internem oder als grobe Vorhaben-Karte in Projekten mit Fahrplan-Seite. Eintrag anlegen oder nachziehen **nicht hier**: Der Abschlussbericht endet mit dem Block „Für das Board" (Projekt · Tracker-Eintrag (`repo#nr` oder Trello-Karte, oder „neu") · Zielstatus · Beleg (PR, Commit, `datei:zeile`) · Stand-Zeile · Verweis auf `intent/INT-JJJJ-NNN-*/` · nur wenn es Internes gibt: Board-Karte und Spalte · bei Kreis Lippe: Vorhaben-Karte und Fahrplan-Station); das Nachziehen läuft in einer eigenen kurzen Sitzung nach `/clear`.
 
 NEXT: `/spec INT-JJJJ-NNN` — oder bei `bypass: ja`: `/plan INT-JJJJ-NNN`
 
