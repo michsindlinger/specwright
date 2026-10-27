@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { homedir } from 'os';
 import { join } from 'path';
-import { buildSdkCallOptions } from '../../src/server/utils/sdk-call-options.js';
+import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { buildSdkCallOptions, installedClaude } from '../../src/server/utils/sdk-call-options.js';
 
 const ENV_KEYS = [
   'ANTHROPIC_API_KEY',
@@ -69,5 +71,39 @@ describe('buildSdkCallOptions', () => {
   it('glm ⇒ env with CLAUDE_CONFIG_DIR = ~/.claude-glm', () => {
     const env = buildSdkCallOptions('glm', []).env;
     expect(env?.CLAUDE_CONFIG_DIR).toBe(join(homedir(), '.claude-glm'));
+  });
+
+  describe('installed claude instead of the bundled CLI (#116)', () => {
+    let root: string;
+    let savedPath: string | undefined;
+    beforeEach(() => {
+      root = mkdtempSync(join(tmpdir(), 'sdk-claude-'));
+      savedPath = process.env.PATH;
+    });
+    afterEach(() => {
+      process.env.PATH = savedPath;
+      rmSync(root, { recursive: true, force: true });
+    });
+
+    it('first executable claude on PATH wins; a non-executable one is skipped', () => {
+      for (const d of ['a', 'b', 'c']) mkdirSync(join(root, d));
+      writeFileSync(join(root, 'b', 'claude'), '');
+      writeFileSync(join(root, 'c', 'claude'), '');
+      chmodSync(join(root, 'c', 'claude'), 0o755);
+      const pathVar = ['', join(root, 'a'), join(root, 'b'), join(root, 'c')].join(':');
+      expect(installedClaude(pathVar)).toBe(join(root, 'c', 'claude'));
+    });
+
+    it('buildSdkCallOptions passes it as pathToClaudeCodeExecutable', () => {
+      writeFileSync(join(root, 'claude'), '');
+      chmodSync(join(root, 'claude'), 0o755);
+      process.env.PATH = root;
+      expect(buildSdkCallOptions('anthropic', []).pathToClaudeCodeExecutable).toBe(join(root, 'claude'));
+    });
+
+    it('no claude on PATH ⇒ no key, the SDK keeps its bundled CLI', () => {
+      process.env.PATH = root;
+      expect('pathToClaudeCodeExecutable' in buildSdkCallOptions('anthropic', [])).toBe(false);
+    });
   });
 });
