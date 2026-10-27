@@ -371,7 +371,7 @@ Nahtstellen: (a) `PlanReviewOrchestrator` öffentlich (`startReview`, `triggerMa
 - [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
 - [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
 - [x] E2E-Pfad läuft (Abschnitt 8).
-- [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
+- [x] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit). Lokal Stufe 5 flaky (§14), PR-Check #114 grün.
 - [x] `docs/architecture.md` angepasst (Abschnitt 3 „Ja“, Beschreibung), ADR-0002-Vermerk, product-brief §8.
 - [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
 - [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
