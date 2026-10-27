@@ -1,4 +1,6 @@
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
+import { accessSync, constants } from 'fs';
+import { delimiter, join } from 'path';
 import { buildProviderEnv } from './provider-env.js';
 
 export type SdkCallOptions = Pick<
@@ -10,6 +12,7 @@ export type SdkCallOptions = Pick<
   | 'settingSources'
   | 'permissionMode'
   | 'allowDangerouslySkipPermissions'
+  | 'pathToClaudeCodeExecutable'
 >;
 
 /**
@@ -38,6 +41,7 @@ export type SdkCallOptions = Pick<
  * affect MCP loading — MCP servers come from ~/.claude.json, not settings.json.
  */
 export function buildSdkCallOptions(providerId: string, tools: readonly string[]): SdkCallOptions {
+  const claude = installedClaude();
   return {
     env: buildProviderEnv(providerId),
     tools: [...tools],
@@ -46,5 +50,25 @@ export function buildSdkCallOptions(providerId: string, tools: readonly string[]
     settingSources: ['user'],
     permissionMode: 'bypassPermissions',
     allowDangerouslySkipPermissions: true,
+    ...(claude ? { pathToClaudeCodeExecutable: claude } : {}),
   };
+}
+
+/**
+ * The installed `claude` from PATH, else undefined (the SDK then uses its
+ * bundled CLI). The bundled CLI lags behind the installed one and passes
+ * newer model aliases such as `fable` through unresolved → API 404 (#116).
+ */
+export function installedClaude(pathVar = process.env.PATH ?? ''): string | undefined {
+  for (const dir of pathVar.split(delimiter)) {
+    if (!dir) continue;
+    const candidate = join(dir, 'claude');
+    try {
+      accessSync(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // not here
+    }
+  }
+  return undefined;
 }

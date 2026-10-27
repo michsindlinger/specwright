@@ -119,7 +119,12 @@ export class VorhabenWatcher extends EventEmitter {
         copy.waitingForIntentDir = true;
         copy.watcher = this.watchImpl(copy.cwd, { persistent: false }, (_event, filename) => {
           if (filename !== null && String(filename) === 'intent' && safeIsDir(intentDir)) {
-            // intent/ appeared: switch to the recursive watch and rescan.
+            // intent/ appeared: switch to the recursive watch and rescan. Folders
+            // created together with it (`mkdir -p intent/INT-…`) are new too (#115).
+            for (const name of readdirSafe(intentDir)) {
+              const m = INTENT_DIR_RE.exec(name);
+              if (m && safeIsDir(join(intentDir, name))) copy.pendingAdded.add(m[1]);
+            }
             this.start(copy);
             this.schedule(copy);
           }
@@ -202,6 +207,14 @@ export class VorhabenWatcher extends EventEmitter {
       this.schedule(copy);
     }, this.pollIntervalMs);
     copy.pollTimer.unref?.();
+  }
+}
+
+function readdirSafe(p: string): string[] {
+  try {
+    return fs.readdirSync(p);
+  } catch {
+    return [];
   }
 }
 
