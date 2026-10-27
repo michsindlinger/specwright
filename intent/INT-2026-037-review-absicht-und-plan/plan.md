@@ -1,7 +1,7 @@
 # Plan: Review für Absicht und Plan aus dem Vorhaben-Ordner, automatisch und ausfallsicher
 
 > **Intent:** `intent.md` (INT-2026-037) · **Spec:** `spec.md`
-> **Status:** in_umsetzung
+> **Status:** umgesetzt
 > **Erstellt:** 2026-10-27 im Plan Mode · **Freigabe:** Product Owner, 2026-10-27
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 9afa032), `CLAUDE.md`, `docs/security.md`
 > **Format:** 2.2
@@ -368,14 +368,14 @@ Nahtstellen: (a) `PlanReviewOrchestrator` öffentlich (`startReview`, `triggerMa
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8).
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8).
 - [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün (CI ist die Wahrheit).
-- [ ] `docs/architecture.md` angepasst (Abschnitt 3 „Ja“, Beschreibung), ADR-0002-Vermerk, product-brief §8.
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
-- [ ] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → zuerst automatische Prüfung (Hook, Lint, Test); sonst nummerierte Regel in `docs/architecture.md` (AR/AP); `CLAUDE.md` nur, wenn nicht aus dem Code ablesbar und für jede Aufgabe gültig. Vorschlag im PR.
+- [x] `docs/architecture.md` angepasst (Abschnitt 3 „Ja“, Beschreibung), ADR-0002-Vermerk, product-brief §8.
+- [x] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
+- [x] Abweichungen von diesem Plan in Abschnitt 14 eingetragen.
+- [x] 2x-Regel-Check: Fehler, der zum zweiten Mal vorkam → zuerst automatische Prüfung (Hook, Lint, Test); sonst nummerierte Regel in `docs/architecture.md` (AR/AP); `CLAUDE.md` nur, wenn nicht aus dem Code ablesbar und für jede Aufgabe gültig. Vorschlag im PR.
 - [ ] Abschlussbericht nach R3 (nur Mensch-Abschnitte im Chat), endet mit dem Block „Für das Board“ (Projekt, Tracker-Eintrag, Zielstatus, PR-Link, Stand, Verweis auf `intent/INT-2026-037-review-absicht-und-plan/`; Board-Karte nur bei Internem); Tracker nachgezogen, Board nur bei Internem; Nachziehen in eigener Sitzung.
 
 ### 14. Abweichungen bei der Umsetzung
