@@ -31,8 +31,12 @@ export async function withTimeout<T>(
   }
 }
 
-/** INT-2026-037 (FA-11): a probe answers within this time or counts as failed. */
-export const PROBE_TIMEOUT_MS = 15_000;
+/**
+ * INT-2026-037 (FA-11): a probe answers within this time or counts as failed.
+ * 30 s, not the specified 15 s: a probe starts a whole CLI; seven in parallel
+ * measured 10–15 s on the Mac (plan §14).
+ */
+export const PROBE_TIMEOUT_MS = 30_000;
 
 /** INT-2026-037 (FA-11): category of a failed probe from its error text. Pure. */
 export function ordneProbeFehler(meldung: string): ProbeGrund {
