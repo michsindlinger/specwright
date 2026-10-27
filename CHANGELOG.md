@@ -2,6 +2,25 @@
 
 Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
 
+## 4.7.0 - 2026-10-27
+
+### Format
+
+- **Format 2.3** (Nebennummer, INT-2026-037): `intent-template.md` bekommt den optionalen Abschnitt „Review-Entscheidungen“ (Leser `mensch`) vor dem Änderungsprotokoll. Alte Leser können ihn ignorieren. `spec-template.md`, `plan-template.md`: nur die Nummer (`> **Format:** 2.3`). Dateien mit 2.2 oder älter bleiben gültig.
+
+### Neu
+
+- **Absicht-Review in der Web-UI** (INT-2026-037). Hält eine Sitzung an, nachdem sie eine neue Absicht als Entwurf geschrieben hat, prüfen die externen Prüfer sie einmal automatisch, mit eigenem Auftrag („gibt es das schon, was ist die kleinste Lösung, was kann weg“, Budget 15 Werkzeugaufrufe). Schalter „Absicht automatisch prüfen“ in den Einstellungen; der Knopf im Terminal-Tab heißt „Absicht prüfen“ bzw. „Plan prüfen“ und geht immer, nicht nur bei eingeschaltetem Auto-Review.
+- **Review liest die Datei im Vorhaben-Ordner** (`intent.md`, `plan.md`); die Plan-Mode-Arbeitskopie nur, solange kein `plan.md` im Ordner liegt. Fehlt beides, steht eine Meldung im Review-Block statt still nichts zu tun.
+- **Probe und Ersatzreihe:** Jeder Prüfer bekommt vor dem Review eine Mini-Frage (15 s, Ergebnis 5 min gültig), die Ersatzprüfer gleichzeitig. Wer ausfällt, wird aus der Ersatzreihe ersetzt, bevorzugt von einem noch fehlenden Anbieter. Der Review-Block zeigt je Prüfer bereit, ausgefallen (mit Grund) oder „springt ein für“, und auf wie vielen Prüfern das Ergebnis beruht.
+- **Workflows `intent` 1.5 und `plan` 1.7:** Regel „Review-Ergebnis bearbeiten“ — ablehnen nur mit lesbarem Beleg, sonst Rückfrage; Schweregrade bleiben; bei der Absicht gehen Blocker, LIKELY und jede DROP-Empfehlung immer an die Person.
+
+### Geändert
+
+- **Standard-Prüfer:** Sonnet, Opus, MiniMax-M3, GLM-5.2 (DeepSeek entfällt). Ersatzreihe: Fable, MiniMax-M2.5, Haiku. Bestehende Tabs behalten ihre Auswahl.
+- **Übergabe des Review-Ergebnisses** nur in eine leere Eingabezeile, nach derselben Bildschirmprüfung wie „Nächster Schritt“; sonst beim nächsten Halt (höchstens drei Versuche). Vorher wurde ungelesen getippt.
+- Der Text an den Agenten fordert keine Gegenargumente mehr („argue for it“, „briefly justify“ entfallen), sondern nennt Art, Quelle, Ausfälle und Ersatz und endet mit den Regeln.
+
 ## 4.6.0 - 2026-10-25
 
 ### Format

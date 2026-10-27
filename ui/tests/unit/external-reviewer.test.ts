@@ -9,6 +9,7 @@ import {
   ExternalReviewer,
   REVIEWER_TOOLS,
   isSubstanceLessReview,
+  ordneProbeFehler,
 } from '../../src/server/services/external-reviewer.js';
 
 const mockedQuery = vi.mocked(claudeQuery);
@@ -114,5 +115,33 @@ describe('reviewPlan', () => {
     await expect(
       new ExternalReviewer().reviewPlan('review this', 'anthropic', 'opus', '/tmp/p')
     ).rejects.toThrow(/^Reviewer anthropic:opus failed — error \(is_error\): API Error: 400/);
+  });
+});
+
+describe('INT-2026-037 (FA-11): probe before a review', () => {
+  beforeEach(() => mockedQuery.mockReset());
+
+  it('sorts error texts into five categories', () => {
+    expect(ordneProbeFehler('Reviewer timeout')).toBe('zeitueberschreitung');
+    expect(ordneProbeFehler('API Error: 529 overloaded')).toBe('ueberlastet');
+    expect(ordneProbeFehler('401 Unauthorized')).toBe('anmeldung');
+    expect(ordneProbeFehler('model not found: glm-9')).toBe('unbekanntes_modell');
+    expect(ordneProbeFehler('Claude Code process exited with code 1')).toBe('fehler');
+  });
+
+  it('a non-empty answer is ready; an empty one is a failure; no tools, one turn', async () => {
+    mockedQuery.mockReturnValueOnce(makeSuccessSession('ok') as never);
+    expect(await new ExternalReviewer().probe('glm', 'glm-5.2')).toEqual({ bereit: true });
+    const opts = lastCallOptions();
+    expect(opts.maxTurns).toBe(1);
+    expect(opts.model).toBe('glm-5.2');
+
+    mockedQuery.mockReturnValueOnce(makeSuccessSession('  ') as never);
+    expect(await new ExternalReviewer().probe('glm', 'glm-5.2')).toMatchObject({ bereit: false, grund: 'fehler' });
+  });
+
+  it('an error result is categorised and keeps its raw text for the display', async () => {
+    mockedQuery.mockReturnValueOnce(makeErrorSession('529 overloaded_error') as never);
+    expect(await new ExternalReviewer().probe('glm', 'glm-5.2')).toEqual({ bereit: false, grund: 'ueberlastet', meldung: 'error: 529 overloaded_error' });
   });
 });

@@ -90,6 +90,7 @@ import {
 import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from '../../shared/types/cloud-terminal.protocol.js';
 import type { BlockKind } from '../../shared/types/hook-events.protocol.js';
 import { findDialogCue, pruefeEingabeWartet, readStableScreen, type CursorProbe } from './dialog-driver.js';
+import { reviewZielArt, type ReviewZiel } from '../../shared/review-ziel.js';
 
 export interface VorhabenWorkspaceSource {
   getState(): { openProjects: Array<{ id: string; path: string; name: string }>; sessionNames?: Record<string, string> };
@@ -109,6 +110,8 @@ export interface VorhabenSessionInfo {
   modelConfig?: { model: string; provider?: string };
   /** INT-2026-019: Claude session id the SessionStart hook reported (undefined until the first hook). */
   claudeSessionId?: string;
+  /** INT-2026-037 (FA-07): start of the session (after a restore: the original start). */
+  createdAt?: Date;
 }
 
 /** The slice of CloudTerminalManager the service uses (structural, so tests pass a fake). */
@@ -149,6 +152,8 @@ export interface VorhabenSessionSource {
   closeSession?(sessionId: string, opts?: { closedBy?: 'user' }): boolean;
   /** INT-2026-019: boot-restore outcome — a resume only runs after `'complete'` (never next to a late-restored session). */
   restoreOutcome?(): 'pending' | 'complete' | 'timeout';
+  /** INT-2026-037 (FA-02): plan-mode plan in the session's buffer; null without one. */
+  extractPlanFromBuffer?(sessionId: string): { planText: string; planPath: string } | null;
 }
 
 export interface VorhabenServiceDeps {
@@ -190,6 +195,10 @@ export interface VorhabenServiceDeps {
   resolveMainPath?: (projectPath: string) => string;
   /** INT-2026-024: the git side of „Abschließen"; default = a runner on the real git and `gh`. Tests pass a fake. */
   abschluss?: Pick<VorhabenAbschlussRunner, 'vorschau' | 'abschliessen'>;
+  /** INT-2026-037 (FA-09): the settings switch „Absicht automatisch prüfen" for a project path. Without it no auto start. */
+  intentAutoReview?: (projectPath: string) => boolean;
+  /** INT-2026-037 (FA-07): starts the intent review; `beschaeftigt` while another review runs (no mark then). */
+  startIntentReview?: (sessionId: string, ziel: ReviewZiel) => 'gestartet' | 'beschaeftigt';
   now?: () => Date;
   /** Worktree list cache TTL. */
   worktreeTtlMs?: number;
@@ -341,6 +350,8 @@ export class VorhabenService {
   private scanTimer: NodeJS.Timeout | null = null;
   private scanning: Promise<void> | null = null;
   private scanDirty = false;
+  /** INT-2026-037 (FA-07): sessions that stopped since the last scan checked them for an intent auto review. */
+  private readonly stopSeit = new Set<string>();
   private lastScanAt = 0;
   private stopped = false;
   /** Protocol entry id → confirmation timer. */
@@ -481,6 +492,73 @@ export class VorhabenService {
 
   public findRow(projectId: string, intentId: string): VorhabenRow | undefined {
     return this.rows.find((r) => r.projectId === projectId && r.intentId === intentId);
+  }
+
+  /**
+   * INT-2026-037 (FA-02, FA-03): what a review of this session reviews — the
+   * file in the Vorhaben folder first; the plan-mode buffer only for a plan
+   * without plan.md (or a session without Vorhaben). The orchestrator reads the
+   * file when the review starts.
+   */
+  public reviewZiel(sessionId: string): ReviewZiel | { fehler: string } {
+    const row = this.rowOfSession(sessionId);
+    const art = reviewZielArt(row);
+    if (row && row.docs.some((d) => d.key === art)) {
+      return { art, quelle: art === 'intent' ? 'intent-ordner' : 'plan-ordner', pfad: docPathOf(row, art) };
+    }
+    const puffer = this.deps.sessions?.extractPlanFromBuffer?.(sessionId) ?? null;
+    if (puffer) return { art: 'plan', quelle: 'plan-mode', pfad: puffer.planPath, text: puffer.planText };
+    return { fehler: 'Kein Plan im Vorhaben-Ordner und kein Plan-Mode-Plan in der Sitzung.' };
+  }
+
+  /** Row of the Vorhaben the session is (still) assigned to; undefined for pending or unassigned sessions. */
+  private rowOfSession(sessionId: string): VorhabenRow | undefined {
+    const assigned = this.deps.store.allAssignments().find(([, a]) => a.sessionId === sessionId && !a.ended);
+    return assigned ? this.findRow(...(assigned[0].split('::') as [string, string])) : undefined;
+  }
+
+  /**
+   * INT-2026-037 (FA-07, FA-08, FA-09): after a scan, every session that
+   * stopped since gets its intent reviewed once — draft status, written after
+   * the session started, switch on, never reviewed automatically. The mark is
+   * set right at the start and stays even if the review fails (AN-S03);
+   * `beschaeftigt` sets none and keeps the session for the next scan. A
+   * pending `/intent` session stays until `dir-added` assigned it.
+   * Synchronous: check and mark are one step (one scan at a time).
+   */
+  private pruefeAutoReview(): void {
+    const start = this.deps.startIntentReview;
+    for (const sessionId of [...this.stopSeit]) {
+      if (!start) {
+        this.stopSeit.delete(sessionId);
+        continue;
+      }
+      const row = this.rowOfSession(sessionId);
+      if (!row) {
+        if (!this.isPending(sessionId)) this.stopSeit.delete(sessionId);
+        continue;
+      }
+      const intent = row.docs.find((d) => d.key === 'intent');
+      const startedAt = this.deps.sessions?.getSession(sessionId)?.createdAt?.getTime();
+      const grund =
+        this.deps.intentAutoReview?.(row.projectPath) !== true ? 'Schalter aus'
+        : intent?.status !== 'entwurf' ? `Status ${intent?.status ?? 'fehlt'}`
+        : startedAt === undefined || intent.mtimeMs <= startedAt ? 'Datei älter als Sitzung'
+        : this.deps.store.getAutoReview(row.projectId, row.intentId) ? 'Marke da'
+        : undefined;
+      if (grund) {
+        console.log(`[vorhaben] Absicht-Review ${row.intentId}: übersprungen (${grund})`);
+        this.stopSeit.delete(sessionId);
+        continue;
+      }
+      if (start(sessionId, { art: 'intent', quelle: 'intent-ordner', pfad: docPathOf(row, 'intent') }) === 'beschaeftigt') {
+        console.log(`[vorhaben] Absicht-Review ${row.intentId}: übersprungen (beschäftigt), nächster Scan prüft erneut`);
+        continue;
+      }
+      this.deps.store.setAutoReview(row.projectId, row.intentId, this.now().toISOString());
+      console.log(`[vorhaben] Absicht-Review ${row.intentId}: gestartet`);
+      this.stopSeit.delete(sessionId);
+    }
   }
 
   public findProject(projectId: string): { id: string; path: string; name: string } | undefined {
@@ -1186,6 +1264,8 @@ export class VorhabenService {
 
   private onAgentEvent(sessionId: string, event: string): void {
     if (event === 'stop' || event === 'stop-failure') {
+      // INT-2026-037 (FA-07): the scan after this stop checks for a fresh intent draft.
+      if (this.isAssigned(sessionId) || this.isPending(sessionId)) this.stopSeit.add(sessionId);
       // Queued texts are handed over right after this turn; without a confirming
       // UserPromptSubmit within the grace they are "nicht bestätigt" (E15/H5).
       for (const e of this.deps.store.pendingSends()) {
@@ -1222,6 +1302,7 @@ export class VorhabenService {
     // Ended without a folder: its unclaimed free texts would stay invisible forever (INT-2026-008, R-2).
     if (pendingCleared) this.deps.store.dropUnclaimedProtocol(sessionId);
     this.promptTextSeq.delete(sessionId);
+    this.stopSeit.delete(sessionId);
     if (changed > 0) this.scheduleRescan(0);
     else if (pendingCleared) this.broadcastState();
   }
@@ -1786,6 +1867,7 @@ export class VorhabenService {
     this.deps.store.prune(new Set(rows.map((r) => assignmentKey(r.projectId, r.intentId))));
     this.rows = rows;
     this.projects = infos;
+    this.pruefeAutoReview();
     this.loading = false;
     this.lastScanAt = Date.now();
     this.updatedAt = this.now().toISOString();

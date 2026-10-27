@@ -19,6 +19,8 @@
  * (PR number, link, branch, time) and the last failure of an Abschluss —
  * dropped by the scan once the main checkout reads `umgesetzt`, by
  * „Abschluss zurücknehmen", or by `prune` when the folder is gone.
+ * INT-2026-037 adds `autoReviews`: per Vorhaben the time its intent was
+ * reviewed automatically (once per intent, FA-08) — dropped by `prune`.
  */
 
 import * as fs from 'fs';
@@ -95,6 +97,8 @@ export interface VorhabenStateData {
   firstInputs: Record<string, FirstInput>;
   /** INT-2026-024: `assignmentKey(projectId, intentId)` → mark / last failure of the Abschluss. */
   abschluesse: Record<string, VorhabenAbschlussEintrag>;
+  /** INT-2026-037 (FA-08): `assignmentKey(projectId, intentId)` → ISO time of the automatic intent review. */
+  autoReviews: Record<string, string>;
 }
 
 /** Text handed to a started session at its first Stop; `versuche` counts refused deliveries (max 3, plan §3). */
@@ -130,7 +134,7 @@ export function docDraftKey(projectId: string, key: ProjectDocKey): string {
 export const PROTOCOL_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 function emptyState(): VorhabenStateData {
-  return { assignments: {}, drafts: {}, protocol: [], lastModel: {}, docDrafts: {}, pendingIntents: {}, ansicht: emptyAnsicht(), firstInputs: {}, abschluesse: {} };
+  return { assignments: {}, drafts: {}, protocol: [], lastModel: {}, docDrafts: {}, pendingIntents: {}, ansicht: emptyAnsicht(), firstInputs: {}, abschluesse: {}, autoReviews: {} };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -215,6 +219,9 @@ export class VorhabenStateStore {
         ansicht: readAnsicht(s.ansicht),
         firstInputs: readFirstInputs(s.firstInputs),
         abschluesse: readAbschluesse(s.abschluesse),
+        autoReviews: isRecord(s.autoReviews)
+          ? Object.fromEntries(Object.entries(s.autoReviews).filter((e): e is [string, string] => typeof e[1] === 'string'))
+          : {},
       };
       this.updatedAt = parsed.updatedAt ?? this.updatedAt;
       return { existed: true, healthy: true };
@@ -569,6 +576,17 @@ export class VorhabenStateStore {
     return true;
   }
 
+  // ---- automatic intent review (INT-2026-037, FA-08) ----
+
+  public getAutoReview(projectId: string, intentId: string): string | undefined {
+    return this.state.autoReviews[assignmentKey(projectId, intentId)];
+  }
+
+  public setAutoReview(projectId: string, intentId: string, at: string): void {
+    this.state.autoReviews[assignmentKey(projectId, intentId)] = at;
+    this.commit();
+  }
+
   // ---- Abschluss (INT-2026-024, FA-10, FA-12, FA-15, AN-S16) ----
 
   public getAbschluss(projectId: string, intentId: string): VorhabenAbschlussEintrag | undefined {
@@ -635,6 +653,12 @@ export class VorhabenStateStore {
     for (const key of Object.keys(this.state.abschluesse)) {
       if (!liveKeys.has(key)) {
         delete this.state.abschluesse[key];
+        removed++;
+      }
+    }
+    for (const key of Object.keys(this.state.autoReviews)) {
+      if (!liveKeys.has(key)) {
+        delete this.state.autoReviews[key];
         removed++;
       }
     }

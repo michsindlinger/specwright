@@ -3,6 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
 import { isClaudeCli, providerCliKind, type ProviderCliKind } from '../shared/provider-cli.js';
+import { getReviewErsatz as getReviewErsatzSetting } from './general-config.js';
 
 export interface Model {
   id: string;
@@ -304,16 +305,16 @@ export function getDefaultSelection(): { providerId: string; modelId: string } {
  * would be silently dropped when a user edits a model in the settings UI.
  */
 const DEFAULT_REVIEWER_IDS: ReadonlyArray<{ providerId: string; modelId: string }> = [
-  { providerId: 'anthropic', modelId: 'opus' },      // Opus 4.8
-  { providerId: 'glm', modelId: 'glm-5.2' },         // GLM 5.2
-  { providerId: 'minimax', modelId: 'MiniMax-M3' },  // MiniMax M3
-  { providerId: 'deepseek', modelId: 'opus' }        // DeepSeek V4 Pro
+  { providerId: 'anthropic', modelId: 'sonnet' },    // INT-2026-037 (FA-18): DeepSeek out, Sonnet in
+  { providerId: 'anthropic', modelId: 'opus' },
+  { providerId: 'minimax', modelId: 'MiniMax-M3' },
+  { providerId: 'glm', modelId: 'glm-5.2' }
 ];
 
 /**
  * Default plan reviewers, validated against the currently loaded config. Each
- * pair is checked provider-scoped via `getModel` (so the duplicate `opus`
- * modelId across `anthropic`/`deepseek` is no collision). Stale/removed models
+ * pair is checked provider-scoped via `getModel` (so a modelId shared across
+ * providers is no collision). Stale/removed models
  * are dropped with a warning instead of silently producing wrong selections.
  */
 export function getDefaultReviewers(): { providerId: string; modelId: string }[] {
@@ -326,6 +327,21 @@ export function getDefaultReviewers(): { providerId: string; modelId: string }[]
         `[ModelConfig] default reviewer not found in config: ${ref.providerId}/${ref.modelId}`
       );
     }
+  }
+  return result;
+}
+
+/**
+ * INT-2026-037 (FA-14): stand-in reviewers from the settings (`provider/model`,
+ * order kept), validated against the loaded config like the defaults.
+ */
+export function getReviewErsatz(projectPath?: string): { providerId: string; modelId: string }[] {
+  const result: { providerId: string; modelId: string }[] = [];
+  for (const eintrag of getReviewErsatzSetting(projectPath)) {
+    const i = eintrag.indexOf('/');
+    const ref = { providerId: eintrag.slice(0, i), modelId: eintrag.slice(i + 1) };
+    if (getModel(ref.providerId, ref.modelId)) result.push(ref);
+    else console.warn(`[ModelConfig] stand-in reviewer not found in config: ${eintrag}`);
   }
   return result;
 }

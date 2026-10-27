@@ -35,6 +35,7 @@ SOLL_INTENT='## Felder im Kopf	agent
 ## 10.	mensch
 ## 11.	agent
 ## 12.	mensch
+## Review-Entscheidungen	mensch
 ## Änderungsprotokoll	agent'
 
 SOLL_SPEC='## 1.	mensch

@@ -65,6 +65,9 @@ Ohne festen Ablauf zerfällt Softwarearbeit mit einem Agenten in Chat-Sitzungen:
 | Begonnene Absicht (INT-2026-022) | Eine `/intent`-Sitzung, deren Ordner `intent/INT-…/` noch nicht existiert; in der Übersicht als Eintrag „Absicht · entsteht" mit Arbeitstitel, Sitzung und Arbeitskopie sichtbar, bis der Ordner entsteht (dann Vorhaben) oder die Sitzung ohne Ordner endet | Vorhaben (hat einen Ordner) |
 | Sitzung von außen / Eingang (INT-2026-030) | Eine Claude-Sitzung, die ein lokales Programm am Mac (hey) über den Eingang der UI startet: eigener Tab mit Titel aus dem Satz, eigene Arbeitskopie, Opus; Eingang standardmäßig aus (`SPECWRIGHT_EINGANG=on`), nur macOS, mit Geheimnis (ADR-0007) | Absicht-Start aus der UI (Knopf „Neue Absicht"), Anruf (Antwort in eine laufende Sitzung) |
 | Plan (`plan.md`) | Technischer Plan aus dem Plan Mode, Einheit der Ausführung | Roadmap |
+| Absicht-Review (INT-2026-037) | Prüfung einer `intent.md` durch externe Prüfer mit eigenem Auftrag („gibt es das schon, was ist die kleinste Lösung, was kann weg“); startet einmal von selbst, wenn eine Sitzung nach dem Entwurf hält | Plan-Review (prüft `plan.md`) |
+| Probe (INT-2026-037) | Mini-Frage an einen Prüfer vor dem Review („antworte mit ok“, 15 s), Ergebnis 5 min gültig | Review selbst |
+| Ersatzreihe (INT-2026-037) | Geordnete Liste von Prüfern, die für ausgefallene einspringen oder auf drei auffüllen; in den Einstellungen | Standard-Prüfer (Vorauswahl eines neuen Tabs) |
 | Projekt-Docs | `docs/{product-brief,architecture,security,design}.md` — Soll und Grenzen eines Projekts | Firmen-Repo (Mission, Marke) |
 | Manifest | `specwright/manifest.tsv`: Art, Geltung, Quelle, Ziel jeder ausgelieferten Datei | `removed.tsv` (Entferntes) |
 | Bezugsliste | Bekannte rote Tests, gegen die Verify nur Neues meldet; nur nach CI-Lauf kürzen | Erlaubnisliste |

@@ -1,7 +1,7 @@
 # Plan: Review für Absicht und Plan aus dem Vorhaben-Ordner, automatisch und ausfallsicher
 
 > **Intent:** `intent.md` (INT-2026-037) · **Spec:** `spec.md`
-> **Status:** freigegeben
+> **Status:** in_umsetzung
 > **Erstellt:** 2026-10-27 im Plan Mode · **Freigabe:** Product Owner, 2026-10-27
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 9afa032), `CLAUDE.md`, `docs/security.md`
 > **Format:** 2.2
@@ -384,4 +384,16 @@ Nahtstellen: (a) `PlanReviewOrchestrator` öffentlich (`startReview`, `triggerMa
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-10-27 | Marker `.claude/fix-mode` nicht gesetzt. Der FA-23-Test wurde vor dem Fix geschrieben und gegen den alten Code rot bestätigt (2 rot, 31 grün). | Der Marker sperrt alle Testdateien; die Schritte 3–5 brauchen neue Tests, und bestehende Erwartungen ändern sich gewollt (Text und `\r` getrennt statt Text mit `\n`). | §8 Bugfix-Anteil |
+| 2026-10-27 | Schritte 1–3 in einem Durchgang am Orchestrator umgesetzt, Tests danach je FA. | Ein Umbau derselben Datei statt dreier Teilumbauten. | §6 |
+| 2026-10-27 | Dep `sessionStartedAt` entfällt; `VorhabenSessionInfo` bekommt das optionale Feld `createdAt` (der Manager liefert es schon). `intentAutoReview` bekommt den Projektpfad (die Einstellung gilt je Projekt). | Weniger Verdrahtung, gleiche Bedingung. | §3 Auto-Start |
+| 2026-10-27 | `reviewZiel` ist synchron und liefert den Pfad; die Datei liest der Orchestrator beim Start. | Ein Lesepunkt für Knopf und Auto-Start; FA-01 unverändert. | §3 Ziel-Auflösung |
+| 2026-10-27 | `reviewZielArt` beachtet auch den Schritt der Sitzung (`row.session.step`). | `row.step` folgt der Phase der Dokumente, nicht dem getippten `/plan`; ohne das hieße der Knopf in einer frischen `/plan`-Sitzung „Absicht prüfen“. | §3, FA-10 |
+| 2026-10-27 | Knopf-Ziel abonniert `vorhabenService` in `aos-auto-review-toggle.ts` selbst; `aos-terminal-tabs.ts` unverändert. | Eine Datei statt zwei. | §4 #14 |
+| 2026-10-27 | Tests: Einstellungs-Validierung und Standard-Prüfer in der neuen Datei `model-config-reviewer.test.ts` (fs gemockt; `model-config.test.ts` steht in der Bezugsliste, ein echter Speichern-Aufruf würde `ui/config/general-config.json` überschreiben). Die Resolver-Tests (FA-02/FA-03) stehen in `vorhaben-service-auto-review.test.ts` statt in einer eigenen Datei. | Gleiche Nahtstellen, eine Datei weniger. | §8 |
+| 2026-10-27 | Bestehender Test „raw-buffer, keine Dialog-Hooks: an der Eingabezeile abgeschickt“ prüft jetzt „nichts getippt, wartet auf den nächsten Halt“. | §3: Rohpuffer ohne Dialog wartet (AR-08). | §8 |
+| 2026-10-27 | Ausgefallene Ersatzprüfer erscheinen nicht als Zeile im Probe-Event, nur gewählte und eingesprungene. | FA-16 verlangt eine Zeile je Prüfer des Reviews; die Ersatzreihe selbst prüft nicht. | §3 Auswahl |
+| 2026-10-27 | FA-25 gemessen: `git diff origin/main -- ui/src/server/services/claude-hooks.ts` leer → 0 zusätzliche Aufrufe je Dateiänderung. | — | §8 FA-25 |
+| 2026-10-27 | Echttest der Probe gegen die Anbieter (8 Prüfer parallel, 7,6 s gesamt): Sonnet, Opus, MiniMax-M3, GLM-5.2, MiniMax-M2.5, Haiku bereit; `anthropic:fable` → `unbekanntes_modell` (API 404, Modell-ID `fable` in `ui/config/model-config.json`); `glm:glm-falsch-9` → `fehler` (API 400). Die Ersatzreihe überspringt Fable, MiniMax-M2.5 und Haiku springen ein. | Die erste Ersatzposition fällt heute immer aus; Entscheidung offen (`build-stand.md` O1). | §3 Standard-Prüfer |
+| 2026-10-27 | `verify` lokal zweimal rot in Stufe 5: `sprach-erkennung.test.ts` („whisper-server nicht rechtzeitig bereit“) und `vorhaben-abschluss-git.test.ts` (Zeitlimit 10 s). Einzeln grün, beide Dateien nicht im Diff. | Zeitlimits unter Last auf dem Mac (Memory `project_ui_test_baseline_worktree`); CI entscheidet. | §13 |
+| 2026-10-27 | Bau nach Schritt 8 (Nachweise §5) angehalten, E2E und PR offen. | Kontextdeckel (~200k); Stand in `build-stand.md`. | §6 Schritt 8 |

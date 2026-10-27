@@ -1,5 +1,7 @@
 import { LitElement, html, render } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { vorhabenService } from '../../services/vorhaben.service.js';
+import { reviewZielArt, type ReviewArt } from '../../../../src/shared/review-ziel.js';
 
 export interface ReviewerConfig {
   providerId: string;
@@ -33,6 +35,22 @@ export class AosAutoReviewToggle extends LitElement {
   @property({ type: Array }) availableProviders: AvailableProvider[] = [];
 
   @state() private dropdownOpen = false;
+  /** INT-2026-037 (FA-10): what the button reviews, from the Vorhaben row of this session. */
+  @state() private zielArt: ReviewArt = 'plan';
+  private unsubscribeVorhaben: (() => void) | null = null;
+
+  override connectedCallback() {
+    super.connectedCallback();
+    this.unsubscribeVorhaben = vorhabenService.subscribe(() => this.updateZielArt());
+  }
+
+  override willUpdate(changed: Map<string, unknown>) {
+    if (changed.has('sessionId')) this.updateZielArt();
+  }
+
+  private updateZielArt() {
+    this.zielArt = reviewZielArt(vorhabenService.state?.rows.find((r) => r.session?.id === this.sessionId));
+  }
   private dropdownEl: HTMLDivElement | null = null;
 
   override createRenderRoot() {
@@ -296,6 +314,8 @@ export class AosAutoReviewToggle extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
+    this.unsubscribeVorhaben?.();
+    this.unsubscribeVorhaben = null;
     this.closeDropdown();
   }
 
@@ -436,8 +456,8 @@ export class AosAutoReviewToggle extends LitElement {
 
       <button
         class="art-trigger-btn"
-        title="Review last plan manually"
-        ?disabled=${!this.enabled || selectedCount === 0}
+        title=${this.zielArt === 'intent' ? 'Absicht prüfen' : 'Plan prüfen'}
+        ?disabled=${!this.sessionId}
         @click=${this.handleTrigger}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

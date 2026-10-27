@@ -1772,23 +1772,20 @@ export class CloudTerminalManager extends EventEmitter {
   }
 
   /**
-   * Manually trigger plan detection on the current buffer.
-   * Extracts plan text and emits `session.plan-detected` with source='manual'.
-   * Does not apply the dedup window — manual triggers always fire.
+   * INT-2026-037 (FA-02): the plan-mode plan in the session's buffer, for a
+   * review without plan.md in the Vorhaben folder. Remembers its path like the
+   * auto detection. null for an unknown session or a buffer without a plan.
    */
-  public triggerManualReview(sessionId: CloudTerminalSessionId): void {
+  public extractPlanFromBuffer(sessionId: CloudTerminalSessionId): { planText: string; planPath: string } | null {
     const session = this.sessions.get(sessionId);
-    if (!session) {
-      return;
-    }
+    if (!session) return null;
     const result = new PlanBufferExtractor().extract(session.buffer.join(''));
     if (!result) {
       console.warn(`[CloudTerminalManager] plan-detected-skipped-no-plan-path session=${sessionId} source=manual`);
-      return;
+      return null;
     }
     session.lastDetectedPlanPath = result.planPath;
-    console.log(`[CloudTerminalManager] Manual plan review triggered for session ${sessionId} (path=${result.planPath})`);
-    this.emit('session.plan-detected', sessionId, result.planText, 'manual');
+    return { planText: result.planText, planPath: result.planPath };
   }
 
   /**

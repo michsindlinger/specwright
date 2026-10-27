@@ -1,6 +1,8 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { gateway, type WebSocketMessage } from '../../gateway.js';
+import type { ReviewArt, ReviewQuelle } from '../../../../src/shared/review-ziel.js';
+import type { ProbeGrund, ProbeZeile } from '../../../../src/shared/types/plan-review.protocol.js';
 
 type ReviewerStatus = 'running' | 'fulfilled' | 'rejected';
 
@@ -12,6 +14,21 @@ interface ReviewerBlock {
 }
 
 type ReviewState = 'idle' | 'running' | 'done' | 'error';
+
+/** INT-2026-037 (FA-16): what the block heads with. */
+const ART_LABELS: Record<ReviewArt, string> = { intent: 'Absicht-Review', plan: 'Plan-Review' };
+const QUELLE_LABELS: Record<ReviewQuelle, string> = {
+  'intent-ordner': 'Absicht im Ordner',
+  'plan-ordner': 'Plan im Ordner',
+  'plan-mode': 'Plan-Mode-Plan',
+};
+const GRUND_LABELS: Record<ProbeGrund, string> = {
+  zeitueberschreitung: 'Zeitüberschreitung',
+  ueberlastet: 'überlastet',
+  anmeldung: 'Anmeldung',
+  unbekanntes_modell: 'unbekanntes Modell',
+  fehler: 'Fehler',
+};
 
 /** Human-readable labels for the aggregator fallback reasons (see FallbackReason
  *  in plan-review.protocol.ts). Kept local — the frontend/backend type boundary
@@ -38,6 +55,10 @@ export class AosPlanReviewBlock extends LitElement {
   @state() private expanded = true;
   @state() private expandedReviewers: Set<string> = new Set();
   @state() private clusteringFallback: string | null = null;
+  @state() private art: ReviewArt = 'plan';
+  @state() private quelle: ReviewQuelle = 'plan-mode';
+  /** INT-2026-037 (FA-16): probe outcome per reviewer, in the order of the probe event. */
+  @state() private probe: ProbeZeile[] = [];
 
   private boundHandlers: Map<string, (msg: WebSocketMessage) => void> = new Map();
 
@@ -177,6 +198,22 @@ export class AosPlanReviewBlock extends LitElement {
       color: var(--text-color-secondary, #a0a0a0);
     }
 
+    .probe-line {
+      padding: 2px 0 2px 20px;
+      font-size: 11px;
+      color: var(--text-color-secondary, #a0a0a0);
+    }
+
+    .probe-line.ausfall {
+      color: #f44336;
+    }
+
+    .basis-line {
+      padding: 4px 0;
+      font-size: 11px;
+      color: var(--text-color-secondary, #a0a0a0);
+    }
+
     .reviewer-output {
       padding: 6px 8px;
       color: var(--text-color-primary, #e0e0e0);
@@ -207,6 +244,7 @@ export class AosPlanReviewBlock extends LitElement {
   private setupHandlers(): void {
     const handlers: Array<[string, (msg: WebSocketMessage) => void]> = [
       ['plan-review:started', (msg) => this.onStarted(msg)],
+      ['plan-review:probe', (msg) => this.onProbe(msg)],
       ['plan-review:reviewer.result', (msg) => this.onReviewerResult(msg)],
       ['plan-review:aggregated', (msg) => this.onAggregated(msg)],
       ['plan-review:injected', (msg) => this.onInjected(msg)],
@@ -240,6 +278,19 @@ export class AosPlanReviewBlock extends LitElement {
     this.expanded = true;
     this.expandedReviewers = new Set();
     this.clusteringFallback = null;
+    this.art = (msg.art as ReviewArt | undefined) ?? 'plan';
+    this.quelle = (msg.quelle as ReviewQuelle | undefined) ?? 'plan-mode';
+    this.probe = [];
+  }
+
+  private onProbe(msg: WebSocketMessage): void {
+    if (!this.matchesSession(msg)) return;
+    this.probe = (msg.zeilen as ProbeZeile[] | undefined) ?? [];
+    const updated = new Map(this.reviewers);
+    for (const z of this.probe) {
+      if (z.zustand === 'bereit' && !updated.has(z.reviewerId)) updated.set(z.reviewerId, { reviewerId: z.reviewerId, status: 'running' });
+    }
+    this.reviewers = updated;
   }
 
   private onAggregated(msg: WebSocketMessage): void {
@@ -311,8 +362,18 @@ export class AosPlanReviewBlock extends LitElement {
     }
   }
 
+  /** One probe line: why a reviewer failed, or whom a stand-in replaces. */
+  private renderProbeLine(z: ProbeZeile) {
+    if (z.zustand === 'fehlt') return html`<div class="probe-line ausfall">${z.reviewerId}: nicht in der Konfiguration</div>`;
+    if (z.zustand === 'ausgefallen') {
+      return html`<div class="probe-line ausfall" title=${z.meldung ?? ''}>${z.reviewerId}: ausgefallen (${GRUND_LABELS[z.grund ?? 'fehler']})</div>`;
+    }
+    return nothing;
+  }
+
   private renderReviewerBlock(block: ReviewerBlock) {
     const isOpen = this.expandedReviewers.has(block.reviewerId);
+    const ersatz = this.probe.find((z) => z.reviewerId === block.reviewerId)?.ersatzFuer;
     const showOutput = isOpen && block.status === 'fulfilled' && block.output;
     const showError = isOpen && block.status === 'rejected' && block.error;
 
@@ -322,7 +383,7 @@ export class AosPlanReviewBlock extends LitElement {
           <svg class="chevron ${isOpen ? 'open' : ''}" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3,2 9,6 3,10"></polyline>
           </svg>
-          <span class="reviewer-id">${block.reviewerId}</span>
+          <span class="reviewer-id">${block.reviewerId}${ersatz === undefined ? '' : ersatz ? ` · springt ein für ${ersatz}` : ' · füllt auf'}</span>
           ${this.renderReviewerBadge(block.status)}
         </div>
         ${showOutput
@@ -346,7 +407,7 @@ export class AosPlanReviewBlock extends LitElement {
           <svg class="chevron ${this.expanded ? 'open' : ''}" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3,2 9,6 3,10"></polyline>
           </svg>
-          <span class="review-title">Plan Review${this.source === 'manual' ? ' (manual)' : ''}</span>
+          <span class="review-title">${ART_LABELS[this.art]} · ${QUELLE_LABELS[this.quelle]}${this.source === 'manual' ? ' (manual)' : ''}</span>
           ${this.renderStatusBadge()}
           ${this.injected ? html`<span class="inject-label">✓ injected</span>` : nothing}
         </div>
@@ -361,7 +422,11 @@ export class AosPlanReviewBlock extends LitElement {
             ${this.injected && this.injectVerified === false
               ? html`<div class="fallback-line">Inserted without a check — the screen could not be read back</div>`
               : nothing}
+            ${this.probe.map((z) => this.renderProbeLine(z))}
             ${[...this.reviewers.values()].map((b) => this.renderReviewerBlock(b))}
+            ${this.reviewState !== 'running' && this.reviewers.size > 0
+              ? html`<div class="basis-line">Ergebnis aus ${[...this.reviewers.values()].filter((b) => b.status === 'fulfilled').length} von ${this.reviewers.size} Prüfern</div>`
+              : nothing}
           </div>
         ` : nothing}
       </div>
