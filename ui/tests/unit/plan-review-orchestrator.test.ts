@@ -3,6 +3,16 @@ import { EventEmitter } from 'events';
 import type { WebSocket } from 'ws';
 import { PlanReviewOrchestrator } from '../../src/server/services/plan-review-orchestrator.js';
 import { getDefaultReviewers } from '../../src/server/model-config.js';
+import { DEFAULT_REVIEW_PROMPT } from '../../src/server/general-config.js';
+import { mkdtempSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+
+// INT-2026-037: the aggregation path without the clustering LLM (system boundary) — formatInject runs for real.
+vi.mock('../../src/server/services/finding-aggregator.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/server/services/finding-aggregator.js')>()),
+  aggregateFindings: vi.fn(async () => ({ clusters: [], fallbackUsed: false })),
+}));
 import type { CloudTerminalManager } from '../../src/server/services/cloud-terminal-manager.js';
 
 /**
@@ -25,8 +35,8 @@ function buildMockCtm(
   const emitter = new EventEmitter();
   const sendInput = vi.fn().mockReturnValue(opts.sendInputReturns ?? true);
   const reportAgentEvent = vi.fn().mockReturnValue(true);
-  // Default: a live screen without a plan dialog → the REPL inject path.
-  const readScreen = vi.fn().mockResolvedValue({ text: '', live: true });
+  // Default: a live screen without a plan dialog, empty prompt line → the REPL inject path.
+  const readScreen = vi.fn().mockResolvedValue({ text: '❯ ', live: true });
   const setPlanReviewEnabled = vi.fn();
   const triggerManualReview = vi.fn();
   const waitForIdle = vi.fn().mockResolvedValue(undefined);
@@ -74,8 +84,25 @@ function buildOrchestratorWithMockReviewer(ctm: CloudTerminalManager, reviewerOu
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (orchestrator as any).externalReviewer = {
     reviewPlan: vi.fn().mockResolvedValue(reviewerOutput),
+    probe: vi.fn().mockResolvedValue({ bereit: true }),
   };
+  testDoubles(orchestrator);
   return orchestrator;
+}
+
+/** INT-2026-037: mock reviewers count as configured, no stand-ins from the real settings. */
+function testDoubles(orch: PlanReviewOrchestrator): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (orch as any).imConfig = () => true;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (orch as any).ersatzReihe = () => [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (orch as any).sleep = () => Promise.resolve();
+}
+
+/** INT-2026-037 (FA-23): review texts typed at the prompt — each is followed by its own Enter (`\r`). */
+function textInputs(mock: { sendInput: { mock: { calls: unknown[][] } } }): number {
+  return mock.sendInput.mock.calls.filter((c) => c[1] !== '\r').length;
 }
 
 async function waitForNextTick(): Promise<void> {
@@ -108,7 +135,7 @@ describe('PlanReviewOrchestrator dedup by planPath', () => {
 
     expect(started).toHaveBeenCalledOnce();
     expect(injected).toHaveBeenCalledOnce();
-    expect(mock.sendInput).toHaveBeenCalledOnce();
+    expect(textInputs(mock)).toBe(1);
   });
 
   it('second trigger with the same planPath is silently skipped (no review, no inject)', async () => {
@@ -125,13 +152,13 @@ describe('PlanReviewOrchestrator dedup by planPath', () => {
     mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'auto');
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(started).toHaveBeenCalledTimes(1);
-    expect(mock.sendInput).toHaveBeenCalledTimes(1);
+    expect(textInputs(mock)).toBe(1);
 
     mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text again', 'auto');
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     expect(started).toHaveBeenCalledTimes(1);
-    expect(mock.sendInput).toHaveBeenCalledTimes(1);
+    expect(textInputs(mock)).toBe(1);
   });
 
   it('manual trigger re-reviews the same already-injected planPath (auto would skip)', async () => {
@@ -159,7 +186,7 @@ describe('PlanReviewOrchestrator dedup by planPath', () => {
     mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'manual');
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(started).toHaveBeenCalledTimes(2);
-    expect(mock.sendInput).toHaveBeenCalledTimes(2);
+    expect(textInputs(mock)).toBe(2);
   });
 
   it('second trigger with a different planPath runs a fresh review', async () => {
@@ -181,7 +208,7 @@ describe('PlanReviewOrchestrator dedup by planPath', () => {
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     expect(started).toHaveBeenCalledTimes(2);
-    expect(mock.sendInput).toHaveBeenCalledTimes(2);
+    expect(textInputs(mock)).toBe(2);
   });
 
   it('setTabConfig(enabled:false) clears lastInjectedPlanPath so the same plan can be re-reviewed', async () => {
@@ -317,7 +344,7 @@ describe('PlanReviewOrchestrator agent-status reports', () => {
 
     await run(mock, orch);
 
-    expect(mock.sendInput).toHaveBeenCalledWith('sess-1', expect.stringMatching(/\n$/), { inferUnblock: false });
+    expect(mock.sendInput).toHaveBeenLastCalledWith('sess-1', '\r', { inferUnblock: false });
     expect(mock.reportAgentEvent).toHaveBeenCalledOnce();
     expect(mock.reportAgentEvent).toHaveBeenCalledWith('sess-1', 'review-injected', {
       reason: 'Plan-Review eingefügt (1/1 Reviewer)',
@@ -329,8 +356,9 @@ describe('PlanReviewOrchestrator agent-status reports', () => {
   it('counts fulfilled vs selected reviewers in the reason', async () => {
     const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md' });
     const orch = new PlanReviewOrchestrator(mock.ctm);
+    testDoubles(orch);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (orch as any).externalReviewer = {
+    (orch as any).externalReviewer = { probe: vi.fn().mockResolvedValue({ bereit: true }),
       reviewPlan: vi
         .fn()
         .mockResolvedValueOnce('Finding A')
@@ -363,14 +391,15 @@ describe('PlanReviewOrchestrator agent-status reports', () => {
   it('reports review-failed when every reviewer fails and the session is blocked (plan dialog open)', async () => {
     const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md', agentStatus: 'blocked' });
     const orch = new PlanReviewOrchestrator(mock.ctm);
+    testDoubles(orch);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (orch as any).externalReviewer = { reviewPlan: vi.fn().mockRejectedValue(new Error('boom')) };
+    (orch as any).externalReviewer = { probe: vi.fn().mockResolvedValue({ bereit: true }), reviewPlan: vi.fn().mockRejectedValue(new Error('boom')) };
     const error = vi.fn();
     orch.on('plan-review:error', error);
 
     await run(mock, orch);
 
-    expect(error).toHaveBeenCalledWith('sess-1', 'All reviewers failed');
+    expect(error).toHaveBeenCalledWith('sess-1', expect.stringMatching(/^Review gescheitert: mock:mock-1: Fehler/));
     expect(mock.sendInput).not.toHaveBeenCalled();
     expect(mock.reportAgentEvent).toHaveBeenCalledOnce();
     expect(mock.reportAgentEvent).toHaveBeenCalledWith('sess-1', 'review-failed', {
@@ -381,8 +410,9 @@ describe('PlanReviewOrchestrator agent-status reports', () => {
   it('stays silent on total failure when the session is not blocked (nothing provably waits)', async () => {
     const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md', agentStatus: 'working' });
     const orch = new PlanReviewOrchestrator(mock.ctm);
+    testDoubles(orch);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (orch as any).externalReviewer = { reviewPlan: vi.fn().mockRejectedValue(new Error('boom')) };
+    (orch as any).externalReviewer = { probe: vi.fn().mockResolvedValue({ bereit: true }), reviewPlan: vi.fn().mockRejectedValue(new Error('boom')) };
     const error = vi.fn();
     orch.on('plan-review:error', error);
 
@@ -399,8 +429,9 @@ describe('PlanReviewOrchestrator agent-status reports', () => {
 
     const pausedFail = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md', sessionStatus: 'paused', agentStatus: 'blocked' });
     const orch = new PlanReviewOrchestrator(pausedFail.ctm);
+    testDoubles(orch);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (orch as any).externalReviewer = { reviewPlan: vi.fn().mockRejectedValue(new Error('boom')) };
+    (orch as any).externalReviewer = { probe: vi.fn().mockResolvedValue({ bereit: true }), reviewPlan: vi.fn().mockRejectedValue(new Error('boom')) };
     await run(pausedFail, orch);
     expect(pausedFail.reportAgentEvent).not.toHaveBeenCalled();
   });
@@ -408,9 +439,10 @@ describe('PlanReviewOrchestrator agent-status reports', () => {
   it('does not report on a lock collision (a review is still running)', async () => {
     const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md', agentStatus: 'blocked' });
     const orch = new PlanReviewOrchestrator(mock.ctm);
+    testDoubles(orch);
     let release: (v: string) => void = () => {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (orch as any).externalReviewer = {
+    (orch as any).externalReviewer = { probe: vi.fn().mockResolvedValue({ bereit: true }),
       reviewPlan: vi.fn().mockImplementation(() => new Promise<string>((resolve) => { release = resolve; })),
     };
     const error = vi.fn();
@@ -477,9 +509,10 @@ describe('PlanReviewOrchestrator inject into the plan dialog', () => {
       ...opts,
     });
     const orch = new PlanReviewOrchestrator(mock.ctm);
+    testDoubles(orch);
     const reviewPlan = vi.fn().mockResolvedValue('Mock reviewer findings');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (orch as any).externalReviewer = { reviewPlan };
+    (orch as any).externalReviewer = { reviewPlan, probe: vi.fn().mockResolvedValue({ bereit: true }) };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (orch as any).sleep = () => Promise.resolve();
     const started = vi.fn();
@@ -508,7 +541,7 @@ describe('PlanReviewOrchestrator inject into the plan dialog', () => {
 
     expect(keys(t.mock)).toEqual([DOWN, DOWN]);
     expect(texts(t.mock)).toHaveLength(1);
-    expect(texts(t.mock)[0].startsWith('Please address these issues')).toBe(true);
+    expect(texts(t.mock)[0].startsWith('===== Plan-Review · Plan-Mode-Plan =====')).toBe(true);
     expect(texts(t.mock)[0].endsWith('\n')).toBe(false);
     const lastKey = t.mock.sendInput.mock.calls.findLastIndex((c: unknown[]) => c[1] === DOWN);
     const textAt = t.mock.sendInput.mock.calls.findIndex((c: unknown[]) => c[1] !== DOWN);
@@ -582,13 +615,14 @@ describe('PlanReviewOrchestrator inject into the plan dialog', () => {
     expect(t.injected).toHaveBeenCalledWith('sess-1', true);
   });
 
-  it('no dialog by hook or screen (REPL): typed with a newline, unverified', async () => {
+  it('no dialog by hook or screen (REPL): typed, then Enter on its own, unverified', async () => {
     const t = setup({ agentStatus: 'working', agentStatusReason: undefined });
     await trigger(t.mock);
 
     expect(keys(t.mock)).toEqual([]);
-    expect(texts(t.mock)).toHaveLength(1);
-    expect(texts(t.mock)[0].endsWith('\n')).toBe(true);
+    expect(texts(t.mock)).toHaveLength(2);
+    expect(texts(t.mock)[0].endsWith('\n')).toBe(false);
+    expect(texts(t.mock)[1]).toBe('\r');
     expect(t.injected).toHaveBeenCalledWith('sess-1', false);
   });
 
@@ -616,7 +650,7 @@ describe('PlanReviewOrchestrator inject into the plan dialog', () => {
     await trigger(t.mock, 'manual');
     expect(t.reviewPlan).toHaveBeenCalledOnce();
     expect(t.started).toHaveBeenCalledTimes(2);
-    expect(t.started).toHaveBeenLastCalledWith('sess-1', 'manual', 1);
+    expect(t.started).toHaveBeenLastCalledWith('sess-1', 'manual', 1, 'plan', 'plan-mode');
     expect(t.injected).toHaveBeenCalledWith('sess-1', true);
 
     // Delivered → cache cleared: the next manual trigger reviews afresh.
@@ -662,20 +696,19 @@ describe('PlanReviewOrchestrator inject into the plan dialog', () => {
     expect(t.injected).toHaveBeenCalledWith('sess-1', false);
   });
 
-  it('raw-buffer mode, hooks say no dialog: a stale frame in the buffer is ignored, submitted at the prompt', async () => {
+  it('raw-buffer mode, hooks say no dialog: nothing typed blind (AR-08), the review waits for the next stop', async () => {
     const t = setup({ agentStatus: 'working', agentStatusReason: undefined });
     t.mock.readScreen.mockResolvedValue({ text: render(LABELS, 1).text, live: false });
     await trigger(t.mock);
 
-    expect(keys(t.mock)).toEqual([]);
-    expect(texts(t.mock)[0].endsWith('\n')).toBe(true);
-    expect(t.injected).toHaveBeenCalledWith('sess-1', false);
+    expect(sent(t.mock)).toEqual([]);
+    expect(t.injected).not.toHaveBeenCalled();
   });
 
   it('sanitizes the review before typing: CR and ESC never reach the TUI', async () => {
     const t = setup();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (t.orch as any).externalReviewer = { reviewPlan: vi.fn().mockResolvedValue('Line one\r\nLine two\rthree \x1b[A up') };
+    (t.orch as any).externalReviewer = { probe: vi.fn().mockResolvedValue({ bereit: true }), reviewPlan: vi.fn().mockResolvedValue('Line one\r\nLine two\rthree \x1b[A up') };
     fakeDialog(t.mock, 3);
     await trigger(t.mock);
 
@@ -690,9 +723,10 @@ describe('INT-2026-025 (FA-22): isReviewRunning', () => {
     const mock = buildMockCtm();
     mock.setPlanPath('/p/lauf.md');
     const orch = new PlanReviewOrchestrator(mock.ctm);
+    testDoubles(orch);
     let fertig: (v: string) => void = () => {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (orch as any).externalReviewer = { reviewPlan: vi.fn(() => new Promise<string>((r) => { fertig = r; })) };
+    (orch as any).externalReviewer = { probe: vi.fn().mockResolvedValue({ bereit: true }), reviewPlan: vi.fn(() => new Promise<string>((r) => { fertig = r; })) };
     expect(orch.isReviewRunning('sess-x')).toBe(false);
     orch.setTabConfig('sess-x', { enabled: true, reviewers: [{ providerId: 'mock', modelId: 'mock-1' }] });
     expect(orch.isReviewRunning('sess-x')).toBe(false);
@@ -702,5 +736,284 @@ describe('INT-2026-025 (FA-22): isReviewRunning', () => {
     fertig('findings');
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(orch.isReviewRunning('sess-x')).toBe(false);
+  });
+});
+
+describe('INT-2026-037 (FA-23): hand-over only into an empty prompt line', () => {
+  function setupRepl() {
+    const mock = buildMockCtm({ lastDetectedPlanPath: '/p/foo.md' });
+    const orch = buildOrchestratorWithMockReviewer(mock.ctm);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (orch as any).sleep = () => Promise.resolve();
+    const injected = vi.fn();
+    orch.on('plan-review:injected', injected);
+    orch.setTabConfig('sess-1', { enabled: true, reviewers: [{ providerId: 'mock', modelId: 'mock-1' }] });
+    return { mock, orch, injected };
+  }
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 30));
+
+  it('text in the input box: nothing typed; next stop with an empty line types the review and presses Enter', async () => {
+    const t = setupRepl();
+    t.mock.readScreen.mockResolvedValue({ text: '❯ ich tippe gerade', live: true });
+    t.mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'manual');
+    await settle();
+    expect(t.mock.sendInput).not.toHaveBeenCalled();
+    expect(t.injected).not.toHaveBeenCalled();
+
+    t.mock.readScreen.mockResolvedValue({ text: '❯ ', live: true });
+    t.mock.emitter.emit('session.agent-event', 'sess-1', 'stop');
+    await settle();
+    const sent = t.mock.sendInput.mock.calls.map((c: unknown[]) => c[1] as string);
+    expect(sent).toHaveLength(2);
+    expect(sent[0]).toContain('Mock reviewer findings');
+    expect(sent[1]).toBe('\r');
+    expect(t.injected).toHaveBeenCalledOnce();
+  });
+
+  it('a dialog cue without plan dialog (permission prompt): waits, types nothing', async () => {
+    const t = setupRepl();
+    t.mock.readScreen.mockResolvedValue({ text: ' Do you want to proceed?\n ❯ 1. Yes\n   2. No', live: true });
+    t.mock.emitter.emit('session.plan-detected', 'sess-1', 'plan text', 'manual');
+    await settle();
+    expect(t.mock.sendInput).not.toHaveBeenCalled();
+  });
+});
+
+describe('INT-2026-037: intent and plan review from the Vorhaben folder', () => {
+  type Probe = { bereit: true } | { bereit: false; grund: string; meldung: string };
+  let dir: string;
+  let intentPfad: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'int037-'));
+    intentPfad = join(dir, 'intent.md');
+    writeFileSync(intentPfad, '# Absicht\n\nZ-01: weniger Code.\n');
+  });
+
+  function setupReview(opts: {
+    reviewers?: { providerId: string; modelId: string }[];
+    ersatz?: { providerId: string; modelId: string }[];
+    probe?: (providerId: string, modelId: string) => Probe | Promise<Probe>;
+    review?: (prompt: string, providerId: string, modelId: string) => Promise<string>;
+    imConfig?: (r: { providerId: string; modelId?: string }) => boolean;
+  } = {}) {
+    const mock = buildMockCtm();
+    const orch = new PlanReviewOrchestrator(mock.ctm);
+    testDoubles(orch);
+    const probe = vi.fn(async (p: string, m: string) => (opts.probe ? opts.probe(p, m) : { bereit: true as const }));
+    const reviewPlan = vi.fn(opts.review ?? (async (_prompt: string, p: string, m: string) => `Finding von ${p}:${m}, ausführlich genug für einen Befund.`));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const o = orch as any;
+    o.externalReviewer = { reviewPlan, probe };
+    o.ersatzReihe = () => opts.ersatz ?? [];
+    if (opts.imConfig) o.imConfig = opts.imConfig;
+    // aggregation needs an LLM — the tests use one reviewer or check the fallback-free parts
+    const events = { started: vi.fn(), probeEvent: vi.fn(), result: vi.fn(), aggregated: vi.fn(), injected: vi.fn(), error: vi.fn() };
+    orch.on('plan-review:started', events.started);
+    orch.on('plan-review:probe', events.probeEvent);
+    orch.on('plan-review:reviewer.result', events.result);
+    orch.on('plan-review:aggregated', events.aggregated);
+    orch.on('plan-review:injected', events.injected);
+    orch.on('plan-review:error', events.error);
+    orch.setTabConfig('sess-1', { enabled: false, reviewers: opts.reviewers ?? [{ providerId: 'anthropic', modelId: 'sonnet' }] });
+    return { mock, orch, probe, reviewPlan, ...events };
+  }
+  const settle = (ms = 30) => new Promise((resolve) => setTimeout(resolve, ms));
+  const intentZiel = () => ({ art: 'intent' as const, quelle: 'intent-ordner' as const, pfad: intentPfad });
+  const aggregated = (t: { aggregated: ReturnType<typeof vi.fn> }): string => t.aggregated.mock.calls[0][1] as string;
+
+  it('FA-01/AK-01: reviews the file as it is at the start; a later edit does not change the run', async () => {
+    let fertig: (v: string) => void = () => {};
+    const t = setupReview({ review: () => new Promise<string>((r) => { fertig = r; }) });
+    expect(t.orch.startReview('sess-1', intentZiel(), 'manual')).toBe('gestartet');
+    await settle();
+    writeFileSync(intentPfad, 'ganz anderer Text');
+    fertig('Finding: alles da, ausführlich genug für einen Befund.');
+    await settle();
+    const prompt = t.reviewPlan.mock.calls[0][0] as string;
+    expect(prompt).toContain('Z-01: weniger Code.');
+    expect(prompt).not.toContain('ganz anderer Text');
+    expect(t.started).toHaveBeenCalledWith('sess-1', 'manual', 1, 'intent', 'intent-ordner');
+  });
+
+  it('FA-04/FA-05/FA-06: the intent prompt asks for EXISTS/DROP with budget 15; the plan prompt keeps its budget 6', async () => {
+    const t = setupReview();
+    t.orch.startReview('sess-1', intentZiel(), 'manual');
+    await settle();
+    const prompt = t.reviewPlan.mock.calls[0][0] as string;
+    expect(prompt).toContain('file:line');
+    expect(prompt).toContain('DROP');
+    expect(prompt).toContain('at most 15 tool calls');
+    expect(prompt).not.toContain('preserve all features');
+    expect(DEFAULT_REVIEW_PROMPT).toContain('at most 6 tool calls');
+  });
+
+  it('FA-03: an unreadable folder file is an error in the block, no reviewer call', async () => {
+    const t = setupReview();
+    t.orch.startReview('sess-1', { ...intentZiel(), pfad: join(dir, 'fehlt.md') }, 'manual');
+    await settle();
+    expect(t.error).toHaveBeenCalledWith('sess-1', expect.stringContaining('Datei nicht lesbar'));
+    expect(t.reviewPlan).not.toHaveBeenCalled();
+  });
+
+  it('FA-12: a probe result is reused for 5 minutes, probed again after that', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const t = setupReview();
+      t.orch.startReview('sess-1', intentZiel(), 'manual');
+      await settle();
+      expect(t.probe).toHaveBeenCalledTimes(1);
+      vi.setSystemTime(Date.now() + 4 * 60_000);
+      t.orch.startReview('sess-1', intentZiel(), 'manual');
+      await settle();
+      expect(t.probe).toHaveBeenCalledTimes(1);
+      vi.setSystemTime(Date.now() + 2 * 60_000);
+      t.orch.startReview('sess-1', intentZiel(), 'manual');
+      await settle();
+      expect(t.probe).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('FA-15/EK-03: chosen and stand-ins are probed in parallel — a hanging probe costs its timeout once, not twice', async () => {
+    const t = setupReview({
+      reviewers: [{ providerId: 'glm', modelId: 'glm-5.2' }],
+      ersatz: [{ providerId: 'anthropic', modelId: 'fable' }],
+      probe: (p) => (p === 'glm' ? new Promise<Probe>((r) => setTimeout(() => r({ bereit: false, grund: 'zeitueberschreitung', meldung: 'Reviewer timeout' }), 60)) : { bereit: true }),
+    });
+    const start = Date.now();
+    t.orch.startReview('sess-1', intentZiel(), 'manual');
+    await settle(100);
+    expect(t.injected).toHaveBeenCalledOnce();
+    expect(Date.now() - start).toBeLessThan(140);
+    // both probes started before the first finished
+    expect(t.probe).toHaveBeenCalledTimes(2);
+  });
+
+  it('FA-13/FA-16/FA-17/FA-18: failed and missing reviewers, stand-in, provider:model ids, basis in the inject — no raw stderr', async () => {
+    const t = setupReview({
+      reviewers: [
+        { providerId: 'anthropic', modelId: 'sonnet' },
+        { providerId: 'anthropic', modelId: 'opus' },
+        { providerId: 'glm', modelId: 'glm-5.2' },
+        { providerId: 'deepseek', modelId: 'opus' },
+      ],
+      ersatz: [{ providerId: 'anthropic', modelId: 'fable' }],
+      imConfig: (r) => r.providerId !== 'deepseek',
+      probe: (p) => (p === 'glm' ? { bereit: false, grund: 'ueberlastet', meldung: '529 overloaded — stderr: /home/geheim/pfad' } : { bereit: true }),
+      review: async (_prompt, p, m) => {
+        if (m === 'opus') throw new Error('Reviewer failed — stderr: /home/geheim/pfad');
+        return `Finding von ${p}:${m}, ausführlich genug für einen Befund.`;
+      },
+    });
+    t.orch.startReview('sess-1', intentZiel(), 'manual');
+    await settle(60);
+
+    expect(t.probe).not.toHaveBeenCalledWith('deepseek', 'opus');
+    expect(t.probeEvent).toHaveBeenCalledWith('sess-1', [
+      { reviewerId: 'anthropic:sonnet', zustand: 'bereit' },
+      { reviewerId: 'anthropic:opus', zustand: 'bereit' },
+      { reviewerId: 'glm:glm-5.2', zustand: 'ausgefallen', grund: 'ueberlastet', meldung: '529 overloaded — stderr: /home/geheim/pfad' },
+      { reviewerId: 'deepseek:opus', zustand: 'fehlt' },
+      { reviewerId: 'anthropic:fable', zustand: 'bereit', ersatzFuer: 'glm:glm-5.2' },
+    ]);
+    const ids = t.result.mock.calls.map((c: unknown[]) => c[1]);
+    expect(ids).toEqual(['anthropic:sonnet', 'anthropic:opus', 'anthropic:fable']);
+    const text = aggregated(t);
+    expect(text).toContain('===== Absicht-Review · Absicht im Ordner =====');
+    expect(text).toContain('Ergebnis aus 2 von 3 Prüfern.');
+    expect(text).toContain('glm:glm-5.2: überlastet');
+    expect(text).toContain('deepseek:opus: nicht in der Konfiguration');
+    expect(text).toContain('anthropic:opus: Fehler');
+    expect(text).toContain('anthropic:fable für glm:glm-5.2');
+    expect(text).not.toContain('/home/geheim/pfad');
+  });
+
+  it('FA-19: both inject paths end with the rules — evidence, R2, DROP to Michael; no "argue for it", no "briefly justify"', async () => {
+    const one = setupReview();
+    one.orch.startReview('sess-1', intentZiel(), 'manual');
+    await settle();
+    const two = setupReview({ reviewers: [{ providerId: 'anthropic', modelId: 'sonnet' }, { providerId: 'anthropic', modelId: 'opus' }] });
+    two.orch.startReview('sess-1', { art: 'plan', quelle: 'plan-ordner', pfad: intentPfad }, 'manual');
+    await settle(100);
+    expect(aggregated(two)).toContain('External review consensus (2 successful reviewers)');
+    for (const text of [aggregated(one), aggregated(two)]) {
+      expect(text).toContain('lesbarem Beleg');
+      expect(text).toContain('R2');
+      expect(text).not.toContain('argue for it');
+      expect(text).not.toContain('briefly justify');
+    }
+    expect(aggregated(one)).toMatch(/DROP-Empfehlung.*immer an Michael/);
+    expect(aggregated(two)).not.toContain('DROP-Empfehlung');
+    expect(aggregated(two)).toContain('Plan → §12');
+  });
+
+  it('FA-22/AK-11: every probe fails → "Review gescheitert" with reasons, nothing typed', async () => {
+    const t = setupReview({
+      reviewers: [{ providerId: 'glm', modelId: 'glm-5.2' }],
+      ersatz: [{ providerId: 'minimax', modelId: 'MiniMax-M2.5' }],
+      probe: () => ({ bereit: false, grund: 'anmeldung', meldung: '401' }),
+    });
+    t.orch.startReview('sess-1', intentZiel(), 'manual');
+    await settle();
+    expect(t.error).toHaveBeenCalledWith('sess-1', 'Review gescheitert: glm:glm-5.2: Anmeldung');
+    expect(t.reviewPlan).not.toHaveBeenCalled();
+    expect(t.mock.sendInput).not.toHaveBeenCalled();
+  });
+
+  it('FA-23 (button): three refused hand-overs → message; the button then inserts the waiting result without a new review', async () => {
+    const t = setupReview();
+    t.mock.readScreen.mockResolvedValue({ text: '❯ ich tippe', live: true });
+    t.orch.startReview('sess-1', intentZiel(), 'manual');
+    await settle();
+    t.mock.emitter.emit('session.agent-event', 'sess-1', 'stop');
+    await settle();
+    t.mock.emitter.emit('session.agent-event', 'sess-1', 'stop');
+    await settle();
+    expect(t.error).toHaveBeenCalledWith('sess-1', 'Review nicht übergeben – „Absicht prüfen“ fügt es ein.');
+    t.mock.emitter.emit('session.agent-event', 'sess-1', 'stop');
+    await settle();
+    expect(t.mock.sendInput).not.toHaveBeenCalled();
+
+    t.mock.readScreen.mockResolvedValue({ text: '❯ ', live: true });
+    t.orch.startReview('sess-1', intentZiel(), 'manual');
+    await settle();
+    expect(t.reviewPlan).toHaveBeenCalledOnce();
+    expect(t.mock.sendInput).toHaveBeenLastCalledWith('sess-1', '\r', { inferUnblock: false });
+    expect(t.injected).toHaveBeenCalledOnce();
+  });
+
+  it('FA-23: a busy machine-write lock at a stop is no attempt — the next stop still hands over', async () => {
+    const t = setupReview();
+    t.mock.readScreen.mockResolvedValue({ text: '❯ ich tippe', live: true });
+    t.orch.startReview('sess-1', intentZiel(), 'manual');
+    await settle();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wmw = (t.mock.ctm as any).withMachineWrite as ReturnType<typeof vi.fn>;
+    for (let i = 0; i < 3; i++) {
+      wmw.mockResolvedValueOnce({ ok: false, grund: 'beschaeftigt' });
+      t.mock.emitter.emit('session.agent-event', 'sess-1', 'stop');
+      await settle();
+    }
+    t.mock.readScreen.mockResolvedValue({ text: '❯ ', live: true });
+    t.mock.emitter.emit('session.agent-event', 'sess-1', 'stop');
+    await settle();
+    expect(t.injected).toHaveBeenCalledOnce();
+    expect(t.error).not.toHaveBeenCalled();
+  });
+
+  it('FA-24/OF-01: the hand-over does not check the intent status — an "angenommen" intent is handed over', async () => {
+    writeFileSync(intentPfad, '---\nstatus: "angenommen"\n---\n# Absicht\n');
+    const t = setupReview();
+    t.orch.startReview('sess-1', intentZiel(), 'auto');
+    await settle();
+    expect(t.injected).toHaveBeenCalledOnce();
+  });
+
+  it('a second start while a review runs is refused synchronously (beschaeftigt)', async () => {
+    const t = setupReview({ review: () => new Promise<string>(() => {}) });
+    expect(t.orch.startReview('sess-1', intentZiel(), 'auto')).toBe('gestartet');
+    expect(t.orch.startReview('sess-1', intentZiel(), 'auto')).toBe('beschaeftigt');
   });
 });

@@ -2,7 +2,7 @@
 description: Vorhaben als intent.md festhalten — fachlich, belegt, freigegeben
 globs:
 alwaysApply: false
-version: 1.4
+version: 1.5
 encoding: UTF-8
 ---
 
@@ -109,6 +109,8 @@ PRESENT in Alltagssprache:
   - Nebenwirkungen (Pilot: „Wer vorher einen aktiven Filter hatte, setzt ihn danach selbst wieder")
 
 RULE: Vorlegen nach R3 und Rückfragen nach R2 (`specwright/workflows/meta/leser-und-rueckfragen.md`): im Chat nur die Mensch-Abschnitte (drei Sätze, §1, §3, §4, §7, §12), Kopf-Tabelle und Entscheidungsrechte nur als Verweis auf die Datei; jede offene Frage als „OF-nn, Gegenstand: Vorschlag. Ok?".
+
+RULE Review-Ergebnis bearbeiten (INT-2026-037, gleich ob aus der Web-UI oder von Hand eingeholt): Lehne einen Befund nur mit lesbarem Beleg ab (`datei:zeile` oder Abschnitt in Absicht/Spec). Ohne Beleg frag nach R2 („Befund n, Gegenstand: Vorschlag. Ok?"). Übernimm die Schweregrade, wie die Prüfer sie gesetzt haben. Blocker, LIKELY-Befunde und jede DROP-Empfehlung – auch von nur einem Prüfer – gehen immer an die Person. Jede Entscheidung kommt in den Abschnitt „Review-Entscheidungen" der Absicht.
 
 WAIT for Freigabe oder Änderungen. Änderungen → Version hochzählen (MINOR bei neuem Kriterium, MAJOR bei geändertem Ziel), Änderungsprotokoll pflegen, erneut vorlegen.
 

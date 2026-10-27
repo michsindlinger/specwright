@@ -2,7 +2,7 @@
 description: Technischer Plan im Plan Mode — Einheit der Ausführung, mit Zerlegung und Verbindungsnachweisen
 globs:
 alwaysApply: false
-version: 1.6
+version: 1.7
 encoding: UTF-8
 ---
 
@@ -112,6 +112,7 @@ WRITE §11 Schätzung mit Spanne und Grund der Unsicherheit, dazu die Zeile „K
 SELF-REVIEW nach Skill `review-implementation-plan` (Kollegen-Methode, Minimalinvasiv-Analyse).
 OPTIONAL externe Reviewer (Multi-LLM): jedes Finding in §12 entscheiden — angenommen mit Änderung oder abgelehnt mit Grund. Kein Finding unbeantwortet.
 WRITE „Minimalinvasiv geprüft": was wiederverwendet, was gestrichen.
+RULE Review-Ergebnis bearbeiten (INT-2026-037, gleich ob aus der Web-UI oder von Hand eingeholt): Lehne einen Befund nur mit lesbarem Beleg ab (`datei:zeile` oder Abschnitt in Absicht/Spec). Ohne Beleg frag nach R2 („Befund n, Gegenstand: Vorschlag. Ok?"). Übernimm die Schweregrade, wie die Prüfer sie gesetzt haben. Jede Entscheidung kommt in §12.
 RULE: Jede Review-Entscheidung in §12 und jede Rückfrage dazu nach R2 (`specwright/workflows/meta/leser-und-rueckfragen.md`): „Finding n, Gegenstand in einem Satz: angenommen/abgelehnt, weil …". Kein nacktes „Finding 7 abgelehnt".
 
 </step>

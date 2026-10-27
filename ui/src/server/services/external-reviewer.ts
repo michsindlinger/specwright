@@ -1,5 +1,7 @@
 import { query as claudeQuery } from '@anthropic-ai/claude-agent-sdk';
 import { buildSdkCallOptions } from '../utils/sdk-call-options.js';
+import type { ProbeGrund } from '../../shared/types/plan-review.protocol.js';
+import type { ProbeErgebnis } from './review-auswahl.js';
 
 export const REVIEWER_TOOLS: readonly string[] = ['Read', 'Grep', 'Glob'];
 const MIN_REVIEW_PROSE_LENGTH = 40;
@@ -29,7 +31,64 @@ export async function withTimeout<T>(
   }
 }
 
+/**
+ * INT-2026-037 (FA-11): a probe answers within this time or counts as failed.
+ * 30 s, not the specified 15 s: a probe starts a whole CLI; seven in parallel
+ * measured 10–15 s on the Mac (plan §14).
+ */
+export const PROBE_TIMEOUT_MS = 30_000;
+
+/** INT-2026-037 (FA-11): category of a failed probe from its error text. Pure. */
+export function ordneProbeFehler(meldung: string): ProbeGrund {
+  if (/timeout/i.test(meldung)) return 'zeitueberschreitung';
+  if (/529|overload/i.test(meldung)) return 'ueberlastet';
+  if (/401|403|auth|login|api key|unauthori/i.test(meldung)) return 'anmeldung';
+  if (/model.*(not found|unknown|does not exist|invalid)|404/i.test(meldung)) return 'unbekanntes_modell';
+  return 'fehler';
+}
+
 export class ExternalReviewer {
+  /**
+   * INT-2026-037 (FA-11): one tiny question without tools before a review —
+   * ready when the provider answers anything within {@link PROBE_TIMEOUT_MS}.
+   */
+  async probe(providerId: string, modelId: string | undefined): Promise<ProbeErgebnis> {
+    try {
+      const antwort = await withTimeout(async (ac) => {
+        const session = claudeQuery({
+          prompt: 'Reply with: ok',
+          options: {
+            ...buildSdkCallOptions(providerId, []),
+            maxTurns: 1,
+            abortController: ac,
+            ...(modelId ? { model: modelId } : {}),
+          },
+        });
+        let text = '';
+        try {
+          for await (const event of session) {
+            if (event.type !== 'result') continue;
+            const ev = event as Record<string, unknown>;
+            if (ev.subtype === 'success' && !ev.is_error && typeof ev.result === 'string') text = ev.result;
+            else throw new Error(`${String(ev.subtype ?? 'unknown')}: ${typeof ev.result === 'string' ? ev.result : ''}`);
+          }
+        } finally {
+          try {
+            await session.return?.(undefined);
+          } catch {
+            // ignore — generator already closed
+          }
+        }
+        return text;
+      }, PROBE_TIMEOUT_MS);
+      if (antwort.trim()) return { bereit: true };
+      return { bereit: false, grund: 'fehler', meldung: 'empty answer' };
+    } catch (err) {
+      const meldung = err instanceof Error ? err.message : String(err);
+      return { bereit: false, grund: ordneProbeFehler(meldung), meldung };
+    }
+  }
+
   async reviewPlan(
     prompt: string,
     providerId: string,

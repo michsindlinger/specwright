@@ -69,6 +69,7 @@ Optionale Felder, die spätere Vorhaben der Datei hinzugefügt haben. Das Format
 | 2026-09-18 | INT-2026-019 | Zuordnung: `provider`, `claudeSessionId` (UUID-geprüft, nur `--resume`-Argument und Dateiname der Existenzprüfung), `resumed` (Wiederaufnahme-Marke) | PR #77 |
 | 2026-09-19 | INT-2026-022 | anhängige Absicht-Sitzung: `arbeitstitel` (≤ 80 Zeichen, beim Start einmal gebildet — die einzige Ausnahme der Flag-Regel) | PR #87 |
 | 2026-09-22 | INT-2026-024 | `abschluesse` je Vorhaben: Marke „Abschluss angestoßen" (PR-Nummer, PR-Link, Zweig, Zeitpunkt) und letzter Fehlgrund; verfällt beim Scan, sobald der Hauptcheckout `umgesetzt` trägt, durch „Abschluss zurücknehmen" oder mit dem Ordner (`prune`); „läuft" nur im Speicher | PR offen |
+| 2026-10-27 | INT-2026-037 | `autoReviews` je Vorhaben: Zeitpunkt des automatischen Absicht-Reviews (einmal je Absicht, bleibt auch nach gescheitertem Review); verfällt mit dem Ordner (`prune`) | PR offen |
 
 Weitere Laufzeitdateien nach diesem Muster (eigene Datei je Backend-Port im gitignored Laufzeitordner, kein Feld in `vorhaben-<port>.json`):
 

@@ -1,6 +1,6 @@
 ---
 intent_id: "INT-JJJJ-NNN"  
-format: "2.2"  
+format: "2.3"  
 titel: "[TITEL]"  
 status: "entwurf"  
 version: "0.1.0"  
@@ -37,7 +37,7 @@ schlagworte: []
 | `intent_id` | stabile Kennung, nie wiederverwenden | `INT-JJJJ-NNN` |
 | `titel` | 5 bis 80 Zeichen | — |
 | `status` | Lebenszyklus | `entwurf` · `in_klaerung` · `angenommen` · `umgesetzt` · `abgeloest` · `verworfen` |
-| `format` | Formatversion der Vorlage, aus der die Datei entstand; nie von Hand setzen oder erhöhen; Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion" | `"2.2"` |
+| `format` | Formatversion der Vorlage, aus der die Datei entstand; nie von Hand setzen oder erhöhen; Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion" | `"2.3"` |
 | `version` | Fassung dieser Absicht, nicht der Vorlage; SemVer, Regeln im Änderungsprotokoll; Datum und Version immer in Anführungszeichen | `"0.1.0"` |
 | `verantwortlich` | Rolle, die annimmt und bei Eskalation entscheidet (Pflicht) | — |
 | `risikoklasse` | ab `mittel` gilt die Vertragsschicht (Abschnitte 8–12) | `niedrig` · `mittel` · `hoch` |
@@ -182,6 +182,16 @@ schlagworte: []
 <!-- leser: mensch -->
 
 - **AN-01:** […] Prüfung: [wer bestätigt, womit, bis wann]
+
+## Review-Entscheidungen
+
+<!-- leser: mensch -->
+
+<!-- Optional (INT-2026-037): ein Befund je Zeile aus dem Absicht-Review. Ablehnen nur mit lesbarem Beleg (`datei:zeile` oder Abschnitt); ohne Beleg entscheidet die Person (Spalte „Beleg“: Name, Datum). Blocker, LIKELY und jede DROP-Empfehlung entscheidet immer die Person. -->
+
+| Befund | Prüfer | Schweregrad | Entscheidung | Beleg oder Person, Datum |
+|---|---|---|---|---|
+| […] | […] | BLOCKER / LIKELY / MINOR | angenommen / abgelehnt | […] |
 
 ---
 

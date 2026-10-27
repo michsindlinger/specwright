@@ -30,7 +30,9 @@ import {
   type ModelProvider,
   getModel
 } from './model-config.js';
-import { loadGeneralConfig, updateGeneralConfig, getReviewPrompt, getCloudSessionWorktreeEnabled } from './general-config.js';
+import { loadGeneralConfig, updateGeneralConfig, getCloudSessionWorktreeEnabled, getIntentAutoReview, type GeneralConfig } from './general-config.js';
+import type { ReviewArt, ReviewQuelle } from '../shared/review-ziel.js';
+import type { ProbeZeile } from '../shared/types/plan-review.protocol.js';
 import { resolveMainWorktreePath } from './utils/worktree-detect.js';
 import { loadPromptTemplates, savePromptTemplate, deletePromptTemplate } from './prompt-templates.js';
 import { extractPromptFromImage } from './services/prompt-template-extractor.js';
@@ -159,6 +161,9 @@ export class WebSocketHandler {
       // INT-2026-022 (FA-09, FA-25): an intent start needs a new worktree — pre-checked on the main path like the manager does.
       worktreeEnabled: getCloudSessionWorktreeEnabled,
       resolveMainPath: resolveMainWorktreePath,
+      // INT-2026-037 (FA-07–FA-09): a freshly written intent is reviewed once after the session's stop.
+      intentAutoReview: getIntentAutoReview,
+      startIntentReview: (sessionId, ziel): 'gestartet' | 'beschaeftigt' => this.planReviewOrchestrator.startReview(sessionId, ziel, 'auto'),
     });
     // INT-2026-020: images pasted on „Neue Absicht" land under <runtime>/intent-paste (ADR-0005).
     this.vorhabenHandler = new VorhabenHandler(this.vorhabenService, new ProjectDocsService(), this.vorhabenStore, (m) => this.broadcast(m as WebSocketMessage), { bildRoot: getIntentPasteImageRoot() });
@@ -1703,25 +1708,31 @@ export class WebSocketHandler {
     }
   }
 
-  private handlePlanReviewPromptGet(client: WebSocketClient): void {
-    const prompt = getReviewPrompt();
-    const response: WebSocketMessage = {
+  /** INT-2026-037 (FA-09, FA-14): plan prompt plus intent prompt, stand-in row and the auto switch. */
+  private planReviewPromptMessage(config: GeneralConfig): WebSocketMessage {
+    return {
       type: 'plan-review:prompt',
-      prompt,
+      prompt: config.reviewPrompt,
+      intentPrompt: config.intentReviewPrompt,
+      ersatz: config.reviewErsatz,
+      intentAuto: config.intentAutoReview,
       timestamp: new Date().toISOString()
     };
-    client.send(JSON.stringify(response));
+  }
+
+  private handlePlanReviewPromptGet(client: WebSocketClient): void {
+    client.send(JSON.stringify(this.planReviewPromptMessage(loadGeneralConfig())));
   }
 
   private handlePlanReviewPromptUpdate(client: WebSocketClient, message: WebSocketMessage): void {
-    const reviewPrompt = message.prompt as string | undefined;
     try {
-      const config = updateGeneralConfig({ reviewPrompt });
-      const response: WebSocketMessage = {
-        type: 'plan-review:prompt',
-        prompt: config.reviewPrompt,
-        timestamp: new Date().toISOString()
-      };
+      const config = updateGeneralConfig({
+        reviewPrompt: message.prompt as string | undefined,
+        intentReviewPrompt: message.intentPrompt as string | undefined,
+        reviewErsatz: message.ersatz as string[] | undefined,
+        intentAutoReview: message.intentAuto as boolean | undefined,
+      });
+      const response = this.planReviewPromptMessage(config);
       client.send(JSON.stringify(response));
     } catch (error) {
       const errorResponse: WebSocketMessage = {
@@ -2277,16 +2288,22 @@ export class WebSocketHandler {
   private setupPlanReviewListeners(): void {
     this.planReviewOrchestrator.on(
       'plan-review:started',
-      (sessionId: string, source: 'auto' | 'manual', reviewerCount: number) => {
+      (sessionId: string, source: 'auto' | 'manual', reviewerCount: number, art: ReviewArt, quelle: ReviewQuelle) => {
         this.broadcast({
           type: 'plan-review:started',
           sessionId,
           source,
           reviewerCount,
+          art,
+          quelle,
           timestamp: new Date().toISOString(),
         });
       }
     );
+
+    this.planReviewOrchestrator.on('plan-review:probe', (sessionId: string, zeilen: ProbeZeile[]) => {
+      this.broadcast({ type: 'plan-review:probe', sessionId, zeilen, timestamp: new Date().toISOString() });
+    });
 
     this.planReviewOrchestrator.on(
       'plan-review:reviewer.result',
@@ -2368,7 +2385,13 @@ export class WebSocketHandler {
       return;
     }
 
-    this.planReviewOrchestrator.triggerManualReview(sessionId);
+    // INT-2026-037 (FA-02, FA-03, AN-S04): the file in the Vorhaben folder first, plan-mode buffer as fallback; no toggle gate.
+    const ziel = this.vorhabenService.reviewZiel(sessionId);
+    if ('fehler' in ziel) {
+      this.broadcast({ type: 'plan-review:error', sessionId, message: ziel.fehler, timestamp: new Date().toISOString() });
+      return;
+    }
+    this.planReviewOrchestrator.startReview(sessionId, ziel, 'manual');
   }
 
   /**

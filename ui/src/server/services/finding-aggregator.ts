@@ -373,8 +373,6 @@ export function formatInject(
     sections.push(`⚪ MINORITY (<⌈${n}/2⌉, evaluate critically):\n\n${blocks.join('\n\n')}`);
   }
 
-  const footer =
-    'Address blockers. For minority findings, briefly justify acceptance or rejection.';
-
-  return `${header}\n\n${sections.join('\n\n')}\n\n${footer}`;
+  // INT-2026-037 (FA-19): the rules for the author follow from the orchestrator (`autorRegeln`).
+  return `${header}\n\n${sections.join('\n\n')}`;
 }

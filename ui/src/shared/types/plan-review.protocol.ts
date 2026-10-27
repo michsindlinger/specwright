@@ -7,6 +7,7 @@
  */
 
 import type { CloudTerminalSessionId } from './cloud-terminal.protocol.js';
+import type { ReviewArt, ReviewQuelle } from '../review-ziel.js';
 
 // ─── Reviewer config (shared with backend types) ───────────────────────────
 
@@ -48,12 +49,37 @@ export interface PlanReviewConfigSnapshot {
   timestamp: string;
 }
 
-/** Backend detected a plan and started reviewer calls. */
+/** Backend started a review (intent or plan) and its reviewer calls. */
 export interface PlanReviewStarted {
   type: 'plan-review:started';
   sessionId: CloudTerminalSessionId;
   source: 'auto' | 'manual';
   reviewerCount: number;
+  /** INT-2026-037 (FA-16): what is reviewed and where the text came from. */
+  art: ReviewArt;
+  quelle: ReviewQuelle;
+  timestamp: string;
+}
+
+/** INT-2026-037 (FA-11): why a probe failed. */
+export type ProbeGrund = 'zeitueberschreitung' | 'ueberlastet' | 'anmeldung' | 'unbekanntes_modell' | 'fehler';
+
+/** INT-2026-037 (FA-16): one reviewer after the probe — ready, failed (and why) or missing from the config. */
+export interface ProbeZeile {
+  /** `provider:model` (pruefKennung). */
+  reviewerId: string;
+  zustand: 'bereit' | 'ausgefallen' | 'fehlt';
+  grund?: ProbeGrund;
+  /** Raw error text, for the display only — never in the inject text (AN-S11). */
+  meldung?: string;
+  /** Stand-in: the reviewer it replaces; '' when it only fills up. Absent for chosen reviewers. */
+  ersatzFuer?: string;
+}
+
+export interface PlanReviewProbe {
+  type: 'plan-review:probe';
+  sessionId: CloudTerminalSessionId;
+  zeilen: ProbeZeile[];
   timestamp: string;
 }
 
