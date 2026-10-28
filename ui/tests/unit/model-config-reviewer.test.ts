@@ -13,7 +13,7 @@ const MODELS = {
   defaultModel: 'sonnet',
   providers: [
     { id: 'anthropic', name: 'Anthropic', cliCommand: 'claude', cliFlags: [], models: ['opus', 'sonnet', 'fable', 'haiku'].map((id) => ({ id, name: id })) },
-    { id: 'glm', name: 'GLM', cliCommand: 'claude-glm', cliFlags: [], models: [{ id: 'glm-5.2', name: 'GLM 5.2' }] },
+    { id: 'glm', name: 'GLM', cliCommand: 'claude-glm', cliFlags: [], models: [{ id: 'glm-5.3', name: 'GLM 5.3' }] },
     { id: 'minimax', name: 'MiniMax', cliCommand: 'claude-minimax', cliFlags: [], models: ['MiniMax-M3', 'MiniMax-M2.5'].map((id) => ({ id, name: id })) },
     { id: 'deepseek', name: 'DeepSeek', cliCommand: 'claude-deepseek', cliFlags: [], models: [{ id: 'opus', name: 'DeepSeek' }] },
   ],
@@ -29,13 +29,13 @@ async function fresh(general: unknown) {
 describe('INT-2026-037: reviewers', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('FA-18/AK-09: defaults are exactly sonnet, opus, MiniMax-M3, glm-5.2 — no DeepSeek', async () => {
+  it('FA-18/AK-09: defaults are exactly sonnet, opus, MiniMax-M3, glm-5.3 — no DeepSeek', async () => {
     const mc = await fresh({ defaults: {}, projects: {} });
     expect(mc.getDefaultReviewers()).toEqual([
       { providerId: 'anthropic', modelId: 'sonnet' },
       { providerId: 'anthropic', modelId: 'opus' },
       { providerId: 'minimax', modelId: 'MiniMax-M3' },
-      { providerId: 'glm', modelId: 'glm-5.2' },
+      { providerId: 'glm', modelId: 'glm-5.3' },
     ]);
   });
 
@@ -45,8 +45,8 @@ describe('INT-2026-037: reviewers', () => {
       { providerId: 'minimax', modelId: 'MiniMax-M2.5' },
       { providerId: 'anthropic', modelId: 'haiku' },
     ]);
-    expect((await fresh({ defaults: { reviewErsatz: ['glm/glm-9', 'glm/glm-5.2'] }, projects: {} })).getReviewErsatz()).toEqual([
-      { providerId: 'glm', modelId: 'glm-5.2' },
+    expect((await fresh({ defaults: { reviewErsatz: ['glm/glm-9', 'glm/glm-5.3'] }, projects: {} })).getReviewErsatz()).toEqual([
+      { providerId: 'glm', modelId: 'glm-5.3' },
     ]);
   });
 });
