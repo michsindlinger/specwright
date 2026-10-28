@@ -308,7 +308,7 @@ const DEFAULT_REVIEWER_IDS: ReadonlyArray<{ providerId: string; modelId: string 
   { providerId: 'anthropic', modelId: 'sonnet' },    // INT-2026-037 (FA-18): DeepSeek out, Sonnet in
   { providerId: 'anthropic', modelId: 'opus' },
   { providerId: 'minimax', modelId: 'MiniMax-M3' },
-  { providerId: 'glm', modelId: 'glm-5.2' }
+  { providerId: 'glm', modelId: 'glm-5.3' }
 ];
 
 /**
