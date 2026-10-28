@@ -10,6 +10,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import { join } from 'path';
 
@@ -176,7 +177,9 @@ export class VorhabenWatcher extends EventEmitter {
     if (copy.debounce) clearTimeout(copy.debounce);
     copy.debounce = setTimeout(() => {
       copy.debounce = null;
-      const added = [...copy.pendingAdded];
+      // Folders of the checked-out commit came with the copy (a fresh worktree), they are not new.
+      const tracked = copy.pendingAdded.size > 0 ? trackedIntentIds(copy.cwd) : new Set<string>();
+      const added = [...copy.pendingAdded].filter((id) => !tracked.has(id));
       copy.pendingAdded.clear();
       for (const id of added) this.emit('dir-added', copy.cwd, id);
       this.emit('changed', copy.cwd);
@@ -207,6 +210,16 @@ export class VorhabenWatcher extends EventEmitter {
       this.schedule(copy);
     }, this.pollIntervalMs);
     copy.pollTimer.unref?.();
+  }
+}
+
+/** INT ids under intent/ in the copy's HEAD commit; empty without git or HEAD. */
+function trackedIntentIds(cwd: string): Set<string> {
+  try {
+    const out = execFileSync('git', ['-C', cwd, 'ls-tree', '--name-only', 'HEAD', 'intent/'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 });
+    return new Set(out.split('\n').map((l) => INTENT_DIR_RE.exec(l.slice('intent/'.length))?.[1]).filter((id): id is string => id !== undefined));
+  } catch {
+    return new Set();
   }
 }
 

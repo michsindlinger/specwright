@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs';
+import { execFileSync } from 'child_process';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -87,6 +88,30 @@ describe('VorhabenWatcher (FA-04, FA-19)', () => {
     await waitFor(() => (added.length > 0 ? added : undefined), 4500);
     await new Promise((r) => setTimeout(r, 150));
     expect(added).toEqual(['INT-2026-005']);
+  });
+
+  it('folders from the checkout of a new working copy are not new — only the one created afterwards', async () => {
+    const git = (...args: string[]): void => {
+      execFileSync('git', ['-C', root, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { stdio: 'ignore' });
+    };
+    git('init', '-q');
+    mkdirSync(join(root, 'intent', 'INT-2026-010-alt'), { recursive: true });
+    writeFileSync(join(root, 'intent', 'INT-2026-010-alt', 'intent.md'), 'alt');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'x');
+    rmSync(join(root, 'intent'), { recursive: true, force: true }); // working copy before its checkout
+    watcher = new VorhabenWatcher({ debounceMs: 50 });
+    const added: string[] = [];
+    watcher.on('dir-added', (_cwd: string, id: string) => added.push(id));
+    watcher.setCopies([root]);
+    await new Promise((r) => setTimeout(r, 100));
+    git('checkout', '--', 'intent'); // the checkout brings intent/ with the old folder
+    await new Promise((r) => setTimeout(r, 300));
+    mkdirSync(join(root, 'intent', 'INT-2026-013-neu'));
+    writeFileSync(join(root, 'intent', 'INT-2026-013-neu', 'intent.md'), 'x');
+    await waitFor(() => (added.length > 0 ? added : undefined), 4500);
+    await new Promise((r) => setTimeout(r, 150));
+    expect(added).toEqual(['INT-2026-013']);
   });
 
   it('falls back to polling when fs.watch throws', async () => {
