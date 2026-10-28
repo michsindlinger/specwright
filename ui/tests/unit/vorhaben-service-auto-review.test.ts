@@ -74,7 +74,8 @@ describe('INT-2026-037: VorhabenService intent auto review and review target', (
   async function neuerDienst(): Promise<void> {
     store = new VorhabenStateStore(statePath, { port: 3111 });
     await store.load();
-    watcher = new VorhabenWatcher({ debounceMs: 30 });
+    // No background rescans: only the scans the test triggers count (a watcher event between two steps made CI flaky).
+    watcher = new VorhabenWatcher({ forcePoll: true, pollIntervalMs: 3_600_000 });
     service = new VorhabenService({
       workspace: { getState: () => ({ openProjects, sessionNames: {} }) },
       store,
