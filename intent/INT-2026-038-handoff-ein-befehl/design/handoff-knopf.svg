@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="330" viewBox="0 0 720 330" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="12">
+  <!-- Mock INT-2026-038: Kopfleiste einer Claude-Sitzung, drei Zustände (AN-S04) -->
+  <rect width="720" height="330" fill="#1e1e1e"/>
+
+  <!-- Zustand 1: bereit -->
+  <text x="16" y="24" fill="#808080">1 · bereit</text>
+  <rect x="16" y="32" width="688" height="30" fill="#252526" stroke="#3c3c3c"/>
+  <circle cx="30" cy="47" r="4" fill="#4ec9b0"/>
+  <text x="40" y="51" fill="#e0e0e0">Verbunden</text>
+  <text x="120" y="51" fill="#808080">a1b2c3d4...</text>
+  <rect x="628" y="37" width="44" height="20" rx="3" fill="none" stroke="#5a5a5a"/>
+  <text x="634" y="51" fill="#e0e0e0">Handoff</text>
+  <text x="682" y="51" fill="#808080">&lt;/&gt;</text>
+  <text x="430" y="80" fill="#808080" font-size="11">Tooltip: „Handoff schreiben, Sitzung leeren, Handoff einlesen"</text>
+
+  <!-- Zustand 2: Wechsel läuft -->
+  <text x="16" y="120" fill="#808080">2 · Wechsel läuft (Knopf gesperrt, Zustand aus dem Backend)</text>
+  <rect x="16" y="128" width="688" height="30" fill="#252526" stroke="#3c3c3c"/>
+  <circle cx="30" cy="143" r="4" fill="#4ec9b0"/>
+  <text x="40" y="147" fill="#e0e0e0">Verbunden</text>
+  <text x="120" y="147" fill="#808080">a1b2c3d4...</text>
+  <rect x="566" y="133" width="106" height="20" rx="3" fill="#2d2d2d" stroke="#3c3c3c"/>
+  <text x="574" y="147" fill="#6a6a6a">Wechsel läuft …</text>
+  <text x="682" y="147" fill="#808080">&lt;/&gt;</text>
+
+  <!-- Zustand 3: Abbruch -->
+  <text x="16" y="200" fill="#808080">3 · Abbruch (bestehende Hinweiszeile über dem Terminal, Muster „Fehler nach Aktion")</text>
+  <rect x="16" y="208" width="688" height="30" fill="#252526" stroke="#3c3c3c"/>
+  <circle cx="30" cy="223" r="4" fill="#4ec9b0"/>
+  <text x="40" y="227" fill="#e0e0e0">Verbunden</text>
+  <text x="120" y="227" fill="#808080">a1b2c3d4...</text>
+  <rect x="628" y="213" width="44" height="20" rx="3" fill="none" stroke="#5a5a5a"/>
+  <text x="634" y="227" fill="#e0e0e0">Handoff</text>
+  <text x="682" y="227" fill="#808080">&lt;/&gt;</text>
+  <rect x="16" y="242" width="688" height="28" fill="#3a2e1a" stroke="#cca700"/>
+  <text x="28" y="260" fill="#e0c060">Nicht gewechselt: kein neues Handoff gefunden — /session-handoff von Hand ausführen</text>
+  <text x="684" y="260" fill="#e0c060">×</text>
+  <rect x="16" y="274" width="688" height="40" fill="#111"/>
+  <text x="28" y="298" fill="#c0c0c0" font-family="Menlo, monospace">❯ </text>
+</svg>
