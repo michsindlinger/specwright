@@ -3,6 +3,7 @@ test-project
 .mcp.json
 .specwright.backup-*
 .claude/plans/
+.claude/handoffs/
 
 # Kanban file locks
 **/*.lock

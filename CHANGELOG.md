@@ -2,6 +2,18 @@
 
 Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
 
+## 4.8.0 - 2026-10-30
+
+### Neu
+
+- **Sitzungswechsel per Handoff in einem Schritt** (INT-2026-038). In Claude-Sitzungen des Cloud-Terminals steht neben „In VS Code öffnen“ ein Handoff-Knopf; er gibt `/handoff-weiter` ein, als wäre es getippt. Nach der Handoff-Runde sucht die Web-UI im Ordner `.claude/handoffs/` der Sitzung die dabei geschriebene Datei, leert die Sitzung (bestätigt über die neue Gesprächskennung) und gibt `/start-from-handoff .claude/handoffs/<datei> nur lesen` ein. Fehlt das Handoff, arbeitet die Sitzung, steht Text in der Eingabezeile, bleibt das Leeren unbestätigt oder endet die Runde nicht binnen 10 Minuten, bleibt die alte Sitzung stehen und über dem Terminal steht „Nicht gewechselt: Ursache — nächster Schritt“.
+- **Skills `session-handoff`, `start-from-handoff` und `handoff-weiter`** im Lieferumfang (Manifest, `skill project`). Die beiden bekannten Skills unverändert; `handoff-weiter` schreibt das Handoff und verweist ohne Web-UI auf `/clear` und `/start-from-handoff`.
+
+### Geändert
+
+- **Cloud-Einrichtung** (`setup-ui-cloud.sh`) kopiert die drei Handoff-Skills aus `.claude/skills/` in den Nutzerordner des Dienstes; die alte Cloud-Fassung von `session-handoff` (Ausgabe zum Kopieren) entfällt.
+- `.gitignore`: `.claude/handoffs/`.
+
 ## 4.7.0 - 2026-10-27
 
 ### Format

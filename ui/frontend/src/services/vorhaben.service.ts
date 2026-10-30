@@ -224,6 +224,11 @@ export class VorhabenClientService {
     return this.request<VorhabenSessionResumedMessage>('vorhaben:session-resumed', { type: 'vorhaben:session.resume', projectId, intentId });
   }
 
+  /** INT-2026-038 (FA-02): the handoff button — the backend types `/handoff-weiter`; rejects with HANDOFF_LAEUFT, PROMPT_NOT_EMPTY, … */
+  handoffStarten(sessionId: string): Promise<void> {
+    return this.request<{ sessionId: string }>('vorhaben:handoff-started', { type: 'vorhaben:handoff.start', sessionId }).then(() => undefined);
+  }
+
   /**
    * INT-2026-024 (FA-02): „Abschließen" clicked — the backend reads the intent
    * of the remote base branch and answers what the dialog shows. Nothing is

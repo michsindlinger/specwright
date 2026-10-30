@@ -45,7 +45,11 @@ n=$(find "$t1/.claude/commands/specwright" -type f 2>/dev/null | wc -l | tr -d '
 [[ "$n" -eq 23 ]] && ok "T1 install.sh: 23 Befehle" || err "T1: $n Befehle statt 23"
 exp_ag=$(expected agent project); got_ag=$( (cd "$t1" && find .claude/agents -type f | sort) || true )
 [[ "$exp_ag" == "$got_ag" ]] && ok "T1: Agenten = Manifest" || err "T1: Agenten weichen ab"
-[[ -f "$t1/.claude/skills/atomicity-validator/SKILL.md" && -f "$t1/.claude/skills/review-implementation-plan/SKILL.md" ]] && ok "T1: Skills" || err "T1: Skills fehlen"
+t1_skills=ok
+for s in atomicity-validator review-implementation-plan session-handoff start-from-handoff handoff-weiter; do
+    [[ -f "$t1/.claude/skills/$s/SKILL.md" ]] || { t1_skills=no; err "T1: Skill $s fehlt"; }
+done
+[[ "$t1_skills" == ok ]] && ok "T1: Skills"
 grep -qE 'validate-market|add-story' <(find "$t1" -type f | grep -v mcp-profiles) && err "T1: entfernte Dateien installiert" || true
 
 # --- T2 --------------------------------------------------------------------------------------

@@ -98,6 +98,9 @@ repo-only	project	specwright/templates/agents/product-manager-agent.md	specwrigh
 script	project	specwright/scripts/auto-execute.sh	specwright/scripts/auto-execute.sh
 script	project	specwright/scripts/next-intent-id.sh	specwright/scripts/next-intent-id.sh
 skill	project	.claude/skills/review-implementation-plan/SKILL.md	.claude/skills/review-implementation-plan/SKILL.md
+skill	project	.claude/skills/session-handoff/SKILL.md	.claude/skills/session-handoff/SKILL.md
+skill	project	.claude/skills/start-from-handoff/SKILL.md	.claude/skills/start-from-handoff/SKILL.md
+skill	project	.claude/skills/handoff-weiter/SKILL.md	.claude/skills/handoff-weiter/SKILL.md
 skill	project	specwright/templates/skills/atomicity-validator/SKILL.md	.claude/skills/atomicity-validator/SKILL.md
 standard	both	specwright/standards/atomicity-guidelines.md	specwright/standards/atomicity-guidelines.md
 standard	both	specwright/standards/best-practices.md	specwright/standards/best-practices.md

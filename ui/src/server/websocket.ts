@@ -453,6 +453,7 @@ export class WebSocketHandler {
         case 'vorhaben:ansicht.set':
         case 'vorhaben:session.assign':
         case 'vorhaben:session.resume':
+        case 'vorhaben:handoff.start':
         case 'vorhaben:absicht-bild':
         case 'vorhaben:abschluss.vorschau':
         case 'vorhaben:abschluss.starten':

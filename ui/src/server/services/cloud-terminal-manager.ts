@@ -1543,6 +1543,11 @@ export class CloudTerminalManager extends EventEmitter {
     return buildReplayBuffer(session.buffer, Boolean(session.tmuxSessionName));
   }
 
+  /** INT-2026-038 (FA-03, FA-07): a line above the session's terminal, same event as the worktree notices. */
+  public notice(sessionId: CloudTerminalSessionId, level: 'warn' | 'info', text: string): void {
+    this.emit('session.notice', sessionId, level, text);
+  }
+
   /**
    * Get a Cloud Terminal session
    *
