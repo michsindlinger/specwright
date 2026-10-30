@@ -468,6 +468,8 @@ export interface VorhabenState {
   /** True until the first full scan finished after boot. */
   loading: boolean;
   updatedAt: string;
+  /** INT-2026-038 (FA-12): terminal sessions with a running handoff switch (memory only; absent in old fixtures). */
+  handoffWechsel?: string[];
 }
 
 // ---- Project docs (FA-43ff) ----
@@ -702,7 +704,26 @@ export interface VorhabenAbschlussZuruecknehmenMessage {
   intentId: string;
 }
 
+/**
+ * INT-2026-038 (FA-02): the handoff button in a Claude session's header. The
+ * backend types `/handoff-weiter` after a screen check; answer
+ * `vorhaben:handoff-started` or `vorhaben:error` (HANDOFF_LAEUFT,
+ * PROMPT_NOT_EMPTY, SESSION_WRITE_FAILED, …). The reason also appears above
+ * the terminal.
+ */
+export interface VorhabenHandoffStartMessage {
+  type: 'vorhaben:handoff.start';
+  requestId?: string;
+  sessionId: string;
+}
+
 // ---- Server → Client ----
+
+export interface VorhabenHandoffStartedMessage {
+  type: 'vorhaben:handoff-started';
+  requestId?: string;
+  sessionId: string;
+}
 
 export interface VorhabenSessionAssignedMessage {
   type: 'vorhaben:session-assigned';
@@ -901,7 +922,9 @@ export type VorhabenErrorCode =
   /** Writing or publishing failed after the first change; rolled back as far as possible (FA-17). */
   | 'ABSCHLUSS_FAILED'
   /** A mark exists (start refused) or none exists (zurücknehmen refused). */
-  | 'ABSCHLUSS_MARKE';
+  | 'ABSCHLUSS_MARKE'
+  /** INT-2026-038 (FA-12): a handoff switch of this session is running („Wechsel läuft bereits"). */
+  | 'HANDOFF_LAEUFT';
 
 export const ANMERKUNG_MAX_CHARS = 4000;
 

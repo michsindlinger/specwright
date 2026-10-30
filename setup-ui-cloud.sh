@@ -234,24 +234,23 @@ sudo -u "$SPECWRIGHT_UI_USER" HOME="/var/lib/$SPECWRIGHT_UI_USER" \
 # HOME=/var/lib/$SPECWRIGHT_UI_USER — user-level skills must live in that
 # home's ~/.claude/skills/. Skills are versioned in the repo under
 # cloud-deploy/claude-user-skills/ and synced here on every install/update.
+# INT-2026-038: the three handoff skills come from the delivered source
+# .claude/skills/ (manifest) — a personal copy wins over a project's, so the
+# old cloud copy of session-handoff is overwritten here.
 # -----------------------------------------------------------------------------
 SKILLS_SRC="$SPECWRIGHT_UI_HOME/cloud-deploy/claude-user-skills"
 SKILLS_DEST="/var/lib/$SPECWRIGHT_UI_USER/.claude/skills"
 
-if [[ -d "$SKILLS_SRC" ]]; then
-    echo "==> Installing user-level Claude skills to $SKILLS_DEST"
-    mkdir -p "$SKILLS_DEST"
-    for skill_dir in "$SKILLS_SRC"/*/; do
-        [[ -d "$skill_dir" ]] || continue
-        skill_name=$(basename "$skill_dir")
-        echo "    - $skill_name"
-        rm -rf "${SKILLS_DEST:?}/$skill_name"
-        cp -R "$skill_dir" "$SKILLS_DEST/$skill_name"
-    done
-    chown -R "$SPECWRIGHT_UI_USER:$SPECWRIGHT_UI_USER" "/var/lib/$SPECWRIGHT_UI_USER/.claude"
-else
-    echo "==> No claude-user-skills directory in repo; skipping skill install"
-fi
+echo "==> Installing user-level Claude skills to $SKILLS_DEST"
+mkdir -p "$SKILLS_DEST"
+for skill_dir in "$SKILLS_SRC"/*/ "$SPECWRIGHT_UI_HOME"/.claude/skills/{session-handoff,start-from-handoff,handoff-weiter}/; do
+    [[ -d "$skill_dir" ]] || continue
+    skill_name=$(basename "$skill_dir")
+    echo "    - $skill_name"
+    rm -rf "${SKILLS_DEST:?}/$skill_name"
+    cp -R "$skill_dir" "$SKILLS_DEST/$skill_name"
+done
+chown -R "$SPECWRIGHT_UI_USER:$SPECWRIGHT_UI_USER" "/var/lib/$SPECWRIGHT_UI_USER/.claude"
 
 # -----------------------------------------------------------------------------
 # SSH access for Claude cloud sessions (service user -> root@localhost).

@@ -14,6 +14,7 @@ import './aos-model-dropdown.js';
 import './aos-session-target-list.js';
 import './aos-plan-review-block.js';
 import './aos-vscode-knopf.js';
+import './aos-handoff-knopf.js';
 import type { ReviewerConfig } from './aos-auto-review-toggle.js';
 import xtermCss from '@xterm/xterm/css/xterm.css?inline';
 
@@ -808,6 +809,7 @@ export class AosTerminalSession extends LitElement {
                 ? html`<span class="session-id">${this.terminalSessionId.slice(0, 8)}...</span>`
                 : ''}
             </div>
+            <aos-handoff-knopf .session=${this.session}></aos-handoff-knopf>
             <aos-vscode-knopf .session=${this.session}></aos-vscode-knopf>
           </div>
         ` : ''}

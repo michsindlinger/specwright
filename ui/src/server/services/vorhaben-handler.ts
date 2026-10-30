@@ -34,6 +34,7 @@ import {
   type VorhabenStep,
   type VorhabenSessionAssignedMessage,
   type VorhabenSessionResumedMessage,
+  type VorhabenHandoffStartedMessage,
   type VorhabenStepStartedMessage,
   FREITEXT_MAX_CHARS,
 } from '../../shared/types/vorhaben.protocol.js';
@@ -59,6 +60,7 @@ export const VORHABEN_MESSAGE_TYPES = new Set([
   'vorhaben:ansicht.set',
   'vorhaben:session.assign',
   'vorhaben:session.resume',
+  'vorhaben:handoff.start',
   'vorhaben:absicht-bild',
   'vorhaben:abschluss.vorschau',
   'vorhaben:abschluss.starten',
@@ -295,6 +297,20 @@ export class VorhabenHandler {
               ...(result.ergebnis === 'gestartet' ? { sessionId: result.sessionId } : { grund: result.grund }),
             } as VorhabenSessionResumedMessage)
           )
+          .catch((err) => reply(this.fromError(err, requestId)));
+        return true;
+      }
+
+      case 'vorhaben:handoff.start': {
+        // INT-2026-038 (FA-02): request/reply; the button's lock follows in the broadcast (`handoffWechsel`).
+        const sessionId = str(message.sessionId);
+        if (!sessionId) {
+          reply(this.error('INVALID_MESSAGE', 'sessionId ist erforderlich', requestId));
+          return true;
+        }
+        void this.service
+          .starteHandoff(sessionId)
+          .then(() => reply({ type: 'vorhaben:handoff-started', ...(requestId ? { requestId } : {}), sessionId } as VorhabenHandoffStartedMessage))
           .catch((err) => reply(this.fromError(err, requestId)));
         return true;
       }

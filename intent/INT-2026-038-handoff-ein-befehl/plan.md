@@ -1,7 +1,7 @@
 # Plan: Sitzungswechsel per Handoff in einem Schritt
 
 > **Intent:** `intent.md` (INT-2026-038) · **Spec:** `spec.md`
-> **Status:** freigegeben
+> **Status:** umgesetzt
 > **Erstellt:** 2026-10-29 im Plan Mode · **Freigabe:** Michael (Product Owner), 2026-10-30
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 9b8d8c8), `CLAUDE.md`, `docs/security.md`
 > **Format:** 2.3
@@ -258,14 +258,14 @@ Nahtstelle: öffentliche Methoden und Ereignisse von `VorhabenService` mit Fake-
 
 <!-- leser: agent -->
 
-- [ ] Jede FA/AK aus Abschnitt 8 hat einen grünen Test.
-- [ ] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
-- [ ] E2E-Pfad läuft (Abschnitt 8).
+- [x] Jede FA/AK aus Abschnitt 8 hat einen grünen Test (Review- und Stichprobenpunkte: Nachweise im PR).
+- [x] Alle Nachweise aus Abschnitt 5 ausgeführt und im PR zitiert.
+- [x] E2E-Pfad läuft (Abschnitt 8): Knopf, getippt, Abbruch — Protokoll im PR.
 - [ ] `verify` grün, Ausgabe im PR — und PR-Checks grün.
-- [ ] `docs/architecture.md` angepasst (§2, Änderungsprotokoll).
-- [ ] Manuelle Schritte (Abschnitt 10) erledigt oder im PR als offen markiert.
-- [ ] Abweichungen in Abschnitt 14.
-- [ ] 2x-Regel-Check.
+- [x] `docs/architecture.md` angepasst (§2, Änderungsprotokoll).
+- [x] Manuelle Schritte (Abschnitt 10) im PR als offen markiert.
+- [x] Abweichungen in Abschnitt 14.
+- [x] 2x-Regel-Check (WS-Routing-Test; Trust-Dialog-Zeile als CLAUDE.md-Vorschlag).
 - [ ] Abschlussbericht nach R3, Block „Für das Board".
 
 ### 14. Abweichungen bei der Umsetzung
@@ -274,4 +274,12 @@ Nahtstelle: öffentliche Methoden und Ereignisse von `VorhabenService` mit Fake-
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-10-30 | `VorhabenState.handoffWechsel` optional statt Pflichtfeld | 5 Frontend-Test-Fixtures bauen den State vollständig; §6 Schritt 0 erlaubt „Feld optional" | §3 Zustand, §4 #5 |
+| 2026-10-30 | Probe Skill-Reihenfolge (Schritt 0): Projekt- und globaler Skill gleichen Namens, `claude -p "/probe-reihenfolge-038"` → Antwort aus der **globalen** Fassung. R1 bestätigt: am Mac gelten `~/.claude/skills/`, auf dem Cloud-Host wirkt die Kopie aus `setup-ui-cloud.sh` | — (Plan sah das vor) | §9 R1 |
+| 2026-10-30 | Probe Hook-Text (Schritt 0): `UserPromptSubmit`-`prompt` bei einem Skill-Slash-Befehl ist der getippte Text (`/probe-reihenfolge-038`) → `HANDOFF_COMMAND_RE` greift | — | §3 Auslöser getippt |
+| 2026-10-30 | Knopf setzt den Merker vor der Bildschirmprüfung (nicht erst unter dem Lock); eine Ablehnung nimmt ihn wieder weg | Doppelklick während der Bildschirmprüfung wird so sofort mit `HANDOFF_LAEUFT` abgewiesen (FA-12), statt am Lock mit dem allgemeinen „die UI schreibt gerade" | §3 Auslöser Knopf |
+| 2026-10-30 | Branch auf `origin/main` (9125d92) umgesetzt, bevor gebaut wurde | Worktree stand vor #119 | — |
+| 2026-10-30 | `websocket.ts`-Switch fehlte der Fall `vorhaben:handoff.start` (im Plan nicht als Datei genannt); ergänzt plus Test `vorhaben-ws-routing.test.ts`, der jeden Typ aus `VORHABEN_MESSAGE_TYPES` im Switch verlangt | gleicher Fehler wie INT-2026-016 (`session.assign`) → 2x-Regel, mechanische Prüfung | §4, §5 |
+| 2026-10-30 | E2E über WebSocket-Skript (ohne Browser) plus ein Playwright-Screenshot statt Klick im Browser; der Knopf-Lauf schickt dieselbe Nachricht `vorhaben:handoff.start` wie der Klick | Trust-Dialog und Sitzungsführung sind per Skript verlässlicher; Klick→Client ist durch `aos-handoff-knopf.test.ts` belegt | §8 E2E |
+| 2026-10-30 | Trust-Dialog von Claude Code 2.1.314 steht schon auf „Yes, I trust this folder“; „erst Pfeil runter“ (CLAUDE.md) wählt dort „No, exit“ und beendet die Sitzung | erster E2E-Lauf so gescheitert; Skript prüft jetzt die Markierung | — (Vorschlag CLAUDE.md im PR) |
+| 2026-10-30 | Lokaler `verify` zweimal rot in Stufe 5 mit wechselnden Dateien (Lauf 1: `terminal-io`, `terminal-multi`, `sprach-erkennung`, `vorhaben-abschluss-git`; Lauf 2: `sprach-erkennung`, `vorhaben-abschluss-git`), alle einzeln grün, keine berührt dieses Vorhaben | bekannte Mac-Flakiness (Memory); CI entscheidet, Bezugsliste unverändert | §13 |

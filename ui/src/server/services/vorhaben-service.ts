@@ -91,6 +91,7 @@ import type { CloudTerminalAgentStatus, CloudTerminalSessionTarget } from '../..
 import type { BlockKind } from '../../shared/types/hook-events.protocol.js';
 import { findDialogCue, pruefeEingabeWartet, readStableScreen, type CursorProbe } from './dialog-driver.js';
 import { reviewZielArt, type ReviewZiel } from '../../shared/review-ziel.js';
+import { einleseBefehl, findeNeuesHandoff, HANDOFF_COMMAND_RE } from './handoff-datei.js';
 
 export interface VorhabenWorkspaceSource {
   getState(): { openProjects: Array<{ id: string; path: string; name: string }>; sessionNames?: Record<string, string> };
@@ -154,6 +155,8 @@ export interface VorhabenSessionSource {
   restoreOutcome?(): 'pending' | 'complete' | 'timeout';
   /** INT-2026-037 (FA-02): plan-mode plan in the session's buffer; null without one. */
   extractPlanFromBuffer?(sessionId: string): { planText: string; planPath: string } | null;
+  /** INT-2026-038 (FA-03, FA-07): a line above the session's terminal (`session.notice`). */
+  notice?(sessionId: string, level: 'warn' | 'info', text: string): void;
 }
 
 export interface VorhabenServiceDeps {
@@ -216,6 +219,12 @@ export type ResumeResult = { ergebnis: 'gestartet'; sessionId: string } | { erge
 export type StartStepResult = { sessionId: string; modus: 'neu' | 'in_sitzung'; geschlossen?: string };
 /** INT-2026-018: why `/clear` + command were not written; `leeren_nicht_bestaetigt` never travels as `send-rejected`. */
 type StartInSessionGrund = FreitextGrund | 'leeren_nicht_bestaetigt';
+interface HandoffWechsel {
+  /** Trigger time (ms); a handoff file counts as new from here on (AN-S05). */
+  seit: number;
+  phase: 'runde' | 'wechsel';
+  frist: NodeJS.Timeout;
+}
 const CLEAR_FAILED_TEXT = 'Leeren der Sitzung nicht bestätigt — erneut versuchen oder /clear im Terminal tippen';
 /** INT-2026-018: the row's live session `startStep` compares against (assignment + manager state). */
 interface ReusableSession {
@@ -247,6 +256,9 @@ export const PASTE_ENTER_DELAY_MS = 150;
  * (Schritt 0 measured 104 ms); 5 s is a safety margin below the client's 15 s.
  */
 export const CLEAR_WAIT_MS = 5_000;
+/** INT-2026-038 (FA-13, AN-S03): a handoff round that has not stopped by then ends the switch without clearing. */
+export const HANDOFF_FRIST_MS = 10 * 60_000;
+export const HANDOFF_BEFEHL = '/handoff-weiter';
 /** After this the entry is "nicht bestätigt" and the deploy gate opens again (FA-31/FA-34). */
 export const SEND_CONFIRM_TIMEOUT_MS = 10_000;
 /**
@@ -362,6 +374,12 @@ export class VorhabenService {
   private readonly deliveringFirstInput = new Set<string>();
   /** INT-2026-018: session id → resolver waiting for a new Claude session id after a pasted `/clear` (one per session, E5). */
   private readonly clearWaiters = new Map<string, (id: string) => void>();
+  /**
+   * INT-2026-038 (FA-04, FA-12): session id → running handoff switch. Memory
+   * only — a backend restart ends every switch, nothing is resumed (spec §4).
+   * `runde` waits for the Stop of the handoff turn, `wechsel` clears and reads in.
+   */
+  private readonly handoffWechsel = new Map<string, HandoffWechsel>();
   private seq = 0;
   private counter = 0;
 
@@ -421,6 +439,8 @@ export class VorhabenService {
     if (this.scanTimer) clearTimeout(this.scanTimer);
     for (const t of this.confirmTimers.values()) clearTimeout(t);
     this.confirmTimers.clear();
+    for (const w of this.handoffWechsel.values()) clearTimeout(w.frist);
+    this.handoffWechsel.clear();
     this.watcher.close();
   }
 
@@ -436,6 +456,7 @@ export class VorhabenService {
       lastModel: this.deps.store.getAllLastModels(),
       loading: this.loading,
       updatedAt: this.updatedAt,
+      handoffWechsel: [...this.handoffWechsel.keys()],
     };
   }
 
@@ -1147,6 +1168,104 @@ export class VorhabenService {
     return r.ok ? r.value : r.grund === 'beschaeftigt' ? 'beschaeftigt' : 'beendet';
   }
 
+  /**
+   * INT-2026-038 (FA-02, FA-03, FA-12): the handoff button types `/handoff-weiter`
+   * as if Michael did (AN-S01) — after a strict screen check, under the
+   * machine-write lock. The mark is set before anything is awaited, so a second
+   * click is refused at once; a refusal drops it again and shows the reason.
+   */
+  public async starteHandoff(sessionId: string): Promise<void> {
+    const sessions = this.deps.sessions;
+    if (!sessions) throw new VorhabenError('START_FAILED', 'Terminal-Manager nicht verfügbar');
+    const live = sessions.getSession(sessionId);
+    if (!live || live.status !== 'active') throw new VorhabenError('SESSION_NOT_ACTIVE', 'Sitzung ist nicht aktiv');
+    // Hooks report a Claude session id; shells and foreign CLIs never do (FA-01, NZ-06).
+    if (live.terminalType === 'shell' || !live.claudeSessionId) throw new VorhabenError('SESSION_NOT_CLAUDE', 'Handoff-Wechsel gibt es nur in Claude-Sitzungen');
+    if (this.handoffWechsel.has(sessionId)) throw new VorhabenError('HANDOFF_LAEUFT', 'Wechsel läuft bereits');
+    const w = this.merkeHandoff(sessionId);
+    const befund: { eingabe?: string } = {};
+    const run = async (): Promise<true | StartInSessionGrund> => {
+      const s = await this.screenCheck(sessions, sessionId, 'strict', befund);
+      if (s !== true) return s;
+      const now = sessions.getSession(sessionId);
+      if (!now || now.status !== 'active') return 'beendet';
+      if (now.agentStatus === 'working' || now.agentStatus === 'blocked') return 'arbeitet';
+      if (this.handoffWechsel.get(sessionId) !== w) return 'beschaeftigt';
+      if (!sessions.sendInput(sessionId, PASTE_START + HANDOFF_BEFEHL + PASTE_END, { inferUnblock: false })) return 'senden_fehlgeschlagen';
+      await this.settleEnter(sessions, sessionId);
+      return true;
+    };
+    const r = sessions.withMachineWrite ? await sessions.withMachineWrite(sessionId, run) : { ok: true as const, value: await run() };
+    const ergebnis = r.ok ? r.value : r.grund === 'beschaeftigt' ? 'beschaeftigt' : 'beendet';
+    if (ergebnis === true) return;
+    const text = ergebnis === 'eingabe_nicht_leer' ? eingabeNichtLeerText(befund.eingabe) : this.grundText(ergebnis);
+    this.handoffEnde(sessionId, w, `Nicht gestartet: ${text}`);
+    throw new VorhabenError(ergebnis === 'eingabe_nicht_leer' ? 'PROMPT_NOT_EMPTY' : 'SESSION_WRITE_FAILED', text);
+  }
+
+  private merkeHandoff(sessionId: string): HandoffWechsel {
+    const w: HandoffWechsel = { seit: this.now().getTime(), phase: 'runde', frist: setTimeout(() => this.handoffFrist(sessionId, w), HANDOFF_FRIST_MS) };
+    w.frist.unref?.();
+    this.handoffWechsel.set(sessionId, w);
+    this.broadcastState();
+    return w;
+  }
+
+  private handoffFrist(sessionId: string, w: HandoffWechsel): void {
+    if (this.handoffWechsel.get(sessionId) === w && w.phase === 'runde') {
+      this.handoffEnde(sessionId, w, 'Nicht gewechselt: Handoff-Runde nach 10 Minuten nicht beendet — Handoff prüfen, dann /clear und /start-from-handoff von Hand');
+    }
+  }
+
+  /** Ends switch `w` (only if it is still the running one); with `text` the reason goes to the terminal. */
+  private handoffEnde(sessionId: string, w: HandoffWechsel, text?: string): void {
+    if (this.handoffWechsel.get(sessionId) !== w) return;
+    clearTimeout(w.frist);
+    this.handoffWechsel.delete(sessionId);
+    if (text) {
+      console.warn(`[vorhaben] ${sessionId}: ${text}`);
+      this.deps.sessions?.notice?.(sessionId, 'warn', text);
+    }
+    this.broadcastState();
+  }
+
+  /**
+   * INT-2026-038 (FA-06–FA-10): the handoff turn stopped. Only a handoff file
+   * changed since the trigger lets the switch go on; then the shared
+   * `clearAndPaste` (AR-08: screen check before each paste, the new
+   * conversation id confirms the clear) reads exactly that file.
+   */
+  private async handoffAbschliessen(sessionId: string, w: HandoffWechsel): Promise<void> {
+    const sessions = this.deps.sessions;
+    const live = sessions?.getSession(sessionId);
+    if (!sessions || !live) return this.handoffEnde(sessionId, w);
+    const name = await findeNeuesHandoff(live.effectiveCwd, w.seit);
+    if (this.handoffWechsel.get(sessionId) !== w) return;
+    if (!name) return this.handoffEnde(sessionId, w, 'Nicht gewechselt: kein neues Handoff gefunden — /session-handoff von Hand ausführen');
+    const befund: { eingabe?: string } = {};
+    const r = await this.clearAndPaste(sessions, sessionId, einleseBefehl(name), () => this.handoffWechsel.get(sessionId) === w, befund);
+    if (r === true) return this.handoffEnde(sessionId, w);
+    const text =
+      r === 'eingabe_nicht_leer'
+        ? eingabeNichtLeerText(befund.eingabe)
+        : r === 'leeren_nicht_bestaetigt'
+          ? `Leeren nicht bestätigt — Handoff mit /start-from-handoff .claude/handoffs/${name} von Hand einlesen`
+          : this.grundText(r);
+    this.handoffEnde(sessionId, w, `Nicht gewechselt: ${text}`);
+  }
+
+  /** INT-2026-038 (FA-04): a typed `/handoff-weiter` starts a switch; any other prompt during the round ends it (Esc without Stop, R3). */
+  private onHandoffPrompt(sessionId: string, prompt: string): void {
+    const w = this.handoffWechsel.get(sessionId);
+    if (HANDOFF_COMMAND_RE.test(prompt)) {
+      if (w) return;
+      const live = this.deps.sessions?.getSession(sessionId);
+      if (live?.status === 'active' && live.terminalType !== 'shell' && live.claudeSessionId) this.merkeHandoff(sessionId);
+      return;
+    }
+    if (w?.phase === 'runde') this.handoffEnde(sessionId, w, 'Nicht gewechselt: neue Eingabe vor dem Ende der Handoff-Runde — /handoff-weiter erneut auslösen');
+  }
+
   private grundText(g: StartInSessionGrund): string {
     if (g === 'leeren_nicht_bestaetigt') return CLEAR_FAILED_TEXT;
     return (SEND_REASON_TEXT as Record<string, string>)[g] ?? FREITEXT_GRUND_TEXT[g];
@@ -1264,6 +1383,13 @@ export class VorhabenService {
 
   private onAgentEvent(sessionId: string, event: string): void {
     if (event === 'stop' || event === 'stop-failure') {
+      // INT-2026-038 (FA-06): the handoff turn is over — look for its file.
+      const w = this.handoffWechsel.get(sessionId);
+      if (w?.phase === 'runde') {
+        w.phase = 'wechsel';
+        clearTimeout(w.frist);
+        void this.handoffAbschliessen(sessionId, w);
+      }
       // INT-2026-037 (FA-07): the scan after this stop checks for a fresh intent draft.
       if (this.isAssigned(sessionId) || this.isPending(sessionId)) this.stopSeit.add(sessionId);
       // Queued texts are handed over right after this turn; without a confirming
@@ -1303,12 +1429,15 @@ export class VorhabenService {
     if (pendingCleared) this.deps.store.dropUnclaimedProtocol(sessionId);
     this.promptTextSeq.delete(sessionId);
     this.stopSeit.delete(sessionId);
+    const w = this.handoffWechsel.get(sessionId);
+    if (w) this.handoffEnde(sessionId, w);
     if (changed > 0) this.scheduleRescan(0);
     else if (pendingCleared) this.broadcastState();
   }
 
   private onPromptText(sessionId: string, prompt: string): void {
     this.promptTextSeq.set(sessionId, ++this.seq);
+    this.onHandoffPrompt(sessionId, prompt);
     // Confirmation (FA-31): first line of the sent text === first line of the prompt.
     const firstLine = prompt.split('\n', 1)[0].trim();
     for (const e of this.deps.store.pendingSends()) {
