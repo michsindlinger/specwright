@@ -292,5 +292,8 @@ describe('findeNeuesHandoff (INT-2026-038, AN-S05)', () => {
     const seit = new Date('2026-10-29T14:03:00Z').getTime();
     expect(await findeNeuesHandoff(cwd, seit)).toBe('handoff-b.md');
     expect(await findeNeuesHandoff(cwd, new Date('2026-10-29T15:00:00Z').getTime())).toBeUndefined();
+    // File clocks lag `Date.now()` (coarse kernel clock, second-granular file systems): a file stamped up to 2 s before the trigger still counts.
+    expect(await findeNeuesHandoff(cwd, new Date('2026-10-29T14:05:01.500Z').getTime())).toBe('handoff-b.md');
+    expect(await findeNeuesHandoff(cwd, new Date('2026-10-29T14:05:02.500Z').getTime())).toBeUndefined();
   });
 });

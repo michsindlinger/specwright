@@ -7,8 +7,9 @@
  * (Shadow DOM) and the split-pane header — hence its own Shadow DOM with
  * `static styles` (theme.css does not reach shadow roots).
  *
- * Hidden unless the session is active, not a shell and has a known agent
- * status (hooks run only in Claude sessions, NZ-06). Locked („Wechsel läuft …")
+ * Hidden unless the session is active, not a shell, has a known agent
+ * status (hooks run only in Claude sessions, NZ-06) and a backend session id.
+ * The backend knows the session by `terminalSessionId`, never by the tab id. Locked („Wechsel läuft …")
  * while the backend broadcast lists the session in `handoffWechsel` (AR-05).
  */
 
@@ -52,7 +53,7 @@ export class AosHandoffKnopf extends LitElement {
     }
   `;
 
-  @property({ attribute: false }) session: Pick<TerminalSession, 'id' | 'status' | 'terminalType' | 'agentStatus'> | null = null;
+  @property({ attribute: false }) session: Pick<TerminalSession, 'id' | 'status' | 'terminalType' | 'agentStatus' | 'terminalSessionId'> | null = null;
   @property({ attribute: false }) quelle: HandoffQuelle = vorhabenService;
 
   @state() private laufend: readonly string[] = [];
@@ -73,7 +74,7 @@ export class AosHandoffKnopf extends LitElement {
 
   private sichtbar(): boolean {
     const s = this.session;
-    return !!s && s.status === 'active' && s.terminalType !== 'shell' && !!s.agentStatus && s.agentStatus !== 'unknown';
+    return !!s && s.status === 'active' && s.terminalType !== 'shell' && !!s.agentStatus && s.agentStatus !== 'unknown' && !!s.terminalSessionId;
   }
 
   protected override willUpdate(_changed: PropertyValues): void {
@@ -82,14 +83,16 @@ export class AosHandoffKnopf extends LitElement {
 
   private klick(e: Event): void {
     e.stopPropagation();
-    if (!this.session) return;
+    const id = this.session?.terminalSessionId;
+    if (!id) return;
     // The reason of a refusal comes as a notice above the terminal (FA-03).
-    this.quelle.handoffStarten(this.session.id).catch((err: unknown) => console.warn('[handoff]', err));
+    this.quelle.handoffStarten(id).catch((err: unknown) => console.warn('[handoff]', err));
   }
 
   override render() {
-    if (!this.sichtbar() || !this.session) return nothing;
-    const gesperrt = this.laufend.includes(this.session.id);
+    const id = this.session?.terminalSessionId;
+    if (!this.sichtbar() || !id) return nothing;
+    const gesperrt = this.laufend.includes(id);
     return html`
       <button
         type="button"

@@ -14,6 +14,9 @@ export const HANDOFF_DIR = join('.claude', 'handoffs');
 
 const HANDOFF_NAME_RE = /^handoff-[0-9A-Za-z_-]+\.md$/;
 
+/** File timestamps lag `Date.now()` (coarse kernel clock, second-granular file systems); a handoff round takes far longer. */
+export const HANDOFF_ZEIT_TOLERANZ_MS = 2_000;
+
 /** The command that reads exactly this handoff in the cleared session (FA-10, FA-11). */
 export function einleseBefehl(name: string): string {
   return `/start-from-handoff .claude/handoffs/${name} nur lesen`;
@@ -21,7 +24,7 @@ export function einleseBefehl(name: string): string {
 
 /**
  * Name of the youngest regular handoff file under `<cwd>/.claude/handoffs`
- * changed at or after `seitMs`; undefined when there is none or the folder
+ * changed at or after `seitMs` (minus `HANDOFF_ZEIT_TOLERANZ_MS`); undefined when there is none or the folder
  * is missing. Symlinks are skipped, and the resolved path must stay inside
  * the folder.
  */
@@ -41,7 +44,7 @@ export async function findeNeuesHandoff(cwd: string, seitMs: number): Promise<st
     try {
       const path = join(dir, name);
       const st = await lstat(path);
-      if (!st.isFile() || st.mtimeMs < seitMs) continue;
+      if (!st.isFile() || st.mtimeMs < seitMs - HANDOFF_ZEIT_TOLERANZ_MS) continue;
       if (!(await realpath(path)).startsWith(realDir + sep)) continue;
       if (!best || st.mtimeMs > best.mtime) best = { name, mtime: st.mtimeMs };
     } catch {

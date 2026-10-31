@@ -3,7 +3,9 @@
  * INT-2026-038 (AK-09, FA-01, FA-12): aos-handoff-knopf — only in active
  * Claude sessions with a known agent status; locked („Wechsel läuft …")
  * while the backend broadcast lists the session; a click asks the backend
- * and does not bubble (the tab must not switch).
+ * and does not bubble (the tab must not switch). The backend knows the
+ * session by `terminalSessionId`, never by the tab id `id` (fix after #121:
+ * a click sent the tab id and the backend refused silently).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -51,12 +53,13 @@ describe('aos-handoff-knopf', () => {
     document.body.innerHTML = '';
   });
 
-  it('hidden in a shell, with unknown or missing agent status, and in an inactive session', async () => {
+  it('hidden in a shell, with unknown or missing agent status, in an inactive session and without a backend session id', async () => {
     for (const s of [
-      { id: 'a', status: 'active', terminalType: 'shell', agentStatus: 'done' },
-      { id: 'b', status: 'active', terminalType: 'claude-code', agentStatus: 'unknown' },
-      { id: 'c', status: 'active', terminalType: 'claude-code' },
-      { id: 'd', status: 'disconnected', terminalType: 'claude-code', agentStatus: 'done' },
+      { id: 'a', status: 'active', terminalType: 'shell', agentStatus: 'done', terminalSessionId: 'cloud-a' },
+      { id: 'b', status: 'active', terminalType: 'claude-code', agentStatus: 'unknown', terminalSessionId: 'cloud-b' },
+      { id: 'c', status: 'active', terminalType: 'claude-code', terminalSessionId: 'cloud-c' },
+      { id: 'd', status: 'disconnected', terminalType: 'claude-code', agentStatus: 'done', terminalSessionId: 'cloud-d' },
+      { id: 'e', status: 'active', terminalType: 'claude-code', agentStatus: 'done' },
     ] as Sitzung[]) {
       const { el } = await knopf(s);
       expect(el.hidden, s.id).toBe(true);
@@ -64,8 +67,8 @@ describe('aos-handoff-knopf', () => {
     }
   });
 
-  it('active Claude session → „Handoff"; a click asks the backend once and does not bubble', async () => {
-    const { el, quelle } = await knopf({ id: 's1', status: 'active', terminalType: 'claude-code', agentStatus: 'done' });
+  it('active Claude session → „Handoff"; a click asks the backend once with the backend session id and does not bubble', async () => {
+    const { el, quelle } = await knopf({ id: 'tab-1', status: 'active', terminalType: 'claude-code', agentStatus: 'done', terminalSessionId: 's1' });
     expect(el.hidden).toBe(false);
     const b = button(el)!;
     expect(b.textContent).toBe('Handoff');
@@ -78,7 +81,10 @@ describe('aos-handoff-knopf', () => {
   });
 
   it('listed in `handoffWechsel` → disabled „Wechsel läuft …"; unlisted again → ready', async () => {
-    const { el, quelle } = await knopf({ id: 's1', status: 'active', terminalType: 'claude-code', agentStatus: 'working' });
+    const { el, quelle } = await knopf({ id: 'tab-1', status: 'active', terminalType: 'claude-code', agentStatus: 'working', terminalSessionId: 's1' });
+    quelle.melde(['tab-1']);
+    await el.updateComplete;
+    expect(button(el)!.disabled).toBe(false);
     quelle.melde(['s1']);
     await el.updateComplete;
     expect(button(el)!.disabled).toBe(true);
