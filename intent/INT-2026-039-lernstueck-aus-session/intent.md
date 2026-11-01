@@ -7,7 +7,7 @@ version: "1.0.0"
 autor: "Michael"  
 verantwortlich: "Michael (Product Owner)"  
 erstellt: "2026-10-31"  
-geaendert: "2026-10-31"  
+geaendert: "2026-11-01"  
 freigabe:  
   von: "Michael (Product Owner)"  
   am: "2026-10-31"  
@@ -18,7 +18,7 @@ bypass_grund: "Größe S: ein Befehl, ein Workflow, eine Vorlage; kein Code in U
 bezuege:  
   product: "docs/product-brief.md"  
   spec: ""  
-  plan: ""  
+  plan: "plan.md"  
   tracker: ""  
   board_karte: ""  
   adr: []  
