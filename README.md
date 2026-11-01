@@ -34,7 +34,7 @@ curl -sSL https://raw.githubusercontent.com/michsindlinger/specwright/main/insta
 The installer auto-detects your environment and installs everything needed:
 - Global templates & standards (`~/.specwright/`)
 - Project workflows, standards & configuration
-- Claude Code commands (23), agents (11) & skills (2)
+- Claude Code commands (24), agents (11) & skills (2)
 - MCP server (if Node.js is available)
 
 ### Start building
@@ -112,7 +112,7 @@ You add your project directories within the UI and switch between them freely. E
 
 ## Core Commands
 
-Specwright v4 ships 23 commands. The four **Vorhaben** commands are the main path; the rest support product setup, the Web-UI execution path and housekeeping.
+Specwright v4 ships 24 commands. The four **Vorhaben** commands are the main path; the rest support product setup, the Web-UI execution path and housekeeping.
 
 | Command | Description |
 |---------|-------------|
@@ -135,6 +135,7 @@ Specwright v4 ships 23 commands. The four **Vorhaben** commands are the main pat
 | `/process-feedback` | Categorize customer feedback |
 | `/start-brainstorming` | Interactive idea exploration (ends in `/intent`) |
 | `/add-skill` · `/add-learning` · `/add-domain` | Skills and domain knowledge |
+| `/lernstueck` | Write a learning note for yourself after a session topic (what, why, discarded paths, self-test) |
 | `/extract-design` | Extract a design system from URL/screenshot |
 | `/check-update` | Check for a newer Specwright version |
 

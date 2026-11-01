@@ -20,6 +20,7 @@ command	project	.claude/commands/specwright/estimate-spec.md	.claude/commands/sp
 command	project	.claude/commands/specwright/execute-tasks.md	.claude/commands/specwright/execute-tasks.md
 command	project	.claude/commands/specwright/extract-design.md	.claude/commands/specwright/extract-design.md
 command	project	.claude/commands/specwright/intent.md	.claude/commands/specwright/intent.md
+command	project	.claude/commands/specwright/lernstueck.md	.claude/commands/specwright/lernstueck.md
 command	project	.claude/commands/specwright/plan-product.md	.claude/commands/specwright/plan-product.md
 command	project	.claude/commands/specwright/plan.md	.claude/commands/specwright/plan.md
 command	project	.claude/commands/specwright/process-feedback.md	.claude/commands/specwright/process-feedback.md
@@ -129,6 +130,7 @@ template	global	specwright/templates/docs/effort-estimation-template.md	specwrig
 template	global	specwright/templates/docs/handover-doc-template.md	specwright/templates/docs/handover-doc-template.md
 template	global	specwright/templates/docs/implementation-plan-template.md	specwright/templates/docs/implementation-plan-template.md
 template	global	specwright/templates/docs/kanban-board-template.md	specwright/templates/docs/kanban-board-template.md
+template	both	specwright/templates/docs/lernstueck-template.md	specwright/templates/docs/lernstueck-template.md
 template	global	specwright/templates/docs/requirements-clarification-template.md	specwright/templates/docs/requirements-clarification-template.md
 template	global	specwright/templates/docs/skill-index-template.md	specwright/templates/docs/skill-index-template.md
 template	global	specwright/templates/docs/spec-lite-template.md	specwright/templates/docs/spec-lite-template.md
@@ -327,6 +329,7 @@ workflow	project	specwright/workflows/core/execute-tasks/spec-phase-3.md	specwri
 workflow	project	specwright/workflows/core/extract-design.md	specwright/workflows/core/extract-design.md
 workflow	project	specwright/workflows/core/guidelines/model-selection.md	specwright/workflows/core/guidelines/model-selection.md
 workflow	project	specwright/workflows/core/intent.md	specwright/workflows/core/intent.md
+workflow	project	specwright/workflows/core/lernstueck.md	specwright/workflows/core/lernstueck.md
 workflow	project	specwright/workflows/core/plan-product.md	specwright/workflows/core/plan-product.md
 workflow	project	specwright/workflows/core/plan.md	specwright/workflows/core/plan.md
 workflow	project	specwright/workflows/core/process-feedback.md	specwright/workflows/core/process-feedback.md

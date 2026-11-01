@@ -2,6 +2,14 @@
 
 Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
 
+## 4.9.0 - 2026-11-01
+
+### Neu
+
+- **Befehl `/specwright:lernstueck`** (INT-2026-039). Schreibt nach einem abgeschlossenen Thema ein Lernstück für den Menschen: was gebaut wurde und warum, verworfene Wege mit Grund, Muster in Alltagssprache (Teilumsetzung als „ähnlich zu …“), Sackgassen mit Lehre, höchstens zwei Mermaid-Diagramme, Übertragung auf andere Projekte, 3 bis 5 Selbsttest-Fragen. Wurde die Sitzung zusammengefasst, liest der Agent den früheren Verlauf als Auszug aus dem eigenen Transkript (`CLAUDE_CODE_SESSION_ID`). Kein Commit; Werte, die nach Geheimnis aussehen, werden durch `[entfernt]` ersetzt.
+- **Ablage:** `docs/lernen/` im Projekt; mit `~/.specwright/lernstueck.conf` und der Zeile `ziel=[ordner]` (z. B. ein Ordner im eigenen Notiz-Vault) dort. Existiert der Ordner nicht, bricht der Befehl mit Meldung ab. Bestehende Dateien werden nie überschrieben.
+- Workflow `specwright/workflows/core/lernstueck.md` 1.0, Vorlage `specwright/templates/docs/lernstueck-template.md` (Projekt und global).
+
 ## 4.8.0 - 2026-10-30
 
 ### Neu

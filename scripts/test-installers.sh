@@ -2,7 +2,7 @@
 # Installer-Test (INT-2026-002): lässt jeden Installer gegen den lokalen Repo-Stand (file://) in leere
 # Verzeichnisse laufen und vergleicht das Ergebnis mit specwright/manifest.tsv. Kein Netz, kein GitHub.
 #
-#   T1  install.sh --project --claude-code --no-mcp --yes  → Befehle/Workflows/Agenten/Skills = Manifest (23 Befehle)
+#   T1  install.sh --project --claude-code --no-mcp --yes  → Befehle/Workflows/Agenten/Skills = Manifest (24 Befehle)
 #   T2  setup.sh + setup-claude-code.sh                    → dasselbe Ergebnis
 #   T3  setup-devteam-global.sh mit HOME=tmp               → ~/.specwright/{standards,templates} = Manifest (global)
 #   T4  update-specwright.sh auf einem 3.x-Fixture         → entfernte Dateien gelöscht und genannt, geänderte behalten
@@ -42,7 +42,7 @@ t1="$tmp_root/t1"; mkdir -p "$t1" "$tmp_root/home1"
 compare_dir .claude/commands/specwright command project "$t1"
 compare_dir specwright/workflows workflow project "$t1"
 n=$(find "$t1/.claude/commands/specwright" -type f 2>/dev/null | wc -l | tr -d ' ')
-[[ "$n" -eq 23 ]] && ok "T1 install.sh: 23 Befehle" || err "T1: $n Befehle statt 23"
+[[ "$n" -eq 24 ]] && ok "T1 install.sh: 24 Befehle" || err "T1: $n Befehle statt 24"
 exp_ag=$(expected agent project); got_ag=$( (cd "$t1" && find .claude/agents -type f | sort) || true )
 [[ "$exp_ag" == "$got_ag" ]] && ok "T1: Agenten = Manifest" || err "T1: Agenten weichen ab"
 t1_skills=ok
