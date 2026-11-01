@@ -1,7 +1,7 @@
 # Plan: Lernstück aus einer Session
 
 > **Intent:** `intent.md` (INT-2026-039) · **Spec:** entfällt (bypass: Größe S, ein Befehl, ein Workflow, eine Vorlage)
-> **Status:** freigegeben
+> **Status:** umgesetzt
 > **Erstellt:** 2026-10-31 im Plan Mode · **Freigabe:** Michael (Product Owner), 2026-11-01
 > **Pflichtinput gelesen:** `docs/architecture.md` (Stand 1d3c6c4), `CLAUDE.md`, `docs/security.md`
 > **Format:** 2.3
@@ -265,4 +265,7 @@ Nahtstelle für AK-01 bis AK-08 und AK-10: der Befehl `/specwright:lernstueck` s
 
 | Datum | Abweichung | Grund | Auswirkung auf Abschnitt |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-11-01 | AK-10, Lauf mit Konfiguration: Ablage-Schritt des Workflows als Shell-Funktion mit `HOME` auf einen Testordner geprüft, kein zweiter Agentenlauf mit echter `~/.specwright/lernstueck.conf`. | Michaels echte Konfiguration sollte vor dem Merge nicht entstehen; geprüft wird die Ablage-Logik, der Inhalt ist derselbe wie in Lauf 1. | §8 (Protokoll `e2e/README.md`) |
+| 2026-11-01 | Lokales `verify` Stufe 5 rot: Lauf 1 sechs, Lauf 2 zwei neue rote Testdateien (`sprach-erkennung`, `vorhaben-abschluss-git`, Terminal-Tests); einzeln laufen Terminal- und Abschluss-Tests grün. Bezugsliste nicht angefasst. | Der Diff berührt `ui/` nicht; die rote Menge wechselt je Lauf (bekannte Mac-Flakiness, Zeitüberschreitungen unter Last). CI entscheidet. | §8, §13 (PR-Check abwarten) |
+| 2026-11-01 | Vor `verify` `npm ci` in `ui/` und `ui/frontend/` plus `chmod +x` für `spawn-helper` nötig. | Frische Arbeitskopie ohne `node_modules` (bekannte Falle, `CLAUDE.md` „Fehler zweimal"). | — |
+| 2026-11-01 | Workflow: Leerzeile nach „**Grundsätze:**" ergänzt. | MacDown-Prüfung aus §8 schlug an. | — |

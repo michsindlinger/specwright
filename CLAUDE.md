@@ -22,7 +22,7 @@ Specwright ist das Framework für den AI-native SDLC: Befehle, Workflows, Vorlag
 ## Verzeichniskarte
 
 - `specwright/` — Werkzeug: `workflows/`, `templates/` (v4: `templates/sdlc/`), `standards/`, `mcp-profiles/`, `scripts/mcp/` (Kanban-MCP), `scripts/install-lib.sh`, **`manifest.tsv`** (Lieferumfang), `removed.tsv` (Entferntes mit Prüfsummen)
-- `.claude/commands/specwright/` (23 Befehle) · `.claude/agents/` · `.claude/skills/` · `.claude/hooks/`
+- `.claude/commands/specwright/` (24 Befehle) · `.claude/agents/` · `.claude/skills/` · `.claude/hooks/`
 - `ui/` — Web-UI: `src/server/` (Express, WS, Auto-Mode), `frontend/src/` (Lit, `aos-*`), `tests/`
 - `intent/` — Vorhaben (`intent.md`, `spec.md`, `plan.md`) · `docs/` — Projekt-Docs · `docs/adr/` — ADRs
 - Installer im Root: `install.sh`, `setup.sh`, `setup-claude-code.sh`, `setup-devteam-global.sh`, `update-specwright.sh`, `check-update.sh`, `setup-mcp.sh`, `setup-ui.sh`
