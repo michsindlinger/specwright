@@ -1,8 +1,8 @@
 ---
 intent_id: "INT-2026-028"  
 titel: "Arbeitsordner einer Sitzung mit einem Klick in VS Code öffnen"  
-status: "angenommen"  
-version: "1.0.0"  
+status: "umgesetzt"  
+version: "1.0.1"  
 autor: "Michael Sindlinger"  
 verantwortlich: "Michael (Inhaber)"  
 erstellt: "2026-10-01"  
@@ -118,3 +118,4 @@ Jedes Vorhaben läuft in einer eigenen Arbeitskopie (Worktree) unter `../specwri
 |---|---|---|---|---|
 | 1.0.0 | 2026-10-01 | Freigabe „intent.md 0.1.0"; OF-01 wie vorgeschlagen entschieden (Einstellungsfeld entscheidet lokal/remote). Abgleich Mensch/Agent (R4): ohne Befund — Kopf (Größe S, Risiko niedrig, Bypass ja) deckt sich mit Kern; jedes Ziel hat mindestens ein AK (Z-01: AK-01/02, Z-02: AK-02/05, Z-03: AK-03/04); keine Vertragsschicht nötig | OF-01 | Product Owner, 01.10. |
 | 0.1.0 | 2026-10-01 | Entwurf nach Gespräch (Rückfragen 1–4 wie vorgeschlagen bestätigt) | alle | — |
+| 1.0.1 | 2026-10-01 | Umgesetzt: abgeschlossen aus der UI durch Michael Sindlinger; Belege in `plan.md` §13 | — | Product Owner (Klick in der UI) |
