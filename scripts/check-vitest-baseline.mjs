@@ -44,7 +44,17 @@ const repariert = [...bekannt].filter(p => gruen.has(p) && !flaky.has(p)).sort()
 console.log(`Vitest: ${gruen.size} grün, ${rot.size} rot, ${bekannt.size} als bekannt rot hinterlegt` + (flaky.size ? ` (davon ${flaky.size} flaky)` : '') + '.');
 if (repariert.length) { console.log(`\n✅ ${repariert.length} Datei(en) repariert — nach grünem CI-Lauf aus ${BASELINE} streichen:`); for (const p of repariert) console.log(`   ${p}`); }
 if (neuRot.length) {
-  console.log(`\n❌ ${neuRot.length} NEUE rote Testdatei(en):`); for (const p of neuRot) console.log(`   ${p}`);
+  console.log(`\n❌ ${neuRot.length} NEUE rote Testdatei(en):`);
+  // Je Datei die roten Tests mit erster Fehlerzeile — die Vitest-Ausgabe selbst sieht im CI niemand.
+  const ersteZeile = s => String(s ?? '').split('\n').find(l => l.trim())?.trim().slice(0, 160) ?? '';
+  for (const p of neuRot) {
+    console.log(`   ${p}`);
+    const r = (ergebnis.testResults ?? []).find(t => relativ(t.name) === p);
+    const faelle = (r?.assertionResults ?? []).filter(a => a.status === 'failed');
+    if (!faelle.length && r?.message) console.log(`      ${ersteZeile(r.message)}`);
+    for (const a of faelle.slice(0, 3)) console.log(`      × ${a.title.slice(0, 100)} — ${ersteZeile(a.failureMessages?.[0])}`);
+    if (faelle.length > 3) console.log(`      … und ${faelle.length - 3} weitere`);
+  }
   console.log(`\nDiese Dateien waren vorher grün. Reparieren — oder mit Begründung im PR in ${BASELINE} aufnehmen, aber nur nach einem CI-Lauf.`);
   process.exit(1);
 }
