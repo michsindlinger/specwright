@@ -267,6 +267,29 @@
           "description": "Codex-CLI von OpenAI; ohne Status, Glocke, Prüfer"
         }
       ]
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama (lokal)",
+      "cliCommand": "claude-ollama",
+      "cliFlags": ["--model", "{modelId}"],
+      "models": [
+        {
+          "id": "qwen3.6:35b-a3b",
+          "name": "Qwen 3.6 35B",
+          "description": "Lokal via Ollama, Q4, 23 GB"
+        },
+        {
+          "id": "qwen3.6:35b-a3b-q8_0",
+          "name": "Qwen 3.6 35B Q8",
+          "description": "Lokal via Ollama, genauer, 38 GB"
+        },
+        {
+          "id": "qwen3.8:27b-mtp-q8_0",
+          "name": "Qwen 3.8 27B Q8",
+          "description": "Lokal via Ollama, 29 GB"
+        }
+      ]
     }
   ]
 }
