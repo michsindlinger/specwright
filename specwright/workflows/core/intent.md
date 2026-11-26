@@ -2,7 +2,7 @@
 description: Vorhaben als intent.md festhalten — fachlich, belegt, freigegeben
 globs:
 alwaysApply: false
-version: 1.5
+version: 1.6
 encoding: UTF-8
 ---
 
@@ -64,6 +64,7 @@ SEARCH gezielt (Grep/Read), keine Änderungen:
   - Wo entsteht das Symptom? (Sortierung, Filter, Schreibpfade, Anzeige)
   - Gibt es mehrere Schreiber desselben Felds? Mehrere Datentypen? (Pilot-Lehre)
   - Bestehende Tests, ADRs, Board-Karten zum Thema
+  - Hängt ein Ziel am Verhalten eines Sprachmodells (Anweisung, Modellwahl, Parameter)? Dann festhalten, ob sich vor einer Messung sagen lässt, was richtig ist (Prüffall: mit dem alten Stand schlägt er fehl, mit dem neuen besteht er). Folge in Step 4
 
 RECORD jede Aussage in Abschnitt 1 als `[Q: pfad/datei.ts:42]` oder `[Q: Person, Datum]`. Vermutungen als `[Uncertain]`.
 
@@ -91,6 +92,8 @@ WRITE `intent/INT-JJJJ-NNN-kurzname/intent.md` nach Vorlage — über die Platzh
   - Kern: drei Sätze, Problem und Anlass, Betroffene, Ziele, Nicht-Ziele, Abnahmekriterien (EARS, ein Modalverb, Ziel, Prüfart), Randbedingungen mit Herkunft (Projekt-Docs zitieren), offene Fragen mit Übergangsregel
   - Ab Risikoklasse mittel: Begriffe, Erfolgskennzahlen, Auslieferung/Betrieb/Zeitbudget, Entscheidungsrechte (ER-00…ER-08), Annahmen mit Prüfweg
   - Änderungsprotokoll: Zeile 0.1.0
+
+RULE Sprachmodell (Befund aus Step 3): Lässt sich das richtige Ergebnis vorher festlegen, bekommt das Kriterium die Prüfung „Messung“ und nennt den Prüffall; eine Messung in der Zielumgebung ist ein eigenes Kriterium mit Prüfung „Messung“ (ab Risikoklasse mittel zusätzlich Erfolgskennzahl mit „Messung vor Produktion“). Lässt sich für ein Ziel vor einer Messung kein Kriterium schreiben, ist es ein Experiment: Es wird kein Abnahmekriterium, sondern eine offene Frage mit „Blockiert: ja“, die die Messung nennt. Erst messen, das Ergebnis als Zahl oder Schwelle ins Kriterium schreiben, dann annehmen.
 
 RULE: Leser-Marker nach R1 (`specwright/workflows/meta/leser-und-rueckfragen.md`): die Marker der Vorlage unter jeder Überschrift übernehmen, keinen entfernen; jede neue `##`-Überschrift bekommt einen.
 

@@ -2,6 +2,13 @@
 
 Formatänderungen der Vorhaben-Vorlagen stehen je Release unter `### Format` (Regel: `specwright/templates/sdlc/README.md`, Abschnitt „Formatversion").
 
+## 4.10.0 - 2026-11-26
+
+### Geändert
+
+- **Vorhaben mit Sprachmodell** (Workflow `intent` 1.6, `plan` 1.8). `/intent` prüft in Step 3, ob ein Ziel am Verhalten eines Sprachmodells hängt. Lässt sich das richtige Ergebnis vorher festlegen, nennt das Kriterium einen Prüffall (alter Stand schlägt fehl, neuer besteht). Lässt es sich nicht festlegen, ist es ein Experiment: offene Frage mit „Blockiert: ja“ statt Abnahmekriterium, erst messen, dann annehmen.
+- **Schnitt für die Software Factory:** Ein Kriterium mit Prüfart Messung wird eine Karte statt eines Handschritts, wenn es einen Prüffall nennt und das Zielprojekt eine Testebene mit Sprachmodell hat. Eine Messung in der Zielumgebung bleibt Handschritt nach der Karte. Alles andere wie bisher.
+
 ## 4.9.0 - 2026-11-01
 
 ### Neu
