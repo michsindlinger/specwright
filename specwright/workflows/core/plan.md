@@ -2,7 +2,7 @@
 description: Technischer Plan im Plan Mode — Einheit der Ausführung, mit Zerlegung und Verbindungsnachweisen
 globs:
 alwaysApply: false
-version: 1.7
+version: 1.8
 encoding: UTF-8
 ---
 
@@ -76,7 +76,7 @@ CHECK `security.md` §6 Pflichtprüfungen: Endpunkt? Datenobjekt? externes Syste
 WRITE §4: jede Datei mit Art, Was, Herkunft (FA/AK). „Nicht betroffen (ausdrücklich)" füllen.
 WRITE §5: jede neue oder geänderte Verbindung mit Nachweis-Befehl (grep, Test). Jede neue Komponente hat mindestens eine Verbindung.
 WRITE §6: Reihenfolge mit prüfbarem Zustand je Schritt; Schritt 0 ist immer eine lesende Vorprüfung auf Konsumenten, die brechen könnten. Schritt 1 ist die Erste Scheibe: dünn, durch alle betroffenen Schichten, allein vorführbar; danach verbreitern. Kein Schichtbau; berührt der Plan nur eine Schicht, steht das mit Grund in Schritt 1 (INT-2026-032).
-IF Software Factory geklärt (Step 1): Schnitt-Entwurf festhalten (noch im Plan Mode, Datei entsteht in 9c). Je Kriterium aus Spec (oder `intent.md` bei Bypass): welche Karte oder welcher Handschritt, welche Testebene. Zulässig sind nur Testebenen, die das Zielprojekt eingerichtet hat, oder `verify`. Kriterien mit Prüfart Stichprobe oder Messung werden Handschritte (Grund `manual`). Eine Karte folgt der Reihenfolge aus §6; Abhängigkeiten nur auf Karten desselben Plans oder umgesetzte Vorhaben desselben Repos.
+IF Software Factory geklärt (Step 1): Schnitt-Entwurf festhalten (noch im Plan Mode, Datei entsteht in 9c). Je Kriterium aus Spec (oder `intent.md` bei Bypass): welche Karte oder welcher Handschritt, welche Testebene. Zulässig sind nur Testebenen, die das Zielprojekt eingerichtet hat, oder `verify`. Kriterien mit Prüfart Stichprobe oder Messung werden Handschritte (Grund `manual`). Ausnahme: Hängt die Messung am Verhalten eines Sprachmodells, hat das Zielprojekt eine Testebene mit Sprachmodell eingerichtet und nennt das Kriterium einen Prüffall (mit dem alten Stand schlägt er fehl, mit dem neuen besteht er), wird es eine Karte auf dieser Testebene; verlangt die Absicht daneben eine Messung in der Zielumgebung, bleibt diese ein Handschritt nach der Karte (`when: { after: K-nn }`). Eine Karte folgt der Reihenfolge aus §6; Abhängigkeiten nur auf Karten desselben Plans oder umgesetzte Vorhaben desselben Repos.
 
 </step>
 
